@@ -33,16 +33,24 @@ class ExoPlayerHost(
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
-                Player.STATE_READY -> emit(mapOf("type" to "ready"))
+                Player.STATE_READY -> {
+                    emit(mapOf("type" to "ready"))
+                    emit(mapOf("type" to "buffering", "value" to false))
+                }
                 Player.STATE_ENDED -> emit(mapOf("type" to "ended"))
-                Player.STATE_BUFFERING -> emit(mapOf("type" to "buffering", "value" to true))
-                Player.STATE_IDLE -> emit(mapOf("type" to "buffering", "value" to false))
             }
             emitProgress()
         }
 
+        override fun onIsLoadingChanged(isLoading: Boolean) {
+            emit(mapOf("type" to "buffering", "value" to isLoading))
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             emit(mapOf("type" to "playing", "value" to isPlaying))
+            if (isPlaying) {
+                emit(mapOf("type" to "buffering", "value" to false))
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {

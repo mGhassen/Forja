@@ -21,6 +21,7 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
@@ -384,6 +385,8 @@ class MobilePlayerScreen extends StatefulWidget {
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache;
+  final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
   final bool tvRemoteEnabled;
   final BuiltInPlayerEngine builtInEngine;
   final PlayerSwitchHandler? onSwitchPlayer;
@@ -419,6 +422,8 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onAllSourcesExhausted,
     this.onReloadStreams,
     this.sourcesListNotifier,
+    this.providerSourcesCache,
+    this.providerProbesNotifier,
     this.tvRemoteEnabled = false,
     this.builtInEngine = BuiltInPlayerEngine.mediaKit,
     this.onSwitchPlayer,
@@ -579,6 +584,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _current111477FileUrl = widget.sources!.first.url;
     }
     widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.addListener(_onLiveSourcesUpdated);
     if (widget.tvRemoteEnabled) {
       _hwDecMode = _HwDecMode.software;
     }
@@ -763,6 +769,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   @override
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
     _saveWatchHistory();
 
     _fallbackGen++;
@@ -2677,10 +2684,18 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   void _onLiveSourcesUpdated() {
+    unawaited(_rankLiveSources());
+  }
+
+  Future<void> _rankLiveSources() async {
     if (_disposed || !mounted) return;
     final live = widget.sourcesListNotifier?.value;
     if (live == null || live.isEmpty) return;
-    final merged = dedupeStreamSources(live);
+    final merged = await dedupeStreamSourcesAsync(
+      live,
+      providerId: _currentProvider ?? '',
+    );
+    if (_disposed || !mounted) return;
     final prevLen = _currentSources?.length ?? 0;
     if (merged.length <= prevLen &&
         (_currentSources == null ||
@@ -2691,6 +2706,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
     setState(() => _currentSources = merged);
     _notifySourceMenuChanged();
+    unawaited(_probeAllSourcesInBackground());
   }
 
   Future<void> _probeAllSourcesInBackground() async {
@@ -2774,6 +2790,17 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     );
   }
 
+  Listenable? _streamMenuRefreshListenable() {
+    final listenables = <Listenable>[
+      _statusController,
+      _sourceMenuRevision,
+      _isReloadingStreams,
+    ];
+    final probes = widget.providerProbesNotifier;
+    if (probes != null) listenables.add(probes);
+    return Listenable.merge(listenables);
+  }
+
   void _showSourcesMenu([BuildContext? anchorContext]) {
     if (_currentSources == null || _currentSources!.isEmpty) return;
     final bottom = MediaQuery.paddingOf(context).bottom + 76;
@@ -2787,8 +2814,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       sourcesOnly: true,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
-      refreshListenable:
-          Listenable.merge([_statusController, _sourceMenuRevision, _isReloadingStreams]),
+      refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
       isReloading: _isReloadingStreams,
     );
@@ -2807,6 +2833,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     PlayerStreamMenu.show(
       context,
       providers: widget.providers,
+      providerProbesNotifier: widget.providerProbesNotifier,
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
       onSelectAutoProvider: _selectAutoProvider,
@@ -2815,8 +2842,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
-      refreshListenable:
-          Listenable.merge([_statusController, _sourceMenuRevision, _isReloadingStreams]),
+      refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
       isReloading: _isReloadingStreams,
     );
@@ -3461,7 +3487,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       Map<String, String>? headers;
       List<StreamSource>? sources;
 
-      if (newProvider == 'service111477' && widget.movie != null) {
+      final cached = widget.providerSourcesCache?.value[newProvider];
+      if (cached != null && cached.isNotEmpty) {
+        streamUrl = cached.first.url;
+        headers = cached.first.headers;
+        sources = cached;
+      } else if (newProvider == 'service111477' && widget.movie != null) {
         final svc = Site111477Service();
         List<Site111477Match> hits;
         if (widget.movie!.mediaType == 'tv') {

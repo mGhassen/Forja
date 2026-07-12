@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 /// Live stream menu state — read after async provider switches.
@@ -72,6 +73,7 @@ class PlayerStreamMenu {
   static Future<void> show(
     BuildContext context, {
     Map<String, dynamic>? providers,
+    ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier,
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
@@ -116,6 +118,7 @@ class PlayerStreamMenu {
       await _openServers(
         context,
         providers: providers,
+        providerProbesNotifier: providerProbesNotifier,
         readState: readState,
         onSelectProvider: onSelectProvider,
         onSelectAutoProvider: onSelectAutoProvider,
@@ -147,6 +150,7 @@ class PlayerStreamMenu {
   static Future<void> _openServers(
     BuildContext context, {
     required Map<String, dynamic> providers,
+    ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier,
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
@@ -160,17 +164,10 @@ class PlayerStreamMenu {
     Future<void> Function()? onReload,
     ValueListenable<bool>? isReloading,
   }) async {
-    final state = readState();
-
-    await PlayerPopupPanel.show(
-      context: context,
-      title: 'Servers',
-      leadingIcon: Icons.cloud_outlined,
-      alignment: Alignment.bottomLeft,
-      margin: margin,
-      anchorContext: anchorContext,
-      trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
-      child: ListView(
+    Widget buildList() {
+      final state = readState();
+      final probes = providerProbesNotifier?.value ?? const [];
+      return ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
         children: [
@@ -194,6 +191,11 @@ class PlayerStreamMenu {
               key,
               contentLanguage: contentLanguage,
             );
+            final status = _providerStatus(
+              key,
+              probes,
+              isCurrent: isCurrent && !state.providerAuto,
+            );
             return PlayerPopupListTile(
               badge: flags.isEmpty ? null : flags,
               label: StreamProviderDisplay.playerLabel(
@@ -202,6 +204,7 @@ class PlayerStreamMenu {
                 contentLanguage: contentLanguage,
               ),
               selected: !state.providerAuto && isCurrent,
+              status: status,
               trailing: const Icon(
                 Icons.chevron_right_rounded,
                 color: Colors.white24,
@@ -236,6 +239,7 @@ class PlayerStreamMenu {
                   onBack: () => _openServers(
                     context,
                     providers: providers,
+                    providerProbesNotifier: providerProbesNotifier,
                     readState: readState,
                     onSelectProvider: onSelectProvider,
                     onSelectAutoProvider: onSelectAutoProvider,
@@ -253,7 +257,23 @@ class PlayerStreamMenu {
             );
           }),
         ],
-      ),
+      );
+    }
+
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Servers',
+      leadingIcon: Icons.cloud_outlined,
+      alignment: Alignment.bottomLeft,
+      margin: margin,
+      anchorContext: anchorContext,
+      trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
+      child: refreshListenable == null
+          ? buildList()
+          : ListenableBuilder(
+              listenable: refreshListenable,
+              builder: (context, _) => buildList(),
+            ),
     );
   }
 
@@ -336,5 +356,22 @@ class PlayerStreamMenu {
     final raw = provider['contentLanguage'];
     if (raw is! List) return null;
     return raw.map((e) => e.toString()).toList();
+  }
+
+  static PlayerSourceStatus? _providerStatus(
+    String providerId,
+    List<StreamProviderProbe> probes, {
+    required bool isCurrent,
+  }) {
+    if (isCurrent) return PlayerSourceStatus.active;
+    for (final probe in probes) {
+      if (probe.id != providerId) continue;
+      return switch (probe.status) {
+        StreamProviderProbeStatus.trying => PlayerSourceStatus.checking,
+        StreamProviderProbeStatus.failed => PlayerSourceStatus.failed,
+        StreamProviderProbeStatus.success => PlayerSourceStatus.ready,
+      };
+    }
+    return null;
   }
 }

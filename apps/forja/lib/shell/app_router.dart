@@ -4,6 +4,7 @@ import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
@@ -209,6 +210,8 @@ class AppRouter {
     VoidCallback? onAllSourcesExhausted,
     Future<List<StreamSource>?> Function()? onReloadStreams,
     ValueNotifier<List<StreamSource>>? sourcesListNotifier,
+    ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache,
+    ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier,
     bool fadeTransition = false,
   }) {
     final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
@@ -244,6 +247,8 @@ class AppRouter {
           onAllSourcesExhausted: onAllSourcesExhausted,
           onReloadStreams: onReloadStreams,
           sourcesListNotifier: sourcesListNotifier,
+          providerSourcesCache: providerSourcesCache,
+          providerProbesNotifier: providerProbesNotifier,
         ),
       ),
     );

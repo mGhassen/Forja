@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 /// Android TV player — [MobilePlayerScreen] with D-pad / remote key handling.
@@ -36,6 +37,8 @@ class TvPlayerScreen extends StatelessWidget {
     this.onAllSourcesExhausted,
     this.onReloadStreams,
     this.sourcesListNotifier,
+    this.providerSourcesCache,
+    this.providerProbesNotifier,
   });
 
   final String mediaPath;
@@ -67,6 +70,8 @@ class TvPlayerScreen extends StatelessWidget {
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache;
+  final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +105,8 @@ class TvPlayerScreen extends StatelessWidget {
       onAllSourcesExhausted: onAllSourcesExhausted,
       onReloadStreams: onReloadStreams,
       sourcesListNotifier: sourcesListNotifier,
+      providerSourcesCache: providerSourcesCache,
+      providerProbesNotifier: providerProbesNotifier,
       tvRemoteEnabled: true,
     );
   }

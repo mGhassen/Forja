@@ -10,6 +10,7 @@ import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -53,6 +54,8 @@ class PlayerScreen extends StatefulWidget {
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache;
+  final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
 
   const PlayerScreen({
     super.key,
@@ -85,6 +88,8 @@ class PlayerScreen extends StatefulWidget {
     this.onAllSourcesExhausted,
     this.onReloadStreams,
     this.sourcesListNotifier,
+    this.providerSourcesCache,
+    this.providerProbesNotifier,
   });
 
   @override
@@ -288,6 +293,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
         sourcesListNotifier: widget.sourcesListNotifier,
+        providerSourcesCache: widget.providerSourcesCache,
+        providerProbesNotifier: widget.providerProbesNotifier,
       );
     }
 
@@ -353,6 +360,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
         sourcesListNotifier: widget.sourcesListNotifier,
+        providerSourcesCache: widget.providerSourcesCache,
+        providerProbesNotifier: widget.providerProbesNotifier,
         builtInEngine: _builtInEngine,
         onSwitchPlayer: _switchPlayer,
       );
@@ -388,6 +397,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
         sourcesListNotifier: widget.sourcesListNotifier,
+        providerSourcesCache: widget.providerSourcesCache,
+        providerProbesNotifier: widget.providerProbesNotifier,
         builtInEngine: _builtInEngine,
         onSwitchPlayer: _switchPlayer,
       );

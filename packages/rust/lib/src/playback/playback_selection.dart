@@ -45,3 +45,15 @@ abstract final class PlaybackSelection {
     return playableSourcesToStreamSources(ranked);
   }
 }
+
+/// Device-aware dedupe — prefer over sync [dedupeStreamSources].
+Future<List<StreamSource>> dedupeStreamSourcesAsync(
+  List<StreamSource> sources, {
+  required String providerId,
+  int providerRank = 0,
+}) =>
+    PlaybackSelection.rankAndDedupe(
+      sources: sources,
+      providerId: providerId,
+      providerRank: providerRank,
+    );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
+import 'package:forja/shared/design/src/shell_layout.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -328,40 +329,56 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: widget.onTap,
-          child: AnimatedBuilder(
-            animation: _scale,
-            builder: (context, child) {
-              Widget content = child!;
-              if (widget.showFocusBorder && _isFocused) {
-                content = Stack(
-                  clipBehavior: Clip.none,
-                  fit: StackFit.passthrough,
-                  children: [
-                    content,
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(widget.borderRadius),
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-              return Transform.scale(
-                scale: _scale.value,
-                alignment: Alignment.center,
-                child: content,
-              );
-            },
-            child: widget.child,
-          ),
+          child: _buildFocusedChild(context),
         ),
       ),
     );
+  }
+
+  Widget _buildFocusedChild(BuildContext context) {
+    final bleed = widget.showFocusBorder
+        ? shellMovieCardFocusBleed(context, scaleOnFocus: widget.scaleOnFocus)
+        : 0.0;
+
+    Widget body = AnimatedBuilder(
+      animation: _scale,
+      builder: (context, child) {
+        Widget content = child!;
+        if (widget.showFocusBorder && _isFocused) {
+          content = Stack(
+            clipBehavior: Clip.none,
+            fit: StackFit.passthrough,
+            children: [
+              content,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius:
+                          BorderRadius.circular(widget.borderRadius),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+        return Transform.scale(
+          scale: _scale.value,
+          alignment: Alignment.center,
+          child: content,
+        );
+      },
+      child: widget.child,
+    );
+
+    if (bleed > 0) {
+      body = Padding(
+        padding: EdgeInsets.symmetric(horizontal: bleed),
+        child: body,
+      );
+    }
+    return body;
   }
 }

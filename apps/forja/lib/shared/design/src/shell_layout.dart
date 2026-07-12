@@ -84,6 +84,17 @@ double shellMovieCardRowGap(BuildContext context) =>
         ? ShellTokens.tvMovieCardRowGap
         : 14.0;
 
+/// Horizontal inset so TV focus scale + border stay inside layout bounds.
+double shellMovieCardFocusBleed(
+  BuildContext context, {
+  double scaleOnFocus = ShellTokens.focusActiveScale,
+}) {
+  const borderWidth = 1.5;
+  if (scaleOnFocus <= 1.0) return borderWidth + 1;
+  final w = shellMovieCardWidth(context);
+  return w * (scaleOnFocus - 1) / 2 + borderWidth + 1;
+}
+
 double shellHomeSectionTitleTop(
   BuildContext context, {
   bool compact = false,

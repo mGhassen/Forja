@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **14 / 16** acceptance (slice 1–2) · **0 / 8** slice 3 |
-| **Current slice** | Device cap + recovery + resume unify shipped |
+| **Progress** | **4 / 4** components · **16 / 16** acceptance (slices 1–3) |
+| **Current slice** | All slices shipped — manual TV QA tracked in Issue 033 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

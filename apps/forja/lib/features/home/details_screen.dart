@@ -521,7 +521,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
     _webstreamingOnlyExtractionCancelled = false;
     final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
+    final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
+    final providerSourcesCache =
+        ValueNotifier<Map<String, List<StreamSource>>>({});
     final fadeOutNotifier = ValueNotifier(false);
+    var liveNotifiersDisposed = false;
     BuildContext? loadingDialogContext;
 
     void dismissLoading() {
@@ -554,7 +558,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       dismissLoading();
       _isWebstreamingOnlyExtracting = false;
       fadeOutNotifier.dispose();
+      liveNotifiersDisposed = true;
       probeNotifier.dispose();
+      sourcesListNotifier.dispose();
+      providerSourcesCache.dispose();
       return;
     }
 
@@ -576,13 +583,27 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ];
       }
 
-      final hit = await PlaybackEngine.resolveParallel(
+      void syncResolvedHits(List<PlaybackResolveHit> hits) {
+        if (hits.isEmpty || _webstreamingOnlyExtractionCancelled) return;
+        providerSourcesCache.value = PlaybackEngine.hitsToProviderCache(hits);
+        sourcesListNotifier.value = PlaybackEngine.mergeHitSources(hits);
+        final best = hits.first;
+        if (mounted) {
+          setState(() {
+            _webstreamingStreams = best.streamSources;
+            _webstreamingActiveProviderId = best.providerId;
+          });
+        }
+      }
+
+      final hit = await PlaybackEngine.resolveStreamingRace(
         providers: providers,
         movie: _movie,
         season: _selectedSeason,
         episode: _selectedEpisode,
         resolver: _streamProviderResolver,
         isCancelled: () => _webstreamingOnlyExtractionCancelled,
+        onHitsUpdated: syncResolvedHits,
         onProgress: (providerId, status) {
           if (!mounted) return;
           probeNotifier.value = probeNotifier.value
@@ -634,7 +655,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               : _movie.title;
           final ctx = loadingDialogContext;
           if (ctx != null && ctx.mounted) {
-            await crossfadeLoadingOverlayToPlayer(
+            final playerFuture = crossfadeLoadingOverlayToPlayer(
               loadingDialogContext: ctx,
               fadeOutNotifier: fadeOutNotifier,
               openPlayer: () => AppRouter.openPlayer(
@@ -651,9 +672,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 startPosition: startPosition ?? widget.startPosition,
                 sources: sources,
                 externalSubtitles: result.subtitles,
+                sourcesListNotifier: sourcesListNotifier,
+                providerSourcesCache: providerSourcesCache,
+                providerProbesNotifier: probeNotifier,
                 fadeTransition: true,
               ),
             );
+            await playerFuture;
+            _webstreamingOnlyExtractionCancelled = true;
+            _streamProviderResolver.cancelPending();
+            liveNotifiersDisposed = true;
+            sourcesListNotifier.dispose();
+            providerSourcesCache.dispose();
+            probeNotifier.dispose();
           } else {
             await _playWebstreamingStream(
               sources.first,
@@ -674,7 +705,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _isWebstreamingOnlyExtracting = false;
       }
       fadeOutNotifier.dispose();
-      probeNotifier.dispose();
+      if (!liveNotifiersDisposed) {
+        sourcesListNotifier.dispose();
+        providerSourcesCache.dispose();
+        probeNotifier.dispose();
+      }
     }
   }
 

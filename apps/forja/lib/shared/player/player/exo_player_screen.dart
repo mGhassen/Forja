@@ -221,6 +221,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     final type = event['type']?.toString() ?? '';
     switch (type) {
       case 'ready':
+        setState(() => _isBuffering = false);
         if (!_playbackStartedNotified) {
           _playbackStartedNotified = true;
           widget.onPlaybackStarted?.call();
@@ -228,7 +229,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         }
         break;
       case 'playing':
-        setState(() => _isPlaying = event['value'] == true);
+        setState(() {
+          _isPlaying = event['value'] == true;
+          if (_isPlaying) _isBuffering = false;
+        });
         break;
       case 'buffering':
         setState(() => _isBuffering = event['value'] == true);
@@ -352,7 +356,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     final handler = widget.onSwitchPlayer;
     if (handler == null) return;
     await _saveProgress();
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     PlayerAppMenu.show(
       context,
       anchorContext: anchorContext,

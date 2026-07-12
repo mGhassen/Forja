@@ -6,9 +6,95 @@ import 'package:rust/rust.dart';
 
 /// Playback orchestrator — parallel resolve + ranked candidates.
 abstract final class PlaybackEngine {
-  static const maxParallelProviders = 3;
+  static const maxParallelProviders = 6;
 
-  /// Race providers in parallel (cap [maxParallelProviders]).
+  /// Race providers with limited concurrency. Returns the highest-priority hit
+  /// as soon as one works; remaining providers keep resolving and
+  /// [onHitsUpdated] fills the player source menu in the background.
+  static Future<PlaybackResolveHit?> resolveStreamingRace({
+    required Map<String, dynamic> providers,
+    required Movie movie,
+    required int season,
+    required int episode,
+    StreamProviderResolver? resolver,
+    bool Function()? isCancelled,
+    void Function(String providerId, String status)? onProgress,
+    void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
+    int maxInFlight = maxParallelProviders,
+  }) async {
+    final cancelled = isCancelled ?? (() => false);
+    final keys = providers.keys.toList();
+    if (keys.isEmpty) return null;
+    final r = resolver ?? StreamProviderResolver();
+
+    final launchCompleter = Completer<PlaybackResolveHit?>();
+    final hits = <PlaybackResolveHit>[];
+    var settled = 0;
+    var inFlight = 0;
+    var nextIndex = 0;
+    final total = keys.length;
+    late void Function() pump;
+
+    void publishHits() {
+      if (hits.isEmpty) return;
+      hits.sort((a, b) => a.providerRank.compareTo(b.providerRank));
+      onHitsUpdated?.call(List.of(hits));
+    }
+
+    void finishIfOpen() {
+      if (launchCompleter.isCompleted) return;
+      publishHits();
+      launchCompleter.complete(hits.isEmpty ? null : hits.first);
+    }
+
+    void onResolved(String key, PlaybackResolveHit? hit) {
+      settled++;
+      inFlight--;
+      if (hit != null) {
+        hits.add(hit);
+        publishHits();
+        if (!launchCompleter.isCompleted) {
+          finishIfOpen();
+        }
+      }
+      if (settled >= total) {
+        finishIfOpen();
+      }
+      pump();
+    }
+
+    pump = () {
+      while (!cancelled() && inFlight < maxInFlight && nextIndex < total) {
+        final key = keys[nextIndex];
+        final rank = nextIndex;
+        nextIndex++;
+        inFlight++;
+        onProgress?.call(key, 'trying');
+        _resolveOne(
+          resolver: r,
+          key: key,
+          movie: movie,
+          season: season,
+          episode: episode,
+          providers: providers,
+          providerRank: rank,
+          isCancelled: cancelled,
+          onProgress: onProgress,
+        ).then((hit) {
+          onResolved(key, hit);
+        }).catchError((Object e, StackTrace st) {
+          debugPrint('[PlaybackEngine] $key failed: $e\n$st');
+          onProgress?.call(key, 'failed');
+          onResolved(key, null);
+        });
+      }
+    };
+
+    pump();
+    return launchCompleter.future;
+  }
+
+  /// Legacy batch resolve — prefer [resolveStreamingRace] for play start.
   static Future<PlaybackResolveHit?> resolveParallel({
     required Map<String, dynamic> providers,
     required Movie movie,
@@ -17,43 +103,46 @@ abstract final class PlaybackEngine {
     StreamProviderResolver? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
-  }) async {
-    final cancelled = isCancelled ?? (() => false);
-    final keys = providers.keys.toList();
-    if (keys.isEmpty) return null;
-    final r = resolver ?? StreamProviderResolver();
+  }) =>
+      resolveStreamingRace(
+        providers: providers,
+        movie: movie,
+        season: season,
+        episode: episode,
+        resolver: resolver,
+        isCancelled: isCancelled,
+        onProgress: onProgress,
+      );
 
-    for (var batch = 0; batch < keys.length; batch += maxParallelProviders) {
-      if (cancelled()) return null;
-      final chunk = keys.skip(batch).take(maxParallelProviders).toList();
-      final futures = <Future<PlaybackResolveHit?>>[];
-      for (var i = 0; i < chunk.length; i++) {
-        final key = chunk[i];
-        final rank = batch + i;
-        onProgress?.call(key, 'trying');
-        futures.add(
-          _resolveOne(
-            resolver: r,
-            key: key,
-            movie: movie,
-            season: season,
-            episode: episode,
-            providers: providers,
-            providerRank: rank,
-            isCancelled: cancelled,
-            onProgress: onProgress,
-          ),
-        );
-      }
-      final results = await Future.wait(futures);
-      final hits = results.whereType<PlaybackResolveHit>().toList();
-      if (hits.isEmpty) continue;
-      hits.sort((a, b) => a.providerRank.compareTo(b.providerRank));
-      final best = hits.first;
-      onProgress?.call(best.providerId, 'success');
-      return best;
+  static List<StreamSource> mergeHitSources(List<PlaybackResolveHit> hits) {
+    if (hits.isEmpty) return const [];
+    final sorted = List<PlaybackResolveHit>.from(hits)
+      ..sort((a, b) => a.providerRank.compareTo(b.providerRank));
+    return dedupeSourcesByUrl(
+      sorted.expand((h) => h.streamSources).toList(),
+    );
+  }
+
+  static Map<String, List<StreamSource>> hitsToProviderCache(
+    List<PlaybackResolveHit> hits,
+  ) {
+    final out = <String, List<StreamSource>>{};
+    for (final hit in hits) {
+      out[hit.providerId] = hit.streamSources;
     }
-    return null;
+    return out;
+  }
+
+  static List<StreamSource> dedupeSourcesByUrl(List<StreamSource> sources) {
+    final seen = <String>{};
+    final out = <StreamSource>[];
+    for (final source in sources) {
+      final url = source.url.trim();
+      if (url.isEmpty || seen.contains(url)) continue;
+      seen.add(url);
+      out.add(source);
+    }
+    return out;
   }
 
   static Future<PlaybackResolveHit?> _resolveOne({
