@@ -64,6 +64,13 @@ abstract final class PlaybackEngine {
     void onResolved(String key, PlaybackResolveHit? hit) {
       settled++;
       inFlight--;
+      if (cancelled()) {
+        stopLaunching = true;
+        nextIndex = total;
+        cancelInFlightResolvers();
+        finishIfOpen();
+        return;
+      }
       if (hit != null) {
         hits.add(hit);
         publishHits();
@@ -83,6 +90,13 @@ abstract final class PlaybackEngine {
     }
 
     pump = () {
+      if (cancelled()) {
+        stopLaunching = true;
+        nextIndex = total;
+        cancelInFlightResolvers();
+        finishIfOpen();
+        return;
+      }
       while (!cancelled() &&
           !stopLaunching &&
           inFlight < maxInFlight &&
@@ -99,9 +113,11 @@ abstract final class PlaybackEngine {
             : r;
         if (maxInFlight > 1) taskResolvers.add(taskResolver);
         if (kDebugMode && maxInFlight > 1) {
+          final waiting = total - nextIndex;
           debugPrint(
             '[PlaybackEngine] probing $key '
-            '($inFlight/$maxInFlight in flight, $nextIndex/$total queued)',
+            '($inFlight/$maxInFlight in flight'
+            '${waiting > 0 ? ', $waiting waiting' : ''})',
           );
         }
         _resolveOne(

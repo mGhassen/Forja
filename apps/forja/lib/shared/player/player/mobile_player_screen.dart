@@ -446,6 +446,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _disposed = false;
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
+  final ValueNotifier<Set<String>> _providerLoadFailures =
+      ValueNotifier<Set<String>>({});
+  late final ValueNotifier<Map<String, List<StreamSource>>>
+      _ownedProviderSourcesCache;
   bool _historySaved = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -580,6 +584,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   @override
   void initState() {
     super.initState();
+    _ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+      {},
+    );
 
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
@@ -796,11 +803,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
+    _providerLoadFailures.dispose();
+    if (widget.providerSourcesCache == null) {
+      _ownedProviderSourcesCache.dispose();
+    }
     _saveWatchHistory();
 
     _fallbackGen++;
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
     NuvioService.instance.cancelPending();
 
     // Restore screen brightness to system default (mobile only)
@@ -2992,16 +3004,35 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     );
   }
 
+  ValueNotifier<Map<String, List<StreamSource>>> get _liveProviderSourcesCache =>
+      widget.providerSourcesCache ?? _ownedProviderSourcesCache;
+
+  void _markProviderLoadFailed(String providerId) {
+    if (_providerLoadFailures.value.contains(providerId)) return;
+    _providerLoadFailures.value = {
+      ..._providerLoadFailures.value,
+      providerId,
+    };
+    _notifySourceMenuChanged();
+  }
+
+  void _markProviderLoadSucceeded(String providerId) {
+    if (!_providerLoadFailures.value.contains(providerId)) return;
+    final next = {..._providerLoadFailures.value}..remove(providerId);
+    _providerLoadFailures.value = next;
+    _notifySourceMenuChanged();
+  }
+
   Listenable? _streamMenuRefreshListenable() {
     final listenables = <Listenable>[
       _statusController,
       _sourceMenuRevision,
       _isReloadingStreams,
+      _providerLoadFailures,
     ];
     final probes = widget.providerProbesNotifier;
     if (probes != null) listenables.add(probes);
-    final cache = widget.providerSourcesCache;
-    if (cache != null) listenables.add(cache);
+    listenables.add(_liveProviderSourcesCache);
     return Listenable.merge(listenables);
   }
 
@@ -3041,7 +3072,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     PlayerStreamMenu.show(
       context,
       providers: widget.providers,
-      providerSourcesCache: widget.providerSourcesCache,
+      providerSourcesCache: _liveProviderSourcesCache,
+      providerLoadFailures: _providerLoadFailures,
       providerProbesNotifier: widget.providerProbesNotifier,
       statusController: _statusController,
       readState: _streamMenuState,
@@ -3070,6 +3102,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       final gen = ++_fallbackGen;
       WebStreamrService().cancelPending();
       VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
       NuvioService.instance.cancelPending();
       final hit = await PlayerSourceResolve.resolveAutoForMovie(
         movie: movie,
@@ -3079,8 +3112,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         isCancelled: () => _fallbackAborted(gen),
         onHitsUpdated: (hits) {
           if (!mounted || _fallbackAborted(gen)) return;
-          widget.providerSourcesCache?.value =
-              PlaybackEngine.hitsToProviderCache(hits);
+          _liveProviderSourcesCache.value = {
+            ..._liveProviderSourcesCache.value,
+            ...PlaybackEngine.hitsToProviderCache(hits),
+          };
         },
       );
       if (_fallbackAborted(gen)) return;
@@ -3139,6 +3174,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     final switchGen = ++_fallbackGen;
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
     NuvioService.instance.cancelPending();
     _statusController.clear();
     _playbackConfirmed = false;
@@ -3911,14 +3947,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   Future<List<StreamSource>?> _loadProvider(String providerId) async {
-    final cached = widget.providerSourcesCache?.value[providerId];
-    if (cached != null && cached.isNotEmpty) return cached;
+    final cached = _liveProviderSourcesCache.value[providerId];
+    if (cached != null && cached.isNotEmpty) {
+      _markProviderLoadSucceeded(providerId);
+      return cached;
+    }
 
     final gen = (_providerLoadGens[providerId] ?? 0) + 1;
     _providerLoadGens[providerId] = gen;
 
     try {
-      if (widget.movie == null || widget.providers == null) return null;
+      if (widget.movie == null || widget.providers == null) {
+        _markProviderLoadFailed(providerId);
+        return null;
+      }
       final hit = await PlayerSourceResolve.resolvePinnedForMovie(
         movie: widget.movie!,
         providers: widget.providers!,
@@ -3930,17 +3972,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       if ((_providerLoadGens[providerId] ?? 0) != gen) return null;
       if (hit != null && hit.streamSources.isNotEmpty) {
         final sources = dedupeStreamSources(hit.streamSources);
-        widget.providerSourcesCache?.value = {
-          ...?widget.providerSourcesCache?.value,
+        _liveProviderSourcesCache.value = {
+          ..._liveProviderSourcesCache.value,
           providerId: sources,
         };
+        _markProviderLoadSucceeded(providerId);
         _sourceMenuRevision.value++;
         return sources;
       }
+      _markProviderLoadFailed(providerId);
       _sourceMenuRevision.value++;
       return null;
     } catch (_) {
       if ((_providerLoadGens[providerId] ?? 0) == gen) {
+        _markProviderLoadFailed(providerId);
         _sourceMenuRevision.value++;
       }
       return null;
@@ -3955,6 +4000,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     final gen = ++_fallbackGen;
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
     NuvioService.instance.cancelPending();
     _statusController.clear();
     _playbackConfirmed = false;
@@ -3976,7 +4022,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       Map<String, String>? headers;
       List<StreamSource>? sources;
 
-      final cached = widget.providerSourcesCache?.value[newProvider];
+      final cached = _liveProviderSourcesCache.value[newProvider];
       if (cached != null && cached.isNotEmpty) {
         streamUrl = cached.first.url;
         headers = cached.first.headers;
@@ -4037,10 +4083,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _statusController.complete();
         final selectedSources = _currentSources;
         if (selectedSources != null && selectedSources.isNotEmpty) {
-          widget.providerSourcesCache?.value = {
-            ...?widget.providerSourcesCache?.value,
+          _liveProviderSourcesCache.value = {
+            ..._liveProviderSourcesCache.value,
             newProvider: selectedSources,
           };
+          _markProviderLoadSucceeded(newProvider);
           unawaited(
             widget.onSourcePinned?.call(
               selectedSources.first.url,
@@ -4053,6 +4100,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         return _currentSources;
       } else {
         if (mounted && !_fallbackAborted(gen)) {
+          _markProviderLoadFailed(newProvider);
           _statusController.upsert(
             'provider-$newProvider',
             providerLabel,

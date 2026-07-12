@@ -1,23 +1,15 @@
 // Pure-Dart Videasy extractor (no page scraping).
 //
 // Pipeline:
-//   1. HTTP GET https://api.videasy.net/{provider}/sources-with-title?tmdbId=...
+//   1. Optional seed from https://api.wingsdatabase.com/seed?mediaId=…
+//   2. HTTP GET sources-with-title from wingsdatabase (enc=2 + title/year)
+//      or legacy https://api.videasy.net/{provider}/sources-with-title?tmdbId=…
 //      -> hex-encoded blob (~9000 chars).
-//   2. Run that blob through the (locally bundled, patched) AssemblyScript
-//      WASM `decrypt(blob, tmdbId)` -> base64 OpenSSL "Salted__..." string.
-//      The patched module bypasses the verify() gate so we never need
-//      `serve()` / window.hash / eval'd JS. WASM runs in a sandboxed
-//      HeadlessInAppWebView pointed at about:blank — no DOM, no network,
-//      no scraping, no waiting for the player UI.
-//   3. base64 decode -> strip "Salted__" magic + 8-byte salt.
-//   4. EVP_BytesToKey(passphrase="", salt, MD5) -> 32-byte key + 16-byte IV.
-//      (CryptoJS.AES.decrypt(intermediate, "") on the JS side is identical.
-//      The b35ebba4 passphrase is empty because cineby's
-//      `Hashids.encode(hexString)` returns "".)
-//   5. AES-256-CBC decrypt + PKCS#7 unpad -> UTF-8 -> JSON.
+//   3. Run blob through bundled patched WASM `decrypt(blob, tmdbId)`.
+//   4. Rust AES decrypt (OpenSSL salted) -> JSON sources.
 //
-// Asset: assets/videasy/module.wasm (patched, 262931 bytes).
-// See /memories/repo/videasy_player_protocol.md for full RE notes.
+// Sub-providers are raced with limited concurrency; the first hit wins so play
+// start is not blocked harvesting every mirror.
 
 import 'dart:async';
 import 'dart:convert';
@@ -30,54 +22,79 @@ import 'package:rust/rust.dart';
 import 'extracted_media.dart';
 
 class VideasyExtractor {
-  final void Function(String) onLog;
   VideasyExtractor({required this.onLog});
 
-  // Providers known to respond to /{name}/sources-with-title with tmdbId only.
-  // Order matters: first hits first. Limited to a few reliable English ones to
-  // keep extract() snappy. Add more from the registry if needed.
-  static const _providers = <String>[
+  final void Function(String) onLog;
+
+  static const _playerOrigin = 'https://player.videasy.to';
+  static const _fetchTimeout = Duration(seconds: 5);
+  static const _defaultExtractTimeout = Duration(seconds: 20);
+  static const _maxInFlight = 4;
+
+  static const _wingsHost = 'api.wingsdatabase.com';
+  static const _legacyHost = 'api.videasy.net';
+
+  static const _wingsProviders = <String>[
+    'jett',
+    'cdn',
+    'yoru',
+    'tejo',
+    'neon2',
+  ];
+
+  static const _legacyProviders = <String>[
+    'cdn',
     'myflixerzupcloud',
     'mb-flix',
     '1movies',
     'moviebox',
-    'cdn',
     'primesrcme',
   ];
 
   static const userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+      '(KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
 
   static const _baseHeaders = <String, String>{
     'User-Agent': userAgent,
-    'Referer': 'https://player.videasy.net/',
-    'Origin': 'https://player.videasy.net',
+    'Referer': '$_playerOrigin/',
+    'Origin': _playerOrigin,
     'Accept': '*/*',
   };
 
-  // Headers required to actually *play* the resolved m3u8/mp4. Many of
-  // videasy's CDN edges (e.g. fast3.vidplus.dev/frostcomet*.pro) hard-gate
-  // on Referer + Chrome UA — missing them yields a generic 403/connection
-  // close that media_kit surfaces as "Failed to open".
   static const _playbackHeaders = <String, String>{
     'User-Agent': userAgent,
-    'Referer': 'https://player.videasy.net/',
-    'Origin': 'https://player.videasy.net',
+    'Referer': '$_playerOrigin/',
+    'Origin': _playerOrigin,
   };
+
+  static var _generation = 0;
+  static http.Client? _sharedClient;
+
+  static void cancelPending() {
+    _generation++;
+    _sharedClient?.close();
+    _sharedClient = null;
+  }
 
   Future<ExtractedMedia?> extract({
     required String tmdbId,
     required bool isMovie,
+    String? title,
+    String? year,
+    String? imdbId,
     int? season,
     int? episode,
-    Duration timeout = const Duration(seconds: 45),
+    Duration timeout = _defaultExtractTimeout,
     bool Function()? isCancelled,
   }) async {
     try {
       return await _extract(
         tmdbId: tmdbId,
         isMovie: isMovie,
+        title: title,
+        year: year,
+        imdbId: imdbId,
         season: season,
         episode: episode,
         isCancelled: isCancelled,
@@ -94,6 +111,9 @@ class VideasyExtractor {
   Future<ExtractedMedia?> _extract({
     required String tmdbId,
     required bool isMovie,
+    String? title,
+    String? year,
+    String? imdbId,
     int? season,
     int? episode,
     bool Function()? isCancelled,
@@ -104,149 +124,332 @@ class VideasyExtractor {
       return null;
     }
 
+    final gen = _generation;
+    final cancelled = () =>
+        (isCancelled?.call() ?? false) || gen != _generation;
+
     final wasm = await _VideasyWasm.instance.ensureReady(onLog: onLog);
     if (wasm == null) {
       onLog('[Videasy] WASM runtime unavailable');
       return null;
     }
+    if (cancelled()) {
+      onLog('[Videasy] cancelled');
+      return null;
+    }
 
-    // NOTE: mediaType is case-sensitive on the api.videasy.net side.
-    // `Movie` works for either casing, but TV requires lowercase `tv` —
-    // capital `TV` returns 500 across every provider. Verified 2026-05.
-    final qp = <String, String>{
+    final jobs = await _buildJobs(
+      tmdbId: tmdbId,
+      isMovie: isMovie,
+      title: title,
+      year: year,
+      imdbId: imdbId,
+      season: season,
+      episode: episode,
+      gen: gen,
+      cancelled: cancelled,
+    );
+    if (jobs.isEmpty || cancelled()) return null;
+
+    return _raceProviders(
+      wasm: wasm,
+      tmdb: tmdb,
+      jobs: jobs,
+      gen: gen,
+      cancelled: cancelled,
+    );
+  }
+
+  Future<List<_ProviderJob>> _buildJobs({
+    required String tmdbId,
+    required bool isMovie,
+    required String? title,
+    required String? year,
+    required String? imdbId,
+    required int? season,
+    required int? episode,
+    required int gen,
+    required bool Function() cancelled,
+  }) async {
+    final jobs = <_ProviderJob>[];
+
+    final trimmedTitle = title?.trim() ?? '';
+    final trimmedYear = year?.trim() ?? '';
+    final trimmedImdb = imdbId?.trim() ?? '';
+
+    if (trimmedTitle.isNotEmpty) {
+      final seed = await _fetchSeed(tmdbId, gen: gen);
+      if (seed != null && !cancelled()) {
+        final qp = <String, String>{
+          'title': doubleEncodeTitle(trimmedTitle),
+          'mediaType': isMovie ? 'movie' : 'tv',
+          'tmdbId': tmdbId,
+          'enc': '2',
+          'seed': seed,
+        };
+        if (trimmedYear.length >= 4) qp['year'] = trimmedYear.substring(0, 4);
+        if (trimmedImdb.isNotEmpty) qp['imdbId'] = trimmedImdb;
+        if (!isMovie) {
+          qp['seasonId'] = '${season ?? 1}';
+          qp['episodeId'] = '${episode ?? 1}';
+        }
+        for (final provider in _wingsProviders) {
+          jobs.add(
+            _ProviderJob(
+              host: _wingsHost,
+              provider: provider,
+              query: Map<String, String>.from(qp),
+            ),
+          );
+        }
+      }
+    }
+
+    final legacyQp = <String, String>{
       'tmdbId': tmdbId,
       'mediaType': isMovie ? 'movie' : 'tv',
     };
     if (!isMovie) {
-      qp['seasonId'] = '${season ?? 1}';
-      qp['episodeId'] = '${episode ?? 1}';
+      legacyQp['seasonId'] = '${season ?? 1}';
+      legacyQp['episodeId'] = '${episode ?? 1}';
+    }
+    for (final provider in _legacyProviders) {
+      jobs.add(
+        _ProviderJob(
+          host: _legacyHost,
+          provider: provider,
+          query: Map<String, String>.from(legacyQp),
+        ),
+      );
     }
 
-    final allSources = <StreamSource>[];
-    final allSubs = <Map<String, dynamic>>[];
-    String? firstProvider;
+    return jobs;
+  }
 
-    for (final provider in _providers) {
-      if (isCancelled?.call() == true) {
-        onLog('[Videasy] cancelled');
-        return null;
+  Future<String?> _fetchSeed(String tmdbId, {required int gen}) async {
+    try {
+      final uri = Uri.https(_wingsHost, '/seed', {'mediaId': tmdbId});
+      final res = await _get(uri, gen: gen);
+      if (res.statusCode != 200) return null;
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final seed = data['seed']?.toString().trim();
+      return seed == null || seed.isEmpty ? null : seed;
+    } catch (e) {
+      onLog('[Videasy] seed fetch skipped: $e');
+      return null;
+    }
+  }
+
+  Future<ExtractedMedia?> _raceProviders({
+    required _VideasyWasm wasm,
+    required int tmdb,
+    required List<_ProviderJob> jobs,
+    required int gen,
+    required bool Function() cancelled,
+  }) async {
+    final completer = Completer<ExtractedMedia?>();
+    var settled = 0;
+    var inFlight = 0;
+    var nextIndex = 0;
+    var stopLaunching = false;
+
+    void finish(ExtractedMedia? hit) {
+      if (completer.isCompleted) return;
+      if (hit != null) {
+        _stopInFlightRequests(gen);
+        completer.complete(hit);
+        return;
       }
-      final uri = Uri.https(
-        'api.videasy.net',
-        '/$provider/sources-with-title',
-        qp,
-      );
-      onLog('[Videasy] GET $uri');
-
-      String hex;
-      try {
-        final res = await http
-            .get(uri, headers: _baseHeaders)
-            .timeout(const Duration(seconds: 10));
-        if (res.statusCode != 200 || res.body.length < 100) {
-          onLog('[Videasy] $provider -> ${res.statusCode} '
-              '(${res.body.length} bytes), skip');
-          continue;
-        }
-        hex = res.body.trim();
-      } catch (e) {
-        onLog('[Videasy] $provider fetch error: $e');
-        continue;
+      if (settled >= jobs.length) {
+        completer.complete(null);
       }
+    }
 
-      String intermediate;
-      try {
-        intermediate = await wasm.decrypt(hex, tmdb);
-      } catch (e) {
-        onLog('[Videasy] $provider WASM decrypt error: $e');
-        continue;
-      }
-
-      String json;
-      try {
-        final raw =
-            await runOpensslAesDecryptJson(intermediate, passphrase: '');
-        if (raw.startsWith('{')) {
-          final probe = jsonDecode(raw) as Map<String, dynamic>;
-          if (probe.containsKey('error') && !probe.containsKey('sources')) {
-            onLog('[Videasy] $provider AES decrypt error: ${probe['error']}');
-            continue;
+    void pump() {
+      while (!cancelled() &&
+          !stopLaunching &&
+          inFlight < _maxInFlight &&
+          nextIndex < jobs.length) {
+        final job = jobs[nextIndex++];
+        inFlight++;
+        _probeProvider(wasm: wasm, tmdb: tmdb, job: job, gen: gen)
+            .then((hit) {
+          settled++;
+          inFlight--;
+          if (hit != null) {
+            stopLaunching = true;
+            finish(hit);
+          } else if (settled >= jobs.length) {
+            finish(null);
           }
-        }
-        json = raw;
-      } catch (e) {
-        onLog('[Videasy] $provider AES decrypt error: $e');
-        continue;
-      }
-
-      Map<String, dynamic> data;
-      try {
-        data = jsonDecode(json) as Map<String, dynamic>;
-      } catch (e) {
-        onLog('[Videasy] $provider JSON parse error: $e');
-        continue;
-      }
-
-      final srcs = (data['sources'] as List?) ?? const [];
-      final subs = (data['subtitles'] as List?) ?? const [];
-
-      for (final s in srcs) {
-        if (s is! Map) continue;
-        final url = (s['url'] ?? s['file'] ?? '').toString();
-        if (url.isEmpty) continue;
-        final quality =
-            (s['quality'] ?? s['label'] ?? s['title'] ?? 'auto').toString();
-        final type = (s['type'] ?? (url.contains('.m3u8') ? 'hls' : 'video'))
-            .toString();
-        allSources.add(StreamSource(
-          url: url,
-          title: '$provider · $quality',
-          type: type,
-          headers: _playbackHeaders,
-        ));
-      }
-      for (final sub in subs) {
-        if (sub is! Map) continue;
-        final url = (sub['url'] ?? sub['file'] ?? '').toString();
-        if (url.isEmpty) continue;
-        // Dedup across providers (same CDN often serves identical subs).
-        if (allSubs.any((e) => e['url'] == url)) continue;
-        final lang =
-            (sub['lang'] ?? sub['language'] ?? sub['label'] ?? 'Unknown')
-                .toString();
-        final label = (sub['label'] ?? sub['title'] ?? lang).toString();
-        allSubs.add({
-          'url': url,
-          'language': lang,
-          // Schema expected by the player's subtitle menu (matches the
-          // shape used by stremio/kisskh/subtitlecat extractors).
-          'display': '$label - videasy/$provider',
+          pump();
+        }).catchError((Object e, StackTrace st) {
+          onLog('[Videasy] ${job.provider} probe error: $e\n$st');
+          settled++;
+          inFlight--;
+          if (settled >= jobs.length) {
+            finish(null);
+          }
+          pump();
         });
       }
-
-      firstProvider ??= provider;
-      onLog('[Videasy] $provider -> ${srcs.length} sources, '
-          '${subs.length} subs');
-      // No early break: harvest every provider so the user gets the full
-      // server list in the source-switch menu (and combined sub catalogue).
+      if (nextIndex >= jobs.length && inFlight == 0 && !completer.isCompleted) {
+        finish(null);
+      }
     }
 
-    if (allSources.isEmpty) {
-      onLog('[Videasy] No sources from any provider');
+    pump();
+    return completer.future;
+  }
+
+  void _stopInFlightRequests(int gen) {
+    if (gen == _generation) {
+      _generation++;
+    }
+    _sharedClient?.close();
+    _sharedClient = null;
+  }
+
+  Future<ExtractedMedia?> _probeProvider({
+    required _VideasyWasm wasm,
+    required int tmdb,
+    required _ProviderJob job,
+    required int gen,
+  }) async {
+    if (gen != _generation) return null;
+
+    final uri = Uri.https(
+      job.host,
+      '/${job.provider}/sources-with-title',
+      job.query,
+    );
+    onLog('[Videasy] GET $uri');
+
+    http.Response res;
+    try {
+      res = await _get(uri, gen: gen);
+    } catch (e) {
+      onLog('[Videasy] ${job.provider} fetch error: $e');
+      return null;
+    }
+    if (gen != _generation) return null;
+
+    if (res.statusCode != 200 || res.body.length < 100) {
+      onLog('[Videasy] ${job.provider} -> ${res.statusCode} '
+          '(${res.body.length} bytes), skip');
       return null;
     }
 
-    // Pick the highest-quality source as primary.
-    allSources.sort((a, b) => _qualityRank(b.title) - _qualityRank(a.title));
-    final primary = allSources.first;
+    final hex = res.body.trim();
+    String intermediate;
+    try {
+      intermediate = await wasm.decrypt(hex, tmdb);
+    } catch (e) {
+      onLog('[Videasy] ${job.provider} WASM decrypt error: $e');
+      return null;
+    }
+    if (gen != _generation) return null;
 
+    String json;
+    try {
+      final raw =
+          await runOpensslAesDecryptJson(intermediate, passphrase: '');
+      if (raw.startsWith('{')) {
+        final probe = jsonDecode(raw) as Map<String, dynamic>;
+        if (probe.containsKey('error') && !probe.containsKey('sources')) {
+          onLog('[Videasy] ${job.provider} AES decrypt error: ${probe['error']}');
+          return null;
+        }
+      }
+      json = raw;
+    } catch (e) {
+      onLog('[Videasy] ${job.provider} AES decrypt error: $e');
+      return null;
+    }
+
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(json) as Map<String, dynamic>;
+    } catch (e) {
+      onLog('[Videasy] ${job.provider} JSON parse error: $e');
+      return null;
+    }
+
+    final parsed = _parsePayload(data, job.provider);
+    if (parsed == null) return null;
+
+    onLog('[Videasy] ${job.provider} -> ${parsed.sources?.length ?? 0} sources, '
+        '${parsed.externalSubtitles?.length ?? 0} subs');
+    return parsed;
+  }
+
+  ExtractedMedia? _parsePayload(Map<String, dynamic> data, String provider) {
+    final srcs = (data['sources'] as List?) ?? const [];
+    final subs = (data['subtitles'] as List?) ?? const [];
+    if (srcs.isEmpty) return null;
+
+    final sources = <StreamSource>[];
+    for (final s in srcs) {
+      if (s is! Map) continue;
+      final url = (s['url'] ?? s['file'] ?? '').toString();
+      if (url.isEmpty) continue;
+      final quality =
+          (s['quality'] ?? s['label'] ?? s['title'] ?? 'auto').toString();
+      final type = (s['type'] ?? (url.contains('.m3u8') ? 'hls' : 'video'))
+          .toString();
+      sources.add(StreamSource(
+        url: url,
+        title: '$provider · $quality',
+        type: type,
+        headers: _playbackHeaders,
+      ));
+    }
+    if (sources.isEmpty) return null;
+
+    final allSubs = <Map<String, dynamic>>[];
+    for (final sub in subs) {
+      if (sub is! Map) continue;
+      final url = (sub['url'] ?? sub['file'] ?? '').toString();
+      if (url.isEmpty) continue;
+      if (allSubs.any((e) => e['url'] == url)) continue;
+      final lang =
+          (sub['lang'] ?? sub['language'] ?? sub['label'] ?? 'Unknown')
+              .toString();
+      final label = (sub['label'] ?? sub['title'] ?? lang).toString();
+      allSubs.add({
+        'url': url,
+        'language': lang,
+        'display': '$label - videasy/$provider',
+      });
+    }
+
+    sources.sort((a, b) => _qualityRank(b.title) - _qualityRank(a.title));
     return ExtractedMedia(
-      url: primary.url,
+      url: sources.first.url,
       headers: _playbackHeaders,
-      sources: allSources,
-      provider: 'videasy${firstProvider != null ? '/$firstProvider' : ''}',
+      sources: sources,
+      provider: 'videasy/$provider',
       externalSubtitles: allSubs.isEmpty ? null : allSubs,
     );
+  }
+
+  Future<http.Response> _get(Uri uri, {required int gen}) async {
+    if (gen != _generation) throw StateError('cancelled');
+    _sharedClient ??= http.Client();
+    final res = await _sharedClient!
+        .get(uri, headers: _baseHeaders)
+        .timeout(_fetchTimeout);
+    if (gen != _generation) throw StateError('cancelled');
+    return res;
+  }
+
+  static String doubleEncodeTitle(String title) =>
+      Uri.encodeComponent(Uri.encodeComponent(title));
+
+  static String? yearFromReleaseDate(String? releaseDate) {
+    final value = releaseDate?.trim() ?? '';
+    if (value.length < 4) return null;
+    return value.substring(0, 4);
   }
 
   static int _qualityRank(String title) {
@@ -259,12 +462,18 @@ class VideasyExtractor {
   }
 }
 
-// ─── WASM runtime hosted in an invisible WebView (about:blank) ───────────────
-//
-// The WebView is purely a JavaScript+WebAssembly engine. It never loads any
-// remote URL or DOM. The WASM bytes are inlined into the page via a base64
-// argument passed to `window.__init`. Once instantiated, JS exposes
-// `window.videasy_decrypt(hex, tmdbId)` which we call from Dart.
+class _ProviderJob {
+  const _ProviderJob({
+    required this.host,
+    required this.provider,
+    required this.query,
+  });
+
+  final String host;
+  final String provider;
+  final Map<String, String> query;
+}
+
 class _VideasyWasm {
   _VideasyWasm._();
   static final _VideasyWasm instance = _VideasyWasm._();

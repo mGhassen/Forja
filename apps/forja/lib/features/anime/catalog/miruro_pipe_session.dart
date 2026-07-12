@@ -40,12 +40,25 @@ class MiruroPipeSession {
   String? _sessionOrigin;
   Future<void>? _boot;
   Future<void> _chain = Future.value();
+  int _epoch = 0;
+
+  /// Drop queued/in-flight pipe fetches (player exit, provider switch).
+  void cancelPending() {
+    _epoch++;
+    _chain = Future.value();
+    unawaited(_disposeWebView(keepChain: false));
+  }
 
   Future<({int status, String body, String? xObf})?> get(String pipeUrl) {
     final completer = Completer<({int status, String body, String? xObf})?>();
+    final epoch = _epoch;
     _chain = _chain.then((_) async {
+      if (epoch != _epoch) {
+        completer.complete(null);
+        return;
+      }
       try {
-        completer.complete(await _getUnlocked(pipeUrl));
+        completer.complete(await _getUnlocked(pipeUrl, epoch: epoch));
       } catch (e, st) {
         if (kDebugMode) {
           debugPrint('[MiruroPipe] fetch failed: $e\n$st');
@@ -101,9 +114,12 @@ class MiruroPipeSession {
   Future<({int status, String body, String? xObf})?> _getUnlocked(
     String pipeUrl, {
     bool allowRetry = true,
+    required int epoch,
   }) async {
+    if (epoch != _epoch) return null;
     final origin = Uri.parse(pipeUrl).origin;
     await _ensureBooted(origin);
+    if (epoch != _epoch) return null;
     final controller = _controller;
     if (controller == null) return null;
 
@@ -143,12 +159,14 @@ class MiruroPipeSession {
     final xObf = (xObfRaw == null || xObfRaw.isEmpty) ? null : xObfRaw;
     if (status is! num) return null;
     final code = status.toInt();
+    if (epoch != _epoch) return null;
     if (allowRetry &&
         code == 403 &&
         body.toLowerCase().contains('cloudflare')) {
       await _disposeWebView(keepChain: true);
+      if (epoch != _epoch) return null;
       await _ensureBooted(origin);
-      return _getUnlocked(pipeUrl, allowRetry: false);
+      return _getUnlocked(pipeUrl, allowRetry: false, epoch: epoch);
     }
     return (status: code, body: body, xObf: xObf);
   }
@@ -165,6 +183,7 @@ class MiruroPipeSession {
   }
 
   Future<void> dispose() async {
+    cancelPending();
     await _chain;
     await _disposeWebView();
   }

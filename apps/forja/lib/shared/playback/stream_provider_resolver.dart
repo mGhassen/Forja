@@ -84,6 +84,9 @@ class StreamProviderResolver {
       final result = await VideasyExtractor(onLog: debugPrint).extract(
         tmdbId: movie.id.toString(),
         isMovie: !isTv,
+        title: movie.title,
+        year: VideasyExtractor.yearFromReleaseDate(movie.releaseDate),
+        imdbId: movie.imdbId,
         season: isTv ? season : null,
         episode: isTv ? episode : null,
         isCancelled: cancelled,
@@ -184,8 +187,19 @@ class StreamProviderResolver {
   void cancelPending() {
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
     NuvioService.instance.cancelPending();
+    Engine.cancelPendingResolve();
     unawaited(_extractor.cancel());
+  }
+
+  /// Host-wide abort for player exit / provider switch.
+  static void cancelAllPending() {
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
+    Engine.cancelPendingResolve();
   }
 
   String _typeFromUrl(String url) {

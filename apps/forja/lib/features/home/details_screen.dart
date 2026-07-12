@@ -686,9 +686,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           fadeOutNotifier: fadeOutNotifier,
           onCancel: () {
             _webstreamingOnlyExtractionCancelled = true;
-            WebStreamrService().cancelPending();
-            VidsrcExtractor.cancelPending();
-            NuvioService.instance.cancelPending();
+            _streamProviderResolver.cancelPending();
             dismissLoading();
           },
         );
@@ -760,7 +758,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         settingsOrder: _webstreamingProviderOrder,
         resolver: _streamProviderResolver,
         isCancelled: () => _webstreamingOnlyExtractionCancelled,
-        maxInFlight: 1,
         onHitsUpdated: syncResolvedHits,
         onProgress: (providerId, status) {
           if (!mounted) return;

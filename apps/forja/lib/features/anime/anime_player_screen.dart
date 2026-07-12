@@ -807,7 +807,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         titleToSourceKey[t] = h.embed.sourceKey;
       }
       sourcesListNotifier.value = _hitsToStreamSources(all);
-      providerSourcesCache.value = _hitsToProviderCache(all);
+      providerSourcesCache.value = {
+        ...providerSourcesCache.value,
+        ..._hitsToProviderCache(all),
+      };
       _AnimeStreamSessionCache.write(
         widget.anime.id,
         widget.episodeNumber,
