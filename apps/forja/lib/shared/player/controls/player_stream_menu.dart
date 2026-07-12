@@ -20,6 +20,7 @@ class PlayerStreamMenuState {
     required this.currentProviderId,
     required this.sources,
     required this.currentUrl,
+    this.currentPlayingCatalogUrl,
     required this.current111477FileUrl,
     required this.is111477,
     this.sourceStatuses = const [],
@@ -29,6 +30,7 @@ class PlayerStreamMenuState {
   final String? currentProviderId;
   final List<StreamSource>? sources;
   final String? currentUrl;
+  final String? currentPlayingCatalogUrl;
   final String? current111477FileUrl;
   final bool is111477;
   final List<PlayerSourceStatus> sourceStatuses;
@@ -641,9 +643,15 @@ class PlayerStreamMenu {
     StreamSource source,
     PlayerStreamMenuState state,
   ) {
-    return state.is111477
-        ? source.url == state.current111477FileUrl
-        : source.url == state.currentUrl;
+    if (state.is111477) {
+      return source.url == state.current111477FileUrl;
+    }
+    final playUrl = state.currentUrl;
+    final catalogUrl = state.currentPlayingCatalogUrl;
+    return source.url == playUrl ||
+        (catalogUrl != null &&
+            catalogUrl.isNotEmpty &&
+            source.url == catalogUrl);
   }
 
   static List<String>? _contentLanguage(dynamic provider) {

@@ -75,20 +75,35 @@ class StreamProviderResolver {
     }
 
     if (key == 'webstreamr') {
-      if (movie.imdbId == null || movie.imdbId!.isEmpty) return null;
+      if (movie.id <= 0) return null;
+      final imdb = movie.imdbId?.trim() ?? '';
+      final releaseYear = movie.releaseDate.length >= 4
+          ? int.tryParse(movie.releaseDate.substring(0, 4))
+          : null;
       final wsSources = await WebStreamrService().getStreams(
-        imdbId: movie.imdbId!,
+        imdbId: imdb,
         isMovie: !isTv,
         season: isTv ? season : null,
         episode: isTv ? episode : null,
         tmdbId: movie.id,
+        title: movie.title,
+        year: releaseYear,
       );
-      if (cancelled() || wsSources.isEmpty) return null;
-      final first = wsSources.first;
-      return StreamProviderResolveResult(
-        streamUrl: first.url,
-        headers: first.headers,
-        sources: wsSources,
+      if (!cancelled() && wsSources.isNotEmpty) {
+        final first = wsSources.first;
+        return StreamProviderResolveResult(
+          streamUrl: first.url,
+          headers: first.headers,
+          sources: wsSources,
+        );
+      }
+      if (cancelled()) return null;
+      return _webstreamrVidsrcWebViewFallback(
+        movie: movie,
+        isTv: isTv,
+        season: season,
+        episode: episode,
+        isCancelled: cancelled,
       );
     }
 
@@ -199,6 +214,63 @@ class StreamProviderResolver {
       audioUrl: result.audioUrl,
       headers: result.headers,
       sources: result.sources,
+      subtitles: result.externalSubtitles,
+    );
+  }
+
+  /// VidSrc embeds often need a real browser (JS + sandbox checks). When the
+  /// Rust WebStreamr aggregator returns nothing, sniff the VidSrc embed like
+  /// template providers — PlayTorrio-style fallback for older titles.
+  Future<StreamProviderResolveResult?> _webstreamrVidsrcWebViewFallback({
+    required Movie movie,
+    required bool isTv,
+    required int season,
+    required int episode,
+    required bool Function() isCancelled,
+  }) async {
+    if (SettingsService.platformProfile == PlatformProfile.androidTv) {
+      debugPrint(
+        '[StreamProviderResolver] WebStreamr VidSrc WebView fallback skipped on Android TV',
+      );
+      return null;
+    }
+    final rawId = movie.imdbId?.trim().split(':').first ?? '';
+    final id = rawId.isNotEmpty ? rawId : movie.id.toString();
+    if (id.isEmpty) return null;
+
+    final url = isTv
+        ? 'https://vidsrc-embed.ru/embed/tv/$id/$season-$episode'
+        : 'https://vidsrc-embed.ru/embed/movie/$id';
+
+    if (kDebugMode) {
+      debugPrint(
+        '[StreamProviderResolver] WebStreamr Rust empty — VidSrc WebView fallback $url',
+      );
+    }
+
+    final result = await _extractor.extract(
+      url,
+      timeout: const Duration(seconds: 45),
+      isCancelled: isCancelled,
+    );
+    if (isCancelled() || result == null || result.url.isEmpty) return null;
+
+    final sources = result.sources != null && result.sources!.isNotEmpty
+        ? result.sources!
+        : [
+            StreamSource(
+              url: result.url,
+              title: 'WebStreamr',
+              type: _typeFromUrl(result.url),
+              headers: result.headers,
+            ),
+          ];
+
+    return StreamProviderResolveResult(
+      streamUrl: result.url,
+      audioUrl: result.audioUrl,
+      headers: result.headers,
+      sources: sources,
       subtitles: result.externalSubtitles,
     );
   }

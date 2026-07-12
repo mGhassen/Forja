@@ -22,8 +22,8 @@ While already handed off: **Change player** on the handoff screen.
 
 ## Tips
 
-- On macOS, **VLC** and **IINA** both open the same direct stream URL; headers are passed as CLI flags (`--http-referrer` / `--mpv-referrer`, etc.) — no temp config files (the app sandbox cannot write `/tmp`)
-- **IINA** is launched via macOS `open -a IINA.app --args …` (not a direct `iina-cli` exec) so the player runs outside Forja’s App Sandbox — a sandboxed child cannot IPC to IINA.app even though the same flags work from Terminal
+- On macOS **VLC** / standalone **mpv**: direct stream URL + CLI header flags (`--http-referrer`, etc.)
+- On macOS **IINA**: Forja runs the stream through the local **hls-proxy** (headers injected server-side), then opens it with `open -a IINA.app <proxy-url>`. App Sandbox blocks direct `iina-cli` exec; the IINA GUI binary also rejects `--mpv-*` CLI flags
 - **Android** may still use Forja's local hls-proxy when the player cannot accept headers
 - **111477 CDN** direct file links use Forja's seek cache proxy (signed redirects)
 - External players receive the same mpv network settings as the built-in player (`tls-verify`, HLS cache, timeouts)

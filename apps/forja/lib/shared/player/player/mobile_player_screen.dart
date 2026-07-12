@@ -557,6 +557,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _isInitPlaybackRunning = false;
   bool _allSourcesExhaustedNotified = false;
   bool _playbackConfirmed = false;
+  late final Future<void> _playableSourcesReady;
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
 
@@ -615,7 +616,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _liveProviderSourcesCache.value = {...cache, pid: _currentSources!};
       }
     }
-    unawaited(_initPlayableSources());
+    unawaited(_playableSourcesReady = _initPlayableSources());
     _currentUrl = widget.mediaPath;
     _activeMagnet = widget.magnetLink;
     if (_currentProvider == 'service111477' &&
@@ -745,6 +746,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
       _loadSubtitlePrefs();
       await _loadPlayerAutoSettings();
+      if (!mounted) return;
+      await _playableSourcesReady;
       if (!mounted) return;
       _initPlayback();
       _onProbeScoringChanged();
@@ -1350,8 +1353,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
       if (_currentSources != null && _currentSources!.isNotEmpty) {
         _subscribeToStreams();
+        var startIndex = sourceStartIndex;
+        if (sourceStartIndex == 0 && widget.pinSource) {
+          _syncCurrentSourceIndexFromPlayUrl();
+          startIndex = _currentFallbackSourceIndex;
+        }
         final played = await _trySourcesFromIndex(
-          sourceStartIndex,
+          startIndex,
           chainGen: initGen,
           seekAfterOpen: widget.startPosition,
         );
@@ -3191,6 +3199,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       currentProviderId: _resolveStreamMenuProviderId(),
       sources: _currentSources,
       currentUrl: _currentUrl,
+      currentPlayingCatalogUrl: _currentPlayingCatalogUrl,
       current111477FileUrl: _current111477FileUrl,
       is111477: _currentProvider == 'service111477',
       sourceStatuses: _buildSourceStatuses(),
@@ -3620,6 +3629,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         }
         setState(() {
           _currentUrl = openUrl;
+          _currentPlayingCatalogUrl = source.url;
           _currentFallbackSourceIndex = 0;
           _hasError = false;
           _errorMessage = '';
@@ -3637,6 +3647,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _playbackConfirmed = true;
       _statusController.complete();
       _markSourceActive(index);
+      _syncPanelAfterPlaybackConfirmed();
       unawaited(_recordStreamPlaySuccess(_currentProvider ?? ''));
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
     } catch (_) {
@@ -4413,11 +4424,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               ? null
               : dedupeStreamSources(sources);
           _currentUrl = streamUrl;
+          _currentPlayingCatalogUrl =
+              _currentSources?.first.url ?? streamUrl;
           _currentFallbackSourceIndex = 0; // Reset index on manual switch
           _failedSourceIndices.clear();
           _checkingSourceIndices.clear();
           _hasError = false;
           _errorMessage = '';
+          _playbackConfirmed = true;
           if (newProvider == 'service111477' &&
               _currentSources != null &&
               _currentSources!.isNotEmpty) {
@@ -4426,6 +4440,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         });
 
         _statusController.complete();
+        _markSourceActive(0);
+        _syncPanelAfterPlaybackConfirmed();
+        widget.onPlaybackStarted?.call();
         final selectedSources = _currentSources;
         if (selectedSources != null && selectedSources.isNotEmpty) {
           _liveProviderSourcesCache.value = {

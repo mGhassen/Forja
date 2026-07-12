@@ -31,6 +31,8 @@ class WebStreamrService {
     int? season,
     int? episode,
     int? tmdbId,
+    String? title,
+    int? year,
   }) async {
     final generation = _resolveGeneration;
     try {
@@ -46,6 +48,8 @@ class WebStreamrService {
         season: season,
         episode: episode,
         tmdbId: tmdbId,
+        title: title,
+        year: year,
       );
       if (request == null || generation != _resolveGeneration) return [];
 
@@ -126,6 +130,8 @@ class WebStreamrService {
     int? season,
     int? episode,
     int? tmdbId,
+    String? title,
+    int? year,
   }) async {
     final config = <String, String>{};
     for (final cc in await WebStreamrSettings.getEnabledCountryCodes()) {
@@ -163,12 +169,15 @@ class WebStreamrService {
       return null;
     }
 
+    final trimmedTitle = title?.trim();
     final req = <String, dynamic>{
       'imdb_id': ?imdb,
       'tmdb_id': ?tmdb,
       'media_type': isMovie ? 'movie' : 'series',
       if (!isMovie) 'season': season ?? 1,
       if (!isMovie) 'episode': episode ?? 1,
+      if (trimmedTitle != null && trimmedTitle.isNotEmpty) 'title': trimmedTitle,
+      if (year != null && year > 0) 'year': year,
       'config': config,
       'enabled_sources': <String>[],
     };

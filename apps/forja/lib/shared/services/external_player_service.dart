@@ -344,8 +344,10 @@ class ExternalPlayerService {
 
   /// Resolves the URL/headers external players should open.
   ///
-  /// Desktop: direct URL + player CLI headers (VLC and IINA use the same URL).
-  /// Android: hls-proxy when headers are required. 111477 uses seek proxy.
+  /// macOS desktop: hls-proxy when headers are required (App Sandbox cannot exec
+  /// `iina-cli` with mpv flags — use `open -a IINA <url>` on a localhost proxy).
+  /// Other desktop: direct URL + player CLI headers. Android: hls-proxy.
+  /// 111477 uses seek proxy.
   static Future<({String url, Map<String, String>? headers})>
       _resolveLaunchTarget({
     required String url,
@@ -377,7 +379,8 @@ class ExternalPlayerService {
       return (url: url, headers: null);
     }
 
-    if (desktop) {
+    final needsProxy = !desktop || Platform.isMacOS;
+    if (desktop && !needsProxy) {
       debugPrint('[ExternalPlayer] Direct URL — player CLI headers');
       return (url: url, headers: headers);
     }
@@ -608,8 +611,11 @@ class ExternalPlayerService {
       return false;
     }
 
-    final viaOpen =
-        Platform.isMacOS && executable == 'open' && player.macAppPath != null;
+    final viaOpen = Platform.isMacOS &&
+        player.macAppPath != null &&
+        (executable == 'open' || executable == '/usr/bin/open');
+    final iinaOpenUrl =
+        viaOpen && player.displayName == 'IINA' && player.macPreferOpenLauncher;
 
     final playerArgs = _desktopLaunchArgs(
       player: player,
@@ -619,9 +625,13 @@ class ExternalPlayerService {
       viaOpenLauncher: viaOpen,
     );
 
-    // macOS: `open` only accepts its own flags; player args need `--args`.
+    // macOS sandbox: IINA must be opened with `open -a IINA.app <url>` — the
+    // main IINA binary rejects `--mpv-*` flags (`--args` only works for iina-cli,
+    // which cannot run sandboxed). Header-protected streams use hls-proxy above.
     final List<String> args;
-    if (viaOpen) {
+    if (iinaOpenUrl) {
+      args = ['-a', player.macAppPath!, url];
+    } else if (viaOpen) {
       args = ['-a', player.macAppPath!, '--args', ...playerArgs];
     } else {
       args = playerArgs;
@@ -681,7 +691,7 @@ class ExternalPlayerService {
       if (player.macAppPath != null &&
           await Directory(player.macAppPath!).exists()) {
         if (player.macPreferOpenLauncher) {
-          return 'open'; // Caller prepends [-a, appPath, --args]
+          return '/usr/bin/open'; // Caller prepends [-a, appPath, url| --args …]
         }
       }
       // Non-sandboxed hosts: app-bundled CLI (e.g. iina-cli) forwards args reliably.
@@ -693,7 +703,7 @@ class ExternalPlayerService {
       // Fallback: open the .app bundle.
       if (player.macAppPath != null &&
           await Directory(player.macAppPath!).exists()) {
-        return 'open'; // Caller must prepend [-a, appPath, --args] to args
+        return '/usr/bin/open'; // Caller must prepend [-a, appPath, --args] to args
       }
       // Check PATH binary
       if (player.macBinary != null) {

@@ -38,6 +38,7 @@ Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSr
 - New users: leave **Auto** on
 - Power users: pin a server from the player menu
 - WebStreamr is powerful but slower — profile priority keeps it lower by default
+- When Rust cannot resolve a VidSrc-style embed (common on older films), Forja falls back to a headless browser sniff on desktop/mobile — same idea as PlayTorrio. Configure **MediaFlow Proxy** / **FlareSolverr** in WebStreamr settings if regional hosts return 403
 - External players (VLC, MX Player) bypass Forja’s automatic fallback chain
 
 ## Related
