@@ -20,7 +20,10 @@ enum IptvView {
 /// Mirrors IptvViewModel.kt; uses ChangeNotifier for Flutter rebuilds.
 class IptvController extends ChangeNotifier {
   // ── Top-level view ──
-  IptvView view = IptvView.portalList;
+  IptvView view = IptvView.browser;
+
+  /// Right-side portal inventory panel (catalog workspace).
+  bool portalPanelOpen = false;
 
   // ── Portal-list state ──
   bool isScraping = false;
@@ -91,6 +94,29 @@ class IptvController extends ChangeNotifier {
 
   String? browserSelectedCategoryId;
   String browserSearch = '';
+  bool browserSearchOpen = false;
+
+  void toggleBrowserSearch() {
+    if (browserSearchOpen) {
+      closeBrowserSearch();
+    } else {
+      browserSearchOpen = true;
+      notifyListeners();
+    }
+  }
+
+  void openBrowserSearch() {
+    if (browserSearchOpen) return;
+    browserSearchOpen = true;
+    notifyListeners();
+  }
+
+  void closeBrowserSearch() {
+    if (!browserSearchOpen && browserSearch.isEmpty) return;
+    browserSearchOpen = false;
+    browserSearch = '';
+    notifyListeners();
+  }
 
   // ── Live alive checking ──
   bool liveOnly = false;
@@ -245,7 +271,72 @@ class IptvController extends ChangeNotifier {
     _verifiedKeys
       ..clear()
       ..addAll(stored.map((v) => v.credKey));
+    await _restoreLastPortal();
+  }
+
+  Future<void> _restoreLastPortal() async {
+    view = IptvView.browser;
+    final lastKey = await IptvStore.loadLastPortalKey();
+    if (lastKey == null) {
+      activePortal = null;
+      activeSection = null;
+      notifyListeners();
+      return;
+    }
+    VerifiedPortal? portal;
+    for (final v in verified) {
+      if (v.key == lastKey) {
+        portal = v;
+        break;
+      }
+    }
+    if (portal == null) {
+      activePortal = null;
+      activeSection = null;
+      await IptvStore.clearLastPortalKey();
+      notifyListeners();
+      return;
+    }
+    activePortal = portal;
+    final section = await IptvStore.loadLastSection();
+    await openSection(section, persistSection: false);
+  }
+
+  void togglePortalPanel() {
+    portalPanelOpen = !portalPanelOpen;
     notifyListeners();
+  }
+
+  void openPortalPanel() {
+    if (!portalPanelOpen) {
+      portalPanelOpen = true;
+      notifyListeners();
+    }
+  }
+
+  void closePortalPanel() {
+    if (portalPanelOpen) {
+      portalPanelOpen = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> requestSection(IptvSection section) async {
+    if (activePortal == null) {
+      openPortalPanel();
+      notifyListeners();
+      return;
+    }
+    if (activeSection == section && !isLoading) return;
+    await openSection(section);
+  }
+
+  Future<void> selectPortal(VerifiedPortal p, {bool closePanel = true}) async {
+    activePortal = p;
+    await IptvStore.saveLastPortalKey(p.key);
+    if (closePanel) closePortalPanel();
+    final section = activeSection ?? await IptvStore.loadLastSection();
+    await openSection(section);
   }
 
   List<VerifiedPortal> _sortFavoritesFirst(List<VerifiedPortal> list) {
@@ -535,6 +626,13 @@ class IptvController extends ChangeNotifier {
     _verifiedKeys
       ..clear()
       ..addAll(keep.map((v) => v.credKey));
+    if (activePortal != null && selected.contains(activePortal!.key)) {
+      activePortal = null;
+      activeSection = null;
+      categories = const [];
+      browserAllStreams = const [];
+      await IptvStore.clearLastPortalKey();
+    }
     selected.clear();
     editMode = false;
     await IptvStore.save(keep);
@@ -594,7 +692,7 @@ class IptvController extends ChangeNotifier {
     _verifiedKeys.add(v.credKey);
     await IptvStore.save(verified);
     showAddDialog = false;
-    notifyListeners();
+    await selectPortal(v);
   }
 
   String normalizeUrl(String raw) {
@@ -761,14 +859,11 @@ class IptvController extends ChangeNotifier {
   // Open portal / sections
   // ────────────────────────────────────────────────────────────────────────
   void openPortal(VerifiedPortal p) {
-    activePortal = p;
-    activeSection = null;
-    activeSeries = null;
-    view = IptvView.sectionPick;
-    notifyListeners();
+    unawaited(selectPortal(p));
   }
 
-  Future<void> openSection(IptvSection section) async {
+  Future<void> openSection(IptvSection section,
+      {bool persistSection = true}) async {
     final p = activePortal;
     if (p == null) return;
     activeSection = section;
@@ -779,6 +874,7 @@ class IptvController extends ChangeNotifier {
     browserAllStreams = const [];
     browserSelectedCategoryId = null;
     browserSearch = '';
+    browserSearchOpen = false;
     aliveStreamIds = const {};
     aliveCheckedAt = null;
     streamHealth.clear();
@@ -814,6 +910,9 @@ class IptvController extends ChangeNotifier {
       error = '$e';
     } finally {
       isLoading = false;
+      if (persistSection) {
+        await IptvStore.saveLastSection(section);
+      }
       notifyListeners();
     }
   }
@@ -1397,17 +1496,10 @@ class IptvController extends ChangeNotifier {
   void back() {
     switch (view) {
       case IptvView.portalList:
-        // nothing
-        break;
       case IptvView.sectionPick:
-        view = IptvView.portalList;
-        activePortal = null;
-        break;
       case IptvView.browser:
-        if (activeSection != null) {
-          view = IptvView.sectionPick;
-          activeSection = null;
-          stopAliveCheck();
+        if (portalPanelOpen) {
+          closePortalPanel();
         }
         break;
       case IptvView.episodeList:
@@ -1416,12 +1508,12 @@ class IptvController extends ChangeNotifier {
         episodes = const [];
         break;
       case IptvView.channelsHub:
-        view = IptvView.portalList;
+        view = IptvView.browser;
         activeHardcoded = null;
         break;
       case IptvView.channelResults:
         stopChannelSearch();
-        view = IptvView.channelsHub;
+        view = IptvView.browser;
         activeHardcoded = null;
         channelResults = const [];
         channelStatus = '';

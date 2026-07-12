@@ -20,6 +20,7 @@ import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/m3u/m3u_playlists_screen.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_catalog_workspace.dart';
 import 'iptv_pt_player_screen.dart';
 
 /// Mask a URL for safe display: keeps host, masks each path segment to first 2 chars + ***.
@@ -45,7 +46,8 @@ class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPt
   Duration get shellStaleAfter => ShellTokens.tabStaleIptv;
 
   @override
-  bool get shellBlocksEviction => _ctrl.view != IptvView.portalList;
+  bool get shellBlocksEviction =>
+      _ctrl.view == IptvView.episodeList || _ctrl.activePortal != null;
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
@@ -63,7 +65,7 @@ class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPt
   }
 
   void _syncShellNav() {
-    final hide = _ctrl.view != IptvView.portalList;
+    final hide = _ctrl.view == IptvView.episodeList;
     if (ShellBus.hideGlobalNav.value != hide) {
       ShellBus.hideGlobalNav.value = hide;
       ShellBus.notifyShellChromeChanged();
@@ -89,7 +91,7 @@ class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPt
         if (info.visibleFraction > 0) _syncShellNav();
       },
       child: PopScope(
-        canPop: _ctrl.view == IptvView.portalList,
+        canPop: !_ctrl.portalPanelOpen && _ctrl.view != IptvView.episodeList,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _ctrl.back();
         },
@@ -110,21 +112,102 @@ class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPt
   Widget _buildView(BuildContext context) {
     switch (_ctrl.view) {
       case IptvView.portalList:
-        return _PortalListView(ctrl: _ctrl, compact: _isCompact(context));
       case IptvView.sectionPick:
-        return _SectionPickView(ctrl: _ctrl, compact: _isCompact(context));
       case IptvView.browser:
-        return _BrowserView(
-            ctrl: _ctrl,
-            compact: _isCompact(context),
-            wide: _isWide(context));
+        return _IptvCatalogShell(
+          ctrl: _ctrl,
+          compact: _isCompact(context),
+          wide: _isWide(context),
+        );
       case IptvView.episodeList:
         return _EpisodeListView(ctrl: _ctrl, compact: _isCompact(context));
       case IptvView.channelsHub:
-        return _ChannelsHubView(ctrl: _ctrl, compact: _isCompact(context));
       case IptvView.channelResults:
-        return _ChannelResultsView(ctrl: _ctrl, compact: _isCompact(context));
+        return _IptvCatalogShell(
+          ctrl: _ctrl,
+          compact: _isCompact(context),
+          wide: _isWide(context),
+        );
     }
+  }
+}
+
+class _IptvCatalogShell extends StatelessWidget {
+  const _IptvCatalogShell({
+    required this.ctrl,
+    required this.compact,
+    required this.wide,
+  });
+
+  final IptvController ctrl;
+  final bool compact;
+  final bool wide;
+
+  static const double _panelWidth = 380;
+
+  bool _useSidePanel(BuildContext context) =>
+      wide || ShellTokens.isAndroidTvDevice || !compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        IptvCatalogTopBar(
+          ctrl: ctrl,
+          onTogglePanel: ctrl.togglePortalPanel,
+          onSection: ctrl.requestSection,
+          onSearch: ctrl.toggleBrowserSearch,
+          onM3u: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const M3uPlaylistsScreen()),
+          ),
+        ),
+        Expanded(
+          child: Stack(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _BrowserView(
+                      ctrl: ctrl,
+                      compact: compact,
+                      wide: wide,
+                      embedded: true,
+                    ),
+                  ),
+                  if (ctrl.portalPanelOpen && _useSidePanel(context))
+                    IptvPortalPanel(
+                      ctrl: ctrl,
+                      width: _panelWidth,
+                      onClose: ctrl.closePortalPanel,
+                    ),
+                ],
+              ),
+              if (ctrl.portalPanelOpen && !_useSidePanel(context))
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: ctrl.closePortalPanel,
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {},
+                          child: IptvPortalPanel(
+                            ctrl: ctrl,
+                            width: MediaQuery.sizeOf(context).width * 0.92,
+                            onClose: ctrl.closePortalPanel,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -959,10 +1042,12 @@ class _BrowserView extends StatefulWidget {
   final IptvController ctrl;
   final bool compact;
   final bool wide;
+  final bool embedded;
   const _BrowserView({
     required this.ctrl,
     required this.compact,
     required this.wide,
+    this.embedded = false,
   });
 
   @override
@@ -973,7 +1058,8 @@ class _BrowserViewState extends State<_BrowserView> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   Timer? _scrollSettleTimer;
-  bool _searchOpen = false;
+
+  bool get _searchOpen => widget.ctrl.browserSearchOpen;
 
   @override
   void initState() {
@@ -981,19 +1067,32 @@ class _BrowserViewState extends State<_BrowserView> {
     _searchCtrl.text = widget.ctrl.browserSearch;
   }
 
+  @override
+  void didUpdateWidget(covariant _BrowserView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.ctrl.browserSearchOpen &&
+        !oldWidget.ctrl.browserSearchOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocus.requestFocus();
+      });
+    }
+    if (!widget.ctrl.browserSearchOpen && _searchCtrl.text.isNotEmpty) {
+      _searchCtrl.clear();
+    }
+  }
+
   void _openSearch() {
-    setState(() => _searchOpen = true);
+    widget.ctrl.openBrowserSearch();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _searchFocus.requestFocus();
     });
   }
 
   void _closeSearch() {
-    if (!_searchOpen && widget.ctrl.browserSearch.isEmpty) return;
+    widget.ctrl.closeBrowserSearch();
     _searchCtrl.clear();
-    widget.ctrl.setBrowserSearch('');
-    if (mounted) setState(() => _searchOpen = false);
     _searchFocus.unfocus();
+    if (mounted) setState(() {});
   }
 
   void _clearSearchQuery() {
@@ -1002,13 +1101,15 @@ class _BrowserViewState extends State<_BrowserView> {
     if (mounted) setState(() {});
   }
 
-  void _toggleSearch() {
+  void toggleSearch() {
     if (_searchOpen) {
       _closeSearch();
     } else {
       _openSearch();
     }
   }
+
+  void _toggleSearch() => toggleSearch();
 
   @override
   void dispose() {
@@ -1092,9 +1193,13 @@ class _BrowserViewState extends State<_BrowserView> {
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
-    return SafeArea(
-      child: Column(
-        children: [
+    if (ctrl.activePortal == null) {
+      return _buildChoosePortalEmpty(context);
+    }
+
+    final body = Column(
+      children: [
+        if (!widget.embedded)
           _PtAppBar(
             title: _sectionTitle,
             subtitle: ctrl.activePortal?.name,
@@ -1130,33 +1235,75 @@ class _BrowserViewState extends State<_BrowserView> {
               ],
             ],
           ),
-          ClipRect(
-            child: AnimatedAlign(
-              alignment: Alignment.topCenter,
-              heightFactor: _searchOpen ? 1 : 0,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOutCubic,
-              child: _buildOverlaySearchBar(),
-            ),
+        ClipRect(
+          child: AnimatedAlign(
+            alignment: Alignment.topCenter,
+            heightFactor: _searchOpen ? 1 : 0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            child: _buildOverlaySearchBar(),
           ),
-          if (ctrl.activeSection == IptvSection.live && ctrl.isVerifyingAlive)
-            _buildAliveProgress(),
-          if (ctrl.activeSection == IptvSection.live && !ctrl.isVerifyingAlive)
-            _buildLiveOnlyToggle(),
-          if (ctrl.error != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(ctrl.error!,
-                  style: GoogleFonts.poppins(
-                      color: const Color(0xFFEF4444))),
-            ),
-          Expanded(
-            child: ctrl.isLoading
-                ? Center(
-                    child: CircularProgressIndicator(color: IptvShellStyle.accent))
-                : _buildContent(),
+        ),
+        if (ctrl.activeSection == IptvSection.live && ctrl.isVerifyingAlive)
+          _buildAliveProgress(),
+        if (ctrl.activeSection == IptvSection.live && !ctrl.isVerifyingAlive)
+          _buildLiveOnlyToggle(),
+        if (ctrl.error != null)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(ctrl.error!,
+                style: GoogleFonts.poppins(
+                    color: const Color(0xFFEF4444))),
           ),
-        ],
+        Expanded(
+          child: ctrl.isLoading
+              ? Center(
+                  child: CircularProgressIndicator(color: IptvShellStyle.accent))
+              : _buildContent(),
+        ),
+      ],
+    );
+
+    if (widget.embedded) return body;
+    return SafeArea(child: body);
+  }
+
+  Widget _buildChoosePortalEmpty(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.satellite_alt_rounded,
+                size: 72, color: IptvShellStyle.accent),
+            const SizedBox(height: 20),
+            Text(
+              'Choose a portal',
+              style: IptvShellStyle.pageTitle.copyWith(fontSize: 32),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Select a provider to browse Live TV, Movies, and Series.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(color: Colors.white60, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            IptvPrimaryButton(
+              icon: Icons.dns_rounded,
+              label: 'Open portals',
+              onPressed: widget.ctrl.openPortalPanel,
+            ),
+            const SizedBox(height: 10),
+            IptvPrimaryButton(
+              icon: Icons.add_rounded,
+              label: 'Add portal',
+              subtle: true,
+              onPressed: widget.ctrl.openPortalPanel,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -4,39 +4,41 @@
 
 ## What it is
 
-The IPTV tab supports **Xtream Codes** portals. Add your provider URL and credentials, browse sections (live, movies, series), watch channels with EPG where available, mark favorites, and search a built-in branded channel list.
+The IPTV tab supports **Xtream Codes** portals. The tab opens on the **catalog** (categories + channels). Pick a portal from the side panel, switch **Live / Movies / Series** from the top bar, and play in the IPTV player.
 
 ## How to open it
 
-Tap **IPTV** in the navigation bar → add or select an Xtream portal.
+Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loads automatically; otherwise choose a portal from the **Portals** panel.
 
 ## What you can do
 
-- Add multiple Xtream portals
+- Open the **Portals** panel (top bar) to add, scrape, search, favorite, or select providers
+- Switch **Live**, **Movies**, and **Series** from section chips in the top bar
 - Browse live channels by category
-- **Search** live, movie, and series catalogs from the browse screen (search icon → bar slides in; filters groups and channels as you type; close clears search)
+- **Search** live, movie, and series catalogs (search icon → bar slides in; filters groups and channels as you type; close clears search)
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
-- Favorite channels
-- Search hardcoded branded channel names
+- Favorite portals in the Portals panel (star icon)
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
-- Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header (circular hover highlight, no box border)
+- Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
 - View programme guide (NOW / NEXT with progress) as a floating card at the bottom-right of the player when your portal provides EPG
 - Switch audio tracks and subtitles from the player controls when the stream provides them
+- Open **M3U playlists** from the playlist icon in the top bar
 
 ## Setup
 
 1. Get portal URL, username, and password from your IPTV provider
-2. Add portal in the IPTV screen
-3. Wait for categories and channels to load
+2. Open **Portals** → **Add** (or **Scrape** to discover providers)
+3. Tap a portal in the list to load its catalog
 
 ## Tips
 
-- While browsing **Live TV**, **Movies**, or **Series**, tap the **search** icon in the top bar to open the catalog search field — type to filter category groups and channels; tap the icon again or press Escape to close and clear the filter
+- **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by name or URL
+- Section chips (**Live** / **Movies** / **Series**) reload the catalog for the active portal
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
-- While watching **live TV**, tap the grid icon in the player controls to open the channel guide — pick a category on the left (desktop) or from the list (phone), then tap a channel to zap without leaving playback
-- Tap the **search** icon next to the guide to open a centered channel search — type to filter by channel or category name, then tap a result to switch
+- Press **Back** / **Escape** to close the Portals panel before leaving the tab
+- While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
 - Portal quality varies — timeouts usually mean provider or network issues
 - Series VOD uses the same player as live with seek support when the stream allows

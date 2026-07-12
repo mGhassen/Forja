@@ -7,6 +7,8 @@ import 'models.dart';
 class IptvStore {
   static const _key = 'pt_iptv_verified_portals';
   static const _favKey = 'pt_iptv_favorite_portal_keys';
+  static const _lastPortalKey = 'pt_iptv_last_portal_key';
+  static const _lastSectionKey = 'pt_iptv_last_section';
 
   static Future<List<VerifiedPortal>> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,6 +63,41 @@ class IptvStore {
   static Future<void> saveFavorites(Set<String> keys) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_favKey, keys.toList());
+  }
+
+  static Future<String?> loadLastPortalKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_lastPortalKey);
+  }
+
+  static Future<void> saveLastPortalKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastPortalKey, key);
+  }
+
+  static Future<void> clearLastPortalKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastPortalKey);
+  }
+
+  static Future<IptvSection> loadLastSection() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_lastSectionKey);
+    return switch (raw) {
+      'vod' => IptvSection.vod,
+      'series' => IptvSection.series,
+      _ => IptvSection.live,
+    };
+  }
+
+  static Future<void> saveLastSection(IptvSection section) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = switch (section) {
+      IptvSection.vod => 'vod',
+      IptvSection.series => 'series',
+      IptvSection.live => 'live',
+    };
+    await prefs.setString(_lastSectionKey, raw);
   }
 }
 
