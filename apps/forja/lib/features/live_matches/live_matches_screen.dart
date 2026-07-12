@@ -996,6 +996,64 @@ class _TeamBadge extends StatelessWidget {
   }
 }
 
+// ─── Live match card play overlay ────────────────────────────────────────────
+
+/// Centered glass play control — always on top of card art; scales on hover/focus.
+class _LiveMatchCardPlayOverlay extends StatelessWidget {
+  const _LiveMatchCardPlayOverlay({required this.active});
+
+  final bool active;
+
+  static const _diameter = 48.0;
+  static const _iconSize = 28.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Center(
+          child: AnimatedScale(
+            scale: active ? ShellTokens.focusActiveScale : 1.0,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOutCubic,
+              width: _diameter,
+              height: _diameter,
+              decoration: BoxDecoration(
+                color: active
+                    ? ForjaShellColors.brandGreen
+                    : Colors.black.withValues(alpha: 0.42),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: active
+                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
+                      : Colors.white.withValues(alpha: 0.24),
+                ),
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: active ? const Color(0xFF111827) : Colors.white,
+                size: _iconSize,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── CDN Channel Card ─────────────────────────────────────────────────────────
 
 class _CdnChannelCard extends StatefulWidget {
@@ -1135,23 +1193,7 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                   ),
                 ),
               ),
-              if (active)
-                Positioned.fill(
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.black,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
+              _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),
@@ -1360,23 +1402,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                   ),
                 ),
               ),
-              if (active)
-                Positioned.fill(
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.black,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
+              _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),
@@ -1590,9 +1616,28 @@ class _LiveMatchesEmbedPlayerScreenState
     return MediaQuery.paddingOf(context).top + 8;
   }
 
+  Widget _buildSourceBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.blue),
+      ),
+      child: Text(
+        widget.badgeLabel,
+        style: const TextStyle(
+          color: Colors.blue,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTopBar() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 16, 16),
+      padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
       child: Row(
         children: [
           iptvBackButton(
@@ -1621,22 +1666,6 @@ class _LiveMatchesEmbedPlayerScreenState
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
               ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.blue),
-            ),
-            child: Text(
-              widget.badgeLabel,
-              style: const TextStyle(
-                color: Colors.blue,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
             ),
           ),
         ],
@@ -1717,7 +1746,7 @@ class _LiveMatchesEmbedPlayerScreenState
                 color: ForjaShellColors.sectionAccent,
               ),
             ),
-          if (!_isFullscreen)
+          if (!_isFullscreen) ...[
             Positioned(
               top: 0,
               left: 0,
@@ -1733,6 +1762,12 @@ class _LiveMatchesEmbedPlayerScreenState
                 child: _buildTopBar(),
               ),
             ),
+            Positioned(
+              top: _topBarTopPadding(context),
+              right: 16,
+              child: _buildSourceBadge(),
+            ),
+          ],
         ],
       ),
     );
@@ -1967,24 +2002,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                     ),
                   ),
                 ),
-              // play overlay on hover
-              if (active && hasIframe)
-                Positioned.fill(
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.black,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
+              if (hasIframe)
+                _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),
