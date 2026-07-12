@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/android_player_launcher.dart';
 import 'package:forja/shared/design/design.dart';
@@ -210,12 +211,6 @@ class ExternalPlayerService {
       macAppPath: '/Applications/IINA.app',
       macCliBinary: 'iina-cli',
       macBinary: 'iina',
-      desktopArgs: (url, title, headers) => [
-        if (title != null) '--mpv-force-media-title=$title',
-        ..._mpvStreamArgs(prefix: '--mpv-'),
-        ..._mpvHeaderArgs(headers, prefix: '--mpv-'),
-        url,
-      ],
     ),
     ExternalPlayer(
       displayName: 'VLC',
@@ -279,6 +274,11 @@ class ExternalPlayerService {
       desktop: Platform.isWindows || Platform.isMacOS || Platform.isLinux,
     );
 
+    debugPrint(
+      '[ExternalPlayer] target url=${target.url} '
+      'headers=${target.headers?.length ?? 0}',
+    );
+
     try {
       if (Platform.isAndroid || Platform.isIOS) {
         return await _launchAndroid(
@@ -306,9 +306,8 @@ class ExternalPlayerService {
 
   /// Resolves the URL/headers external players should open.
   ///
-  /// HLS streams with custom headers are proxied so segment/key requests inherit
-  /// Referer/Origin (same as the built-in player). Direct files pass headers via
-  /// mpv CLI flags. 111477 CDN files use the seek cache proxy.
+  /// Desktop: pass the real URL + mpv header flags (IINA/mpv proxy HTTP itself).
+  /// Android: local hls-proxy when headers are required. 111477 uses seek proxy.
   static Future<({String url, Map<String, String>? headers})>
       _resolveLaunchTarget({
     required String url,
@@ -340,46 +339,27 @@ class ExternalPlayerService {
       return (url: url, headers: null);
     }
 
-    // HLS needs the local proxy on every platform — mpv header flags only cover
-    // the master playlist, not AES keys / CDN segments on other hosts.
-    if (_isHlsStreamUrl(url)) {
-      final proxy = LocalServerService();
-      if (proxy.port <= 0) {
-        await proxy.start();
-      }
-      if (proxy.port > 0) {
-        final proxied = proxy.getHlsProxyUrl(url, headers);
-        debugPrint(
-          '[ExternalPlayer] Proxying HLS stream for external player '
-          '(127.0.0.1:${proxy.port})',
-        );
-        return (url: proxied, headers: null);
-      }
-      debugPrint(
-        '[ExternalPlayer] HLS proxy unavailable — passing headers to player',
-      );
+    // Desktop mpv/IINA/VLC: headers go to the player CLI — no Forja hls-proxy.
+    if (desktop) {
+      debugPrint('[ExternalPlayer] Direct URL — mpv will attach HTTP headers');
       return (url: url, headers: headers);
     }
 
-    if (!desktop) {
-      final proxy = LocalServerService();
-      if (proxy.port <= 0) {
-        await proxy.start();
-      }
-      if (proxy.port > 0) {
-        final proxied = proxy.getHlsProxyUrl(url, headers);
-        debugPrint('[ExternalPlayer] Proxying stream for external player');
-        return (url: proxied, headers: null);
-      }
+    final proxy = LocalServerService();
+    if (proxy.port <= 0) {
+      await proxy.start();
+    }
+    if (proxy.port > 0) {
+      final proxied = proxy.getHlsProxyUrl(url, headers);
+      debugPrint(
+        '[ExternalPlayer] Proxying stream for external player '
+        '(127.0.0.1:${proxy.port})',
+      );
+      return (url: proxied, headers: null);
     }
 
-    debugPrint('[ExternalPlayer] Passing direct URL with HTTP headers');
+    debugPrint('[ExternalPlayer] Local proxy unavailable — passing headers');
     return (url: url, headers: headers);
-  }
-
-  static bool _isHlsStreamUrl(String url) {
-    final u = url.toLowerCase();
-    return u.contains('.m3u8') || u.contains('/playlist/');
   }
 
   /// Match built-in [applyMediaHttpHeaders] mpv network/HLS tuning.
@@ -402,7 +382,93 @@ class ExternalPlayerService {
         uri.path.contains('/comic-proxy');
   }
 
-  /// mpv / IINA header flags — mirrors built-in [applyMediaHttpHeaders].
+  /// iina-cli cannot reliably parse long Referer/User-Agent CLI flags (commas,
+  /// `&`, spaces). Write an mpv include config — same properties the built-in
+  /// player sets via [applyMediaHttpHeaders].
+  static Future<File> _writeMpvIncludeConfig(Map<String, String>? headers) async {
+    final buf = StringBuffer();
+    for (final line in _mpvStreamConfigLines()) {
+      buf.writeln(line);
+    }
+
+    if (headers != null) {
+      final referer = headers['Referer'] ?? headers['referer'];
+      if (referer != null) {
+        _mpvConfigLine(buf, 'referrer', referer);
+        _mpvConfigHeaderField(buf, 'Referer', referer);
+      }
+      final ua = headers['User-Agent'] ?? headers['user-agent'];
+      if (ua != null) {
+        _mpvConfigLine(buf, 'user-agent', ua);
+        _mpvConfigHeaderField(buf, 'User-Agent', ua);
+      }
+      final origin = headers['Origin'] ?? headers['origin'];
+      if (origin != null) {
+        _mpvConfigHeaderField(buf, 'Origin', origin);
+      }
+      for (final entry in headers.entries) {
+        final key = entry.key.toLowerCase();
+        if (key == 'referer' || key == 'user-agent' || key == 'origin') {
+          continue;
+        }
+        _mpvConfigHeaderField(buf, entry.key, entry.value);
+      }
+    }
+
+    final dir = await getTemporaryDirectory();
+    final file = File(
+      '${dir.path}${Platform.pathSeparator}'
+      'forja_external_${DateTime.now().microsecondsSinceEpoch}.conf',
+    );
+    await file.writeAsString(buf.toString());
+    return file;
+  }
+
+  static void _mpvConfigLine(StringBuffer buf, String key, String value) {
+    buf.writeln('$key="${_mpvConfigEscape(value)}"');
+  }
+
+  static void _mpvConfigHeaderField(
+    StringBuffer buf,
+    String name,
+    String value,
+  ) {
+    buf.writeln('http-header-fields="${_mpvConfigEscape('$name: $value')}"');
+  }
+
+  static String _mpvConfigEscape(String value) =>
+      value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
+
+  static List<String> _mpvStreamConfigLines() => [
+        'network-timeout=30',
+        'tls-verify=no',
+        'hls-bitrate=no',
+        'cache=yes',
+        'demuxer-readahead-secs=120',
+        'ytdl=no',
+      ];
+
+  static Future<List<String>> _desktopLaunchArgs({
+    required ExternalPlayer player,
+    required String url,
+    required String title,
+    Map<String, String>? headers,
+  }) async {
+    if (Platform.isMacOS && player.displayName == 'IINA') {
+      final config = await _writeMpvIncludeConfig(headers);
+      debugPrint('[ExternalPlayer] IINA mpv include → ${config.path}');
+      return [
+        '--mpv-include=${config.path}',
+        if (title.isNotEmpty) '--mpv-force-media-title=$title',
+        url,
+      ];
+    }
+
+    return player.desktopArgs?.call(url, title, headers) ?? [url];
+  }
+
+  /// mpv header flags — one [http-header-fields] per header so User-Agent commas
+  /// (e.g. "KHTML, like Gecko") do not break parsing.
   static List<String> _mpvHeaderArgs(
     Map<String, String>? headers, {
     required String prefix,
@@ -414,20 +480,23 @@ class ExternalPlayerService {
     final ua = headers['User-Agent'] ?? headers['user-agent'];
     if (ua != null) args.add('${prefix}user-agent=$ua');
 
-    final headerFields = <String>[];
-    if (referer != null) headerFields.add('Referer: $referer');
+    final emitted = <String>{};
+    void addField(String key, String value) {
+      final line = '$key: $value';
+      if (!emitted.add(line)) return;
+      args.add('${prefix}http-header-fields=$line');
+    }
+
+    if (referer != null) addField('Referer', referer);
     final origin = headers['Origin'] ?? headers['origin'];
-    if (origin != null) headerFields.add('Origin: $origin');
-    if (ua != null) headerFields.add('User-Agent: $ua');
+    if (origin != null) addField('Origin', origin);
+    if (ua != null) addField('User-Agent', ua);
     for (final entry in headers.entries) {
       final key = entry.key.toLowerCase();
       if (key == 'referer' || key == 'user-agent' || key == 'origin') {
         continue;
       }
-      headerFields.add('${entry.key}: ${entry.value}');
-    }
-    if (headerFields.isNotEmpty) {
-      args.add('${prefix}http-header-fields=${headerFields.join(',')}');
+      addField(entry.key, entry.value);
     }
     return args;
   }
@@ -507,7 +576,12 @@ class ExternalPlayerService {
       return false;
     }
 
-    final playerArgs = player.desktopArgs?.call(url, title, headers) ?? [url];
+    final playerArgs = await _desktopLaunchArgs(
+      player: player,
+      url: url,
+      title: title,
+      headers: headers,
+    );
 
     // macOS: `open` only accepts its own flags; player args need `--args`.
     final List<String> args;
@@ -518,8 +592,15 @@ class ExternalPlayerService {
     }
 
     debugPrint(
-      '[ExternalPlayer] Launching: $executable (${args.length} args) → ${args.last}',
+      '[ExternalPlayer] Launching ${player.displayName}: $executable '
+      '(${args.length} args) → $url',
     );
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      debugPrint(
+        '[ExternalPlayer] argv[$i]=${arg.length > 120 ? '${arg.substring(0, 120)}…' : arg}',
+      );
+    }
     await Process.start(executable, args, mode: ProcessStartMode.detached);
     return true;
   }
