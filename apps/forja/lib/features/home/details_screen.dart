@@ -458,7 +458,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   void _onPlayStreamingPressed() {
-    unawaited(_startWebstreamingOnlyPlayback());
+    unawaited(_playWebstreamingFromDetails());
+  }
+
+  Future<void> _playWebstreamingFromDetails() async {
+    await _checkHistory();
+    await _hydrateWebstreamingFromCache();
+    if (!mounted) return;
+    await _startWebstreamingOnlyPlayback();
   }
 
   String _webstreamingCacheKey() => WebstreamingStreamCache.cacheKey(
@@ -578,8 +585,43 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
+    if (await _tryResumeWebStreamFromWatchHistory(startPosition)) return;
+
     if (_isWebstreamingOnlyExtracting) return;
     await _runWebstreamingOnlyExtraction(startPosition: startPosition);
+  }
+
+  /// Last-resume layer: reopen the saved URL + provider from watch history
+  /// without re-racing extractors (survives cache drops after built-in fail).
+  Future<bool> _tryResumeWebStreamFromWatchHistory(Duration? startPosition) async {
+    final progress = _lastProgress;
+    if (progress == null || progress['method'] != 'stream') return false;
+    final savedUrl = progress['streamUrl'] as String?;
+    final sourceId = progress['sourceId'] as String? ?? '';
+    if (savedUrl == null || savedUrl.trim().isEmpty || !isWebStreamProviderId(sourceId)) {
+      return false;
+    }
+    final source = StreamSource(
+      url: savedUrl,
+      title: _webstreamingProviderLabel(sourceId),
+      type: savedUrl.contains('.m3u8')
+          ? 'hls'
+          : savedUrl.contains('.mpd')
+          ? 'dash'
+          : 'video',
+    );
+    if (!mounted) return false;
+    setState(() {
+      _webstreamingActiveProviderId = sourceId;
+      _webstreamingStreams = [source];
+    });
+    await _persistWebstreamingCache(providerId: sourceId, sources: [source]);
+    debugPrint(
+      '[DetailsScreen] watch-history stream resume $sourceId '
+      '(${startPosition?.inSeconds ?? 0}s)',
+    );
+    await _playWebstreamingStream(source, startPosition: startPosition);
+    return true;
   }
 
   Future<void> _resumeContinueWatchingWebStream(String providerId) async {

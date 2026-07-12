@@ -1,0 +1,105 @@
+# Build installers for an existing v* tag and publish GitHub Release.
+# GitHub cannot show a searchable tag list here — use ./scripts/release_ci.sh for that.
+name: Release existing tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag (e.g. v1.4.0) — see repo Tags tab or run ./scripts/release_ci.sh list-tags
+        type: string
+        required: true
+      prerelease:
+        description: Mark as pre-release
+        type: boolean
+        default: false
+      platform_macos:
+        description: Build macOS
+        type: boolean
+        default: true
+      platform_windows:
+        description: Build Windows
+        type: boolean
+        default: true
+      platform_linux:
+        description: Build Linux
+        type: boolean
+        default: true
+      platform_android_tv:
+        description: Build Android TV (arm64 + armeabi-v7a APKs)
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  resolve_tag:
+    name: Resolve tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Validate platform selection
+        run: |
+          if [[ "${{ inputs.platform_macos }}" != "true" && \
+                "${{ inputs.platform_windows }}" != "true" && \
+                "${{ inputs.platform_linux }}" != "true" && \
+                "${{ inputs.platform_android_tv }}" != "true" ]]; then
+            echo "::error::Select at least one platform to release."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: resolve
+        run: |
+          tag="${{ inputs.tag }}"
+          tag="${tag#"${tag%%[![:space:]]*}"}"
+          tag="${tag%"${tag##*[![:space:]]}"}"
+          if [[ -z "$tag" ]]; then
+            echo "::error::Tag is required (e.g. v1.4.0)."
+            exit 1
+          fi
+          if [[ "$tag" != v* ]]; then
+            tag="v${tag}"
+          fi
+          if ! git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag does not exist."
+            echo "Available tags:"
+            git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -30
+            exit 1
+          fi
+          version="${tag#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag ($version)"
+
+      - name: List tags in summary
+        if: always()
+        run: |
+          git fetch origin --tags --force 2>/dev/null || true
+          {
+            echo "## Available release tags (newest first)"
+            echo '```'
+            git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Build and publish
+    needs: resolve_tag
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.resolve_tag.outputs.version }}
+      prerelease: ${{ inputs.prerelease }}
+      platform_macos: ${{ inputs.platform_macos }}
+      platform_windows: ${{ inputs.platform_windows }}
+      platform_linux: ${{ inputs.platform_linux }}
+      platform_android_tv: ${{ inputs.platform_android_tv }}

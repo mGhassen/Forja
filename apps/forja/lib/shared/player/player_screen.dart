@@ -138,8 +138,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
-  Future<void> _launchExternal() async {
-    if (_externalPlayerName.isEmpty) return;
+  Future<bool> _launchExternal() async {
+    if (_externalPlayerName.isEmpty) return false;
 
     final success = await ExternalPlayerService.launch(
       url: _externalStreamUrl ?? widget.streamUrl,
@@ -149,18 +149,45 @@ class _PlayerScreenState extends State<PlayerScreen> {
       playerName: _externalPlayerName,
     );
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
     if (success) {
       setState(() => _externalLaunched = true);
-    } else {
-      // Player not found — fall back to built-in player
-      ForjaToast.warning('$_externalPlayerName not found. Using built-in player.');
-      setState(() {
-        _useExternalPlayer = false;
-        _externalLaunched = false;
-      });
+      return true;
     }
+    // Player not found — fall back to built-in player
+    ForjaToast.warning('$_externalPlayerName not found. Using built-in player.');
+    setState(() {
+      _useExternalPlayer = false;
+      _externalLaunched = false;
+    });
+    return false;
+  }
+
+  Future<void> _persistHandoffProgress(
+    Duration position, {
+    String? streamUrl,
+  }) async {
+    final movie = widget.movie;
+    if (movie == null || position.inMilliseconds < 5000) return;
+    final url = streamUrl ?? _externalStreamUrl ?? widget.streamUrl;
+    if (url.isEmpty) return;
+    final provider = widget.activeProvider;
+    await WatchHistoryService().saveProgress(
+      tmdbId: movie.id,
+      imdbId: movie.imdbId,
+      title: widget.title,
+      posterPath: movie.posterPath,
+      backdropPath: movie.backdropPath,
+      method: provider != null && provider != 'amri' ? 'stream' : 'amri',
+      sourceId: provider ?? url,
+      position: position.inMilliseconds,
+      duration: 0,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      streamUrl: url,
+      mediaType: movie.mediaType,
+    );
   }
 
   Future<void> _switchPlayer(
@@ -184,7 +211,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _externalHeaders = headers;
       });
       site111477_proxy.retainForExternalHandoff = true;
-      await _launchExternal();
+      final launched = await _launchExternal();
+      if (launched) {
+        await _persistHandoffProgress(
+          resumePosition,
+          streamUrl: streamUrl ?? _externalStreamUrl,
+        );
+      }
       return;
     }
 
@@ -225,11 +258,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
         launched: _externalLaunched,
         builtInEngine: _builtInEngine,
         onRelaunch: _launchExternal,
-        onSwitchBuiltIn: () {
+        onSwitchBuiltIn: () async {
           site111477_proxy.retainForExternalHandoff = false;
           if (site111477_proxy.is111477ProxyRunning) {
             unawaited(site111477_proxy.stop111477Proxy(force: true));
           }
+          final movie = widget.movie;
+          if (movie != null) {
+            final progress = await WatchHistoryService().getProgress(
+              movie.id,
+              season: widget.selectedSeason,
+              episode: widget.selectedEpisode,
+            );
+            final posMs = progress?['position'] as int? ?? 0;
+            if (posMs > 0) {
+              _resumePosition = Duration(milliseconds: posMs);
+            }
+          }
+          if (!mounted) return;
           setState(() {
             _useExternalPlayer = false;
             _externalLaunched = false;

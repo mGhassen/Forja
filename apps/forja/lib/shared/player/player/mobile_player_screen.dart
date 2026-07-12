@@ -1057,12 +1057,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       debugPrint(
         '[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}',
       );
-      _markSourceChecking(i);
-      _statusController.upsert(
-        'source-$i',
-        source.title,
-        kind: StatusRouletteKind.loading,
-      );
+      final skipCheckingUi = widget.pinSource && i == startIndex;
+      if (!skipCheckingUi) {
+        _markSourceChecking(i);
+        _statusController.upsert(
+          'source-$i',
+          source.title,
+          kind: StatusRouletteKind.loading,
+        );
+      }
 
       if (PlayableSourceBridge.isArabicEmbed(_playableSources, i, source)) {
         debugPrint('[Player] Extracting arabic embed: ${source.title}');
@@ -1236,15 +1239,18 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
       if (_currentSources != null && _currentSources!.isNotEmpty) {
         _subscribeToStreams();
-        final played = await _trySourcesFromIndex(sourceStartIndex);
+        final played = await _trySourcesFromIndex(
+          sourceStartIndex,
+          seekAfterOpen: widget.startPosition,
+        );
         if (played) return;
 
-        // Cached / pinned URL could not open — drop it and race other providers.
+        // Cached / pinned URL could not open — unlock failover for this session
+        // but keep disk/session cache so details Play can retry the same server.
         if (_providerPinned || _sourcePinned) {
           debugPrint(
             '[Player] Preferred source failed to open — unlocking failover',
           );
-          await _invalidateWebstreamingCacheForCurrent();
           _providerPinned = false;
           _sourcePinned = false;
         }
@@ -1355,6 +1361,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _errorMessage = 'Could not find any working stream from any provider.';
       });
       _notifyAllSourcesExhausted();
+      await _invalidateWebstreamingCacheForCurrent();
     }
   }
 
@@ -1661,7 +1668,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         debugPrint(
           '[Player] Cached/preferred source died — unlocking failover',
         );
-        unawaited(_invalidateWebstreamingCacheForCurrent());
         _sourcePinned = false;
         _providerPinned = false;
       }

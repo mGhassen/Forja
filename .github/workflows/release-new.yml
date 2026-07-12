@@ -1,0 +1,98 @@
+# Bump semver, tag v*, build installers, publish GitHub Release.
+name: Release new version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      prerelease:
+        description: Mark as pre-release
+        type: boolean
+        default: false
+      platform_macos:
+        description: Build macOS
+        type: boolean
+        default: true
+      platform_windows:
+        description: Build Windows
+        type: boolean
+        default: true
+      platform_linux:
+        description: Build Linux
+        type: boolean
+        default: true
+      platform_android_tv:
+        description: Build Android TV (arm64 + armeabi-v7a APKs)
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  bump_version:
+    name: Bump and tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - name: Validate platform selection
+        run: |
+          if [[ "${{ inputs.platform_macos }}" != "true" && \
+                "${{ inputs.platform_windows }}" != "true" && \
+                "${{ inputs.platform_linux }}" != "true" && \
+                "${{ inputs.platform_android_tv }}" != "true" ]]; then
+            echo "::error::Select at least one platform to release."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and tag
+        id: bump
+        run: |
+          chmod +x scripts/bump_version.sh
+          NEW="$(./scripts/bump_version.sh "${{ inputs.bump }}")"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Bumped to $NEW"
+
+          if git rev-parse "v${NEW}" >/dev/null 2>&1; then
+            echo "::error::Tag v${NEW} already exists — sync pubspec to the latest tag, push, then re-run."
+            exit 1
+          fi
+          git add apps/forja/pubspec.yaml installer/windows/setup.iss
+          git commit -m "chore: release v${NEW}"
+          git tag -a "v${NEW}" -m "Forja ${NEW}"
+          git push origin HEAD
+          git push origin "v${NEW}"
+
+  release:
+    name: Build and publish
+    needs: bump_version
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.bump_version.outputs.version }}
+      prerelease: ${{ inputs.prerelease }}
+      platform_macos: ${{ inputs.platform_macos }}
+      platform_windows: ${{ inputs.platform_windows }}
+      platform_linux: ${{ inputs.platform_linux }}
+      platform_android_tv: ${{ inputs.platform_android_tv }}

@@ -55,4 +55,4 @@ Exception: Cannot find libmpv-2.dll ...
 ## Related
 
 - [Platforms feature doc](../features/getting-started/platforms.md)
-- [Release workflow](../../.github/workflows/release.yml)
+- [Release new version](../../.github/workflows/release-new.yml) · [Release existing tag](../../.github/workflows/release-tag.yml)
