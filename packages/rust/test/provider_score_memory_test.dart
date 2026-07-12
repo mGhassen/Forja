@@ -18,8 +18,12 @@ void main() {
     test('server ok + stream ok adds +2 +2 = +4', () async {
       await ProviderScoreMemory.recordServerUp(movie, 'vixsrc');
       expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 2);
+      expect(ProviderScoreMemory.serverVerdictFor(movie, 'vixsrc'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(movie, 'vixsrc'), isNull);
       await ProviderScoreMemory.recordStreamUp(movie, 'vixsrc');
       expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 4);
+      expect(ProviderScoreMemory.serverVerdictFor(movie, 'vixsrc'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(movie, 'vixsrc'), 2);
       expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), 2);
     });
 

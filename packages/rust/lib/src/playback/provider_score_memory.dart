@@ -145,6 +145,14 @@ abstract final class ProviderScoreMemory {
     return _lastDelta[key];
   }
 
+  /// Current server verdict for the badge (`+2` / `-2`), if any.
+  static int? serverVerdictFor(ProviderScoreScope scope, String providerId) =>
+      _server[_memoryKey(scope, providerId)];
+
+  /// Current stream verdict for the badge (`+2` / `-2`), if any.
+  static int? streamVerdictFor(ProviderScoreScope scope, String providerId) =>
+      _stream[_memoryKey(scope, providerId)];
+
   static Future<void> recordServerFailure(
     ProviderScoreScope? scope,
     String providerId,

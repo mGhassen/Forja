@@ -495,7 +495,10 @@ class PlayerStreamMenu {
       return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
     }
     final score = ProviderScoreMemory.scoreFor(scoreScope, providerId);
-    final lastDelta = ProviderScoreMemory.lastDeltaFor(scoreScope, providerId);
+    final serverDelta =
+        ProviderScoreMemory.serverVerdictFor(scoreScope, providerId);
+    final streamDelta =
+        ProviderScoreMemory.streamVerdictFor(scoreScope, providerId);
     final color = score >= 4
         ? playerSourceStatusColor(PlayerSourceStatus.active)
         : score >= 2
@@ -505,7 +508,8 @@ class PlayerStreamMenu {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (lastDelta != null) _scoreDeltaLabel(lastDelta),
+        if (serverDelta != null) _scoreDeltaLabel(serverDelta),
+        if (streamDelta != null) _scoreDeltaLabel(streamDelta),
         Container(
           width: _scoreColWidth,
           height: _badgeHeight,
