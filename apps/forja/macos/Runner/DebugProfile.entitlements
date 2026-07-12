@@ -10,5 +10,10 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<key>com.apple.security.automation.apple-events</key>
+	<array>
+		<string>com.colliderli.iina</string>
+		<string>org.videolan.vlc</string>
+	</array>
 </dict>
 </plist>

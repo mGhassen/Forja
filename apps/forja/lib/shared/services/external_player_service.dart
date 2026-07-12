@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/android_player_launcher.dart';
+import 'package:forja/shared/services/macos_external_player_launcher.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
@@ -643,7 +644,7 @@ class ExternalPlayerService {
     );
     if (player.displayName == 'IINA') {
       _logIinaLaunch(
-        executable: executable,
+        executable: iinaOpenUrl ? 'NSWorkspace' : executable,
         args: args,
         streamUrl: url,
         headers: headers,
@@ -657,6 +658,14 @@ class ExternalPlayerService {
         );
       }
     }
+
+    if (iinaOpenUrl) {
+      return MacosExternalPlayerLauncher.launchUrl(
+        appPath: player.macAppPath!,
+        url: url,
+      );
+    }
+
     await Process.start(executable, args, mode: ProcessStartMode.detached);
     return true;
   }

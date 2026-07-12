@@ -10,18 +10,36 @@ abstract final class ProviderScoreProbeSync {
   static String _key(ProviderScoreScope scope, String providerId) =>
       scope.memoryKey(ProviderScoreMemory.normalizeProviderId(providerId));
 
+  /// Providers with resolved streams are up — never score fail while sources exist.
+  static StreamProviderProbeStatus effectiveStatus({
+    required StreamProviderProbeStatus status,
+    required bool hasSources,
+  }) {
+    if (hasSources) {
+      if (status == StreamProviderProbeStatus.failed ||
+          status == StreamProviderProbeStatus.trying ||
+          status == StreamProviderProbeStatus.pending) {
+        return StreamProviderProbeStatus.success;
+      }
+    }
+    return status;
+  }
+
   static Future<void> onProbeStatusChanged({
     required ProviderScoreScope? scope,
     required String providerId,
     required StreamProviderProbeStatus status,
+    bool hasSources = false,
   }) async {
     if (scope == null || providerId.isEmpty) return;
+    final resolved =
+        effectiveStatus(status: status, hasSources: hasSources);
     final key = _key(scope, providerId);
     final prev = _lastStatus[key];
-    if (prev == status) return;
-    _lastStatus[key] = status;
+    if (prev == resolved) return;
+    _lastStatus[key] = resolved;
 
-    switch (status) {
+    switch (resolved) {
       case StreamProviderProbeStatus.success:
         await ProviderScoreMemory.recordServerUp(scope, providerId);
       case StreamProviderProbeStatus.failed:
@@ -35,12 +53,33 @@ abstract final class ProviderScoreProbeSync {
   static Future<void> syncProbeList({
     required ProviderScoreScope? scope,
     required List<StreamProviderProbe> probes,
+    Map<String, List<StreamSource>>? sourcesByProvider,
   }) async {
     for (final probe in probes) {
+      final sources = sourcesByProvider?[probe.id];
+      final hasSources = sources != null && sources.isNotEmpty;
       await onProbeStatusChanged(
         scope: scope,
         providerId: probe.id,
         status: probe.status,
+        hasSources: hasSources,
+      );
+    }
+  }
+
+  /// Mark every provider that already has extracted streams as server-up.
+  static Future<void> syncSourcesCache({
+    required ProviderScoreScope? scope,
+    required Map<String, List<StreamSource>> sourcesByProvider,
+  }) async {
+    if (scope == null) return;
+    for (final entry in sourcesByProvider.entries) {
+      if (entry.value.isEmpty) continue;
+      await onProbeStatusChanged(
+        scope: scope,
+        providerId: entry.key,
+        status: StreamProviderProbeStatus.success,
+        hasSources: true,
       );
     }
   }

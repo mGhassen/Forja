@@ -1164,6 +1164,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             dismissAfter: const Duration(milliseconds: 500),
           );
           _markSourceFailed(i);
+          unawaited(_recordStreamPlayFailure(_currentProvider ?? ''));
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -1182,6 +1183,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             dismissAfter: const Duration(milliseconds: 500),
           );
           _markSourceFailed(i);
+          unawaited(_recordStreamPlayFailure(_currentProvider ?? ''));
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -1198,6 +1200,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             dismissAfter: const Duration(milliseconds: 500),
           );
           _markSourceFailed(i);
+          unawaited(_recordStreamPlayFailure(_currentProvider ?? ''));
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -2741,6 +2744,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       ProviderScoreProbeSync.syncProbeList(
         scope: _scoreScope,
         probes: notifier.value,
+        sourcesByProvider: _liveProviderSourcesCache.value,
       ).then((_) {
         if (mounted) _notifySourceMenuChanged();
       }),
@@ -2777,9 +2781,57 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
   }
 
-  Future<void> _probeAllSourcesInBackground() async {
-    // Intentionally no-op: probing every source on open lagged playback.
-    // Validation runs in [_switchToStreamSource] when the user picks one.
+  Future<void> _probeCachedProviderStreamsInBackground() async {
+    if (_disposed || !mounted || _scoreScope == null) return;
+    final cache = Map<String, List<StreamSource>>.from(
+      _liveProviderSourcesCache.value,
+    );
+    if (cache.isEmpty) return;
+
+    final current = _currentProvider;
+    final playingUrl = _currentPlayingCatalogUrl ?? _currentUrl;
+
+    for (final entry in cache.entries) {
+      if (_disposed || !mounted) return;
+      final providerId = entry.key;
+      final sources = entry.value;
+      if (sources.isEmpty) continue;
+
+      for (var i = 0; i < sources.length; i++) {
+        if (_disposed || !mounted) return;
+        final source = sources[i];
+        final url = source.url.trim();
+        if (url.isEmpty) continue;
+
+        final isActiveStream = providerId == current &&
+            _playbackConfirmed &&
+            (url == playingUrl || url == _currentUrl);
+        if (isActiveStream) {
+          _setUrlCheckStatus(url, PlayerSourceStatus.active);
+          continue;
+        }
+
+        if (_urlCheckStatuses.containsKey(url)) continue;
+
+        _setUrlCheckStatus(url, PlayerSourceStatus.checking);
+        _notifySourceMenuChanged();
+
+        final validated = await _resolveValidatedStream(
+          source,
+          providerId: providerId,
+        );
+        if (_disposed || !mounted) return;
+
+        if (validated != null) {
+          _setUrlCheckStatus(url, PlayerSourceStatus.ready);
+          await _recordStreamCheckSuccess(providerId);
+        } else {
+          _setUrlCheckStatus(url, PlayerSourceStatus.failed);
+          await _recordStreamCheckFailure(providerId);
+        }
+        _notifySourceMenuChanged();
+      }
+    }
   }
 
   List<PlayerSourceStatus> _buildSourceStatuses() {
@@ -2882,9 +2934,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (notifier == null || notifier.value.isEmpty) return;
     final current = _currentProvider;
     final failed = _providerLoadFailures.value;
+    final cache = _liveProviderSourcesCache.value;
     notifier.value = [
       for (final p in notifier.value)
         if (_playbackConfirmed && current != null && p.id == current)
+          p.copyWith(status: StreamProviderProbeStatus.success)
+        else if ((cache[p.id] ?? const []).isNotEmpty)
           p.copyWith(status: StreamProviderProbeStatus.success)
         else if (failed.contains(p.id))
           p.copyWith(status: StreamProviderProbeStatus.failed)
@@ -2905,6 +2960,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _markProviderLoadSucceeded(pid);
     _syncProbeStatus(pid, StreamProviderProbeStatus.success);
     _finalizeProbeStatusesAfterPlayback();
+    unawaited(
+      ProviderScoreProbeSync.syncSourcesCache(
+        scope: _scoreScope,
+        sourcesByProvider: _liveProviderSourcesCache.value,
+      ),
+    );
+    _onProbeScoringChanged();
+    unawaited(_probeCachedProviderStreamsInBackground());
     _notifySourceMenuChanged();
   }
 
@@ -2975,6 +3038,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       selectedEpisode: widget.selectedEpisode,
       hubEpisodeNumber: widget.hubEpisodeNumber,
       activeProvider: widget.activeProvider,
+      readUrlCheckStatuses: () => _urlCheckStatuses,
     );
     _onMouseMove();
   }

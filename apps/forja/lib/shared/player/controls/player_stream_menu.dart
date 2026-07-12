@@ -115,6 +115,7 @@ class PlayerStreamMenu {
     int? selectedEpisode,
     num? hubEpisodeNumber,
     String? activeProvider,
+    Map<String, PlayerSourceStatus> Function()? readUrlCheckStatuses,
   }) async {
     final initial = readState();
     final hasProviders = providers != null && providers.isNotEmpty;
@@ -162,6 +163,7 @@ class PlayerStreamMenu {
           selectedEpisode: selectedEpisode,
           hubEpisodeNumber: hubEpisodeNumber,
           activeProvider: activeProvider,
+          readUrlCheckStatuses: readUrlCheckStatuses,
           onClose: close,
         ),
       ),
@@ -884,6 +886,7 @@ class _StreamMenuOverlay extends StatefulWidget {
     this.selectedEpisode,
     this.hubEpisodeNumber,
     this.activeProvider,
+    this.readUrlCheckStatuses,
   });
 
   final Map<String, dynamic>? providers;
@@ -906,6 +909,7 @@ class _StreamMenuOverlay extends StatefulWidget {
   final int? selectedEpisode;
   final num? hubEpisodeNumber;
   final String? activeProvider;
+  final Map<String, PlayerSourceStatus> Function()? readUrlCheckStatuses;
   final VoidCallback onClose;
 
   @override
@@ -1092,6 +1096,10 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       hubEpisodeNumber: widget.hubEpisodeNumber,
       activeProvider: widget.activeProvider,
     );
+    final mergedUrlStatuses = {
+      ...?widget.readUrlCheckStatuses?.call(),
+      ..._urlStatuses,
+    };
 
     final group = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1181,7 +1189,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
               useIndexedStatuses: isCurrent,
               providerId: providerId,
               serverLabel: presentation.label,
-              urlStatuses: _urlStatuses,
+              urlStatuses: mergedUrlStatuses,
               onUrlStatus: _setUrlStatus,
               onCheckSource: widget.onCheckSource,
               onSelectSource: (source, index) async {
@@ -1226,12 +1234,16 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     }
 
     if (!_hasProviders) {
+      final mergedUrlStatuses = {
+        ...?widget.readUrlCheckStatuses?.call(),
+        ..._urlStatuses,
+      };
       return PlayerStreamMenu._sourcesList(
         sources: state.sources ?? const [],
         state: state,
         onCheckSource: widget.onCheckSource,
         onSelectSource: widget.onSelectSource,
-        urlStatuses: _urlStatuses,
+        urlStatuses: mergedUrlStatuses,
         onUrlStatus: _setUrlStatus,
         useIndexedStatuses: true,
       );

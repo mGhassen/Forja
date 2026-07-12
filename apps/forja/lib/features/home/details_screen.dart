@@ -890,6 +890,33 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _webstreamingActiveProviderId = best.providerId;
           });
         }
+        final scope = ProviderScoreProbeSync.scopeFromPlayer(
+          movie: _movie,
+          providers: providers,
+          selectedSeason: _selectedSeason,
+          selectedEpisode: _selectedEpisode,
+        );
+        var probes = probeNotifier.value;
+        for (final hit in hits) {
+          final pid = hit.providerId;
+          final idx = probes.indexWhere((p) => p.id == pid);
+          if (idx >= 0) {
+            probes = [
+              for (final p in probes)
+                if (p.id == pid)
+                  p.copyWith(status: StreamProviderProbeStatus.success)
+                else
+                  p,
+            ];
+          }
+        }
+        probeNotifier.value = probes;
+        unawaited(
+          ProviderScoreProbeSync.syncSourcesCache(
+            scope: scope,
+            sourcesByProvider: providerSourcesCache.value,
+          ),
+        );
       }
 
       final hit = await PlaybackService.resolveWebstreaming(
@@ -916,27 +943,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 isPreferred: existing.isEmpty,
               ),
             ];
-            unawaited(
-              ProviderScoreProbeSync.onProbeStatusChanged(
-                scope: ProviderScoreProbeSync.scopeFromPlayer(
-                  movie: _movie,
-                  providers: providers,
-                  selectedSeason: _selectedSeason,
-                  selectedEpisode: _selectedEpisode,
-                ),
-                providerId: providerId,
-                status: nextStatus,
-              ),
-            );
-            return;
-          }
-          probeNotifier.value = existing
-              .map(
-                (probe) => probe.id == providerId
-                    ? probe.copyWith(status: nextStatus)
-                    : probe,
-              )
-              .toList();
+          final hasSources =
+              (providerSourcesCache.value[providerId] ?? []).isNotEmpty;
           unawaited(
             ProviderScoreProbeSync.onProbeStatusChanged(
               scope: ProviderScoreProbeSync.scopeFromPlayer(
@@ -947,6 +955,31 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               ),
               providerId: providerId,
               status: nextStatus,
+              hasSources: hasSources,
+            ),
+          );
+            return;
+          }
+          probeNotifier.value = existing
+              .map(
+                (probe) => probe.id == providerId
+                    ? probe.copyWith(status: nextStatus)
+                    : probe,
+              )
+              .toList();
+          final hasSources =
+              (providerSourcesCache.value[providerId] ?? []).isNotEmpty;
+          unawaited(
+            ProviderScoreProbeSync.onProbeStatusChanged(
+              scope: ProviderScoreProbeSync.scopeFromPlayer(
+                movie: _movie,
+                providers: providers,
+                selectedSeason: _selectedSeason,
+                selectedEpisode: _selectedEpisode,
+              ),
+              providerId: providerId,
+              status: nextStatus,
+              hasSources: hasSources,
             ),
           );
         },
