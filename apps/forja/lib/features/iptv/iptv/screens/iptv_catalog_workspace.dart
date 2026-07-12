@@ -604,7 +604,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeader(context),
-              if (ctrl.editMode && ctrl.verified.isNotEmpty) _buildEditBar(),
               ClipRect(
                 child: AnimatedAlign(
                   alignment: Alignment.topCenter,
@@ -723,46 +722,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             onPressed: () => _showAddDialog(context),
             icon: Icons.add_rounded,
           ),
-          if (ctrl.verified.isNotEmpty)
-            IptvIconAction(
-              tooltip: ctrl.editMode ? 'Done' : 'Edit',
-              onPressed: ctrl.toggleEditMode,
-              icon: ctrl.editMode ? Icons.check_rounded : Icons.edit_rounded,
-              color: ctrl.editMode ? IptvShellStyle.accent : Colors.white70,
-            ),
           iptvCloseButton(context, onTap: widget.onClose),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditBar() {
-    final ctrl = widget.ctrl;
-    final allSelected = ctrl.selected.length == ctrl.verified.length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: IptvShellStyle.chipSelectedBg.withValues(alpha: 0.35),
-      child: Row(
-        children: [
-          IptvTextAction(
-            icon: allSelected ? Icons.deselect : Icons.select_all,
-            label: allSelected ? 'Clear' : 'All',
-            onPressed: ctrl.toggleSelectAll,
-          ),
-          const Spacer(),
-          Text(
-            '${ctrl.selected.length} selected',
-            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
-          ),
-          const SizedBox(width: 8),
-          IptvIconAction(
-            tooltip: 'Delete selected',
-            onPressed: ctrl.selected.isEmpty ? null : ctrl.deleteSelected,
-            icon: Icons.delete_rounded,
-            color: ctrl.selected.isEmpty
-                ? Colors.white24
-                : const Color(0xFFEF4444),
-          ),
         ],
       ),
     );
@@ -800,168 +760,36 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       orientation: ShellTvRowOrientation.vertical,
     );
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       itemCount: list.length,
       itemBuilder: (_, i) {
         final v = list[i];
-        final isActive = v.key == activeKey;
-        final isSelected = ctrl.selected.contains(v.key);
-        final isFav = ctrl.isFavoritePortal(v.key);
-        final health = ctrl.portalHealthFor(v.key);
-        final checking = ctrl.isPortalHealthChecking(v.key);
-        return MouseRegion(
-          onEnter: (_) => ctrl.schedulePortalHealthCheck(v),
-          onExit: (_) => ctrl.cancelPortalHealthCheck(v.key),
-          child: iptvTap(
-            context: context,
-            onTap: () {
-              if (ctrl.editMode) {
-                ctrl.toggleSelect(v.key);
-              } else {
-                ctrl.selectPortal(v);
-              }
-            },
-            borderRadius: 10,
-            listIndex: i,
-            tvRowId: 'portals',
-            tvItemIndex: i,
-            onFocusChange: (focused) {
-              if (focused) {
-                ctrl.schedulePortalHealthCheck(v);
-              } else {
-                ctrl.cancelPortalHealthCheck(v.key);
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              decoration: BoxDecoration(
-                color: health == false
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-                    : isActive
-                        ? IptvShellStyle.accent.withValues(alpha: 0.12)
-                        : Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _portalBorderColor(
-                    health: health,
-                    isActive: isActive,
-                    isSelected: isSelected,
-                  ),
-                  width: isActive || isSelected || health != null ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (ctrl.editMode)
-                    Icon(
-                      isSelected
-                          ? Icons.check_circle_rounded
-                          : Icons.radio_button_unchecked,
-                      color: isSelected
-                          ? IptvShellStyle.accent
-                          : Colors.white30,
-                      size: 20,
-                    )
-                  else
-                    Icon(Icons.tv_rounded,
-                        color: Colors.white.withValues(alpha: 0.5), size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          v.name.trim().isEmpty ? v.portal.url : v.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          v.portal.url,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white54,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (checking)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: Colors.white54,
-                      ),
-                    )
-                  else if (health != null)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: health
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFFEF4444),
-                      ),
-                    ),
-                  if (!ctrl.editMode)
-                    iptvTap(
-                      context: context,
-                      onTap: () => ctrl.toggleFavoritePortal(v.key),
-                      borderRadius: 16,
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          isFav
-                              ? Icons.star_rounded
-                              : Icons.star_outline_rounded,
-                          size: 18,
-                          color: isFav
-                              ? const Color(0xFFFBBF24)
-                              : Colors.white38,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+        return _PortalHoverTile(
+          portal: v,
+          ctrl: ctrl,
+          isActive: v.key == activeKey,
+          listIndex: i,
+          onEdit: () => _showPortalDialog(context, existing: v),
         );
       },
     );
   }
 
-  Color _portalBorderColor({
-    required bool? health,
-    required bool isActive,
-    required bool isSelected,
-  }) {
-    if (health == true) {
-      return const Color(0xFF22C55E).withValues(alpha: 0.55);
-    }
-    if (health == false) {
-      return const Color(0xFFEF4444).withValues(alpha: 0.65);
-    }
-    if (isActive || isSelected) return IptvShellStyle.accent;
-    return Colors.white.withValues(alpha: 0.06);
-  }
+  Future<void> _showAddDialog(BuildContext context) =>
+      _showPortalDialog(context);
 
-  Future<void> _showAddDialog(BuildContext context) async {
+  Future<void> _showPortalDialog(
+    BuildContext context, {
+    VerifiedPortal? existing,
+  }) async {
     final ctrl = widget.ctrl;
-    final urlCtrl = TextEditingController();
-    final userCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
+    final urlCtrl = TextEditingController(text: existing?.portal.url ?? '');
+    final userCtrl =
+        TextEditingController(text: existing?.portal.username ?? '');
+    final passCtrl =
+        TextEditingController(text: existing?.portal.password ?? '');
+    final editing = existing != null;
+    ctrl.addError = null;
     await showDialog(
       context: context,
       builder: (ctx) => ShellScope.rehost(
@@ -971,7 +799,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           builder: (_, _) => AlertDialog(
             backgroundColor: IptvShellStyle.surface,
             title: Text(
-              'Add Portal',
+              editing ? 'Edit Portal' : 'Add Portal',
               style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
             ),
             content: SizedBox(
@@ -1010,17 +838,28 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       },
               ),
               IptvPrimaryButton(
-                icon: Icons.add_rounded,
-                label: ctrl.isAdding ? 'Adding…' : 'Add',
+                icon: editing ? Icons.check_rounded : Icons.add_rounded,
+                label: ctrl.isAdding
+                    ? (editing ? 'Saving…' : 'Adding…')
+                    : (editing ? 'Save' : 'Add'),
                 busy: ctrl.isAdding,
                 onPressed: ctrl.isAdding
                     ? null
                     : () async {
-                        await ctrl.addManual(
-                          url: urlCtrl.text,
-                          username: userCtrl.text,
-                          password: passCtrl.text,
-                        );
+                        if (editing) {
+                          await ctrl.updatePortal(
+                            existing: existing,
+                            url: urlCtrl.text,
+                            username: userCtrl.text,
+                            password: passCtrl.text,
+                          );
+                        } else {
+                          await ctrl.addManual(
+                            url: urlCtrl.text,
+                            username: userCtrl.text,
+                            password: passCtrl.text,
+                          );
+                        }
                         if (ctrl.addError == null && ctx.mounted) {
                           Navigator.of(ctx).pop();
                         }
@@ -1031,6 +870,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         ),
       ),
     );
+    urlCtrl.dispose();
+    userCtrl.dispose();
+    passCtrl.dispose();
   }
 
   Widget _portalInput(
@@ -1057,6 +899,230 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+      ),
+    );
+  }
+}
+
+class _PortalHoverTile extends StatefulWidget {
+  const _PortalHoverTile({
+    required this.portal,
+    required this.ctrl,
+    required this.isActive,
+    required this.listIndex,
+    required this.onEdit,
+  });
+
+  final VerifiedPortal portal;
+  final IptvController ctrl;
+  final bool isActive;
+  final int listIndex;
+  final VoidCallback onEdit;
+
+  @override
+  State<_PortalHoverTile> createState() => _PortalHoverTileState();
+}
+
+class _PortalHoverTileState extends State<_PortalHoverTile> {
+  static const _actionW = 108.0;
+  bool _hover = false;
+  bool _focused = false;
+
+  bool get _reveal => _hover || _focused;
+
+  void _copy() {
+    final p = widget.portal.portal;
+    final cleanUrl =
+        p.url.replaceFirst('http://', '').replaceFirst('https://', '');
+    Clipboard.setData(
+      ClipboardData(text: '$cleanUrl:${p.username}:${p.password}'),
+    );
+    ForjaToast.success(
+      'Portal details copied to clipboard',
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = widget.ctrl;
+    final v = widget.portal;
+    final isActive = widget.isActive;
+
+    return ListenableBuilder(
+      listenable: ctrl,
+      builder: (context, _) {
+        final isFav = ctrl.isFavoritePortal(v.key);
+        final health = ctrl.portalHealthFor(v.key);
+        final checking = ctrl.isPortalHealthChecking(v.key);
+        final title = v.name.trim().isEmpty ? v.portal.url : v.name;
+
+        return MouseRegion(
+          onEnter: (_) {
+            setState(() => _hover = true);
+            ctrl.schedulePortalHealthCheck(v);
+          },
+          onExit: (_) {
+            setState(() => _hover = false);
+            ctrl.cancelPortalHealthCheck(v.key);
+          },
+          child: ColoredBox(
+            color: (_hover || _focused)
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.transparent,
+            child: SizedBox(
+              height: 40,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: iptvTap(
+                      context: context,
+                      onTap: () => ctrl.selectPortal(v),
+                      borderRadius: 0,
+                      listIndex: widget.listIndex,
+                      tvRowId: 'portals',
+                      tvItemIndex: widget.listIndex,
+                      onFocusChange: (focused) {
+                        setState(() => _focused = focused);
+                        if (focused) {
+                          ctrl.schedulePortalHealthCheck(v);
+                        } else {
+                          ctrl.cancelPortalHealthCheck(v.key);
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Row(
+                          children: [
+                            if (checking)
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: Colors.white54,
+                                ),
+                              )
+                            else
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: health == true
+                                      ? const Color(0xFF22C55E)
+                                      : health == false
+                                          ? const Color(0xFFEF4444)
+                                          : Colors.white24,
+                                ),
+                              ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  color: isActive
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.82),
+                                  fontSize: 13,
+                                  fontWeight: isActive
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            iptvTap(
+                              context: context,
+                              onTap: () => ctrl.toggleFavoritePortal(v.key),
+                              borderRadius: 16,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  isFav
+                                      ? Icons.star_rounded
+                                      : Icons.star_outline_rounded,
+                                  size: 16,
+                                  color: isFav
+                                      ? const Color(0xFFFBBF24)
+                                      : Colors.white30,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOutCubic,
+                    width: _reveal ? _actionW : 0,
+                    height: 40,
+                    child: ClipRect(
+                      child: OverflowBox(
+                        minWidth: _actionW,
+                        maxWidth: _actionW,
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: _actionW,
+                          height: 40,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              _railAction(
+                                tooltip: 'Copy',
+                                icon: Icons.copy_rounded,
+                                color: Colors.white60,
+                                onTap: _copy,
+                              ),
+                              _railAction(
+                                tooltip: 'Edit',
+                                icon: Icons.edit_rounded,
+                                color: Colors.white60,
+                                onTap: widget.onEdit,
+                              ),
+                              _railAction(
+                                tooltip: 'Delete',
+                                icon: Icons.delete_rounded,
+                                color: const Color(0xFFEF4444),
+                                onTap: () => ctrl.deletePortal(v.key),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _railAction({
+    required String tooltip,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: Icon(icon, size: 16, color: color),
+          ),
         ),
       ),
     );

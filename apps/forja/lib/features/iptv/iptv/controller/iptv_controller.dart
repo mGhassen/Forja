@@ -619,6 +619,63 @@ class IptvController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deletePortal(String key) async {
+    selected
+      ..clear()
+      ..add(key);
+    await deleteSelected();
+  }
+
+  Future<void> updatePortal({
+    required VerifiedPortal existing,
+    required String url,
+    required String username,
+    required String password,
+  }) async {
+    final cleanUrl = normalizeUrl(url);
+    if (cleanUrl.isEmpty || username.isEmpty || password.isEmpty) {
+      addError = 'All fields required';
+      notifyListeners();
+      return;
+    }
+    isAdding = true;
+    addError = null;
+    notifyListeners();
+    final p = IptvPortal(
+      url: cleanUrl,
+      username: username.trim(),
+      password: password.trim(),
+      source: existing.portal.source.isEmpty ? 'Manual' : existing.portal.source,
+    );
+    if (p.credKey != existing.credKey && _verifiedKeys.contains(p.credKey)) {
+      addError = 'Portal already added (same username & password)';
+      isAdding = false;
+      notifyListeners();
+      return;
+    }
+    final v = await IptvClient.verifyOrNull(p);
+    isAdding = false;
+    if (v == null) {
+      addError = 'Login failed — wrong credentials or dead portal.';
+      notifyListeners();
+      return;
+    }
+    final wasActive = activePortal?.key == existing.key;
+    final next = verified
+        .where((x) => x.key != existing.key)
+        .toList();
+    verified = _sortFavoritesFirst([v, ...next]);
+    _verifiedKeys
+      ..clear()
+      ..addAll(verified.map((x) => x.credKey));
+    await IptvStore.save(verified);
+    if (wasActive) {
+      await selectPortal(v);
+    } else {
+      notifyListeners();
+    }
+  }
+
   // ────────────────────────────────────────────────────────────────────────
   // Add manual portal
   // ────────────────────────────────────────────────────────────────────────

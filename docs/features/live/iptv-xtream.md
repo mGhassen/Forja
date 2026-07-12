@@ -19,6 +19,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
 - Favorite portals in the Portals panel (star icon)
+- Hover a portal (or focus on TV) to reveal **copy / edit / delete** under the row
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
