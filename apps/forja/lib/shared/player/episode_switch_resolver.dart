@@ -82,9 +82,18 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
         if (proxyHeaders is Map) {
           headers = Map<String, String>.from(proxyHeaders);
         }
+        final url = stream['url'] as String;
+        final ranked = await PlaybackSelection.rankAndDedupe(
+          sources: [
+            PlaybackNormalize.fromStremioUrl(url, headers: headers)
+                .toStreamSource(),
+          ],
+          providerId: 'stremio_direct',
+        );
         return EpisodeSwitchResult(
-          streamUrl: stream['url'] as String,
+          streamUrl: ranked.first.url,
           headers: headers,
+          sources: ranked,
           activeProvider: 'stremio_direct',
         );
       }
@@ -117,10 +126,17 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
           episode: episode,
         );
         if (playback != null) {
+          final ranked = await PlaybackSelection.rankAndDedupe(
+            sources: [
+              PlaybackNormalize.fromTorrentUrl(playback.url).toStreamSource(),
+            ],
+            providerId: 'torrent',
+          );
           return EpisodeSwitchResult(
-            streamUrl: playback.url,
+            streamUrl: ranked.first.url,
             magnetLink: resolvedMagnet,
             fileIndex: playback.fileIndex,
+            sources: ranked,
             activeProvider: 'torrent',
           );
         }
@@ -136,10 +152,17 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
       episode: episode,
     );
     if (playback == null) return null;
+    final ranked = await PlaybackSelection.rankAndDedupe(
+      sources: [
+        PlaybackNormalize.fromTorrentUrl(playback.url).toStreamSource(),
+      ],
+      providerId: 'torrent',
+    );
     return EpisodeSwitchResult(
-      streamUrl: playback.url,
+      streamUrl: ranked.first.url,
       magnetLink: playback.magnet,
       fileIndex: playback.fileIndex,
+      sources: ranked,
       activeProvider: 'torrent',
     );
   }
@@ -168,10 +191,15 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
       providers: providers,
     );
     if (resolved == null || resolved.streamUrl.isEmpty) return null;
+    final ranked = await _rankEpisodeSources(
+      resolved.sources,
+      providerKey,
+      providers.keys.toList().indexOf(providerKey),
+    );
     return EpisodeSwitchResult(
       streamUrl: resolved.streamUrl,
       headers: resolved.headers,
-      sources: resolved.sources,
+      sources: ranked,
       activeProvider: providerKey,
     );
   }
@@ -186,10 +214,11 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
       providers: const {},
     );
     if (resolved == null || resolved.streamUrl.isEmpty) return null;
+    final ranked = await _rankEpisodeSources(resolved.sources, providerKey, 0);
     return EpisodeSwitchResult(
       streamUrl: resolved.streamUrl,
       headers: resolved.headers,
-      sources: resolved.sources,
+      sources: ranked,
       activeProvider: providerKey,
     );
   }
@@ -206,9 +235,23 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   return EpisodeSwitchResult(
     streamUrl: result.url,
     headers: result.headers.isNotEmpty ? result.headers : null,
-    sources: result.sources,
+    sources: await _rankEpisodeSources(result.sources, providerKey, 0),
     activeProvider: providerKey,
   );
+}
+
+Future<List<StreamSource>?> _rankEpisodeSources(
+  List<StreamSource>? sources,
+  String providerId,
+  int providerRank,
+) async {
+  if (sources == null || sources.isEmpty) return sources;
+  final ranked = await PlaybackSelection.rankLegacySources(
+    sources: sources,
+    providerId: providerId,
+    providerRank: providerRank,
+  );
+  return playableSourcesToStreamSources(ranked);
 }
 
 const _builtinProviderKeys = {

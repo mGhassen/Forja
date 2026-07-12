@@ -11,6 +11,7 @@ import 'package:forja/features/anime_arabic/catalog/anime_arabic_extractor.dart'
 import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:rust/rust.dart';
 
 class AnimeArabicPlayerScreen extends StatefulWidget {
   final ArabicAnimeCard anime;
@@ -97,7 +98,10 @@ class _AnimeArabicPlayerScreenState extends State<AnimeArabicPlayerScreen>
 
   Future<void> _launchPlayer(List<ArabicResolvedStream> hits) async {
     final winner = hits.first;
-    final sources = AnimeArabicExtractor.toSources(hits);
+    final sources = await PlaybackSelection.rankAndDedupe(
+      sources: AnimeArabicExtractor.toSources(hits),
+      providerId: 'anime_arabic',
+    );
     final subs = AnimeArabicExtractor.collectSubtitles(hits);
 
     await _service.recordWatch(

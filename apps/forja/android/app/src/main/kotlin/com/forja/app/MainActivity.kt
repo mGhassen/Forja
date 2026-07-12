@@ -30,6 +30,7 @@ class MainActivity : AudioServiceActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isAndroidTv" -> result.success(isAndroidTv())
+                "getPlaybackCapabilities" -> result.success(PlaybackCapabilities.probe())
                 "prepareWebViewForTv" -> {
                     WebViewTvWorkaround.warmUpSoftwareWebView(applicationContext)
                     result.success(null)

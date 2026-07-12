@@ -159,7 +159,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   }
 
   Future<void> _launchPlayer(KissKhStream stream) async {
-    final sources = stream.toSources(label: 'kisskh');
+    final sources = await PlaybackSelection.rankAndDedupe(
+      sources: stream.toSources(label: 'kisskh'),
+      providerId: 'kisskh',
+    );
     final subs = stream.subtitles;
 
     var drama = widget.drama;

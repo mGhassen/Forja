@@ -1,3 +1,11 @@
+mod normalize;
+mod playable;
+mod select;
+
+pub use normalize::from_legacy;
+pub use playable::*;
+pub use select::{normalize_legacy_json, rank_sources, rank_sources_json};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

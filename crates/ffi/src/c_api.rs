@@ -113,6 +113,20 @@ pub unsafe extern "C" fn ffi_list_providers_json() -> *mut c_char {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_playback_rank_sources_json(
+    payload_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::playback_rank_sources_json(from_c_str(payload_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_playback_normalize_legacy_json(
+    payload_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::playback_normalize_legacy_json(from_c_str(payload_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_parse_m3u_json(content: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_m3u_json(from_c_str(content)))
 }

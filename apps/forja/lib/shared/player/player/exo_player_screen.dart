@@ -7,6 +7,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
@@ -103,7 +104,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
-    _sources = _buildSources();
+    _sources = [];
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -115,25 +116,32 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     unawaited(_boot());
   }
 
-  List<_ExoSource> _buildSources() {
+  Future<List<_ExoSource>> _buildRankedSources() async {
+    List<StreamSource> raw;
     if (widget.sources != null && widget.sources!.isNotEmpty) {
-      return dedupeStreamSources(widget.sources!)
-          .map(
-            (s) => _ExoSource(
-              url: s.url,
-              title: s.title,
-              headers: s.headers ?? widget.headers,
-            ),
-          )
-          .toList();
+      raw = await PlaybackSelection.rankAndDedupe(
+        sources: widget.sources!,
+        providerId: widget.activeProvider ?? '',
+      );
+    } else {
+      raw = [
+        StreamSource(
+          url: widget.mediaPath,
+          title: widget.title,
+          type: 'video',
+          headers: widget.headers,
+        ),
+      ];
     }
-    return [
-      _ExoSource(
-        url: widget.mediaPath,
-        title: widget.title,
-        headers: widget.headers,
-      ),
-    ];
+    return raw
+        .map(
+          (s) => _ExoSource(
+            url: s.url,
+            title: s.title,
+            headers: s.headers ?? widget.headers,
+          ),
+        )
+        .toList();
   }
 
   Future<void> _boot() async {
@@ -141,6 +149,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     if (_isTv) {
       HardwareKeyboard.instance.addHandler(_handleTvKey);
     }
+    _sources = await _buildRankedSources();
     _eventSub = ExoPlayerBridge.eventsFor(_viewId).listen(_onNativeEvent);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _disposed) return;
@@ -189,6 +198,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   }
 
   Future<void> _failCurrentSource(String message) async {
+    if (_sourceIndex < _sources.length) {
+      PlaybackSelection.recordFailedUrl(_sources[_sourceIndex].url);
+    }
     if (_sourceIndex + 1 < _sources.length) {
       _sourceIndex++;
       await ExoPlayerBridge.stop(_viewId);
@@ -237,6 +249,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         break;
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
+        if (isVideoDecoderError(msg)) {
+          debugPrint('[ExoPlayer] decoder error: $msg');
+        }
         unawaited(_failCurrentSource(msg));
         break;
     }

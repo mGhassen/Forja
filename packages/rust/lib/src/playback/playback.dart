@@ -1,3 +1,6 @@
+export 'device_capabilities_service.dart';
+export 'playback_normalize.dart';
+export 'playback_selection.dart';
 export 'extracted_media.dart';
 export 'local_server_service.dart';
 export 'playback_profile.dart';

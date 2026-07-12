@@ -50,6 +50,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [027-[draft]-…](027-[draft]-iptv-channel-guide.md) | IPTV in-player channel guide | v1.0.2 | draft | 4/4 · 1/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
 | [029-[open]-…](029-[open]-dual-built-in-playback-engines.md) | Dual built-in engines (MediaKit + ExoPlayer) | v1.0.2 | open | 4/4 · 0/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 14/16 · 0/8 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 
 ## Related
 

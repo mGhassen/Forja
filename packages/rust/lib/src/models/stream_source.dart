@@ -45,6 +45,7 @@ int streamSourcePlayPriority(StreamSource source) {
 }
 
 /// Collapse duplicate playable URLs and prefer HLS / non-HEVC first.
+/// Sync fallback — use [dedupeStreamSourcesAsync] when device profile is available.
 List<StreamSource> dedupeStreamSources(List<StreamSource> sources) {
   final seen = <String>{};
   final out = <StreamSource>[];

@@ -346,36 +346,44 @@ class _PortalListView extends StatelessWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.satellite_alt_rounded,
-                size: 80, color: IptvShellStyle.accent),
-            const SizedBox(height: 24),
-            Text('No portals yet',
-                style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
-            const SizedBox(height: 8),
-            Text(
-              ctrl.statusText.isEmpty
-                  ? 'Find live Xtream portals,\nor add one manually.'
-                  : ctrl.statusText,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white60),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.satellite_alt_rounded,
+                      size: 80, color: IptvShellStyle.accent),
+                  const SizedBox(height: 24),
+                  Text('No portals yet',
+                      style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
+                  const SizedBox(height: 8),
+                  Text(
+                    ctrl.statusText.isEmpty
+                        ? 'Find live Xtream portals,\nor add one manually.'
+                        : ctrl.statusText,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(color: Colors.white60),
+                  ),
+                  const SizedBox(height: 28),
+                  IptvPrimaryButton(
+                    icon: ctrl.isScraping
+                        ? Icons.stop_circle_rounded
+                        : Icons.travel_explore,
+                    label: ctrl.isScraping ? 'Stop' : 'Find Portals',
+                    onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 28),
-            IptvPrimaryButton(
-              icon: ctrl.isScraping
-                  ? Icons.stop_circle_rounded
-                  : Icons.travel_explore,
-              label: ctrl.isScraping ? 'Stop' : 'Find Portals',
-              onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

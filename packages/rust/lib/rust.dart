@@ -18,6 +18,7 @@ export 'src/models/movie.dart';
 export 'src/models/media_trailer.dart';
 export 'src/models/media_details_extras.dart';
 export 'src/models/stream_source.dart';
+export 'src/models/playable_source.dart';
 export 'src/models/torrent_result.dart';
 export 'src/models/book_result.dart';
 export 'src/webstreamr_settings.dart';

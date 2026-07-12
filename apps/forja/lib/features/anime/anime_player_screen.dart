@@ -258,7 +258,11 @@ Future<List<StreamSource>?> reloadAnimeEpisodeStreams({
   final hits = batches.expand((batch) => batch).toList();
   if (hits.isEmpty) return null;
   final ranked = _rankHitsByOrder(hits, order, null, null);
-  return _hitsToStreamSources(ranked);
+  final legacy = _hitsToStreamSources(ranked);
+  return PlaybackSelection.rankAndDedupe(
+    sources: legacy,
+    providerId: 'anime',
+  );
 }
 
 List<AnimeEmbed> _sortEmbedsByProviderOrder(

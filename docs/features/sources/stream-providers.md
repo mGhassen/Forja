@@ -1,20 +1,23 @@
 # Stream providers
 
-> Direct link extractors for movies and TV — order and failover when webstreaming plays.
+> Direct link extractors for movies and TV — order, scoring, and automatic failover.
 
 ## What it is
 
-When [Webstreaming](../movies-tv/direct-streaming-mode.md) is enabled, Forja tries multiple **stream providers** in sequence until one returns playable links. Built-in providers include Videasy, VidLink, VixSrc, Vidnest, 111477, WebStreamr, and each enabled [Nuvio](../scrapers/nuvio.md) scraper.
+When [Webstreaming](../movies-tv/direct-streaming-mode.md) is enabled, Forja resolves multiple **stream providers** and picks the best playable source for your device. Built-in providers include Videasy, VidLink, VixSrc, Vidnest, 111477, WebStreamr, and each enabled [Nuvio](../scrapers/nuvio.md) scraper.
+
+The playback engine normalizes every provider into the same internal format, scores streams against your device capabilities (codec support, max resolution), and opens the highest-ranked candidate. You do not need to know which provider supplied the link.
 
 ## How to open it
 
-**Settings → Playback → Provider order** — drag to reorder.
+**Settings → Playback → Provider order** — drag to reorder (used as a score bias, not a hard gate).
 
 ## What you can do
 
-- Reorder providers (first = tried first)
+- Reorder providers (higher = preferred when scores are close)
 - Combine built-in providers with Nuvio scrapers in one list
-- Benefit from automatic failover in the player when a link dies
+- Automatic failover when a link dies or your device cannot decode a stream
+- On decoder failure, Forja tries the next compatible source, then software decode once, then the next provider
 
 ## Default providers (built-in)
 
@@ -25,6 +28,7 @@ Videasy · VidLink · VixSrc · Vidnest · 111477 · WebStreamr · (your Nuvio s
 - Put your fastest/most reliable provider at the top
 - WebStreamr is powerful but slower — balance order vs speed
 - Nuvio entries appear after you install addons
+- External players (VLC, MX Player) bypass Forja’s automatic fallback chain
 
 ## Related
 

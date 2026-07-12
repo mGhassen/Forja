@@ -17,6 +17,8 @@ import 'package:window_manager/window_manager.dart';
 
 import 'utils.dart';
 import 'menus.dart';
+import 'playback_recovery.dart';
+import 'playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -503,6 +505,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   StreamSubscription<String>? _errorSub;
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
+  StreamSubscription<PlayerLog>? _logSub;
+  PlaybackRecovery? _playbackRecovery;
   bool _autoTracksAppliedForSource = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(Duration.zero);
@@ -523,6 +527,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   // ── Provider switching ────────────────────────────────────────────────────
   String? _currentProvider;
   List<StreamSource>? _currentSources;
+  List<PlayableSource>? _playableSources;
   String? _currentUrl;
   String? _activeMagnet;
   // ── HLS Quality Selector ─────────────────────────────────────────────────
@@ -586,6 +591,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _currentSources = widget.sources == null
         ? null
         : dedupeStreamSources(widget.sources!);
+    unawaited(_initPlayableSources());
     _currentUrl = widget.mediaPath;
     _activeMagnet = widget.magnetLink;
     if (_currentProvider == 'service111477' &&
@@ -671,6 +677,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     });
   }
 
+  Future<void> _initPlayableSources() async {
+    if (widget.sources == null || widget.sources!.isEmpty) return;
+    final ranked = await PlayableSourceBridge.rankWidgetSources(
+      sources: widget.sources,
+      providerId: _currentProvider,
+    );
+    if (_disposed || !mounted) return;
+    setState(() {
+      _playableSources = ranked;
+      _currentSources = playableSourcesToStreamSources(ranked);
+    });
+  }
+
   Future<void> _fetchIntroDbTimestamps() async {
     if (widget.movie == null) return;
     final data = await IntroDbService().getTimestamps(
@@ -719,6 +738,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _errorSub?.cancel();
     _completedSub?.cancel();
     _tracksSub?.cancel();
+    _logSub?.cancel();
 
     // Dispose value notifiers
     _positionNotifier.dispose();
@@ -925,7 +945,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         kind: StatusRouletteKind.loading,
       );
 
-      if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+      if (PlayableSourceBridge.isArabicEmbed(_playableSources, i, source)) {
         debugPrint('[Player] Extracting arabic embed: ${source.title}');
         final result = await ArabicService.extractStreamUrl(source.url);
         if (result == null) {
@@ -959,7 +979,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await _configureMpvProperties();
 
         var openUrl = source.url;
-        if (_currentProvider == 'service111477') {
+        if (PlayableSourceBridge.requiresProxy(_playableSources, i, _currentProvider)) {
           if (!site111477_proxy.is111477ProxyRunning ||
               _current111477FileUrl != source.url) {
             if (site111477_proxy.is111477ProxyRunning) {
@@ -1395,7 +1415,25 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _errorSub?.cancel();
     _completedSub?.cancel();
     _tracksSub?.cancel();
+    _logSub?.cancel();
+    _logSub?.cancel();
     _autoTracksAppliedForSource = false;
+
+    _playbackRecovery = PlaybackRecovery(
+      player: _player,
+      onRetryNextSource: () {
+        final next = _currentFallbackSourceIndex + 1;
+        if (_currentSources != null && next < _currentSources!.length) {
+          _initPlayback(sourceStartIndex: next);
+        } else if (!_providerPinned) {
+          _autoFallbackToNextProvider();
+        }
+      },
+      onForceSoftwareDecode: () async {
+        if (_player.platform is! NativePlayer) return;
+        await (_player.platform as NativePlayer).setProperty('hwdec', 'no');
+      },
+    );
 
     // Position – drives seekbar & watch-history
     _positionSub = _player.stream.position.listen((pos) {
@@ -1500,6 +1538,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // Error recovery – log & surface to UI
     _errorSub = _player.stream.error.listen((err) {
       if (_disposed || err.isEmpty) return;
+      final currentUrl = _currentSources != null &&
+              _currentFallbackSourceIndex < _currentSources!.length
+          ? _currentSources![_currentFallbackSourceIndex].url
+          : null;
+      if (isVideoDecoderError(err)) {
+        debugPrint('🔴 Video decoder error: $err');
+        _playbackRecovery?.handlePlayerError(err, currentUrl: currentUrl);
+        return;
+      }
       if (isIgnorablePlayerError(err)) {
         if (err.contains('subtitle') ||
             err.toLowerCase().contains('sub-add') ||
@@ -1549,6 +1596,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         _showControls = true;
         _errorMessage = 'Playback failed on all sources.';
       });
+    });
+
+    _logSub = _player.stream.log.listen((l) {
+      if (_disposed) return;
+      _playbackRecovery?.handleMpvLog(l.text);
     });
 
     // Completion – could trigger next-episode logic here in the future

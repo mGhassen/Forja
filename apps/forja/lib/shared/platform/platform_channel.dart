@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -44,6 +45,7 @@ abstract final class PlatformChannel {
     ShellTokens.nativeAndroidTvDetected =
         profile == PlatformProfile.androidTv;
     await SettingsService().ensurePlatformDefaultsSeeded(profile);
+    unawaited(DeviceCapabilitiesService.detect(platformProfile: profile));
   }
 
   /// Android TV only — software WebView warm-up before first real WebView use.

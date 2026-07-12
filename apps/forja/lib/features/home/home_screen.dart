@@ -11,6 +11,7 @@ import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
@@ -2578,86 +2579,121 @@ Future<void> resumePlaybackFromHistory(
       final sourceId = item['sourceId'] as String;
       activeProvider = sourceId;
 
-      if (sourceId == 'webstreamr') {
-        debugPrint('[Resume] Using WebStreamrService for $title');
-        final webStreamr = WebStreamrService();
-        final imdbId = item['imdbId']?.toString() ?? '';
-        if (imdbId.isNotEmpty) {
-          final webStreamrSources = await webStreamr.getStreams(
-            imdbId: imdbId,
-            isMovie: season == null,
-            season: season,
-            episode: episode,
-          );
-          if (webStreamrSources.isNotEmpty) {
-            streamUrl = webStreamrSources.first.url;
-            if (context.mounted) {
-              await AppRouter.openPlayer(
-                context,
-                streamUrl: streamUrl!,
-                title: title,
-                movie: Movie(
-                  id: tmdbId,
-                  title: title,
-                  posterPath: posterPath,
-                  backdropPath: '',
-                  overview: '',
-                  releaseDate: '',
-                  voteAverage: 0,
-                  mediaType: season != null ? 'tv' : 'movie',
-                  genres: [],
-                  imdbId: imdbId,
-                ),
-                selectedSeason: season,
-                selectedEpisode: episode,
-                activeProvider: 'webstreamr',
-                startPosition: startPos,
-                sources: webStreamrSources,
-              );
-              return;
-            }
-          }
-        }
-      }
+      final movie = Movie(
+        id: tmdbId,
+        title: title,
+        posterPath: posterPath,
+        backdropPath: '',
+        overview: '',
+        releaseDate: '',
+        voteAverage: 0,
+        mediaType: season != null ? 'tv' : 'movie',
+        genres: [],
+        imdbId: item['imdbId']?.toString(),
+      );
 
-      final provider = StreamProviders.providers[sourceId];
-      if (provider == null) {
-        throw Exception('Provider $sourceId not available');
-      }
+      final resolver = StreamProviderResolver();
+      final providerOrder = await SettingsService().getStreamProviderOrder();
+      final providers = <String, dynamic>{
+        for (final k in providerOrder)
+          if (StreamProviders.providers.containsKey(k))
+            k: StreamProviders.providers[k]!,
+      };
 
-      if (PlatformInfo.isAndroidTv) {
-        debugPrint('[Resume] Android TV — Rust providers only (no WebView sniff)');
-        final movie = Movie(
-          id: tmdbId,
-          title: title,
-          posterPath: posterPath,
-          backdropPath: '',
-          overview: '',
-          releaseDate: '',
-          voteAverage: 0,
-          mediaType: season != null ? 'tv' : 'movie',
-          genres: [],
-          imdbId: item['imdbId']?.toString(),
-        );
+      StreamProviderResolveResult? result = await resolver.resolve(
+        key: sourceId,
+        movie: movie,
+        season: season ?? 1,
+        episode: episode ?? 1,
+        providers: providers,
+      );
+
+      if (result == null && PlatformInfo.isAndroidTv) {
+        debugPrint('[Resume] Android TV — resolver miss, trying TvStreamFallback');
         final fallback = await TvStreamFallback.resolve(
           movie: movie,
           season: season ?? 1,
           episode: episode ?? 1,
         );
-        streamUrl = fallback?.streamUrl;
-        if (fallback != null) activeProvider = 'webstreamr';
-      } else {
-        debugPrint(
-          '[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+        if (fallback != null) {
+          streamUrl = fallback.streamUrl;
+          activeProvider = 'webstreamr';
+          if (context.mounted) {
+            final ranked = await PlaybackSelection.rankAndDedupe(
+              sources: [
+                StreamSource(
+                  url: fallback.streamUrl,
+                  title: title,
+                  type: 'hls',
+                ),
+              ],
+              providerId: activeProvider,
+            );
+            await AppRouter.openPlayer(
+              context,
+              streamUrl: ranked.first.url,
+              title: title,
+              movie: movie,
+              selectedSeason: season,
+              selectedEpisode: episode,
+              activeProvider: activeProvider,
+              startPosition: startPos,
+              sources: ranked,
+            );
+            return;
+          }
+        }
+      } else if (result != null && result.streamUrl.isNotEmpty) {
+        final raw = result.sources?.isNotEmpty == true
+            ? result.sources!
+            : [
+                StreamSource(
+                  url: result.streamUrl,
+                  title: title,
+                  type: result.streamUrl.contains('.m3u8') ? 'hls' : 'video',
+                  headers: result.headers,
+                ),
+              ];
+        final ranked = await PlaybackSelection.rankAndDedupe(
+          sources: raw,
+          providerId: sourceId,
         );
-        final url = season != null && episode != null
-            ? provider['tv'](tmdbId, season, episode)
-            : provider['movie'](tmdbId);
-
-        final extractor = StreamExtractor();
-        final result =
-            await extractor.extract(url, timeout: const Duration(seconds: 20));
-        streamUrl = result?.url;
+        streamUrl = ranked.first.url;
+        if (context.mounted) {
+          await AppRouter.openPlayer(
+            context,
+            streamUrl: ranked.first.url,
+            audioUrl: result.audioUrl,
+            title: title,
+            movie: movie,
+            selectedSeason: season,
+            selectedEpisode: episode,
+            activeProvider: sourceId,
+            startPosition: startPos,
+            sources: ranked,
+            headers: result.headers,
+            externalSubtitles: result.subtitles,
+          );
+          return;
+        }
+      } else {
+        final provider = StreamProviders.providers[sourceId];
+        if (provider != null && !PlatformInfo.isAndroidTv) {
+          debugPrint(
+            '[Resume] Resolver miss — WebView fallback for $sourceId',
+          );
+          final url = season != null && episode != null
+              ? provider['tv'](tmdbId, season, episode)
+              : provider['movie'](tmdbId);
+          final extractor = StreamExtractor();
+          final extractResult = await extractor.extract(
+            url,
+            timeout: const Duration(seconds: 20),
+          );
+          streamUrl = extractResult?.url;
+        } else if (provider == null) {
+          throw Exception('Provider $sourceId not available');
+        }
       }
     } else if (method == 'amri') {
       activeProvider = 'AMRI';
@@ -2765,7 +2801,7 @@ Future<void> resumePlaybackFromHistory(
     if (streamUrl != null && context.mounted) {
       await AppRouter.openPlayer(
         context,
-        streamUrl: streamUrl!,
+        streamUrl: streamUrl,
         title: title,
         movie: Movie(
           id: tmdbId,

@@ -57,6 +57,24 @@ class SettingsService {
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
+  static const String _maxPlaybackHeightKey = 'max_playback_height';
+
+  /// User cap for stream scoring (0 = auto / no cap).
+  static const Map<String, int> maxPlaybackHeightOptions = {
+    'Auto': 0,
+    '4K (2160p)': 2160,
+    '1440p': 1440,
+    '1080p': 1080,
+    '720p': 720,
+    '480p': 480,
+  };
+
+  static String maxPlaybackHeightLabel(int height) {
+    for (final entry in maxPlaybackHeightOptions.entries) {
+      if (entry.value == height) return entry.key;
+    }
+    return height > 0 ? '${height}p' : 'Auto';
+  }
 
   static final ValueNotifier<bool> iptvEpgEnabledNotifier =
       ValueNotifier<bool>(true);
@@ -80,6 +98,12 @@ class SettingsService {
     await kvSetBool(_iptvEpgEnabledKey, enabled);
     iptvEpgEnabledNotifier.value = enabled;
   }
+
+  Future<int> getMaxPlaybackHeight() async =>
+      await kvGetInt(_maxPlaybackHeightKey, fallback: 0);
+
+  Future<void> setMaxPlaybackHeight(int height) async =>
+      kvSetInt(_maxPlaybackHeightKey, height);
 
   Future<double> getSubSize({bool isDesktop = false}) async =>
       kvGetDouble(

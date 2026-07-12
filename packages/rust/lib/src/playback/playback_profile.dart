@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../platform_profile.dart';
+import '../settings_service.dart';
+
 /// How Stremio `infoHash` streams are handled on this platform.
 enum StremioInfoHashPolicy {
   /// Local librqbit engine or debrid.
@@ -58,6 +61,9 @@ abstract final class PlatformPlayback {
 
   static PlaybackProfile _detect() {
     if (kIsWeb) return PlaybackProfile.constrained;
+    if (SettingsService.platformProfile == PlatformProfile.androidTv) {
+      return PlaybackProfile.constrained;
+    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.iOS:

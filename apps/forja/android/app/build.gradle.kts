@@ -47,6 +47,15 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(project.findProperty("FORJA_KEYSTORE_PATH") as String? ?: "release.keystore")
+            storePassword = project.findProperty("FORJA_KEYSTORE_PASSWORD") as String? ?: ""
+            keyAlias = project.findProperty("FORJA_KEY_ALIAS") as String? ?: "forja"
+            keyPassword = project.findProperty("FORJA_KEY_PASSWORD") as String? ?: ""
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -56,15 +65,6 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            storeFile = file(project.findProperty("FORJA_KEYSTORE_PATH") as String? ?: "release.keystore")
-            storePassword = project.findProperty("FORJA_KEYSTORE_PASSWORD") as String? ?: ""
-            keyAlias = project.findProperty("FORJA_KEY_ALIAS") as String? ?: "forja"
-            keyPassword = project.findProperty("FORJA_KEY_PASSWORD") as String? ?: ""
         }
     }
 

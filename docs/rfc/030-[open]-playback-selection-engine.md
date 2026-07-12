@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **12 / 16** acceptance (slice 1) · **0 / 8** slice 2 · **0 / 6** slice 3 |
-| **Current slice** | Model + scoring + TMDB unify + parallel resolve shipped in code |
+| **Progress** | **4 / 4** components · **14 / 16** acceptance (slice 1–2) · **0 / 8** slice 3 |
+| **Current slice** | Device cap + recovery + resume unify shipped |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,11 +47,11 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 9 | R30-A09 | Android MediaCodec probe populates HEVC/AV1/HDR flags | ✅ |
-| 10 | R30-A10 | Settings max-quality cap feeds scorer | ⬜ |
+| 10 | R30-A10 | Settings max-quality cap feeds scorer | ✅ |
 | 11 | R30-A11 | VOD player hw-decode → software fallback (IPTV pattern) | ✅ |
 | 12 | R30-A12 | Audio vs video decoder errors classified separately | ✅ |
 | 13 | R30-A13 | Failed URL blocklist across re-resolve | ✅ |
-| 14 | R30-A14 | Android TV constrained profile wired to `PlaybackProfile` | ⬜ |
+| 14 | R30-A14 | Android TV constrained profile wired to `PlaybackProfile` | ✅ |
 
 ---
 

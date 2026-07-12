@@ -51,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _preferredAudioLang = 'None';
   bool _avoidUnsupportedAudio = true;
   bool _iptvEpgEnabled = true;
+  String _maxPlaybackHeightLabel = 'Auto';
   List<Map<String, dynamic>> _installedAddons = [];
   bool _isInstalling = false;
   
@@ -222,6 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
     final iptvEpgEnabled = await _settings.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
+    final maxPlaybackHeight = await _settings.getMaxPlaybackHeight();
 
     if (mounted) {
       setState(() {
@@ -270,6 +272,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : 'None';
         _avoidUnsupportedAudio = avoidUnsupported;
         _iptvEpgEnabled = iptvEpgEnabled;
+        _maxPlaybackHeightLabel =
+            SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
       });
     }
     // Pull dynamic Nuvio scrapers (one entry per enabled scraper) so they
@@ -513,6 +517,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           (val) async {
                             await _settings.setIptvEpgEnabled(val);
                             setState(() => _iptvEpgEnabled = val);
+                          },
+                        ),
+                        _buildFocusableDropdown(
+                          'Max stream quality',
+                          'Cap automatic stream selection. Auto uses the best your device supports.',
+                          _maxPlaybackHeightLabel,
+                          SettingsService.maxPlaybackHeightOptions.keys.toList(),
+                          (val) async {
+                            if (val == null) return;
+                            final height =
+                                SettingsService.maxPlaybackHeightOptions[val] ??
+                                    0;
+                            await _settings.setMaxPlaybackHeight(height);
+                            setState(
+                              () => _maxPlaybackHeightLabel = val,
+                            );
                           },
                         ),
                       ],

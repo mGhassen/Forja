@@ -33,7 +33,7 @@
 |--:|----|-------------|--------|
 | 1 | I33-A01 | `isVideoDecoderError` vs `isAudioDecoderError` exported from utils | ✅ |
 | 2 | I33-A02 | `_forceSoftwareDecode` called once per session on hw fail | ✅ |
-| 3 | I33-A03 | ExoPlayer path receives equivalent recovery hook | ⬜ |
+| 3 | I33-A03 | ExoPlayer path receives equivalent recovery hook | ✅ |
 
 ---
 

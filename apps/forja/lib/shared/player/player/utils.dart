@@ -49,12 +49,36 @@ Future<void> waitForRouteTransition(BuildContext context) async {
   await done.future;
 }
 
-bool isIgnorablePlayerError(String err) {
-  if (err.isEmpty) return true;
-  if (err.contains('Error decoding audio') ||
-      err.contains('Failed to initialize a decoder for codec')) {
+bool isVideoDecoderError(String err) {
+  if (err.isEmpty) return false;
+  final lower = err.toLowerCase();
+  if (lower.contains('error decoding video')) return true;
+  if (lower.contains('video decoder') && lower.contains('fail')) return true;
+  if (lower.contains('hardware accelerator failed')) return true;
+  if (lower.contains('no suitable decoder') &&
+      !lower.contains('audio') &&
+      !lower.contains('subtitle')) {
     return true;
   }
+  if (lower.contains('failed to initialize a decoder') &&
+      !lower.contains('audio') &&
+      !lower.contains('subtitle')) {
+    return true;
+  }
+  return false;
+}
+
+bool isAudioDecoderError(String err) {
+  if (err.isEmpty) return false;
+  return err.contains('Error decoding audio') ||
+      (err.toLowerCase().contains('failed to initialize a decoder') &&
+          err.toLowerCase().contains('audio'));
+}
+
+bool isIgnorablePlayerError(String err) {
+  if (err.isEmpty) return true;
+  if (isAudioDecoderError(err)) return true;
+  if (isVideoDecoderError(err)) return false;
   final lower = err.toLowerCase();
   return lower.contains('subtitle') ||
       lower.contains('sub-add') ||

@@ -28,6 +28,8 @@ import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';
+import 'playback_recovery.dart';
+import 'playable_source_bridge.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
@@ -458,6 +460,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   StreamSubscription<String>? _errorSub;
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
+  StreamSubscription<PlayerLog>? _logSub;
+  PlaybackRecovery? _playbackRecovery;
   StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
   bool _androidMediaKitSafeMode = false;
@@ -500,6 +504,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   // ── Provider switching ────────────────────────────────────────────────────
   String? _currentProvider;
   List<StreamSource>? _currentSources;
+  List<PlayableSource>? _playableSources;
   String? _currentUrl;
   String? _activeMagnet;
   // ── HLS Quality Selector ─────────────────────────────────────────────────
@@ -565,6 +570,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _currentSources = widget.sources == null
         ? null
         : dedupeStreamSources(widget.sources!);
+    unawaited(_initPlayableSources());
     _currentUrl = widget.mediaPath;
     _activeMagnet = widget.magnetLink;
     if (_currentProvider == 'service111477' &&
@@ -728,6 +734,19 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     });
   }
 
+  Future<void> _initPlayableSources() async {
+    if (widget.sources == null || widget.sources!.isEmpty) return;
+    final ranked = await PlayableSourceBridge.rankWidgetSources(
+      sources: widget.sources,
+      providerId: _currentProvider,
+    );
+    if (_disposed || !mounted) return;
+    setState(() {
+      _playableSources = ranked;
+      _currentSources = playableSourcesToStreamSources(ranked);
+    });
+  }
+
   Future<void> _fetchIntroDbTimestamps() async {
     if (widget.movie == null) return;
     final data = await IntroDbService().getTimestamps(
@@ -782,6 +801,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _errorSub?.cancel();
     _completedSub?.cancel();
     _tracksSub?.cancel();
+    _logSub?.cancel();
     _pipSub?.cancel();
 
     _positionNotifier.dispose();
@@ -1005,7 +1025,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         kind: StatusRouletteKind.loading,
       );
 
-      if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+      if (PlayableSourceBridge.isArabicEmbed(_playableSources, i, source)) {
         debugPrint('[Player] Extracting arabic embed: ${source.title}');
         final result = await ArabicService.extractStreamUrl(source.url);
         if (result == null) {
@@ -1040,7 +1060,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         final srcHeaders = source.headers ?? widget.headers;
 
         var openUrl = source.url;
-        if (_currentProvider == 'service111477') {
+        if (PlayableSourceBridge.requiresProxy(_playableSources, i, _currentProvider)) {
           if (!site111477_proxy.is111477ProxyRunning ||
               _current111477FileUrl != source.url) {
             if (site111477_proxy.is111477ProxyRunning) {
@@ -1492,7 +1512,26 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _errorSub?.cancel();
     _completedSub?.cancel();
     _tracksSub?.cancel();
+    _logSub?.cancel();
     _autoTracksAppliedForSource = false;
+
+    if (widget.builtInEngine == BuiltInPlayerEngine.mediaKit) {
+      _playbackRecovery = PlaybackRecovery(
+        player: _player,
+        onRetryNextSource: () {
+          final next = _currentFallbackSourceIndex + 1;
+          if (_currentSources != null && next < _currentSources!.length) {
+            _initPlayback(sourceStartIndex: next);
+          } else if (!_providerPinned) {
+            _autoFallbackToNextProvider();
+          }
+        },
+        onForceSoftwareDecode: () async {
+          if (_player.platform is! NativePlayer) return;
+          await (_player.platform as NativePlayer).setProperty('hwdec', 'no');
+        },
+      );
+    }
 
     _positionSub = _player.stream.position.listen((pos) {
       if (_disposed) return;
@@ -1600,6 +1639,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // Surface only fatal errors — transient network blips are handled by mpv
     _errorSub = _player.stream.error.listen((err) {
       if (_disposed || err.isEmpty) return;
+      final currentUrl = _currentSources != null &&
+              _currentFallbackSourceIndex < _currentSources!.length
+          ? _currentSources![_currentFallbackSourceIndex].url
+          : null;
+      if (isVideoDecoderError(err)) {
+        debugPrint('🔴 [MobilePlayer] video decoder error: $err');
+        _playbackRecovery?.handlePlayerError(err, currentUrl: currentUrl);
+        return;
+      }
       if (isIgnorablePlayerError(err)) {
         if (err.toLowerCase().contains('subtitle') ||
             err.toLowerCase().contains('sub-add')) {
@@ -1648,6 +1696,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _showControls = true;
         _errorMessage = 'Playback failed on all sources.';
       });
+    });
+
+    _logSub = _player.stream.log.listen((l) {
+      if (_disposed) return;
+      _playbackRecovery?.handleMpvLog(l.text);
     });
 
     _completedSub = _player.stream.completed.listen((completed) {

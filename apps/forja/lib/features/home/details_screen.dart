@@ -8,6 +8,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
+import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -561,57 +562,64 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ? TvStreamFallback.prioritizeProviders(_orderedWebstreamingProviders)
         : _orderedWebstreamingProviders;
     var found = false;
-    var isFirst = true;
 
     try {
       for (final key in providers.keys) {
-        if (!mounted || _webstreamingOnlyExtractionCancelled) break;
-
         probeNotifier.value = [
           ...probeNotifier.value,
           StreamProviderProbe(
             id: key,
             label: _webstreamingProviderLabel(key),
             status: StreamProviderProbeStatus.trying,
-            isPreferred: isFirst,
+            isPreferred: probeNotifier.value.isEmpty,
           ),
         ];
-        isFirst = false;
+      }
 
-        final result = await _streamProviderResolver.resolve(
-          key: key,
-          movie: _movie,
-          season: _selectedSeason,
-          episode: _selectedEpisode,
-          providers: providers,
-          isCancelled: () => _webstreamingOnlyExtractionCancelled,
-        );
-
-        if (!mounted || _webstreamingOnlyExtractionCancelled) break;
-
-        if (result != null && result.streamUrl.isNotEmpty) {
-          found = true;
+      final hit = await PlaybackEngine.resolveParallel(
+        providers: providers,
+        movie: _movie,
+        season: _selectedSeason,
+        episode: _selectedEpisode,
+        resolver: _streamProviderResolver,
+        isCancelled: () => _webstreamingOnlyExtractionCancelled,
+        onProgress: (providerId, status) {
+          if (!mounted) return;
           probeNotifier.value = probeNotifier.value
               .map(
-                (probe) => probe.id == key
-                    ? probe.copyWith(status: StreamProviderProbeStatus.success)
+                (probe) => probe.id == providerId
+                    ? probe.copyWith(
+                        status: status == 'success'
+                            ? StreamProviderProbeStatus.success
+                            : status == 'failed'
+                                ? StreamProviderProbeStatus.failed
+                                : StreamProviderProbeStatus.trying,
+                      )
                     : probe,
               )
               .toList();
-          await Future<void>.delayed(const Duration(milliseconds: 250));
+        },
+      );
 
-          final sources = result.sources?.isNotEmpty == true
-              ? result.sources!
-              : [
-                  StreamSource(
-                    url: result.streamUrl,
-                    title: _webstreamingProviderLabel(key),
-                    type: 'hls',
-                    headers: result.headers,
-                  ),
-                ];
+      if (!mounted || _webstreamingOnlyExtractionCancelled) {
+        // cancelled
+      } else if (hit != null) {
+        found = true;
+        await Future<void>.delayed(const Duration(milliseconds: 250));
 
-          if (!mounted) break;
+        final sources = hit.streamSources;
+        final key = hit.providerId;
+        final result = StreamProviderResolveResult(
+          streamUrl: hit.streamUrl,
+          audioUrl: hit.audioUrl,
+          headers: hit.headers,
+          sources: sources,
+          subtitles: hit.subtitles,
+        );
+
+        if (!mounted) {
+          // skip
+        } else {
           setState(() {
             _webstreamingStreams = sources;
             _webstreamingActiveProviderId = key;
@@ -652,16 +660,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               startPosition: startPosition,
             );
           }
-          break;
         }
-
-        probeNotifier.value = probeNotifier.value
-            .map(
-              (probe) => probe.id == key
-                  ? probe.copyWith(status: StreamProviderProbeStatus.failed)
-                  : probe,
-            )
-            .toList();
       }
 
       if (!found && mounted && !_webstreamingOnlyExtractionCancelled) {
