@@ -1205,7 +1205,9 @@ class _BrowserViewState extends State<_BrowserView> {
       s = s.where((x) => x.categoryId == cat).toList();
     }
 
-    if (ctrl.activeSection == IptvSection.live) {
+    if (ctrl.activeSection == IptvSection.live &&
+        ctrl.liveOnly &&
+        ctrl.aliveStreamIds.isNotEmpty) {
       s = s.where((x) => ctrl.aliveStreamIds.contains(x.streamId)).toList();
     }
     return s;
@@ -1234,7 +1236,7 @@ class _BrowserViewState extends State<_BrowserView> {
                     : Icons.search_rounded,
                 color: _searchOpen ? IptvShellStyle.accent : null,
               ),
-              if (ctrl.activeSection == IptvSection.live)
+              if (ctrl.activeSection == IptvSection.live) ...[
                 IptvIconAction(
                   tooltip: 'Reload channels',
                   onPressed: ctrl.isLoading
@@ -1242,6 +1244,18 @@ class _BrowserViewState extends State<_BrowserView> {
                       : () => ctrl.openSection(IptvSection.live),
                   icon: Icons.refresh_rounded,
                 ),
+                IptvIconAction(
+                  tooltip: ctrl.isVerifyingAlive
+                      ? 'Stop alive check'
+                      : 'Re-check all streams',
+                  onPressed: ctrl.isVerifyingAlive
+                      ? ctrl.stopAliveCheck
+                      : ctrl.recheckAlive,
+                  icon: ctrl.isVerifyingAlive
+                      ? Icons.stop_circle_rounded
+                      : Icons.verified_outlined,
+                ),
+              ],
             ],
           ),
         if (!widget.embedded)
@@ -1504,7 +1518,7 @@ class _BrowserViewState extends State<_BrowserView> {
           ),
         );
       }
-      if (ctrl.activeSection == IptvSection.live) {
+      if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
         final msg = ctrl.isVerifyingAlive
             ? 'Checking streams…'
             : 'No alive streams found';
