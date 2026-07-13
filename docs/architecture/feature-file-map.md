@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 0 files in `features/` · player screens in `shared/player/` (~5.7k each) |
-| **Next action** | TV-scope orchestrator splits complete; IPTV widget parts landed — next: `iptv_catalog_workspace`, player `controls/` (R19-A05) |
+| **Next action** | Catalog workspace split done; next: `iptv_pt_player_screen` or player `controls/` (R19-A05) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -32,7 +32,7 @@
 
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
-| **iptv** | 28 | ~17,900 | `iptv_catalog_workspace.dart` (2,880) + `iptv_pt_widgets_browser.dart` (1,507) |
+| **iptv** | 32 | ~17,900 | `iptv_pt_widgets_browser.dart` (1,507) + `iptv_catalog_portal_form.dart` (940) |
 | **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.dart` |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
@@ -48,7 +48,7 @@
 
 ## Tier 1 — critical god files (&gt;3k lines)
 
-No `features/` screen orchestrators above 3k after Phase E PT routing split. Remaining pressure: `shared/player/` screens and `iptv_catalog_workspace.dart` (2,880).
+No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_pt_widgets_browser.dart` (1,507), `iptv_catalog_portal_form.dart` (940).
 
 ---
 
@@ -78,7 +78,7 @@ No `features/` screen orchestrators above 3k after Phase E PT routing split. Rem
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | Phase C done — see Tier 1c |
-| [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 2,880 | Sub-hub | In | Partial extract from PT screen |
+| [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvCatalogTopBar` + `IptvPortalPanel` in parts |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
 | [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 2,061 | Player | In | libmpv + channel guide overlays |
 | [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 1,783 | Data/Service | In | Non-UI god object |
@@ -124,13 +124,17 @@ Paths relative to `apps/forja/lib/features/`.
 | 240 | home | `home/details_screen_fetch.dart` | Details fetch mixin | In |
 | 231 | home | `home/details_screen_episodes.dart` | Details episodes mixin | In |
 | 1507 | iptv | `iptv/iptv/screens/iptv_pt_widgets_browser.dart` | Browser view + stream cards | In |
+| 942 | iptv | `iptv/iptv/screens/iptv_catalog_portal_form.dart` | Portal add/edit dialog | In |
 | 1457 | live_matches | `live_matches/live_matches_widgets.dart` | Cards + embed player | In |
 | 815 | iptv | `iptv/iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
+| 786 | iptv | `iptv/iptv/screens/iptv_catalog_top_bar.dart` | Catalog top bar + shelf tabs | In |
+| 736 | iptv | `iptv/iptv/screens/iptv_catalog_portal_widgets.dart` | Portal dialog fields/tiles | In |
 | 712 | live_matches | `live_matches/live_matches_build.dart` | Build mixin | In |
 | 705 | live_matches | `live_matches/live_matches_models.dart` | Models + API | In |
 | 570 | iptv | `iptv/iptv/screens/iptv_pt_widgets_portal.dart` | Portal list (legacy) | In |
+| 358 | iptv | `iptv/iptv/screens/iptv_catalog_portal_panel.dart` | Portal side panel | In |
 | 360 | live_matches | `live_matches/live_matches_data.dart` | Data mixin | In |
-| 2880 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Sub-hub | In |
+| 66 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Library root | In |
 | 2401 | music | `music/music_screen.dart` | Orchestrator | Out |
 | 2061 | iptv | `iptv/iptv/screens/iptv_pt_player_screen.dart` | Player | In |
 | 191 | iptv | `iptv/iptv/screens/iptv_pt_widgets_episode.dart` | Episode list | In |
@@ -366,7 +370,11 @@ features/iptv/iptv/
   screens/iptv_pt_screen.dart       # 152 — routing only (Phase E done)
   screens/iptv_pt_catalog_shell.dart
   screens/iptv_pt_widgets_*.dart    # browser, channels, episode, portal, section, common
-  screens/iptv_catalog_workspace.dart
+  screens/iptv_catalog_workspace.dart   # 67 — shelf constants + part directives
+  screens/iptv_catalog_top_bar.dart
+  screens/iptv_catalog_portal_panel.dart
+  screens/iptv_catalog_portal_form.dart
+  screens/iptv_catalog_portal_widgets.dart
   controller/iptv_controller.dart
 ```
 
@@ -454,7 +462,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV PT routing split complete (`iptv_pt_screen.dart` 152-line orchestrator). Remaining: `iptv_catalog_workspace` trim, `iptv_controller`, player `controls/` (R19-A05).
+Catalog workspace split complete (`iptv_catalog_workspace.dart` 67-line library root). Remaining: `iptv_pt_player_screen`, `iptv_controller`, player `controls/` (R19-A05).
 
 ---
 

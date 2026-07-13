@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **2 / 5** acceptance · home/settings splits shipped |
-| **Current slice** | IPTV PT routing split done (152-line orchestrator); TV-scope tab orchestrators complete |
+| **Current slice** | IPTV catalog workspace split done (67-line library root); player `controls/` (R19-A05) remains |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
