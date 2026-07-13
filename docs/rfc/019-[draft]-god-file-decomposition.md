@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 5** acceptance · home/settings splits shipped; player screen god-files split |
-| **Current slice** | `shared/player/player/*` orchestrators done; `player_chrome_overlay.dart` + `trailer_player_screen.dart` still &gt;1.2k (R19-A01) |
+| **Progress** | **4 / 5** acceptance · home/settings/player splits shipped |
+| **Current slice** | Remaining: player `controls/` extraction slice (R19-A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -19,8 +19,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R19-A01 | No file under `features/` or `shared/player/` exceeds ~1200 lines | ⬜ |
-| 2 | R19-A02 | `features/player/` deleted | ⬜ |
+| 1 | R19-A01 | No file under `features/` or `shared/player/` exceeds ~1200 lines | ✅ |
+| 2 | R19-A02 | `features/player/` deleted | ✅ |
 | 3 | R19-A03 | Inline `_HoverScale` / `_MovieSection` removed from Home where shared widget fits | ✅ |
 | 4 | R19-A04 | Settings domains in separate files | ✅ |
 | 5 | R19-A05 | Player `controls/` folder with subtitle + quality extracted | ⬜ |
