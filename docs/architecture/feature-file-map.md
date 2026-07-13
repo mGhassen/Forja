@@ -1,0 +1,400 @@
+# Feature file map
+
+**Status:** living doc  
+**Area:** `apps/forja/lib/features/`  
+**Line counts:** `wc -l` on repo HEAD — re-run when splits land  
+**Related:** [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) · [Architecture README](README.md)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
+| **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
+| **Tier 1 (&gt;3k)** | 5 files · ~20.5k LOC |
+| **Next action** | Pick Phase A–E below — [1.0.1](../backlog/1.0.1-[open].md) defers code splits until chosen |
+
+**Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
+
+---
+
+## Summary
+
+| Tier | Lines | Files | Action |
+|------|------:|------:|--------|
+| **Tier 1** | &gt;3,000 | 5 | Split urgently — blocks review and TV polish |
+| **Tier 2** | 1,500–3,000 | 8 | Plan extractions; some already partial (IPTV workspace) |
+| **Tier 3** | &lt;1,500 | 79 | Maintain; extract only when touching heavily |
+
+**71% of feature LOC** lives in the 30 files over 800 lines.
+
+### Feature folder rollup
+
+| Feature | Files | LOC | Largest file |
+|---------|------:|----:|--------------|
+| **iptv** | 21 | ~17,900 | `iptv_pt_screen.dart` (3,563) |
+| **home** | 4 | ~10,000 | `details_screen.dart` (4,509) |
+| **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
+| **settings** | 4 | ~4,300 | `settings_screen.dart` (3,844) |
+| **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
+| **live_matches** | 1 | 3,539 | `live_matches_screen.dart` |
+| **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
+| **anime_arabic** | 6 | ~3,900 | `anime_arabic_screen.dart` (1,313) |
+| **search** | 1 | 1,986 | `search_screen.dart` |
+| **asian_drama** | 7 | ~3,500 | `asian_drama_screen.dart` (781) |
+| *(others)* | 32 | ~15,400 | see inventory |
+
+---
+
+## Tier 1 — critical god files (&gt;3k lines)
+
+| File | Lines | Role | TV scope | Root cause |
+|------|------:|------|----------|------------|
+| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4,509 | Details | In (from Home) | Single `_DetailsScreenState` (~4,400 lines); 3 shared widgets built but **not wired** |
+| [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 4,091 | Orchestrator | In | `_HomeScreenState` ~2,176 lines + 9 inline section widgets; duplicates `HeroTitle` |
+| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 3,844 | Orchestrator | In | All settings domains in one `_SettingsScreenState` |
+| [`iptv/iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3,563 | Orchestrator | In | 6 sub-views + routing; 29 private widgets |
+| [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 3,539 | Orchestrator | In | Sports models + channel UI + embed player in one file |
+
+---
+
+## Tier 2 — large splittable (1.5k–3k lines)
+
+| File | Lines | Role | TV scope | Notes |
+|------|------:|------|----------|-------|
+| [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 2,880 | Sub-hub | In | Partial extract from PT screen |
+| [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
+| [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 2,061 | Player | In | libmpv + channel guide overlays |
+| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 1,986 | Orchestrator | In | Multi-source search + TV browse |
+| [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 1,783 | Data/Service | In | Non-UI god object |
+| [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
+| [`anime/catalog/anime_service.dart`](../../apps/forja/lib/features/anime/catalog/anime_service.dart) | 1,648 | Data/Service | In | Catalog backend |
+| [`downloader/media_downloader_screen.dart`](../../apps/forja/lib/features/downloader/media_downloader_screen.dart) | 1,536 | Orchestrator | Out | |
+
+---
+
+## Tier 3 — TV-in-scope tabs (healthy enough)
+
+These tabs are in [TV scope](../../.cursor/rules/forja-tv-scope.mdc) and under ~1.5k for the main screen — maintain, do not emergency-split:
+
+| File | Lines | Notes |
+|------|------:|-------|
+| [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 1,099 | Uses `hub/` patterns |
+| [`asian_drama/asian_drama_screen.dart`](../../apps/forja/lib/features/asian_drama/asian_drama_screen.dart) | 781 | Uses `HubCinematicHero` |
+| [`my_list/lists_screen.dart`](../../apps/forja/lib/features/my_list/lists_screen.dart) | 763 | |
+| [`my_list/my_list_screen.dart`](../../apps/forja/lib/features/my_list/my_list_screen.dart) | 379 | |
+
+---
+
+## Full inventory (92 files, sorted by lines)
+
+Paths relative to `apps/forja/lib/features/`.
+
+| Lines | Feature | File | Role | TV scope |
+|------:|---------|------|------|----------|
+| 4509 | home | `home/details_screen.dart` | Details | In |
+| 4091 | home | `home/home_screen.dart` | Orchestrator | In |
+| 3844 | settings | `settings/settings_screen.dart` | Orchestrator | In |
+| 3563 | iptv | `iptv/iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
+| 3539 | live_matches | `live_matches/live_matches_screen.dart` | Orchestrator | In |
+| 2880 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Sub-hub | In |
+| 2401 | music | `music/music_screen.dart` | Orchestrator | Out |
+| 2061 | iptv | `iptv/iptv/screens/iptv_pt_player_screen.dart` | Player | In |
+| 1986 | search | `search/search_screen.dart` | Orchestrator | In |
+| 1783 | iptv | `iptv/iptv/controller/iptv_controller.dart` | Data/Service | In |
+| 1697 | jellyfin | `jellyfin/jellyfin_screen.dart` | Orchestrator | Out |
+| 1648 | anime | `anime/catalog/anime_service.dart` | Data/Service | In |
+| 1536 | downloader | `downloader/media_downloader_screen.dart` | Orchestrator | Out |
+| 1313 | anime_arabic | `anime_arabic/anime_arabic_screen.dart` | Orchestrator | Out |
+| 1301 | jellyfin | `jellyfin/jellyfin_details_screen.dart` | Details | Out |
+| 1292 | home | `home/stremio_catalog_screen.dart` | Sub-hub | In |
+| 1285 | anime | `anime/anime_player_screen.dart` | Player | In |
+| 1271 | jellyfin | `jellyfin/catalog/jellyfin_service.dart` | Data/Service | Out |
+| 1196 | iptv | `iptv/iptv/data/iptv_network.dart` | Data/Service | In |
+| 1153 | books | `books/book_reader_screen.dart` | Player | Out |
+| 1127 | iptv | `iptv/iptv/m3u/m3u_playlists_screen.dart` | Sub-hub | In |
+| 1099 | anime | `anime/anime_screen.dart` | Orchestrator | In |
+| 1040 | audiobooks | `audiobooks/catalog/audiobook_service.dart` | Data/Service | Out |
+| 1026 | iptv | `iptv/iptv/channel_guide/iptv_channel_guide_panel.dart` | UI Panel | In |
+| 920 | music | `music/music_player_screen.dart` | Player | Out |
+| 888 | similar | `similar/similar_results_screen.dart` | Sub-hub | Out |
+| 857 | manga | `manga/manga_screen.dart` | Orchestrator | Out |
+| 846 | books | `books/books_screen.dart` | Orchestrator | Out |
+| 787 | audiobooks | `audiobooks/generate_audiobook_screen.dart` | Sub-hub | Out |
+| 781 | asian_drama | `asian_drama/asian_drama_screen.dart` | Orchestrator | In |
+| 780 | iptv | `iptv/iptv/iptv_tv_focus.dart` | UI Panel | In |
+| 771 | discover | `discover/discover_screen.dart` | Orchestrator | Out |
+| 763 | my_list | `my_list/lists_screen.dart` | Sub-hub | In |
+| 721 | arabic | `arabic/arabic_screen.dart` | Orchestrator | Out |
+| 717 | anime_arabic | `anime_arabic/anime_arabic_details_screen.dart` | Details | Out |
+| 715 | similar | `similar/similar_hub_screen.dart` | Orchestrator | Out |
+| 663 | asian_drama | `asian_drama/catalog/kisskh_service.dart` | Data/Service | In |
+| 640 | asian_drama | `asian_drama/asian_drama_explore_screen.dart` | Sub-hub | In |
+| 634 | anime_arabic | `anime_arabic/catalog/anime_arabic_extractor.dart` | Data/Service | Out |
+| 617 | manga | `manga/manga_reader_screen.dart` | Player | Out |
+| 610 | audiobooks | `audiobooks/audiobook_screen.dart` | Orchestrator | Out |
+| 608 | anime_arabic | `anime_arabic/catalog/anime_arabic_service.dart` | Data/Service | Out |
+| 601 | audiobooks | `audiobooks/audiobook_player_screen.dart` | Player | Out |
+| 598 | anime | `anime/anime_discover_screen.dart` | Sub-hub | In |
+| 569 | comics | `comics/comics_screen.dart` | Orchestrator | Out |
+| 532 | comics | `comics/comic_reader_screen.dart` | Player | Out |
+| 526 | iptv | `iptv/iptv/channel_guide/iptv_guide_epg.dart` | UI Panel | In |
+| 521 | iptv | `iptv/iptv/channel_guide/iptv_channel_search_overlay.dart` | UI Panel | In |
+| 503 | asian_drama | `asian_drama/catalog/kisskh_extractor.dart` | Data/Service | In |
+| 498 | manga | `manga/manga_details_screen.dart` | Details | Out |
+| 486 | asian_drama | `asian_drama/asian_drama_player_screen.dart` | Player | In |
+| 482 | arabic | `arabic/arabic_details_screen.dart` | Details | Out |
+| 479 | comics | `comics/catalog/comics_service.dart` | Data/Service | Out |
+| 478 | anime | `anime/anime_details_screen.dart` | Details | In |
+| 458 | iptv | `iptv/iptv/data/hardcoded_channels.dart` | Data/Service | In |
+| 453 | manga | `manga/catalog/manga_service.dart` | Data/Service | Out |
+| 435 | audiobooks | `audiobooks/audiobook_downloads_screen.dart` | Sub-hub | Out |
+| 416 | asian_drama | `asian_drama/asian_drama_details_screen.dart` | Details | In |
+| 382 | anime | `anime/catalog/miruro_extractor.dart` | Data/Service | In |
+| 380 | magnet | `magnet/magnet_player_screen.dart` | Player | Out |
+| 379 | my_list | `my_list/my_list_screen.dart` | Orchestrator | In |
+| 379 | anime | `anime/catalog/allanime_extractor.dart` | Data/Service | In |
+| 371 | comics | `comics/comic_details_screen.dart` | Details | Out |
+| 351 | comics | `comics/catalog/comic_page_extractor.dart` | Data/Service | Out |
+| 351 | anime | `anime/catalog/watchhentai_extractor.dart` | Data/Service | In |
+| 333 | anime_arabic | `anime_arabic/anime_arabic_player_screen.dart` | Player | Out |
+| 307 | anime | `anime/catalog/hentaini_extractor.dart` | Data/Service | In |
+| 288 | audiobooks | `audiobooks/catalog/audiobook_scrapers.dart` | Data/Service | Out |
+| 285 | anime_arabic | `anime_arabic/anime_arabic_search_screen.dart` | Sub-hub | Out |
+| 265 | iptv | `iptv/iptv/data/iptv_portal_share.dart` | Data/Service | In |
+| 257 | iptv | `iptv/iptv/data/storage.dart` | Data/Service | In |
+| 245 | books | `books/catalog/books_service.dart` | Data/Service | Out |
+| 242 | iptv | `iptv/iptv/channel_guide/iptv_player_stats_panel.dart` | UI Panel | In |
+| 222 | settings | `settings/widgets/provider_priority_table.dart` | UI Panel | In |
+| 215 | settings | `settings/webstreamr_settings_screen.dart` | Sub-hub | In |
+| 206 | anime | `anime/catalog/animerealms_extractor.dart` | Data/Service | In |
+| 194 | anime | `anime/catalog/miruro_pipe_session.dart` | Data/Service | In |
+| 193 | arabic | `arabic/arabic_player_screen.dart` | Player | Out |
+| 189 | comics | `comics/catalog/readcomicsonline_scraper.dart` | Data/Service | Out |
+| 169 | iptv | `iptv/iptv/channel_guide/iptv_channel_guide.dart` | UI Panel | In |
+| 148 | iptv | `iptv/iptv/data/models.dart` | Data/Service | In |
+| 102 | anime | `anime/catalog/anime_stream_providers.dart` | Data/Service | In |
+| 92 | iptv | `iptv/iptv/m3u/m3u_models.dart` | Data/Service | In |
+| 80 | iptv | `iptv/iptv/m3u/m3u_store.dart` | Data/Service | In |
+| 71 | iptv | `iptv/iptv/iptv_shell_style.dart` | Support | In |
+| 57 | asian_drama | `asian_drama/asian_drama_search_screen.dart` | Sub-hub | In |
+| 56 | anime | `anime/anime_search_screen.dart` | Sub-hub | In |
+| 43 | iptv | `iptv/iptv/data/pastesh_decryptor.dart` | Data/Service | In |
+| 42 | home | `home/home_genre_categories.dart` | Support | In |
+| 40 | settings | `settings/splash_preview_screen.dart` | Sub-hub | In |
+| 22 | iptv | `iptv/iptv/m3u/m3u_parser.dart` | Data/Service | In |
+| 19 | anime | `anime/catalog/anime_provider_map.dart` | Support | In |
+
+**Role legend:** Orchestrator = shell tab / main hub · Sub-hub = discover/explore within feature · Details · Player · Data/Service · UI Panel · Support
+
+**TV scope:** **In** = supported Android TV tab or direct sub-route per [forja-tv-scope.mdc](../../.cursor/rules/forja-tv-scope.mdc) · **Out** = not in TV QA scope unless expanded
+
+---
+
+## Target architecture
+
+### Three layers
+
+```mermaid
+flowchart TB
+  subgraph shell [ShellLayer]
+    ShellScope[ShellScope]
+    ShellMetrics[ShellMetrics]
+    ShellInputPolicy[ShellInputPolicy]
+    TvCoord[ShellTvFocusCoordinator]
+  end
+  subgraph shared [SharedPresentation]
+    hero[shared/widgets/hero]
+    media[shared/widgets/media_details]
+    hub[shared/widgets/hub]
+    cards[home_movie_card row]
+  end
+  subgraph features [FeatureModules]
+    orch[feature_screen orchestrator]
+    widgets[feature/widgets]
+    catalog[catalog services]
+  end
+  shell --> shared
+  shared --> features
+  features --> shell
+```
+
+| Layer | Location | Owns | Does NOT own |
+|-------|----------|------|--------------|
+| Shell / profile | `shared/design/`, `shell/adapters/`, `shared/tv/` | Metrics, input policy, D-pad coordinator | Feature fetching |
+| Shared presentation | `shared/widgets/` | Reusable UI + callbacks | State machines, routing |
+| Feature modules | `features/<name>/` | Orchestrator &lt;800 lines, `widgets/`, `catalog/` | Cross-feature UI clones |
+
+### Canonical feature folder
+
+```
+features/<feature>/
+  <feature>_screen.dart       # orchestrator — fetch, compose, navigate
+  <feature>_details_screen.dart
+  widgets/                    # feature-private sections
+  catalog/                    # services, extractors
+  controller/                 # state machines (IPTV pattern)
+```
+
+### Home target ([RFC-019 R19-A03](../rfc/019-[draft]-god-file-decomposition.md))
+
+```
+features/home/
+  home_screen.dart              # <800 lines
+  home_hero.dart
+  home_rails.dart
+  home_stremio_section.dart
+  widgets/
+    continue_watching_section.dart
+    mood_section.dart
+    because_you_watched_section.dart
+```
+
+| Inline class (today) | Move to |
+|----------------------|---------|
+| `_HomeScreenState` hero block | `home_hero.dart` |
+| `_MovieSection`, `_StaticMovieSection` | `home_rails.dart` or thin `HomeMovieRow` wrapper |
+| `_ContinueWatchingSection`, `_HistoryCard` | `widgets/continue_watching_section.dart` |
+| `_StremioCatalogSection`, `_StremioCatalogCard` | `home_stremio_section.dart` |
+| `_MoodSection`, mood circles | `widgets/mood_section.dart` |
+| `_BecauseYouWatchedSection` | `widgets/because_you_watched_section.dart` |
+| `_HeroTitleSlot` | Delete — use `shared/widgets/hero/hero_title.dart` |
+
+### Details target ([RFC-019](../rfc/019-[draft]-god-file-decomposition.md) + [RFC-026](../rfc/026-[draft]-media-details-player-ux.md))
+
+```
+features/home/details/          # later → features/media/details/ (R26-C03)
+  details_screen.dart           # <800 lines — compose only
+  details_torrents.dart
+  details_stremio.dart
+  details_episodes.dart
+  details_webstreaming.dart
+```
+
+**Built but not wired** in `details_screen.dart`:
+
+| Widget | Path | Replaces |
+|--------|------|----------|
+| `MediaDetailsScrollPage` | `shared/widgets/media_details/media_details_scroll_page.dart` | `_buildScrollLayout` |
+| `MediaDetailsRecommendationsSection` | `shared/widgets/media_details/media_details_recommendations_section.dart` | `_buildRecommendationsSection` |
+| `MediaDetailsTrackerHandlers` | `shared/widgets/media_details/media_details_tracker_handlers.dart` | ~900 lines Trakt/Simkl duplicate |
+
+### Settings target ([RFC-019 R19-A04](../rfc/019-[draft]-god-file-decomposition.md))
+
+```
+features/settings/
+  settings_screen.dart          # ListView router + search
+  sections/
+    playback_settings.dart
+    streaming_settings.dart
+    stremio_settings.dart
+    accounts_settings.dart
+    iptv_settings.dart
+    about_settings.dart
+```
+
+### IPTV follow-on (not in RFC-019)
+
+```
+features/iptv/iptv/
+  screens/iptv_pt_screen.dart       # <800 — routing only
+  screens/iptv_catalog_workspace.dart
+  widgets/                          # portal list, shelves, overlays
+  controller/iptv_controller.dart
+```
+
+### Player ([RFC-019 R19-A05](../rfc/019-[draft]-god-file-decomposition.md))
+
+| File | Lines (current) | Target |
+|------|----------------:|--------|
+| `shared/player/player/mobile_player_screen.dart` | 5,912 | Slim + `controls/` extract |
+| `shared/player/player/desktop_player_screen.dart` | 5,728 | Same |
+
+---
+
+## Extraction rules
+
+From [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) and [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc):
+
+1. **One PR per split** — no mega-refactor
+2. **No behavior change** — pure move/extract
+3. **Shared widgets** only when used in 2+ features (Home + details → `hero/`; torrent + streaming → `media_details/`)
+4. **Feature-only** sections → `features/<x>/widgets/`
+5. **TV policy-driven** — `ShellScope.inputPolicyOf` / `shellFocusableTap`; never `ShellTokens.isTvLayout` in widgets
+6. **Line budget** — no file under `features/` or `shared/player/` exceeds ~1,200 lines (R19-A01)
+7. **Verify** — `flutter analyze` + smoke on affected tab + one unrelated tab
+
+---
+
+## Phased roadmap (code — pick one to start)
+
+### Phase 0 — documentation (this file)
+
+Map and targets only. No Dart changes.
+
+### Phase A — details quick wins (~3 PRs, lowest risk)
+
+| PR | Action | Est. lines removed |
+|----|--------|-------------------:|
+| A1 | Wire `MediaDetailsScrollPage` | ~110 |
+| A2 | Wire `MediaDetailsRecommendationsSection` | ~80 |
+| A3 | Adopt `MediaDetailsTrackerHandlers` | ~900 |
+
+Target: `details_screen.dart` 4,509 → ~3,400 without folder moves.
+
+### Phase B — home decomposition (~5 PRs)
+
+| PR | Extract | Target |
+|----|---------|--------|
+| B1 | `_HeroTitleSlot` → `HeroTitle` | inline delete |
+| B2 | Hero block | `home_hero.dart` |
+| B3 | Movie sections | `home_rails.dart` |
+| B4 | Continue watching | `widgets/continue_watching_section.dart` |
+| B5 | Mood, Stremio, Because-you-watched | `widgets/`, `home_stremio_section.dart` |
+
+Target: `home_screen.dart` &lt;800 lines orchestrator.
+
+### Phase C — settings sections (~4–6 PRs)
+
+One PR per `sections/*.dart` domain.
+
+### Phase D — details logic splits + media move (~4 PRs)
+
+`details_torrents.dart`, `details_stremio.dart`, `details_episodes.dart`, `details_webstreaming.dart`; then RFC-026 R26-C03 → `features/media/details/`.
+
+### Phase E — IPTV, player, remainder
+
+IPTV PT widget extraction, `iptv_controller` trim, player `controls/` (R19-A05), `live_matches_screen`, `search_screen` as needed.
+
+---
+
+## Decision guide
+
+| If your priority is… | Start with | Why |
+|------------------------|------------|-----|
+| Lowest risk / existing code | **Phase A** | Widgets already written; no folder moves |
+| Home TV polish | **Phase B** | Most TV shell refs in `home_screen.dart` |
+| Fast file-count win | **Phase C** | Settings lowest coupling |
+| RFC-026 / media module unblock | **Phase D** | Required before `features/media/` move |
+| IPTV maintainability | **Phase E** | Largest feature folder (~17.9k LOC) |
+
+---
+
+## Backlog alignment
+
+| Version | God-file work |
+|---------|---------------|
+| [1.0.1](../backlog/1.0.1-[open].md) | B101-S01, S03 deferred; UX widgets shipped (RFC-026) |
+| [1.0.2](../backlog/1.0.2-[draft].md) | B102-S05 — home + settings remainder (RFC-019) |
+
+When a split PR lands: update RFC-019 acceptance rows, backlog shipped rows, and re-run line counts in this doc.
+
+---
+
+## Related
+
+- [Architecture README](README.md)
+- [RFC-019](../rfc/019-[draft]-god-file-decomposition.md)
+- [RFC-026](../rfc/026-[draft]-media-details-player-ux.md)
+- [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md)
+- [Features user guide](../features/README.md)

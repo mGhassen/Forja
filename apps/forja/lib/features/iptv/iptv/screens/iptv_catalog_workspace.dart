@@ -28,11 +28,10 @@ class _IptvSectionShelfSpec {
   final IconData icon;
   final List<Color> colors;
 
-  /// Shelf tabs use the vibrant hue first — Series tiles list gray→green but
-  /// the pill must not lead with the dark stop.
-  List<Color> get shelfGradientColors => section == IptvSection.series
-      ? [colors[1], colors[0]]
-      : colors;
+  /// Compact shelf pill — solid vibrant accent (tile gradients are too dark).
+  Color get shelfAccent => section == IptvSection.series
+      ? colors.last
+      : colors.first;
 }
 
 const _kSectionShelf = <_IptvSectionShelfSpec>[
@@ -671,7 +670,7 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — section gradient when selected only.
+/// Shelf tab — solid section accent when selected.
 /// Hover/focus expands right to reveal a catalog reload control.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
@@ -732,20 +731,12 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
-          gradient: showColor
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: widget.spec.shelfGradientColors,
-                )
-              : null,
-          color: showColor ? null : Colors.transparent,
+          color: showColor ? widget.spec.shelfAccent : Colors.transparent,
           borderRadius: _radius,
           boxShadow: widget.selected && showColor
               ? [
                   BoxShadow(
-                    color: widget.spec.shelfGradientColors.first
-                        .withValues(alpha: 0.35),
+                    color: widget.spec.shelfAccent.withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

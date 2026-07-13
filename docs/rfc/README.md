@@ -56,6 +56,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 
 ## Related
 
+- [Architecture](../architecture/README.md) — [feature file map](../architecture/feature-file-map.md) (god-file inventory + extraction phases)
 - [Issues](../issues/README.md)
 - [Backlog](../backlog/README.md)
 - [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)

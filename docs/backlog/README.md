@@ -148,6 +148,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 ## Related
 
+- [Architecture](../architecture/README.md) — [feature file map](../architecture/feature-file-map.md)
 - [RFC index](../rfc/README.md)
 - [Issues](../issues/README.md)
 - [Migration](../migration/README.md)

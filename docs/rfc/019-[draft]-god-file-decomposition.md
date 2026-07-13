@@ -34,13 +34,17 @@ Split oversized screens into focused files without behavior changes. Improves re
 
 ## Problem
 
+Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture/feature-file-map.md) for full inventory.
+
 | File | Lines (approx.) | Risk |
 |------|-----------------|------|
-| [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 4874 | Any edit can break rails, Stremio, Trakt |
-| [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 3813 | Torrent + Stremio + episodes intertwined |
-| [`settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 3125 | All domains in one widget |
-| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 4322 | Overlay work blocked |
-| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 4150 | Same |
+| [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4509 | Single `_DetailsScreenState` (~4,400 lines); torrent + Stremio + episodes intertwined; [`MediaDetailsScrollPage`](../../apps/forja/lib/shared/widgets/media_details/media_details_scroll_page.dart), [`MediaDetailsRecommendationsSection`](../../apps/forja/lib/shared/widgets/media_details/media_details_recommendations_section.dart), [`MediaDetailsTrackerHandlers`](../../apps/forja/lib/shared/widgets/media_details/media_details_tracker_handlers.dart) built but **not wired** |
+| [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 4091 | `_HomeScreenState` ~2,176 lines + 9 inline section widgets; duplicates `HeroTitle` |
+| [`settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 3844 | All domains in one `_SettingsScreenState` |
+| [`iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3563 | 6 sub-views + routing; 29 private widgets (IPTV — follow-on, not RFC-019 core) |
+| [`live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 3539 | Models + channel UI + embed player in one file (follow-on) |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 5912 | Overlay work blocked (R19-A05) |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 5728 | Same |
 
 ## Rules
 
@@ -125,4 +129,5 @@ After each PR:
 
 ## Related
 
-RFC-020 (media folder move), RFC-003 (player overlay), RFC-001 (feature boundaries), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (optional `home_hero.dart` extract), [RFC-026](026-[draft]-media-details-player-ux.md) (1.0.1 UX rework — details + player splits required)
+- [Feature file map](../architecture/feature-file-map.md) — full `features/` inventory, tier classification, Phases A–E roadmap
+- RFC-020 (media folder move), RFC-003 (player overlay), RFC-001 (feature boundaries), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (optional `home_hero.dart` extract), [RFC-026](026-[draft]-media-details-player-ux.md) (1.0.1 UX rework — details + player splits required)
