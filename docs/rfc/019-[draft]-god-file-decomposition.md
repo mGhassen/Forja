@@ -40,7 +40,7 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 |------|-----------------|------|
 | [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4061 | Single `_DetailsScreenState`; Phase A wired `MediaDetailsScrollPage`, `MediaDetailsRecommendationsSection`, `MediaDetailsTrackerHandlers` |
 | [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 4091 | `_HomeScreenState` ~2,176 lines + 9 inline section widgets; duplicates `HeroTitle` |
-| [`settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 3844 | All domains in one `_SettingsScreenState` |
+| [`settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 2947 | Phase C — accounts/about in `sections/`; playback/providers/indexers remain |
 | [`iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3563 | 6 sub-views + routing; 29 private widgets (IPTV — follow-on, not RFC-019 core) |
 | [`live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 3539 | Models + channel UI + embed player in one file (follow-on) |
 | [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 5912 | Overlay work blocked (R19-A05) |

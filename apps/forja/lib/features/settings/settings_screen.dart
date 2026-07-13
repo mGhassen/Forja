@@ -10,17 +10,17 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
-import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/services/app_updater_service.dart';
-import 'package:forja/shared/widgets/update_dialog.dart';
+import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
-import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/features/settings/sections/settings_about_panel.dart';
+import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
+import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
+import 'package:forja/features/settings/sections/settings_trakt_panel.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -87,35 +87,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _rdController = TextEditingController();
   bool _isVerifyingRD = false;
 
-  // Trakt
-  final TraktService _trakt = TraktService();
-  bool _isTraktLoggedIn = false;
-  String? _traktUserCode;
-  String? _traktVerifyUrl;
-  Timer? _traktPollTimer;
-  bool _isTraktSyncing = false;
-  String? _traktUsername;
-  Map<String, dynamic>? _traktStats;
-
-  // Simkl
-  final SimklService _simkl = SimklService();
-  bool _isSimklLoggedIn = false;
-  String? _simklUserCode;
-  String? _simklVerifyUrl;
-  Timer? _simklPollTimer;
-  bool _isSimklSyncing = false;
-  String? _simklUsername;
-
-  // MDBlist
-  final MdblistService _mdblist = MdblistService();
-  bool _isMdblistConfigured = false;
-  final TextEditingController _mdblistApiKeyController =
-      TextEditingController();
-  String? _mdblistUsername;
-
-  bool _isCheckingUpdate = false;
-  final AppUpdaterService _updater = AppUpdaterService();
-
   // Torrent cache
   String _torrentCacheType = 'ram';
   int _torrentRamCacheMb = 200;
@@ -162,35 +133,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final premiumizeKey = await _debrid.getPremiumizeKey();
     final debridlinkKey = await _debrid.getDebridLinkKey();
     final rdToken = await _debrid.getRDAccessToken();
-
-    // Load Trakt status
-    final traktLoggedIn = await _trakt.isLoggedIn();
-    String? traktUser;
-    Map<String, dynamic>? traktStats;
-    if (traktLoggedIn) {
-      final profile = await _trakt.getUserProfile();
-      traktUser =
-          profile?['user']?['username']?.toString() ??
-          profile?['username']?.toString();
-      traktStats = await _trakt.getUserStats();
-    }
-
-    // Load Simkl status
-    final simklLoggedIn = await _simkl.isLoggedIn();
-    String? simklUser;
-    if (simklLoggedIn) {
-      final profile = await _simkl.getUserProfile();
-      simklUser = profile?['name']?.toString();
-    }
-
-    // Load MDBlist status
-    final mdblistConfigured = await _mdblist.isConfigured();
-    String? mdblistUser;
-    final mdblistKey = await _mdblist.getApiKey();
-    if (mdblistConfigured) {
-      final info = await _mdblist.getUserInfo();
-      mdblistUser = info?['name']?.toString();
-    }
 
     // Load Jackett settings
     final jackettUrl = await _settings.getJackettBaseUrl();
@@ -248,14 +190,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _premiumizeController.text = premiumizeKey ?? '';
         _debridlinkController.text = debridlinkKey ?? '';
         _isRDLoggedIn = rdToken != null;
-        _isTraktLoggedIn = traktLoggedIn;
-        _traktUsername = traktUser;
-        _traktStats = traktStats;
-        _isSimklLoggedIn = simklLoggedIn;
-        _simklUsername = simklUser;
-        _isMdblistConfigured = mdblistConfigured;
-        _mdblistUsername = mdblistUser;
-        _mdblistApiKeyController.text = mdblistKey ?? '';
 
         _jackettUrlController.text = jackettUrl ?? '';
         _jackettApiKeyController.text = jackettKey ?? '';
@@ -346,10 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _jackettApiKeyController.dispose();
     _prowlarrUrlController.dispose();
     _prowlarrApiKeyController.dispose();
-    _mdblistApiKeyController.dispose();
     _rdController.dispose();
-    _traktPollTimer?.cancel();
-    _simklPollTimer?.cancel();
     _jackett.dispose();
     _prowlarr.dispose();
     _scrollController.dispose();
@@ -853,7 +784,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildTraktSection(),
+                  const SettingsTraktPanel(),
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -868,7 +799,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildSimklSection(),
+                  const SettingsSimklPanel(),
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -883,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildMdblistSection(),
+                  const SettingsMdblistPanel(),
                 ],
               ),
 
@@ -937,7 +868,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 id: 'updates',
                 icon: Icons.system_update_rounded,
                 title: 'App Updates',
-                children: [_buildUpdateChecker()],
+                children: [const SettingsAboutPanel()],
               ),
 
               const SizedBox(height: 40),
@@ -2658,869 +2589,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // Trakt
-  // ═══════════════════════════════════════════════════════════════════════
-
-  void _startTraktLogin() async {
-    final data = await _trakt.startDeviceAuth();
-    if (data == null) {
-      if (mounted) {
-        ForjaToast.error('Failed to start Trakt login');
-      }
-      return;
-    }
-
-    final userCode = data['user_code'] as String;
-    final verifyUrl = data['verification_url'] as String;
-    final interval = (data['interval'] as int?) ?? 5;
-    final expiresIn = (data['expires_in'] as int?) ?? 600;
-    final deviceCode = data['device_code'] as String;
-
-    setState(() {
-      _traktUserCode = userCode;
-      _traktVerifyUrl = verifyUrl;
-    });
-
-    await Clipboard.setData(ClipboardData(text: userCode));
-
-    // Auto-open the verification URL in the default browser
-    final uri = Uri.parse(verifyUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-
-    if (mounted) {
-      ForjaToast.success('Code $userCode copied! Opening $verifyUrl...');
-    }
-
-    _traktPollTimer?.cancel();
-    _traktPollTimer = Timer.periodic(Duration(seconds: interval), (
-      timer,
-    ) async {
-      final result = await _trakt.pollForToken(deviceCode);
-      if (result == 'success') {
-        timer.cancel();
-        // Fetch username
-        final profile = await _trakt.getUserProfile();
-        final username =
-            profile?['user']?['username']?.toString() ??
-            profile?['username']?.toString();
-        if (mounted) {
-          setState(() {
-            _traktUserCode = null;
-            _traktVerifyUrl = null;
-            _isTraktLoggedIn = true;
-            _traktUsername = username;
-          });
-          ForjaToast.success(
-            'Logged in to Trakt${username != null ? " as $username" : ""}!',
-          );
-        }
-        // Auto-sync after login
-        _syncTrakt();
-      } else if (result == 'expired' || result == 'denied') {
-        timer.cancel();
-        if (mounted) {
-          setState(() {
-            _traktUserCode = null;
-            _traktVerifyUrl = null;
-          });
-          ForjaToast.error(
-            result == 'denied'
-                ? 'Trakt login denied'
-                : 'Code expired, try again',
-          );
-        }
-      }
-      // 'pending' → keep polling
-    });
-
-    // Expire timer
-    Future.delayed(Duration(seconds: expiresIn), () {
-      if (_traktPollTimer?.isActive ?? false) {
-        _traktPollTimer?.cancel();
-        if (mounted) {
-          setState(() {
-            _traktUserCode = null;
-            _traktVerifyUrl = null;
-          });
-        }
-      }
-    });
-  }
-
-  void _logoutTrakt() async {
-    await _trakt.logout();
-    if (mounted) {
-      setState(() {
-        _isTraktLoggedIn = false;
-        _traktUsername = null;
-      });
-      ForjaToast.success('Logged out of Trakt');
-    }
-  }
-
-  Future<void> _syncTrakt() async {
-    if (_isTraktSyncing) return;
-    setState(() => _isTraktSyncing = true);
-
-    try {
-      final watchlistCount = await _trakt.importWatchlistToMyList();
-      final playbackCount = await _trakt.importPlaybackToWatchHistory();
-      final episodesImported = await _trakt.importWatchedEpisodes();
-      final exportedCount = await _trakt.exportMyListToWatchlist();
-      final episodesExported = await _trakt.exportWatchedEpisodes();
-
-      if (mounted) {
-        ForjaToast.success(
-          'Trakt sync done! Imported $watchlistCount watchlist, '
-          '$playbackCount playback, $episodesImported episodes. '
-          'Exported $exportedCount watchlist, $episodesExported episodes.',
-          duration: const Duration(seconds: 4),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ForjaToast.error('Trakt sync error: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _isTraktSyncing = false);
-    }
-  }
-
-  Widget _buildTraktStatsWidget() {
-    final stats = _traktStats!;
-    final movies = stats['movies'] as Map<String, dynamic>? ?? {};
-    final episodes = stats['episodes'] as Map<String, dynamic>? ?? {};
-    final moviesWatched = movies['watched'] as int? ?? 0;
-    final moviesMinutes = movies['minutes'] as int? ?? 0;
-    final epsWatched = episodes['watched'] as int? ?? 0;
-    final epsMinutes = episodes['minutes'] as int? ?? 0;
-    final totalHours = ((moviesMinutes + epsMinutes) / 60).round();
-
-    Widget stat(IconData icon, String label, String value) {
-      return Column(
-        children: [
-          Icon(icon, color: AppTheme.primaryColor, size: 20),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
-          ),
-        ],
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          stat(Icons.movie_rounded, 'Movies', '$moviesWatched'),
-          stat(Icons.tv_rounded, 'Episodes', '$epsWatched'),
-          stat(Icons.schedule_rounded, 'Hours', '$totalHours'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTraktSection() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Sync your watchlist and watch history with Trakt.tv',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
-          ),
-          const SizedBox(height: 16),
-
-          if (_isTraktLoggedIn) ...[
-            // ── Logged in ──
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connected${_traktUsername != null ? " as $_traktUsername" : ""}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Text(
-                          'Trakt.tv',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.sync,
-                    color: AppTheme.primaryColor,
-                    size: 18,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Stats
-            if (_traktStats != null) ...[
-              _buildTraktStatsWidget(),
-              const SizedBox(height: 12),
-            ],
-
-            // Sync button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isTraktSyncing ? null : _syncTrakt,
-                icon: _isTraktSyncing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.sync),
-                label: Text(_isTraktSyncing ? 'Syncing...' : 'Sync Now'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Logout button
-            ElevatedButton.icon(
-              onPressed: _logoutTrakt,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout from Trakt'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                foregroundColor: Colors.redAccent,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ] else if (_traktUserCode != null) ...[
-            // ── Polling — show code ──
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Go to the URL below and enter this code:',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _traktUserCode!,
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                      letterSpacing: 6,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    _traktVerifyUrl ?? 'https://trakt.tv/activate',
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  const LinearProgressIndicator(
-                    color: AppTheme.primaryColor,
-                    backgroundColor: Colors.white10,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Waiting for authorization...',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            // ── Not logged in ──
-            ElevatedButton.icon(
-              onPressed: _startTraktLogin,
-              icon: const Icon(Icons.login),
-              label: const Text('Login with Trakt'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // Simkl
-  // ═══════════════════════════════════════════════════════════════════════
-
-  void _startSimklLogin() async {
-    final data = await _simkl.requestPin();
-    if (data == null) {
-      if (mounted) {
-        ForjaToast.error('Failed to start Simkl login');
-      }
-      return;
-    }
-
-    final userCode = data['user_code'] as String;
-    final verifyUrl =
-        data['verification_url']?.toString() ??
-        'https://simkl.com/pin/$userCode';
-    final interval = (data['interval'] as int?) ?? 5;
-    final expiresIn = (data['expires_in'] as int?) ?? 900;
-
-    setState(() {
-      _simklUserCode = userCode;
-      _simklVerifyUrl = verifyUrl;
-    });
-
-    await Clipboard.setData(ClipboardData(text: userCode));
-
-    final uri = Uri.parse(verifyUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-
-    if (mounted) {
-      ForjaToast.success('Code $userCode copied! Opening $verifyUrl...');
-    }
-
-    _simklPollTimer?.cancel();
-    _simklPollTimer = Timer.periodic(Duration(seconds: interval), (
-      timer,
-    ) async {
-      final token = await _simkl.pollForToken(userCode);
-      if (token != null) {
-        timer.cancel();
-        final profile = await _simkl.getUserProfile();
-        final username = profile?['name']?.toString();
-        if (mounted) {
-          setState(() {
-            _simklUserCode = null;
-            _simklVerifyUrl = null;
-            _isSimklLoggedIn = true;
-            _simklUsername = username;
-          });
-          ForjaToast.success(
-            'Logged in to Simkl${username != null ? " as $username" : ""}!',
-          );
-        }
-        _syncSimkl();
-      }
-    });
-
-    Future.delayed(Duration(seconds: expiresIn), () {
-      if (_simklPollTimer?.isActive ?? false) {
-        _simklPollTimer?.cancel();
-        if (mounted) {
-          setState(() {
-            _simklUserCode = null;
-            _simklVerifyUrl = null;
-          });
-        }
-      }
-    });
-  }
-
-  void _logoutSimkl() async {
-    await _simkl.logout();
-    if (mounted) {
-      setState(() {
-        _isSimklLoggedIn = false;
-        _simklUsername = null;
-      });
-      ForjaToast.success('Logged out of Simkl');
-    }
-  }
-
-  Future<void> _syncSimkl() async {
-    if (_isSimklSyncing) return;
-    setState(() => _isSimklSyncing = true);
-
-    try {
-      final watchlistCount = await _simkl.importWatchlistToMyList();
-      final episodesImported = await _simkl.importWatchedEpisodes();
-      final exportedCount = await _simkl.exportMyListToWatchlist();
-      final episodesExported = await _simkl.exportWatchedEpisodes();
-
-      if (mounted) {
-        ForjaToast.success(
-          'Simkl sync done! Imported $watchlistCount watchlist, '
-          '$episodesImported episodes. '
-          'Exported $exportedCount watchlist, $episodesExported episodes.',
-          duration: const Duration(seconds: 4),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ForjaToast.error('Simkl sync error: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _isSimklSyncing = false);
-    }
-  }
-
-  Widget _buildSimklSection() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Sync your watchlist and watch history with Simkl',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
-          ),
-          const SizedBox(height: 16),
-
-          if (_isSimklLoggedIn) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connected${_simklUsername != null ? " as $_simklUsername" : ""}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Text(
-                          'Simkl',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.sync,
-                    color: AppTheme.primaryColor,
-                    size: 18,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSimklSyncing ? null : _syncSimkl,
-                icon: _isSimklSyncing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.sync),
-                label: Text(_isSimklSyncing ? 'Syncing...' : 'Sync Now'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _logoutSimkl,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout from Simkl'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                foregroundColor: Colors.redAccent,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ] else if (_simklUserCode != null) ...[
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Go to the URL below and enter this code:',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _simklUserCode!,
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                      letterSpacing: 6,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    _simklVerifyUrl ?? 'https://simkl.com/pin',
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  const LinearProgressIndicator(
-                    color: AppTheme.primaryColor,
-                    backgroundColor: Colors.white10,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Waiting for authorization...',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            ElevatedButton.icon(
-              onPressed: _startSimklLogin,
-              icon: const Icon(Icons.login),
-              label: const Text('Login with Simkl'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // MDBlist
-  // ═══════════════════════════════════════════════════════════════════════
-
-  Future<void> _saveMdblistApiKey() async {
-    final key = _mdblistApiKeyController.text.trim();
-    if (key.isEmpty) {
-      if (mounted) {
-        ForjaToast.warning('Please enter an API key');
-      }
-      return;
-    }
-
-    await _mdblist.setApiKey(key);
-
-    // Validate by fetching user info
-    final info = await _mdblist.getUserInfo();
-    if (info != null) {
-      if (mounted) {
-        setState(() {
-          _isMdblistConfigured = true;
-          _mdblistUsername = info['name']?.toString();
-        });
-        ForjaToast.success(
-          'MDBlist connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}!',
-        );
-      }
-    } else {
-      await _mdblist.logout();
-      if (mounted) {
-        setState(() {
-          _isMdblistConfigured = false;
-          _mdblistUsername = null;
-        });
-        ForjaToast.error('Invalid MDBlist API key');
-      }
-    }
-  }
-
-  void _logoutMdblist() async {
-    await _mdblist.logout();
-    if (mounted) {
-      setState(() {
-        _isMdblistConfigured = false;
-        _mdblistUsername = null;
-        _mdblistApiKeyController.clear();
-      });
-      ForjaToast.success('MDBlist API key removed');
-    }
-  }
-
-  Widget _buildMdblistSection() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Aggregated ratings from IMDb, TMDB, Trakt, Letterboxd, RT, and more',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
-          ),
-          const SizedBox(height: 16),
-
-          if (_isMdblistConfigured) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Text(
-                          'MDBlist',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _logoutMdblist,
-              icon: const Icon(Icons.logout),
-              label: const Text('Remove API Key'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                foregroundColor: Colors.redAccent,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ] else ...[
-            TextField(
-              controller: _mdblistApiKeyController,
-              decoration: InputDecoration(
-                labelText: 'MDBlist API Key',
-                hintText: 'Paste your API key from mdblist.com',
-                labelStyle: const TextStyle(color: Colors.white54),
-                hintStyle: const TextStyle(color: Colors.white24),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              style: const TextStyle(color: Colors.white),
-              obscureText: true,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _saveMdblistApiKey,
-              icon: const Icon(Icons.save),
-              label: const Text('Save API Key'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildListsSection() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Browse and manage your Trakt and MDBlist custom lists',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ListsScreen()),
-              ),
-              icon: const Icon(Icons.list_alt_rounded),
-              label: const Text('Manage Lists'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpdateChecker() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Check for new versions of Forja',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isCheckingUpdate ? null : _checkForUpdates,
-              icon: _isCheckingUpdate
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.system_update_rounded),
-              label: Text(
-                _isCheckingUpdate ? 'Checking...' : 'Check for Updates',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _checkForUpdates() async {
-    setState(() => _isCheckingUpdate = true);
-
-    try {
-      final updateInfo = await _updater.checkForUpdates();
-
-      if (mounted) {
-        setState(() => _isCheckingUpdate = false);
-
-        if (updateInfo != null) {
-          unawaited(UpdateDialog.show(context, updateInfo));
-        } else {
-          ForjaToast.success("You're running the latest version!");
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isCheckingUpdate = false);
-        ForjaToast.error('Failed to check for updates: $e');
-      }
-    }
-  }
 
   Widget _buildProviderScoringSection() {
     final streamCatalog = <String, String>{
@@ -3621,6 +2689,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
             order: const ['kisskh'],
             onOrderChanged: (_) {},
             onReset: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListsSection() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Browse and manage your Trakt and MDBlist custom lists',
+            style: TextStyle(fontSize: 13, color: Colors.white54),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ListsScreen()),
+              ),
+              icon: const Icon(Icons.list_alt_rounded),
+              label: const Text('Manage Lists'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
           ),
         ],
       ),

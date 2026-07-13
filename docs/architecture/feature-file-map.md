@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 5 files · ~20.5k LOC |
-| **Next action** | Phase A done — pick Phase B (home), C (settings), or D (details logic splits) |
+| **Next action** | Phase C in progress — settings 2,947 lines; next: playback/providers/indexers sections |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -35,7 +35,7 @@
 | **iptv** | 21 | ~17,900 | `iptv_pt_screen.dart` (3,563) |
 | **home** | 4 | ~9,600 | `details_screen.dart` (4,061) |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
-| **settings** | 4 | ~4,300 | `settings_screen.dart` (3,844) |
+| **settings** | 8 | ~4,300 | `settings_screen.dart` (2,947) + `sections/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
 | **live_matches** | 1 | 3,539 | `live_matches_screen.dart` |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
@@ -52,7 +52,7 @@
 |------|------:|------|----------|------------|
 | [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4,061 | Details | In (from Home) | Phase A wired scroll, recommendations, tracker handlers |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 4,091 | Orchestrator | In | `_HomeScreenState` ~2,176 lines + 9 inline section widgets; duplicates `HeroTitle` |
-| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 3,844 | Orchestrator | In | All settings domains in one `_SettingsScreenState` |
+| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 2,947 | Orchestrator | In | Phase C — Trakt/Simkl/MDBlist/about → `sections/` |
 | [`iptv/iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3,563 | Orchestrator | In | 6 sub-views + routing; 29 private widgets |
 | [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 3,539 | Orchestrator | In | Sports models + channel UI + embed player in one file |
 
@@ -94,7 +94,7 @@ Paths relative to `apps/forja/lib/features/`.
 |------:|---------|------|------|----------|
 | 4061 | home | `home/details_screen.dart` | Details | In |
 | 4091 | home | `home/home_screen.dart` | Orchestrator | In |
-| 3844 | settings | `settings/settings_screen.dart` | Orchestrator | In |
+| 2947 | settings | `settings/settings_screen.dart` | Orchestrator | In |
 | 3563 | iptv | `iptv/iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
 | 3539 | live_matches | `live_matches/live_matches_screen.dart` | Orchestrator | In |
 | 2880 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Sub-hub | In |
@@ -356,9 +356,18 @@ Map and targets only. No Dart changes.
 
 Target: `home_screen.dart` &lt;800 lines orchestrator.
 
-### Phase C — settings sections (~4–6 PRs)
+### Phase C — settings sections (in progress)
 
-One PR per `sections/*.dart` domain.
+| PR | Extract | Status |
+|----|---------|--------|
+| C1 | `sections/settings_trakt_panel.dart` | Done |
+| C2 | `sections/settings_simkl_panel.dart` | Done |
+| C3 | `sections/settings_mdblist_panel.dart` | Done |
+| C4 | `sections/settings_about_panel.dart` | Done |
+| C5 | Playback section | Pending |
+| C6 | Providers/indexers/debrid | Pending |
+
+`settings_screen.dart`: 3,844 → 2,947 lines (−897).
 
 ### Phase D — details logic splits + media move (~4 PRs)
 
