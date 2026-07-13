@@ -115,6 +115,9 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 
   void _onCtrl() {
     if (!mounted) return;
+    if (ctrl.activePortal == null && ctrl.browserSearchOpen) {
+      _closeSearch();
+    }
     final open = ctrl.browserSearchOpen;
     if (open && _searchAnim.status != AnimationStatus.completed) {
       _searchAnim.forward();
@@ -137,10 +140,12 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     return p.portal.url;
   }
 
-  void _focusDownFromTopBar() {
-    if (!iptvFocusRowItem('browser-categories')) {
-      iptvFocusRowItem('browser-streams');
-    }
+  void _focusDownFromShelf() {
+    iptvFocusRowItem('browser-streams', 0);
+  }
+
+  void _focusDownFromTopTools() {
+    iptvFocusRowItem('browser-categories', 0);
   }
 
   Future<void> _openSearch(
@@ -192,6 +197,14 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 
   @override
   Widget build(BuildContext context) {
+    final hasActivePortal = ctrl.activePortal != null;
+    if (!hasActivePortal) {
+      iptvSyncRow(rowId: 'iptv-sections', sortOrder: 0, itemCount: 0);
+      iptvSyncRow(rowId: 'iptv-section-reload', sortOrder: 0, itemCount: 0);
+      iptvSyncRow(rowId: 'iptv-top-tools', sortOrder: 1, itemCount: 0);
+      return const SizedBox.shrink();
+    }
+
     iptvSyncRow(
       rowId: 'iptv-sections',
       sortOrder: 0,
@@ -257,7 +270,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
               isLast: i == _kSectionShelf.length - 1,
               onTap: () => widget.onSection(_kSectionShelf[i].section),
               onReload: () => ctrl.reloadSection(_kSectionShelf[i].section),
-              onDownEdge: _focusDownFromTopBar,
+              onDownEdge: _focusDownFromShelf,
               onRightEdge: i == _kSectionShelf.length - 1
                   ? () => iptvFocusRowItem('iptv-top-tools', 0)
                   : null,
@@ -330,7 +343,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
       tvItemIndex: 0,
-      onDownEdge: _focusDownFromTopBar,
+      onDownEdge: _focusDownFromTopTools,
       onLeftEdge: () =>
           iptvFocusRowItem('iptv-sections', _kSectionShelf.length - 1),
       onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
@@ -419,7 +432,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
       tvItemIndex: 1,
-      onDownEdge: _focusDownFromTopBar,
+      onDownEdge: _focusDownFromTopTools,
       onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
       onRightEdge: selected
           ? () => iptvFocusRowItem('portals', 0)
@@ -785,12 +798,15 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   final FocusNode _panelFocus = FocusNode();
   String _query = '';
   bool _searchOpen = false;
+  bool _didFocusHeaderOnOpen = false;
 
   @override
   void initState() {
     super.initState();
     widget.ctrl.addListener(_onCtrlChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelContent());
+    if (widget.ctrl.portalPanelOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
+    }
   }
 
   @override
@@ -805,13 +821,18 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   void _onCtrlChanged() {
     if (!mounted) return;
     if (widget.ctrl.portalPanelOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelContent());
+      if (!_didFocusHeaderOnOpen && !_searchOpen) {
+        _didFocusHeaderOnOpen = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
+      }
+    } else {
+      _didFocusHeaderOnOpen = false;
     }
   }
 
-  void _focusPanelContent() {
+  void _focusPanelHeader() {
     if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
-    iptvFocusRowItem('portals', 0);
+    iptvFocusRowItem('iptv-portal-header', 2);
   }
 
   void _openSearch() {
@@ -872,7 +893,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           }
           widget.onClose();
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            iptvRestoreCatalogFocus();
+            if (!iptvFocusRowItem('browser-categories', 0)) {
+              iptvFocusRowItem('browser-streams', 0);
+            }
           });
           return KeyEventResult.handled;
         }
@@ -1002,6 +1025,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             tvRowId: 'iptv-portal-header',
             tvItemIndex: 0,
             tvZone: ShellTvZone.topBar,
+            onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
             onDownEdge: () => iptvFocusRowItem('portals', 0),
             onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
           ),
@@ -1015,6 +1039,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             tvRowId: 'iptv-portal-header',
             tvItemIndex: 1,
             tvZone: ShellTvZone.topBar,
+            onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
             onDownEdge: () => iptvFocusRowItem('portals', 0),
             onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 0),
             onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 2),
@@ -1026,6 +1051,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             tvRowId: 'iptv-portal-header',
             tvItemIndex: 2,
             tvZone: ShellTvZone.topBar,
+            onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
             onDownEdge: () => iptvFocusRowItem('portals', 0),
             onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
           ),
@@ -1079,6 +1105,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           ctrl: ctrl,
           isActive: v.key == activeKey,
           listIndex: i,
+          onUpEdge: i == 0
+              ? () => iptvFocusRowItem('iptv-portal-header', 2)
+              : null,
           onEdit: () => _showPortalDialog(context, existing: v),
         );
       },
@@ -1194,6 +1223,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   late final TextEditingController _pasteCtrl;
   late final FocusNode _pasteFocus;
   late final FocusNode _urlFocus;
+  late final FocusNode _userFocus;
+  late final FocusNode _passFocus;
+  late final FocusNode _expandFocus;
+  late final FocusNode _submitFocus;
+  late final FocusNode _cancelFocus;
+  FocusOnKeyEventCallback? _pasteKeyHandler;
   bool _obscurePassword = true;
   bool _importingShareCode = false;
   bool _showManualForm = false;
@@ -1213,7 +1248,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _pasteCtrl = TextEditingController();
     _pasteFocus = FocusNode(debugLabel: 'iptv-share-paste');
     _urlFocus = FocusNode(debugLabel: 'iptv-portal-url');
+    _userFocus = FocusNode(debugLabel: 'iptv-portal-user');
+    _passFocus = FocusNode(debugLabel: 'iptv-portal-pass');
+    _expandFocus = FocusNode(debugLabel: 'iptv-portal-expand');
+    _submitFocus = FocusNode(debugLabel: 'iptv-portal-submit');
+    _cancelFocus = FocusNode(debugLabel: 'iptv-portal-cancel');
     if (_editing) _showManualForm = true;
+    _pasteKeyHandler = _pasteFocus.onKeyEvent;
+    _pasteFocus.onKeyEvent = _handlePasteKey;
     _pasteFocus.addListener(() {
       if (mounted) setState(() {});
     });
@@ -1223,22 +1265,132 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _urlCtrl.addListener(_scheduleManualSubmit);
     _userCtrl.addListener(_scheduleManualSubmit);
     _passCtrl.addListener(_scheduleManualSubmit);
-    if (!_editing) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _pasteFocus.requestFocus();
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_editing) {
+        _urlFocus.requestFocus();
+      } else {
+        _pasteFocus.requestFocus();
+      }
+    });
+  }
+
+  KeyEventResult _handlePasteKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        mounted &&
+        iptvUseTvFocus(context) &&
+        !_editing) {
+      _expandFocus.requestFocus();
+      return KeyEventResult.handled;
     }
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp &&
+        mounted &&
+        iptvUseTvFocus(context) &&
+        !_editing) {
+      return KeyEventResult.handled;
+    }
+    return _pasteKeyHandler?.call(node, event) ?? KeyEventResult.ignored;
+  }
+
+  int get _dialogTvItemCount {
+    if (_editing) return 5;
+    if (_showManualForm) return 7;
+    return 4;
+  }
+
+  int get _dialogOkIndex {
+    if (_editing) return 3;
+    return _showManualForm ? 5 : 2;
+  }
+
+  int get _dialogCancelIndex {
+    if (_editing) return 4;
+    return _showManualForm ? 6 : 3;
+  }
+
+  void _focusDialogItem(int index) {
+    if (!mounted || !iptvUseTvFocus(context)) return;
+    final clamped = index.clamp(0, _dialogTvItemCount - 1);
+    if (_editing) {
+      final nodes = [
+        _urlFocus,
+        _userFocus,
+        _passFocus,
+        _submitFocus,
+        _cancelFocus,
+      ];
+      nodes[clamped].requestFocus();
+      return;
+    }
+    if (!_showManualForm) {
+      switch (clamped) {
+        case 0:
+          _pasteFocus.requestFocus();
+        case 1:
+          _expandFocus.requestFocus();
+        case 2:
+          _submitFocus.requestFocus();
+        default:
+          _cancelFocus.requestFocus();
+      }
+      return;
+    }
+    switch (clamped) {
+      case 0:
+        _pasteFocus.requestFocus();
+      case 1:
+        _expandFocus.requestFocus();
+      case 2:
+        _urlFocus.requestFocus();
+      case 3:
+        _userFocus.requestFocus();
+      case 4:
+        _passFocus.requestFocus();
+      case 5:
+        _submitFocus.requestFocus();
+      default:
+        _cancelFocus.requestFocus();
+    }
+  }
+
+  KeyEventResult _dialogFieldArrowKey(
+    FocusNode node,
+    KeyEvent event,
+    int index, {
+    bool allowUp = true,
+    bool allowDown = true,
+  }) {
+    if (!mounted || !iptvUseTvFocus(context) || event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown && allowDown) {
+      _focusDialogItem(index + 1);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp && allowUp) {
+      _focusDialogItem(index - 1);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
   void dispose() {
     _manualSubmitDebounce?.cancel();
+    _pasteFocus.onKeyEvent = _pasteKeyHandler;
     _urlCtrl.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
     _pasteCtrl.dispose();
     _pasteFocus.dispose();
     _urlFocus.dispose();
+    _userFocus.dispose();
+    _passFocus.dispose();
+    _expandFocus.dispose();
+    _submitFocus.dispose();
+    _cancelFocus.dispose();
     super.dispose();
   }
 
@@ -1333,6 +1485,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   void _scheduleManualSubmit() {
     _manualSubmitDebounce?.cancel();
     if (!_showManualForm && !_editing) return;
+    if (mounted && iptvUseTvFocus(context)) return;
     _manualSubmitDebounce = Timer(const Duration(milliseconds: 650), () {
       if (!mounted) return;
       if (widget.ctrl.isAdding) return;
@@ -1374,6 +1527,20 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
+    final tv = iptvUseTvFocus(context);
+    if (tv) {
+      iptvSyncRow(
+        rowId: 'iptv-portal-dialog',
+        sortOrder: 50,
+        itemCount: _dialogTvItemCount,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    } else {
+      iptvSyncRow(rowId: 'iptv-portal-dialog', sortOrder: 50, itemCount: 0);
+    }
+    final urlIndex = _editing ? 0 : (_showManualForm ? 2 : -1);
+    final userIndex = _editing ? 1 : (_showManualForm ? 3 : -1);
+    final passIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, _) => Dialog(
@@ -1435,12 +1602,15 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                       'URL',
                                       hint: 'http://portal.example.com:8080',
                                       focusNode: _urlFocus,
+                                      dialogIndex: urlIndex,
                                     ),
                                     const SizedBox(height: 18),
                                     _portalField(
                                       _userCtrl,
                                       'Username',
                                       hint: 'username',
+                                      focusNode: _userFocus,
+                                      dialogIndex: userIndex,
                                     ),
                                     const SizedBox(height: 18),
                                     _portalField(
@@ -1448,6 +1618,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                       'Password',
                                       hint: 'password',
                                       obscure: _obscurePassword,
+                                      focusNode: _passFocus,
+                                      dialogIndex: passIndex,
                                       suffix: ForjaPlainIcon(
                                         icon: _obscurePassword
                                             ? Icons.visibility_outlined
@@ -1475,6 +1647,35 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               color: IptvShellStyle.liveBadge,
                               fontSize: 12,
                             ),
+                          ),
+                        ],
+                        if (tv && !ctrl.isAdding) ...[
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: IptvPrimaryButton(
+                                  icon: Icons.check_rounded,
+                                  label: _editing ? 'Save' : 'Add',
+                                  focusNode: _submitFocus,
+                                  tvRowId: 'iptv-portal-dialog',
+                                  tvItemIndex: _dialogOkIndex,
+                                  onPressed: _submit,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: IptvPrimaryButton(
+                                  icon: Icons.close_rounded,
+                                  label: 'Cancel',
+                                  subtle: true,
+                                  focusNode: _cancelFocus,
+                                  tvRowId: 'iptv-portal-dialog',
+                                  tvItemIndex: _dialogCancelIndex,
+                                  onPressed: _cancel,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                         if (ctrl.isAdding) ...[
@@ -1517,38 +1718,52 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   Widget _manualFormToggle() {
     const size = 26.0;
+    final child = Tooltip(
+      message: _showManualForm ? 'Hide manual entry' : 'Enter URL manually',
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: IptvShellStyle.surface,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: IptvShellStyle.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(
+          _showManualForm
+              ? Icons.keyboard_arrow_up_rounded
+              : Icons.keyboard_arrow_down_rounded,
+          color: IptvShellStyle.textSecondary,
+          size: 16,
+        ),
+      ),
+    );
+    if (iptvUseTvFocus(context)) {
+      return iptvTap(
+        context: context,
+        onTap: _importingShareCode ? null : _toggleManualForm,
+        borderRadius: 7,
+        focusNode: _expandFocus,
+        tvRowId: 'iptv-portal-dialog',
+        tvItemIndex: 1,
+        onUpEdge: () => _focusDialogItem(0),
+        onDownEdge: () => _focusDialogItem(_showManualForm ? 2 : _dialogOkIndex),
+        child: child,
+      );
+    }
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: _importingShareCode ? null : _toggleManualForm,
         borderRadius: BorderRadius.circular(7),
-        child: Tooltip(
-          message: _showManualForm ? 'Hide manual entry' : 'Enter URL manually',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: IptvShellStyle.surface,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: IptvShellStyle.border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Icon(
-              _showManualForm
-                  ? Icons.keyboard_arrow_up_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-              color: IptvShellStyle.textSecondary,
-              size: 16,
-            ),
-          ),
-        ),
+        child: child,
       ),
     );
   }
@@ -1703,7 +1918,35 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     bool obscure = false,
     Widget? suffix,
     FocusNode? focusNode,
+    int dialogIndex = -1,
   }) {
+    final tv = iptvUseTvFocus(context);
+    final fieldDecoration = InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.poppins(
+        color: Colors.white.withValues(alpha: 0.25),
+        fontSize: 14,
+      ),
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      suffixIcon: suffix,
+      suffixIconConstraints: const BoxConstraints(
+        minWidth: 40,
+        minHeight: 40,
+      ),
+      border: UnderlineInputBorder(
+        borderSide: BorderSide(color: IptvShellStyle.border),
+      ),
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: IptvShellStyle.border),
+      ),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(
+          color: IptvShellStyle.textPrimary,
+          width: 1.5,
+        ),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1717,41 +1960,55 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
-          controller: c,
-          focusNode: focusNode,
-          obscureText: obscure,
-          style: GoogleFonts.poppins(
-            color: IptvShellStyle.textPrimary,
-            fontSize: 14,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.poppins(
+        if (tv && focusNode != null && dialogIndex >= 0 && !obscure)
+          TvBrowseTextField(
+            controller: c,
+            focusNode: focusNode,
+            onChanged: (_) {},
+            browsePlaceholder: hint ?? '',
+            browseHintStyle: GoogleFonts.poppins(
               color: Colors.white.withValues(alpha: 0.25),
               fontSize: 14,
             ),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
-            suffixIcon: suffix,
-            suffixIconConstraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
+            style: GoogleFonts.poppins(
+              color: IptvShellStyle.textPrimary,
+              fontSize: 14,
             ),
-            border: UnderlineInputBorder(
-              borderSide: BorderSide(color: IptvShellStyle.border),
+            decoration: fieldDecoration.copyWith(
+              hintText: null,
             ),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: IptvShellStyle.border),
+            onKeyEvent: (node, event) => _dialogFieldArrowKey(
+              node,
+              event,
+              dialogIndex,
             ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(
+          )
+        else if (tv && focusNode != null && dialogIndex >= 0)
+          Focus(
+            focusNode: focusNode,
+            onKeyEvent: (node, event) =>
+                _dialogFieldArrowKey(node, event, dialogIndex),
+            child: TextField(
+              controller: c,
+              obscureText: obscure,
+              style: GoogleFonts.poppins(
                 color: IptvShellStyle.textPrimary,
-                width: 1.5,
+                fontSize: 14,
               ),
+              decoration: fieldDecoration,
             ),
+          )
+        else
+          TextField(
+            controller: c,
+            focusNode: focusNode,
+            obscureText: obscure,
+            style: GoogleFonts.poppins(
+              color: IptvShellStyle.textPrimary,
+              fontSize: 14,
+            ),
+            decoration: fieldDecoration,
           ),
-        ),
       ],
     );
   }
@@ -1764,6 +2021,7 @@ class _PortalHoverTile extends StatefulWidget {
     required this.isActive,
     required this.listIndex,
     required this.onEdit,
+    this.onUpEdge,
   });
 
   final VerifiedPortal portal;
@@ -1771,6 +2029,7 @@ class _PortalHoverTile extends StatefulWidget {
   final bool isActive;
   final int listIndex;
   final VoidCallback onEdit;
+  final VoidCallback? onUpEdge;
 
   @override
   State<_PortalHoverTile> createState() => _PortalHoverTileState();
@@ -1786,6 +2045,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   bool _sharing = false;
   bool _showShareCode = false;
   String? _shareCode;
+  late final FocusNode _favoriteFocus;
   late final FocusNode _copyFocus;
   late final FocusNode _editFocus;
   late final FocusNode _deleteFocus;
@@ -1797,6 +2057,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   @override
   void initState() {
     super.initState();
+    _favoriteFocus = FocusNode(debugLabel: 'iptv-portal-favorite');
     _copyFocus = FocusNode(debugLabel: 'iptv-portal-copy');
     _editFocus = FocusNode(debugLabel: 'iptv-portal-edit');
     _deleteFocus = FocusNode(debugLabel: 'iptv-portal-delete');
@@ -1804,10 +2065,17 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
 
   @override
   void dispose() {
+    _favoriteFocus.dispose();
     _copyFocus.dispose();
     _editFocus.dispose();
     _deleteFocus.dispose();
     super.dispose();
+  }
+
+  void _focusCatalogFromPanel() {
+    if (!iptvFocusRowItem('browser-streams')) {
+      iptvFocusRowItem('browser-categories', 0);
+    }
   }
 
   String get _actionsRowId => 'portal-${widget.listIndex}-actions';
@@ -1950,7 +2218,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           iptvSyncRow(
             rowId: _actionsRowId,
             sortOrder: 200 + widget.listIndex,
-            itemCount: 3,
+            itemCount: 4,
           );
         }
 
@@ -1997,11 +2265,10 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                       listIndex: widget.listIndex,
                       tvRowId: 'portals',
                       tvItemIndex: widget.listIndex,
-                      onLeftEdge: () {
-                        if (!iptvFocusRowItem('browser-streams')) {
-                          iptvFocusRowItem('browser-categories', 0);
-                        }
-                      },
+                      onUpEdge: widget.onUpEdge,
+                      onLeftEdge: _reveal
+                          ? () => _favoriteFocus.requestFocus()
+                          : _focusCatalogFromPanel,
                       onRightEdge: _reveal
                           ? () => _copyFocus.requestFocus()
                           : null,
@@ -2098,23 +2365,27 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             ),
                             Align(
                               alignment: Alignment.center,
-                              child: ExcludeFocus(
-                                excluding: iptvUseTvFocus(context),
-                                child: iptvTap(
-                                  context: context,
-                                  onTap: () => ctrl.toggleFavoritePortal(v.key),
-                                  borderRadius: 16,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(4),
-                                    child: Icon(
-                                      isFav
-                                          ? Icons.star_rounded
-                                          : Icons.star_outline_rounded,
-                                      size: 16,
-                                      color: isFav
-                                          ? const Color(0xFFFBBF24)
-                                          : Colors.white30,
-                                    ),
+                              child: iptvTap(
+                                context: context,
+                                onTap: () => ctrl.toggleFavoritePortal(v.key),
+                                borderRadius: 16,
+                                focusNode: _favoriteFocus,
+                                tvRowId: _actionsRowId,
+                                tvItemIndex: 0,
+                                onLeftEdge: _focusCatalogFromPanel,
+                                onRightEdge: _reveal
+                                    ? () => _copyFocus.requestFocus()
+                                    : null,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Icon(
+                                    isFav
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    size: 16,
+                                    color: isFav
+                                        ? const Color(0xFFFBBF24)
+                                        : Colors.white30,
                                   ),
                                 ),
                               ),
@@ -2149,9 +2420,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 onTap: _sharing ? null : _copy,
                                 focusNode: _copyFocus,
                                 tvRowId: _actionsRowId,
-                                tvItemIndex: 0,
-                                onLeftEdge: () =>
-                                    iptvFocusRowItem('portals', widget.listIndex),
+                                tvItemIndex: 1,
+                                onLeftEdge: () => _favoriteFocus.requestFocus(),
                                 onRightEdge: () => _editFocus.requestFocus(),
                               ),
                               _IptvRailAction(
@@ -2161,7 +2431,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 onTap: widget.onEdit,
                                 focusNode: _editFocus,
                                 tvRowId: _actionsRowId,
-                                tvItemIndex: 1,
+                                tvItemIndex: 2,
                                 onLeftEdge: () => _copyFocus.requestFocus(),
                                 onRightEdge: () => _deleteFocus.requestFocus(),
                               ),
@@ -2172,7 +2442,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 onTap: () => ctrl.deletePortal(v.key),
                                 focusNode: _deleteFocus,
                                 tvRowId: _actionsRowId,
-                                tvItemIndex: 2,
+                                tvItemIndex: 3,
                                 onLeftEdge: () => _editFocus.requestFocus(),
                               ),
                             ],

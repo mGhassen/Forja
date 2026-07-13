@@ -12,8 +12,8 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 ## What you can do
 
-- Open the **Portals** panel (top bar) to add, scrape, search, favorite, or select providers
-- Switch **Live**, **Movies**, and **Series** from section chips in the top bar
+- Open the **Portals** panel (top bar, after a portal is active) to add, scrape, search, favorite, or switch providers — until then use **Open portal** in the empty state
+- Switch **Live**, **Movies**, and **Series** from section chips in the top bar once a portal is active — the full top bar (shelf, search, portals) is hidden until you pick a provider
 - Catalog is **cached in-session** per portal/section — switching chips reuses the last fetch
 - Hover (or focus) a section chip to reveal **Reload** and force a fresh catalog fetch
 - Browse live channels by category — channel tiles show a play control and slightly brighter border on hover (desktop) or focus (TV)
@@ -42,7 +42,12 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by name or URL
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit the hover **Reload** control
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
-- On **Android TV**, D-pad moves **Live / Movies / Series** → categories → streams; with the **Portals** panel open, **Right** from the stream grid (or portal button) enters the portal list, **Left** from a portal row returns to the catalog, **Right** on a focused portal row reaches **copy / edit / delete**
+- On **Android TV**, D-pad from **Open portal** (no provider yet) opens the **Portals** panel with focus on **Add** (+)
+- On **Android TV**, in the **Portals** panel: **Up** from header actions returns to the top-bar **Portals** button; **Down** enters the portal list; **Up** from the first portal row returns to **Add**; **Left** on a focused row reaches **Favorite**; **Right** moves through **copy / edit / delete**; **Back** closes the panel and restores **category** focus
+- On **Android TV**, **Add portal** dialog: focus starts on the share-code input (**Enter** to type); **Down** reaches the manual-entry expand control, then URL → username → password → **Add** / **Cancel**; **Edit portal** opens with focus on URL
+- On **Android TV**, top bar: **Portals** ← **Search** ← **Live / Movies / Series** (search field stays out of the chain until you activate search); **Down** from shelf tabs jumps to the first **channel**; **Down** from search/portals tools jumps to **categories**
+- On **Android TV**, catalog: **Right** from a category focuses the first **channel**; **Left** from a channel returns to **categories**; **Up** from the first channel row returns to **Live** on the shelf
+- On **Android TV**, D-pad moves **Live / Movies / Series** → categories → streams; with the **Portals** panel open, **Right** from the stream grid (or portal button) enters the portal list, **Left** from a portal row returns to the catalog
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests

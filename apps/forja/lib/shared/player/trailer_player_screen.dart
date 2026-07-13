@@ -41,6 +41,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   bool _ready = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  final FocusNode _backFocus = FocusNode(debugLabel: 'trailer-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'trailer-play');
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
   bool _tvFocus = false;
@@ -65,6 +66,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    _backFocus.dispose();
     _playFocus.dispose();
     _nextTrailerFocus.dispose();
     super.dispose();
@@ -959,12 +961,22 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
               ? DesktopWindowChrome.topInset(context) + 6
               : MediaQuery.paddingOf(context).top + 6,
           left: 8,
-          child: PlayerFlatIconButton(
-            icon: Icons.arrow_back_rounded,
-            tooltip: 'Back',
-            tvFocusable: tvFocus,
-            onPressed: _exitTrailer,
-          ),
+          child: tvFocus
+              ? FocusTraversalOrder(
+                  order: const NumericFocusOrder(1),
+                  child: PlayerFlatIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
+                    tvFocusable: true,
+                    focusNode: _backFocus,
+                    onPressed: _exitTrailer,
+                  ),
+                )
+              : PlayerFlatIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Back',
+                  onPressed: _exitTrailer,
+                ),
         ),
         const Positioned(
           top: 0,
@@ -983,7 +995,10 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     return Positioned.fill(
       child: FocusScope(
         debugLabel: 'trailer-player-chrome',
-        child: FocusTraversalGroup(child: layers),
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: layers,
+        ),
       ),
     );
   }
@@ -1047,11 +1062,14 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
               ),
               const SizedBox(height: 24),
               if (tvFocus)
-                FocusableControl(
-                  focusNode: _nextTrailerFocus,
-                  onTap: _playNextTrailer,
-                  borderRadius: 8,
-                  child: button,
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(11),
+                  child: FocusableControl(
+                    focusNode: _nextTrailerFocus,
+                    onTap: _playNextTrailer,
+                    borderRadius: 8,
+                    child: button,
+                  ),
                 )
               else
                 Material(
@@ -1112,118 +1130,35 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
                     ),
                   ),
                 const SizedBox(height: 12),
-                CustomSeekbar(
-                  duration: _duration,
-                  position: _position,
-                  onSeek: _seek,
-                  tvFocusable: tvFocus,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          focusNode: tvFocus ? _playFocus : null,
-                          icon: _showReplayControl
-                              ? Icons.replay_rounded
-                              : _playing
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                          tooltip: _showReplayControl
-                              ? 'Replay'
-                              : _playing
-                                  ? 'Pause'
-                                  : 'Play',
-                          onPressed: () {
-                            if (!_ready) return;
-                            unawaited(_togglePlayPause());
-                          },
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: Icons.replay_10_rounded,
-                          tooltip: 'Back 10s',
-                          onPressed: () {
-                            if (!_ready) return;
-                            unawaited(_skip(-10));
-                          },
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: Icons.forward_10_rounded,
-                          tooltip: 'Forward 10s',
-                          onPressed: () {
-                            if (!_ready) return;
-                            unawaited(_skip(10));
-                          },
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: _muted
-                              ? Icons.volume_off_rounded
-                              : Icons.volume_up_rounded,
-                          tooltip: 'Mute',
-                          onPressed: () {
-                            if (!_ready) return;
-                            unawaited(_toggleMute());
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        PlayerTimeRange(
-                          position: _position,
+                tvFocus
+                    ? FocusTraversalOrder(
+                        order: const NumericFocusOrder(2),
+                        child: CustomSeekbar(
                           duration: _duration,
+                          position: _position,
+                          onSeek: _seek,
+                          tvFocusable: true,
                         ),
-                      ],
+                      )
+                    : CustomSeekbar(
+                        duration: _duration,
+                        position: _position,
+                        onSeek: _seek,
+                      ),
+                const SizedBox(height: 10),
+                if (tvFocus)
+                  _buildTvTransportRow()
+                else
+                  _buildDesktopTransportRow(tvFocus: false),
+                if (tvFocus) ...[
+                  const SizedBox(height: 6),
+                  ExcludeFocus(
+                    child: PlayerTimeRange(
+                      position: _position,
+                      duration: _duration,
                     ),
-                    Row(
-                      children: [
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: Icons.audiotrack_rounded,
-                          tooltip: 'Audio',
-                          onPressedWithContext: _showAudioMenu,
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: Icons.subtitles_outlined,
-                          tooltip: 'Subtitles',
-                          onPressedWithContext: _showSubtitleMenu,
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: Icons.hd_outlined,
-                          tooltip: 'Quality',
-                          onPressedWithContext: _showQualityMenu,
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          tvFocusable: tvFocus,
-                          icon: Icons.speed_rounded,
-                          tooltip: 'Playback speed',
-                          onPressedWithContext: _showSpeedMenu,
-                        ),
-                        if (!_ready) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            'Loading…',
-                            style: TextStyle(
-                              color: ForjaShellColors.textSecondary,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1233,5 +1168,236 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
 
     if (!excludeFromTraversal) return chrome;
     return ExcludeFocus(child: chrome);
+  }
+
+  Widget _buildTvTransportRow() {
+    Widget ordered(int order, Widget child) => FocusTraversalOrder(
+          order: NumericFocusOrder(order.toDouble()),
+          child: child,
+        );
+
+    return Row(
+      children: [
+        ordered(
+          3,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            focusNode: _playFocus,
+            icon: _showReplayControl
+                ? Icons.replay_rounded
+                : _playing
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+            tooltip: _showReplayControl
+                ? 'Replay'
+                : _playing
+                    ? 'Pause'
+                    : 'Play',
+            onPressed: () {
+              if (!_ready) return;
+              unawaited(_togglePlayPause());
+            },
+          ),
+        ),
+        const SizedBox(width: 2),
+        ordered(
+          4,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: Icons.replay_10_rounded,
+            tooltip: 'Back 10s',
+            onPressed: () {
+              if (!_ready) return;
+              unawaited(_skip(-10));
+            },
+          ),
+        ),
+        const SizedBox(width: 2),
+        ordered(
+          5,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: Icons.forward_10_rounded,
+            tooltip: 'Forward 10s',
+            onPressed: () {
+              if (!_ready) return;
+              unawaited(_skip(10));
+            },
+          ),
+        ),
+        const SizedBox(width: 2),
+        ordered(
+          6,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+            tooltip: 'Mute',
+            onPressed: () {
+              if (!_ready) return;
+              unawaited(_toggleMute());
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        ordered(
+          7,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: Icons.audiotrack_rounded,
+            tooltip: 'Audio',
+            onPressedWithContext: _showAudioMenu,
+          ),
+        ),
+        const SizedBox(width: 2),
+        ordered(
+          8,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: Icons.subtitles_outlined,
+            tooltip: 'Subtitles',
+            onPressedWithContext: _showSubtitleMenu,
+          ),
+        ),
+        const SizedBox(width: 2),
+        ordered(
+          9,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: Icons.hd_outlined,
+            tooltip: 'Quality',
+            onPressedWithContext: _showQualityMenu,
+          ),
+        ),
+        const SizedBox(width: 2),
+        ordered(
+          10,
+          PlayerFlatIconButton(
+            tvFocusable: true,
+            icon: Icons.speed_rounded,
+            tooltip: 'Playback speed',
+            onPressedWithContext: _showSpeedMenu,
+          ),
+        ),
+        if (!_ready) ...[
+          const SizedBox(width: 8),
+          ExcludeFocus(
+            child: Text(
+              'Loading…',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDesktopTransportRow({required bool tvFocus}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: _showReplayControl
+                  ? Icons.replay_rounded
+                  : _playing
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+              tooltip: _showReplayControl
+                  ? 'Replay'
+                  : _playing
+                      ? 'Pause'
+                      : 'Play',
+              onPressed: () {
+                if (!_ready) return;
+                unawaited(_togglePlayPause());
+              },
+            ),
+            const SizedBox(width: 2),
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: Icons.replay_10_rounded,
+              tooltip: 'Back 10s',
+              onPressed: () {
+                if (!_ready) return;
+                unawaited(_skip(-10));
+              },
+            ),
+            const SizedBox(width: 2),
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: Icons.forward_10_rounded,
+              tooltip: 'Forward 10s',
+              onPressed: () {
+                if (!_ready) return;
+                unawaited(_skip(10));
+              },
+            ),
+            const SizedBox(width: 2),
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: _muted
+                  ? Icons.volume_off_rounded
+                  : Icons.volume_up_rounded,
+              tooltip: 'Mute',
+              onPressed: () {
+                if (!_ready) return;
+                unawaited(_toggleMute());
+              },
+            ),
+            const SizedBox(width: 8),
+            PlayerTimeRange(
+              position: _position,
+              duration: _duration,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: Icons.audiotrack_rounded,
+              tooltip: 'Audio',
+              onPressedWithContext: _showAudioMenu,
+            ),
+            const SizedBox(width: 2),
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: Icons.subtitles_outlined,
+              tooltip: 'Subtitles',
+              onPressedWithContext: _showSubtitleMenu,
+            ),
+            const SizedBox(width: 2),
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: Icons.hd_outlined,
+              tooltip: 'Quality',
+              onPressedWithContext: _showQualityMenu,
+            ),
+            const SizedBox(width: 2),
+            PlayerFlatIconButton(
+              tvFocusable: tvFocus,
+              icon: Icons.speed_rounded,
+              tooltip: 'Playback speed',
+              onPressedWithContext: _showSpeedMenu,
+            ),
+            if (!_ready) ...[
+              const SizedBox(width: 8),
+              Text(
+                'Loading…',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
   }
 }

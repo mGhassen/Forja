@@ -39,6 +39,8 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
 bool iptvRestoreCatalogFocus({int? portalIndex}) {
   if (iptvFocusRowItem('portals', portalIndex ?? 0)) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;
+  if (iptvFocusRowItem('iptv-top-tools', 1)) return true;
+  if (iptvFocusRowItem('iptv-top-tools', 0)) return true;
   if (iptvFocusRowItem('browser-categories', 0)) return true;
   if (iptvFocusRowItem('browser-streams', 0)) return true;
   if (iptvFocusRowItem('iptv-open-portal', 0)) return true;
@@ -239,6 +241,7 @@ class IptvIconAction extends StatefulWidget {
   final int? tvItemIndex;
   final ShellTvZone? tvZone;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
 
@@ -253,6 +256,7 @@ class IptvIconAction extends StatefulWidget {
     this.tvItemIndex,
     this.tvZone,
     this.onDownEdge,
+    this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
   });
@@ -281,6 +285,7 @@ class _IptvIconActionState extends State<IptvIconAction> {
         tvItemIndex: widget.tvItemIndex,
         tvZone: widget.tvZone,
         onDownEdge: widget.onDownEdge,
+        onUpEdge: widget.onUpEdge,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
         onFocusChange: (focused) => setState(() => _focused = focused),

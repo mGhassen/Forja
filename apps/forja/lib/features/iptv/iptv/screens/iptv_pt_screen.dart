@@ -1510,9 +1510,7 @@ class _BrowserViewState extends State<_BrowserView> {
           rowId: 'browser-streams',
           sortOrder: 3,
           itemCount: list.length,
-          onFocusUp: () {
-            iptvFocusRowItem('browser-categories');
-          },
+          onFocusUp: () => iptvFocusRowItem('iptv-sections', 0),
         );
         final cats = _filteredCategories;
         final selectedCatIdx = cats.indexWhere(
@@ -1533,10 +1531,7 @@ class _BrowserViewState extends State<_BrowserView> {
             gridIndex: i,
             gridColumns: cross,
             onUpEdge: i < cross
-                ? () => iptvFocusRowItem(
-                      'browser-categories',
-                      selectedCatIdx >= 0 ? selectedCatIdx : 0,
-                    )
+                ? () => iptvFocusRowItem('iptv-sections', 0)
                 : null,
             onRightEdge: widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
                 ? () => iptvFocusRowItem('portals', 0)
@@ -1575,10 +1570,7 @@ class _BrowserViewState extends State<_BrowserView> {
       sortOrder: 3,
       itemCount: list.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () => iptvFocusRowItem(
-        'browser-categories',
-        selectedCatIdx >= 0 ? selectedCatIdx : 0,
-      ),
+      onFocusUp: () => iptvFocusRowItem('iptv-sections', 0),
     );
 
     final rows = ListView.builder(
@@ -1597,6 +1589,9 @@ class _BrowserViewState extends State<_BrowserView> {
           ),
           onRightEdge: ctrl.portalPanelOpen
               ? () => iptvFocusRowItem('portals', 0)
+              : null,
+          onUpEdge: i == 0
+              ? () => iptvFocusRowItem('iptv-sections', 0)
               : null,
           onTap: () => _onStreamTap(stream),
         );
@@ -1961,6 +1956,7 @@ class _StreamRowTile extends StatefulWidget {
     this.listIndex,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
   });
 
   final IptvStream stream;
@@ -1970,6 +1966,7 @@ class _StreamRowTile extends StatefulWidget {
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
 
   @override
   State<_StreamRowTile> createState() => _StreamRowTileState();
@@ -2050,6 +2047,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
               tvZone: ShellTvZone.row,
               onLeftEdge: widget.onLeftEdge,
               onRightEdge: widget.onRightEdge,
+              onUpEdge: widget.onUpEdge,
               onFocusChange: _onFocus,
               onHoverChange: _onHover,
               child: Padding(
