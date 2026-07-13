@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 5 files · ~20.5k LOC |
-| **Next action** | Phase D done — details orchestrator **545** lines (&lt;800); next: RFC-026 move to `features/media/details/` |
+| **Next action** | Home + details + settings done; next: Search, Anime, or Phase E (IPTV / Live Matches) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -56,11 +56,11 @@
 
 ---
 
-## Tier 1b — home orchestrator (Phase B target &lt;800)
+## Tier 1b — home orchestrator (Phase B target &lt;800) — done
 
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
-| [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 1,372 | Orchestrator | In | Phase B done — `home_hero.dart` + `widgets/` |
+| [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | State + lifecycle; feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
 
 ---
 
@@ -100,7 +100,9 @@ Paths relative to `apps/forja/lib/features/`.
 | Lines | Feature | File | Role | TV scope |
 |------:|---------|------|------|----------|
 | 545 | home | `home/details_screen.dart` | Details orchestrator | In |
-| 1372 | home | `home/home_screen.dart` | Orchestrator | In |
+| 218 | home | `home/home_screen.dart` | Orchestrator | In |
+| 853 | home | `home/home_screen_feed.dart` | Home feed mixin | In |
+| 313 | home | `home/home_screen_build.dart` | Home build mixin | In |
 | 999 | home | `home/home_hero.dart` | Hero | In |
 | 748 | settings | `settings/settings_screen.dart` | Orchestrator | In |
 | 596 | home | `home/details_screen_webstreaming.dart` | Details webstreaming mixin | In |
@@ -386,9 +388,11 @@ Map and targets only. No Dart changes.
 | B2 | Hero carousel + actions | Done → `home_hero.dart` (`HomeCinematicHero`, `HomeHeroController`) |
 | B3 | `HomeMovieSection`, `HomeStaticMovieSection` | Done → `widgets/home_movie_section.dart` |
 | B4 | Continue watching + history card | Done → `widgets/continue_watching_section.dart` |
-| B5 | Mood, Stremio catalog, Because-you-watched | Done → `widgets/home_mood_section.dart`, `stremio_catalog_section.dart`, `because_you_watched_section.dart` |
+| B5 | Mood, Stremio catalog, Because-you-watched | Done → `widgets/` |
+| B6 | Feed loading | Done → `home_screen_feed.dart` |
+| B7 | Sliver build | Done → `home_screen_build.dart` |
 
-`home_screen.dart`: 4,092 → **1,372** lines (−2,720). Orchestrator holds feed loading, Trakt/Stremio state, sliver assembly.
+`home_screen.dart`: 4,092 → **218** lines (orchestrator &lt;800 ✅).
 
 ### Phase C — settings sections (done)
 
