@@ -11,8 +11,8 @@
 |--|--|
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
-| **Tier 1 (&gt;3k)** | 0 files in `features/` · player screens in `shared/player/` (~5.7k each) |
-| **Next action** | `iptv_controller` split done; next: `shared/player/` controls extract (R19-A05) |
+| **Tier 1 (&gt;3k)** | 0 files in `features/` · `desktop_player_screen.dart` (~5.7k) only |
+| **Next action** | Mobile player split done; desktop player split + `mobile_player_sources` sub-split (R19-A05) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -400,8 +400,17 @@ features/iptv/iptv/
 
 | File | Lines (current) | Target |
 |------|----------------:|--------|
-| `shared/player/player/mobile_player_screen.dart` | 5,912 | Slim + `controls/` extract |
-| `shared/player/player/desktop_player_screen.dart` | 5,728 | Same |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 381 | Orchestrator ✅ |
+| `mobile_player_sources.dart` | 1,664 | Sub-split (still &gt;1.2k) |
+| `mobile_player_playback.dart` | 937 | — |
+| `mobile_player_build.dart` | 960 | — |
+| `mobile_player_lifecycle.dart` | 634 | — |
+| `mobile_player_glass.dart` | 301 | Glass primitives |
+| `mobile_player_tracks.dart` | 344 | Subtitles/audio/quality |
+| `mobile_player_ui.dart` | 205 | Gestures/aspect/timer |
+| `mobile_player_episodes.dart` | 270 | Skip/next-ep |
+| `mobile_player_seekbar.dart` | 253 | Seekbar widgets |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 5,728 | Same mixin pattern |
 
 ---
 
@@ -480,7 +489,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV splits complete (PT screen, catalog workspace, player, controller). Remaining: `shared/player/` controls (R19-A05).
+IPTV + mobile player splits done. Remaining: `desktop_player_screen`, `mobile_player_sources` sub-split (R19-A05).
 
 ---
 

@@ -1,0 +1,1664 @@
+part of 'mobile_player_screen.dart';
+
+mixin _MobilePlayerSources on State<MobilePlayerScreen> {
+  _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
+
+  void _notifySourceMenuChanged() {
+    _s._sourceMenuRevision.value++;
+  }
+
+  ProviderScoreScope? get _scoreScope => PlayerStreamMenu.scoreScope(
+        movie: widget.movie,
+        providers: widget.providers,
+        selectedSeason: widget.selectedSeason,
+        selectedEpisode: widget.selectedEpisode,
+        hubEpisodeNumber: widget.hubEpisodeNumber,
+        activeProvider: widget.activeProvider,
+      );
+
+  List<String> _streamUrlsForProvider(String providerId) {
+    if (providerId.isEmpty) return const [];
+    final cached = _liveProviderSourcesCache.value[providerId];
+    if (cached != null && cached.isNotEmpty) {
+      return [for (final s in cached) s.url];
+    }
+    if (providerId == _s._currentProvider) {
+      final sources = _s._currentSources;
+      if (sources != null && sources.isNotEmpty) {
+        return [for (final s in sources) s.url];
+      }
+    }
+    return const [];
+  }
+
+  Future<void> _recordStreamCheckSuccess(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamUp(scope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _recordStreamCheckFailure(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamFail(scope, providerId);
+    await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+      scope: scope,
+      providerId: providerId,
+      streamUrls: _streamUrlsForProvider(providerId),
+      isStreamFailed: (url) =>
+          _s._urlCheckStatuses[url] == PlayerSourceStatus.failed,
+    );
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _recordStreamPlaySuccess(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamUp(scope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _recordStreamPlayFailure(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamFail(scope, providerId);
+    await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+      scope: scope,
+      providerId: providerId,
+      streamUrls: _streamUrlsForProvider(providerId),
+      isStreamFailed: (url) =>
+          _s._urlCheckStatuses[url] == PlayerSourceStatus.failed,
+    );
+    _notifySourceMenuChanged();
+  }
+
+  void _setUrlCheckStatus(String url, PlayerSourceStatus status) {
+    _s._urlCheckStatuses[url] = status;
+    _notifySourceMenuChanged();
+  }
+
+  void _syncUrlCheckFromIndex(int index, PlayerSourceStatus status) {
+    final sources = _s._currentSources;
+    if (sources == null || index < 0 || index >= sources.length) return;
+    _setUrlCheckStatus(sources[index].url, status);
+  }
+
+  void _markSourceChecking(int index) {
+    _s._checkingSourceIndices
+      ..clear()
+      ..add(index);
+    _syncUrlCheckFromIndex(index, PlayerSourceStatus.checking);
+    _notifySourceMenuChanged();
+  }
+
+  void _markSourceFailed(int index) {
+    _s._failedSourceIndices.add(index);
+    _s._checkingSourceIndices.remove(index);
+    _syncUrlCheckFromIndex(index, PlayerSourceStatus.failed);
+    _s._hideTimer?.cancel();
+    if (mounted && !_s._showControls) {
+      setState(() => _s._showControls = true);
+    }
+    _notifySourceMenuChanged();
+  }
+
+  void _markSourceActive(int index) {
+    _s._failedSourceIndices.remove(index);
+    _s._checkingSourceIndices.remove(index);
+    _syncUrlCheckFromIndex(index, PlayerSourceStatus.active);
+    _notifySourceMenuChanged();
+  }
+
+  bool _isCurrentSourceIndex(int index) {
+    final sources = _s._currentSources;
+    if (sources == null || index < 0 || index >= sources.length) return false;
+    final source = sources[index];
+    return _s._currentProvider == 'service111477'
+        ? source.url == _s._current111477FileUrl
+        : source.url == _s._currentUrl ||
+            source.url == _s._currentPlayingCatalogUrl;
+  }
+
+  Future<void> _reloadStreamMenu() async {
+    if (_s._isReloadingStreams.value) return;
+    _s._isReloadingStreams.value = true;
+    try {
+      if (widget.onReloadStreams != null) {
+        final fresh = await widget.onReloadStreams!();
+        if (!mounted) return;
+        if (fresh != null && fresh.isNotEmpty) {
+          setState(() {
+            _s._currentSources = fresh;
+            _s._failedSourceIndices.clear();
+            _s._checkingSourceIndices.clear();
+            _s._urlCheckStatuses.clear();
+            _s._streamProbedProviders.clear();
+          });
+          _notifySourceMenuChanged();
+        }
+      }
+      // Source validity is checked on click — not eagerly in the background.
+    } finally {
+      if (mounted) _s._isReloadingStreams.value = false;
+    }
+  }
+
+  void _onLiveSourcesUpdated() {
+    unawaited(_rankLiveSources());
+  }
+
+  void _onProbeScoringChanged() {
+    final notifier = widget.providerProbesNotifier;
+    if (notifier == null) return;
+    unawaited(
+      ProviderScoreProbeSync.syncProbeList(
+        scope: _scoreScope,
+        probes: notifier.value,
+        sourcesByProvider: _liveProviderSourcesCache.value,
+      ).then((_) {
+        if (mounted) _notifySourceMenuChanged();
+      }),
+    );
+  }
+
+  Future<void> _rankLiveSources() async {
+    if (_s._disposed || !mounted) return;
+    final live = widget.sourcesListNotifier?.value;
+    if (live == null || live.isEmpty) return;
+    final merged = await dedupeStreamSourcesAsync(
+      live,
+      providerId: _s._currentProvider ?? '',
+    );
+    if (_s._disposed || !mounted) return;
+    final prevLen = _s._currentSources?.length ?? 0;
+    if (merged.length <= prevLen &&
+        (_s._currentSources == null ||
+            (merged.length == prevLen &&
+                merged.every(
+                  (s) => _s._currentSources!.any((c) => c.url == s.url),
+                )))) {
+      return;
+    }
+    setState(() => _s._currentSources = merged);
+    _s._syncCurrentSourceIndexFromPlayUrl();
+    _notifySourceMenuChanged();
+    if (!_s._playbackConfirmed &&
+        !_s._isInitPlaybackRunning &&
+        !_s._allSourcesExhaustedNotified &&
+        merged.length > prevLen &&
+        _s._currentFallbackSourceIndex < merged.length) {
+      unawaited(_s._initPlayback(sourceStartIndex: _s._currentFallbackSourceIndex));
+    }
+  }
+
+  /// Verifies cached provider streams once playback is up (one working stream
+  /// per provider is enough). Per provider: any stream OK → stream verdict
+  /// **+2**; every stream dead → **−2**. Netted with the server verdict, an up
+  /// server whose streams are all dead shows **0**.
+  Future<void> _probeCachedProviderStreamsInBackground() async {
+    if (_s._disposed || !mounted || _scoreScope == null) return;
+    final cache = Map<String, List<StreamSource>>.from(
+      _liveProviderSourcesCache.value,
+    );
+    if (cache.isEmpty) return;
+
+    final current = _s._currentProvider;
+    final playingUrl = _s._currentPlayingCatalogUrl ?? _s._currentUrl;
+
+    for (final entry in cache.entries) {
+      if (_s._disposed || !mounted) return;
+      final providerId = entry.key;
+      final sources = entry.value;
+      if (sources.isEmpty) continue;
+      if (_s._streamProbedProviders.contains(providerId)) continue;
+      _s._streamProbedProviders.add(providerId);
+
+      var anyOk = false;
+      var probedAny = false;
+
+      for (final source in sources) {
+        if (_s._disposed || !mounted) return;
+        final url = source.url.trim();
+        if (url.isEmpty) continue;
+
+        final isActiveStream = providerId == current &&
+            _s._playbackConfirmed &&
+            (url == playingUrl || url == _s._currentUrl);
+        if (isActiveStream) {
+          _setUrlCheckStatus(url, PlayerSourceStatus.active);
+          anyOk = true;
+          break;
+        }
+        if (_s._urlCheckStatuses[url] == PlayerSourceStatus.ready ||
+            _s._urlCheckStatuses[url] == PlayerSourceStatus.active) {
+          anyOk = true;
+          break;
+        }
+
+        _setUrlCheckStatus(url, PlayerSourceStatus.checking);
+        final validated = await _resolveValidatedStream(
+          source,
+          providerId: providerId,
+        );
+        if (_s._disposed || !mounted) return;
+        probedAny = true;
+
+        if (validated != null) {
+          _setUrlCheckStatus(url, PlayerSourceStatus.ready);
+          anyOk = true;
+          break;
+        } else {
+          _setUrlCheckStatus(url, PlayerSourceStatus.failed);
+        }
+      }
+
+      final scope = _scoreScope;
+      if (scope != null) {
+        if (anyOk) {
+          await ProviderScoreMemory.recordStreamUp(scope, providerId);
+        } else if (probedAny) {
+          await ProviderScoreMemory.recordStreamFail(scope, providerId);
+        }
+      }
+      _notifySourceMenuChanged();
+    }
+  }
+
+  List<PlayerSourceStatus> _buildSourceStatuses() {
+    final sources = _s._effectiveCurrentSources ?? const [];
+    return List.generate(sources.length, (i) {
+      if (_s._checkingSourceIndices.contains(i)) {
+        return PlayerSourceStatus.checking;
+      }
+      final source = sources[i];
+      final isCurrent = _s._currentProvider == 'service111477'
+          ? source.url == _s._current111477FileUrl
+          : source.url == _s._currentUrl ||
+            source.url == _s._currentPlayingCatalogUrl;
+      if (isCurrent && !_s._playbackConfirmed && _s._isInitPlaybackRunning) {
+        return PlayerSourceStatus.checking;
+      }
+      if (isCurrent && _s._playbackConfirmed) return PlayerSourceStatus.active;
+      if (_s._failedSourceIndices.contains(i)) return PlayerSourceStatus.failed;
+      return PlayerSourceStatus.ready;
+    });
+  }
+
+  PlayerStreamMenuState _streamMenuState() {
+    return PlayerStreamMenuState(
+      currentProviderId: _s._resolveStreamMenuProviderId(),
+      sources: _s._effectiveCurrentSources,
+      currentUrl: _s._currentUrl,
+      currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
+      current111477FileUrl: _s._current111477FileUrl,
+      is111477: _s._currentProvider == 'service111477',
+      sourceStatuses: _buildSourceStatuses(),
+      playbackConfirmed: _s._playbackConfirmed,
+      mediaPlaying: _s._isPlayingNotifier.value,
+    );
+  }
+
+  ValueNotifier<Map<String, List<StreamSource>>> get _liveProviderSourcesCache =>
+      widget.providerSourcesCache ?? _s._ownedProviderSourcesCache;
+
+  void _cancelPendingStreamWork() {
+    _s._fallbackGen++;
+    for (final id in _s._providerLoadGens.keys.toList()) {
+      _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
+    }
+    PlayerStreamMenu.dismiss();
+    PlayerPopupPanel.dismiss();
+    PlayerEpisodePanel.dismiss();
+    PlayerHubEpisodePanel.dismiss();
+    PlayerSourcesPanel.dismiss();
+    PlayerTorrentFilePanel.dismiss();
+    DomainStreamProviderResolver.cancelAllPending();
+  }
+
+  void _markProviderLoadFailed(String providerId) {
+    if (_s._providerLoadFailures.value.contains(providerId)) return;
+    _s._providerLoadFailures.value = {
+      ..._s._providerLoadFailures.value,
+      providerId,
+    };
+    _syncProbeStatus(providerId, StreamProviderProbeStatus.failed);
+    unawaited(ProviderScoreMemory.recordServerFailure(_scoreScope, providerId));
+    ProviderScoreProbeSync.markScoredServerFail(_scoreScope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  void _markProviderLoadSucceeded(String providerId) {
+    if (_s._providerLoadFailures.value.contains(providerId)) {
+      final next = {..._s._providerLoadFailures.value}..remove(providerId);
+      _s._providerLoadFailures.value = next;
+    }
+    _notifySourceMenuChanged();
+  }
+
+  void _scoreServerUp(String providerId) {
+    if (providerId.isEmpty) return;
+    unawaited(ProviderScoreMemory.recordServerUp(_scoreScope, providerId));
+    ProviderScoreProbeSync.markScoredServerUp(_scoreScope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  void _cacheProviderSources(String providerId, List<StreamSource> sources) {
+    if (providerId.isEmpty || sources.isEmpty) return;
+    _liveProviderSourcesCache.value = {
+      ..._liveProviderSourcesCache.value,
+      providerId: dedupeStreamSources(sources),
+    };
+  }
+
+  void _syncProbeStatus(String providerId, StreamProviderProbeStatus status) {
+    final notifier = widget.providerProbesNotifier;
+    if (notifier == null || notifier.value.isEmpty) return;
+    final existing = notifier.value;
+    final updated = existing
+        .map((p) => p.id == providerId ? p.copyWith(status: status) : p)
+        .toList();
+    if (updated != existing) notifier.value = updated;
+  }
+
+  void _finalizeProbeStatusesAfterPlayback() {
+    final notifier = widget.providerProbesNotifier;
+    if (notifier == null || notifier.value.isEmpty) return;
+    final current = _s._currentProvider;
+    final failed = _s._providerLoadFailures.value;
+    final cache = _liveProviderSourcesCache.value;
+    notifier.value = [
+      for (final p in notifier.value)
+        if (_s._playbackConfirmed && current != null && p.id == current)
+          p.copyWith(status: StreamProviderProbeStatus.success)
+        else if ((cache[p.id] ?? const []).isNotEmpty)
+          p.copyWith(status: StreamProviderProbeStatus.success)
+        else if (failed.contains(p.id))
+          p.copyWith(status: StreamProviderProbeStatus.failed)
+        else if (p.status == StreamProviderProbeStatus.trying)
+          p.copyWith(status: StreamProviderProbeStatus.failed)
+        else
+          p,
+    ];
+  }
+
+  void _syncPanelAfterPlaybackConfirmed() {
+    _s._refreshPanelPlayingStream();
+    final pid = _s._currentProvider;
+    if (pid == null) return;
+    _markProviderLoadSucceeded(pid);
+    _syncProbeStatus(pid, StreamProviderProbeStatus.success);
+    _finalizeProbeStatusesAfterPlayback();
+    unawaited(
+      ProviderScoreProbeSync.syncSourcesCache(
+        scope: _scoreScope,
+        sourcesByProvider: _liveProviderSourcesCache.value,
+      ),
+    );
+    _onProbeScoringChanged();
+    unawaited(_probeCachedProviderStreamsInBackground());
+    _notifySourceMenuChanged();
+  }
+
+  Listenable? _streamMenuRefreshListenable() {
+    final listenables = <Listenable>[
+      _s._statusController,
+      _s._sourceMenuRevision,
+      _s._isReloadingStreams,
+      _s._isPlayingNotifier,
+      _s._providerLoadFailures,
+      ProviderScoreMemory.revision,
+    ];
+    final probes = widget.providerProbesNotifier;
+    if (probes != null) listenables.add(probes);
+    listenables.add(_liveProviderSourcesCache);
+    return Listenable.merge(listenables);
+  }
+
+  String _streamPickerLabel() {
+    final key = _s._currentProvider ?? widget.activeProvider;
+    if (key != null &&
+        widget.providers != null &&
+        widget.providers!.containsKey(key)) {
+      return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
+    }
+    final sources = _s._currentSources;
+    if (sources != null && sources.isNotEmpty) {
+      final current = sources.firstWhere(
+        (s) => _s._currentProvider == 'service111477'
+            ? s.url == _s._current111477FileUrl
+            : s.url == _s._currentUrl,
+        orElse: () => sources.first,
+      );
+      return current.title;
+    }
+    return 'Stream';
+  }
+
+  bool get _hasStreamPicker {
+    final hasProviders =
+        widget.providers != null &&
+        widget.providers!.isNotEmpty &&
+        widget.magnetLink == null &&
+        widget.activeProvider != 'stremio_direct';
+    final hasSources =
+        _s._effectiveCurrentSources != null && _s._effectiveCurrentSources!.isNotEmpty;
+    return hasProviders || hasSources;
+  }
+
+  void _showStreamMenu([BuildContext? anchorContext]) {
+    if (!_hasStreamPicker) return;
+    _s._refreshPanelPlayingStream();
+    final bottom = MediaQuery.paddingOf(context).bottom + 76;
+    PlayerStreamMenu.show(
+      context,
+      providers: widget.providers,
+      providerSourcesCache: _liveProviderSourcesCache,
+      providerLoadFailures: _s._providerLoadFailures,
+      providerProbesNotifier: widget.providerProbesNotifier,
+      statusController: _s._statusController,
+      readState: _streamMenuState,
+      onLoadProvider: _loadProvider,
+      onSelectProvider: _switchProvider,
+      onSelectSource: _switchToStreamSource,
+      onCheckSource: _checkStreamSource,
+      onTogglePlayPause: () {
+        _s._player.playOrPause();
+        _s._startHideTimer();
+      },
+      anchorContext: anchorContext,
+      margin: EdgeInsets.only(right: 12, bottom: bottom),
+      refreshListenable: _streamMenuRefreshListenable(),
+      onReload: _reloadStreamMenu,
+      isReloading: _s._isReloadingStreams,
+      movie: widget.movie,
+      selectedSeason: widget.selectedSeason,
+      selectedEpisode: widget.selectedEpisode,
+      hubEpisodeNumber: widget.hubEpisodeNumber,
+      activeProvider: widget.activeProvider,
+      readUrlCheckStatuses: () => _s._urlCheckStatuses,
+    );
+    _s._startHideTimer();
+  }
+
+  Future<void> _selectAutoProvider() async {
+    if (!_s._providerPinned) return;
+    setState(() {
+      _s._providerPinned = false;
+      _s._sourcePinned = false;
+      _s._currentFallbackSourceIndex = 0;
+    });
+    final movie = widget.movie;
+    final providers = widget.providers;
+    if (movie != null && providers != null && providers.isNotEmpty) {
+      final gen = ++_s._fallbackGen;
+      WebStreamrService().cancelPending();
+      VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
+      NuvioService.instance.cancelPending();
+      final hit = await PlayerSourceResolve.resolveAutoForMovie(
+        movie: movie,
+        providers: providers,
+        season: widget.selectedSeason ?? 1,
+        episode: widget.selectedEpisode ?? 1,
+        isCancelled: () => _s._fallbackAborted(gen),
+        onHitsUpdated: (hits) {
+          if (!mounted || _s._fallbackAborted(gen)) return;
+          _liveProviderSourcesCache.value = {
+            ..._liveProviderSourcesCache.value,
+            ...PlaybackEngine.hitsToProviderCache(hits),
+          };
+        },
+      );
+      if (_s._fallbackAborted(gen)) return;
+      if (hit != null) {
+        _scoreServerUp(hit.providerId);
+        setState(() {
+          _s._currentProvider = hit.providerId;
+          _s._currentSources = hit.streamSources;
+          _s._currentUrl = hit.streamUrl;
+          _s._currentFallbackSourceIndex = 0;
+          _s._failedSourceIndices.clear();
+          _s._checkingSourceIndices.clear();
+          _s._hasError = false;
+          _s._errorMessage = '';
+          if (hit.providerId == 'service111477' &&
+              hit.streamSources.isNotEmpty) {
+            _s._current111477FileUrl = hit.streamSources.first.url;
+          }
+        });
+        final played = await _s._trySourcesFromIndex(
+          0,
+          chainGen: gen,
+          seekAfterOpen: _s._positionNotifier.value,
+        );
+        if (played) return;
+      }
+    }
+    await _s._initPlayback();
+  }
+
+  Future<void> _selectAutoSource() async {
+    if (!_s._sourcePinned) return;
+    setState(() {
+      _s._sourcePinned = false;
+      _s._currentFallbackSourceIndex = 0;
+      _s._failedSourceIndices.clear();
+      _s._checkingSourceIndices.clear();
+    });
+    _notifySourceMenuChanged();
+    await _s._initPlayback();
+  }
+
+  Future<
+      ({
+        String openUrl,
+        Map<String, String>? headers,
+        StreamSource resolved,
+      })?> _resolveValidatedStream(
+    StreamSource source, {
+    String? providerId,
+  }) async {
+    final pid = providerId ?? _s._currentProvider;
+    var openUrl = source.url;
+    Map<String, String>? headers = source.headers ?? widget.headers;
+    var resolved = source;
+
+    if (pid == 'service111477') {
+      final ok = await validateStreamSourceForCheck(
+        providerId: pid,
+        source: source,
+        headers: headers,
+      );
+      if (!ok) return null;
+      return (openUrl: source.url, headers: headers, resolved: source);
+    }
+
+    if (pid == 'arabic' && source.type == 'arabic_embed') {
+      final result = await ArabicService.extractStreamUrl(source.url);
+      if (result == null) return null;
+      openUrl = result.url;
+      headers = result.headers;
+      resolved = StreamSource(
+        url: result.url,
+        title: source.title,
+        type: result.url.contains('.m3u8')
+            ? 'hls'
+            : result.url.contains('.mpd')
+                ? 'dash'
+                : 'mp4',
+      );
+    }
+
+    final ok = await probeStreamSourceUrl(openUrl, headers);
+    if (!ok) return null;
+    return (openUrl: openUrl, headers: headers, resolved: resolved);
+  }
+
+  Future<bool> _checkStreamSource(
+    StreamSource source,
+    int index, [
+    String? providerId,
+  ]) async {
+    final pid = providerId ?? _s._currentProvider ?? '';
+    final affectsCurrent =
+        providerId == null || providerId == _s._currentProvider;
+    _setUrlCheckStatus(source.url, PlayerSourceStatus.checking);
+    if (affectsCurrent) {
+      if (_isCurrentSourceIndex(index) && _s._playbackConfirmed) {
+        _markSourceActive(index);
+        unawaited(_recordStreamCheckSuccess(pid));
+        return true;
+      }
+      _markSourceChecking(index);
+    }
+
+    try {
+      final validated = await _resolveValidatedStream(
+        source,
+        providerId: providerId,
+      );
+      if (!mounted) return false;
+
+      if (validated != null) {
+        _setUrlCheckStatus(source.url, PlayerSourceStatus.ready);
+        if (affectsCurrent) {
+          _s._failedSourceIndices.remove(index);
+          _s._checkingSourceIndices.remove(index);
+          _notifySourceMenuChanged();
+        }
+        unawaited(_recordStreamCheckSuccess(pid));
+        return true;
+      }
+
+      _setUrlCheckStatus(source.url, PlayerSourceStatus.failed);
+      if (affectsCurrent) {
+        _markSourceFailed(index);
+      } else {
+        _notifySourceMenuChanged();
+      }
+      unawaited(_recordStreamCheckFailure(pid));
+      return false;
+    } catch (_) {
+      if (!mounted) return false;
+      _setUrlCheckStatus(source.url, PlayerSourceStatus.failed);
+      if (affectsCurrent) {
+        _markSourceFailed(index);
+      } else {
+        _notifySourceMenuChanged();
+      }
+      unawaited(_recordStreamCheckFailure(pid));
+      return false;
+    }
+  }
+
+  Future<void> _switchToStreamSource(StreamSource source, int index) async {
+    if (_s._currentSources == null || _s._currentSources!.isEmpty) {
+      final effective = _s._effectiveCurrentSources;
+      if (effective != null && effective.isNotEmpty) {
+        setState(() => _s._currentSources = List<StreamSource>.from(effective));
+      }
+    }
+
+    final isCurrent = _s._currentProvider == 'service111477'
+        ? source.url == _s._current111477FileUrl
+        : source.url == _s._currentUrl ||
+            source.url == _s._currentPlayingCatalogUrl;
+    if (isCurrent && _s._sourcePinned && _s._playbackConfirmed) return;
+
+    if (isCurrent && !_s._sourcePinned && _s._playbackConfirmed) {
+      await SettingsService().setPlayerAutoSource(false);
+      setState(() => _s._sourcePinned = true);
+      unawaited(widget.onSourcePinned?.call(source.url, source.title));
+      _s._startHideTimer();
+      return;
+    }
+
+    _s._sourcePinned = true;
+    unawaited(SettingsService().setPlayerAutoSource(false));
+    final switchGen = ++_s._fallbackGen;
+    _markSourceChecking(index);
+
+    final currentPos = _s._positionNotifier.value;
+    final statusId = 'source-switch-$index';
+    _s._statusController.upsert(
+      statusId,
+      source.title,
+      kind: StatusRouletteKind.loading,
+    );
+
+    try {
+      final validated = await _resolveValidatedStream(source);
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (validated == null) {
+        _s._statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        _markSourceFailed(index);
+        unawaited(
+          _recordStreamPlayFailure(_s._currentProvider ?? ''),
+        );
+        return;
+      }
+
+      var openUrl = validated.openUrl;
+      Map<String, String>? headers = validated.headers;
+      var resolved = validated.resolved;
+
+      if (_s._currentProvider == 'service111477') {
+        if (site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
+        }
+        openUrl = await site111477_proxy.start111477Proxy(source.url);
+        headers = null;
+      }
+
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+
+      WebStreamrService().cancelPending();
+      VidsrcExtractor.cancelPending();
+      VideasyExtractor.cancelPending();
+      NuvioService.instance.cancelPending();
+      _s._statusController.clear();
+      _s._playbackConfirmed = false;
+
+      if (_s._player.platform is NativePlayer) {
+        final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
+        await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
+      }
+      await _s._player.open(Media(openUrl, httpHeaders: headers));
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+
+      if (_s._currentProvider == 'service111477') {
+        setState(() {
+          _s._currentUrl = openUrl;
+          _s._current111477FileUrl = source.url;
+          _s._currentFallbackSourceIndex = 0;
+          _s._hasError = false;
+          _s._errorMessage = '';
+        });
+      } else {
+        if (_s._currentSources != null &&
+            index >= 0 &&
+            index < _s._currentSources!.length) {
+          _s._currentSources![index] = resolved;
+        }
+        setState(() {
+          _s._currentUrl = openUrl;
+          _s._currentPlayingCatalogUrl = source.url;
+          _s._currentFallbackSourceIndex = 0;
+          _s._hasError = false;
+          _s._errorMessage = '';
+        });
+      }
+
+      _s._detectHlsQualities(openUrl, headers);
+      if (currentPos.inSeconds > 0) await _s._player.seek(currentPos);
+      syncPlayerProgressNotifiers(
+        _s._player,
+        duration: _s._durationNotifier,
+        position: _s._positionNotifier,
+        buffered: _s._bufferedNotifier,
+      );
+      _s._playbackConfirmed = true;
+      _s._statusController.complete();
+      _markSourceActive(index);
+      _syncPanelAfterPlaybackConfirmed();
+      unawaited(_recordStreamPlaySuccess(_s._currentProvider ?? ''));
+      unawaited(widget.onSourcePinned?.call(source.url, source.title));
+    } catch (_) {
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      _s._statusController.upsert(
+        statusId,
+        source.title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      _markSourceFailed(index);
+      unawaited(
+        _recordStreamPlayFailure(_s._currentProvider ?? ''),
+      );
+    }
+  }
+
+  Future<({int season, int episode})?> _computeNextEpisode({
+    bool silent = false,
+  }) async {
+    if (widget.movie == null ||
+        widget.selectedSeason == null ||
+        widget.selectedEpisode == null) {
+      return null;
+    }
+    final tmdb = TmdbService();
+    final tvId = widget.movie!.id;
+    var nextSeason = widget.selectedSeason!;
+    var nextEpisode = widget.selectedEpisode! + 1;
+
+    final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
+    final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
+    final maxEp = episodes.isNotEmpty
+        ? episodes
+              .map((e) => e['episode_number'] as int)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    if (nextEpisode > maxEp) {
+      final totalSeasons = await tmdb.getTvSeasonCount(tvId);
+      if (nextSeason < totalSeasons) {
+        nextSeason++;
+        nextEpisode = 1;
+      } else {
+        if (!silent && mounted) {
+          _s._statusController.upsert(
+            'episode',
+            'No more episodes',
+            kind: StatusRouletteKind.info,
+            dismissAfter: const Duration(seconds: 2),
+          );
+        }
+        return null;
+      }
+    }
+    return (season: nextSeason, episode: nextEpisode);
+  }
+
+  Future<({int season, int episode})?> _computePreviousEpisode() async {
+    if (widget.movie == null ||
+        widget.selectedSeason == null ||
+        widget.selectedEpisode == null) {
+      return null;
+    }
+    final tmdb = TmdbService();
+    final tvId = widget.movie!.id;
+    var prevSeason = widget.selectedSeason!;
+    var prevEpisode = widget.selectedEpisode! - 1;
+
+    if (prevEpisode < 1) {
+      if (prevSeason <= 1) return null;
+      prevSeason--;
+      final seasonData = await tmdb.getTvSeasonDetails(tvId, prevSeason);
+      final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
+      if (episodes.isEmpty) return null;
+      prevEpisode = episodes
+          .map((e) => e['episode_number'] as int)
+          .reduce((a, b) => a > b ? a : b);
+    }
+    return (season: prevSeason, episode: prevEpisode);
+  }
+
+  Future<void> _refreshAdjacentEpisodeFlags() async {
+    final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) {
+      final flags = adjacentHubEpisodeFlags(widget.hubEpisodes, current);
+      if (!mounted) return;
+      setState(() {
+        _s._hasPrevEpisodeAdjacent = flags.hasPrev;
+        _s._hasNextEpisodeAdjacent = flags.hasNext;
+      });
+      return;
+    }
+
+    if (widget.onNextEpisode != null) {
+      if (!mounted) return;
+      setState(() {
+        _s._hasNextEpisodeAdjacent = widget.hasNextEpisode;
+        _s._hasPrevEpisodeAdjacent = current != null && current > 1;
+      });
+      return;
+    }
+
+    if (widget.movie?.mediaType == 'tv' &&
+        widget.selectedSeason != null &&
+        widget.selectedEpisode != null) {
+      final results = await Future.wait([
+        _computePreviousEpisode(),
+        _computeNextEpisode(silent: true),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _s._hasPrevEpisodeAdjacent = results[0] != null;
+        _s._hasNextEpisodeAdjacent = results[1] != null;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _s._hasPrevEpisodeAdjacent = false;
+      _s._hasNextEpisodeAdjacent = false;
+    });
+  }
+
+  String _episodeSwitchStatusLabel(
+    int season,
+    int episode, {
+    String? providerKey,
+  }) {
+    final key = providerKey ?? _s._currentProvider ?? widget.activeProvider;
+    if (key != null) {
+      return PlayerProviderMenu.snackbarLabel(key, widget.providers?[key]);
+    }
+    if (widget.magnetLink != null) return 'Torrents';
+    return 'S$season E$episode';
+  }
+
+  void _showEpisodeSwitchStatus(
+    int season,
+    int episode, {
+    String? providerKey,
+  }) {
+    _s._statusController.upsert(
+      'episode-switch',
+      _episodeSwitchStatusLabel(season, episode, providerKey: providerKey),
+      kind: StatusRouletteKind.loading,
+    );
+  }
+
+  Future<void> _switchToEpisode(int season, int episode) async {
+    if (widget.movie == null) return;
+    if (!_s._isLoadingNextEp && mounted) setState(() => _s._isLoadingNextEp = true);
+    _showEpisodeSwitchStatus(season, episode);
+
+    try {
+      debugPrint('[EpSwitch] Playing S${season}E$episode');
+      _s._saveWatchHistory();
+
+      final chain = episodeProviderChain(
+        providers: widget.providers,
+        activeProvider: widget.activeProvider,
+        currentProvider: _s._currentProvider,
+        magnetLink: widget.magnetLink,
+      );
+      if (chain.isEmpty) {
+        throw Exception('No provider available for S${season}E$episode');
+      }
+
+      final hit = await PlaybackService.resolveWebstreaming(
+        movie: widget.movie!,
+        providers: {
+          for (final k in chain)
+            if (widget.providers?.containsKey(k) ?? false) k: widget.providers![k]!,
+        },
+        season: season,
+        episode: episode,
+        preferredProvider: chain.first,
+      );
+      if (hit == null || hit.streamUrl.isEmpty) {
+        throw Exception('Could not find stream for S${season}E$episode');
+      }
+      final resolved = EpisodeSwitchResult(
+        streamUrl: hit.streamUrl,
+        headers: hit.headers,
+        sources: hit.streamSources,
+        activeProvider: hit.providerId,
+      );
+
+      if (!mounted) return;
+
+      final nextTitle = '${widget.movie!.title} - S$season E$episode';
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        AppRouter.slideRoute(
+          (_) => PlayerScreen(
+            streamUrl: resolved!.streamUrl,
+            title: nextTitle,
+            headers: resolved.headers,
+            movie: widget.movie,
+            selectedSeason: season,
+            selectedEpisode: episode,
+            magnetLink: resolved.magnetLink,
+            fileIndex: resolved.fileIndex,
+            activeProvider: resolved.activeProvider,
+            stremioId: widget.stremioId,
+            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+            providers: widget.providers,
+            sources: resolved.sources,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[EpSwitch] Error: $e');
+      if (mounted) {
+        _s._statusController.upsert(
+          'episode-switch',
+          _episodeSwitchStatusLabel(season, episode),
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        setState(() => _s._isLoadingNextEp = false);
+      }
+    }
+  }
+
+  Future<void> _goToEpisode(int season, int episode) async {
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode)
+      return;
+    await _switchToEpisode(season, episode);
+  }
+
+  Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
+    if (widget.hubEpisodes != null &&
+        widget.hubEpisodes!.isNotEmpty &&
+        widget.onHubEpisodeSelected != null) {
+      if (!mounted) return;
+      PlayerPopupPanel.dismiss();
+      PlayerHubEpisodePanel.show(
+        context: context,
+        episodes: widget.hubEpisodes!,
+        currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        onEpisodeSelected: widget.onHubEpisodeSelected!,
+        fallbackBackdropPath: widget.movie?.backdropPath,
+        fallbackPosterPath: widget.movie?.posterPath,
+      );
+      return;
+    }
+    if (!mounted) return;
+    final movie = widget.movie;
+    if (movie == null || movie.mediaType != 'tv') return;
+    final season = widget.selectedSeason ?? 1;
+    final episode = widget.selectedEpisode ?? 1;
+    PlayerEpisodeMenu.show(
+      context,
+      movie: movie,
+      currentSeason: season,
+      currentEpisode: episode,
+      onEpisodeSelected: _goToEpisode,
+      anchorContext: anchorContext,
+    );
+  }
+
+  Future<void> _showTorrentSourcesPanel() async {
+    final movie = widget.movie;
+    if (movie == null) return;
+    _s._hideTimer?.cancel();
+    PlayerSourcesPanel.show(
+      context: context,
+      movie: movie,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      currentMagnet: _s._activeMagnet ?? widget.magnetLink,
+      onTorrentSelected: _switchTorrentSource,
+      onStremioSelected: _switchStremioSource,
+    );
+  }
+
+  Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
+    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
+        .toString();
+    // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
+    final statusId = 'source-stremio-${stream.hashCode}';
+    _s._playbackConfirmed = false;
+    _s._statusController.upsert(statusId, title, kind: StatusRouletteKind.loading);
+    // Let the overlay paint before heavy resolve work.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _s._player.stop();
+
+    final resolved = await resolveStremioStream(
+      stream: stream,
+      profile: PlatformPlayback.capabilities,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    if (!mounted) return;
+
+    if (resolved is! StremioPlayable) {
+      final msg = resolved is StremioResolveFailure
+          ? resolved.message
+          : 'Failed to resolve stream';
+      _s._statusController.upsert(
+        statusId,
+        title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception(msg);
+    }
+
+    await _s._configureMpvProperties();
+    await resetPlayerForOpen(_s._player);
+    await _s._player.open(
+      Media(resolved.streamUrl, httpHeaders: resolved.headers),
+    );
+    _s._player.setVolume(_s._volume);
+
+    final opened = await waitForMediaOpen(
+      _s._player,
+      streamUrl: resolved.streamUrl,
+      timeout: isLocalTorrentStreamUrl(resolved.streamUrl)
+          ? const Duration(seconds: 45)
+          : const Duration(seconds: 12),
+    );
+    if (!mounted) return;
+    if (!opened) {
+      _s._statusController.upsert(
+        statusId,
+        title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception('Stream failed to open');
+    }
+
+    setState(() {
+      _s._currentUrl = resolved.streamUrl;
+      _s._activeMagnet = resolved.magnetLink;
+      _s._hasError = false;
+      _s._errorMessage = '';
+      _s._currentSources = null;
+    });
+    _s._playbackConfirmed = true;
+    _s._statusController.complete();
+    widget.onPlaybackStarted?.call();
+    _s._startHideTimer();
+  }
+
+  Future<void> _switchTorrentSource(TorrentResult result) async {
+    // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
+    final statusId = 'source-torrent-${result.magnet.hashCode}';
+    _s._playbackConfirmed = false;
+    _s._statusController.upsert(
+      statusId,
+      result.name,
+      kind: StatusRouletteKind.loading,
+    );
+    // Let the overlay paint before heavy resolve work.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _s._player.stop();
+
+    final settings = SettingsService();
+    final useDebrid = await settings.useDebridForStreams();
+    final debridService = await settings.getDebridService();
+    final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
+
+    final playback = await resolveMagnetForPlayback(
+      magnet: result.magnet,
+      useDebrid: useDebrid,
+      debridService: debridService,
+      localTorrentEngine: localEngine,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    if (!mounted) return;
+    if (playback == null) {
+      _s._statusController.upsert(
+        statusId,
+        result.name,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception('Failed to resolve torrent');
+    }
+
+    await _s._configureMpvProperties();
+    await resetPlayerForOpen(_s._player);
+    await _s._player.open(Media(playback.url));
+    _s._player.setVolume(_s._volume);
+
+    final opened = await waitForMediaOpen(
+      _s._player,
+      streamUrl: playback.url,
+      timeout: const Duration(seconds: 45),
+    );
+    if (!mounted) return;
+    if (!opened) {
+      _s._statusController.upsert(
+        statusId,
+        result.name,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception('Torrent failed to open');
+    }
+
+    setState(() {
+      _s._currentUrl = playback.url;
+      _s._activeMagnet = result.magnet;
+      _s._hasError = false;
+      _s._errorMessage = '';
+      _s._currentSources = null;
+    });
+    _s._playbackConfirmed = true;
+    _s._statusController.complete();
+    widget.onPlaybackStarted?.call();
+    _s._startHideTimer();
+  }
+
+  Future<void> _persistProgressForSwitch() async {
+    if (widget.onSaveProgress == null) return;
+    final pos = _s._positionNotifier.value;
+    final dur = _s._durationNotifier.value;
+    if (pos.inMilliseconds <= 0 || dur.inMilliseconds <= 0) return;
+    await widget.onSaveProgress!(pos, dur);
+  }
+
+  ({String url, Map<String, String>? headers}) _externalHandoffTarget() {
+    var url = _s._currentUrl ?? widget.mediaPath;
+    Map<String, String>? headers = widget.headers;
+    final sources = _s._currentSources;
+    final idx = _s._currentFallbackSourceIndex;
+    if (sources != null && idx >= 0 && idx < sources.length) {
+      final source = sources[idx];
+      headers = source.headers ?? headers;
+      if (url.isEmpty) url = source.url;
+    }
+    return (url: url, headers: headers);
+  }
+
+  Future<void> _showPlayerMenu(BuildContext anchorContext) async {
+    final handler = widget.onSwitchPlayer;
+    if (handler == null) return;
+    await _persistProgressForSwitch();
+    if (!mounted) return;
+    PlayerAppMenu.show(
+      context,
+      anchorContext: anchorContext,
+      usingBuiltIn: true,
+      builtInEngine: widget.builtInEngine,
+      onSelect: ({builtInEngine, externalPlayer}) {
+        if (externalPlayer != null) {
+          final target = _externalHandoffTarget();
+          return handler(
+            _s._positionNotifier.value,
+            externalPlayer: externalPlayer,
+            streamUrl: target.url,
+            headers: target.headers,
+            activeProvider: _s._currentProvider,
+            sources: _s._currentSources,
+          );
+        }
+        return handler(_s._positionNotifier.value, builtInEngine: builtInEngine);
+      },
+    );
+    _s._startHideTimer();
+  }
+
+  Future<void> _applyAutoSubtitle() async {
+    if (_s._disposed || _s._subtitlePinned) return;
+    final embedded = _s._player.state.tracks.subtitle
+        .where(
+          (t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
+        )
+        .toList();
+    if (embedded.isEmpty) return;
+    final track = embedded.first;
+    await _s._player.setSubtitleTrack(track);
+    _s._updateSubVisibility(track);
+    if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+  }
+
+  bool get _hasResolvedWebStream =>
+      widget.magnetLink == null &&
+      widget.stremioId == null &&
+      widget.activeProvider != null &&
+      widget.activeProvider!.isNotEmpty &&
+      widget.sources != null &&
+      widget.sources!.isNotEmpty;
+
+  Future<void> _loadPlayerAutoSettings() async {
+    final settings = SettingsService();
+    final autoServer = await settings.getPlayerAutoServer();
+    final autoSource = await settings.getPlayerAutoSource();
+    final autoAudio = await settings.getPlayerAutoAudio();
+    final autoSubtitle = await settings.getPlayerAutoSubtitle();
+    if (!mounted) return;
+    final lockResolved = _hasResolvedWebStream || widget.pinSource;
+    setState(() {
+      _s._providerPinned = lockResolved || !autoServer;
+      if (lockResolved) {
+        _s._sourcePinned = true;
+      } else {
+        _s._sourcePinned = !autoSource;
+      }
+      _s._audioPinned = !autoAudio;
+      _s._subtitlePinned = !autoSubtitle;
+    });
+  }
+
+  void _showSettingsMenu(BuildContext anchorContext) {
+    final hasProviders =
+        widget.providers != null &&
+        widget.providers!.isNotEmpty &&
+        widget.movie != null &&
+        widget.magnetLink == null &&
+        widget.activeProvider != 'stremio_direct';
+    final hasSources = _s._currentSources != null && _s._currentSources!.isNotEmpty;
+
+    PlayerPopupPanel.show(
+      context: context,
+      title: 'Settings',
+      anchorContext: anchorContext,
+      child: StatefulBuilder(
+        builder: (context, setPanelState) {
+          return ListView(
+            padding: const EdgeInsets.all(8),
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Text(
+                  'Auto selection',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              if (hasProviders)
+                PlayerPopupListTile(
+                  label: 'Auto server',
+                  subtitle: !_s._providerPinned ? 'On' : 'Off',
+                  selected: !_s._providerPinned,
+                  onTap: () async {
+                    final settings = SettingsService();
+                    if (_s._providerPinned) {
+                      await settings.setPlayerAutoServer(true);
+                      setState(() => _s._providerPinned = false);
+                      setPanelState(() {});
+                      await _selectAutoProvider();
+                    } else {
+                      await settings.setPlayerAutoServer(false);
+                      setState(() => _s._providerPinned = true);
+                      setPanelState(() {});
+                    }
+                  },
+                ),
+              if (hasSources)
+                PlayerPopupListTile(
+                  label: 'Auto source',
+                  subtitle: !_s._sourcePinned ? 'On' : 'Off',
+                  selected: !_s._sourcePinned,
+                  onTap: () async {
+                    final settings = SettingsService();
+                    if (_s._sourcePinned) {
+                      await settings.setPlayerAutoSource(true);
+                      setState(() => _s._sourcePinned = false);
+                      setPanelState(() {});
+                      await _selectAutoSource();
+                    } else {
+                      await settings.setPlayerAutoSource(false);
+                      setState(() => _s._sourcePinned = true);
+                      setPanelState(() {});
+                    }
+                  },
+                ),
+              PlayerPopupListTile(
+                label: 'Auto audio',
+                subtitle: !_s._audioPinned ? 'On' : 'Off',
+                selected: !_s._audioPinned,
+                onTap: () async {
+                  final settings = SettingsService();
+                  if (_s._audioPinned) {
+                    await settings.setPlayerAutoAudio(true);
+                    setState(() => _s._audioPinned = false);
+                    setPanelState(() {});
+                    _s._autoTracksAppliedForSource = false;
+                    await _s._applyTrackAutoSelect();
+                  } else {
+                    await settings.setPlayerAutoAudio(false);
+                    setState(() => _s._audioPinned = true);
+                    setPanelState(() {});
+                  }
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Auto subtitles',
+                subtitle: !_s._subtitlePinned ? 'On' : 'Off',
+                selected: !_s._subtitlePinned,
+                onTap: () async {
+                  final settings = SettingsService();
+                  if (_s._subtitlePinned) {
+                    await settings.setPlayerAutoSubtitle(true);
+                    setState(() => _s._subtitlePinned = false);
+                    setPanelState(() {});
+                    await _applyAutoSubtitle();
+                  } else {
+                    await settings.setPlayerAutoSubtitle(false);
+                    setState(() => _s._subtitlePinned = true);
+                    setPanelState(() {});
+                  }
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFF2A2A2A)),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Video decode',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _GlassPillButton(
+                          text: _s._hwDecMode.label,
+                          accent: _s._hwDecMode.accent,
+                          onTap: () {
+                            _s._cycleHwDec();
+                            setPanelState(() {});
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _s._hwDecMode.description,
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFF2A2A2A)),
+              const SizedBox(height: 4),
+              PlayerPopupListTile(
+                label: 'Playback speed',
+                subtitle: '${_s._player.state.rate}x',
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  showSpeedMenu(
+                    context,
+                    _s._player.state.rate,
+                    (s) => _s._player.setRate(s),
+                  );
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Aspect ratio',
+                subtitle: _s._videoFitLabel,
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _s._cycleAspectRatio();
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Loop',
+                subtitle: _s._loopEnabled ? 'On' : 'Off',
+                selected: _s._loopEnabled,
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _s._toggleLoop();
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Subtitle style',
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _s._showSubtitleSettings();
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<List<StreamSource>?> _loadProvider(String providerId) async {
+    final cached = _liveProviderSourcesCache.value[providerId];
+    if (cached != null && cached.isNotEmpty) {
+      _markProviderLoadSucceeded(providerId);
+      return cached;
+    }
+
+    final gen = (_s._providerLoadGens[providerId] ?? 0) + 1;
+    _s._providerLoadGens[providerId] = gen;
+
+    try {
+      if (widget.movie == null || widget.providers == null) {
+        _markProviderLoadFailed(providerId);
+        return null;
+      }
+      final hit = await PlayerSourceResolve.resolvePinnedForMovie(
+        movie: widget.movie!,
+        providers: widget.providers!,
+        providerId: providerId,
+        season: widget.selectedSeason ?? 1,
+        episode: widget.selectedEpisode ?? 1,
+        isCancelled: () =>
+            _s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen,
+      );
+      if (_s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen) {
+        return null;
+      }
+      if (hit != null && hit.streamSources.isNotEmpty) {
+        final sources = dedupeStreamSources(hit.streamSources);
+        _liveProviderSourcesCache.value = {
+          ..._liveProviderSourcesCache.value,
+          providerId: sources,
+        };
+        _markProviderLoadSucceeded(providerId);
+        _scoreServerUp(providerId);
+        _s._sourceMenuRevision.value++;
+        return sources;
+      }
+      _markProviderLoadFailed(providerId);
+      _s._sourceMenuRevision.value++;
+      return null;
+    } catch (_) {
+      if ((_s._providerLoadGens[providerId] ?? 0) == gen) {
+        _markProviderLoadFailed(providerId);
+        _s._sourceMenuRevision.value++;
+      }
+      return null;
+    }
+  }
+
+  Future<List<StreamSource>?> _switchProvider(String newProvider) async {
+    _s._providerPinned = true;
+    _s._sourcePinned = false;
+    unawaited(SettingsService().setPlayerAutoServer(false));
+
+    final gen = ++_s._fallbackGen;
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    VideasyExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
+    _s._statusController.clear();
+    _s._playbackConfirmed = false;
+
+    final currentPos = _s._positionNotifier.value;
+    final provider = widget.providers![newProvider];
+    final providerLabel = PlayerProviderMenu.snackbarLabel(
+      newProvider,
+      provider,
+    );
+    _s._statusController.upsert(
+      'provider-$newProvider',
+      providerLabel,
+      kind: StatusRouletteKind.loading,
+    );
+
+    try {
+      String? streamUrl;
+      Map<String, String>? headers;
+      List<StreamSource>? sources;
+
+      final cached = _liveProviderSourcesCache.value[newProvider];
+      final usedCache = cached != null && cached.isNotEmpty;
+      if (usedCache) {
+        streamUrl = cached.first.url;
+        headers = cached.first.headers;
+        sources = cached;
+      } else if (widget.movie != null && widget.providers != null) {
+        if (newProvider == 'service111477' &&
+            site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
+        }
+        final hit = await PlayerSourceResolve.resolvePinnedForMovie(
+          movie: widget.movie!,
+          providers: widget.providers!,
+          providerId: newProvider,
+          season: widget.selectedSeason ?? 1,
+          episode: widget.selectedEpisode ?? 1,
+          isCancelled: () => _s._fallbackAborted(gen),
+        );
+        if (_s._fallbackAborted(gen)) return null;
+        if (hit != null) {
+          streamUrl = hit.streamUrl;
+          headers = hit.headers;
+          sources = hit.streamSources;
+        }
+      }
+
+      if (_s._fallbackAborted(gen)) return null;
+      if (streamUrl != null && streamUrl.isNotEmpty) {
+        // Reset any stale mpv referrer set by the previous provider/quality
+        // selection — then re-apply from the new headers if present.
+        if (_s._player.platform is NativePlayer) {
+          final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
+          await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
+        }
+        await _s._player.open(Media(streamUrl, httpHeaders: headers));
+        if (_s._fallbackAborted(gen)) return null;
+
+        if (currentPos.inSeconds > 0) {
+          await _s._player.seek(currentPos);
+        }
+        _s._detectHlsQualities(streamUrl, headers);
+
+        setState(() {
+          _s._currentProvider = newProvider;
+          _s._currentSources = sources == null
+              ? null
+              : dedupeStreamSources(sources);
+          _s._currentUrl = streamUrl;
+          _s._currentPlayingCatalogUrl =
+              _s._currentSources?.first.url ?? streamUrl;
+          _s._currentFallbackSourceIndex = 0; // Reset index on manual switch
+          _s._failedSourceIndices.clear();
+          _s._checkingSourceIndices.clear();
+          _s._hasError = false;
+          _s._errorMessage = '';
+          _s._playbackConfirmed = true;
+          if (newProvider == 'service111477' &&
+              _s._currentSources != null &&
+              _s._currentSources!.isNotEmpty) {
+            _s._current111477FileUrl = _s._currentSources!.first.url;
+          }
+        });
+
+        _s._statusController.complete();
+        _markSourceActive(0);
+        _syncPanelAfterPlaybackConfirmed();
+        widget.onPlaybackStarted?.call();
+        final selectedSources = _s._currentSources;
+        if (selectedSources != null && selectedSources.isNotEmpty) {
+          _liveProviderSourcesCache.value = {
+            ..._liveProviderSourcesCache.value,
+            newProvider: selectedSources,
+          };
+          _markProviderLoadSucceeded(newProvider);
+          if (!usedCache) _scoreServerUp(newProvider);
+          unawaited(
+            widget.onSourcePinned?.call(
+              selectedSources.first.url,
+              selectedSources.first.title,
+            ),
+          );
+        } else {
+          unawaited(widget.onSourcePinned?.call(streamUrl, providerLabel));
+        }
+        return _s._currentSources;
+      } else {
+        if (mounted && !_s._fallbackAborted(gen)) {
+          _markProviderLoadFailed(newProvider);
+          _s._statusController.upsert(
+            'provider-$newProvider',
+            providerLabel,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted && !_s._fallbackAborted(gen)) {
+        _s._statusController.upsert(
+          'provider-$newProvider',
+          providerLabel,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+      }
+    }
+    return null;
+  }
+}

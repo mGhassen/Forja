@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **2 / 5** acceptance · home/settings splits shipped |
-| **Current slice** | IPTV controller split done (477-line orchestrator); `shared/player/` controls (R19-A05) remains |
+| **Current slice** | Mobile player split done (381-line orchestrator); desktop player + `mobile_player_sources` sub-split remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,8 +47,8 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 | [`live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Phase E done — orchestrator; `live_matches_models.dart`, `live_matches_widgets.dart`, data/build/playback mixins |
 | [`search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator; `search_search.dart`, `search_tv.dart`, `search_build.dart`, `search_widgets.dart` |
 | [`anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator; `anime_screen_feed.dart`, `anime_screen_build.dart`, `anime_widgets.dart` |
-| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 5912 | Overlay work blocked (R19-A05) |
-| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 5728 | Same |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 381 | Mobile orchestrator; lifecycle/playback/ui/tracks/sources/build mixins |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 5728 | Desktop split pending (R19-A05) |
 
 ## Rules
 
