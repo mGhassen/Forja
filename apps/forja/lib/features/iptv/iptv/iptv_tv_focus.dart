@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -145,16 +146,63 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
 bool iptvFocusBrowserCategories(IptvController ctrl) =>
     iptvFocusRowItem('browser-categories', ctrl.browserCategoryFocusIndex);
 
+/// First catalog group row (sidebar) — preferred TV landing focus.
+bool iptvFocusCatalogGroupRow([int index = 0]) =>
+    iptvFocusRowItem('browser-categories', index);
+
+/// Shelf index for the active Live / Movies / Series tab.
+int iptvActiveSectionShelfIndex(IptvController ctrl) {
+  switch (ctrl.activeSection) {
+    case IptvSection.live:
+      return 0;
+    case IptvSection.vod:
+      return 1;
+    case IptvSection.series:
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+/// Up from a channel tile: right column → portal tool; else → active shelf tab.
+VoidCallback iptvStreamUpEdge(
+  IptvController ctrl, {
+  required int index,
+  required int columns,
+}) {
+  return () {
+    if (columns > 1 && index % columns == columns - 1) {
+      iptvFocusRowItem('iptv-top-tools', 1);
+    } else {
+      iptvFocusRowItem(
+        'iptv-sections',
+        iptvActiveSectionShelfIndex(ctrl),
+      );
+    }
+  };
+}
+
 /// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
 bool iptvRestoreCatalogFocus({int? portalIndex}) {
-  if (iptvFocusRowItem('portals', portalIndex ?? 0)) return true;
+  if (iptvFocusCatalogGroupRow(0)) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;
-  if (iptvFocusRowItem('iptv-top-tools', 1)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 0)) return true;
-  if (iptvFocusRowItem('browser-categories')) return true;
+  if (iptvFocusRowItem('iptv-top-tools', 1)) return true;
+  if (iptvFocusRowItem('portals', portalIndex ?? 0)) return true;
   if (iptvFocusRowItem('browser-streams', 0)) return true;
   if (iptvFocusRowItem('iptv-open-portal', 0)) return true;
   return false;
+}
+
+/// Nav Enter on IPTV — land on the first group row once catalog is ready.
+void iptvEnterFromNav(IptvController ctrl) {
+  if (ctrl.activePortal == null) {
+    iptvFocusRowItem('iptv-open-portal', 0);
+    return;
+  }
+  if (!ctrl.isLoading) {
+    iptvFocusCatalogGroupRow(0);
+  }
 }
 
 Widget iptvTap({

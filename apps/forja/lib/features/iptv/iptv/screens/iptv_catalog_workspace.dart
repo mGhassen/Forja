@@ -141,11 +141,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   }
 
   void _focusDownFromShelf() {
-    iptvFocusRowItem('browser-streams', 0);
+    iptvFocusCatalogGroupRow(ctrl.browserCategoryFocusIndex);
   }
 
   void _focusDownFromTopTools() {
-    iptvFocusRowItem('browser-categories', 0);
+    iptvFocusCatalogGroupRow(ctrl.browserCategoryFocusIndex);
   }
 
   Future<void> _openSearch(
@@ -689,7 +689,9 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   bool _hover = false;
   bool _focused = false;
 
-  bool get _revealReload => _hover || _focused;
+  bool get _tv => iptvUseTvFocus(context);
+
+  bool get _revealReload => _hover || (_focused && !_tv);
 
   BorderRadius get _radius {
     final r = Radius.circular(_kShelfTabRadius - 1);
@@ -705,10 +707,14 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    final showColor = widget.selected || _hover || _focused;
+    final tvFocused = iptvTvFocused(context, focused: _focused);
+    final showColor = widget.selected || _hover || (_focused && !_tv);
     final accent = widget.spec.section == IptvSection.series
         ? widget.spec.colors.last
         : widget.spec.colors.first;
+    final fg = tvFocused
+        ? ForjaShellColors.brandGreen
+        : (showColor ? Colors.white : Colors.white60);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -718,10 +724,15 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
-          color: showColor
-              ? (widget.selected ? accent : accent.withValues(alpha: 0.55))
-              : Colors.transparent,
+          color: tvFocused
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : showColor
+                  ? (widget.selected ? accent : accent.withValues(alpha: 0.55))
+                  : Colors.transparent,
           borderRadius: _radius,
+          border: tvFocused
+              ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -756,13 +767,13 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                     Icon(
                       widget.spec.icon,
                       size: 16,
-                      color: showColor ? Colors.white : Colors.white60,
+                      color: fg,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       widget.spec.label,
                       style: GoogleFonts.inter(
-                        color: showColor ? Colors.white : Colors.white60,
+                        color: fg,
                         fontSize: 12.5,
                         fontWeight: widget.selected
                             ? FontWeight.w700

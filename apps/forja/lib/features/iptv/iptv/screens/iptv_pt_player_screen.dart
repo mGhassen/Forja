@@ -24,7 +24,10 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
+import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
 /// Single source for the IPTV player.
@@ -34,7 +37,8 @@ class IptvPlaySource {
   const IptvPlaySource({required this.url, required this.label});
 }
 
-/// Dedicated IPTV player using libmpv (media_kit). Includes:
+/// Dedicated IPTV player. Android TV uses native ExoPlayer (Media3); all other
+/// platforms use libmpv (media_kit). Includes:
 ///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
 ///   • Tiered recovery: seek-zero → reload → stop+open → recreate
 ///   • Multi-source rotation
@@ -102,8 +106,16 @@ class IptvPtPlayerScreen extends StatefulWidget {
 
 class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     with WidgetsBindingObserver {
-  late Player _player;
-  late VideoController _controller;
+  static int _nextExoViewId = 1;
+
+  /// MediaKit EGL surfaces fail on Android TV (audio OK, black video) — use Exo.
+  late final bool _exoBackend =
+      !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
+  int? _exoViewId;
+  StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
+
+  Player? _player;
+  VideoController? _controller;
   bool _playerReady = false;
   int _videoEpoch = 0;
   bool _softwareDecodeForced = false;
@@ -208,11 +220,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   void _initPlayerInstances() {
     _videoEpoch++;
-    _player = MpvExclusiveSession.instance.trackPlayer(
-      Player(configuration: _playerConfiguration),
-    );
+    final player = Player(configuration: _playerConfiguration);
+    _player = MpvExclusiveSession.instance.trackPlayer(player);
     _controller = VideoController(
-      _player,
+      _player!,
       configuration: VideoControllerConfiguration(
         enableHardwareAcceleration: !_useSoftwareDecode,
         hwdec: _useSoftwareDecode ? 'no' : 'auto-safe',
@@ -236,6 +247,130 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _scheduleHideControls();
   }
 
+  Future<void> _bootExoPlayer() async {
+    _exoViewId = _nextExoViewId++;
+    _exoEventSub = ExoPlayerBridge.eventsFor(_exoViewId!).listen(_onExoEvent);
+    if (mounted) setState(() => _playerReady = true);
+    // Let ExoPlayerView attach before open() — same frame-delay as ExoPlayerScreen.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || _disposed) return;
+    await _openCurrent();
+    _startWatchdog();
+    _scheduleHideControls();
+  }
+
+  void _onExoEvent(Map<dynamic, dynamic> event) {
+    if (_disposed || !mounted) return;
+    final type = event['type']?.toString() ?? '';
+    switch (type) {
+      case 'ready':
+        setState(() => _buffering = false);
+        _bufferingSince = null;
+        if (!_playbackStarted) {
+          _playbackStarted = true;
+        }
+        break;
+      case 'playing':
+        final playing = event['value'] == true;
+        setState(() => _playing = playing);
+        if (playing) {
+          _readyNotPlayingSince = null;
+          _bufferingSince = null;
+        } else if (_userPlayWhenReady) {
+          _readyNotPlayingSince = DateTime.now();
+        }
+        break;
+      case 'buffering':
+        final buffering = event['value'] == true;
+        setState(() => _buffering = buffering);
+        if (buffering) {
+          _bufferingSince ??= DateTime.now();
+        } else {
+          _bufferingSince = null;
+        }
+        break;
+      case 'progress':
+        final posMs = (event['position'] as num?)?.toInt() ?? 0;
+        final durMs = (event['duration'] as num?)?.toInt() ?? 0;
+        final pos = Duration(milliseconds: posMs);
+        if (!_isSeeking && pos != _position) {
+          if (durMs > 0) {
+            setState(() {
+              _position = pos;
+              _duration = Duration(milliseconds: durMs);
+            });
+          } else {
+            _position = pos;
+          }
+        }
+        if (pos != _lastPos) {
+          _lastPos = pos;
+          _lastPosChange = DateTime.now();
+        }
+        break;
+      case 'ended':
+        setState(() => _playing = false);
+        _triggerRecovery(reason: 'exo ended', forceHard: true);
+        break;
+      case 'error':
+        final msg = event['message']?.toString() ?? 'Playback error';
+        debugPrint('[IPTV Exo] error: $msg');
+        _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
+        break;
+    }
+  }
+
+  bool _playbackStarted = false;
+
+  Future<void> _enginePlay() async {
+    if (_exoBackend) {
+      await ExoPlayerBridge.play(_exoViewId!);
+    } else {
+      await _player!.play();
+    }
+  }
+
+  Future<void> _enginePause() async {
+    if (_exoBackend) {
+      await ExoPlayerBridge.pause(_exoViewId!);
+    } else {
+      await _player!.pause();
+    }
+  }
+
+  Future<void> _engineSeek(Duration target) async {
+    if (_exoBackend) {
+      await ExoPlayerBridge.seekTo(_exoViewId!, target);
+    } else {
+      await _player!.seek(target);
+    }
+  }
+
+  void _engineSetVolume(double volume) {
+    if (_exoBackend) {
+      unawaited(ExoPlayerBridge.setVolume(_exoViewId!, volume / 100.0));
+    } else {
+      _player!.setVolume(volume);
+    }
+  }
+
+  Future<void> _engineOpenSource(IptvPlaySource src) async {
+    if (_exoBackend) {
+      await ExoPlayerBridge.stop(_exoViewId!);
+      await ExoPlayerBridge.open(
+        viewId: _exoViewId!,
+        url: src.url,
+        headers: const {'User-Agent': _ua},
+      );
+      await ExoPlayerBridge.setVolume(_exoViewId!, _volume / 100.0);
+    } else {
+      await _player!.open(
+        Media(src.url, httpHeaders: const {'User-Agent': _ua}),
+      );
+      await _player!.play();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -252,12 +387,16 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     SettingsService.iptvEpgEnabledNotifier.addListener(_onIptvEpgPrefChanged);
     unawaited(_loadIptvEpgPref());
     WidgetsBinding.instance.addObserver(this);
-    if (!kIsWeb && Platform.isAndroid) {
+    if (!_exoBackend && !kIsWeb && Platform.isAndroid) {
       _androidMediaKitSafeMode = true;
     }
     _initOrientationAndChrome();
     WakelockPlus.enable();
-    unawaited(_bootPlayer());
+    if (_exoBackend) {
+      unawaited(_bootExoPlayer());
+    } else {
+      unawaited(_bootPlayer());
+    }
   }
 
   /// Set libmpv/FFmpeg properties that turn media_kit into a real IPTV player.
@@ -265,7 +404,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   /// reconnect_* options. Tested for HLS / MPEG-TS / RTSP / Xtream live.
   Future<void> _applyMpvTunables() async {
     try {
-      final p = _player.platform;
+      final p = _player?.platform;
       if (p is! NativePlayer) return;
 
       // Prefer safe GPU decode with software fallback — raw `auto` can stick on
@@ -387,7 +526,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   void _bind() {
-    _posSub = _player.stream.position.listen((pos) {
+    final player = _player!;
+    _posSub = player.stream.position.listen((pos) {
       if (!mounted || _disposed) return;
       if (!_isSeeking && pos != _position) {
         // Don't pump setState on every tick if duration is 0 (pure live).
@@ -409,15 +549,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         }
       }
     });
-    _durSub = _player.stream.duration.listen((dur) {
+    _durSub = player.stream.duration.listen((dur) {
       if (!mounted || _disposed) return;
       if (dur != _duration) setState(() => _duration = dur);
     });
-    _bufferSub = _player.stream.buffer.listen((buf) {
+    _bufferSub = player.stream.buffer.listen((buf) {
       if (!mounted || _disposed) return;
       _buffered = buf;
     });
-    _playingSub = _player.stream.playing.listen((p) {
+    _playingSub = player.stream.playing.listen((p) {
       if (!mounted || _disposed) return;
       setState(() => _playing = p);
       if (p) {
@@ -431,12 +571,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         Future.microtask(() async {
           if (!mounted || !_userPlayWhenReady || _playing) return;
           try {
-            await _player.play();
+            await _enginePlay();
           } catch (_) {}
         });
       }
     });
-    _bufferingSub = _player.stream.buffering.listen((b) {
+    _bufferingSub = player.stream.buffering.listen((b) {
       if (!mounted) return;
       setState(() => _buffering = b);
       if (b) {
@@ -445,7 +585,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         _bufferingSince = null;
       }
     });
-    _errorSub = _player.stream.error.listen((err) {
+    _errorSub = player.stream.error.listen((err) {
       final msg = err.toString();
       // Benign mpv chatter we don't want to restart the stream over:
       //  - "Cannot seek in this stream" / "force-seekable=yes"  → pure-live
@@ -475,7 +615,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     // (CDN dropped the TCP connection mid-stream). Without this, the
     // watchdog only sees the resulting position freeze and tries gentle
     // recoveries that can't fix a dead socket.
-    _logSub = _player.stream.log.listen((l) {
+    _logSub = player.stream.log.listen((l) {
       final text = l.text.toLowerCase();
       if (!_softwareDecodeForced &&
           (text.contains('hardware accelerator failed') ||
@@ -502,9 +642,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   /// Probe whether mpv reports a seekable DVR window for the current source.
   Future<void> _probeStreamCapabilities() async {
+    if (_exoBackend) {
+      _streamSeekable = false;
+      return;
+    }
     _streamSeekable = false;
     try {
-      final p = _player.platform;
+      final p = _player?.platform;
       if (p is! NativePlayer) return;
       await Future.delayed(const Duration(milliseconds: 800));
       if (_disposed) return;
@@ -520,13 +664,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   Future<void> _openCurrent() async {
     final src = _sources[_sourceIdx];
+    _playbackStarted = false;
     // Connect silently — no banner. The buffering indicator (if any) will
     // appear naturally while the stream loads.
     try {
-      await _player.open(
-        Media(src.url, httpHeaders: const {'User-Agent': _ua}),
-      );
-      await _player.play();
+      await _engineOpenSource(src);
       _userPlayWhenReady = true;
       _pausedAt = null;
       _lastPos = Duration.zero;
@@ -551,11 +693,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   /// Only fires when [_streamSeekable] — pure-live MPEG-TS / direct HTTP
   /// feeds must not be seek()'d (mpv prints noisy errors and it can't help).
   void _scheduleJumpToLive() {
-    if (!_streamSeekable) return;
+    if (_exoBackend || !_streamSeekable) return;
     Future.delayed(const Duration(milliseconds: 700), () async {
       if (!mounted || !_streamSeekable) return;
       try {
-        final p = _player.platform;
+        final p = _player?.platform;
         if (p is! NativePlayer) return;
 
         // Drop any data that piled up while paused / mid-recovery, then
@@ -692,13 +834,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         }
         // Reset the retry ladder so the next ladder run gets fresh backoff.
         _retryAttempt = 0;
-        if (_disposed || !_playerAlive) return;
+        if (_disposed || (!_exoBackend && !_playerAlive)) return;
         try {
-          await _player.open(
-            Media(_sources[_sourceIdx].url,
-                httpHeaders: const {'User-Agent': _ua}),
-          );
-          await _player.play();
+          await _engineOpenSource(_sources[_sourceIdx]);
         } catch (e) {
           debugPrint('[IPTV] cold-retry open failed: $e');
         }
@@ -729,11 +867,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       if (forceHard) {
         try {
           if (!await _recreatePlayer()) return;
-          await _player.open(
-            Media(_sources[_sourceIdx].url,
-                httpHeaders: const {'User-Agent': _ua}),
-          );
-          await _player.play();
+          await _engineOpenSource(_sources[_sourceIdx]);
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] hard recreate failed: $e');
@@ -741,38 +875,31 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       } else if (_retryAttempt <= 2) {
         // Seek-to-zero only helps on DVR/HLS windows. Pure-live feeds reject
         // every seek and spam "Cannot seek in this stream" on each recovery.
-        if (_streamSeekable) {
+        if (_streamSeekable && !_exoBackend) {
           try {
-            await _player.seek(Duration.zero);
+            await _engineSeek(Duration.zero);
           } catch (_) {}
         }
         try {
-          await _player.open(
-            Media(_sources[_sourceIdx].url,
-                httpHeaders: const {'User-Agent': _ua}),
-          );
-          await _player.play();
+          await _engineOpenSource(_sources[_sourceIdx]);
+          await _enginePlay();
         } catch (_) {}
       } else if (_retryAttempt <= 4) {
         try {
-          await _player.stop();
+          if (!_exoBackend) {
+            await _player!.stop();
+          } else {
+            await ExoPlayerBridge.stop(_exoViewId!);
+          }
         } catch (_) {}
         try {
-          await _player.open(
-            Media(_sources[_sourceIdx].url,
-                httpHeaders: const {'User-Agent': _ua}),
-          );
-          await _player.play();
+          await _engineOpenSource(_sources[_sourceIdx]);
         } catch (_) {}
       } else {
         // Recreate
         try {
           if (!await _recreatePlayer()) return;
-          await _player.open(
-            Media(_sources[_sourceIdx].url,
-                httpHeaders: const {'User-Agent': _ua}),
-          );
-          await _player.play();
+          await _engineOpenSource(_sources[_sourceIdx]);
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] recreate failed: $e');
@@ -790,7 +917,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Future<void> _forceSoftwareDecode() async {
-    if (_disposed || _softwareDecodeForced) return;
+    if (_disposed || _exoBackend || _softwareDecodeForced) return;
     _softwareDecodeForced = true;
     _retryAttempt = 0;
     if (mounted) {
@@ -802,6 +929,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Future<bool> _recreatePlayer() async {
+    if (_exoBackend) {
+      try {
+        await ExoPlayerBridge.stop(_exoViewId!);
+      } catch (_) {}
+      return !_disposed;
+    }
     if (mounted) setState(() => _playerReady = false);
     await _disposePlayer();
     if (_disposed) return false;
@@ -831,15 +964,25 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Future<void> _disposePlayer() async {
+    if (_exoBackend) {
+      await _exoEventSub?.cancel();
+      _exoEventSub = null;
+      if (_exoViewId != null) {
+        try {
+          await ExoPlayerBridge.dispose(_exoViewId!);
+        } catch (_) {}
+      }
+      return;
+    }
     if (!_playerAlive) return;
     _playerAlive = false;
     await _cancelPlayerSubscriptions();
     try {
-      await _player.stop();
+      await _player!.stop();
     } catch (_) {}
     try {
-      MpvExclusiveSession.instance.untrackPlayer(_player);
-      final disposeFuture = _player.dispose();
+      MpvExclusiveSession.instance.untrackPlayer(_player!);
+      final disposeFuture = _player!.dispose();
       MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
       await disposeFuture;
     } catch (_) {}
@@ -964,35 +1107,37 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
-    if (_player.platform is! NativePlayer) return;
+    if (_exoBackend) return;
+    if (_player?.platform is! NativePlayer) return;
     final on = track.id != 'no';
-    (_player.platform as NativePlayer)
+    (_player!.platform as NativePlayer)
         .setProperty('sub-visibility', on ? 'yes' : 'no');
   }
 
   Future<void> _applyAutoAudio() async {
-    if (_audioPinned) return;
+    if (_exoBackend || _audioPinned) return;
     try {
       final settings = SettingsService();
       final audioLang = await settings.getPreferredAudioLanguage();
       final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
       final best = pickBestAudioTrack(
-        audioTracks: _player.state.tracks.audio,
+        audioTracks: _player!.state.tracks.audio,
         preferredAudioLang: audioLang,
         avoidUnsupportedAudio: avoidUnsupported,
       );
       if (best == null) return;
-      await _player.setAudioTrack(best);
+      await _player!.setAudioTrack(best);
     } catch (e) {
       debugPrint('[IPTV] auto audio select failed: $e');
     }
   }
 
   void _showAudioMenu(BuildContext anchorContext) {
+    if (_exoBackend || _player == null) return;
     _scheduleHideControls();
     PlayerAudioMenu.show(
       context,
-      player: _player,
+      player: _player!,
       onTrackSelected: () => setState(() => _audioPinned = true),
       anchorContext: anchorContext,
       margin: EdgeInsets.only(
@@ -1003,10 +1148,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   void _showStatsMenu(BuildContext anchorContext) {
+    if (_exoBackend || _player == null) return;
     _scheduleHideControls();
     IptvPlayerStatsPanel.show(
       context,
-      player: _player,
+      player: _player!,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(
         left: 16,
@@ -1024,10 +1170,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   void _showSubtitleMenu(BuildContext anchorContext) {
+    if (_exoBackend || _player == null) return;
     _scheduleHideControls();
     PlayerSubtitleMenu.show(
       context,
-      player: _player,
+      player: _player!,
       anchorContext: anchorContext,
       externalSubtitles: const [],
       selectedExternalSubUrl: null,
@@ -1069,8 +1216,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     _subtitleDelay =
                         double.parse((_subtitleDelay - 0.1).toStringAsFixed(1));
                   });
-                  if (_player.platform is NativePlayer) {
-                    (_player.platform as NativePlayer).setProperty(
+                  if (_player?.platform is NativePlayer) {
+                    (_player!.platform as NativePlayer).setProperty(
                       'sub-delay',
                       _subtitleDelay.toString(),
                     );
@@ -1090,8 +1237,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     _subtitleDelay =
                         double.parse((_subtitleDelay + 0.1).toStringAsFixed(1));
                   });
-                  if (_player.platform is NativePlayer) {
-                    (_player.platform as NativePlayer).setProperty(
+                  if (_player?.platform is NativePlayer) {
+                    (_player!.platform as NativePlayer).setProperty(
                       'sub-delay',
                       _subtitleDelay.toString(),
                     );
@@ -1192,9 +1339,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         },
         onPlayPause: () {
           if (_playing) {
-            _player.pause();
+            unawaited(_enginePause());
           } else {
-            unawaited(_player.play());
+            unawaited(_enginePlay());
           }
           _scheduleHideControls();
         },
@@ -1206,22 +1353,22 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           if (!_isVod) return;
           var target = _position - const Duration(seconds: 10);
           if (target < Duration.zero) target = Duration.zero;
-          unawaited(_player.seek(target));
+          unawaited(_engineSeek(target));
           _scheduleHideControls();
         },
         onSeekForward: () {
           if (!_isVod) return;
           var target = _position + const Duration(seconds: 10);
           if (target > _duration) target = _duration;
-          unawaited(_player.seek(target));
+          unawaited(_engineSeek(target));
           _scheduleHideControls();
         },
         onVolumeUp: () {
-          _player.setVolume((_volume + 5).clamp(0, 100));
+          _engineSetVolume((_volume + 5).clamp(0, 100));
           setState(() => _volume = (_volume + 5).clamp(0, 100));
         },
         onVolumeDown: () {
-          _player.setVolume((_volume - 5).clamp(0, 100));
+          _engineSetVolume((_volume - 5).clamp(0, 100));
           setState(() => _volume = (_volume - 5).clamp(0, 100));
         },
         onToggleControls: _toggleControls,
@@ -1239,9 +1386,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             // Video — fill the stack like the main player (Center can leave
             // a zero-sized surface on Android when Impeller composites siblings).
             Positioned.fill(
-              child: Video(
+              child: _exoBackend
+                  ? ExoPlayerView(viewId: _exoViewId!)
+                  : Video(
                 key: ValueKey(_videoEpoch),
-                controller: _controller,
+                controller: _controller!,
                 fit: BoxFit.contain,
                 fill: Colors.black,
                 controls: NoVideoControls,
@@ -1525,7 +1674,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     _position = target;
                   });
                   try {
-                    await _player.seek(target);
+                    await _engineSeek(target);
                   } catch (_) {}
                   _scheduleHideControls();
                 },
@@ -1565,7 +1714,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   Widget _buildBottomBar(bool compact) {
     const rowId = 'iptv-player-controls';
     final expectedCount = 3 // play, replay, mute
-        + 3 // subs, audio, stats
+        + (_exoBackend ? 0 : 3) // subs, audio, stats
         + (widget.channelGuide != null ? 2 : 0)
         + (_sources.length > 1 ? 1 : 0)
         + 1; // fullscreen
@@ -1586,11 +1735,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               if (_playing) {
                 _userPlayWhenReady = false;
                 _pausedAt = DateTime.now();
-                await _player.pause();
+                await _enginePause();
               } else {
                 _userPlayWhenReady = true;
                 _pausedAt = null;
-                await _player.play();
+                await _enginePlay();
               }
               _scheduleHideControls();
             },
@@ -1646,7 +1795,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                           _volume = v;
                           _muted = v == 0;
                         });
-                        _player.setVolume(v);
+                        _engineSetVolume(v);
                         _scheduleHideVolumeSlider();
                         _scheduleHideControls();
                       },
@@ -1656,33 +1805,35 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               ),
             ),
           ),
-          const SizedBox(width: 14),
-          Builder(
-            builder: (btnCtx) => IptvRoundIcon(
-              icon: Icons.subtitles_outlined,
-              tvRowId: rowId,
-              tvItemIndex: i++,
-              onTap: () => _showSubtitleMenu(btnCtx),
+          if (!_exoBackend) ...[
+            const SizedBox(width: 14),
+            Builder(
+              builder: (btnCtx) => IptvRoundIcon(
+                icon: Icons.subtitles_outlined,
+                tvRowId: rowId,
+                tvItemIndex: i++,
+                onTap: () => _showSubtitleMenu(btnCtx),
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Builder(
-            builder: (btnCtx) => IptvRoundIcon(
-              icon: Icons.audiotrack_rounded,
-              tvRowId: rowId,
-              tvItemIndex: i++,
-              onTap: () => _showAudioMenu(btnCtx),
+            const SizedBox(width: 14),
+            Builder(
+              builder: (btnCtx) => IptvRoundIcon(
+                icon: Icons.audiotrack_rounded,
+                tvRowId: rowId,
+                tvItemIndex: i++,
+                onTap: () => _showAudioMenu(btnCtx),
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Builder(
-            builder: (btnCtx) => IptvRoundIcon(
-              icon: Icons.monitor_heart_outlined,
-              tvRowId: rowId,
-              tvItemIndex: i++,
-              onTap: () => _showStatsMenu(btnCtx),
+            const SizedBox(width: 14),
+            Builder(
+              builder: (btnCtx) => IptvRoundIcon(
+                icon: Icons.monitor_heart_outlined,
+                tvRowId: rowId,
+                tvItemIndex: i++,
+                onTap: () => _showStatsMenu(btnCtx),
+              ),
             ),
-          ),
+          ],
           const Spacer(),
           if (widget.channelGuide != null) ...[
             IptvRoundIcon(
@@ -1733,7 +1884,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       }
       _showVolumeSlider = true;
     });
-    _player.setVolume(_volume);
+    _engineSetVolume(_volume);
     _scheduleHideVolumeSlider();
     _scheduleHideControls();
   }

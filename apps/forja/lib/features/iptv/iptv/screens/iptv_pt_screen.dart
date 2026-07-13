@@ -65,6 +65,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
     ShellTvFocusCoordinator.registerTabDefaults(
       'iptv',
       restoreFocus: iptvRestoreCatalogFocus,
+      enterFromNavFocus: () => iptvEnterFromNav(_ctrl),
     );
     _ctrl.init().then((_) {
       if (mounted) markShellTabFresh();
@@ -1149,8 +1150,10 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _focusCatalogGroup() {
-    if (!iptvFocusBrowserCategories(widget.ctrl)) {
-      iptvFocusRowItem('browser-streams', 0);
+    if (!iptvFocusCatalogGroupRow(0)) {
+      if (widget.ctrl.browserSidebarCategories.isEmpty) {
+        iptvFocusRowItem('browser-streams', 0);
+      }
     }
     _didInitialFocus = true;
   }
@@ -1427,7 +1430,10 @@ class _BrowserViewState extends State<_BrowserView> {
             sortOrder: 2,
             itemCount: cats.length,
             orientation: ShellTvRowOrientation.vertical,
-            onFocusUp: () => iptvFocusRowItem('iptv-sections'),
+            onFocusUp: () => iptvFocusRowItem(
+              'iptv-sections',
+              iptvActiveSectionShelfIndex(ctrl),
+            ),
           );
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1435,46 +1441,19 @@ class _BrowserViewState extends State<_BrowserView> {
             itemBuilder: (_, i) {
               final c = cats[i];
               final selected = c.id == ctrl.browserSelectedCategoryId;
-              return iptvTap(
-                context: context,
-                onTap: () => ctrl.selectBrowserCategory(c.id),
-                borderRadius: 8,
+              return _CategorySidebarRow(
+                label: c.name.isEmpty ? 'Uncategorized' : c.name,
+                selected: selected,
+                compact: compact,
                 listIndex: i,
-                tvRowId: 'browser-categories',
-                tvItemIndex: i,
+                onTap: () => ctrl.selectBrowserCategory(c.id),
                 onUpEdge: i == 0
-                    ? () => iptvFocusRowItem('iptv-sections')
+                    ? () => iptvFocusRowItem(
+                        'iptv-sections',
+                        iptvActiveSectionShelfIndex(ctrl),
+                      )
                     : null,
                 onRightEdge: () => iptvFocusRowItem('browser-streams'),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 10 : 14,
-                    vertical: compact ? 9 : 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? IptvShellStyle.accent.withValues(alpha: 0.12)
-                        : Colors.transparent,
-                    border: Border(
-                      left: BorderSide(
-                        color: selected
-                            ? IptvShellStyle.accent
-                            : Colors.transparent,
-                        width: 3,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    c.name.isEmpty ? 'Uncategorized' : c.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: selected ? Colors.white : Colors.white70,
-                      fontSize: compact ? 11 : 12,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ),
               );
             },
           );
@@ -1502,7 +1481,10 @@ class _BrowserViewState extends State<_BrowserView> {
           rowId: 'browser-streams',
           sortOrder: 3,
           itemCount: list.length,
-          onFocusUp: () => iptvFocusRowItem('iptv-sections', 0),
+          onFocusUp: () => iptvFocusRowItem(
+            'iptv-sections',
+            iptvActiveSectionShelfIndex(widget.ctrl),
+          ),
         );
         final selectedCatIdx = widget.ctrl.browserCategoryFocusIndex;
         final grid = GridView.builder(
@@ -1527,7 +1509,11 @@ class _BrowserViewState extends State<_BrowserView> {
             gridIndex: i,
             gridColumns: cross,
             onUpEdge: i < cross
-                ? () => iptvFocusRowItem('iptv-sections', 0)
+                ? iptvStreamUpEdge(
+                    widget.ctrl,
+                    index: i,
+                    columns: cross,
+                  )
                 : null,
             onRightEdge: widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
                 ? () => iptvFocusRowItem('portals', 0)
@@ -1563,7 +1549,10 @@ class _BrowserViewState extends State<_BrowserView> {
       sortOrder: 3,
       itemCount: list.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () => iptvFocusRowItem('iptv-sections', 0),
+      onFocusUp: () => iptvFocusRowItem(
+        'iptv-sections',
+        iptvActiveSectionShelfIndex(ctrl),
+      ),
     );
 
     final rows = ListView.builder(
@@ -1584,7 +1573,7 @@ class _BrowserViewState extends State<_BrowserView> {
               ? () => iptvFocusRowItem('portals', 0)
               : null,
           onUpEdge: i == 0
-              ? () => iptvFocusRowItem('iptv-sections', 0)
+              ? iptvStreamUpEdge(ctrl, index: 0, columns: 1)
               : null,
           onTap: () => _onStreamTap(stream),
         );
@@ -1662,6 +1651,99 @@ class _BrowserViewState extends State<_BrowserView> {
           stream: s,
           portalName: p.name,
           channelGuide: channelGuide,
+        ),
+      ),
+    );
+  }
+}
+
+class _CategorySidebarRow extends StatefulWidget {
+  const _CategorySidebarRow({
+    required this.label,
+    required this.selected,
+    required this.compact,
+    required this.listIndex,
+    required this.onTap,
+    this.onUpEdge,
+    this.onRightEdge,
+  });
+
+  final String label;
+  final bool selected;
+  final bool compact;
+  final int listIndex;
+  final VoidCallback onTap;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<_CategorySidebarRow> createState() => _CategorySidebarRowState();
+}
+
+class _CategorySidebarRowState extends State<_CategorySidebarRow> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _tvFocused => iptvTvFocused(context, focused: _focused);
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final fg = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : (selected ? Colors.white : Colors.white70);
+
+    return iptvTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 8,
+      listIndex: widget.listIndex,
+      tvRowId: 'browser-categories',
+      tvItemIndex: widget.listIndex,
+      onUpEdge: widget.onUpEdge,
+      onRightEdge: widget.onRightEdge,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: widget.compact ? 10 : 14,
+          vertical: widget.compact ? 9 : 10,
+        ),
+        decoration: BoxDecoration(
+          color: _tvFocused
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : selected
+                  ? IptvShellStyle.accent.withValues(alpha: 0.12)
+                  : _active
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: _tvFocused
+                  ? ForjaShellColors.brandGreen
+                  : selected
+                      ? IptvShellStyle.accent
+                      : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Text(
+          widget.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.poppins(
+            color: fg,
+            fontSize: widget.compact ? 11 : 12,
+            fontWeight: selected || _tvFocused
+                ? FontWeight.w600
+                : FontWeight.w400,
+          ),
         ),
       ),
     );
