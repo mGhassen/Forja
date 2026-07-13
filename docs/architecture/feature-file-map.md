@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 1 file in `features/` (`iptv_pt_screen.dart`) · player screens in `shared/player/` |
-| **Next action** | Home, details, settings, live matches done; next: Search, Anime, or Phase E (IPTV) |
+| **Next action** | Home, details, settings, live matches, search done; next: Anime or Phase E (IPTV) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -40,7 +40,7 @@
 | **live_matches** | 6 | ~3,563 | `live_matches_widgets.dart` (1,457) + `live_matches_screen.dart` (94) |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
 | **anime_arabic** | 6 | ~3,900 | `anime_arabic_screen.dart` (1,313) |
-| **search** | 1 | 1,986 | `search_screen.dart` |
+| **search** | 6 | ~2,007 | `search_widgets.dart` (609) + `search_screen.dart` (109) |
 | **asian_drama** | 7 | ~3,500 | `asian_drama_screen.dart` (781) |
 | *(others)* | 32 | ~15,400 | see inventory |
 
@@ -60,6 +60,7 @@
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Orchestrator | In | State + lifecycle; models/widgets parts + data/build/playback mixins |
+| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | State + lifecycle; search/tv/build mixins + widgets part |
 
 ---
 
@@ -79,7 +80,7 @@
 | [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 2,880 | Sub-hub | In | Partial extract from PT screen |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
 | [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 2,061 | Player | In | libmpv + channel guide overlays |
-| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 1,986 | Orchestrator | In | Multi-source search + TV browse |
+| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | State + lifecycle; search/tv/build mixins + widgets part |
 | [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 1,783 | Data/Service | In | Non-UI god object |
 | [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
 | [`anime/catalog/anime_service.dart`](../../apps/forja/lib/features/anime/catalog/anime_service.dart) | 1,648 | Data/Service | In | Catalog backend |
@@ -132,7 +133,12 @@ Paths relative to `apps/forja/lib/features/`.
 | 2880 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Sub-hub | In |
 | 2401 | music | `music/music_screen.dart` | Orchestrator | Out |
 | 2061 | iptv | `iptv/iptv/screens/iptv_pt_player_screen.dart` | Player | In |
-| 1986 | search | `search/search_screen.dart` | Orchestrator | In |
+| 609 | search | `search/search_widgets.dart` | Cards + my-list buttons | In |
+| 547 | search | `search/search_build.dart` | Build mixin | In |
+| 397 | search | `search/search_tv.dart` | TV focus mixin | In |
+| 304 | search | `search/search_search.dart` | Search API mixin | In |
+| 109 | search | `search/search_screen.dart` | Orchestrator | In |
+| 41 | search | `search/search_models.dart` | Models | In |
 | 1783 | iptv | `iptv/iptv/controller/iptv_controller.dart` | Data/Service | In |
 | 1697 | jellyfin | `jellyfin/jellyfin_screen.dart` | Orchestrator | Out |
 | 1648 | anime | `anime/catalog/anime_service.dart` | Data/Service | In |
@@ -437,7 +443,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV PT widget extraction, `iptv_controller` trim, player `controls/` (R19-A05), `search_screen` as needed. Live matches split complete (`live_matches_screen.dart` 94-line orchestrator).
+IPTV PT widget extraction, `iptv_controller` trim, player `controls/` (R19-A05). Live matches + search splits complete.
 
 ---
 
