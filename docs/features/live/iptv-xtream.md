@@ -34,20 +34,21 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 1. Get portal URL, username, and password from your IPTV provider
 2. Open **Portals** → **Add** (or **Scrape** to discover providers from Reddit IPTV posts)
-3. To import from a share code: in **Add Portal**, paste or type the 8-character code into the tall **XXXX-XXXX** squares — the portal is added automatically when the code resolves. Tap the small **↓** tab on the bottom edge of the dialog to expand manual entry
+3. To import from a share code: in **Add Portal**, paste or type the 8-character code into the tall **XXXX-XXXX** squares — the portal is added automatically when the code resolves. Tap the small **↓** tab on the bottom edge of the dialog to expand manual entry (URL, username, password), then tap **Add** — or use **Cancel** to close without saving
 4. Tap a portal in the list to load its catalog
 
 ## Tips
 
 - **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by name or URL
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit the hover **Reload** control
+- On **Android TV**, focusable buttons (top bar, dialogs, back/close, portal actions) use the same **brand green** highlight as the video player when D-pad focused
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
 - On **Android TV**, D-pad from **Open portal** (no provider yet) opens the **Portals** panel with focus on **Add** (+)
 - On **Android TV**, in the **Portals** panel: **Up** from header actions returns to the top-bar **Portals** button; **Down** enters the portal list; **Up** from the first portal row returns to **Add**; **Left** on a focused row reaches **Favorite**; **Right** moves through **copy / edit / delete**; **Back** closes the panel and restores **category** focus
 - On **Android TV**, **Add portal** dialog opens with focus on the manual-entry **↓** control (not the share-code keyboard); **Up** / **Down** move between share code, expand, URL, username, password, and **Add** / **Cancel**; fields highlight on focus — press **Enter** to open the keyboard and type; **Edit portal** opens with URL highlighted (Enter to edit)
-- On **Android TV**, top bar: **Portals** ← **Search** ← **Live / Movies / Series** (search field stays out of the chain until you activate search); **Down** from shelf tabs jumps to the first **channel**; **Down** from search/portals tools jumps to **categories**
-- On **Android TV**, catalog: **Right** from a category focuses the first **channel**; **Left** from a channel returns to **categories**; **Up** from the first channel row returns to **Live** on the shelf
-- On **Android TV**, D-pad moves **Live / Movies / Series** → categories → streams; with the **Portals** panel open, **Right** from the stream grid (or portal button) enters the portal list, **Left** from a portal row returns to the catalog
+- On **Android TV**, top bar: **Portals** ← **Search** ← **Live / Movies / Series** (search field stays out of the chain until you activate search); **Down** from shelf tabs jumps to the first **channel**; **Down** from search/portals tools jumps to the **selected category** row
+- On **Android TV**, catalog: **Right** from a category row focuses the **channel** list (restores your last channel when possible); **Left** from the first column of channels (or any channel in the compact list) returns to the **selected category** row; **Up** from the first channel row returns to **Live** on the shelf
+- On **Android TV**, D-pad moves **Live / Movies / Series** → categories → streams; with the **Portals** panel open, **Right** from the stream grid (or portal button) enters the portal list, **Left** from a portal row returns focus to the **selected category** row
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests

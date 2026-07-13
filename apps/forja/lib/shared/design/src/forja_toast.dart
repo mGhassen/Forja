@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 enum ForjaToastKind { success, error, warning, info }
 
@@ -159,6 +161,8 @@ class ForjaToastHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
     return Stack(
       children: [
         child,
@@ -171,19 +175,27 @@ class ForjaToastHost extends StatelessWidget {
               builder: (context, _) {
                 final entries = ForjaToast.controller.entries;
                 if (entries.isEmpty) return const SizedBox.shrink();
+
+                final cards = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final entry in entries)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _ForjaToastCard(entry: entry, tvFocus: tv),
+                      ),
+                  ],
+                );
+
                 return ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 360),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      for (final entry in entries)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _ForjaToastCard(entry: entry),
-                        ),
-                    ],
-                  ),
+                  child: tv
+                      ? FocusTraversalGroup(
+                          policy: ReadingOrderTraversalPolicy(),
+                          child: cards,
+                        )
+                      : cards,
                 );
               },
             ),
@@ -195,13 +207,85 @@ class ForjaToastHost extends StatelessWidget {
 }
 
 class _ForjaToastCard extends StatelessWidget {
-  const _ForjaToastCard({required this.entry});
+  const _ForjaToastCard({required this.entry, required this.tvFocus});
 
   final ForjaToastEntry entry;
+  final bool tvFocus;
 
   @override
   Widget build(BuildContext context) {
     final style = _styleFor(entry.kind);
+
+    Widget actionButton() {
+      final label = Text(
+        entry.actionLabel!,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: tvFocus ? ForjaShellColors.brandGreen : style.accent,
+        ),
+      );
+      void onTap() {
+        entry.onAction!();
+        ForjaToast.controller.dismiss(entry.id);
+      }
+
+      if (!tvFocus) {
+        return TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: style.accent,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: label,
+        );
+      }
+
+      return shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 6,
+        showFocusBorder: true,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: label,
+        ),
+      );
+    }
+
+    Widget closeButton() {
+      final icon = Icon(
+        Icons.close_rounded,
+        size: 16,
+        color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
+      );
+      void onTap() => ForjaToast.controller.dismiss(entry.id);
+
+      if (!tvFocus) {
+        return IconButton(
+          onPressed: onTap,
+          icon: icon,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          splashRadius: 14,
+        );
+      }
+
+      return shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 14,
+        showFocusBorder: true,
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: Center(child: icon),
+        ),
+      );
+    }
+
     return Material(
       color: Colors.transparent,
       child: DecoratedBox(
@@ -237,37 +321,9 @@ class _ForjaToastCard extends StatelessWidget {
               ),
               if (entry.actionLabel != null && entry.onAction != null) ...[
                 const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () {
-                    entry.onAction!();
-                    ForjaToast.controller.dismiss(entry.id);
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: style.accent,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    entry.actionLabel!,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                actionButton(),
               ],
-              IconButton(
-                onPressed: () => ForjaToast.controller.dismiss(entry.id),
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                splashRadius: 14,
-              ),
+              closeButton(),
             ],
           ),
         ),

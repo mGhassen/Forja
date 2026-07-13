@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -24,18 +25,62 @@ bool iptvFocusActive(
       focused: focused,
     );
 
-/// Idle tint → white when focused/hovered (no scale).
-Color iptvFocusFg(Color idle, bool active) => active ? Colors.white : idle;
+/// TV D-pad focus — green highlight like player chrome controls.
+bool iptvTvFocused(BuildContext context, {required bool focused}) =>
+    iptvUseTvFocus(context) && focused;
 
-/// Button/chip surface when D-pad focused — matches top-bar portal hover.
+/// Idle tint → brand green on TV focus, white on hover (matches player chrome).
+Color iptvFocusFg(
+  Color idle, {
+  required bool active,
+  required bool tvFocused,
+}) {
+  if (tvFocused) return ForjaShellColors.brandGreen;
+  if (active) return Colors.white;
+  return idle;
+}
+
+Color iptvFocusSurfaceColor({
+  required bool active,
+  required bool tvFocused,
+  double idleAlpha = 0.08,
+  double hoverAlpha = 0.14,
+  bool subtle = false,
+}) {
+  if (tvFocused) return ForjaShellColors.brandGreen.withValues(alpha: 0.14);
+  if (active) return Colors.white.withValues(alpha: subtle ? 0.14 : hoverAlpha);
+  return Colors.white.withValues(alpha: idleAlpha);
+}
+
+Color iptvFocusOutlineColor({
+  required bool active,
+  required bool tvFocused,
+  double idleAlpha = 0.12,
+  double hoverAlpha = 0.22,
+  Color? idleOverride,
+}) {
+  if (tvFocused) return ForjaShellColors.brandGreen;
+  if (active) return Colors.white.withValues(alpha: hoverAlpha);
+  return idleOverride ?? Colors.white.withValues(alpha: idleAlpha);
+}
+
+/// Button/chip surface when D-pad focused — matches player chrome controls.
 BoxDecoration iptvFocusButtonDecoration({
   required bool active,
+  required bool tvFocused,
   required double borderRadius,
   Color? idleBg,
   Color? idleBorder,
   bool subtle = false,
 }) {
   final radius = BorderRadius.circular(borderRadius);
+  if (tvFocused) {
+    return BoxDecoration(
+      color: ForjaShellColors.brandGreen.withValues(alpha: 0.14),
+      borderRadius: radius,
+      border: Border.all(color: ForjaShellColors.brandGreen, width: 1.5),
+    );
+  }
   if (!active) {
     return BoxDecoration(
       color: idleBg ??
@@ -97,13 +142,16 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
   return ShellTvFocusCoordinator.focusRowItem('iptv', rowId, idx);
 }
 
+bool iptvFocusBrowserCategories(IptvController ctrl) =>
+    iptvFocusRowItem('browser-categories', ctrl.browserCategoryFocusIndex);
+
 /// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
 bool iptvRestoreCatalogFocus({int? portalIndex}) {
   if (iptvFocusRowItem('portals', portalIndex ?? 0)) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 1)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 0)) return true;
-  if (iptvFocusRowItem('browser-categories', 0)) return true;
+  if (iptvFocusRowItem('browser-categories')) return true;
   if (iptvFocusRowItem('browser-streams', 0)) return true;
   if (iptvFocusRowItem('iptv-open-portal', 0)) return true;
   return false;
@@ -270,12 +318,19 @@ class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
   bool get _active =>
       iptvFocusActive(context, hovered: _hovered, focused: _focused);
 
+  bool get _tvFocused =>
+      iptvTvFocused(context, focused: _focused);
+
   @override
   Widget build(BuildContext context) {
     final icon = Icon(
       widget.icon,
       size: widget.size,
-      color: iptvFocusFg(widget.idleColor, _active),
+      color: iptvFocusFg(
+        widget.idleColor,
+        active: _active,
+        tvFocused: _tvFocused,
+      ),
     );
     final child = SizedBox(
       width: widget.hitSize,
@@ -336,10 +391,13 @@ class _IptvIconActionState extends State<IptvIconAction> {
   bool get _active =>
       iptvFocusActive(context, hovered: _hovered, focused: _focused);
 
+  bool get _tvFocused =>
+      iptvTvFocused(context, focused: _focused);
+
   @override
   Widget build(BuildContext context) {
     final idle = widget.color ?? IptvShellStyle.accent;
-    final fg = iptvFocusFg(idle, _active);
+    final fg = iptvFocusFg(idle, active: _active, tvFocused: _tvFocused);
     if (iptvUseTvFocus(context)) {
       return iptvTap(
         context: context,
@@ -396,10 +454,13 @@ class _IptvTextActionState extends State<IptvTextAction> {
   bool get _active =>
       iptvFocusActive(context, hovered: _hovered, focused: _focused);
 
+  bool get _tvFocused =>
+      iptvTvFocused(context, focused: _focused);
+
   @override
   Widget build(BuildContext context) {
     final idle = widget.color ?? IptvShellStyle.accent;
-    final fg = iptvFocusFg(idle, _active);
+    final fg = iptvFocusFg(idle, active: _active, tvFocused: _tvFocused);
     if (iptvUseTvFocus(context)) {
       return iptvTap(
         context: context,
@@ -437,6 +498,7 @@ class IptvPrimaryButton extends StatefulWidget {
   final String? tvRowId;
   final int? tvItemIndex;
   final FocusNode? focusNode;
+  final bool dense;
 
   const IptvPrimaryButton({
     super.key,
@@ -448,6 +510,7 @@ class IptvPrimaryButton extends StatefulWidget {
     this.tvRowId,
     this.tvItemIndex,
     this.focusNode,
+    this.dense = false,
   });
 
   @override
@@ -461,16 +524,21 @@ class _IptvPrimaryButtonState extends State<IptvPrimaryButton> {
   bool get _active =>
       iptvFocusActive(context, hovered: _hovered, focused: _focused);
 
+  bool get _tvFocused =>
+      iptvTvFocused(context, focused: _focused);
+
   @override
   Widget build(BuildContext context) {
     final tv = iptvUseTvFocus(context);
     final decoration = tv
         ? iptvFocusButtonDecoration(
             active: _active,
+            tvFocused: _tvFocused,
             borderRadius: 14,
             subtle: widget.subtle,
           )
         : IptvShellStyle.primaryButtonDecoration(subtle: widget.subtle);
+    final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
 
     return Material(
       color: Colors.transparent,
@@ -492,27 +560,30 @@ class _IptvPrimaryButtonState extends State<IptvPrimaryButton> {
               ? (hovered) => setState(() => _hovered = hovered)
               : null,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: widget.dense ? 10 : 14,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (widget.busy)
-                  const SizedBox(
+                  SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: fg,
                     ),
                   )
                 else
-                  Icon(widget.icon, color: Colors.white, size: 18),
+                  Icon(widget.icon, color: fg, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   widget.label,
                   style: GoogleFonts.poppins(
-                    color: Colors.white,
+                    color: fg,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -526,7 +597,7 @@ class _IptvPrimaryButtonState extends State<IptvPrimaryButton> {
   }
 }
 
-class IptvRoundIcon extends StatelessWidget {
+class IptvRoundIcon extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
@@ -545,23 +616,42 @@ class IptvRoundIcon extends StatelessWidget {
   });
 
   @override
+  State<IptvRoundIcon> createState() => _IptvRoundIconState();
+}
+
+class _IptvRoundIconState extends State<IptvRoundIcon> {
+  bool _focused = false;
+
+  bool get _tvFocused =>
+      iptvTvFocused(context, focused: _focused);
+
+  @override
   Widget build(BuildContext context) {
-    final size = big ? 56.0 : 44.0;
+    final size = widget.big ? 56.0 : 44.0;
+    final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+    final shape = CircleBorder(
+      side: _tvFocused
+          ? const BorderSide(color: ForjaShellColors.brandGreen, width: 1.5)
+          : BorderSide.none,
+    );
     final child = SizedBox(
       width: size,
       height: size,
-      child: Icon(icon, color: Colors.white, size: big ? 32 : 22),
+      child: Icon(widget.icon, color: fg, size: widget.big ? 32 : 22),
     );
     if (iptvUseTvFocus(context)) {
       return Material(
-        color: Colors.white.withValues(alpha: 0.12),
-        shape: const CircleBorder(),
+        color: _tvFocused
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : Colors.white.withValues(alpha: 0.12),
+        shape: shape,
         child: iptvTap(
           context: context,
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: size / 2,
-          tvRowId: tvRowId,
-          tvItemIndex: tvItemIndex,
+          tvRowId: widget.tvRowId,
+          tvItemIndex: widget.tvItemIndex,
+          onFocusChange: (focused) => setState(() => _focused = focused),
           child: child,
         ),
       );
@@ -571,8 +661,8 @@ class IptvRoundIcon extends StatelessWidget {
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: onTap,
-        onLongPress: onLongPress,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: child,
       ),
     );

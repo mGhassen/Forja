@@ -5,6 +5,7 @@ import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -37,6 +38,9 @@ Widget playerSidePanelTvScope({
 
 /// Dismisses the topmost player chrome overlay (menus, panels) if any is open.
 bool dismissAnyPlayerChromeOverlay() {
+  if (PlayerSubtitleSettingsDialog.dismissIfShowing()) {
+    return true;
+  }
   if (PlayerStreamMenu.isShowing) {
     PlayerStreamMenu.dismiss();
     return true;

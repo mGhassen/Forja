@@ -830,16 +830,18 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           child: child,
         );
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ordered(
-              3,
-              PlayerFlatIconButton(
+    return SizedBox(
+      width: double.infinity,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ordered(
+                3,
+                PlayerFlatIconButton(
                 tvFocusable: true,
                 focusNode: _playFocus,
                 icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -973,6 +975,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           ],
         ),
       ],
+      ),
     );
   }
 

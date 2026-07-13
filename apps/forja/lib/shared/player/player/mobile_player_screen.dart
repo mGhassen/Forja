@@ -38,6 +38,7 @@ import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
@@ -2594,390 +2595,29 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   void _showSubtitleSettings() {
-    final fonts = [
-      'Default',
-      'Poppins',
-      'Roboto',
-      'Roboto Mono',
-      'Montserrat',
-      'Open Sans',
-      'Lato',
-    ];
-    final colorOptions = <String, Color>{
-      'White': Colors.white,
-      'Yellow': const Color(0xFFFFEB3B),
-      'Cyan': const Color(0xFF00E5FF),
-      'Green': const Color(0xFF69F0AE),
-      'Orange': const Color(0xFFFFAB40),
-      'Pink': const Color(0xFFFF80AB),
-    };
-
-    showDialog(
-      context: context,
-      useRootNavigator: false,
-      builder: (context) {
-        final screenW = MediaQuery.of(context).size.width;
-        final dialogW = (screenW * 0.9).clamp(280.0, 420.0);
-        return StatefulBuilder(
-          builder: (context, setDialog) {
-            return Dialog(
-              backgroundColor: const Color(0xFF141414),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: dialogW,
-                  maxHeight: MediaQuery.of(context).size.height * 0.8,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Title
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.tune_rounded,
-                            color: Color(0xFF7C3AED),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Subtitle Settings',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: () {
-                              SettingsService().setSubSize(_subtitleSize);
-                              SettingsService().setSubBgOpacity(
-                                _subtitleBgOpacity,
-                              );
-                              SettingsService().setSubBottomPadding(
-                                _subtitleBottomPadding,
-                              );
-                              Navigator.pop(context);
-                            },
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white38,
-                              size: 20,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(color: Colors.white10, height: 1),
-                    // Content
-                    Flexible(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Size
-                            _subSlider(
-                              'Size',
-                              _subtitleSize,
-                              10,
-                              50,
-                              '${_subtitleSize.toInt()}',
-                              (v) {
-                                setDialog(() => _subtitleSize = v);
-                                setState(() {});
-                              },
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Delay
-                            Row(
-                              children: [
-                                const Text(
-                                  'Delay',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.remove,
-                                    color: Colors.white70,
-                                    size: 20,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () {
-                                    final v = _subtitleDelay - 0.1;
-                                    setDialog(
-                                      () => _subtitleDelay = double.parse(
-                                        v.toStringAsFixed(1),
-                                      ),
-                                    );
-                                    if (_player.platform is NativePlayer) {
-                                      (_player.platform as NativePlayer)
-                                          .setProperty(
-                                            'sub-delay',
-                                            _subtitleDelay.toString(),
-                                          );
-                                    }
-                                  },
-                                ),
-                                SizedBox(
-                                  width: 54,
-                                  child: Text(
-                                    '${_subtitleDelay.toStringAsFixed(1)}s',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.add,
-                                    color: Colors.white70,
-                                    size: 20,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () {
-                                    final v = _subtitleDelay + 0.1;
-                                    setDialog(
-                                      () => _subtitleDelay = double.parse(
-                                        v.toStringAsFixed(1),
-                                      ),
-                                    );
-                                    if (_player.platform is NativePlayer) {
-                                      (_player.platform as NativePlayer)
-                                          .setProperty(
-                                            'sub-delay',
-                                            _subtitleDelay.toString(),
-                                          );
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Text Color
-                            const Text(
-                              'Text Color',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: colorOptions.entries.map((e) {
-                                final selected =
-                                    _subtitleColor.toARGB32() ==
-                                    e.value.toARGB32();
-                                return GestureDetector(
-                                  onTap: () {
-                                    setDialog(() => _subtitleColor = e.value);
-                                    setState(() {});
-                                    SettingsService().setSubColor(
-                                      e.value.toARGB32(),
-                                    );
-                                  },
-                                  child: Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      color: e.value,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: selected
-                                            ? const Color(0xFF7C3AED)
-                                            : Colors.white24,
-                                        width: selected ? 3 : 1,
-                                      ),
-                                    ),
-                                    child: selected
-                                        ? const Icon(
-                                            Icons.check,
-                                            size: 16,
-                                            color: Color(0xFF7C3AED),
-                                          )
-                                        : null,
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // BG Opacity
-                            _subSlider(
-                              'BG Opacity',
-                              _subtitleBgOpacity,
-                              0.0,
-                              1.0,
-                              '${(_subtitleBgOpacity * 100).toInt()}%',
-                              (v) {
-                                setDialog(() => _subtitleBgOpacity = v);
-                                setState(() {});
-                              },
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Position
-                            _subSlider(
-                              'Position',
-                              _subtitleBottomPadding,
-                              0,
-                              120,
-                              '${_subtitleBottomPadding.toInt()}',
-                              (v) {
-                                setDialog(() => _subtitleBottomPadding = v);
-                                setState(() {});
-                              },
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Bold
-                            Row(
-                              children: [
-                                const Text(
-                                  'Bold',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Switch(
-                                  value: _subtitleBold,
-                                  activeThumbColor: const Color(0xFF7C3AED),
-                                  onChanged: (v) {
-                                    setDialog(() => _subtitleBold = v);
-                                    setState(() {});
-                                    SettingsService().setSubBold(v);
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Font
-                            const Text(
-                              'Font',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: fonts.map((f) {
-                                final selected = _subtitleFont == f;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setDialog(() => _subtitleFont = f);
-                                    setState(() {});
-                                    SettingsService().setSubFont(f);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 7,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? const Color(
-                                              0xFF7C3AED,
-                                            ).withValues(alpha: 0.25)
-                                          : Colors.white.withValues(
-                                              alpha: 0.06,
-                                            ),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: selected
-                                            ? const Color(0xFF7C3AED)
-                                            : Colors.white12,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      f,
-                                      style: TextStyle(
-                                        color: selected
-                                            ? Colors.white
-                                            : Colors.white54,
-                                        fontSize: 12,
-                                        fontWeight: selected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+    PlayerSubtitleSettingsDialog.show(
+      context,
+      initial: PlayerSubtitleSettingsValues(
+        size: _subtitleSize,
+        delay: _subtitleDelay,
+        color: _subtitleColor,
+        bgOpacity: _subtitleBgOpacity,
+        bottomPadding: _subtitleBottomPadding,
+        bold: _subtitleBold,
+        font: _subtitleFont,
+      ),
+      player: _player,
+      onChanged: (values) {
+        setState(() {
+          _subtitleSize = values.size;
+          _subtitleDelay = values.delay;
+          _subtitleColor = values.color;
+          _subtitleBgOpacity = values.bgOpacity;
+          _subtitleBottomPadding = values.bottomPadding;
+          _subtitleBold = values.bold;
+          _subtitleFont = values.font;
+        });
       },
-    );
-  }
-
-  Widget _subSlider(
-    String label,
-    double value,
-    double min,
-    double max,
-    String trailing,
-    ValueChanged<double> onChanged,
-  ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const Spacer(),
-            Text(
-              trailing,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ],
-        ),
-        SliderTheme(
-          data: SliderThemeData(
-            trackHeight: 3,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-            activeTrackColor: const Color(0xFF7C3AED),
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
-            thumbColor: const Color(0xFF7C3AED),
-          ),
-          child: Slider(value: value, min: min, max: max, onChanged: onChanged),
-        ),
-      ],
     );
   }
 
@@ -5657,18 +5297,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           child: child,
         );
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ValueListenableBuilder<bool>(
-              valueListenable: _isPlayingNotifier,
-              builder: (context, playing, _) => ordered(
-                3,
-                PlayerFlatIconButton(
+    return SizedBox(
+      width: double.infinity,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: _isPlayingNotifier,
+                builder: (context, playing, _) => ordered(
+                  3,
+                  PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _playFocus,
                   icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -5846,6 +5488,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           ],
         ),
       ],
+      ),
     );
   }
 }

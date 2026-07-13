@@ -107,6 +107,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _playerReady = false;
   int _videoEpoch = 0;
   bool _softwareDecodeForced = false;
+  /// Android MediaKit uses software decode — HW surfaces fail on many devices
+  /// and ATV emulators (EGL_BAD_ATTRIBUTE, audio OK / black frame).
+  bool _androidMediaKitSafeMode = false;
   /// Probed after each open — pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
 
@@ -200,6 +203,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     libass: true,
   );
 
+  bool get _useSoftwareDecode =>
+      _softwareDecodeForced || _androidMediaKitSafeMode;
+
   void _initPlayerInstances() {
     _videoEpoch++;
     _player = MpvExclusiveSession.instance.trackPlayer(
@@ -208,8 +214,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _controller = VideoController(
       _player,
       configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: !_softwareDecodeForced,
-        hwdec: _softwareDecodeForced ? 'no' : 'auto-safe',
+        enableHardwareAcceleration: !_useSoftwareDecode,
+        hwdec: _useSoftwareDecode ? 'no' : 'auto-safe',
+        // Avoid blank video when the surface attaches before mpv negotiates
+        // dimensions (common on Android / ATV emulators).
+        androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
     _playerAlive = true;
@@ -243,6 +252,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     SettingsService.iptvEpgEnabledNotifier.addListener(_onIptvEpgPrefChanged);
     unawaited(_loadIptvEpgPref());
     WidgetsBinding.instance.addObserver(this);
+    if (!kIsWeb && Platform.isAndroid) {
+      _androidMediaKitSafeMode = true;
+    }
     _initOrientationAndChrome();
     WakelockPlus.enable();
     unawaited(_bootPlayer());
@@ -258,7 +270,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
       // Prefer safe GPU decode with software fallback — raw `auto` can stick on
       // a broken VideoToolbox session on macOS (black texture, audio OK).
-      await p.setProperty('hwdec', _softwareDecodeForced ? 'no' : 'auto-safe');
+      await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
       await p.setProperty('vd-lavc-dr', 'yes');
       await p.setProperty('vd-lavc-threads', '0');
 
@@ -1224,8 +1236,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Video
-            Center(
+            // Video — fill the stack like the main player (Center can leave
+            // a zero-sized surface on Android when Impeller composites siblings).
+            Positioned.fill(
               child: Video(
                 key: ValueKey(_videoEpoch),
                 controller: _controller,

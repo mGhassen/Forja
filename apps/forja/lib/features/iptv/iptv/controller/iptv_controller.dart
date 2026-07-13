@@ -122,6 +122,25 @@ class IptvController extends ChangeNotifier {
   String browserSearch = '';
   bool browserSearchOpen = false;
 
+  /// Categories shown in the catalog sidebar (respects active search filter).
+  List<IptvCategory> get browserSidebarCategories {
+    final q = browserSearch.trim().toLowerCase();
+    if (q.isEmpty) return categories;
+    final selected = browserSelectedCategoryId;
+    return categories.where((c) {
+      if (c.id == selected) return true;
+      if (c.id.isEmpty) return true;
+      return c.name.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  /// D-pad focus index for the selected category in [browserSidebarCategories].
+  int get browserCategoryFocusIndex {
+    final selected = browserSelectedCategoryId;
+    final idx = browserSidebarCategories.indexWhere((c) => c.id == selected);
+    return idx >= 0 ? idx : 0;
+  }
+
   void toggleBrowserSearch() {
     if (browserSearchOpen) {
       closeBrowserSearch();

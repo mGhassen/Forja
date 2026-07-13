@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
@@ -685,6 +686,56 @@ void _showCastFeedback(
 String _castTargetLabel(CastTarget target) =>
     target == CastTarget.airplay ? 'AirPlay' : 'Chromecast';
 
+Future<CastTarget?> _pickCastTarget(BuildContext context) async {
+  final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+  if (!tv) {
+    return showMenu<CastTarget>(
+      context: context,
+      position: const RelativeRect.fromLTRB(9999, 56, 16, 0),
+      items: const [
+        PopupMenuItem(
+          value: CastTarget.airplay,
+          child: Text('AirPlay'),
+        ),
+        PopupMenuItem(
+          value: CastTarget.chromecast,
+          child: Text('Chromecast'),
+        ),
+      ],
+    );
+  }
+
+  CastTarget? picked;
+  await PlayerPopupPanel.show(
+    context: context,
+    title: 'Cast to',
+    leadingIcon: Icons.cast_rounded,
+    centered: true,
+    width: 280,
+    maxHeight: 220,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PlayerPopupListTile(
+          label: 'AirPlay',
+          onTap: () {
+            picked = CastTarget.airplay;
+            PlayerPopupPanel.dismiss();
+          },
+        ),
+        PlayerPopupListTile(
+          label: 'Chromecast',
+          onTap: () {
+            picked = CastTarget.chromecast;
+            PlayerPopupPanel.dismiss();
+          },
+        ),
+      ],
+    ),
+  );
+  return picked;
+}
+
 Future<void> showPlayerCastPicker(
   BuildContext context, {
   required String? streamUrl,
@@ -716,20 +767,7 @@ Future<void> showPlayerCastPicker(
 
   CastTarget? target;
   if (casting.isAirPlayAvailable && casting.isChromecastAvailable) {
-    target = await showMenu<CastTarget>(
-      context: context,
-      position: const RelativeRect.fromLTRB(9999, 56, 16, 0),
-      items: [
-        const PopupMenuItem(
-          value: CastTarget.airplay,
-          child: Text('AirPlay'),
-        ),
-        const PopupMenuItem(
-          value: CastTarget.chromecast,
-          child: Text('Chromecast'),
-        ),
-      ],
-    );
+    target = await _pickCastTarget(context);
     if (target == null || !context.mounted) return;
   } else if (casting.isAirPlayAvailable) {
     target = CastTarget.airplay;

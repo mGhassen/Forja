@@ -276,7 +276,9 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                       width: (_isDragging || _tvFocused) ? 16.0 : 12.0,
                       height: (_isDragging || _tvFocused) ? 16.0 : 12.0,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: _tvFocused
+                            ? ForjaShellColors.brandGreen
+                            : Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -331,18 +333,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
           focusNode: _focusNode,
           onFocusChange: (focused) => setState(() => _tvFocused = focused),
           onKeyEvent: _onTvKey,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              border: _tvFocused
-                  ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
-                  : null,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-              child: track,
-            ),
-          ),
+          child: track,
         );
       },
     );

@@ -88,7 +88,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       debugPrint('[Boot] InAppWebView setup failed (non-fatal): $e');
     }
   }
-  
+
   Logger.root.level = Level.FINER;
   Logger.root.onRecord.listen((e) {
     debugPrint('[YT] ${e.message}');
@@ -97,7 +97,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       debugPrint('[YT STACK] ${e.stackTrace}');
     }
   });
-  
+
   if (Platform.isAndroid) {
     // Follow system rotation setting — no forced lock.
     // auto_orientation_v2 is gone, so this respects the user's
@@ -119,8 +119,14 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
     const double screenMargin = 80; // leaves room for taskbar + title bar
     final display = WidgetsBinding.instance.platformDispatcher.displays.first;
     final logicalScreen = display.size / display.devicePixelRatio;
-    final double maxW = (logicalScreen.width - screenMargin).clamp(640.0, double.infinity);
-    final double maxH = (logicalScreen.height - screenMargin).clamp(480.0, double.infinity);
+    final double maxW = (logicalScreen.width - screenMargin).clamp(
+      640.0,
+      double.infinity,
+    );
+    final double maxH = (logicalScreen.height - screenMargin).clamp(
+      480.0,
+      double.infinity,
+    );
     final Size windowSize = Size(
       desiredWidth.clamp(640.0, maxW),
       desiredHeight.clamp(480.0, maxH),
@@ -141,11 +147,11 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       await windowManager.focus();
     });
   }
-  
+
   debugPrint('[Boot] Initializing MediaKit...');
   MediaKit.ensureInitialized();
   debugPrint('[Boot] MediaKit OK');
-  
+
   debugPrint('[Boot] Initializing AudioService...');
   final audioHandler = await AudioService.init(
     builder: () => AppAudioHandler(),
@@ -158,28 +164,32 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
     ),
   );
   debugPrint('[Boot] AudioService OK');
-  
+
   MusicPlayerService().setHandler(audioHandler);
   AudiobookPlayerService().init(audioHandler);
-  
+
   // Hydrate theme preset before first frame
   await Engine.init();
   _warnIfRustMissing();
-  
+
   await AppTheme.initTheme();
-  
+
   PlayerPoolService().warmUp();
   // Pre-initialise the local WebStreamr pipeline so the first call is fast.
   // Errors here are non-fatal — the service init() is also called lazily.
-  unawaited(WebStreamrService.init().catchError((e) {
-    debugPrint('[Boot] WebStreamrService.init failed (non-fatal): $e');
-  }));
+  unawaited(
+    WebStreamrService.init().catchError((e) {
+      debugPrint('[Boot] WebStreamrService.init failed (non-fatal): $e');
+    }),
+  );
   // Refresh every installed Nuvio addon's manifest in the background so new
   // upstream providers / fixes flow in without the user reinstalling.
   // Non-fatal — offline launches just keep the previously cached manifests.
-  unawaited(NuvioService.instance.refreshAllInstalled().catchError((e) {
-    debugPrint('[Boot] Nuvio refresh failed (non-fatal): $e');
-  }));
+  unawaited(
+    NuvioService.instance.refreshAllInstalled().catchError((e) {
+      debugPrint('[Boot] Nuvio refresh failed (non-fatal): $e');
+    }),
+  );
   debugPrint('[Boot] Preloading splash sound...');
   await SplashSound.instance.preload();
   debugPrint('[Boot] Splash sound ready');
@@ -299,9 +309,11 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           theme: AppTheme.themeData,
           home: const SplashScreen(),
           builder: (context, child) {
-            Widget content = ForjaToastHost(
-              child: BackNavigationScope(
-                child: child ?? const SizedBox.shrink(),
+            Widget content = ShellScopeBuilder(
+              builder: (context, _) => ForjaToastHost(
+                child: BackNavigationScope(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             );
             if (ShellTokens.isAndroidTvDevice) {
@@ -439,7 +451,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
     debugPrint('[Boot]   - Starting LocalServer...');
     debugPrint('[Boot]   - Initializing MusicPlayer...');
-    debugPrint('[Boot]   - Fetching TMDB data (trending, popular, top rated, now playing)...');
+    debugPrint(
+      '[Boot]   - Fetching TMDB data (trending, popular, top rated, now playing)...',
+    );
 
     final results = await Future.wait([
       LocalServerService().start().catchError((e) {
@@ -481,26 +495,36 @@ class _SplashScreenState extends State<SplashScreen> {
     debugPrint('[Boot] Step 3: Service initialization results:');
     debugPrint('[Boot]   LocalServer: ✓ READY');
     debugPrint('[Boot]   MusicPlayer: ✓ READY');
-    debugPrint('[Boot]   TMDB Trending: ${trendingList.isNotEmpty ? "✓ ${trendingList.length} items" : "✗ Empty"}');
-    debugPrint('[Boot]   TMDB Popular: ${popularList.isNotEmpty ? "✓ ${popularList.length} items" : "✗ Empty"}');
-    debugPrint('[Boot]   TMDB Top Rated: ${topRatedList.isNotEmpty ? "✓ ${topRatedList.length} items" : "✗ Empty"}');
-    debugPrint('[Boot]   TMDB Now Playing: ${nowPlayingList.isNotEmpty ? "✓ ${nowPlayingList.length} items" : "✗ Empty"}');
+    debugPrint(
+      '[Boot]   TMDB Trending: ${trendingList.isNotEmpty ? "✓ ${trendingList.length} items" : "✗ Empty"}',
+    );
+    debugPrint(
+      '[Boot]   TMDB Popular: ${popularList.isNotEmpty ? "✓ ${popularList.length} items" : "✗ Empty"}',
+    );
+    debugPrint(
+      '[Boot]   TMDB Top Rated: ${topRatedList.isNotEmpty ? "✓ ${topRatedList.length} items" : "✗ Empty"}',
+    );
+    debugPrint(
+      '[Boot]   TMDB Now Playing: ${nowPlayingList.isNotEmpty ? "✓ ${nowPlayingList.length} items" : "✗ Empty"}',
+    );
 
-    debugPrint('[Boot] Step 4: Waiting for minimum splash time so the '
-        'pre-built MainScreen / HomeScreen finishes its first paints...');
+    debugPrint(
+      '[Boot] Step 4: Waiting for minimum splash time so the '
+      'pre-built MainScreen / HomeScreen finishes its first paints...',
+    );
     await minSplashFuture;
 
     if (mounted) {
-      debugPrint('[Boot] Step 5: Dismissing splash overlay (MainScreen '
-          'already mounted underneath)');
+      debugPrint(
+        '[Boot] Step 5: Dismissing splash overlay (MainScreen '
+        'already mounted underneath)',
+      );
       _dismissSplash();
       debugPrint('═══════════════════════════════════════════════════════════');
       debugPrint('[Boot] ✓✓✓ ENGINE INITIALIZATION COMPLETE ✓✓✓');
       debugPrint('═══════════════════════════════════════════════════════════');
     }
   }
-  
-
 
   @override
   Widget build(BuildContext context) {
@@ -510,10 +534,7 @@ class _SplashScreenState extends State<SplashScreen> {
         fit: StackFit.expand,
         clipBehavior: Clip.hardEdge,
         children: [
-          Offstage(
-            offstage: _showOverlay,
-            child: _mainScreen,
-          ),
+          Offstage(offstage: _showOverlay, child: _mainScreen),
           if (_showOverlay)
             Positioned.fill(
               child: GestureDetector(
@@ -544,8 +565,7 @@ class _SplashScreenState extends State<SplashScreen> {
 void _warnIfRustMissing() {
   if (!kDebugMode || Engine.isReady) return;
 
-  final isDesktop =
-      Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+  final isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
   final buildHint = isDesktop
       ? './scripts/build_rust.sh (or melos run rust:build)'
       : './scripts/build_rust_mobile.sh (or melos run rust:build:mobile)';
@@ -553,7 +573,8 @@ void _warnIfRustMissing() {
   const msg =
       '[Boot] Rust engine NOT loaded — engine features unavailable. '
       'From repo root run: ';
-  final full = '$msg$buildHint. '
+  final full =
+      '$msg$buildHint. '
       'Override: RUST_LIB=/path/to/libffi.dylib|.so. '
       'Strict fail: RUST_STRICT=1';
 
