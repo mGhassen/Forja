@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 5** acceptance · home/settings splits shipped |
-| **Current slice** | Mobile player split done (381-line orchestrator); desktop player + `mobile_player_sources` sub-split remain |
+| **Progress** | **2 / 5** acceptance · home/settings splits shipped; player screen god-files split |
+| **Current slice** | `shared/player/player/*` orchestrators done; `controls/` + `trailer_player_screen` still &gt;1.2k (R19-A01) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,8 +47,8 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 | [`live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Phase E done — orchestrator; `live_matches_models.dart`, `live_matches_widgets.dart`, data/build/playback mixins |
 | [`search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator; `search_search.dart`, `search_tv.dart`, `search_build.dart`, `search_widgets.dart` |
 | [`anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator; `anime_screen_feed.dart`, `anime_screen_build.dart`, `anime_widgets.dart` |
-| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 381 | Mobile orchestrator; lifecycle/playback/ui/tracks/sources/build mixins |
-| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 5728 | Desktop split pending (R19-A05) |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 387 | Mobile orchestrator; lifecycle/playback/ui/tracks/sources×4/episodes/build mixins |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 364 | Desktop orchestrator; lifecycle/playback/ui/tracks/sources/episodes/build mixins |
 
 ## Rules
 

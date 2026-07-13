@@ -21,6 +21,7 @@ class MediaDetailsHero extends StatefulWidget {
   const MediaDetailsHero({
     super.key,
     required this.movie,
+    this.backdropPathOverride,
     this.trailerYoutubeKey,
     this.progress,
     this.height,
@@ -44,6 +45,8 @@ class MediaDetailsHero extends StatefulWidget {
   });
 
   final Movie movie;
+  /// When set (e.g. TV season poster), replaces [Movie.backdropPath] for the hero image.
+  final String? backdropPathOverride;
   final String? trailerYoutubeKey;
   /// TMDB ISO 639-1 original language — keeps YouTube player/captions in source lang.
   final String? trailerLanguageCode;
@@ -106,7 +109,8 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
       _trailerTimer?.cancel();
       _scheduleTrailer();
     }
-    if (oldWidget.movie.id != widget.movie.id) {
+    if (oldWidget.movie.id != widget.movie.id ||
+        oldWidget.backdropPathOverride != widget.backdropPathOverride) {
       _imagePrecached = false;
     }
   }
@@ -580,10 +584,15 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
   }
 
   String get _backdropUrl {
-    final path = widget.movie.backdropPath.isNotEmpty
-        ? widget.movie.backdropPath
-        : widget.movie.posterPath;
+    final path = _effectiveBackdropPath;
     return path.isNotEmpty ? TmdbApi.getBackdropUrl(path) : '';
+  }
+
+  String get _effectiveBackdropPath {
+    final override = widget.backdropPathOverride?.trim();
+    if (override != null && override.isNotEmpty) return override;
+    if (widget.movie.backdropPath.isNotEmpty) return widget.movie.backdropPath;
+    return widget.movie.posterPath;
   }
 
   String? get _logoUrl => widget.movie.logoPath.isNotEmpty
@@ -600,9 +609,15 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
       return ColoredBox(color: shellBg);
     }
 
-    return KenBurnsBackdrop(
-      imageUrl: _backdropUrl,
-      showColorTint: false,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeIn,
+      child: KenBurnsBackdrop(
+        key: ValueKey(_backdropUrl),
+        imageUrl: _backdropUrl,
+        showColorTint: false,
+      ),
     );
   }
 

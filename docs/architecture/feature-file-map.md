@@ -11,8 +11,8 @@
 |--|--|
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
-| **Tier 1 (&gt;3k)** | 0 files in `features/` · `desktop_player_screen.dart` (~5.7k) only |
-| **Next action** | Mobile player split done; desktop player split + `mobile_player_sources` sub-split (R19-A05) |
+| **Tier 1 (&gt;3k)** | 0 files in `features/` · 0 monoliths in `shared/player/player/` |
+| **Next action** | `shared/player/controls/` + `trailer_player_screen.dart` still &gt;1.2k (R19-A01); `features/player/` delete (R19-A02) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -400,17 +400,29 @@ features/iptv/iptv/
 
 | File | Lines (current) | Target |
 |------|----------------:|--------|
-| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 381 | Orchestrator ✅ |
-| `mobile_player_sources.dart` | 1,664 | Sub-split (still &gt;1.2k) |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 387 | Orchestrator ✅ |
+| `mobile_player_sources.dart` | 787 | Core stream menu/scoring mixin ✅ |
+| `mobile_player_sources_alt.dart` | 212 | Torrent/Stremio/player-menu mixin |
+| `mobile_player_sources_settings.dart` | 241 | Settings popup mixin |
+| `mobile_player_sources_provider.dart` | 195 | Load/switch provider mixin |
 | `mobile_player_playback.dart` | 937 | — |
 | `mobile_player_build.dart` | 960 | — |
 | `mobile_player_lifecycle.dart` | 634 | — |
 | `mobile_player_glass.dart` | 301 | Glass primitives |
 | `mobile_player_tracks.dart` | 344 | Subtitles/audio/quality |
 | `mobile_player_ui.dart` | 205 | Gestures/aspect/timer |
-| `mobile_player_episodes.dart` | 270 | Skip/next-ep |
+| `mobile_player_episodes.dart` | 515 | Skip/next-ep + episode switch |
 | `mobile_player_seekbar.dart` | 253 | Seekbar widgets |
-| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 5,728 | Same mixin pattern |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 364 | Orchestrator ✅ |
+| `desktop_player_episodes.dart` | 1,126 | Episodes + provider load/switch |
+| `desktop_player_playback.dart` | 922 | — |
+| `desktop_player_build.dart` | 629 | — |
+| `desktop_player_lifecycle.dart` | 516 | — |
+| `desktop_player_sources.dart` | 796 | Stream menu mixin |
+| `desktop_player_tracks.dart` | 632 | HW decode/subtitles/audio |
+| `desktop_player_glass.dart` | 350 | Glass primitives |
+| `desktop_player_ui.dart` | 161 | Auto-hide/fullscreen/keyboard |
+| `desktop_player_seekbar.dart` | 263 | Seekbar widgets |
 
 ---
 
@@ -489,7 +501,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV + mobile player splits done. Remaining: `desktop_player_screen`, `mobile_player_sources` sub-split (R19-A05).
+IPTV + mobile/desktop player screen splits done (`player/` parts all ≤1,126). Remaining R19-A01: `player_stream_menu.dart` (1,550), `trailer_player_screen.dart` (1,404), `player_chrome_overlay.dart` (1,287).
 
 ---
 

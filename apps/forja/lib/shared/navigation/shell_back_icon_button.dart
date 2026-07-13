@@ -60,14 +60,28 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
     final body = SizedBox(
       width: resolvedHit,
       height: resolvedHit,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: fillAlpha),
-        ),
-        child: Align(
-          alignment: widget.iconAlignment,
-          child: Icon(widget.icon, size: widget.size, color: fg),
+      child: Align(
+        alignment: widget.iconAlignment,
+        child: SizedBox(
+          width: widget.size,
+          height: widget.size,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: fillAlpha),
+                ),
+                child: SizedBox(
+                  width: resolvedHit,
+                  height: resolvedHit,
+                ),
+              ),
+              Icon(widget.icon, size: widget.size, color: fg),
+            ],
+          ),
         ),
       ),
     );

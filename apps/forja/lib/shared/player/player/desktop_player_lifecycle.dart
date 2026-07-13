@@ -1,0 +1,516 @@
+part of 'desktop_player_screen.dart';
+
+mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+  _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
+
+  void initState() {
+    super.initState();
+    _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+      {},
+    );
+
+    // ── Provider initialization ──────────────────────────────────────────
+    _s._currentProvider = widget.activeProvider;
+    _s._sourcePinned = widget.pinSource;
+    if (widget.pinSource ||
+        (widget.activeProvider != null &&
+            widget.sources != null &&
+            widget.sources!.isNotEmpty)) {
+      _s._providerPinned = true;
+      _s._sourcePinned = true;
+    }
+    unawaited(_s._loadPlayerAutoSettings());
+    _s._currentSources = widget.sources == null
+        ? null
+        : dedupeStreamSources(widget.sources!);
+    if (_s._currentProvider != null &&
+        _s._currentSources != null &&
+        _s._currentSources!.isNotEmpty) {
+      final pid = _s._currentProvider!;
+      final valid = _s._currentSources!
+          .where((s) => !isUnplayableCachedStreamUrl(s.url))
+          .toList();
+      if (valid.isNotEmpty) {
+        final cache = _s._liveProviderSourcesCache.value;
+        if (cache[pid]?.isEmpty ?? true) {
+          _s._liveProviderSourcesCache.value = {...cache, pid: valid};
+        }
+        if (valid.length != _s._currentSources!.length) {
+          _s._currentSources = valid;
+        }
+      }
+    }
+    unawaited(
+      _s._playableSourcesReady = Future.wait([
+        _initPlayableSources(),
+        _hydrateSessionCacheFromDisk(),
+      ]),
+    );
+    _s._currentUrl = widget.mediaPath;
+    _s._activeMagnet = widget.magnetLink;
+    if (_s._currentProvider == 'service111477' &&
+        widget.sources != null &&
+        widget.sources!.isNotEmpty) {
+      _s._current111477FileUrl = widget.sources!.first.url;
+    }
+    widget.sourcesListNotifier?.addListener(_s._onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.addListener(_s._onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.addListener(_s._onProbeScoringChanged);
+
+    windowManager.addListener(this);
+    WidgetsBinding.instance.addObserver(this);
+
+    // Track desktop PiP state so we can hide all controls when active.
+    _s._pipSub = PipService.instance.desktopPipChanges.listen((on) {
+      if (!mounted) return;
+      setState(() => _s._isPipMode = on);
+    });
+
+    _s._loadHeroMetadata();
+    unawaited(_s._refreshAdjacentEpisodeFlags());
+
+    HardwareKeyboard.instance.addHandler(_s._handleKeyEvent);
+    unawaited(_createPlayer());
+  }
+
+  Future<void> _createPlayer() async {
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (!mounted || _s._disposed) return;
+
+    _s._player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: const PlayerConfiguration(
+          logLevel: MPVLogLevel.warn,
+          libass: true,
+          libassAndroidFont: 'assets/fonts/Roboto-Regular.ttf',
+          libassAndroidFontName: 'Roboto',
+        ),
+      ),
+    );
+
+    _s._controller = VideoController(
+      _s._player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
+
+    if (!mounted || _s._disposed) {
+      MpvExclusiveSession.instance.untrackPlayer(_s._player);
+      final disposeFuture = _s._player.dispose();
+      MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+      await disposeFuture;
+      return;
+    }
+
+    _s._playerReady = true;
+    setState(() {});
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !_s._playerReady) return;
+      await waitForRouteTransition(context);
+      if (!mounted || !_s._playerReady) return;
+      await _s._loadPlayerAutoSettings();
+      if (!mounted || !_s._playerReady) return;
+      _s._loadSubtitlePrefs();
+      _s._loadTorrentStatsPref();
+      await _s._playableSourcesReady;
+      if (!mounted || !_s._playerReady) return;
+      _s._initPlayback();
+      _s._onProbeScoringChanged();
+      _s._startHideTimer();
+      _s._fetchSubtitles();
+      if (widget.movie != null && widget.hubEpisodes == null) {
+        TraktService().scrobbleStart(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+          progressPercent: 0,
+        );
+        SimklService().scrobbleStart(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+        );
+      }
+      _fetchIntroDbTimestamps();
+    });
+  }
+
+  Future<void> _initPlayableSources() async {
+    if (widget.sources == null || widget.sources!.isEmpty) return;
+    final ranked = await PlayableSourceBridge.rankWidgetSources(
+      sources: widget.sources,
+      providerId: _s._currentProvider,
+    );
+    if (_s._disposed || !mounted) return;
+    setState(() {
+      _s._playableSources = ranked;
+      _s._currentSources = playableSourcesToStreamSources(ranked);
+      _syncCurrentSourceIndexFromPlayUrl();
+    });
+    _s._notifySourceMenuChanged();
+  }
+
+  /// Session/disk cache when live [_s._currentSources] is empty (reopen same episode).
+  Future<void> _hydrateSessionCacheFromDisk() async {
+    if (widget.providerSourcesCache != null) return;
+    final movie = widget.movie;
+    if (movie == null) return;
+    if (widget.magnetLink != null || widget.activeProvider == 'stremio_direct') {
+      return;
+    }
+
+    final key = WebstreamingStreamCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    final hit = await WebstreamingStreamCache.read(key);
+    if (_s._disposed || !mounted || hit == null || hit.sources.isEmpty) return;
+
+    final providerId = hit.providerId.isNotEmpty
+        ? hit.providerId
+        : (_s._currentProvider ?? widget.activeProvider);
+    if (providerId == null || providerId.isEmpty) return;
+
+    final sources = dedupeStreamSources(hit.sources);
+    final cache = Map<String, List<StreamSource>>.from(
+      _s._ownedProviderSourcesCache.value,
+    );
+    if (cache[providerId]?.isEmpty ?? true) {
+      cache[providerId] = sources;
+      _s._ownedProviderSourcesCache.value = cache;
+    }
+
+    final needsSources =
+        _s._currentSources == null || _s._currentSources!.isEmpty;
+    final needsProvider =
+        _s._currentProvider == null || _s._currentProvider!.isEmpty;
+    if (!needsSources && !needsProvider) return;
+
+    if (!mounted) return;
+    setState(() {
+      if (needsProvider) _s._currentProvider = providerId;
+      if (needsSources) {
+        _s._currentSources = sources;
+        _syncCurrentSourceIndexFromPlayUrl();
+      }
+    });
+    _s._notifySourceMenuChanged();
+  }
+
+  List<StreamSource>? get _effectiveCurrentSources {
+    if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
+      return _s._currentSources;
+    }
+    final pid = _s._currentProvider ?? widget.activeProvider;
+    if (pid == null || pid.isEmpty) return _s._currentSources;
+    final cached = _s._liveProviderSourcesCache.value[pid];
+    if (cached != null && cached.isNotEmpty) return cached;
+    return _s._currentSources;
+  }
+
+  /// Align panel rows + session cache with the URL mpv is actually playing.
+  void _refreshPanelPlayingStream() {
+    if (!_s._playbackConfirmed) return;
+    final pid = _s._currentProvider ?? widget.activeProvider;
+    final playUrl = _s._currentUrl;
+    if (pid == null || pid.isEmpty || playUrl == null || playUrl.isEmpty) {
+      return;
+    }
+
+    final catalogUrl = _s._currentPlayingCatalogUrl;
+    var sources = List<StreamSource>.from(
+      _s._currentSources != null && _s._currentSources!.isNotEmpty
+          ? _s._currentSources!
+          : (_s._liveProviderSourcesCache.value[pid] ?? const <StreamSource>[]),
+    );
+    sources.removeWhere((s) => isUnplayableCachedStreamUrl(s.url));
+
+    final matchIdx = sources.indexWhere(
+      (s) =>
+          s.url == playUrl ||
+          (catalogUrl != null &&
+              catalogUrl.isNotEmpty &&
+              s.url == catalogUrl),
+    );
+
+    late final StreamSource playingRow;
+    if (matchIdx >= 0) {
+      playingRow = sources.removeAt(matchIdx);
+    } else {
+      final label = widget.providers != null
+          ? PlayerProviderMenu.snackbarLabel(pid, widget.providers![pid])
+          : pid;
+      final identity =
+          (catalogUrl != null && catalogUrl.isNotEmpty) ? catalogUrl : playUrl;
+      final lower = playUrl.toLowerCase();
+      playingRow = StreamSource(
+        url: identity,
+        title: label,
+        type: lower.contains('.m3u8')
+            ? 'hls'
+            : lower.contains('.mpd')
+                ? 'dash'
+                : 'mp4',
+        headers: widget.headers,
+      );
+    }
+
+    final deduped = dedupeStreamSources([playingRow, ...sources]);
+    setState(() {
+      _s._currentSources = deduped;
+      _s._currentPlayingCatalogUrl = playingRow.url;
+      _s._currentFallbackSourceIndex = 0;
+    });
+    _s._cacheProviderSources(pid, deduped);
+    unawaited(_persistWebstreamingCacheForCurrent());
+    _s._markSourceActive(0);
+    _s._notifySourceMenuChanged();
+  }
+
+  Future<void> _persistWebstreamingCacheForCurrent() async {
+    final movie = widget.movie;
+    if (movie == null || widget.magnetLink != null) return;
+    final pid = _s._currentProvider ?? widget.activeProvider;
+    final sources = _s._effectiveCurrentSources
+        ?.where((s) => !isUnplayableCachedStreamUrl(s.url))
+        .toList();
+    if (pid == null || pid.isEmpty || sources == null || sources.isEmpty) {
+      return;
+    }
+    final key = WebstreamingStreamCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    await WebstreamingStreamCache.write(
+      key,
+      WebstreamingCacheHit(providerId: pid, sources: sources),
+    );
+  }
+
+  void _syncCurrentSourceIndexFromPlayUrl() {
+    final sources = _s._currentSources;
+    if (sources == null || sources.isEmpty) return;
+    final catalogUrl = _s._currentPlayingCatalogUrl;
+    if (catalogUrl != null && catalogUrl.isNotEmpty) {
+      final catalogIdx = sources.indexWhere((s) => s.url == catalogUrl);
+      if (catalogIdx >= 0) {
+        _s._currentFallbackSourceIndex = catalogIdx;
+        return;
+      }
+    }
+    final playUrl = _s._currentUrl;
+    if (playUrl == null || playUrl.isEmpty) return;
+    if (_s._currentProvider == 'service111477') {
+      final fileUrl = _s._current111477FileUrl;
+      if (fileUrl == null || fileUrl.isEmpty) return;
+      final idx = sources.indexWhere((s) => s.url == fileUrl);
+      if (idx >= 0) _s._currentFallbackSourceIndex = idx;
+      return;
+    }
+    final idx = sources.indexWhere((s) => s.url == playUrl);
+    if (idx >= 0) {
+      _s._currentFallbackSourceIndex = idx;
+      return;
+    }
+    if (_s._currentFallbackSourceIndex < sources.length) return;
+    _s._currentFallbackSourceIndex = 0;
+  }
+
+  String? _resolveStreamMenuProviderId() {
+    var pid = _s._currentProvider ?? widget.activeProvider;
+    if (pid != null && pid.isNotEmpty) return pid;
+    if (!_s._playbackConfirmed) return pid;
+    final playUrl = _s._currentUrl;
+    if (playUrl == null || playUrl.isEmpty) return pid;
+    final providers = widget.providers;
+    if (providers == null || providers.isEmpty) return pid;
+
+    final cache = _s._liveProviderSourcesCache.value;
+    for (final key in providers.keys) {
+      final cached = cache[key];
+      if (cached == null) continue;
+      if (cached.any(
+        (source) =>
+            source.url == playUrl ||
+            source.url == _s._currentPlayingCatalogUrl,
+      )) {
+        return key;
+      }
+    }
+    final live = _s._currentSources;
+    if (live != null &&
+        live.any(
+          (source) =>
+              source.url == playUrl ||
+              source.url == _s._currentPlayingCatalogUrl,
+        )) {
+      return _s._currentProvider ?? widget.activeProvider;
+    }
+    return pid;
+  }
+
+  Future<void> _fetchIntroDbTimestamps() async {
+    if (widget.movie == null) return;
+    final data = await IntroDbService().getTimestamps(
+      tmdbId: widget.movie!.id,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      imdbId: widget.movie!.imdbId,
+    );
+    if (mounted && data != null && data.hasAnySegments) {
+      setState(() => _s._introDbData = data);
+    }
+  }
+
+  @override
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Save progress when app goes to background or is paused
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _saveWatchHistory(isBgPause: true);
+    } else if (state == AppLifecycleState.resumed) {
+      _s._historySaved = false;
+      if (widget.movie != null && _s._isPlayingNotifier.value) {
+        final pos = _s._positionNotifier.value.inMilliseconds;
+        final dur = _s._durationNotifier.value.inMilliseconds;
+        final pct = dur > 0 ? (pos / dur * 100) : 0.0;
+        TraktService().scrobbleStart(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+          progressPercent: pct,
+        );
+      }
+    }
+  }
+
+  void _saveWatchHistory({bool isBgPause = false}) {
+    if (_s._historySaved && !isBgPause) return;
+    _s._historySaved = true;
+    final pos = _s._positionNotifier.value.inMilliseconds;
+    final dur = _s._durationNotifier.value.inMilliseconds;
+
+    if (widget.onSaveProgress != null && pos > 5000) {
+      widget.onSaveProgress!(
+        Duration(milliseconds: pos),
+        Duration(milliseconds: dur),
+      );
+    }
+
+    // Save anime watch position
+    if (widget.activeProvider != null &&
+        widget.activeProvider!.startsWith('anime_') &&
+        pos > 10000 &&
+        dur > 0) {
+      _saveAnimeWatchPosition(pos, dur);
+    }
+
+    if (widget.movie == null || widget.hubEpisodes != null) return;
+    if (pos > 10000 && dur > 0) {
+      final isTorrent = widget.magnetLink != null;
+      final isStremioDirect = widget.activeProvider == 'stremio_direct';
+      final String method;
+      final String sourceId;
+      if (isTorrent) {
+        method = 'torrent';
+        sourceId = widget.magnetLink!;
+      } else if (isStremioDirect) {
+        method = 'stremio_direct';
+        sourceId = widget.mediaPath;
+      } else if (widget.activeProvider == 'amri') {
+        method = 'amri';
+        sourceId = widget.mediaPath;
+      } else {
+        final liveProvider = _s._currentProvider ?? widget.activeProvider;
+        if (liveProvider != null && liveProvider.isNotEmpty) {
+          method = 'stream';
+          sourceId = liveProvider;
+        } else {
+          method = 'amri';
+          sourceId = widget.mediaPath;
+        }
+      }
+      final resolvedStreamUrl = _s._currentUrl ?? widget.mediaPath;
+      WatchHistoryService().saveProgress(
+        tmdbId: widget.movie!.id,
+        imdbId: widget.movie!.imdbId,
+        title: _s._displayTitle,
+        posterPath: widget.movie!.posterPath,
+        backdropPath: widget.movie!.backdropPath,
+        method: method,
+        sourceId: sourceId,
+        position: pos,
+        duration: dur,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+        episodeTitle: widget.selectedEpisode != null
+            ? 'Episode ${widget.selectedEpisode}'
+            : null,
+        magnetLink: widget.magnetLink,
+        fileIndex: widget.fileIndex,
+        streamUrl: isStremioDirect
+            ? widget.mediaPath
+            : (method == 'stream' ? resolvedStreamUrl : null),
+        stremioId: widget.stremioId,
+        stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+        stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
+        mediaType: widget.movie!.mediaType,
+      );
+
+      // Trakt + Simkl scrobble — fire and forget
+      final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
+      if (isBgPause) {
+        TraktService().scrobblePause(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+          progressPercent: progressPercent,
+        );
+      } else {
+        TraktService().scrobbleStop(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+          progressPercent: progressPercent,
+        );
+      }
+      SimklService().scrobbleStop(
+        tmdbId: widget.movie!.id,
+        mediaType: widget.movie!.mediaType,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+      );
+    }
+  }
+
+  void _saveAnimeWatchPosition(int posMs, int durMs) {
+    SharedPreferences.getInstance().then((prefs) {
+      final list = prefs.getStringList('anime_watch_history') ?? [];
+      // Extract animeId from the activeProvider or match by title
+      // The most recent entry at index 0 is the currently playing anime
+      // (addToWatchHistory inserts at 0 before playback starts)
+      if (list.isNotEmpty) {
+        final entry = jsonDecode(list[0]) as Map<String, dynamic>;
+        entry['position'] = posMs;
+        entry['duration'] = durMs;
+        list[0] = jsonEncode(entry);
+        prefs.setStringList('anime_watch_history', list);
+      }
+    });
+  }
+}

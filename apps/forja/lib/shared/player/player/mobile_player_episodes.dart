@@ -267,4 +267,249 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
     }
     return button;
   }
+
+  Future<({int season, int episode})?> _computeNextEpisode({
+    bool silent = false,
+  }) async {
+    if (widget.movie == null ||
+        widget.selectedSeason == null ||
+        widget.selectedEpisode == null) {
+      return null;
+    }
+    final tmdb = TmdbService();
+    final tvId = widget.movie!.id;
+    var nextSeason = widget.selectedSeason!;
+    var nextEpisode = widget.selectedEpisode! + 1;
+
+    final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
+    final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
+    final maxEp = episodes.isNotEmpty
+        ? episodes
+              .map((e) => e['episode_number'] as int)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    if (nextEpisode > maxEp) {
+      final totalSeasons = await tmdb.getTvSeasonCount(tvId);
+      if (nextSeason < totalSeasons) {
+        nextSeason++;
+        nextEpisode = 1;
+      } else {
+        if (!silent && mounted) {
+          _s._statusController.upsert(
+            'episode',
+            'No more episodes',
+            kind: StatusRouletteKind.info,
+            dismissAfter: const Duration(seconds: 2),
+          );
+        }
+        return null;
+      }
+    }
+    return (season: nextSeason, episode: nextEpisode);
+  }
+
+  Future<({int season, int episode})?> _computePreviousEpisode() async {
+    if (widget.movie == null ||
+        widget.selectedSeason == null ||
+        widget.selectedEpisode == null) {
+      return null;
+    }
+    final tmdb = TmdbService();
+    final tvId = widget.movie!.id;
+    var prevSeason = widget.selectedSeason!;
+    var prevEpisode = widget.selectedEpisode! - 1;
+
+    if (prevEpisode < 1) {
+      if (prevSeason <= 1) return null;
+      prevSeason--;
+      final seasonData = await tmdb.getTvSeasonDetails(tvId, prevSeason);
+      final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
+      if (episodes.isEmpty) return null;
+      prevEpisode = episodes
+          .map((e) => e['episode_number'] as int)
+          .reduce((a, b) => a > b ? a : b);
+    }
+    return (season: prevSeason, episode: prevEpisode);
+  }
+
+  Future<void> _refreshAdjacentEpisodeFlags() async {
+    final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) {
+      final flags = adjacentHubEpisodeFlags(widget.hubEpisodes, current);
+      if (!mounted) return;
+      setState(() {
+        _s._hasPrevEpisodeAdjacent = flags.hasPrev;
+        _s._hasNextEpisodeAdjacent = flags.hasNext;
+      });
+      return;
+    }
+
+    if (widget.onNextEpisode != null) {
+      if (!mounted) return;
+      setState(() {
+        _s._hasNextEpisodeAdjacent = widget.hasNextEpisode;
+        _s._hasPrevEpisodeAdjacent = current != null && current > 1;
+      });
+      return;
+    }
+
+    if (widget.movie?.mediaType == 'tv' &&
+        widget.selectedSeason != null &&
+        widget.selectedEpisode != null) {
+      final results = await Future.wait([
+        _computePreviousEpisode(),
+        _computeNextEpisode(silent: true),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _s._hasPrevEpisodeAdjacent = results[0] != null;
+        _s._hasNextEpisodeAdjacent = results[1] != null;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _s._hasPrevEpisodeAdjacent = false;
+      _s._hasNextEpisodeAdjacent = false;
+    });
+  }
+
+  String _episodeSwitchStatusLabel(
+    int season,
+    int episode, {
+    String? providerKey,
+  }) {
+    final key = providerKey ?? _s._currentProvider ?? widget.activeProvider;
+    if (key != null) {
+      return PlayerProviderMenu.snackbarLabel(key, widget.providers?[key]);
+    }
+    if (widget.magnetLink != null) return 'Torrents';
+    return 'S$season E$episode';
+  }
+
+  void _showEpisodeSwitchStatus(
+    int season,
+    int episode, {
+    String? providerKey,
+  }) {
+    _s._statusController.upsert(
+      'episode-switch',
+      _episodeSwitchStatusLabel(season, episode, providerKey: providerKey),
+      kind: StatusRouletteKind.loading,
+    );
+  }
+
+  Future<void> _switchToEpisode(int season, int episode) async {
+    if (widget.movie == null) return;
+    if (!_s._isLoadingNextEp && mounted) setState(() => _s._isLoadingNextEp = true);
+    _showEpisodeSwitchStatus(season, episode);
+
+    try {
+      debugPrint('[EpSwitch] Playing S${season}E$episode');
+      _s._saveWatchHistory();
+
+      final chain = episodeProviderChain(
+        providers: widget.providers,
+        activeProvider: widget.activeProvider,
+        currentProvider: _s._currentProvider,
+        magnetLink: widget.magnetLink,
+      );
+      if (chain.isEmpty) {
+        throw Exception('No provider available for S${season}E$episode');
+      }
+
+      final hit = await PlaybackService.resolveWebstreaming(
+        movie: widget.movie!,
+        providers: {
+          for (final k in chain)
+            if (widget.providers?.containsKey(k) ?? false) k: widget.providers![k]!,
+        },
+        season: season,
+        episode: episode,
+        preferredProvider: chain.first,
+      );
+      if (hit == null || hit.streamUrl.isEmpty) {
+        throw Exception('Could not find stream for S${season}E$episode');
+      }
+      final resolved = EpisodeSwitchResult(
+        streamUrl: hit.streamUrl,
+        headers: hit.headers,
+        sources: hit.streamSources,
+        activeProvider: hit.providerId,
+      );
+
+      if (!mounted) return;
+
+      final nextTitle = '${widget.movie!.title} - S$season E$episode';
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        AppRouter.slideRoute(
+          (_) => PlayerScreen(
+            streamUrl: resolved!.streamUrl,
+            title: nextTitle,
+            headers: resolved.headers,
+            movie: widget.movie,
+            selectedSeason: season,
+            selectedEpisode: episode,
+            magnetLink: resolved.magnetLink,
+            fileIndex: resolved.fileIndex,
+            activeProvider: resolved.activeProvider,
+            stremioId: widget.stremioId,
+            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+            providers: widget.providers,
+            sources: resolved.sources,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[EpSwitch] Error: $e');
+      if (mounted) {
+        _s._statusController.upsert(
+          'episode-switch',
+          _episodeSwitchStatusLabel(season, episode),
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        setState(() => _s._isLoadingNextEp = false);
+      }
+    }
+  }
+
+  Future<void> _goToEpisode(int season, int episode) async {
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode)
+      return;
+    await _switchToEpisode(season, episode);
+  }
+
+  Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
+    if (widget.hubEpisodes != null &&
+        widget.hubEpisodes!.isNotEmpty &&
+        widget.onHubEpisodeSelected != null) {
+      if (!mounted) return;
+      PlayerPopupPanel.dismiss();
+      PlayerHubEpisodePanel.show(
+        context: context,
+        episodes: widget.hubEpisodes!,
+        currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        onEpisodeSelected: widget.onHubEpisodeSelected!,
+        fallbackBackdropPath: widget.movie?.backdropPath,
+        fallbackPosterPath: widget.movie?.posterPath,
+      );
+      return;
+    }
+    if (!mounted) return;
+    final movie = widget.movie;
+    if (movie == null || movie.mediaType != 'tv') return;
+    final season = widget.selectedSeason ?? 1;
+    final episode = widget.selectedEpisode ?? 1;
+    PlayerEpisodeMenu.show(
+      context,
+      movie: movie,
+      currentSeason: season,
+      currentEpisode: episode,
+      onEpisodeSelected: _goToEpisode,
+      anchorContext: anchorContext,
+    );
+  }
 }

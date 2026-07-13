@@ -9,6 +9,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
   }) {
     return MediaDetailsHero(
       movie: _s._movie,
+      backdropPathOverride: _selectedSeasonBackdropPath(),
       trailerYoutubeKey: _s._trailerKey,
       trailerLanguageCode: _s._originalLanguage,
       progress: _s._lastProgress,
@@ -45,6 +46,23 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       final value = s['value'] ?? s['score'];
       if (value is num && value > 0) return value.toDouble();
     }
+    return null;
+  }
+
+  /// Season poster for TV hero backdrop; null keeps the show-level backdrop.
+  String? _selectedSeasonBackdropPath() {
+    if (_s._movie.mediaType != 'tv' || _s._isCollection) return null;
+
+    final cached = _s._seasonPosters[_s._selectedSeason];
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    final seasonData = _s._seasonData;
+    if (seasonData != null &&
+        (seasonData['season_number'] as int? ?? -1) == _s._selectedSeason) {
+      final poster = seasonData['poster_path'] as String?;
+      if (poster != null && poster.isNotEmpty) return poster;
+    }
+
     return null;
   }
 

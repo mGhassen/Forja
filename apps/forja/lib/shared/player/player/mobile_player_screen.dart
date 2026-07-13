@@ -64,6 +64,9 @@ part 'mobile_player_playback.dart';
 part 'mobile_player_ui.dart';
 part 'mobile_player_tracks.dart';
 part 'mobile_player_sources.dart';
+part 'mobile_player_sources_alt.dart';
+part 'mobile_player_sources_settings.dart';
+part 'mobile_player_sources_provider.dart';
 part 'mobile_player_episodes.dart';
 part 'mobile_player_build.dart';
 part 'mobile_player_seekbar.dart';
@@ -158,6 +161,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _MobilePlayerUi,
         _MobilePlayerTracks,
         _MobilePlayerSources,
+        _MobilePlayerSourcesAlt,
+        _MobilePlayerSourcesSettings,
+        _MobilePlayerSourcesProvider,
         _MobilePlayerEpisodes,
         _MobilePlayerBuild {
   // ── Player ──────────────────────────────────────────────────────────────

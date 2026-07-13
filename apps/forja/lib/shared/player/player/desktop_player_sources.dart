@@ -1,7 +1,7 @@
-part of 'mobile_player_screen.dart';
+part of 'desktop_player_screen.dart';
 
-mixin _MobilePlayerSources on State<MobilePlayerScreen> {
-  _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
+mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+  _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   void _notifySourceMenuChanged() {
     _s._sourceMenuRevision.value++;
@@ -18,7 +18,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
 
   List<String> _streamUrlsForProvider(String providerId) {
     if (providerId.isEmpty) return const [];
-    final cached = _liveProviderSourcesCache.value[providerId];
+    final cached = _s._liveProviderSourcesCache.value[providerId];
     if (cached != null && cached.isNotEmpty) {
       return [for (final s in cached) s.url];
     }
@@ -155,7 +155,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       ProviderScoreProbeSync.syncProbeList(
         scope: _scoreScope,
         probes: notifier.value,
-        sourcesByProvider: _liveProviderSourcesCache.value,
+        sourcesByProvider: _s._liveProviderSourcesCache.value,
       ).then((_) {
         if (mounted) _notifySourceMenuChanged();
       }),
@@ -199,7 +199,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   Future<void> _probeCachedProviderStreamsInBackground() async {
     if (_s._disposed || !mounted || _scoreScope == null) return;
     final cache = Map<String, List<StreamSource>>.from(
-      _liveProviderSourcesCache.value,
+      _s._liveProviderSourcesCache.value,
     );
     if (cache.isEmpty) return;
 
@@ -275,7 +275,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       final isCurrent = _s._currentProvider == 'service111477'
           ? source.url == _s._current111477FileUrl
           : source.url == _s._currentUrl ||
-            source.url == _s._currentPlayingCatalogUrl;
+              source.url == _s._currentPlayingCatalogUrl;
       if (isCurrent && !_s._playbackConfirmed && _s._isInitPlaybackRunning) {
         return PlayerSourceStatus.checking;
       }
@@ -345,8 +345,8 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
 
   void _cacheProviderSources(String providerId, List<StreamSource> sources) {
     if (providerId.isEmpty || sources.isEmpty) return;
-    _liveProviderSourcesCache.value = {
-      ..._liveProviderSourcesCache.value,
+    _s._liveProviderSourcesCache.value = {
+      ..._s._liveProviderSourcesCache.value,
       providerId: dedupeStreamSources(sources),
     };
   }
@@ -366,7 +366,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     if (notifier == null || notifier.value.isEmpty) return;
     final current = _s._currentProvider;
     final failed = _s._providerLoadFailures.value;
-    final cache = _liveProviderSourcesCache.value;
+    final cache = _s._liveProviderSourcesCache.value;
     notifier.value = [
       for (final p in notifier.value)
         if (_s._playbackConfirmed && current != null && p.id == current)
@@ -392,7 +392,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     unawaited(
       ProviderScoreProbeSync.syncSourcesCache(
         scope: _scoreScope,
-        sourcesByProvider: _liveProviderSourcesCache.value,
+        sourcesByProvider: _s._liveProviderSourcesCache.value,
       ),
     );
     _onProbeScoringChanged();
@@ -411,7 +411,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     ];
     final probes = widget.providerProbesNotifier;
     if (probes != null) listenables.add(probes);
-    listenables.add(_liveProviderSourcesCache);
+    listenables.add(_s._liveProviderSourcesCache);
     return Listenable.merge(listenables);
   }
 
@@ -449,11 +449,10 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   void _showStreamMenu([BuildContext? anchorContext]) {
     if (!_hasStreamPicker) return;
     _s._refreshPanelPlayingStream();
-    final bottom = MediaQuery.paddingOf(context).bottom + 76;
     PlayerStreamMenu.show(
       context,
       providers: widget.providers,
-      providerSourcesCache: _liveProviderSourcesCache,
+      providerSourcesCache: _s._liveProviderSourcesCache,
       providerLoadFailures: _s._providerLoadFailures,
       providerProbesNotifier: widget.providerProbesNotifier,
       statusController: _s._statusController,
@@ -464,10 +463,9 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       onCheckSource: _checkStreamSource,
       onTogglePlayPause: () {
         _s._player.playOrPause();
-        _s._startHideTimer();
+        _s._onMouseMove();
       },
       anchorContext: anchorContext,
-      margin: EdgeInsets.only(right: 12, bottom: bottom),
       refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
       isReloading: _s._isReloadingStreams,
@@ -478,7 +476,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       activeProvider: widget.activeProvider,
       readUrlCheckStatuses: () => _s._urlCheckStatuses,
     );
-    _s._startHideTimer();
+    _s._onMouseMove();
   }
 
   Future<void> _selectAutoProvider() async {
@@ -504,8 +502,8 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         isCancelled: () => _s._fallbackAborted(gen),
         onHitsUpdated: (hits) {
           if (!mounted || _s._fallbackAborted(gen)) return;
-          _liveProviderSourcesCache.value = {
-            ..._liveProviderSourcesCache.value,
+          _s._liveProviderSourcesCache.value = {
+            ..._s._liveProviderSourcesCache.value,
             ...PlaybackEngine.hitsToProviderCache(hits),
           };
         },
@@ -670,7 +668,6 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       await SettingsService().setPlayerAutoSource(false);
       setState(() => _s._sourcePinned = true);
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
-      _s._startHideTimer();
       return;
     }
 
@@ -725,6 +722,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       _s._statusController.clear();
       _s._playbackConfirmed = false;
 
+      // Validated — now swap.
       if (_s._player.platform is NativePlayer) {
         final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
         await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
@@ -784,4 +782,15 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     }
   }
 
+  Future<Uint8List?> _captureSeekPreview(Duration position) async {
+    try {
+      if (!_s._isPlayingNotifier.value) {
+        await _s._player.seek(position);
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+      return await _s._player.screenshot(format: 'image/jpeg');
+    } catch (_) {
+      return null;
+    }
+  }
 }
