@@ -18,9 +18,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/playback/playback_service.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -578,6 +579,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
   bool _nearEndOfEpisode = false;
+  bool _hasPrevEpisodeAdjacent = false;
+  bool _hasNextEpisodeAdjacent = false;
 
   // ── Skip Segments (IntroDB) ───────────────────────────────────────────────
   IntroDbResponse? _introDbData;
@@ -652,6 +655,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     WidgetsBinding.instance.addObserver(this);
 
     _loadHeroMetadata();
+    unawaited(_refreshAdjacentEpisodeFlags());
 
     // ── PiP status listener (Android system PiP) ─────────────────────────
     // When entering PiP we hide all UI and force-resume playback if
@@ -3552,7 +3556,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
   }
 
-  Future<({int season, int episode})?> _computeNextEpisode() async {
+  Future<({int season, int episode})?> _computeNextEpisode({
+    bool silent = false,
+  }) async {
     if (widget.movie == null ||
         widget.selectedSeason == null ||
         widget.selectedEpisode == null) {
@@ -3577,7 +3583,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         nextSeason++;
         nextEpisode = 1;
       } else {
-        if (mounted) {
+        if (!silent && mounted) {
           _statusController.upsert(
             'episode',
             'No more episodes',
@@ -3589,6 +3595,73 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       }
     }
     return (season: nextSeason, episode: nextEpisode);
+  }
+
+  Future<({int season, int episode})?> _computePreviousEpisode() async {
+    if (widget.movie == null ||
+        widget.selectedSeason == null ||
+        widget.selectedEpisode == null) {
+      return null;
+    }
+    final tmdb = TmdbService();
+    final tvId = widget.movie!.id;
+    var prevSeason = widget.selectedSeason!;
+    var prevEpisode = widget.selectedEpisode! - 1;
+
+    if (prevEpisode < 1) {
+      if (prevSeason <= 1) return null;
+      prevSeason--;
+      final seasonData = await tmdb.getTvSeasonDetails(tvId, prevSeason);
+      final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
+      if (episodes.isEmpty) return null;
+      prevEpisode = episodes
+          .map((e) => e['episode_number'] as int)
+          .reduce((a, b) => a > b ? a : b);
+    }
+    return (season: prevSeason, episode: prevEpisode);
+  }
+
+  Future<void> _refreshAdjacentEpisodeFlags() async {
+    final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) {
+      final flags = adjacentHubEpisodeFlags(widget.hubEpisodes, current);
+      if (!mounted) return;
+      setState(() {
+        _hasPrevEpisodeAdjacent = flags.hasPrev;
+        _hasNextEpisodeAdjacent = flags.hasNext;
+      });
+      return;
+    }
+
+    if (widget.onNextEpisode != null) {
+      if (!mounted) return;
+      setState(() {
+        _hasNextEpisodeAdjacent = widget.hasNextEpisode;
+        _hasPrevEpisodeAdjacent = current != null && current > 1;
+      });
+      return;
+    }
+
+    if (widget.movie?.mediaType == 'tv' &&
+        widget.selectedSeason != null &&
+        widget.selectedEpisode != null) {
+      final results = await Future.wait([
+        _computePreviousEpisode(),
+        _computeNextEpisode(silent: true),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _hasPrevEpisodeAdjacent = results[0] != null;
+        _hasNextEpisodeAdjacent = results[1] != null;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _hasPrevEpisodeAdjacent = false;
+      _hasNextEpisodeAdjacent = false;
+    });
   }
 
   String _episodeSwitchStatusLabel(
@@ -3635,36 +3708,25 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         throw Exception('No provider available for S${season}E$episode');
       }
 
-      final resolver = StreamProviderResolver();
-      EpisodeSwitchResult? resolved;
-      Object? lastError;
-
-      for (final providerKey in chain) {
-        _showEpisodeSwitchStatus(season, episode, providerKey: providerKey);
-        debugPrint('[EpSwitch] Trying provider: $providerKey');
-        try {
-          resolved = await resolveEpisodeForProvider(
-            providerKey: providerKey,
-            movie: widget.movie!,
-            season: season,
-            episode: episode,
-            providers: widget.providers,
-            magnetLink: widget.magnetLink,
-            stremioId: widget.stremioId,
-            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-            providerResolver: resolver,
-          );
-          if (resolved != null && resolved.streamUrl.isNotEmpty) break;
-        } catch (e) {
-          lastError = e;
-          debugPrint('[EpSwitch] $providerKey failed: $e');
-        }
-      }
-
-      if (resolved == null || resolved.streamUrl.isEmpty) {
-        if (lastError != null) throw lastError;
+      final hit = await PlaybackService.resolveWebstreaming(
+        movie: widget.movie!,
+        providers: {
+          for (final k in chain)
+            if (widget.providers?.containsKey(k) ?? false) k: widget.providers![k]!,
+        },
+        season: season,
+        episode: episode,
+        preferredProvider: chain.first,
+      );
+      if (hit == null || hit.streamUrl.isEmpty) {
         throw Exception('Could not find stream for S${season}E$episode');
       }
+      final resolved = EpisodeSwitchResult(
+        streamUrl: hit.streamUrl,
+        headers: hit.headers,
+        sources: hit.streamSources,
+        activeProvider: hit.providerId,
+      );
 
       if (!mounted) return;
 
@@ -4509,6 +4571,134 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     await _switchToEpisode(next.season, next.episode);
   }
 
+  Future<void> _previousEpisode() async {
+    if (_isLoadingNextEp) return;
+
+    final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (widget.hubEpisodes != null &&
+        widget.onHubEpisodeSelected != null &&
+        current != null) {
+      final idx = hubEpisodeIndex(widget.hubEpisodes!, current);
+      if (idx == null || idx <= 0) return;
+      setState(() => _isLoadingNextEp = true);
+      try {
+        _saveWatchHistory();
+        await widget.onHubEpisodeSelected!(widget.hubEpisodes![idx - 1]);
+      } catch (e) {
+        if (mounted) {
+          _statusController.upsert(
+            'episode',
+            'Previous episode failed',
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+          setState(() => _isLoadingNextEp = false);
+        }
+      }
+      return;
+    }
+
+    setState(() => _isLoadingNextEp = true);
+    final prev = await _computePreviousEpisode();
+    if (prev == null) {
+      if (mounted) setState(() => _isLoadingNextEp = false);
+      return;
+    }
+    await _switchToEpisode(prev.season, prev.episode);
+  }
+
+  void _seekBack10Seconds() {
+    final pos = _positionNotifier.value - const Duration(seconds: 10);
+    _player.seek(pos < Duration.zero ? Duration.zero : pos);
+    _startHideTimer();
+  }
+
+  void _seekForward10Seconds() {
+    final dur = _durationNotifier.value;
+    final pos = _positionNotifier.value + const Duration(seconds: 10);
+    _player.seek(pos > dur ? dur : pos);
+    _startHideTimer();
+  }
+
+  Widget _buildTransportBackButton({
+    required double btnSize,
+    required double iconSz,
+    bool tvFocusable = false,
+    FocusNode? focusNode,
+    int? tvFocusOrder,
+  }) {
+    Widget button;
+    if (_hasPrevEpisodeAdjacent) {
+      button = PlayerFlatIconButton(
+        tvFocusable: tvFocusable,
+        focusNode: focusNode,
+        icon: Icons.skip_previous_rounded,
+        tooltip: 'Previous Episode',
+        size: btnSize,
+        iconSize: iconSz,
+        onPressed: () {
+          if (_isLoadingNextEp) return;
+          unawaited(_previousEpisode());
+        },
+      );
+    } else {
+      button = PlayerFlatIconButton(
+        tvFocusable: tvFocusable,
+        focusNode: focusNode,
+        icon: Icons.replay_10_rounded,
+        tooltip: 'Back 10s',
+        size: btnSize,
+        iconSize: iconSz,
+        onPressed: _seekBack10Seconds,
+      );
+    }
+    if (tvFocusOrder != null) {
+      return FocusTraversalOrder(
+        order: NumericFocusOrder(tvFocusOrder.toDouble()),
+        child: button,
+      );
+    }
+    return button;
+  }
+
+  Widget _buildTransportForwardButton({
+    required double btnSize,
+    required double iconSz,
+    bool tvFocusable = false,
+    int? tvFocusOrder,
+  }) {
+    Widget button;
+    if (_hasNextEpisodeAdjacent) {
+      button = PlayerFlatIconButton(
+        tvFocusable: tvFocusable,
+        icon: Icons.skip_next_rounded,
+        tooltip: 'Next Episode',
+        size: btnSize,
+        iconSize: iconSz,
+        onPressed: () {
+          if (_isLoadingNextEp) return;
+          unawaited(_nextEpisode());
+        },
+      );
+    } else {
+      button = PlayerFlatIconButton(
+        tvFocusable: tvFocusable,
+        icon: Icons.forward_10_rounded,
+        tooltip: 'Forward 10s',
+        size: btnSize,
+        iconSize: iconSz,
+        onPressed: _seekForward10Seconds,
+      );
+    }
+    if (tvFocusOrder != null) {
+      return FocusTraversalOrder(
+        order: NumericFocusOrder(tvFocusOrder.toDouble()),
+        child: button,
+      );
+    }
+    return button;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   //  BUILD
   // ─────────────────────────────────────────────────────────────────────────
@@ -5123,30 +5313,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                                     },
                                   ),
                             ),
-                            PlayerFlatIconButton(
-                              icon: Icons.replay_10_rounded,
-                              size: btnSize,
-                              iconSize: iconSz,
-                              onPressed: () {
-                                final pos = _positionNotifier.value -
-                                    const Duration(seconds: 10);
-                                _player.seek(
-                                  pos < Duration.zero ? Duration.zero : pos,
-                                );
-                                _startHideTimer();
-                              },
+                            _buildTransportBackButton(
+                              btnSize: btnSize,
+                              iconSz: iconSz,
                             ),
-                            PlayerFlatIconButton(
-                              icon: Icons.forward_10_rounded,
-                              size: btnSize,
-                              iconSize: iconSz,
-                              onPressed: () {
-                                final dur = _durationNotifier.value;
-                                final pos = _positionNotifier.value +
-                                    const Duration(seconds: 10);
-                                _player.seek(pos > dur ? dur : pos);
-                                _startHideTimer();
-                              },
+                            _buildTransportForwardButton(
+                              btnSize: btnSize,
+                              iconSz: iconSz,
                             ),
                             PlayerVolumeControl(
                               volume: _volume,
@@ -5333,35 +5506,18 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               ),
             ),
             const SizedBox(width: 2),
-            ordered(
-              4,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.replay_10_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressed: () {
-                  final pos =
-                      _positionNotifier.value - const Duration(seconds: 10);
-                  _player.seek(pos < Duration.zero ? Duration.zero : pos);
-                },
-              ),
+            _buildTransportBackButton(
+              btnSize: btnSize,
+              iconSz: iconSz,
+              tvFocusable: true,
+              tvFocusOrder: 4,
             ),
             const SizedBox(width: 2),
-            ordered(
-              5,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.forward_10_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressed: () {
-                  final dur = _durationNotifier.value;
-                  final pos =
-                      _positionNotifier.value + const Duration(seconds: 10);
-                  _player.seek(pos > dur ? dur : pos);
-                },
-              ),
+            _buildTransportForwardButton(
+              btnSize: btnSize,
+              iconSz: iconSz,
+              tvFocusable: true,
+              tvFocusOrder: 5,
             ),
             const SizedBox(width: 2),
             ordered(

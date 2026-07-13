@@ -340,6 +340,85 @@ class _StreamedStream {
   }
 }
 
+int _liveFirstCompare({
+  required bool aLive,
+  required bool bLive,
+  required int aStart,
+  required int bStart,
+}) {
+  if (aLive != bLive) return aLive ? -1 : 1;
+  return aStart.compareTo(bStart);
+}
+
+List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
+  final sorted = List<_DamiTvStream>.from(items);
+  sorted.sort(
+    (a, b) => _liveFirstCompare(
+      aLive: a.isLive,
+      bLive: b.isLive,
+      aStart: a.startsAt,
+      bStart: b.startsAt,
+    ),
+  );
+  return sorted;
+}
+
+List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
+  final sorted = List<_StreamedMatch>.from(items);
+  sorted.sort(
+    (a, b) => _liveFirstCompare(
+      aLive: a.isLive,
+      bLive: b.isLive,
+      aStart: a.dateMs,
+      bStart: b.dateMs,
+    ),
+  );
+  return sorted;
+}
+
+int _cdnSportStartKey(_CdnSportEvent event) =>
+    int.tryParse(event.start) ?? int.tryParse(event.time) ?? 0;
+
+List<_CdnSportEvent> _sortCdnSportsLiveFirst(List<_CdnSportEvent> items) {
+  final sorted = List<_CdnSportEvent>.from(items);
+  sorted.sort(
+    (a, b) => _liveFirstCompare(
+      aLive: a.isLive,
+      bLive: b.isLive,
+      aStart: _cdnSportStartKey(a),
+      bStart: _cdnSportStartKey(b),
+    ),
+  );
+  return sorted;
+}
+
+bool _gridEntryIsLive(_LiveMatchGridEntry entry) => switch (entry) {
+  _LiveMatchGridEntryPpv(:final stream) => stream.isLive,
+  _LiveMatchGridEntryStreamed(:final match) => match.isLive,
+  _LiveMatchGridEntryCdnSport(:final event) => event.isLive,
+};
+
+int _gridEntryStartKey(_LiveMatchGridEntry entry) => switch (entry) {
+  _LiveMatchGridEntryPpv(:final stream) => stream.startsAt,
+  _LiveMatchGridEntryStreamed(:final match) => match.dateMs,
+  _LiveMatchGridEntryCdnSport(:final event) => _cdnSportStartKey(event),
+};
+
+List<_LiveMatchGridEntry> _sortGridEntriesLiveFirst(
+  List<_LiveMatchGridEntry> entries,
+) {
+  final sorted = List<_LiveMatchGridEntry>.from(entries);
+  sorted.sort(
+    (a, b) => _liveFirstCompare(
+      aLive: _gridEntryIsLive(a),
+      bLive: _gridEntryIsLive(b),
+      aStart: _gridEntryStartKey(a),
+      bStart: _gridEntryStartKey(b),
+    ),
+  );
+  return sorted;
+}
+
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
 const _ua = {
@@ -1199,23 +1278,29 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
   }
 
-  List<_DamiTvStream> get _filteredDamiTv => _sportFilter == 'all'
-      ? _damiTvStreams
-      : _damiTvStreams.where((s) => s.categoryName == _sportFilter).toList();
+  List<_DamiTvStream> get _filteredDamiTv => _sortDamiTvLiveFirst(
+    _sportFilter == 'all'
+        ? _damiTvStreams
+        : _damiTvStreams.where((s) => s.categoryName == _sportFilter).toList(),
+  );
 
-  List<_StreamedMatch> get _filteredStreamed => _sportFilter == 'all'
-      ? _streamedMatches
-      : _streamedMatches.where((m) => m.category == _sportFilter).toList();
+  List<_StreamedMatch> get _filteredStreamed => _sortStreamedLiveFirst(
+    _sportFilter == 'all'
+        ? _streamedMatches
+        : _streamedMatches.where((m) => m.category == _sportFilter).toList(),
+  );
 
-  List<_CdnSportEvent> get _filteredCdnSports => _sportFilter == 'all'
-      ? _cdnSports
-      : _cdnSports.where((s) => s.tournament == _sportFilter).toList();
+  List<_CdnSportEvent> get _filteredCdnSports => _sortCdnSportsLiveFirst(
+    _sportFilter == 'all'
+        ? _cdnSports
+        : _cdnSports.where((s) => s.tournament == _sportFilter).toList(),
+  );
 
-  List<_LiveMatchGridEntry> get _allGridEntries => [
+  List<_LiveMatchGridEntry> get _allGridEntries => _sortGridEntriesLiveFirst([
     ..._filteredDamiTv.map(_LiveMatchGridEntry.ppv),
     ..._filteredStreamed.map(_LiveMatchGridEntry.streamed),
     ..._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport),
-  ];
+  ]);
 
   // ── build ─────────────────────────────────────────────────────────────────
 
@@ -1635,9 +1720,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         ],
       );
     } else {
-      final sports = _sportFilter == 'all'
-          ? _cdnSports
-          : _cdnSports.where((s) => s.tournament == _sportFilter).toList();
+      final sports = _filteredCdnSports;
       if (sports.isEmpty) {
         return const Center(
           child: Column(

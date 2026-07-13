@@ -45,11 +45,11 @@ void main() {
       expect(ProviderScoreMemory.scoreFor(otherEp, 'vidlink'), 0);
     });
 
-    test('stream fail is −2', () async {
+    test('stream fail does not erase sticky stream-up verdict', () async {
       await ProviderScoreMemory.recordStreamUp(movie, 'vixsrc');
       await ProviderScoreMemory.recordStreamFail(movie, 'vixsrc');
-      expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 0);
-      expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), -2);
+      expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 2);
+      expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), 2);
     });
 
     test('all streams down on working server applies −2 once', () async {
@@ -65,8 +65,8 @@ void main() {
         isStreamFailed: (_) => true,
       );
       expect(applied, isTrue);
-      expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 2);
-      expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), -2);
+      expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 4);
+      expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), 2);
     });
   });
 }

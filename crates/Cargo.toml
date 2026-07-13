@@ -20,6 +20,7 @@ members = [
     "indexer-core",
     "debrid-core",
     "music-core",
+    "resolver-engine",
 ]
 
 [workspace.package]

@@ -630,6 +630,11 @@ class RustLib {
         return _readString(_native.ffi_seek111477_purge_cache_json(ptr));
       });
 
+  String providerHealthJson(String payloadJson) => using((arena) {
+        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_provider_health_json(ptr));
+      });
+
   String storageOpen(String path) => using((arena) {
         final ptr = path.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_storage_open(ptr));
@@ -1084,6 +1089,11 @@ final class _FfiNative {
               'ffi_seek111477_purge_cache_json',
             )
             .asFunction(),
+        ffi_provider_health_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_provider_health_json',
+            )
+            .asFunction(),
         ffi_storage_open = lib
             .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_storage_open')
             .asFunction(),
@@ -1312,6 +1322,8 @@ final class _FfiNative {
   final bool Function() ffi_seek111477_is_running;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_seek111477_purge_cache_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_provider_health_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_storage_open;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_storage_get_json;

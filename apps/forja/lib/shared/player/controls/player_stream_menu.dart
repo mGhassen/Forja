@@ -260,16 +260,13 @@ class PlayerStreamMenu {
     );
   }
 
-  static List<MapEntry<String, dynamic>> _orderedProviderEntries(
+  /// Stable panel order — settings provider priority only.
+  /// Reliability scores drive resolve/probe order elsewhere, not this list.
+  @visibleForTesting
+  static List<MapEntry<String, dynamic>> orderedProviderEntriesForPanel(
     Map<String, dynamic> providers, {
-    required PlayerStreamMenuState state,
-    required List<StreamProviderProbe> probes,
-    required Map<String, List<StreamSource>> cache,
-    required Set<String> loadingProviders,
-    required Set<String> failedProviders,
-    PlayerStatusController? statusController,
     Map<String, ProviderOrderRow> scoreRows = const {},
-    ProviderScoreScope? scoreScope,
+    List<StreamProviderProbe> probes = const [],
   }) {
     final entries = providers.entries.toList();
 
@@ -284,49 +281,9 @@ class PlayerStreamMenu {
       return probeIndex[providerId] ?? 999;
     }
 
-    int sortScore(String providerId) {
-      if (scoreScope == null) return 0;
-      return ProviderScoreMemory.scoreFor(scoreScope, providerId);
-    }
-
-    int tier(String providerId) {
-      final isCurrent = providerId == state.currentProviderId;
-      if (isCurrent && state.playbackConfirmed) return 0;
-      if (isCurrent) return 1;
-
-      final status = _resolveProviderStatus(
-        providerId,
-        probes: probes,
-        isCurrent: isCurrent,
-        statusController: statusController,
-        playbackConfirmed: state.playbackConfirmed,
-        loadingProviders: loadingProviders,
-        failedProviders: failedProviders,
-      );
-      final sectionSources = sourcesForProvider(
-        providerId: providerId,
-        state: state,
-        cache: cache,
-      );
-
-      if (sectionSources.isNotEmpty ||
-          status == PlayerSourceStatus.ready ||
-          status == PlayerSourceStatus.active) {
-        return 2;
-      }
-      if (status == PlayerSourceStatus.checking) return 3;
-      if (status == PlayerSourceStatus.failed) return 5;
-      return 4;
-    }
-
     entries.sort((a, b) {
-      final tierDiff = tier(a.key).compareTo(tier(b.key));
-      if (tierDiff != 0) return tierDiff;
-      // Settings scoring order first within a tier, then live reliability.
       final rankDiff = sortRank(a.key).compareTo(sortRank(b.key));
       if (rankDiff != 0) return rankDiff;
-      final scoreDiff = sortScore(b.key).compareTo(sortScore(a.key));
-      if (scoreDiff != 0) return scoreDiff;
       final aCat = a.key.toLowerCase();
       final bCat = b.key.toLowerCase();
       final aSub = aCat.endsWith(':sub') ? 0 : aCat.endsWith(':dub') ? 1 : 2;
@@ -1015,31 +972,15 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     if (widget.providers == null || widget.providers!.isEmpty) {
       return const [];
     }
-    final state = widget.readState();
     final probes = widget.providerProbesNotifier?.value ?? const [];
-    final cache = widget.providerSourcesCache?.value ?? const {};
     final scoreRows = PlayerStreamMenu._providerScoreRows(
       widget.movie,
       widget.providers,
     );
-    final scoreScope = PlayerStreamMenu.scoreScope(
-      movie: widget.movie,
-      providers: widget.providers,
-      selectedSeason: widget.selectedSeason,
-      selectedEpisode: widget.selectedEpisode,
-      hubEpisodeNumber: widget.hubEpisodeNumber,
-      activeProvider: widget.activeProvider,
-    );
-    return PlayerStreamMenu._orderedProviderEntries(
+    return PlayerStreamMenu.orderedProviderEntriesForPanel(
       widget.providers!,
-      state: state,
-      probes: probes,
-      cache: cache,
-      loadingProviders: _loadingProviders,
-      failedProviders: _failedProviders,
-      statusController: widget.statusController,
       scoreRows: scoreRows,
-      scoreScope: scoreScope,
+      probes: probes,
     );
   }
 

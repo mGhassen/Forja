@@ -1,179 +1,151 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/host_provider_adapter.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
+import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
-/// Playback orchestrator — parallel resolve + ranked candidates.
+/// Playback orchestrator — delegates resolve race to the Rust Resolver Engine.
 abstract final class PlaybackEngine {
-  /// Parallel probes at play start — keep low so Videasy WASM / 111477 proxy
-  /// do not stack on the main isolate.
   static const playStartMaxInFlight = 2;
 
-  static const _heavyProviders = {'videasy', 'service111477'};
-
-  static bool _isHeavyProvider(String key) => _heavyProviders.contains(key);
-
-  /// Race providers with limited concurrency. Returns the first successful hit.
-  ///
-  /// By default stops launching more providers after the first success
-  /// ([fillBackgroundHits] = false) so open stays light — other servers resolve
-  /// only when the user picks them in the player menu.
+  /// Race providers via [ResolverEngineClient]. Returns the first successful hit.
   static Future<PlaybackResolveHit?> resolveStreamingRace({
     required Map<String, dynamic> providers,
     required Movie movie,
     required int season,
     required int episode,
-    StreamProviderResolver? resolver,
+    Object? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
     int maxInFlight = 1,
     bool fillBackgroundHits = false,
     Map<String, int>? effectiveRanks,
+    List<String> settingsOrder = const [],
+    String preferredProvider = SourceEngine.auto,
+    SourceDomain? domain,
   }) async {
     final cancelled = isCancelled ?? (() => false);
-    final keys = providers.keys.toList();
-    if (keys.isEmpty) return null;
-    final r = resolver ?? StreamProviderResolver();
-    final taskResolvers = <StreamProviderResolver>[];
-    final inFlightKeys = <String>{};
+    if (providers.isEmpty) return null;
 
-    void cancelInFlightResolvers() {
-      for (final taskResolver in taskResolvers) {
-        taskResolver.cancelPending();
+    final resolveDomain =
+        domain ?? SourceDomain.fromMediaType(movie.mediaType);
+
+    void reportProgress(List<dynamic>? events) {
+      if (events == null) return;
+      for (final raw in events) {
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        final id = map['providerId']?.toString() ?? map['provider_id']?.toString();
+        final status = map['status']?.toString();
+        if (id != null && status != null) {
+          onProgress?.call(id, status);
+        }
       }
-      taskResolvers.clear();
-      r.cancelPending();
     }
 
-    final launchCompleter = Completer<PlaybackResolveHit?>();
-    final hits = <PlaybackResolveHit>[];
-    var settled = 0;
-    var inFlight = 0;
-    var nextIndex = 0;
-    var stopLaunching = false;
-    final total = keys.length;
-    late void Function() pump;
+    try {
+      final request = await ResolverEngineClient.buildRequest(
+        domain: resolveDomain,
+        movie: movie,
+        season: season,
+        episode: episode,
+        providers: providers,
+        settingsOrder: settingsOrder,
+        preferred: preferredProvider,
+        skipHostOnTv: isAndroidTvHeadlessWebViewBlocked,
+        maxInFlight: maxInFlight,
+      );
 
-    void publishHits() {
-      if (hits.isEmpty) return;
-      hits.sort((a, b) => a.providerRank.compareTo(b.providerRank));
-      onHitsUpdated?.call(List.of(hits));
-    }
+      if (cancelled()) return null;
 
-    void finishIfOpen() {
-      if (launchCompleter.isCompleted) return;
-      publishHits();
-      launchCompleter.complete(hits.isEmpty ? null : hits.first);
-    }
+      var response = await ResolverEngineClient.resolve(request: request);
+      reportProgress(response['progress'] as List<dynamic>?);
 
-    void onResolved(String key, PlaybackResolveHit? hit) {
-      settled++;
-      inFlight--;
-      inFlightKeys.remove(key);
       if (cancelled()) {
-        stopLaunching = true;
-        nextIndex = total;
-        cancelInFlightResolvers();
-        finishIfOpen();
-        return;
+        HostProviderAdapter.cancelAllPending();
+        return null;
       }
+
+      final phase = response['phase']?.toString() ?? '';
+      if (phase == 'awaiting_host') {
+        final sessionId = response['sessionId']?.toString() ?? '';
+        final hostRequests = response['hostRequests'] as List<dynamic>? ?? [];
+        final hostResults = <Map<String, dynamic>>[];
+
+        await Future.wait(
+          hostRequests.map((raw) async {
+            if (raw is! Map) return;
+            final req = Map<String, dynamic>.from(raw);
+            final providerId =
+                req['providerId']?.toString() ?? req['provider_id']?.toString();
+            if (providerId == null || providerId.isEmpty) return;
+            if (TvStreamFallback.isSkippedOnTv(providerId, providers)) {
+              onProgress?.call(providerId, 'skipped');
+              hostResults.add({
+                'providerId': providerId,
+                'sourcesJson': '[]',
+                'error': 'skipped_on_tv',
+              });
+              return;
+            }
+            onProgress?.call(providerId, 'trying');
+            final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
+              providerId: providerId,
+              payloadJson: req['payloadJson']?.toString() ?? '{}',
+              movie: movie,
+              providers: providers,
+              season: season,
+              episode: episode,
+              isCancelled: cancelled,
+            );
+            if (sourcesJson == null || sourcesJson == '[]') {
+              onProgress?.call(providerId, 'failed');
+              hostResults.add({
+                'providerId': providerId,
+                'sourcesJson': '[]',
+                'error': 'no_streams',
+              });
+            } else {
+              onProgress?.call(providerId, 'success');
+              hostResults.add({
+                'providerId': providerId,
+                'sourcesJson': sourcesJson,
+              });
+            }
+          }),
+        );
+
+        if (cancelled()) return null;
+        response = await ResolverEngineClient.continueWithHost(
+          sessionId: sessionId,
+          hostResults: hostResults,
+        );
+        reportProgress(response['progress'] as List<dynamic>?);
+      }
+
+      final hit = _hitFromResponse(
+        response,
+        effectiveRanks: effectiveRanks,
+      );
       if (hit != null) {
-        hits.add(hit);
-        publishHits();
-        if (!launchCompleter.isCompleted) {
-          finishIfOpen();
-          if (!fillBackgroundHits) {
-            stopLaunching = true;
-            nextIndex = total;
-            cancelInFlightResolvers();
-          }
-        }
+        onHitsUpdated?.call([hit]);
       }
-      if (settled >= total || (stopLaunching && inFlight == 0)) {
-        finishIfOpen();
-      }
-      pump();
+      return hit;
+    } catch (e, st) {
+      debugPrint('[PlaybackEngine] ResolverEngine failed: $e\n$st');
+      return null;
     }
-
-    pump = () {
-      if (cancelled()) {
-        stopLaunching = true;
-        nextIndex = total;
-        cancelInFlightResolvers();
-        finishIfOpen();
-        return;
-      }
-      while (!cancelled() &&
-          !stopLaunching &&
-          inFlight < maxInFlight &&
-          nextIndex < total) {
-        final key = keys[nextIndex];
-        if (_isHeavyProvider(key) && inFlight > 0) break;
-        final rank = effectiveRanks?[key] ?? nextIndex;
-        nextIndex++;
-        if (TvStreamFallback.isSkippedOnTv(key, providers)) {
-          onProgress?.call(key, 'skipped');
-          settled++;
-          if (settled >= total) {
-            finishIfOpen();
-          }
-          continue;
-        }
-        inFlight++;
-        inFlightKeys.add(key);
-        onProgress?.call(key, 'trying');
-        // Domain resolvers (KissKH, anime embeds) must not be replaced with a
-        // plain resolver when only one provider is racing or concurrency is 1.
-        final taskResolver = (maxInFlight > 1 && total > 1)
-            ? StreamProviderResolver()
-            : r;
-        if (maxInFlight > 1) taskResolvers.add(taskResolver);
-        if (kDebugMode) {
-          final waiting = total - nextIndex;
-          debugPrint(
-            '[PlaybackEngine] probing $key '
-            '($inFlight/$maxInFlight in flight'
-            '${waiting > 0 ? ', $waiting waiting' : ''})',
-          );
-        }
-        _resolveOne(
-          resolver: taskResolver,
-          key: key,
-          movie: movie,
-          season: season,
-          episode: episode,
-          providers: providers,
-          providerRank: rank,
-          isCancelled: () => cancelled() || stopLaunching,
-          onProgress: onProgress,
-        ).then((hit) {
-          if (maxInFlight > 1) taskResolvers.remove(taskResolver);
-          onResolved(key, hit);
-        }).catchError((Object e, StackTrace st) {
-          debugPrint('[PlaybackEngine] $key failed: $e\n$st');
-          onProgress?.call(key, 'failed');
-          onResolved(key, null);
-        });
-      }
-      if (nextIndex >= total && inFlight == 0) {
-        finishIfOpen();
-      }
-    };
-
-    pump();
-    return launchCompleter.future;
   }
 
-  /// Legacy batch resolve — prefer [resolveStreamingRace] for play start.
   static Future<PlaybackResolveHit?> resolveParallel({
     required Map<String, dynamic> providers,
     required Movie movie,
     required int season,
     required int episode,
-    StreamProviderResolver? resolver,
+    Object? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
   }) =>
@@ -182,7 +154,6 @@ abstract final class PlaybackEngine {
         movie: movie,
         season: season,
         episode: episode,
-        resolver: resolver,
         isCancelled: isCancelled,
         onProgress: onProgress,
       );
@@ -218,82 +189,31 @@ abstract final class PlaybackEngine {
     return out;
   }
 
-  static Future<PlaybackResolveHit?> _resolveOne({
-    required StreamProviderResolver resolver,
-    required String key,
-    required Movie movie,
-    required int season,
-    required int episode,
-    required Map<String, dynamic> providers,
-    required int providerRank,
-    required bool Function() isCancelled,
-    void Function(String providerId, String status)? onProgress,
-  }) async {
-    try {
-      final result = await resolver.resolve(
-        key: key,
-        movie: movie,
-        season: season,
-        episode: episode,
-        providers: providers,
-        isCancelled: isCancelled,
-      );
-      if (isCancelled() || result == null || result.streamUrl.isEmpty) {
-        onProgress?.call(key, 'failed');
-        return null;
-      }
-      final raw = result.sources;
-      final legacy = raw != null && raw.isNotEmpty
-          ? raw
-          : [
-              StreamSource(
-                url: result.streamUrl,
-                title: 'Primary',
-                type: _typeFromUrl(result.streamUrl),
-                headers: result.headers,
-              ),
-            ];
-      // KissKH streams are validated by the WebView extractor; skip Rust
-      // ranking so a prior playback failure blocklist cannot drop the only URL.
-      final ranked = key == 'kisskh'
-          ? normalizeLegacyStreamSources(
-              sources: legacy,
-              providerId: key,
-              providerRank: providerRank,
-            )
-          : await PlaybackSelection.rankLegacySources(
-              sources: legacy,
-              providerId: key,
-              providerRank: providerRank,
-            );
-      if (ranked.isEmpty) {
-        onProgress?.call(key, 'failed');
-        return null;
-      }
-      onProgress?.call(key, 'success');
-      return PlaybackResolveHit(
-        providerId: key,
-        providerRank: providerRank,
-        streamUrl: ranked.first.url,
-        audioUrl: result.audioUrl,
-        headers: result.headers ?? ranked.first.headers,
-        sources: ranked,
-        subtitles: result.subtitles,
-      );
-    } catch (e, st) {
-      debugPrint('[PlaybackEngine] $key failed: $e\n$st');
-      onProgress?.call(key, 'failed');
-      return null;
-    }
+  static PlaybackResolveHit? _hitFromResponse(
+    Map<String, dynamic> response, {
+    Map<String, int>? effectiveRanks,
+  }) {
+    final winner = ResolverEngineClient.winnerFromResponse(response);
+    if (winner == null || winner.url.isEmpty) return null;
+
+    final sources = ResolverEngineClient.sourcesFromResponse(response);
+    final ranked = sources.isNotEmpty ? sources : [winner];
+    final providerId = response['winnerProviderId']?.toString() ??
+        response['winner_provider_id']?.toString() ??
+        winner.providerId;
+    final rank = effectiveRanks?[providerId] ?? winner.providerRank;
+
+    return PlaybackResolveHit(
+      providerId: providerId,
+      providerRank: rank,
+      streamUrl: winner.url,
+      audioUrl: winner.audioUrl,
+      headers: winner.headers.isEmpty ? null : winner.headers,
+      sources: ranked,
+    );
   }
 
-  static String _typeFromUrl(String url) {
-    final u = url.toLowerCase();
-    if (u.contains('.m3u8')) return 'hls';
-    if (u.contains('.mpd')) return 'dash';
-    if (u.contains('.mkv')) return 'mkv';
-    return 'mp4';
-  }
+  static void cancelAllPending() => HostProviderAdapter.cancelAllPending();
 }
 
 class PlaybackResolveHit {

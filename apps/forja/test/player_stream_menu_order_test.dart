@@ -1,0 +1,92 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:rust/rust.dart';
+
+void main() {
+  group('PlayerStreamMenu panel provider order', () {
+    test('follows settings rank and ignores playback state', () {
+      final scoreRows = {
+        'vixsrc': ProviderOrderRow(
+          id: 'vixsrc',
+          settingsRank: 0,
+          domainScore: 10,
+          effectiveRank: 0,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'vidlink': ProviderOrderRow(
+          id: 'vidlink',
+          settingsRank: 1,
+          domainScore: 10,
+          effectiveRank: 1,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'vidsrc': ProviderOrderRow(
+          id: 'vidsrc',
+          settingsRank: 2,
+          domainScore: 10,
+          effectiveRank: 2,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+      };
+
+      final providers = {
+        'vixsrc': const {},
+        'vidlink': const {},
+        'vidsrc': const {},
+      };
+
+      final order = PlayerStreamMenu.orderedProviderEntriesForPanel(
+        providers,
+        scoreRows: scoreRows,
+      );
+
+      expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink', 'vidsrc']);
+    });
+
+    test('does not reorder when probe list reflects a different try order', () {
+      final scoreRows = {
+        'vixsrc': ProviderOrderRow(
+          id: 'vixsrc',
+          settingsRank: 0,
+          domainScore: 10,
+          effectiveRank: 0,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'vidlink': ProviderOrderRow(
+          id: 'vidlink',
+          settingsRank: 1,
+          domainScore: 10,
+          effectiveRank: 1,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+      };
+
+      final probes = [
+        const StreamProviderProbe(
+          id: 'vidlink',
+          label: 'VidLink',
+          status: StreamProviderProbeStatus.trying,
+        ),
+        const StreamProviderProbe(
+          id: 'vixsrc',
+          label: 'VixSrc',
+          status: StreamProviderProbeStatus.success,
+        ),
+      ];
+
+      final order = PlayerStreamMenu.orderedProviderEntriesForPanel(
+        {'vixsrc': const {}, 'vidlink': const {}},
+        scoreRows: scoreRows,
+        probes: probes,
+      );
+
+      expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink']);
+    });
+  });
+}

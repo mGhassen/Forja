@@ -27,7 +27,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 | ID | Choice |
 |----|--------|
 | **D1** | **C** — All engine in `crates/*`; incremental vertical crates |
-| **D2** | **C** — Hybrid orchestration: Rust pipelines; host provider race + loading UX |
+| **D2** | **B** — Resolver Engine (`crates/resolver-engine`) owns provider race, ordering, scoring, and cache; host owns progress/cancel UI + C3–C5 `HostProviderAdapter` |
 | **D3** | **A** — Nuvio permanent host (C4) |
 | **D4** | **B** — Jackett/Prowlarr optional host plugins; Knaben in Rust |
 | **D5** | **A** — OAuth/secrets host-only; Rust receives tokens per call when needed |
@@ -100,9 +100,8 @@ HTTP location is an implementation detail inside the engine. The split line is *
 
 ### R6 — Orchestration (C11)
 
-- **Rust:** cohesive pipelines with golden tests — webstreamr, vidsrc chain, torrent search
-- **Host:** provider order, loading/cancel UX, subtitle aggregation
-- Delete unused `StreamResolver`, dead storage repos, duplicate `stream_extractor` (P2-95)
+- **Rust (`crates/resolver-engine`):** provider registry, resolve race, health/scoring store, cache, HTTP/cookies/headers; `JobKind::ResolverEngineResolve` + `ResolverEngineContinue` for host plugins
+- **Host:** progress/cancel UX, subtitle aggregation, [`HostProviderAdapter`](../apps/forja/lib/shared/playback/host_provider_adapter.dart) for WebView/WASM/Nuvio (C3–C5)
 
 ### R7 — App feature folders
 

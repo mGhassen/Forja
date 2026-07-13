@@ -10,7 +10,8 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -146,8 +147,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   String? _webstreamingActiveProviderId;
   bool _isWebstreamingOnlyExtracting = false;
   bool _webstreamingOnlyExtractionCancelled = false;
-  final StreamProviderResolver _streamProviderResolver =
-      StreamProviderResolver();
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
   Map<String, dynamic>? _seasonData;
@@ -828,7 +827,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           fadeOutNotifier: fadeOutNotifier,
           onCancel: () {
             _webstreamingOnlyExtractionCancelled = true;
-            _streamProviderResolver.cancelPending();
+            PlaybackEngine.cancelAllPending();
             dismissLoading();
           },
         );
@@ -931,7 +930,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         season: _selectedSeason,
         episode: _selectedEpisode,
         settingsOrder: _webstreamingProviderOrder,
-        resolver: _streamProviderResolver,
         isCancelled: () => _webstreamingOnlyExtractionCancelled,
         onHitsUpdated: syncResolvedHits,
         onProgress: (providerId, status) {
@@ -1055,7 +1053,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             );
             await playerFuture;
             _webstreamingOnlyExtractionCancelled = true;
-            _streamProviderResolver.cancelPending();
+            PlaybackEngine.cancelAllPending();
             liveNotifiersDisposed = true;
             sourcesListNotifier.dispose();
             providerSourcesCache.dispose();

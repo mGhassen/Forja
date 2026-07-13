@@ -5,7 +5,6 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart';
 
 /// Domain-neutral playback resolve — shared by movies, anime, and Asian drama.
@@ -18,7 +17,6 @@ abstract final class DomainPlaybackResolve {
     int episode = 1,
     String preferredProvider = SourceEngine.auto,
     List<String> settingsOrder = const [],
-    StreamProviderResolver? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
@@ -43,25 +41,107 @@ abstract final class DomainPlaybackResolve {
       for (final row in order.rows) row.id: row.effectiveRank,
     };
 
-    final r = resolver ??
-        DomainStreamProviderResolver(
-          animeService: animeService,
-          kissKhExtractor: kissKhExtractor,
-        );
+    final usesDomainHost = orderedProviders.values.any((v) => v is AnimeEmbed) ||
+        orderedProviders.containsKey('kisskh');
+
+    if (usesDomainHost) {
+      return _resolveDomainHostRace(
+        providers: orderedProviders,
+        movie: movie,
+        season: season,
+        episode: episode,
+        effectiveRanks: effectiveRanks,
+        isCancelled: isCancelled,
+        onProgress: onProgress,
+        animeService: animeService,
+        kissKhExtractor: kissKhExtractor,
+      );
+    }
 
     return PlaybackEngine.resolveStreamingRace(
       providers: orderedProviders,
       movie: movie,
       season: season,
       episode: episode,
-      resolver: r,
       isCancelled: isCancelled,
       onProgress: onProgress,
       onHitsUpdated: onHitsUpdated,
       maxInFlight: maxInFlight ?? PlaybackEngine.playStartMaxInFlight,
       fillBackgroundHits: fillBackgroundHits,
       effectiveRanks: effectiveRanks,
+      settingsOrder: settingsOrder,
+      preferredProvider: preferredProvider,
+      domain: domain,
     );
+  }
+
+  static Future<PlaybackResolveHit?> _resolveDomainHostRace({
+    required Map<String, dynamic> providers,
+    required Movie movie,
+    required int season,
+    required int episode,
+    required Map<String, int> effectiveRanks,
+    bool Function()? isCancelled,
+    void Function(String providerId, String status)? onProgress,
+    AnimeService? animeService,
+    KissKhExtractor? kissKhExtractor,
+  }) async {
+    final resolver = DomainStreamProviderResolver(
+      animeService: animeService,
+      kissKhExtractor: kissKhExtractor,
+    );
+    final cancelled = isCancelled ?? (() => false);
+    for (final entry in providers.entries) {
+      if (cancelled()) return null;
+      final key = entry.key;
+      onProgress?.call(key, 'trying');
+      final result = await resolver.resolve(
+        key: key,
+        movie: movie,
+        season: season,
+        episode: episode,
+        providers: providers,
+        isCancelled: cancelled,
+      );
+      if (result == null || result.streamUrl.isEmpty) {
+        onProgress?.call(key, 'failed');
+        continue;
+      }
+      onProgress?.call(key, 'success');
+      final rank = effectiveRanks[key] ?? 0;
+      final legacy = result.sources != null && result.sources!.isNotEmpty
+          ? result.sources!
+          : [
+              StreamSource(
+                url: result.streamUrl,
+                title: 'Primary',
+                type: 'hls',
+                headers: result.headers,
+              ),
+            ];
+      final ranked = key == 'kisskh'
+          ? normalizeLegacyStreamSources(
+              sources: legacy,
+              providerId: key,
+              providerRank: rank,
+            )
+          : await PlaybackSelection.rankLegacySources(
+              sources: legacy,
+              providerId: key,
+              providerRank: rank,
+            );
+      if (ranked.isEmpty) continue;
+      return PlaybackResolveHit(
+        providerId: key,
+        providerRank: rank,
+        streamUrl: ranked.first.url,
+        audioUrl: result.audioUrl,
+        headers: result.headers ?? ranked.first.headers,
+        sources: ranked,
+        subtitles: result.subtitles,
+      );
+    }
+    return null;
   }
 
   static List<String> failoverChain({
@@ -78,10 +158,25 @@ abstract final class DomainPlaybackResolve {
       );
 }
 
-/// Extends movie resolver with anime embed + KissKH branches.
-class DomainStreamProviderResolver extends StreamProviderResolver {
+class StreamProviderResolveResult {
+  const StreamProviderResolveResult({
+    required this.streamUrl,
+    this.audioUrl,
+    this.headers,
+    this.sources,
+    this.subtitles,
+  });
+
+  final String streamUrl;
+  final String? audioUrl;
+  final Map<String, String>? headers;
+  final List<StreamSource>? sources;
+  final List<Map<String, dynamic>>? subtitles;
+}
+
+/// Anime embed + KissKH host resolve (outside Rust Resolver Engine registry).
+class DomainStreamProviderResolver {
   DomainStreamProviderResolver({
-    super.extractor,
     AnimeService? animeService,
     KissKhExtractor? kissKhExtractor,
   })  : _animeService = animeService ?? AnimeService(),
@@ -90,7 +185,6 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
   final AnimeService _animeService;
   final KissKhExtractor _kissKhExtractor;
 
-  @override
   Future<StreamProviderResolveResult?> resolve({
     required String key,
     required Movie movie,
@@ -110,14 +204,7 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
       return _resolveKissKh(payload, cancelled);
     }
 
-    return super.resolve(
-      key: key,
-      movie: movie,
-      season: season,
-      episode: episode,
-      providers: providers,
-      isCancelled: isCancelled,
-    );
+    return null;
   }
 
   Future<StreamProviderResolveResult?> _resolveAnimeEmbed(
@@ -201,16 +288,13 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
     }
   }
 
-  @override
   void cancelPending() {
-    super.cancelPending();
     unawaited(_kissKhExtractor.cancel());
     MiruroPipeSession.instance.cancelPending();
   }
 
-  /// Abort movie + anime in-flight host work (player exit / episode leave).
   static void cancelAllPending() {
-    StreamProviderResolver.cancelAllPending();
+    PlaybackEngine.cancelAllPending();
     MiruroPipeSession.instance.cancelPending();
   }
 }

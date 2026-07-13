@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/playback_service.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
@@ -165,25 +167,18 @@ Future<bool> _resumeWebStreamProvider(
     return true;
   }
 
-  final resolved = await StreamProviderResolver().resolve(
-    key: providerId,
+  final hit = await PlaybackService.resolveWebstreaming(
     movie: movie,
+    providers: StreamProviders.providers,
     season: season,
     episode: episode,
-    providers: StreamProviders.providers,
+    preferredProvider: providerId,
   );
-  if (resolved == null || resolved.streamUrl.isEmpty || !context.mounted) {
+  if (hit == null || hit.streamUrl.isEmpty || !context.mounted) {
     return false;
   }
 
-  final sources = resolved.sources ?? <StreamSource>[
-    StreamSource(
-      url: resolved.streamUrl,
-      title: providerId,
-      type: resolved.streamUrl.contains('.m3u8') ? 'hls' : 'video',
-      headers: resolved.headers,
-    ),
-  ];
+  final sources = hit.streamSources;
   await WebstreamingStreamCache.write(
     cacheKey,
     WebstreamingCacheHit(providerId: providerId, sources: sources),
@@ -193,11 +188,11 @@ Future<bool> _resumeWebStreamProvider(
     movie: movie,
     providerId: providerId,
     resolved: StreamProviderResolveResult(
-      streamUrl: resolved.streamUrl,
-      audioUrl: resolved.audioUrl,
-      headers: resolved.headers,
+      streamUrl: hit.streamUrl,
+      audioUrl: hit.audioUrl,
+      headers: hit.headers,
       sources: sources,
-      subtitles: resolved.subtitles,
+      subtitles: hit.subtitles,
     ),
     season: season,
     episode: episode,

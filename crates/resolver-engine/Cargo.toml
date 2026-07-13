@@ -1,0 +1,20 @@
+[package]
+name = "resolver-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+stream-core = { path = "../stream-core" }
+webstreamr = { path = "../webstreamr" }
+iptv-core = { path = "../iptv-core" }
+debrid-core = { path = "../debrid-core" }
+storage = { path = "../storage" }
+utils = { path = "../utils" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true, features = ["blocking"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

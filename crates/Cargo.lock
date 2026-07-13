@@ -1006,6 +1006,7 @@ dependencies = [
  "manga-core",
  "music-core",
  "proxy",
+ "resolver-engine",
  "scrapers",
  "serde",
  "serde_json",
@@ -2920,6 +2921,7 @@ dependencies = [
  "bytes",
  "cookie",
  "cookie_store",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "http",
@@ -2951,6 +2953,23 @@ dependencies = [
  "wasm-streams",
  "web-sys",
  "webpki-roots",
+]
+
+[[package]]
+name = "resolver-engine"
+version = "0.1.0"
+dependencies = [
+ "debrid-core",
+ "iptv-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "storage",
+ "stream-core",
+ "thiserror 2.0.18",
+ "tokio",
+ "utils",
+ "webstreamr",
 ]
 
 [[package]]

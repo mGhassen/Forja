@@ -38,6 +38,7 @@ anime-core = { path = "../anime-core" }
 indexer-core = { path = "../indexer-core" }
 debrid-core = { path = "../debrid-core" }
 music-core = { path = "../music-core" }
+resolver-engine = { path = "../resolver-engine" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

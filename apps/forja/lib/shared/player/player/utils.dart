@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
@@ -464,4 +465,25 @@ Future<bool> validateStreamSourceForCheck({
     return url.contains('://');
   }
   return probeStreamSourceUrl(source.url, headers);
+}
+
+/// Index of [current] in a flat hub episode list, or null if not found.
+int? hubEpisodeIndex(List<PlayerHubEpisode> episodes, num current) {
+  for (var i = 0; i < episodes.length; i++) {
+    if (episodes[i].number == current) return i;
+  }
+  return null;
+}
+
+/// Whether hub playback has a previous / next list entry for [current].
+({bool hasPrev, bool hasNext}) adjacentHubEpisodeFlags(
+  List<PlayerHubEpisode>? episodes,
+  num? current,
+) {
+  if (episodes == null || episodes.isEmpty || current == null) {
+    return (hasPrev: false, hasNext: false);
+  }
+  final idx = hubEpisodeIndex(episodes, current);
+  if (idx == null) return (hasPrev: false, hasNext: false);
+  return (hasPrev: idx > 0, hasNext: idx < episodes.length - 1);
 }

@@ -637,6 +637,10 @@ fn mega_resolve_json(embed_url: String) -> String {
     }
 }
 
+fn provider_health_json(payload_json: String) -> String {
+    resolver_engine::provider_health_json(&payload_json)
+}
+
 fn storage_open(path: String) -> String {
     match storage::open(&path) {
         Ok(()) => r#"{"ok":true}"#.into(),

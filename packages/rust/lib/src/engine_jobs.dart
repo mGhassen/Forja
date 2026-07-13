@@ -14,6 +14,8 @@ abstract final class EngineAsyncJob {
   static const iptvProbeStream = 7;
   static const torrentStream = 8;
   static const seek111477Start = 9;
+  static const resolverEngineResolve = 10;
+  static const resolverEngineContinue = 11;
 }
 
 /// Non-blocking long I/O via Rust tokio runtime; main isolate polls for result.

@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:forja/shared/extractors/stream_extractor.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/host_provider_adapter.dart';
 import 'package:forja/shared/player/episode_torrent_resolver.dart';
 import 'package:rust/rust.dart';
+
 class EpisodeSwitchResult {
   final String streamUrl;
   final String? magnetLink;
@@ -56,10 +59,7 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   String? magnetLink,
   String? stremioId,
   String? stremioAddonBaseUrl,
-  StreamProviderResolver? providerResolver,
 }) async {
-  final resolver = providerResolver ?? StreamProviderResolver();
-
   if (providerKey == 'stremio_direct' && stremioAddonBaseUrl != null) {
     final stremio = StremioService();
     final id = stremioId ?? movie.imdbId;
@@ -183,44 +183,30 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   }
 
   if (providers != null && providers.containsKey(providerKey)) {
-    final resolved = await resolver.resolve(
-      key: providerKey,
+    final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
+      providerId: providerKey,
+      payloadJson: '{}',
       movie: movie,
+      providers: providers,
       season: season,
       episode: episode,
-      providers: providers,
     );
-    if (resolved == null || resolved.streamUrl.isEmpty) return null;
-    final ranked = await _rankEpisodeSources(
-      resolved.sources,
-      providerKey,
-      providers.keys.toList().indexOf(providerKey),
-    );
-    return EpisodeSwitchResult(
-      streamUrl: resolved.streamUrl,
-      headers: resolved.headers,
-      sources: ranked,
-      activeProvider: providerKey,
-    );
+    if (sourcesJson == null) return null;
+    return _episodeFromSourcesJson(sourcesJson, providerKey, providers);
   }
 
   if (providerKey.startsWith('nuvio:') ||
       _builtinProviderKeys.contains(providerKey)) {
-    final resolved = await resolver.resolve(
-      key: providerKey,
+    final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
+      providerId: providerKey,
+      payloadJson: '{}',
       movie: movie,
+      providers: const {},
       season: season,
       episode: episode,
-      providers: const {},
     );
-    if (resolved == null || resolved.streamUrl.isEmpty) return null;
-    final ranked = await _rankEpisodeSources(resolved.sources, providerKey, 0);
-    return EpisodeSwitchResult(
-      streamUrl: resolved.streamUrl,
-      headers: resolved.headers,
-      sources: ranked,
-      activeProvider: providerKey,
-    );
+    if (sourcesJson == null) return null;
+    return _episodeFromSourcesJson(sourcesJson, providerKey, const {});
   }
 
   final provider = StreamProviders.providers[providerKey];
@@ -236,6 +222,46 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
     streamUrl: result.url,
     headers: result.headers.isNotEmpty ? result.headers : null,
     sources: await _rankEpisodeSources(result.sources, providerKey, 0),
+    activeProvider: providerKey,
+  );
+}
+
+Future<EpisodeSwitchResult?> _episodeFromSourcesJson(
+  String sourcesJson,
+  String providerKey,
+  Map<String, dynamic> providers,
+) async {
+  final decoded = jsonDecode(sourcesJson);
+  if (decoded is! List || decoded.isEmpty) return null;
+  final first = decoded.first;
+  if (first is! Map) return null;
+  final url = first['url']?.toString() ?? '';
+  if (url.isEmpty) return null;
+  final sources = decoded
+      .whereType<Map>()
+      .map(
+        (m) => StreamSource(
+          url: m['url']?.toString() ?? '',
+          title: m['title']?.toString() ?? 'Stream',
+          type: m['container']?.toString() ?? 'hls',
+          headers: m['headers'] is Map
+              ? Map<String, String>.from(m['headers'] as Map)
+              : null,
+        ),
+      )
+      .where((s) => s.url.isNotEmpty)
+      .toList();
+  final ranked = await _rankEpisodeSources(
+    sources,
+    providerKey,
+    providers.keys.toList().indexOf(providerKey),
+  );
+  return EpisodeSwitchResult(
+    streamUrl: url,
+    headers: first['headers'] is Map
+        ? Map<String, String>.from(first['headers'] as Map)
+        : null,
+    sources: ranked,
     activeProvider: providerKey,
   );
 }

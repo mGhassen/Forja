@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 
 void main() {
   group('isTorrentStreamUrl — Direct Streaming must reject torrents', () {

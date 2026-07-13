@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart';
 
@@ -46,7 +47,6 @@ abstract final class TvStreamFallback {
   }) async {
     if (!PlatformInfo.isAndroidTv) return null;
 
-    final resolver = StreamProviderResolver();
     final catalog = providers ?? StreamProviders.providers;
     final domain = SourceDomain.fromMediaType(movie.mediaType);
     final ordered = SourceEngine.orderProviderIds(
@@ -58,17 +58,25 @@ abstract final class TvStreamFallback {
     for (final key in keys) {
       if (isCancelled?.call() ?? false) return null;
       try {
-        final result = await resolver.resolve(
-          key: key,
+        final filtered = {key: catalog[key]!};
+        final hit = await PlaybackService.resolveWebstreaming(
           movie: movie,
+          providers: filtered,
           season: season,
           episode: episode,
-          providers: catalog,
+          preferredProvider: key,
+          settingsOrder: settingsOrder,
           isCancelled: isCancelled,
         );
-        if (result != null && result.streamUrl.isNotEmpty) {
+        if (hit != null && hit.streamUrl.isNotEmpty) {
           debugPrint('[TvStreamFallback] resolved via $key');
-          return result;
+          return StreamProviderResolveResult(
+            streamUrl: hit.streamUrl,
+            audioUrl: hit.audioUrl,
+            headers: hit.headers,
+            sources: hit.streamSources,
+            subtitles: hit.subtitles,
+          );
         }
       } catch (e) {
         debugPrint('[TvStreamFallback] $key failed: $e');

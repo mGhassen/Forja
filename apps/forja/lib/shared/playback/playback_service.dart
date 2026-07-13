@@ -1,6 +1,5 @@
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
-import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart';
 
 /// App-facing resolve API — UI asks for playable content, not providers.
@@ -16,7 +15,6 @@ abstract final class PlaybackService {
     required int episode,
     String preferredProvider = SourceEngine.auto,
     List<String> settingsOrder = const [],
-    StreamProviderResolver? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
@@ -31,7 +29,6 @@ abstract final class PlaybackService {
       episode: episode,
       preferredProvider: preferredProvider,
       settingsOrder: settingsOrder,
-      resolver: resolver,
       isCancelled: isCancelled,
       onProgress: onProgress,
       onHitsUpdated: onHitsUpdated,
@@ -48,7 +45,6 @@ abstract final class PlaybackService {
     int episode = 1,
     String preferredProvider = SourceEngine.auto,
     List<String> settingsOrder = const [],
-    StreamProviderResolver? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
@@ -63,7 +59,6 @@ abstract final class PlaybackService {
         episode: episode,
         preferredProvider: preferredProvider,
         settingsOrder: settingsOrder,
-        resolver: resolver,
         isCancelled: isCancelled,
         onProgress: onProgress,
         onHitsUpdated: onHitsUpdated,
