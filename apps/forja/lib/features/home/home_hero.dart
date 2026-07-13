@@ -154,6 +154,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     if (widget.pageBottomChild == null || compact) return defaultBottom;
     return HomeMovieSection.sectionHeight(context, compactTop: true) +
         ShellTokens.homePageBottomSectionTopPadding +
+        ShellTokens.homePageBottomSectionDownOffset +
         defaultBottom;
   }
 

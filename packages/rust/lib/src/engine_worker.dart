@@ -78,6 +78,7 @@ abstract final class EngineWorkerPool {
 
   static final List<SendPort> _ports = [];
   static final List<Isolate> _isolates = [];
+  static final List<SendPort> _mainExitListenerPorts = [];
   static int _roundRobin = 0;
   static int _nextJobId = 0;
   static String? _libraryPath;
@@ -119,8 +120,13 @@ abstract final class EngineWorkerPool {
             'Engine worker failed to load Rust library: ${startup.error}',
           );
         }
+        final ready = startup as List<Object?>;
+        final jobPort = ready[0] as SendPort;
+        final workerMainDeathPort = ready[1] as SendPort;
         _isolates.add(isolate);
-        _ports.add(startup as SendPort);
+        _ports.add(jobPort);
+        Isolate.current.addOnExitListener(workerMainDeathPort);
+        _mainExitListenerPorts.add(workerMainDeathPort);
       }
     } finally {
       for (final p in readyPorts) {
@@ -139,6 +145,10 @@ abstract final class EngineWorkerPool {
     }
     _starting = null;
     _ports.clear();
+    for (final port in _mainExitListenerPorts) {
+      Isolate.current.removeOnExitListener(port);
+    }
+    _mainExitListenerPorts.clear();
     _roundRobin = 0;
     for (final isolate in _isolates) {
       isolate.kill(priority: Isolate.immediate);
@@ -174,6 +184,8 @@ abstract final class EngineWorkerPool {
 void _engineWorkerMain(List<Object?> startArgs) {
   final readyPort = startArgs[0] as SendPort;
   final libraryPath = startArgs[1] as String;
+  final mainDeath = ReceivePort();
+  mainDeath.listen((_) => Isolate.exit());
   try {
     RustLib.initSync(libraryPath);
   } catch (e) {
@@ -181,7 +193,7 @@ void _engineWorkerMain(List<Object?> startArgs) {
     return;
   }
   final jobs = ReceivePort();
-  readyPort.send(jobs.sendPort);
+  readyPort.send([jobs.sendPort, mainDeath.sendPort]);
 
   jobs.listen((message) {
     final job = message as _WorkerJob;

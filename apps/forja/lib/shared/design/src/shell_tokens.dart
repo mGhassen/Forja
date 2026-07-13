@@ -143,8 +143,8 @@ abstract final class ShellTokens {
   /// Home desktop/TV — page backdrop height (hero chrome + first row on image).
   static const double homeBackdropViewportFraction = 0.75;
   static const double homePageBottomSectionTopPadding = 8;
-  /// Extra hero height so the featured row sits slightly lower on the backdrop.
-  static const double homePageBottomSectionDownOffset = 80;
+  /// Gap between hero actions and the first on-backdrop row (Featured).
+  static const double homePageBottomSectionDownOffset = 62;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).

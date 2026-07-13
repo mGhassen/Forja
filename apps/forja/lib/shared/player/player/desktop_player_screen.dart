@@ -16,7 +16,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'utils.dart';
-import 'menus.dart';
+import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
 import 'playable_source_bridge.dart';
 
@@ -52,6 +52,7 @@ import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_stats_card.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';

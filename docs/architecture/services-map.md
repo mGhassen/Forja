@@ -24,7 +24,32 @@
 
 ## Rust migration backlog (rechecked 2026-07)
 
-**~9k LOC** of Dart scrape/catalog logic remains in `apps/forja` (excluding permanent host adapters). HTTP already routes through `animeHttp` → `anime-core` in most places; **parse + orchestration** is what should move.
+### Current product scope (2026-07)
+
+**In scope** — ship polish, Rust migration, and QA here only:
+
+| Tab | Nav ID | Engine / catalog touchpoints |
+|-----|--------|------------------------------|
+| Home | `home` | TMDB browse, Stremio rails, BestSimilar home recs |
+| Search | `search` | `TmdbApi` |
+| Anime | `anime` | `AnimeService` → `anime-core` ✅ |
+| Asian Drama | `asian_drama` | `KissKhService` → `kisskh-core` ✅ |
+| Live Matches | `live_matches` | `live-matches-core` ✅ |
+| IPTV | `iptv` | `iptv-core` Reddit + probe ✅ |
+| Lists | `mylist` | `MyListService`, watch history (host + engine) |
+| Settings | `settings` | Host prefs / platform |
+
+**Out of scope for now** — do not schedule Rust ports or tab UX work unless explicitly reopened:
+
+`discover`, `similar`, `arabic`, `anime_arabic`, `manga`, `comics`, `books`, `audiobooks`, `music`, `jellyfin`, `downloader`, `magnet`, and other shell tabs.
+
+P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferred** under this scope. Manga / Books / BestSimilar were ported earlier but are not active-tab priorities.
+
+**Migration status for in-scope hubs:** P0 (anime + kisskh) ✅ · P2 (live matches + IPTV) ✅ · P3 thin orchestration ✅.
+
+---
+
+**~9k LOC** of Dart scrape/catalog logic remains in `apps/forja` (excluding permanent host adapters). HTTP already routes through engine FFI in most places; **parse + orchestration** is what should move when a tab is in scope.
 
 ### ✅ Shipped (P0 / P2 / P3 slice — 2026-07)
 
@@ -108,10 +133,10 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | `MangaService` | 453 → ~250 | `manga-core` | Parse weebcentral HTML (fetch+parse in Rust) | ✅ |
 | `BooksService` | 245 → ~90 | `books-core` | Libgen-style HTML scrape | ✅ |
 | `BestSimilarScraper` | 454 → ~230 | `catalog-core` | Autocomplete JSON + detail HTML parse | ✅ |
-| `ArabicService` | 1365 | `arabic-core` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter | ⬜ |
-| `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic-core` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⬜ |
-| `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook-core` (new) | Multi-platform HTML/API scrape | ⬜ |
-| `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics-core` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⬜ |
+| `ArabicService` | 1365 | `arabic-core` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter | ⏭️ |
+| `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic-core` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⏭️ |
+| `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook-core` (new) | Multi-platform HTML/API scrape | ⏭️ |
+| `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics-core` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⏭️ |
 
 ---
 
@@ -139,23 +164,16 @@ Keep in host — refactor only:
 
 ---
 
-### Suggested port order (one vertical per PR)
+### Suggested port order (when scope expands)
 
-```mermaid
-flowchart LR
-  P0[P0 anime extractors + kisskh-core] --> P1a[P1 manga + comics parse]
-  P0 --> P1b[P1 arabic + anime_arabic]
-  P1a --> P2[P2 iptv scraper + live matches]
-  P1b --> P2
-```
+In-scope hubs are **done** for the current arc. If a deferred tab reopens:
 
-1. **AllAnime + Miruro** → `crates/anime-core` (highest TV-tab traffic)
-2. **KissKh metadata** → `crates/kisskh-core` (browse/details; extractor stays host)
-3. **Manga parse** → extend `manga-core` (fetch already there)
-4. **Arabic PACKER paths** → `arabic-core` (split WebView adapter)
-5. **Comics / books / audiobook** → separate crates
-6. **IPTV Reddit scraper** → `iptv-core`
-7. **Live matches APIs** → new small crate
+1. **Comics** → `comics-core` (RCO decode; WebView extractor stays host)
+2. **Arabic PACKER paths** → `arabic-core` (split WebView adapter)
+3. **Anime Arabic** → `anime-arabic-core`
+4. **Audiobook** → `audiobook-core`
+
+Already shipped (low priority tabs): manga, books, BestSimilar (`catalog-core`).
 
 **Per-port checklist:** implement in `crates/*` → FFI → parity tests → **delete Dart slice** → hub `catalog/` becomes thin orchestration only.
 

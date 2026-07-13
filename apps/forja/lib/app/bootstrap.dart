@@ -355,7 +355,8 @@ class _SplashScreenState extends State<SplashScreen> {
   /// HomeScreen build, layout, paint and prefetch in the background. That
   /// way, when the overlay slides away, the first frames of the real UI are
   /// already warm and scrolling is smooth instead of janky.
-  static const Duration _minSplashDuration = Duration(seconds: 8);
+  static Duration get _minSplashDuration =>
+      kDebugMode ? const Duration(milliseconds: 800) : const Duration(seconds: 8);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition

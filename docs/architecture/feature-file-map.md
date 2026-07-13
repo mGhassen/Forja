@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 0 files in `features/` · 0 monoliths in `shared/player/player/` |
-| **Next action** | `shared/player/` now ≤1.2k; next: player `controls/` extraction slice (R19-A05) |
+| **Next action** | RFC-019 v1.1 acceptance complete; next arc: RFC-026 media-details/player UX |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -419,10 +419,22 @@ features/iptv/iptv/
 | `desktop_player_build.dart` | 629 | — |
 | `desktop_player_lifecycle.dart` | 516 | — |
 | `desktop_player_sources.dart` | 796 | Stream menu mixin |
-| `desktop_player_tracks.dart` | 632 | HW decode/subtitles/audio |
+| `desktop_player_tracks.dart` | 364 | HW decode/subtitles/audio (uses `controls/` menus) |
 | `desktop_player_glass.dart` | 350 | Glass primitives |
 | `desktop_player_ui.dart` | 161 | Auto-hide/fullscreen/keyboard |
 | `desktop_player_seekbar.dart` | 263 | Seekbar widgets |
+
+**Controls** (`shared/player/controls/`):
+
+| File | Lines | Role |
+|------|------:|------|
+| [`player_subtitle_menu.dart`](../../apps/forja/lib/shared/player/controls/player_subtitle_menu.dart) | 270 | Subtitle track picker |
+| [`player_subtitle_settings_dialog.dart`](../../apps/forja/lib/shared/player/controls/player_subtitle_settings_dialog.dart) | 662 | Subtitle appearance (mobile + desktop) |
+| [`player_quality_menu.dart`](../../apps/forja/lib/shared/player/controls/player_quality_menu.dart) | 101 | HLS quality picker |
+| [`player_audio_menu.dart`](../../apps/forja/lib/shared/player/controls/player_audio_menu.dart) | 67 | Audio track picker |
+| [`player_menus.dart`](../../apps/forja/lib/shared/player/controls/player_menus.dart) | 167 | Speed + legacy track sheets |
+| [`player_stream_menu.dart`](../../apps/forja/lib/shared/player/controls/player_stream_menu.dart) | 803 | Source/server picker orchestrator |
+| [`player_chrome_overlay.dart`](../../apps/forja/lib/shared/player/controls/player_chrome_overlay.dart) | 819 | Top bar, buttons, cast helpers |
 
 ---
 
@@ -501,7 +513,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV + mobile/desktop player screen splits done; `shared/player/` now has no files &gt;1,200 (R19-A01 satisfied on this slice). Next: player `controls/` extraction slice (R19-A05).
+IPTV + mobile/desktop player screen splits done; `shared/player/` has no files &gt;1,200; subtitle/quality/menus live under `controls/` (R19-A05 ✅).
 
 ---
 

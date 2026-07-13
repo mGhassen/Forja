@@ -32,7 +32,7 @@ import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
-import 'menus.dart';
+import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
 import 'playable_source_bridge.dart';
 import 'package:forja/shared/services/pip_service.dart';

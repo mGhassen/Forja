@@ -234,6 +234,52 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
           _s._markProviderLoadFailed(_s._currentProvider!);
         }
 
+        if ((_s._providerPinned || _s._sourcePinned || widget.pinSource) &&
+            !_fallbackAborted(initGen)) {
+          final pid = _s._currentProvider ?? widget.activeProvider;
+          final movie = widget.movie;
+          final providers = widget.providers;
+          if (pid != null &&
+              pid.isNotEmpty &&
+              movie != null &&
+              providers != null &&
+              providers.containsKey(pid)) {
+            debugPrint(
+              '[Player] Cached $pid source failed — re-resolving fresh extract',
+            );
+            await _invalidateWebstreamingCacheForCurrent();
+            final hit = await PlayerSourceResolve.resolvePinnedForMovie(
+              movie: movie,
+              providers: providers,
+              providerId: pid,
+              season: widget.selectedSeason ?? 1,
+              episode: widget.selectedEpisode ?? 1,
+              isCancelled: () => _fallbackAborted(initGen),
+            );
+            if (!_fallbackAborted(initGen) &&
+                hit != null &&
+                hit.streamSources.isNotEmpty) {
+              final fresh = dedupeStreamSources(hit.streamSources);
+              _s._cacheProviderSources(pid, fresh);
+              _s._markProviderLoadSucceeded(pid);
+              setState(() {
+                _s._currentSources = fresh;
+                _s._currentUrl = hit.streamUrl;
+                _s._currentPlayingCatalogUrl = fresh.first.url;
+                _s._currentFallbackSourceIndex = 0;
+                _s._failedSourceIndices.clear();
+                _s._checkingSourceIndices.clear();
+              });
+              final retryPlayed = await _trySourcesFromIndex(
+                0,
+                chainGen: initGen,
+                seekAfterOpen: widget.startPosition,
+              );
+              if (retryPlayed) return;
+            }
+          }
+        }
+
         // Cached / pinned URL could not open — unlock failover for this session
         // but keep disk/session cache so details Play can retry the same server.
         if (_s._providerPinned || _s._sourcePinned) {

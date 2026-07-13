@@ -1049,24 +1049,13 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
         _s._positionNotifier.value = Duration.zero;
         _s._bufferedNotifier.value = Duration.zero;
         await resetPlayerForOpen(_s._player);
+        if (_s._player.platform is NativePlayer) {
+          final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
+          await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
+        }
         await applyMediaHttpHeaders(_s._player, headers);
         await _s._player.open(Media(streamUrl, httpHeaders: headers));
         if (_s._fallbackAborted(gen)) return null;
-        _s._player.setVolume(_s._volumeNotifier.value);
-        final opened = await waitForMediaOpen(_s._player, streamUrl: streamUrl);
-        if (_s._fallbackAborted(gen)) return null;
-        if (!opened) {
-          if (mounted && !_s._fallbackAborted(gen)) {
-            _s._markProviderLoadFailed(newProvider);
-            _s._statusController.upsert(
-              'provider-$newProvider',
-              providerLabel,
-              kind: StatusRouletteKind.failed,
-              dismissAfter: const Duration(seconds: 2),
-            );
-          }
-          return null;
-        }
 
         if (currentPos.inSeconds > 0) {
           await _s._player.seek(currentPos);

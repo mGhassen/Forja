@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 5** acceptance · home/settings/player splits shipped |
-| **Current slice** | Remaining: player `controls/` extraction slice (R19-A05) |
+| **Progress** | **5 / 5** acceptance (v1.1 slice) |
+| **Current slice** | Complete — player `controls/` extract shipped (R19-A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,7 +23,7 @@
 | 2 | R19-A02 | `features/player/` deleted | ✅ |
 | 3 | R19-A03 | Inline `_HoverScale` / `_MovieSection` removed from Home where shared widget fits | ✅ |
 | 4 | R19-A04 | Settings domains in separate files | ✅ |
-| 5 | R19-A05 | Player `controls/` folder with subtitle + quality extracted | ⬜ |
+| 5 | R19-A05 | Player `controls/` folder with subtitle + quality extracted | ✅ |
 
 ---
 
