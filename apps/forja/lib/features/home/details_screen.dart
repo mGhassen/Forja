@@ -42,14 +42,14 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/features/home/widgets/details_collection_section.dart';
 
-part 'details_screen_torrent.part.dart';
-part 'details_screen_stremio.part.dart';
-part 'details_screen_webstreaming.part.dart';
-part 'details_screen_episodes.part.dart';
-part 'details_screen_panel.part.dart';
-part 'details_screen_play.part.dart';
-part 'details_screen_build.part.dart';
-part 'details_screen_fetch.part.dart';
+part 'details_screen_torrent.dart';
+part 'details_screen_stremio.dart';
+part 'details_screen_webstreaming.dart';
+part 'details_screen_episodes.dart';
+part 'details_screen_panel.dart';
+part 'details_screen_play.dart';
+part 'details_screen_build.dart';
+part 'details_screen_fetch.dart';
 
 class DetailsScreen extends StatefulWidget {
   final Movie movie;

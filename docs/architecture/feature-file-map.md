@@ -33,7 +33,7 @@
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
 | **iptv** | 21 | ~17,900 | `iptv_pt_screen.dart` (3,563) |
-| **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.part.dart` |
+| **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.dart` |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
@@ -103,16 +103,16 @@ Paths relative to `apps/forja/lib/features/`.
 | 1372 | home | `home/home_screen.dart` | Orchestrator | In |
 | 999 | home | `home/home_hero.dart` | Hero | In |
 | 748 | settings | `settings/settings_screen.dart` | Orchestrator | In |
-| 596 | home | `home/details_screen_webstreaming.part.dart` | Details webstreaming mixin | In |
+| 596 | home | `home/details_screen_webstreaming.dart` | Details webstreaming mixin | In |
 | 576 | home | `home/widgets/home_mood_section.dart` | Section | In |
-| 562 | home | `home/details_screen_stremio.part.dart` | Details Stremio/Nuvio mixin | In |
-| 542 | home | `home/details_screen_play.part.dart` | Details play mixin | In |
-| 499 | home | `home/details_screen_panel.part.dart` | Details panel mixin | In |
+| 562 | home | `home/details_screen_stremio.dart` | Details Stremio/Nuvio mixin | In |
+| 542 | home | `home/details_screen_play.dart` | Details play mixin | In |
+| 499 | home | `home/details_screen_panel.dart` | Details panel mixin | In |
 | 491 | home | `home/widgets/continue_watching_section.dart` | Section | In |
-| 391 | home | `home/details_screen_torrent.part.dart` | Details torrent mixin | In |
-| 376 | home | `home/details_screen_build.part.dart` | Details build mixin | In |
-| 240 | home | `home/details_screen_fetch.part.dart` | Details fetch mixin | In |
-| 231 | home | `home/details_screen_episodes.part.dart` | Details episodes mixin | In |
+| 391 | home | `home/details_screen_torrent.dart` | Details torrent mixin | In |
+| 376 | home | `home/details_screen_build.dart` | Details build mixin | In |
+| 240 | home | `home/details_screen_fetch.dart` | Details fetch mixin | In |
+| 231 | home | `home/details_screen_episodes.dart` | Details episodes mixin | In |
 | 3563 | iptv | `iptv/iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
 | 3539 | live_matches | `live_matches/live_matches_screen.dart` | Orchestrator | In |
 | 2880 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Sub-hub | In |
@@ -303,14 +303,14 @@ features/home/details/          # later → features/media/details/ (R26-C03)
 
 | Extract | Path | Lines |
 |---------|------|------:|
-| Torrent search + Jackett/Prowlarr | `details_screen_torrent.part.dart` (`_DetailsScreenTorrent` mixin) | 391 |
-| Stremio/Nuvio fetch + cancel | `details_screen_stremio.part.dart` (`_DetailsScreenStremio` mixin) | 562 |
-| Webstreaming extract/play/cache | `details_screen_webstreaming.part.dart` (`_DetailsScreenWebstreaming` mixin) | 596 |
-| TV season/episode picker + fetch | `details_screen_episodes.part.dart` (`_DetailsScreenEpisodes` mixin) | 231 |
-| Play + auto-play | `details_screen_play.part.dart` (`_DetailsScreenPlay` mixin) | 542 |
-| Panel filters + sources UI | `details_screen_panel.part.dart` (`_DetailsScreenPanel` mixin) | 499 |
-| Fetch + recommendations | `details_screen_fetch.part.dart` (`_DetailsScreenFetch` mixin) | 240 |
-| Build + hero + scroll | `details_screen_build.part.dart` (`_DetailsScreenBuild` mixin) | 376 |
+| Torrent search + Jackett/Prowlarr | `details_screen_torrent.dart` (`_DetailsScreenTorrent` mixin) | 391 |
+| Stremio/Nuvio fetch + cancel | `details_screen_stremio.dart` (`_DetailsScreenStremio` mixin) | 562 |
+| Webstreaming extract/play/cache | `details_screen_webstreaming.dart` (`_DetailsScreenWebstreaming` mixin) | 596 |
+| TV season/episode picker + fetch | `details_screen_episodes.dart` (`_DetailsScreenEpisodes` mixin) | 231 |
+| Play + auto-play | `details_screen_play.dart` (`_DetailsScreenPlay` mixin) | 542 |
+| Panel filters + sources UI | `details_screen_panel.dart` (`_DetailsScreenPanel` mixin) | 499 |
+| Fetch + recommendations | `details_screen_fetch.dart` (`_DetailsScreenFetch` mixin) | 240 |
+| Build + hero + scroll | `details_screen_build.dart` (`_DetailsScreenBuild` mixin) | 376 |
 | Collection list UI | `widgets/details_collection_section.dart` | 158 |
 
 `details_screen.dart`: 4,061 → **545** lines (−3,516).
@@ -407,14 +407,14 @@ Map and targets only. No Dart changes.
 
 | PR | Extract | Status |
 |----|---------|--------|
-| D1 | Torrent search → `details_screen_torrent.part.dart` | Done |
-| D2 | Stremio/Nuvio fetch → `details_screen_stremio.part.dart` | Done |
+| D1 | Torrent search → `details_screen_torrent.dart` | Done |
+| D2 | Stremio/Nuvio fetch → `details_screen_stremio.dart` | Done |
 | D3 | Collection section → `widgets/details_collection_section.dart` | Done |
-| D4 | Webstreaming extract → `details_screen_webstreaming.part.dart` | Done |
-| D5 | Episodes / TV picker → `details_screen_episodes.part.dart` | Done |
-| D6 | Play + auto-play → `details_screen_play.part.dart` | Done |
-| D7 | Panel filters + sources UI → `details_screen_panel.part.dart` | Done |
-| D8 | Fetch + build → `details_screen_fetch.part.dart`, `details_screen_build.part.dart` | Done |
+| D4 | Webstreaming extract → `details_screen_webstreaming.dart` | Done |
+| D5 | Episodes / TV picker → `details_screen_episodes.dart` | Done |
+| D6 | Play + auto-play → `details_screen_play.dart` | Done |
+| D7 | Panel filters + sources UI → `details_screen_panel.dart` | Done |
+| D8 | Fetch + build → `details_screen_fetch.dart`, `details_screen_build.dart` | Done |
 | D9 | RFC-026 R26-C03 → `features/media/details/` | ⬜ |
 
 `details_screen.dart`: 4,061 → **545** lines (orchestrator &lt;800 ✅).

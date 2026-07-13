@@ -2965,8 +2965,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
   }
 
-  /// Verifies every cached provider's streams once playback is up, so the score
-  /// reflects real stream health. Per provider: any stream OK → stream verdict
+  /// Verifies cached provider streams once playback is up (one working stream
+  /// per provider is enough). Per provider: any stream OK → stream verdict
   /// **+2**; every stream dead → **−2**. Netted with the server verdict, an up
   /// server whose streams are all dead shows **0**.
   Future<void> _probeCachedProviderStreamsInBackground() async {
@@ -3001,12 +3001,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         if (isActiveStream) {
           _setUrlCheckStatus(url, PlayerSourceStatus.active);
           anyOk = true;
-          continue;
+          break;
         }
         if (_urlCheckStatuses[url] == PlayerSourceStatus.ready ||
             _urlCheckStatuses[url] == PlayerSourceStatus.active) {
           anyOk = true;
-          continue;
+          break;
         }
 
         _setUrlCheckStatus(url, PlayerSourceStatus.checking);
@@ -3020,6 +3020,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         if (validated != null) {
           _setUrlCheckStatus(url, PlayerSourceStatus.ready);
           anyOk = true;
+          break;
         } else {
           _setUrlCheckStatus(url, PlayerSourceStatus.failed);
         }
