@@ -288,7 +288,5 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
         .where((t) => (t['id'] as String).isNotEmpty)
         .toList();
   }
-
-  @override
 }
 

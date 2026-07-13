@@ -17,7 +17,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           fit: StackFit.expand,
           children: [
             ForjaInAppWebView(
-              key: ValueKey('trailer-player-${_trailer.key}'),
+              key: ValueKey('trailer-player-${_s._trailer.key}'),
               initialData: InAppWebViewInitialData(
                 data: _s._embedHtml(),
                 baseUrl: WebUri(kYoutubeEmbedOrigin),
@@ -530,6 +530,5 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
       ],
     );
   }
-}
 }
 
