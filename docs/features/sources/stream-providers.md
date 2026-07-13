@@ -6,7 +6,7 @@
 
 Forja resolves streams through a **Source Engine** middleware. Movie/TV scrapers never compete with anime or Asian Drama scrapers. Each domain has provider **profiles** (configured domain scores). Your **settings order** is the baseline; domain scores may adjust each provider by at most **±2** ranks before checking. The playback layer then scores resolved URLs against your device (codec, resolution, latency).
 
-Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
+Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSrc, Vidnest, VidFast, 2Embed, SuperEmbed, AutoEmbed, 111Movies, MoviesAPI, SmashyStream, PrimeWire, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
 
 ## How to open it
 
@@ -27,7 +27,7 @@ Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSr
 
 | Domain | Typical engines |
 |--------|-----------------|
-| Movies / TV | Videasy, VidLink, WebStreamr, … |
+| Movies / TV | Videasy, VidLink, VidFast, 2Embed, SuperEmbed, AutoEmbed, WebStreamr, … |
 | Anime | Miruro, AllAnime, AnimeRealms, … |
 | Asian Drama | KissKH |
 | IPTV | Xtream / M3U / Stalker (portal) |

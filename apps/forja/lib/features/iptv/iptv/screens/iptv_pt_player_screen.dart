@@ -245,6 +245,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     await _openCurrent();
     _startWatchdog();
     _scheduleHideControls();
+    _focusPlayerChrome();
   }
 
   Future<void> _bootExoPlayer() async {
@@ -257,6 +258,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     await _openCurrent();
     _startWatchdog();
     _scheduleHideControls();
+    _focusPlayerChrome();
   }
 
   void _onExoEvent(Map<dynamic, dynamic> event) {
@@ -1271,9 +1273,21 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     });
   }
 
+  void _focusPlayerChrome() {
+    if (!iptvUseTvFocus(context) || !_controlsVisible) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controlsVisible) return;
+      iptvFocusRowItem('iptv-player-controls', 0);
+    });
+  }
+
   void _toggleControls() {
-    setState(() => _controlsVisible = !_controlsVisible);
-    if (_controlsVisible) _scheduleHideControls();
+    final show = !_controlsVisible;
+    setState(() => _controlsVisible = show);
+    if (show) {
+      _scheduleHideControls();
+      _focusPlayerChrome();
+    }
   }
 
   @override
@@ -1348,6 +1362,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         onShowControls: () {
           setState(() => _controlsVisible = true);
           _scheduleHideControls();
+          _focusPlayerChrome();
         },
         onSeekBack: () {
           if (!_isVod) return;
@@ -1539,6 +1554,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   double _topBarLeftPadding(BuildContext context) => 8;
 
   Widget _buildTopBar(bool compact) {
+    const topRowId = 'iptv-player-top';
+    final topCount = _sources.length > 1 ? 2 : 1;
+    iptvSyncRow(rowId: topRowId, sortOrder: 0, itemCount: topCount);
     return Padding(
       padding: EdgeInsets.fromLTRB(
         _topBarLeftPadding(context),
@@ -1553,6 +1571,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             onTap: () => Navigator.of(context).maybePop(),
             color: Colors.white,
             size: 26,
+            tvRowId: topRowId,
+            tvItemIndex: 0,
+            onDownEdge: () => iptvFocusRowItem('iptv-player-controls', 0),
+            onRightEdge: topCount > 1
+                ? () => iptvFocusRowItem(topRowId, 1)
+                : null,
           ),
           if ((_logoUrl ?? '').isNotEmpty) ...[
             const SizedBox(width: 6),
@@ -1600,6 +1624,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             _SourceChip(
               label: _sources[_sourceIdx].label,
               onTap: _showSourcePicker,
+              tvRowId: topRowId,
+              tvItemIndex: 1,
+              onDownEdge: () => iptvFocusRowItem('iptv-player-controls', 0),
+              onLeftEdge: () => iptvFocusRowItem(topRowId, 0),
             ),
           ],
         ],
@@ -1718,8 +1746,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         + (widget.channelGuide != null ? 2 : 0)
         + (_sources.length > 1 ? 1 : 0)
         + 1; // fullscreen
-    iptvSyncRow(rowId: rowId, sortOrder: 0, itemCount: expectedCount);
+    iptvSyncRow(rowId: rowId, sortOrder: 1, itemCount: expectedCount);
     var i = 0;
+    final upToTop = () => iptvFocusRowItem('iptv-player-top', 0);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -1731,6 +1760,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             big: true,
             tvRowId: rowId,
             tvItemIndex: i++,
+            onUpEdge: upToTop,
             onTap: () async {
               if (_playing) {
                 _userPlayWhenReady = false;
@@ -1967,7 +1997,23 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 class _SourceChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  const _SourceChip({required this.label, required this.onTap});
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  const _SourceChip({
+    required this.label,
+    required this.onTap,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1976,6 +2022,12 @@ class _SourceChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: 20,
       scaleOnFocus: 1.0,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(

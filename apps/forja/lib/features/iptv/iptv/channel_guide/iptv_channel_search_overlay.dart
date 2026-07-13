@@ -125,7 +125,9 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.numpadEnter) {
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.space) {
       _activateFocusedResult();
       return KeyEventResult.handled;
     }

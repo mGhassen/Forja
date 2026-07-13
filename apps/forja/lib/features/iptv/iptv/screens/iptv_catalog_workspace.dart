@@ -11,6 +11,7 @@ import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 
 /// Colored Live / Movies / Series shelf — same hues as the old section tiles.
@@ -146,6 +147,14 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 
   void _focusDownFromTopTools() {
     iptvFocusCatalogGroupRow(ctrl.browserCategoryFocusIndex);
+  }
+
+  void _focusDownFromPortalTool() {
+    if (ctrl.portalPanelOpen) {
+      iptvFocusRowItem('iptv-portal-header', 2);
+    } else {
+      iptvFocusCatalogGroupRow(ctrl.browserCategoryFocusIndex);
+    }
   }
 
   Future<void> _openSearch(
@@ -448,7 +457,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
       tvItemIndex: 1,
-      onDownEdge: _focusDownFromTopTools,
+      onDownEdge: _focusDownFromPortalTool,
       onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
       onRightEdge: selected
           ? () => iptvFocusRowItem('portals', 0)
@@ -656,7 +665,7 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Solid rectangle shelf tab — color only when selected / hovered / focused.
+/// Shelf tab — section gradient when selected / hovered / focused.
 /// Hover/focus expands right to reveal a catalog reload control.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
@@ -707,14 +716,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    final tvFocused = iptvTvFocused(context, focused: _focused);
-    final showColor = widget.selected || _hover || (_focused && !_tv);
-    final accent = widget.spec.section == IptvSection.series
-        ? widget.spec.colors.last
-        : widget.spec.colors.first;
-    final fg = tvFocused
-        ? ForjaShellColors.brandGreen
-        : (showColor ? Colors.white : Colors.white60);
+    final showColor = widget.selected || _hover || _focused;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -724,14 +726,28 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
-          color: tvFocused
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-              : showColor
-                  ? (widget.selected ? accent : accent.withValues(alpha: 0.55))
-                  : Colors.transparent,
+          gradient: showColor
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: widget.selected
+                      ? widget.spec.colors
+                      : [
+                          widget.spec.colors[0].withValues(alpha: 0.55),
+                          widget.spec.colors[1].withValues(alpha: 0.45),
+                        ],
+                )
+              : null,
+          color: showColor ? null : Colors.transparent,
           borderRadius: _radius,
-          border: tvFocused
-              ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
+          boxShadow: widget.selected && showColor
+              ? [
+                  BoxShadow(
+                    color: widget.spec.colors[0].withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
               : null,
         ),
         child: Row(
@@ -767,13 +783,13 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                     Icon(
                       widget.spec.icon,
                       size: 16,
-                      color: fg,
+                      color: showColor ? Colors.white : Colors.white60,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       widget.spec.label,
                       style: GoogleFonts.inter(
-                        color: fg,
+                        color: showColor ? Colors.white : Colors.white60,
                         fontSize: 12.5,
                         fontWeight: widget.selected
                             ? FontWeight.w700
@@ -1265,14 +1281,19 @@ class _PortalFormDialog extends StatefulWidget {
 
 class _PortalFormDialogState extends State<_PortalFormDialog> {
   static const _codeLen = IptvPortalShare.shareCodeLength;
+  static const _portalDialogRowId = 'iptv-portal-dialog';
 
-  bool get _compact => !iptvUseTvFocus(context);
+  bool get _tv => iptvUseTvFocus(context);
 
-  double get _codeBoxWidth => _compact ? 30.0 : 38.0;
+  bool get _compact => !_tv;
 
-  double get _codeBoxHeight => _compact ? 52.0 : 76.0;
+  bool get _dense => _tv || _compact;
 
-  double get _codeFontSize => _compact ? 20.0 : 26.0;
+  double get _codeBoxWidth => _tv ? 28.0 : (_compact ? 30.0 : 38.0);
+
+  double get _codeBoxHeight => _tv ? 42.0 : (_compact ? 52.0 : 76.0);
+
+  double get _codeFontSize => _tv ? 17.0 : (_compact ? 20.0 : 26.0);
 
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
@@ -1295,6 +1316,32 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _pasteEditing = false;
 
   bool get _editing => widget.existing != null;
+
+  ShellTvFocusMeta get _pasteTvMeta => const ShellTvFocusMeta(
+        tabId: 'iptv',
+        zone: ShellTvZone.row,
+        rowId: _portalDialogRowId,
+        itemIndex: 0,
+      );
+
+  void _registerPasteTvNode() {
+    if (!iptvUseTvFocus(context)) return;
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: 'iptv',
+      rowId: _portalDialogRowId,
+      index: 0,
+      node: _pasteFocus,
+    );
+  }
+
+  void _unregisterPasteTvNode() {
+    ShellTvFocusCoordinator.unregisterItemNode(
+      tabId: 'iptv',
+      rowId: _portalDialogRowId,
+      index: 0,
+      node: _pasteFocus,
+    );
+  }
 
   @override
   void initState() {
@@ -1325,6 +1372,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _registerPasteTvNode();
       if (iptvUseTvFocus(context)) {
         if (_editing) {
           _urlFocus.requestFocus();
@@ -1342,23 +1390,28 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   KeyEventResult _handlePasteKey(FocusNode node, KeyEvent event) {
     if (mounted && iptvUseTvFocus(context) && !_editing) {
       if (!_pasteEditing) {
+        final arrow = shellTvHandleRowArrows(
+          event: event,
+          tvMeta: _pasteTvMeta,
+          onUpEdge: () {}, // top of dialog — keep focus off header close
+          onDownEdge: () => _focusDialogItem(1),
+        );
+        if (arrow == KeyEventResult.handled) return arrow;
+
         if (shellTvIsActivateKey(event)) {
           setState(() => _pasteEditing = true);
           return KeyEventResult.handled;
         }
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.arrowDown) {
-          _expandFocus.requestFocus();
-          return KeyEventResult.handled;
-        }
-        if (event is KeyDownEvent &&
+      } else {
+        if (shellTvIsNavigationKey(event) &&
             event.logicalKey == LogicalKeyboardKey.arrowUp) {
           return KeyEventResult.handled;
         }
-      } else if (event is KeyDownEvent &&
-          event.logicalKey == LogicalKeyboardKey.escape) {
-        setState(() => _pasteEditing = false);
-        return KeyEventResult.handled;
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          setState(() => _pasteEditing = false);
+          return KeyEventResult.handled;
+        }
       }
     }
     return _pasteKeyHandler?.call(node, event) ?? KeyEventResult.ignored;
@@ -1367,7 +1420,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   int get _dialogTvItemCount {
     if (_editing) return 5;
     if (_showManualForm) return 7;
-    return 4;
+    return 2;
   }
 
   int get _dialogOkIndex {
@@ -1398,12 +1451,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       switch (clamped) {
         case 0:
           _pasteFocus.requestFocus();
-        case 1:
-          _expandFocus.requestFocus();
-        case 2:
-          _submitFocus.requestFocus();
         default:
-          _cancelFocus.requestFocus();
+          _expandFocus.requestFocus();
       }
       return;
     }
@@ -1427,6 +1476,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   @override
   void dispose() {
+    _unregisterPasteTvNode();
     _pasteFocus.onKeyEvent = _pasteKeyHandler;
     _urlCtrl.dispose();
     _userCtrl.dispose();
@@ -1566,6 +1616,20 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     Navigator.of(context).pop();
   }
 
+  Widget _portalDialogCloseButton({required VoidCallback? onTap}) {
+    final icon = ForjaPlainIcon(
+      icon: Icons.close_rounded,
+      tooltip: 'Close',
+      color: IptvShellStyle.iconMuted,
+      size: 22,
+      onTap: onTap,
+    );
+    if (iptvUseTvFocus(context)) {
+      return ExcludeFocus(child: icon);
+    }
+    return icon;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
@@ -1583,32 +1647,37 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     final urlIndex = _editing ? 0 : (_showManualForm ? 2 : -1);
     final userIndex = _editing ? 1 : (_showManualForm ? 3 : -1);
     final passIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
-    final compact = _compact;
-    final gapAfterTitle = compact ? 14.0 : 22.0;
-    final gapBetweenFields = compact ? 10.0 : 18.0;
-    final gapBeforeManual = compact ? 12.0 : 20.0;
-    final gapBeforeActions = compact ? 12.0 : 20.0;
-    final surfacePadding = compact
-        ? const EdgeInsets.fromLTRB(16, 16, 12, 16)
-        : EdgeInsets.fromLTRB(
-            24,
-            20,
-            16,
-            _editing || _showManualForm ? 24 : 32,
-          );
-    final maxHeight = MediaQuery.sizeOf(context).height -
-        MediaQuery.viewInsetsOf(context).bottom -
-        (compact ? 32.0 : 64.0);
+    final gapAfterTitle = _tv ? 8.0 : (_compact ? 14.0 : 22.0);
+    final gapBetweenFields = _tv ? 8.0 : (_compact ? 10.0 : 18.0);
+    final gapBeforeManual = _tv ? 8.0 : (_compact ? 12.0 : 20.0);
+    final gapBeforeActions = _tv ? 10.0 : (_compact ? 12.0 : 20.0);
+    final surfacePadding = _tv
+        ? const EdgeInsets.fromLTRB(14, 12, 10, 14)
+        : _compact
+            ? const EdgeInsets.fromLTRB(16, 16, 12, 16)
+            : EdgeInsets.fromLTRB(
+                24,
+                20,
+                16,
+                _editing || _showManualForm ? 24 : 32,
+              );
+    final screenH = MediaQuery.sizeOf(context).height;
+    final maxHeight = _tv
+        ? (screenH * 0.62).clamp(320.0, 460.0)
+        : screenH -
+            MediaQuery.viewInsetsOf(context).bottom -
+            (_compact ? 32.0 : 64.0);
+    final dialogMaxWidth = _tv ? 360.0 : 440.0;
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, _) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.symmetric(
-          horizontal: compact ? 20 : 24,
-          vertical: compact ? 16 : 32,
+          horizontal: _tv ? 28 : (_compact ? 20 : 24),
+          vertical: _tv ? 36 : (_compact ? 16 : 32),
         ),
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 440, maxHeight: maxHeight),
+          constraints: BoxConstraints(maxWidth: dialogMaxWidth, maxHeight: maxHeight),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 13),
             child: Stack(
@@ -1628,14 +1697,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                             Expanded(
                               child: Text(
                                 _editing ? 'Edit Portal' : 'Add Portal',
-                                style: IptvShellStyle.overlayTitle,
+                                style: IptvShellStyle.overlayTitle.copyWith(
+                                  fontSize: _tv ? 17 : 19,
+                                ),
                               ),
                             ),
-                            ForjaPlainIcon(
-                              icon: Icons.close_rounded,
-                              tooltip: 'Close',
-                              color: IptvShellStyle.iconMuted,
-                              size: 22,
+                            _portalDialogCloseButton(
                               onTap: ctrl.isAdding ? null : _cancel,
                             ),
                           ],
@@ -1706,7 +1773,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                       : const SizedBox(width: double.infinity),
                                 ),
                                 if (ctrl.addError != null) ...[
-                                  SizedBox(height: compact ? 8 : 12),
+                                  SizedBox(height: _tv ? 6 : (_compact ? 8 : 12)),
                                   Text(
                                     ctrl.addError!,
                                     style: GoogleFonts.poppins(
@@ -1719,7 +1786,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                             ),
                           ),
                         ),
-                        if (!ctrl.isAdding) ...[
+                        if (!ctrl.isAdding && (_editing || _showManualForm)) ...[
                           SizedBox(height: gapBeforeActions),
                           Row(
                             children: [
@@ -1727,7 +1794,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                 child: IptvPrimaryButton(
                                   icon: Icons.check_rounded,
                                   label: _editing ? 'Save' : 'Add',
-                                  dense: compact,
+                                  dense: _dense,
                                   focusNode: _submitFocus,
                                   tvRowId: 'iptv-portal-dialog',
                                   tvItemIndex: _dialogOkIndex,
@@ -1740,7 +1807,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                   icon: Icons.close_rounded,
                                   label: 'Cancel',
                                   subtle: true,
-                                  dense: compact,
+                                  dense: _dense,
                                   focusNode: _cancelFocus,
                                   tvRowId: 'iptv-portal-dialog',
                                   tvItemIndex: _dialogCancelIndex,
@@ -1751,7 +1818,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                           ),
                         ],
                         if (ctrl.isAdding) ...[
-                          SizedBox(height: compact ? 12 : 16),
+                          SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -1843,7 +1910,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         tvRowId: 'iptv-portal-dialog',
         tvItemIndex: 1,
         onUpEdge: () => _focusDialogItem(0),
-        onDownEdge: () => _focusDialogItem(_showManualForm ? 2 : _dialogOkIndex),
+        onDownEdge: () =>
+            _focusDialogItem(_showManualForm ? 2 : 1),
         onFocusChange: (focused) => setState(() => _expandFocused = focused),
         child: child,
       );
@@ -1871,7 +1939,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             letterSpacing: 0.8,
           ),
         ),
-        SizedBox(height: _compact ? 8 : 14),
+        SizedBox(height: _tv ? 6 : (_compact ? 8 : 14)),
         SizedBox(
           height: _codeBoxHeight,
           child: Stack(
@@ -1889,7 +1957,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                       '-',
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.35),
-                        fontSize: _compact ? 16 : 22,
+                        fontSize: _tv ? 14 : (_compact ? 16 : 22),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -2014,10 +2082,10 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     int dialogIndex = -1,
   }) {
     final tv = iptvUseTvFocus(context);
-    final compact = _compact;
+    final compact = _dense;
     final hintStyle = GoogleFonts.poppins(
       color: Colors.white.withValues(alpha: 0.25),
-      fontSize: compact ? 13 : 14,
+      fontSize: _tv ? 12 : (compact ? 13 : 14),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2031,7 +2099,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             letterSpacing: 0.8,
           ),
         ),
-        SizedBox(height: compact ? 4 : 6),
+        SizedBox(height: _tv ? 3 : (compact ? 4 : 6)),
         if (tv && focusNode != null && dialogIndex >= 0)
           _IptvPortalDialogField(
             controller: c,
@@ -2042,7 +2110,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             suffixIcon: suffix,
             style: GoogleFonts.poppins(
               color: IptvShellStyle.textPrimary,
-              fontSize: 14,
+              fontSize: _tv ? 13 : 14,
             ),
             onArrowUp: () => _focusDialogItem(dialogIndex - 1),
             onArrowDown: () => _focusDialogItem(dialogIndex + 1),
@@ -2054,7 +2122,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             obscureText: obscure,
             style: GoogleFonts.poppins(
               color: IptvShellStyle.textPrimary,
-              fontSize: compact ? 13 : 14,
+              fontSize: _tv ? 12 : (compact ? 13 : 14),
             ),
             decoration: iptvDialogFieldDecoration(
               focused: focusNode?.hasFocus ?? false,
@@ -2064,7 +2132,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             ).copyWith(
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 12,
-                vertical: compact ? 8 : 10,
+                vertical: _tv ? 7 : (compact ? 8 : 10),
               ),
             ),
           ),

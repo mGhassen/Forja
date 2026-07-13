@@ -33,6 +33,40 @@ void main() {
       movie: 'https://vidrock.net/movie/$tmdbId',
       tv: 'https://vidrock.net/tv/$tvId/$season/$episode',
     ),
+    'vidfast': (
+      movie: 'https://vidfast.pro/movie/$tmdbId?autoPlay=true',
+      tv: 'https://vidfast.pro/tv/$tvId/$season/$episode?autoPlay=true',
+    ),
+    '2embed': (
+      movie: 'https://www.2embed.cc/embed/$tmdbId',
+      tv: 'https://www.2embed.cc/embedtv/$tvId&s=$season&e=$episode',
+    ),
+    'superembed': (
+      movie: 'https://multiembed.mov/?video_id=$tmdbId&tmdb=1',
+      tv: 'https://multiembed.mov/?video_id=$tvId&tmdb=1&s=$season&e=$episode',
+    ),
+    'autoembed': (
+      movie: 'https://autoembed.co/movie/tmdb/$tmdbId',
+      tv: 'https://autoembed.co/tv/tmdb/$tvId-$season-$episode',
+    ),
+    '111movies': (
+      movie: 'https://111movies.net/movie/$tmdbId',
+      tv: 'https://111movies.net/tv/$tvId/$season/$episode',
+    ),
+    'moviesapi': (
+      movie: 'https://moviesapi.to/movie/$tmdbId',
+      tv: 'https://moviesapi.to/tv/$tvId-$season-$episode',
+    ),
+    'smashystream': (
+      movie: 'https://player.smashystream.com/playere.php?tmdb=$tmdbId',
+      tv:
+          'https://player.smashystream.com/playere.php?tmdb=$tvId&season=$season&episode=$episode',
+    ),
+    'primewire': (
+      movie: 'https://www.primewire.tf/embed/movie?tmdb=$tmdbId',
+      tv:
+          'https://www.primewire.tf/embed/tv?tmdb=$tvId&season=$season&episode=$episode',
+    ),
   };
 
   for (final entry in providers.entries) {

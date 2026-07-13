@@ -2,10 +2,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/src/playback/videasy_extractor.dart';
 
 void main() {
-  test('doubleEncodeTitle double-encodes spaces', () {
+  test('wings sources URL double-encodes title via Uri query builder', () {
+    final uri = Uri.https(
+      'api.wingsdatabase.com',
+      '/neon2/sources-with-title',
+      {
+        'title': VideasyExtractor.wingsTitleQueryValue(
+          'The Mysterious Benedict Society',
+        ),
+        'mediaType': 'tv',
+        'tmdbId': '104359',
+        'enc': '2',
+        'seed': 'test-seed',
+        'year': '2021',
+        'imdbId': 'tt11875316',
+        'seasonId': '1',
+        'episodeId': '1',
+        'totalSeasons': '2',
+      },
+    );
     expect(
-      VideasyExtractor.doubleEncodeTitle('Fight Club'),
-      'Fight%2520Club',
+      uri.query,
+      contains('title=The%2520Mysterious%2520Benedict%2520Society'),
+    );
+    expect(uri.query, isNot(contains('%252520')));
+    expect(uri.host, 'api.wingsdatabase.com');
+    expect(uri.path, '/neon2/sources-with-title');
+    expect(uri.query, contains('totalSeasons=2'));
+  });
+
+  test('wingsTitleQueryValue single-encodes for query map', () {
+    expect(
+      VideasyExtractor.wingsTitleQueryValue('Fight Club'),
+      'Fight%20Club',
     );
   });
 

@@ -53,6 +53,16 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
+    if (showControls &&
+        (key == LogicalKeyboardKey.arrowLeft ||
+            key == LogicalKeyboardKey.arrowRight ||
+            key == LogicalKeyboardKey.arrowUp ||
+            key == LogicalKeyboardKey.arrowDown ||
+            key == LogicalKeyboardKey.mediaRewind ||
+            key == LogicalKeyboardKey.mediaFastForward)) {
+      return false;
+    }
+
     if (key == LogicalKeyboardKey.arrowLeft ||
         key == LogicalKeyboardKey.mediaRewind) {
       onSeekBack();

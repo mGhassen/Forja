@@ -143,6 +143,21 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
   return ShellTvFocusCoordinator.focusRowItem('iptv', rowId, idx);
 }
 
+/// D-pad focus index for a stream's group in [IptvController.browserSidebarCategories].
+int iptvBrowserCategoryIndexFor(IptvController ctrl, String categoryId) {
+  final idx = ctrl.browserSidebarCategories
+      .indexWhere((c) => c.id == categoryId);
+  return idx >= 0 ? idx : 0;
+}
+
+/// Left from a channel tile → that channel's group row in the sidebar.
+VoidCallback iptvStreamLeftEdge(IptvController ctrl, IptvStream stream) {
+  return () => iptvFocusRowItem(
+        'browser-categories',
+        iptvBrowserCategoryIndexFor(ctrl, stream.categoryId),
+      );
+}
+
 bool iptvFocusBrowserCategories(IptvController ctrl) =>
     iptvFocusRowItem('browser-categories', ctrl.browserCategoryFocusIndex);
 
@@ -286,6 +301,12 @@ Widget iptvBackButton(
   double size = 22,
   String tooltip = 'Back',
   FocusNode? focusNode,
+  String? tvRowId,
+  int? tvItemIndex,
+  VoidCallback? onUpEdge,
+  VoidCallback? onDownEdge,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onRightEdge,
 }) {
   if (onTap == null) return const SizedBox.shrink();
   if (iptvUseTvFocus(context)) {
@@ -298,6 +319,12 @@ Widget iptvBackButton(
       borderRadius: 22,
       tooltip: tooltip,
       focusNode: focusNode,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
     );
   }
   return ForjaPlainIcon(
@@ -348,6 +375,12 @@ class _IptvFocusIconTap extends StatefulWidget {
     required this.borderRadius,
     this.tooltip,
     this.focusNode,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final IconData icon;
@@ -358,6 +391,12 @@ class _IptvFocusIconTap extends StatefulWidget {
   final double borderRadius;
   final String? tooltip;
   final FocusNode? focusNode;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<_IptvFocusIconTap> createState() => _IptvFocusIconTapState();
@@ -394,6 +433,12 @@ class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
       onTap: widget.onTap,
       borderRadius: widget.borderRadius,
       focusNode: widget.focusNode,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: child,
@@ -657,6 +702,10 @@ class IptvRoundIcon extends StatefulWidget {
   final bool big;
   final String? tvRowId;
   final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   const IptvRoundIcon({
     super.key,
@@ -666,6 +715,10 @@ class IptvRoundIcon extends StatefulWidget {
     this.big = false,
     this.tvRowId,
     this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   @override
@@ -704,6 +757,10 @@ class _IptvRoundIconState extends State<IptvRoundIcon> {
           borderRadius: size / 2,
           tvRowId: widget.tvRowId,
           tvItemIndex: widget.tvItemIndex,
+          onUpEdge: widget.onUpEdge,
+          onDownEdge: widget.onDownEdge,
+          onLeftEdge: widget.onLeftEdge,
+          onRightEdge: widget.onRightEdge,
           onFocusChange: (focused) => setState(() => _focused = focused),
           child: child,
         ),

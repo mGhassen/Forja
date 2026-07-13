@@ -129,6 +129,7 @@ class StreamProviderResolver {
         imdbId: movie.imdbId,
         season: isTv ? season : null,
         episode: isTv ? episode : null,
+        totalSeasons: isTv ? movie.numberOfSeasons : null,
         isCancelled: cancelled,
       );
       if (cancelled() || result == null || result.url.isEmpty) return null;
@@ -216,12 +217,22 @@ class StreamProviderResolver {
     final String url = isTv
         ? provider['tv'](movie.id.toString(), season, episode)
         : provider['movie'](movie.id.toString());
+    if (kDebugMode) {
+      debugPrint('[$key] probing embed: $url');
+    }
     final result = await _extractor.extract(
       url,
       timeout: const Duration(seconds: 5),
       isCancelled: cancelled,
+      providerId: key,
     );
-    if (cancelled() || result == null) return null;
+    if (cancelled() || result == null) {
+      if (kDebugMode) debugPrint('[$key] no stream found');
+      return null;
+    }
+    if (kDebugMode) {
+      debugPrint('[$key] resolved ${result.sources?.length ?? 1} stream(s)');
+    }
     return StreamProviderResolveResult(
       streamUrl: result.url,
       audioUrl: result.audioUrl,
@@ -265,6 +276,7 @@ class StreamProviderResolver {
       url,
       timeout: const Duration(seconds: 45),
       isCancelled: isCancelled,
+      providerId: 'webstreamr',
     );
     if (isCancelled() || result == null || result.url.isEmpty) return null;
 

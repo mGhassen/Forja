@@ -8,6 +8,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -71,11 +72,23 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     super.initState();
     _health.addAll(widget.guide.streamHealth);
     _syncFocusIndices();
+    _focusNode.addListener(_reclaimFocusIfLost);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollSelectedGroupIntoView(animate: false);
       _scrollToFocused(animate: false);
-      _focusNode.requestFocus();
+      _claimFocus();
     });
+  }
+
+  void _claimFocus() {
+    if (!mounted || !_focusNode.canRequestFocus) return;
+    _focusNode.requestFocus();
+  }
+
+  /// Keep D-pad on the panel root — InkWell / chrome must not steal keys.
+  void _reclaimFocusIfLost() {
+    if (!mounted || _focusNode.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
   }
 
   @override
@@ -98,6 +111,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       t.cancel();
     }
     _healthDebounce.clear();
+    _focusNode.removeListener(_reclaimFocusIfLost);
     _focusNode.dispose();
     _groupScroll.dispose();
     _channelScroll.dispose();
@@ -265,12 +279,23 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     }
   }
 
+  void _close() {
+    _focusNode.removeListener(_reclaimFocusIfLost);
+    widget.onClose();
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape) {
-      widget.onClose();
+    if (key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack) {
+      if (!_wide && _step == _GuideStep.channels) {
+        setState(() => _step = _GuideStep.groups);
+        WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+        return KeyEventResult.handled;
+      }
+      _close();
       return KeyEventResult.handled;
     }
 
@@ -290,9 +315,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       _focusRight();
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.numpadEnter ||
-        key == LogicalKeyboardKey.space) {
+    if (shellTvIsActivateKey(event)) {
       _activateFocused();
       return KeyEventResult.handled;
     }
@@ -359,11 +382,15 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     }
     if (_step == _GuideStep.channels) {
       setState(() => _step = _GuideStep.groups);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_focusNode.canRequestFocus) _focusNode.requestFocus();
+      });
     }
   }
 
   void _focusRight() {
     if (_wide) {
+      // Already on channels — trap Right so focus cannot leave to the video.
       if (_focusColumn == _FocusColumn.groups) {
         setState(() => _focusColumn = _FocusColumn.channels);
         _scrollToFocused();
@@ -374,7 +401,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final g = widget.guide.groups[_focusedGroupIndex];
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
     }
+    // Channels step: trap Right (do not dismiss / leave panel).
   }
 
   void _activateFocused() {
@@ -396,6 +425,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final g = widget.guide.groups[_focusedGroupIndex];
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_focusNode.canRequestFocus) _focusNode.requestFocus();
+      });
       return;
     }
     final channels = _visibleChannels;
@@ -409,33 +441,39 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final wide = _wide;
 
     return Positioned.fill(
-      child: Focus(
-        focusNode: _focusNode,
-        autofocus: true,
-        onKeyEvent: _onKey,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: widget.onClose,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.28),
+      child: FocusScope(
+        child: Focus(
+          focusNode: _focusNode,
+          autofocus: true,
+          // Custom D-pad highlight — do not let Material/InkWell take focus or
+          // DirectionalFocus will walk Right out of the panel onto the video.
+          descendantsAreFocusable: false,
+          descendantsAreTraversable: false,
+          onKeyEvent: _onKey,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: _close,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.28),
+                  ),
                 ),
               ),
-            ),
-            Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: _panelPadding(context),
-                child: SizedBox(
-                  height: _panelHeight(context),
-                  child: _buildFrostedPanelShell(wide: wide),
+              Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: _panelPadding(context),
+                  child: SizedBox(
+                    height: _panelHeight(context),
+                    child: _buildFrostedPanelShell(wide: wide),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -491,6 +529,27 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final title = _headerGroupName();
     final playing = _currentChannel;
     final showChannelMeta = wide || _step == _GuideStep.channels;
+    final tv = iptvUseTvFocus(context);
+
+    Widget headerBack() {
+      if (!showBack) return const SizedBox(width: 40, height: 36);
+      final back = iptvBackButton(
+        context,
+        onTap: () => setState(() => _step = _GuideStep.groups),
+        color: Colors.white,
+        size: 22,
+      );
+      return tv ? ExcludeFocus(child: back) : back;
+    }
+
+    Widget headerClose() {
+      final close = iptvCloseButton(
+        context,
+        color: Colors.white70,
+        onTap: _close,
+      );
+      return tv ? ExcludeFocus(child: close) : close;
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
@@ -511,15 +570,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: showBack
-                      ? iptvBackButton(
-                          context,
-                          onTap: () =>
-                              setState(() => _step = _GuideStep.groups),
-                          color: Colors.white,
-                          size: 22,
-                        )
-                      : const SizedBox(width: 40, height: 36),
+                  child: headerBack(),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 44),
@@ -535,11 +586,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: iptvCloseButton(
-                    context,
-                    color: Colors.white70,
-                    onTap: widget.onClose,
-                  ),
+                  child: headerClose(),
                 ),
               ],
             ),

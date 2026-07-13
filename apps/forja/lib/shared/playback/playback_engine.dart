@@ -131,7 +131,7 @@ abstract final class PlaybackEngine {
             ? StreamProviderResolver()
             : r;
         if (maxInFlight > 1) taskResolvers.add(taskResolver);
-        if (kDebugMode && maxInFlight > 1) {
+        if (kDebugMode) {
           final waiting = total - nextIndex;
           debugPrint(
             '[PlaybackEngine] probing $key '

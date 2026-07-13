@@ -1486,7 +1486,6 @@ class _BrowserViewState extends State<_BrowserView> {
             iptvActiveSectionShelfIndex(widget.ctrl),
           ),
         );
-        final selectedCatIdx = widget.ctrl.browserCategoryFocusIndex;
         final grid = GridView.builder(
           padding: EdgeInsets.fromLTRB(12, 4, 12, 12),
           gridDelegate: tv
@@ -1503,29 +1502,30 @@ class _BrowserViewState extends State<_BrowserView> {
                   childAspectRatio: 0.9,
                 ),
           itemCount: list.length,
-          itemBuilder: (_, i) => _StreamCard(
-            stream: list[i],
-            ctrl: widget.ctrl,
-            gridIndex: i,
-            gridColumns: cross,
-            onUpEdge: i < cross
-                ? iptvStreamUpEdge(
-                    widget.ctrl,
-                    index: i,
-                    columns: cross,
-                  )
-                : null,
-            onRightEdge: widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
-                ? () => iptvFocusRowItem('portals', 0)
-                : null,
-            onLeftEdge: i % cross == 0
-                ? () => iptvFocusRowItem(
-                    'browser-categories',
-                    selectedCatIdx,
-                  )
-                : null,
-            onTap: () => _onStreamTap(list[i]),
-          ),
+          itemBuilder: (_, i) {
+            final stream = list[i];
+            return _StreamCard(
+              stream: stream,
+              ctrl: widget.ctrl,
+              gridIndex: i,
+              gridColumns: cross,
+              onUpEdge: i < cross
+                  ? iptvStreamUpEdge(
+                      widget.ctrl,
+                      index: i,
+                      columns: cross,
+                    )
+                  : null,
+              onRightEdge:
+                  widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
+                      ? () => iptvFocusRowItem('portals', 0)
+                      : null,
+              onLeftEdge: i % cross == 0
+                  ? iptvStreamLeftEdge(widget.ctrl, stream)
+                  : null,
+              onTap: () => _onStreamTap(stream),
+            );
+          },
         );
         if (!_LiveHealthProbe.usesScrollDebounce(ctx)) return grid;
         return NotificationListener<ScrollNotification>(
@@ -1541,7 +1541,6 @@ class _BrowserViewState extends State<_BrowserView> {
     final list = _filteredStreams;
     if (list.isEmpty) return _buildStreamsEmpty();
 
-    final selectedCatIdx = widget.ctrl.browserCategoryFocusIndex;
     final categoryNames = {for (final c in ctrl.categories) c.id: c.name};
 
     iptvSyncRow(
@@ -1565,10 +1564,7 @@ class _BrowserViewState extends State<_BrowserView> {
           ctrl: ctrl,
           categoryName: categoryNames[stream.categoryId] ?? '',
           listIndex: i,
-          onLeftEdge: () => iptvFocusRowItem(
-            'browser-categories',
-            selectedCatIdx,
-          ),
+          onLeftEdge: iptvStreamLeftEdge(ctrl, stream),
           onRightEdge: ctrl.portalPanelOpen
               ? () => iptvFocusRowItem('portals', 0)
               : null,

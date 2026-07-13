@@ -70,6 +70,14 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidnest" => 65,
             "vidzee" => 60,
             "vidrock" => 55,
+            "vidfast" => 58,
+            "2embed" => 57,
+            "superembed" => 56,
+            "autoembed" => 55,
+            "111movies" => 54,
+            "moviesapi" => 53,
+            "smashystream" => 46,
+            "primewire" => 48,
             "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
@@ -82,6 +90,14 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidnest" => 65,
             "vidzee" => 60,
             "vidrock" => 55,
+            "smashystream" => 62,
+            "vidfast" => 58,
+            "2embed" => 57,
+            "superembed" => 56,
+            "autoembed" => 55,
+            "111movies" => 54,
+            "moviesapi" => 53,
+            "primewire" => 48,
             "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
@@ -135,6 +151,22 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("vidzee", SourceDomain::Series)
             | ("vidrock", SourceDomain::Movies)
             | ("vidrock", SourceDomain::Series)
+            | ("vidfast", SourceDomain::Movies)
+            | ("vidfast", SourceDomain::Series)
+            | ("2embed", SourceDomain::Movies)
+            | ("2embed", SourceDomain::Series)
+            | ("superembed", SourceDomain::Movies)
+            | ("superembed", SourceDomain::Series)
+            | ("autoembed", SourceDomain::Movies)
+            | ("autoembed", SourceDomain::Series)
+            | ("111movies", SourceDomain::Movies)
+            | ("111movies", SourceDomain::Series)
+            | ("moviesapi", SourceDomain::Movies)
+            | ("moviesapi", SourceDomain::Series)
+            | ("smashystream", SourceDomain::Movies)
+            | ("smashystream", SourceDomain::Series)
+            | ("primewire", SourceDomain::Movies)
+            | ("primewire", SourceDomain::Series)
             | ("service111477", SourceDomain::Movies)
             | ("service111477", SourceDomain::Series)
             | ("webstreamr", SourceDomain::Movies)

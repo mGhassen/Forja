@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- IPTV / Xtream panels often serve streams over plain HTTP. MediaKit (ffmpeg)
+     bypasses Android's cleartext policy; ExoPlayer (DefaultHttpDataSource) does not.
+     base-config must allow cleartext — domain-config alone overrides usesCleartextTraffic. -->
 <network-security-config>
-  <domain-config cleartextTrafficPermitted="true">
-    <domain includeSubdomains="false">127.0.0.1</domain>
-    <domain includeSubdomains="false">localhost</domain>
-  </domain-config>
+  <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

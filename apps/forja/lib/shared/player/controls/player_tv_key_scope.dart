@@ -55,7 +55,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   @override
   void initState() {
     super.initState();
-    if (widget.enabled) {
+    if (widget.enabled && !widget.showControls) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
     }
   }

@@ -66,6 +66,54 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
+            id: "vidfast".into(),
+            name: "VidFast".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "2embed".into(),
+            name: "2Embed".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "superembed".into(),
+            name: "SuperEmbed".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "autoembed".into(),
+            name: "AutoEmbed".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "111movies".into(),
+            name: "111Movies".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "moviesapi".into(),
+            name: "MoviesAPI".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "smashystream".into(),
+            name: "SmashyStream".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "primewire".into(),
+            name: "PrimeWire".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
             id: "videasy".into(),
             name: "Videasy".into(),
             has_movie_template: false,
@@ -87,6 +135,22 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
         "vidnest" => Some(format!("https://vidnest.fun/movie/{tmdb_id}")),
         "vidzee" => Some(format!("https://vidzee.wtf/movie/{tmdb_id}")),
         "vidrock" => Some(format!("https://vidrock.net/movie/{tmdb_id}")),
+        "vidfast" => Some(format!(
+            "https://vidfast.pro/movie/{tmdb_id}?autoPlay=true"
+        )),
+        "2embed" => Some(format!("https://www.2embed.cc/embed/{tmdb_id}")),
+        "superembed" => Some(format!(
+            "https://multiembed.mov/?video_id={tmdb_id}&tmdb=1"
+        )),
+        "autoembed" => Some(format!("https://autoembed.co/movie/tmdb/{tmdb_id}")),
+        "111movies" => Some(format!("https://111movies.net/movie/{tmdb_id}")),
+        "moviesapi" => Some(format!("https://moviesapi.to/movie/{tmdb_id}")),
+        "smashystream" => Some(format!(
+            "https://player.smashystream.com/playere.php?tmdb={tmdb_id}"
+        )),
+        "primewire" => Some(format!(
+            "https://www.primewire.tf/embed/movie?tmdb={tmdb_id}"
+        )),
         _ => None,
     }
 }
@@ -107,6 +171,30 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
         )),
         "vidrock" => Some(format!(
             "https://vidrock.net/tv/{tmdb_id}/{season}/{episode}"
+        )),
+        "vidfast" => Some(format!(
+            "https://vidfast.pro/tv/{tmdb_id}/{season}/{episode}?autoPlay=true"
+        )),
+        "2embed" => Some(format!(
+            "https://www.2embed.cc/embedtv/{tmdb_id}&s={season}&e={episode}"
+        )),
+        "superembed" => Some(format!(
+            "https://multiembed.mov/?video_id={tmdb_id}&tmdb=1&s={season}&e={episode}"
+        )),
+        "autoembed" => Some(format!(
+            "https://autoembed.co/tv/tmdb/{tmdb_id}-{season}-{episode}"
+        )),
+        "111movies" => Some(format!(
+            "https://111movies.net/tv/{tmdb_id}/{season}/{episode}"
+        )),
+        "moviesapi" => Some(format!(
+            "https://moviesapi.to/tv/{tmdb_id}-{season}-{episode}"
+        )),
+        "smashystream" => Some(format!(
+            "https://player.smashystream.com/playere.php?tmdb={tmdb_id}&season={season}&episode={episode}"
+        )),
+        "primewire" => Some(format!(
+            "https://www.primewire.tf/embed/tv?tmdb={tmdb_id}&season={season}&episode={episode}"
         )),
         _ => None,
     }
@@ -154,6 +242,30 @@ mod tests {
         assert_eq!(
             build_tv_url("vidzee", 1399, 2, 5),
             Some("https://vidzee.wtf/tv/1399/2/5".into())
+        );
+    }
+
+    #[test]
+    fn vidfast_urls() {
+        assert_eq!(
+            build_movie_url("vidfast", 550),
+            Some("https://vidfast.pro/movie/550?autoPlay=true".into())
+        );
+        assert_eq!(
+            build_tv_url("vidfast", 1399, 2, 5),
+            Some("https://vidfast.pro/tv/1399/2/5?autoPlay=true".into())
+        );
+    }
+
+    #[test]
+    fn twoembed_urls() {
+        assert_eq!(
+            build_movie_url("2embed", 550),
+            Some("https://www.2embed.cc/embed/550".into())
+        );
+        assert_eq!(
+            build_tv_url("2embed", 1399, 2, 5),
+            Some("https://www.2embed.cc/embedtv/1399&s=2&e=5".into())
         );
     }
 }

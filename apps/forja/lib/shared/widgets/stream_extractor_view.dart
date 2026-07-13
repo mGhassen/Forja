@@ -115,6 +115,14 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
                      url.contains('vidsrc.cc') ||
                      url.contains('vidlink.pro') ||
                      url.contains('vidnest.fun') ||
+                     url.contains('vidfast.pro') ||
+                     url.contains('2embed.cc') ||
+                     url.contains('multiembed.mov') ||
+                     url.contains('autoembed.co') ||
+                     url.contains('111movies.net') ||
+                     url.contains('moviesapi.to') ||
+                     url.contains('smashystream.com') ||
+                     url.contains('primewire.tf') ||
                      url.contains('anitaro.live') ||
                      url.contains('111movies.com') ||
                      url.contains('google.com')) {
