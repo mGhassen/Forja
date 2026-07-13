@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 1 file in `features/` (`iptv_pt_screen.dart`) · player screens in `shared/player/` |
-| **Next action** | Home, details, settings, live matches, search done; next: Anime or Phase E (IPTV) |
+| **Next action** | Home, details, settings, live matches, search, anime done; next: Phase E (IPTV) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -55,20 +55,23 @@
 
 ---
 
-## Tier 1b — live matches orchestrator (&lt;800) — done
+## Tier 1b — TV-scope orchestrators (&lt;800) — done
 
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
-| [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Orchestrator | In | State + lifecycle; models/widgets parts + data/build/playback mixins |
-| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | State + lifecycle; search/tv/build mixins + widgets part |
+| [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Orchestrator | In | models/widgets parts + data/build/playback mixins |
+| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
+| [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + widgets part |
+| [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
 
 ---
 
-## Tier 1b — home orchestrator (Phase B target &lt;800) — done
+## Tier 1c — home/details orchestrators — done
 
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
-| [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | State + lifecycle; feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
+| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 545 | Details orchestrator | In | 8 `details_screen_*.dart` mixins |
+| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | `sections/` + `widgets/` |
 
 ---
 
@@ -76,11 +79,10 @@
 
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
-| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | Phase C done |
+| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | Phase C done — see Tier 1c |
 | [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 2,880 | Sub-hub | In | Partial extract from PT screen |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
 | [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 2,061 | Player | In | libmpv + channel guide overlays |
-| [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | State + lifecycle; search/tv/build mixins + widgets part |
 | [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 1,783 | Data/Service | In | Non-UI god object |
 | [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
 | [`anime/catalog/anime_service.dart`](../../apps/forja/lib/features/anime/catalog/anime_service.dart) | 1,648 | Data/Service | In | Catalog backend |
@@ -94,7 +96,7 @@ These tabs are in [TV scope](../../.cursor/rules/forja-tv-scope.mdc) and under ~
 
 | File | Lines | Notes |
 |------|------:|-------|
-| [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 1,099 | Uses `hub/` patterns |
+| [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In |
 | [`asian_drama/asian_drama_screen.dart`](../../apps/forja/lib/features/asian_drama/asian_drama_screen.dart) | 781 | Uses `HubCinematicHero` |
 | [`my_list/lists_screen.dart`](../../apps/forja/lib/features/my_list/lists_screen.dart) | 763 | |
 | [`my_list/my_list_screen.dart`](../../apps/forja/lib/features/my_list/my_list_screen.dart) | 379 | |
@@ -151,7 +153,10 @@ Paths relative to `apps/forja/lib/features/`.
 | 1196 | iptv | `iptv/iptv/data/iptv_network.dart` | Data/Service | In |
 | 1153 | books | `books/book_reader_screen.dart` | Player | Out |
 | 1127 | iptv | `iptv/iptv/m3u/m3u_playlists_screen.dart` | Sub-hub | In |
-| 1099 | anime | `anime/anime_screen.dart` | Orchestrator | In |
+| 535 | anime | `anime/anime_screen_build.dart` | Build mixin | In |
+| 255 | anime | `anime/anime_widgets.dart` | Continue-watching card | In |
+| 195 | anime | `anime/anime_screen_feed.dart` | Feed mixin | In |
+| 131 | anime | `anime/anime_screen.dart` | Orchestrator | In |
 | 1040 | audiobooks | `audiobooks/catalog/audiobook_service.dart` | Data/Service | Out |
 | 1026 | iptv | `iptv/iptv/channel_guide/iptv_channel_guide_panel.dart` | UI Panel | In |
 | 920 | music | `music/music_player_screen.dart` | Player | Out |
