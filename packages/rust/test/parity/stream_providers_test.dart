@@ -26,16 +26,16 @@ void main() {
       tv: 'https://vidnest.fun/tv/$tvId/$season/$episode',
     ),
     'vidzee': (
-      movie: 'https://vidzee.wtf/movie/$tmdbId',
-      tv: 'https://vidzee.wtf/tv/$tvId/$season/$episode',
+      movie: 'https://player.vidzee.wtf/embed/movie/$tmdbId',
+      tv: 'https://player.vidzee.wtf/embed/tv/$tvId/$season/$episode',
     ),
     'vidrock': (
-      movie: 'https://vidrock.net/movie/$tmdbId',
-      tv: 'https://vidrock.net/tv/$tvId/$season/$episode',
+      movie: 'https://vidrock.ru/movie/$tmdbId',
+      tv: 'https://vidrock.ru/tv/$tvId/$season/$episode',
     ),
     'vidfast': (
-      movie: 'https://vidfast.pro/movie/$tmdbId?autoPlay=true',
-      tv: 'https://vidfast.pro/tv/$tvId/$season/$episode?autoPlay=true',
+      movie: 'https://vidfast.vc/movie/$tmdbId?autoPlay=true',
+      tv: 'https://vidfast.vc/tv/$tvId/$season/$episode?autoPlay=true',
     ),
     '2embed': (
       movie: 'https://www.2embed.cc/embed/$tmdbId',
@@ -50,17 +50,16 @@ void main() {
       tv: 'https://autoembed.co/tv/tmdb/$tvId-$season-$episode',
     ),
     '111movies': (
-      movie: 'https://111movies.net/movie/$tmdbId',
-      tv: 'https://111movies.net/tv/$tvId/$season/$episode',
+      movie: 'https://player.vidlove.cc/embed/movie/$tmdbId',
+      tv: 'https://player.vidlove.cc/embed/tv/$tvId/$season/$episode',
     ),
     'moviesapi': (
       movie: 'https://moviesapi.to/movie/$tmdbId',
       tv: 'https://moviesapi.to/tv/$tvId-$season-$episode',
     ),
     'smashystream': (
-      movie: 'https://player.smashystream.com/playere.php?tmdb=$tmdbId',
-      tv:
-          'https://player.smashystream.com/playere.php?tmdb=$tvId&season=$season&episode=$episode',
+      movie: 'https://anyembed.xyz/embed/tmdb-movie-$tmdbId',
+      tv: 'https://anyembed.xyz/embed/tmdb-tv-$tvId-$season-$episode',
     ),
     'primewire': (
       movie: 'https://www.primewire.tf/embed/movie?tmdb=$tmdbId',

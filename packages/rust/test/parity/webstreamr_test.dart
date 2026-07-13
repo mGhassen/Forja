@@ -146,7 +146,7 @@ void main() {
       _fixture('vidsrc_rcp.html'),
       _fixture('vidsrc_prorcp.html'),
     );
-    expect(json, contains('cloudnestra.com/hls/movie.m3u8'));
+    expect(json, contains('cloudorchestranova.com/hls/movie.m3u8'));
   });
 
   test('resolve_vidsrc_embed_json returns error for bad id', () {

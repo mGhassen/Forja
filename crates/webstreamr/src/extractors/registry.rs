@@ -201,7 +201,7 @@ fn host_matches(id: &str, host: &str, url: &Url, config: &Config) -> bool {
         "hubdrive" => hubdrive_supports(host),
         "hubcloud" => hubcloud_supports(host),
         "rgshows" => rgshows_supports(host),
-        "vidsrc" => Regex::new(r"vidsrc|vsrc").unwrap().is_match(host),
+        "vidsrc" => Regex::new(r"vidsrc|vsrc|vsembed").unwrap().is_match(host),
         "mixdrop" => Regex::new(r"mixdrop|mixdrp|mixdroop|m1xdrop").unwrap().is_match(host),
         "streamtape" => {
             host.contains("streamtape")
@@ -562,7 +562,7 @@ fn run_vidsrc_extractor(page_url: &str, meta: &EmbedMeta, _label: &str) -> Vec<U
         let Ok(player_html) = fetch_text(&player_url, &fetch_cfg(Some(&rcp_url))) else {
             continue;
         };
-        let chain_json = extract_vidsrc_chain_json(&html, &iframe_html, &player_html);
+        let chain_json = extract_vidsrc_chain_json(&html, &iframe_html, &player_html, Some(&rcp_url));
         let Ok(decoded) = serde_json::from_str::<serde_json::Value>(&chain_json) else {
             continue;
         };
@@ -572,6 +572,13 @@ fn run_vidsrc_extractor(page_url: &str, meta: &EmbedMeta, _label: &str) -> Vec<U
         let Some(url) = decoded.get("url").and_then(|v| v.as_str()) else {
             continue;
         };
+        let request_headers = decoded.get("headers").and_then(|h| {
+            h.as_object().map(|obj| {
+                obj.iter()
+                    .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
+                    .collect::<HashMap<String, String>>()
+            })
+        });
         let mut m = meta.clone();
         m.extractor_id = Some("vidsrc".into());
         out.push(UrlResult {
@@ -582,7 +589,7 @@ fn run_vidsrc_extractor(page_url: &str, meta: &EmbedMeta, _label: &str) -> Vec<U
             error: None,
             label: format_label("vidsrc", "CloudStream Pro"),
             meta: m,
-            request_headers: None,
+            request_headers,
         });
     }
     out

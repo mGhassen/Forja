@@ -6,20 +6,17 @@ void main() {
     final uri = Uri.https(
       'api.wingsdatabase.com',
       '/neon2/sources-with-title',
-      {
-        'title': VideasyExtractor.wingsTitleQueryValue(
-          'The Mysterious Benedict Society',
-        ),
-        'mediaType': 'tv',
-        'tmdbId': '104359',
-        'enc': '2',
-        'seed': 'test-seed',
-        'year': '2021',
-        'imdbId': 'tt11875316',
-        'seasonId': '1',
-        'episodeId': '1',
-        'totalSeasons': '2',
-      },
+      VideasyExtractor.sourcesQueryForTest(
+        title: 'The Mysterious Benedict Society',
+        isMovie: false,
+        tmdbId: '104359',
+        year: '2021',
+        imdbId: 'tt11875316',
+        season: 1,
+        episode: 1,
+        totalSeasons: 2,
+        seed: 'test-seed',
+      ),
     );
     expect(
       uri.query,

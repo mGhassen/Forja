@@ -12,12 +12,36 @@ static PRORCP_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"src\s*:\s*['"](/prorcp/[^'"]+)['"]"#).unwrap());
 static FILE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"file\s*:\s*"([^"]+\.m3u8[^"]*)""#).unwrap());
+static MASTER_URLS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"master_urls\s*=\s*"([^"]+\.m3u8[^"]*)""#).unwrap()
+});
 static VHOST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{v\d+\}").unwrap());
 
 const EMBED_HOST: &str = "https://vsembed.ru";
-const DEFAULT_HOST: &str = "cloudnestra.com";
+/// Fallback when CDN host cannot be parsed from the rcp iframe URL (legacy fixtures).
+const LEGACY_CDN_HOST: &str = "cloudnestra.com";
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
+
+/// CDN host from an absolute or protocol-relative rcp / iframe URL (e.g. cloudorchestranova.com).
+fn cdn_host_from_url(url: &str) -> Option<String> {
+    let normalized = if url.starts_with("//") {
+        format!("https:{url}")
+    } else {
+        url.to_string()
+    };
+    let after_scheme = normalized.split("://").nth(1)?;
+    let host = after_scheme.split('/').next()?.split(':').next()?;
+    if host.is_empty() {
+        None
+    } else {
+        Some(host.to_string())
+    }
+}
+
+fn cdn_origin(host: &str) -> String {
+    format!("https://{host}")
+}
 
 #[derive(Debug, Deserialize)]
 struct ResolveRequest {
@@ -80,24 +104,102 @@ pub fn find_iframe_src(html: &str) -> Option<String> {
     Some(absolutize_src(m.get(1)?.as_str()))
 }
 
-pub fn find_prorcp_url(rcp_html: &str) -> Option<String> {
+pub fn find_prorcp_url(rcp_html: &str, rcp_url: &str) -> Option<String> {
     let path = PRORCP_RE.captures(rcp_html)?.get(1)?.as_str();
-    Some(format!("https://{DEFAULT_HOST}{path}"))
+    let host = cdn_host_from_url(rcp_url).unwrap_or_else(|| LEGACY_CDN_HOST.into());
+    Some(format!("https://{host}{path}"))
 }
 
-pub fn extract_m3u8_from_prorcp(html: &str) -> Option<String> {
-    let raw = FILE_RE.captures(html)?.get(1)?.as_str();
+fn expand_m3u8_candidate(part: &str, cdn_host: &str) -> Option<String> {
+    let candidate = VHOST_RE.replace_all(part.trim(), cdn_host).into_owned();
+    if candidate.starts_with("http") && candidate.contains(".m3u8") {
+        Some(candidate)
+    } else {
+        None
+    }
+}
+
+fn parse_m3u8_variants(raw: &str, cdn_host: &str) -> Vec<String> {
     let variants: Vec<&str> = if raw.contains(" or ") {
         raw.split(" or ").collect()
     } else {
         vec![raw]
     };
-    for v in variants {
-        let part = v.split('|').next().unwrap_or(v).trim();
-        let candidate = VHOST_RE.replace_all(part, DEFAULT_HOST).into_owned();
-        if candidate.starts_with("http") && candidate.contains(".m3u8") {
-            return Some(candidate);
-        }
+    variants
+        .into_iter()
+        .filter_map(|v| {
+            let part = v.split('|').next().unwrap_or(v);
+            expand_m3u8_candidate(part, cdn_host)
+        })
+        .collect()
+}
+
+fn fetch_stream_token(stream_host: &str, referer: &str) -> Option<String> {
+    let token_url = format!("https://{stream_host}/generate.php");
+    let body = fetch_text(&token_url, &fetch_cfg(Some(referer))).ok()?;
+    let token = body.trim();
+    if token.is_empty() {
+        None
+    } else {
+        Some(token.to_string())
+    }
+}
+
+fn apply_vidsrc_tokens(url: &str, referer: &str) -> Option<String> {
+    let mut out = url.to_string();
+    if out.contains("__TOKENPG__") {
+        let host = cdn_host_from_url(&out)?;
+        let token = fetch_stream_token(&host, referer)?;
+        out = out.replace("__TOKENPG__", &token);
+    }
+    if out.contains("__TOKEN__") {
+        let host = cdn_host_from_url(&out)?;
+        let token = fetch_stream_token(&host, referer)?;
+        out = out.replace("__TOKEN__", &token);
+    }
+    Some(out)
+}
+
+fn referer_with_slash(referer: Option<&str>, cdn_host: &str) -> String {
+    referer
+        .map(|r| {
+            if r.ends_with('/') {
+                r.to_string()
+            } else {
+                format!("{r}/")
+            }
+        })
+        .unwrap_or_else(|| format!("https://{cdn_host}/"))
+}
+
+pub fn extract_m3u8_from_prorcp(
+    html: &str,
+    cdn_host: &str,
+    referer: Option<&str>,
+) -> Option<String> {
+    let mut candidates = Vec::new();
+    if let Some(raw) = FILE_RE.captures(html).and_then(|c| c.get(1)).map(|m| m.as_str()) {
+        candidates.extend(parse_m3u8_variants(raw, cdn_host));
+    }
+    if let Some(raw) = MASTER_URLS_RE
+        .captures(html)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str())
+    {
+        candidates.extend(parse_m3u8_variants(raw, cdn_host));
+    }
+    if candidates.is_empty() {
+        return None;
+    }
+    candidates.sort_by_key(|u| (!u.contains("master.m3u8"), u.contains("list.m3u8")));
+    let referer = referer_with_slash(referer, cdn_host);
+    for candidate in candidates {
+        let url = if candidate.contains("__TOKEN") {
+            apply_vidsrc_tokens(&candidate, &referer)?
+        } else {
+            candidate
+        };
+        return Some(url);
     }
     None
 }
@@ -106,10 +208,15 @@ pub fn extract_from_html_chain(
     outer_html: &str,
     rcp_html: &str,
     prorcp_html: &str,
+    rcp_url: Option<&str>,
 ) -> Option<StreamFile> {
     let _iframe = IFRAME_RE.captures(outer_html)?;
     let _prorcp = PRORCP_RE.captures(rcp_html)?;
-    let url = extract_m3u8_from_prorcp(prorcp_html)?;
+    let cdn_host = rcp_url
+        .and_then(cdn_host_from_url)
+        .or_else(|| find_iframe_src(outer_html).and_then(|u| cdn_host_from_url(&u)))
+        .unwrap_or_else(|| LEGACY_CDN_HOST.into());
+    let url = extract_m3u8_from_prorcp(prorcp_html, &cdn_host, rcp_url)?;
     Some(StreamFile {
         url,
         quality: None,
@@ -117,13 +224,33 @@ pub fn extract_from_html_chain(
     })
 }
 
-pub fn extract_vidsrc_chain_json(outer_html: &str, rcp_html: &str, prorcp_html: &str) -> String {
-    match extract_from_html_chain(outer_html, rcp_html, prorcp_html) {
-        Some(file) => serde_json::json!({
-            "url": file.url,
-            "format": "hls",
-        })
-        .to_string(),
+pub fn extract_vidsrc_chain_json(
+    outer_html: &str,
+    rcp_html: &str,
+    prorcp_html: &str,
+    rcp_url: Option<&str>,
+) -> String {
+    match extract_from_html_chain(outer_html, rcp_html, prorcp_html, rcp_url) {
+        Some(file) => {
+            let playback_origin = cdn_host_from_url(&file.url)
+                .map(|h| cdn_origin(&h))
+                .or_else(|| {
+                    rcp_url
+                        .and_then(cdn_host_from_url)
+                        .map(|h| cdn_origin(&h))
+                })
+                .unwrap_or_else(|| cdn_origin(LEGACY_CDN_HOST));
+            serde_json::json!({
+                "url": file.url,
+                "format": "hls",
+                "headers": {
+                    "User-Agent": USER_AGENT,
+                    "Referer": format!("{playback_origin}/"),
+                    "Origin": playback_origin,
+                }
+            })
+            .to_string()
+        }
         None => serde_json::json!({ "error": "not_found" }).to_string(),
     }
 }
@@ -152,7 +279,7 @@ pub fn resolve_vidsrc_embed_json(request_json: &str) -> String {
         Err(e) => return serde_json::json!({ "error": e }).to_string(),
     };
 
-    let prorcp_url = match find_prorcp_url(&rcp_html) {
+    let prorcp_url = match find_prorcp_url(&rcp_html, &rcp_url) {
         Some(u) => u,
         None => return serde_json::json!({ "error": "no_prorcp" }).to_string(),
     };
@@ -163,9 +290,14 @@ pub fn resolve_vidsrc_embed_json(request_json: &str) -> String {
         Err(e) => return serde_json::json!({ "error": e }).to_string(),
     };
 
-    let Some(file) = extract_from_html_chain(&outer, &rcp_html, &prorcp_html) else {
+    let Some(file) = extract_from_html_chain(&outer, &rcp_html, &prorcp_html, Some(&rcp_url)) else {
         return serde_json::json!({ "error": "no_m3u8" }).to_string();
     };
+
+    let cdn_host = cdn_host_from_url(&rcp_url).unwrap_or_else(|| LEGACY_CDN_HOST.into());
+    let playback_origin = cdn_host_from_url(&file.url)
+        .map(|h| cdn_origin(&h))
+        .unwrap_or_else(|| cdn_origin(&cdn_host));
 
     serde_json::json!({
         "url": file.url,
@@ -173,8 +305,8 @@ pub fn resolve_vidsrc_embed_json(request_json: &str) -> String {
         "provider": "vidsrc",
         "headers": {
             "User-Agent": USER_AGENT,
-            "Referer": "https://cloudnestra.com/",
-            "Origin": "https://cloudnestra.com",
+            "Referer": format!("{playback_origin}/"),
+            "Origin": playback_origin,
         }
     })
     .to_string()
@@ -204,8 +336,8 @@ mod tests {
     fn prorcp_m3u8_with_vhost() {
         let html = r#"<script>file: "https://{v1}/hls/movie.m3u8|720p"</script>"#;
         assert_eq!(
-            extract_m3u8_from_prorcp(html),
-            Some("https://cloudnestra.com/hls/movie.m3u8".into())
+            extract_m3u8_from_prorcp(html, "cloudorchestranova.com", None),
+            Some("https://cloudorchestranova.com/hls/movie.m3u8".into())
         );
     }
 
@@ -213,17 +345,52 @@ mod tests {
     fn prorcp_m3u8_or_variants() {
         let html = r#"file: "https://tmstr4.{v1}/a.m3u8 or https://app2.{v2}/b.m3u8""#;
         assert_eq!(
-            extract_m3u8_from_prorcp(html),
-            Some("https://tmstr4.cloudnestra.com/a.m3u8".into())
+            extract_m3u8_from_prorcp(html, "cloudorchestranova.com", None),
+            Some("https://tmstr4.cloudorchestranova.com/a.m3u8".into())
         );
     }
 
     #[test]
-    fn chain_golden_fixture() {
+    fn prorcp_master_urls_without_tokens() {
+        let html = r#"var master_urls = "https://cdn.example/alpha/master.m3u8 or https://cdn.example/beta/list.m3u8""#;
+        assert_eq!(
+            extract_m3u8_from_prorcp(html, "cloudorchestranova.com", None),
+            Some("https://cdn.example/alpha/master.m3u8".into())
+        );
+    }
+
+    #[test]
+    fn find_prorcp_uses_rcp_host() {
+        let rcp_html = r#"src: '/prorcp/token123'"#;
+        let url = find_prorcp_url(
+            rcp_html,
+            "https://cloudorchestranova.com/rcp/abc",
+        )
+        .unwrap();
+        assert_eq!(url, "https://cloudorchestranova.com/prorcp/token123");
+    }
+
+    #[test]
+    fn chain_golden_fixture_cloudorchestranova() {
         let outer = std::fs::read_to_string("tests/fixtures/vidsrc_outer.html").unwrap();
         let rcp = std::fs::read_to_string("tests/fixtures/vidsrc_rcp.html").unwrap();
         let prorcp = std::fs::read_to_string("tests/fixtures/vidsrc_prorcp.html").unwrap();
-        let json = extract_vidsrc_chain_json(&outer, &rcp, &prorcp);
+        let rcp_url = "https://cloudorchestranova.com/rcp/abc";
+        let json = extract_vidsrc_chain_json(&outer, &rcp, &prorcp, Some(rcp_url));
+        assert!(json.contains("cloudorchestranova.com/hls/movie.m3u8"));
+    }
+
+    #[test]
+    fn chain_legacy_cloudnestra_fixture() {
+        let outer = r#"<html><iframe id="player_iframe" src="https://cloudnestra.com/embed/1"></iframe></html>"#;
+        let rcp = std::fs::read_to_string("tests/fixtures/vidsrc_rcp.html").unwrap();
+        let prorcp = std::fs::read_to_string("tests/fixtures/vidsrc_prorcp.html").unwrap();
+        let json = extract_vidsrc_chain_json(
+            outer,
+            &rcp,
+            &prorcp,
+            Some("https://cloudnestra.com/rcp/abc"),
+        );
         assert!(json.contains("cloudnestra.com/hls/movie.m3u8"));
     }
 }

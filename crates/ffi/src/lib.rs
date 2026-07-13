@@ -363,7 +363,7 @@ fn extract_embed_html_json(extractor_id: String, html: String, page_url: String)
 }
 
 fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: String) -> String {
-    webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html)
+    webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html, None)
 }
 
 fn resolve_vidsrc_embed_json(request_json: String) -> String {

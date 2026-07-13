@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
@@ -116,12 +117,20 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
                      url.contains('vidlink.pro') ||
                      url.contains('vidnest.fun') ||
                      url.contains('vidfast.pro') ||
+                     url.contains('vidfast.vc') ||
+                     url.contains('player.vidzee.wtf') ||
+                     url.contains('vidzee.wtf') ||
+                     url.contains('vidrock.ru') ||
+                     url.contains('vidrock.net') ||
                      url.contains('2embed.cc') ||
                      url.contains('multiembed.mov') ||
+                     url.contains('streamingnow.mov') ||
                      url.contains('autoembed.co') ||
                      url.contains('111movies.net') ||
+                     url.contains('player.vidlove.cc') ||
                      url.contains('moviesapi.to') ||
                      url.contains('smashystream.com') ||
+                     url.contains('anyembed.xyz') ||
                      url.contains('primewire.tf') ||
                      url.contains('anitaro.live') ||
                      url.contains('111movies.com') ||
@@ -156,7 +165,7 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
               final rUrl = resource.url.toString();
               debugPrint('[StreamExtractor Resource] $rUrl');
               
-              if (rUrl.contains('.m3u8') || rUrl.contains('playlist') || rUrl.contains('master') || rUrl.contains('.mpd') || rUrl.contains('manifest') || (rUrl.contains('.mp4') && !rUrl.contains('googlevideo.com'))) {
+              if (StreamExtractor.isPlayableStreamUrl(rUrl)) {
                  debugPrint('[StreamExtractor] MATCHED RESOURCE: $rUrl');
                  if (_detectedStreamUrl == null) {
                     setState(() {

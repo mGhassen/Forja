@@ -114,8 +114,8 @@ fn vidsrc_chain_golden() {
     let outer = fs::read_to_string(fixture("vidsrc_outer.html")).unwrap();
     let rcp = fs::read_to_string(fixture("vidsrc_rcp.html")).unwrap();
     let prorcp = fs::read_to_string(fixture("vidsrc_prorcp.html")).unwrap();
-    let json = extract_vidsrc_chain_json(&outer, &rcp, &prorcp);
-    assert!(json.contains("cloudnestra.com/hls/movie.m3u8"));
+    let json = extract_vidsrc_chain_json(&outer, &rcp, &prorcp, None);
+    assert!(json.contains("cloudorchestranova.com/hls/movie.m3u8"));
 }
 
 #[test]

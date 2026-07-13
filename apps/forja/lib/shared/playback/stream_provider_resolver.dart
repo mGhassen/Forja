@@ -222,7 +222,7 @@ class StreamProviderResolver {
     }
     final result = await _extractor.extract(
       url,
-      timeout: const Duration(seconds: 5),
+      timeout: _embedSniffTimeout(key),
       isCancelled: cancelled,
       providerId: key,
     );
@@ -324,5 +324,19 @@ class StreamProviderResolver {
     if (u.contains('.mpd')) return 'dash';
     if (u.contains('.mkv')) return 'mkv';
     return 'mp4';
+  }
+
+  /// SPA embeds need longer than the old 5s default.
+  static Duration _embedSniffTimeout(String providerId) {
+    switch (providerId) {
+      case 'smashystream':
+      case 'superembed':
+      case 'vixsrc':
+      case 'vidnest':
+      case 'vidlink':
+        return const Duration(seconds: 60);
+      default:
+        return const Duration(seconds: 45);
+    }
   }
 }

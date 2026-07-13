@@ -1,14 +1,16 @@
-// Videasy extractor — mirrors player.videasy.to (see videasy chunk 8351).
+// Videasy extractor — mirrors player.videasy.to (chunk 8351).
 //
-// Pipeline (api.wingsdatabase.com only — NOT api.videasy.net):
-//   1. GET /seed?mediaId=…
-//   2. GET /{mirror}/sources-with-title?title&enc=2&seed=…&totalSeasons=…
-//   3. Decrypt payload in headless WebView (STREAMCRYPTO — seed + tmdbId)
-//   4. Parse JSON sources
+// Pipeline (api.wingsdatabase.com — NOT the public videasy.to embed docs):
+//   1. Metadata from db.wingsdatabase.com/3 (same as the player page)
+//   2. GET /seed?mediaId=… (cached ~25s; refresh on 401)
+//   3. GET /{mirror}/sources-with-title?title&enc=2&seed=…&totalSeasons=…
+//   4. Decrypt payload in headless WebView (STREAMCRYPTO — seed + tmdbId)
+//   5. Parse JSON sources
 
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
@@ -21,19 +23,22 @@ class VideasyExtractor {
   final void Function(String) onLog;
 
   static const _apiHost = 'api.wingsdatabase.com';
+  static const _dbHost = 'db.wingsdatabase.com';
   static const _playerOrigin = 'https://player.videasy.to';
-  static const _fetchTimeout = Duration(seconds: 15);
-  static const _defaultExtractTimeout = Duration(seconds: 30);
+  static const _fetchTimeout = Duration(seconds: 25);
+  static const _slowFetchTimeout = Duration(seconds: 60);
+  static const _defaultExtractTimeout = Duration(seconds: 120);
   static const _maxInFlight = 4;
+  static const _seedTtl = Duration(seconds: 25);
 
-  /// Mirrors from the live player (Neon, Sage, Jett, Breach, Vyse, Yoru, Raze).
+  /// Mirrors from player chunk 8351 (Neon→neon2, Sage→ym, Breach→m4uhd, …).
   static const _mirrors = <_VideasyMirror>[
-    _VideasyMirror('neon2'),
+    _VideasyMirror('neon2', slow: true),
     _VideasyMirror('ym'),
-    _VideasyMirror('jett'),
-    _VideasyMirror('m4uhd'),
+    _VideasyMirror('m4uhd', slow: true),
     _VideasyMirror('hdmovie', englishOnly: true),
     _VideasyMirror('superflix'),
+    _VideasyMirror('jett'),
     _VideasyMirror('cdn', movieOnly: true),
   ];
 
@@ -56,11 +61,13 @@ class VideasyExtractor {
 
   static var _generation = 0;
   static http.Client? _sharedClient;
+  static final Map<String, _CachedSeed> _seedCache = {};
 
   static void cancelPending() {
     _generation++;
     _sharedClient?.close();
     _sharedClient = null;
+    _seedCache.clear();
   }
 
   Future<ExtractedMedia?> extract({
@@ -162,22 +169,28 @@ class VideasyExtractor {
     required int gen,
     required bool Function() cancelled,
   }) async {
-    final trimmedTitle = title?.trim() ?? '';
-    if (trimmedTitle.isEmpty) return [];
-
-    final seed = await _fetchSeed(tmdbId, gen: gen);
-    if (seed == null || cancelled()) return [];
-
-    final qp = _sourcesQuery(
-      title: trimmedTitle,
-      isMovie: isMovie,
+    final resolved = await _resolveParams(
       tmdbId: tmdbId,
-      year: year?.trim() ?? '',
-      imdbId: imdbId?.trim() ?? '',
+      isMovie: isMovie,
+      title: title,
+      year: year,
+      imdbId: imdbId,
       season: season,
       episode: episode,
       totalSeasons: totalSeasons,
-      seed: seed,
+      gen: gen,
+    );
+    if (resolved == null || cancelled()) return [];
+
+    final qp = _sourcesQuery(
+      title: resolved.title,
+      isMovie: isMovie,
+      tmdbId: tmdbId,
+      year: resolved.year,
+      imdbId: resolved.imdbId,
+      season: season,
+      episode: episode,
+      totalSeasons: resolved.totalSeasons,
     );
 
     final jobs = <_ProviderJob>[];
@@ -188,10 +201,110 @@ class VideasyExtractor {
           provider: mirror.endpoint,
           query: Map<String, String>.from(qp),
           englishOnly: mirror.englishOnly,
+          slow: mirror.slow,
         ),
       );
     }
     return jobs;
+  }
+
+  Future<_VideasyParams?> _resolveParams({
+    required String tmdbId,
+    required bool isMovie,
+    required String? title,
+    required String? year,
+    required String? imdbId,
+    required int? season,
+    required int? episode,
+    required int? totalSeasons,
+    required int gen,
+  }) async {
+    final wings = await _fetchWingsMetadata(
+      tmdbId: tmdbId,
+      isMovie: isMovie,
+      season: season,
+      episode: episode,
+      gen: gen,
+    );
+    if (wings != null) {
+      onLog('[Videasy] wings metadata: ${wings.title} (${wings.year})');
+      return wings;
+    }
+
+    final trimmedTitle = title?.trim() ?? '';
+    if (trimmedTitle.isEmpty) {
+      onLog('[Videasy] no title (wings DB miss and caller title empty)');
+      return null;
+    }
+    return _VideasyParams(
+      title: trimmedTitle,
+      year: year?.trim() ?? '',
+      imdbId: imdbId?.trim() ?? '',
+      totalSeasons: totalSeasons,
+    );
+  }
+
+  Future<_VideasyParams?> _fetchWingsMetadata({
+    required String tmdbId,
+    required bool isMovie,
+    required int? season,
+    required int? episode,
+    required int gen,
+  }) async {
+    try {
+      if (isMovie) {
+        final uri = Uri.https(
+          _dbHost,
+          '/3/movie/$tmdbId',
+          {'append_to_response': 'external_ids'},
+        );
+        final res = await _get(uri, gen: gen);
+        if (res.statusCode != 200) return null;
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final name = (data['title'] ?? data['name'] ?? '').toString().trim();
+        if (name.isEmpty) return null;
+        final release = (data['release_date'] ?? '').toString();
+        final year = yearFromReleaseDate(release) ?? '';
+        final imdb =
+            (data['external_ids'] as Map?)?['imdb_id']?.toString() ?? '';
+        return _VideasyParams(title: name, year: year, imdbId: imdb);
+      }
+
+      final showUri = Uri.https(
+        _dbHost,
+        '/3/tv/$tmdbId',
+        {'append_to_response': 'external_ids'},
+      );
+      final showRes = await _get(showUri, gen: gen);
+      if (showRes.statusCode != 200) return null;
+      final show = jsonDecode(showRes.body) as Map<String, dynamic>;
+      final name = (show['name'] ?? show['title'] ?? '').toString().trim();
+      if (name.isEmpty) return null;
+
+      final seasons = (show['seasons'] as List?) ?? const [];
+      const specials = {'Specials', 'Especiais', 'Especiales'};
+      final counted = seasons.where((s) {
+        if (s is! Map) return false;
+        final n = s['season_number'];
+        if (n is num && n <= 0) return false;
+        final label = (s['name'] ?? '').toString();
+        return !specials.contains(label);
+      }).length;
+
+      final release = (show['first_air_date'] ?? '').toString();
+      final imdb =
+          (show['external_ids'] as Map?)?['imdb_id']?.toString() ?? '';
+
+      return _VideasyParams(
+        title: name,
+        year: yearFromReleaseDate(release) ?? '',
+        imdbId: imdb,
+        totalSeasons: counted > 0 ? counted : null,
+      );
+    } catch (e) {
+      onLog('[Videasy] wings metadata fetch failed: $e');
+      return null;
+    }
   }
 
   static Map<String, String> _sourcesQuery({
@@ -203,14 +316,11 @@ class VideasyExtractor {
     required int? season,
     required int? episode,
     required int? totalSeasons,
-    required String seed,
   }) {
     final qp = <String, String>{
       'title': wingsTitleQueryValue(title),
       'mediaType': isMovie ? 'movie' : 'tv',
       'tmdbId': tmdbId,
-      'enc': '2',
-      'seed': seed,
     };
     if (year.length >= 4) qp['year'] = year.substring(0, 4);
     if (imdbId.isNotEmpty) qp['imdbId'] = imdbId;
@@ -224,7 +334,22 @@ class VideasyExtractor {
     return qp;
   }
 
-  Future<String?> _fetchSeed(String tmdbId, {required int gen}) async {
+  Future<String?> _getSeed(
+    String tmdbId, {
+    required int gen,
+    bool forceRefresh = false,
+  }) async {
+    final now = DateTime.now();
+    if (!forceRefresh) {
+      final cached = _seedCache[tmdbId];
+      if (cached != null &&
+          cached.expiresAt.isAfter(now.add(const Duration(seconds: 5)))) {
+        return cached.seed;
+      }
+    } else {
+      _seedCache.remove(tmdbId);
+    }
+
     try {
       final uri = Uri.https(_apiHost, '/seed', {'mediaId': tmdbId});
       final res = await _get(uri, gen: gen);
@@ -234,12 +359,23 @@ class VideasyExtractor {
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final seed = data['seed']?.toString().trim();
-      return seed == null || seed.isEmpty ? null : seed;
+      if (seed == null || seed.isEmpty) return null;
+      final ttlMs = (data['ttlMs'] as num?)?.toInt();
+      final ttl = ttlMs != null && ttlMs > 0
+          ? Duration(milliseconds: ttlMs)
+          : _seedTtl;
+      _seedCache[tmdbId] = _CachedSeed(
+        seed: seed,
+        expiresAt: now.add(ttl),
+      );
+      return seed;
     } catch (e) {
       onLog('[Videasy] seed fetch failed: $e');
       return null;
     }
   }
+
+  static void _invalidateSeed(String tmdbId) => _seedCache.remove(tmdbId);
 
   Future<ExtractedMedia?> _raceProviders({
     required _VideasyDecryptHost crypto,
@@ -313,63 +449,83 @@ class VideasyExtractor {
   }) async {
     if (gen != _generation) return null;
 
-    final uri = Uri.https(
-      _apiHost,
-      '/${job.provider}/sources-with-title',
-      job.query,
-    );
-    onLog('[Videasy] GET $uri');
+    final timeout = job.slow ? _slowFetchTimeout : _fetchTimeout;
 
-    http.Response res;
-    try {
-      res = await _get(uri, gen: gen);
-    } catch (e) {
-      onLog('[Videasy] ${job.provider} fetch error: $e');
-      return null;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (gen != _generation) return null;
+
+      final seed = await _getSeed(
+        tmdbId,
+        gen: gen,
+        forceRefresh: attempt > 0,
+      );
+      if (seed == null) return null;
+
+      final uri = Uri.https(
+        _apiHost,
+        '/${job.provider}/sources-with-title',
+        {...job.query, 'enc': '2', 'seed': seed},
+      );
+      onLog('[Videasy] GET $uri');
+
+      http.Response res;
+      try {
+        res = await _get(uri, gen: gen, timeout: timeout);
+      } catch (e) {
+        onLog('[Videasy] ${job.provider} fetch error: $e');
+        return null;
+      }
+      if (gen != _generation) return null;
+
+      final body = res.body.trim();
+      final seedInvalid = res.statusCode == 401 ||
+          body.contains('STREAMCRYPTO_SEED_INVALID');
+      if (seedInvalid && attempt == 0) {
+        onLog('[Videasy] ${job.provider} seed invalid — retrying');
+        _invalidateSeed(tmdbId);
+        continue;
+      }
+
+      if (res.statusCode != 200 || body.length < 50) {
+        onLog('[Videasy] ${job.provider} -> ${res.statusCode} '
+            '(${body.length} bytes), skip');
+        return null;
+      }
+      if (body.startsWith('{') || body.startsWith('<')) {
+        onLog('[Videasy] ${job.provider} -> error payload, skip');
+        return null;
+      }
+
+      String json;
+      try {
+        json = await crypto.decrypt(body, seed, tmdbId);
+      } catch (e) {
+        onLog('[Videasy] ${job.provider} decrypt error: $e');
+        return null;
+      }
+      if (gen != _generation) return null;
+
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(json) as Map<String, dynamic>;
+      } catch (e) {
+        onLog('[Videasy] ${job.provider} JSON parse error: $e');
+        return null;
+      }
+
+      final parsed = _parsePayload(
+        data,
+        job.provider,
+        englishOnly: job.englishOnly,
+      );
+      if (parsed == null) return null;
+
+      onLog('[Videasy] ${job.provider} -> ${parsed.sources?.length ?? 0} sources, '
+          '${parsed.externalSubtitles?.length ?? 0} subs');
+      return parsed;
     }
-    if (gen != _generation) return null;
 
-    final body = res.body.trim();
-    if (res.statusCode != 200 || body.length < 50) {
-      onLog('[Videasy] ${job.provider} -> ${res.statusCode} '
-          '(${body.length} bytes), skip');
-      return null;
-    }
-    if (body.startsWith('{') || body.startsWith('<')) {
-      onLog('[Videasy] ${job.provider} -> error payload, skip');
-      return null;
-    }
-
-    final seed = job.query['seed'];
-    if (seed == null) return null;
-
-    String json;
-    try {
-      json = await crypto.decrypt(body, seed, tmdbId);
-    } catch (e) {
-      onLog('[Videasy] ${job.provider} decrypt error: $e');
-      return null;
-    }
-    if (gen != _generation) return null;
-
-    Map<String, dynamic> data;
-    try {
-      data = jsonDecode(json) as Map<String, dynamic>;
-    } catch (e) {
-      onLog('[Videasy] ${job.provider} JSON parse error: $e');
-      return null;
-    }
-
-    final parsed = _parsePayload(
-      data,
-      job.provider,
-      englishOnly: job.englishOnly,
-    );
-    if (parsed == null) return null;
-
-    onLog('[Videasy] ${job.provider} -> ${parsed.sources?.length ?? 0} sources, '
-        '${parsed.externalSubtitles?.length ?? 0} subs');
-    return parsed;
+    return null;
   }
 
   ExtractedMedia? _parsePayload(
@@ -436,12 +592,16 @@ class VideasyExtractor {
     );
   }
 
-  Future<http.Response> _get(Uri uri, {required int gen}) async {
+  Future<http.Response> _get(
+    Uri uri, {
+    required int gen,
+    Duration timeout = _fetchTimeout,
+  }) async {
     if (gen != _generation) throw StateError('cancelled');
     _sharedClient ??= http.Client();
     final res = await _sharedClient!
         .get(uri, headers: _baseHeaders)
-        .timeout(_fetchTimeout);
+        .timeout(timeout);
     if (gen != _generation) throw StateError('cancelled');
     return res;
   }
@@ -449,6 +609,34 @@ class VideasyExtractor {
   /// Single-encoded title for [Uri.https]; builder adds second pass (`%2520`).
   static String wingsTitleQueryValue(String title) =>
       Uri.encodeComponent(title);
+
+  @visibleForTesting
+  static Map<String, String> sourcesQueryForTest({
+    required String title,
+    required bool isMovie,
+    required String tmdbId,
+    required String year,
+    required String imdbId,
+    required int season,
+    required int episode,
+    required int? totalSeasons,
+    required String seed,
+  }) {
+    return {
+      ..._sourcesQuery(
+        title: title,
+        isMovie: isMovie,
+        tmdbId: tmdbId,
+        year: year,
+        imdbId: imdbId,
+        season: season,
+        episode: episode,
+        totalSeasons: totalSeasons,
+      ),
+      'enc': '2',
+      'seed': seed,
+    };
+  }
 
   static String? yearFromReleaseDate(String? releaseDate) {
     final value = releaseDate?.trim() ?? '';
@@ -466,16 +654,39 @@ class VideasyExtractor {
   }
 }
 
+class _VideasyParams {
+  const _VideasyParams({
+    required this.title,
+    required this.year,
+    required this.imdbId,
+    this.totalSeasons,
+  });
+
+  final String title;
+  final String year;
+  final String imdbId;
+  final int? totalSeasons;
+}
+
+class _CachedSeed {
+  const _CachedSeed({required this.seed, required this.expiresAt});
+
+  final String seed;
+  final DateTime expiresAt;
+}
+
 class _VideasyMirror {
   const _VideasyMirror(
     this.endpoint, {
     this.movieOnly = false,
     this.englishOnly = false,
+    this.slow = false,
   });
 
   final String endpoint;
   final bool movieOnly;
   final bool englishOnly;
+  final bool slow;
 }
 
 class _ProviderJob {
@@ -483,11 +694,13 @@ class _ProviderJob {
     required this.provider,
     required this.query,
     this.englishOnly = false,
+    this.slow = false,
   });
 
   final String provider;
   final Map<String, String> query;
   final bool englishOnly;
+  final bool slow;
 }
 
 /// Hosts the STREAMCRYPTO decrypt routine from player.videasy.to.

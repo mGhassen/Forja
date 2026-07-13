@@ -232,12 +232,18 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
         if !source_country_enabled(fb, &config) {
             continue;
         }
-        let count = url_results.iter().filter(|r| {
-            r.meta
-                .country_codes
-                .iter()
-                .any(|cc| fb.country_codes.contains(&cc.as_str()))
-        }).count();
+        let count = url_results
+            .iter()
+            .filter(|r| {
+                r.error.is_none()
+                    && !r.url.is_empty()
+                    && r
+                        .meta
+                        .country_codes
+                        .iter()
+                        .any(|cc| fb.country_codes.contains(&cc.as_str()))
+            })
+            .count();
         if let Some(max) = fb.use_only_with_max_urls_found {
             if count > max as usize {
                 continue;

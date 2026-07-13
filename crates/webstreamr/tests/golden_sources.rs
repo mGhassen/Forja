@@ -47,7 +47,7 @@ fn vixsrc_movie_golden() {
         year: Some(1999),
     };
     let rows = resolve_source("vixsrc", &req);
-    assert_eq!(rows[0].url, "https://vixsrc.to/movie/550");
+    assert_eq!(rows[0].url, "https://vixsrc.to/movie/550/");
     assert_eq!(rows[0].title.as_deref(), Some("Fight Club (1999)"));
     assert_eq!(rows[0].priority, Some(1));
 }

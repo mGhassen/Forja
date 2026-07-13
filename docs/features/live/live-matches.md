@@ -14,7 +14,7 @@ Tap **Live Matches** in the navigation bar.
 
 - Use **PPV** or **Streamed** mood chips in the top bar (sport icon) to switch servers
 - Switch sport category tabs
-- Browse upcoming and live events — each card shows a centered play control that highlights and scales on hover or focus
+- Browse upcoming and live events — only **live** matches are tappable and show the play control on hover/focus; upcoming cards show the start time badge only
 - Open a match and watch the stream in the embed player (PPV or Streamed badge top-right; autoplay when the embed allows it)
 - Double-click the video to enter/exit fullscreen (desktop window fullscreen for embeds; native PPV streams use the IPTV player)
 - Refresh lists for new events

@@ -159,10 +159,14 @@ class StreamExtractor {
           return;
         }
         // Select best quality from detected URLs before completing
-        if (_detectedVideoUrls.isNotEmpty) {
-           _capturedVideo = _selectBestQuality(_detectedVideoUrls);
+        final playable = _detectedVideoUrls
+            .where(StreamExtractor.isPlayableStreamUrl)
+            .toList();
+        if (playable.isNotEmpty) {
+           _capturedVideo = _selectBestQuality(playable);
            _completeWithCaptured(url);
-        } else if (_capturedVideo != null) {
+        } else if (_capturedVideo != null &&
+            StreamExtractor.isPlayableStreamUrl(_capturedVideo!)) {
            _completeWithCaptured(url);
         } else {
           _log('Sniffing session timeout for: $url');
@@ -303,6 +307,7 @@ class StreamExtractor {
           streamUrl = streamUrl.replaceAll('"', '').replaceAll("'", "").trim();
           streamUrl = streamUrl
               .replaceFirst('[FETCH]', '')
+              .replaceFirst('[FETCH_BODY]', '')
               .replaceFirst('[XHR]', '')
               .replaceFirst('[POSTMESSAGE]', '')
               .replaceFirst('[ATTR_SRC]', '')
@@ -335,18 +340,7 @@ class StreamExtractor {
 
 
   void _processUrl(String rUrl, String referer) {
-    if ((rUrl.contains('.m3u8') ||
-            rUrl.contains('.mp4') ||
-            rUrl.contains('playlist') ||
-            rUrl.contains('master') ||
-            rUrl.contains('.mpd') ||
-            rUrl.contains('manifest') ||
-            rUrl.contains('heistotron.uk/p/') ||
-            // VK CDN direct video URLs (no file extension, query-string based)
-            // Exclude API init requests (appId=, asubs=) — only match actual video sources
-            (rUrl.contains('okcdn.ru/') && rUrl.contains('type=') && !rUrl.contains('bytes=') && !rUrl.contains('appId=')) ||
-            (rUrl.contains('vkuser.net/') && rUrl.contains('type=') && !rUrl.contains('bytes=') && !rUrl.contains('appId='))) &&
-        !rUrl.contains('google')) {
+    if (!isPlayableStreamUrl(rUrl)) return;
 
        // Check audio only in the URL path (not query params)
        final pathOnly = Uri.tryParse(rUrl)?.path ?? rUrl;
@@ -369,34 +363,105 @@ class StreamExtractor {
           _capturedHeaders ??= _buildHeaders(referer);
        }
 
-       // For anitaro, wait a bit longer to collect all quality options
-       // For others, complete immediately if we have video
-       if (referer.contains('anitaro')) {
-          // Don't complete yet, let timeout handle it after collecting all URLs
-       } else if (_capturedVideo != null &&
-           (_capturedAudio != null || !referer.contains('anitaro'))) {
+       if (_capturedVideo == null) return;
+
+       // SPA embeds (AnyEmbed/SmashyStream, Anitaro) load streams after boot —
+       // do not complete on weak hits like PWA manifest links.
+       if (_shouldDeferEarlyComplete(referer)) {
+         if (isStrongStreamUrl(_capturedVideo!)) {
+           _completeWithCaptured(referer);
+         }
+         return;
+       }
+
+       if (_capturedAudio != null || !referer.contains('anitaro')) {
           _completeWithCaptured(referer);
        }
+  }
+
+  /// Whether a sniffed URL is a real media stream (not PWA manifest, SW, etc.).
+  static bool isPlayableStreamUrl(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('google')) return false;
+    if (lower.contains('.webmanifest')) return false;
+    if (lower.endsWith('/manifest.webmanifest')) return false;
+    if (lower.contains('manifest.json') && !lower.contains('.m3u8')) {
+      return false;
     }
+
+    if (lower.contains('.m3u8')) return true;
+    if (lower.contains('.mpd')) return true;
+    if (lower.contains('.mp4') && !lower.contains('googlevideo.com')) {
+      return true;
+    }
+    if (lower.contains('playlist') && !lower.contains('webmanifest')) {
+      return true;
+    }
+    if (lower.contains('master')) return true;
+
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? lower;
+    if (path.contains('manifest.m3u8') || path.contains('manifest.mpd')) {
+      return true;
+    }
+    if (path.endsWith('/manifest') && !path.contains('webmanifest')) {
+      return true;
+    }
+
+    if (lower.contains('heistotron.uk/p/')) return true;
+    if (lower.contains('okcdn.ru/') &&
+        lower.contains('type=') &&
+        !lower.contains('bytes=') &&
+        !lower.contains('appId=')) {
+      return true;
+    }
+    if (lower.contains('vkuser.net/') &&
+        lower.contains('type=') &&
+        !lower.contains('bytes=') &&
+        !lower.contains('appId=')) {
+      return true;
+    }
+    return false;
+  }
+
+  static bool isStrongStreamUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.m3u8') ||
+        lower.contains('.mpd') ||
+        (lower.contains('.mp4') && !lower.contains('googlevideo.com')) ||
+        (lower.contains('playlist') && !lower.contains('webmanifest'));
+  }
+
+  bool _shouldDeferEarlyComplete(String referer) {
+    final r = referer.toLowerCase();
+    return r.contains('anitaro') ||
+        r.contains('anyembed.xyz') ||
+        r.contains('smashystream.com');
   }
 
   String _selectBestQuality(List<String> urls) {
+    final playable =
+        urls.where(StreamExtractor.isPlayableStreamUrl).toList();
+    if (playable.isEmpty) return urls.isNotEmpty ? urls.first : '';
+
     // Quality priority: 4K > 2160p > 1440p > 1080p > 720p > 480p > 360p
     final qualityOrder = ['4K', '2160p', '1440p', '1080p', '720p', '480p', '360p'];
     
     for (final quality in qualityOrder) {
-      final match = urls.firstWhere(
+      final match = playable.firstWhere(
         (url) => url.toLowerCase().contains('quality=$quality'.toLowerCase()),
         orElse: () => '',
       );
       if (match.isNotEmpty) {
-        _log('Selected quality: $quality from ${urls.length} options');
+        _log('Selected quality: $quality from ${playable.length} options');
         return match;
       }
     }
     
-    // If no quality parameter found, return first URL (likely master playlist)
-    return urls.first;
+    // Prefer HLS/DASH over progressive when multiple hits exist.
+    final hls = playable.where((u) => u.toLowerCase().contains('.m3u8'));
+    if (hls.isNotEmpty) return hls.first;
+
+    return playable.first;
   }
 
   void _completeWithCaptured(String referer) {
@@ -457,12 +522,21 @@ class StreamExtractor {
       window.open = function() { return null; };
       window.alert = function() { return true; };
 
-      // 2. Sniff Fetch
+      // 2. Sniff Fetch (log m3u8 URLs inside AnyEmbed stream API JSON)
       const originalFetch = window.fetch;
       window.fetch = async function(...args) {
-        const url = args[0] instanceof Request ? args[0].url : args[0];
+        const url = args[0] instanceof Request ? args[0].url : String(args[0]);
         log('FETCH', url);
-        return originalFetch.apply(this, args);
+        const res = await originalFetch.apply(this, args);
+        if (typeof url === 'string' && (url.includes('/api/v1/stream') || url.includes('/api/proxy'))) {
+          try {
+            const clone = res.clone();
+            const text = await clone.text();
+            const m = text.match(/https?:\\/\\/[^"'\\s]+\\.m3u8[^"'\\s]*/i);
+            if (m) log('FETCH_BODY', m[0]);
+          } catch (e) {}
+        }
+        return res;
       };
 
       // 3. Sniff XHR

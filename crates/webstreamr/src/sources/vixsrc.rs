@@ -10,11 +10,11 @@ pub fn resolve(req: &SourceRequest) -> Vec<SourceEmbed> {
     let title = req.title.as_deref();
     let year = req.year;
     let url = match req.media_type {
-        MediaType::Movie => format!("{BASE_URL}/movie/{tmdb_id}"),
+        MediaType::Movie => format!("{BASE_URL}/movie/{tmdb_id}/"),
         MediaType::Series => {
             let season = req.season.unwrap_or(1);
             let episode = req.episode.unwrap_or(1);
-            format!("{BASE_URL}/tv/{tmdb_id}/{season}/{episode}")
+            format!("{BASE_URL}/tv/{tmdb_id}/{season}/{episode}/")
         }
     };
     let formatted_title = title.and_then(|name| match req.media_type {

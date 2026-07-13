@@ -6,7 +6,15 @@
 
 Forja resolves streams through a **Source Engine** middleware. Movie/TV scrapers never compete with anime or Asian Drama scrapers. Each domain has provider **profiles** (configured domain scores). Your **settings order** is the baseline; domain scores may adjust each provider by at most **±2** ranks before checking. The playback layer then scores resolved URLs against your device (codec, resolution, latency).
 
-Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSrc, Vidnest, VidFast, 2Embed, SuperEmbed, AutoEmbed, 111Movies, MoviesAPI, SmashyStream, PrimeWire, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
+Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidLink, VixSrc, Vidnest, Vidzee, VidRock, VidFast, 2Embed, SuperEmbed, AutoEmbed, 111Movies, MoviesAPI, SmashyStream, PrimeWire, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
+
+**How providers resolve:**
+
+| Type | Providers | Mechanism |
+|------|-----------|-----------|
+| Direct extractors | Videasy, Vidsrc | Rust HTTP chain (Videasy: `api.wingsdatabase.com`; Vidsrc: embed → CDN rcp/prorcp → m3u8) |
+| Embed + WebView sniff | VidLink, VixSrc, Vidnest, Vidzee, VidRock, VidFast, 2Embed, SuperEmbed, AutoEmbed, 111Movies, MoviesAPI, SmashyStream, PrimeWire | Canonical embed URL → headless browser captures stream |
+| Aggregator / index | WebStreamr, 111477 | Multi-scraper resolve or index match + local proxy |
 
 ## How to open it
 
@@ -38,6 +46,10 @@ Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSr
 - New users: leave **Auto** on
 - Power users: pin a server from the player menu
 - WebStreamr is powerful but slower — profile priority keeps it lower by default
+- **Videasy** resolves via the live player API (`db.wingsdatabase.com` metadata + `api.wingsdatabase.com` mirrors), not the public embed docs on [videasy.to](https://www.videasy.to/docs)
+- **Vidsrc** uses `vsembed.ru` embeds; the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`
+- Template embed hosts are kept on documented canonical domains: VidFast (`vidfast.vc`), VidRock (`vidrock.ru`), Vidzee (`player.vidzee.wtf/embed/…`), 111Movies (`player.vidlove.cc/embed/…`), SmashyStream (`anyembed.xyz/embed/…`). SuperEmbed still uses `multiembed.mov` per provider docs (may redirect internally)
+- **PrimeWire** (`primewire.tf`) has been unreliable in live checks — expect misses; pick another server if it fails
 - When Rust cannot resolve a VidSrc-style embed (common on older films), Forja falls back to a headless browser sniff on desktop/mobile — same idea as PlayTorrio. Configure **MediaFlow Proxy** / **FlareSolverr** in WebStreamr settings if regional hosts return 403
 - **Android TV:** WebView-based extractors (VidLink, VixSrc, Vidnest, Videasy, …) are skipped — the loading screen marks them **SKIPPED ON TV** and only **WebStreamr**, **Vidsrc**, and **111477** are checked (Chromium GPU crash workaround)
 - External players (VLC, MX Player) bypass Forja’s automatic fallback chain
