@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 0 files in `features/` · player screens in `shared/player/` (~5.7k each) |
-| **Next action** | IPTV player split done; next: `shared/player/` controls extract (R19-A05) |
+| **Next action** | `iptv_controller` split done; next: `shared/player/` controls extract (R19-A05) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -32,7 +32,7 @@
 
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
-| **iptv** | 34 | ~17,900 | `iptv_catalog_portal_form.dart` (942) + `iptv_pt_browser_streams.dart` (809) |
+| **iptv** | 40 | ~17,900 | `iptv_controller_portal.dart` (532) + `iptv_catalog_portal_form.dart` (942) |
 | **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.dart` |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
@@ -48,7 +48,7 @@
 
 ## Tier 1 — critical god files (&gt;3k lines)
 
-No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_portal_form.dart` (942), `iptv_pt_browser_streams.dart` (809), `iptv_controller.dart` (1,815).
+No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_portal_form.dart` (942), `iptv_pt_browser_streams.dart` (809), `iptv_controller_portal.dart` (532).
 
 ---
 
@@ -61,6 +61,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + widgets part |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
+| [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 477 | Orchestrator | In | fields/init/dispose; portal/browser/live/channels/nav mixins |
 
 ---
 
@@ -81,7 +82,6 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvCatalogTopBar` + `IptvPortalPanel` in parts |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
 | [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 288 | Orchestrator | In | State + lifecycle; engine/ui mixins |
-| [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 1,783 | Data/Service | In | Non-UI god object |
 | [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
 | [`anime/catalog/anime_service.dart`](../../apps/forja/lib/features/anime/catalog/anime_service.dart) | 1,648 | Data/Service | In | Catalog backend |
 | [`downloader/media_downloader_screen.dart`](../../apps/forja/lib/features/downloader/media_downloader_screen.dart) | 1,536 | Orchestrator | Out | |
@@ -155,7 +155,13 @@ Paths relative to `apps/forja/lib/features/`.
 | 304 | search | `search/search_search.dart` | Search API mixin | In |
 | 109 | search | `search/search_screen.dart` | Orchestrator | In |
 | 41 | search | `search/search_models.dart` | Models | In |
-| 1783 | iptv | `iptv/iptv/controller/iptv_controller.dart` | Data/Service | In |
+| 477 | iptv | `iptv/iptv/controller/iptv_controller.dart` | Orchestrator | In |
+| 532 | iptv | `iptv/iptv/controller/iptv_controller_portal.dart` | Portal mixin | In |
+| 363 | iptv | `iptv/iptv/controller/iptv_controller_channels.dart` | Channels mixin | In |
+| 307 | iptv | `iptv/iptv/controller/iptv_controller_browser.dart` | Browser mixin | In |
+| 97 | iptv | `iptv/iptv/controller/iptv_controller_live.dart` | Live mixin | In |
+| 34 | iptv | `iptv/iptv/controller/iptv_controller_nav.dart` | Nav mixin | In |
+| 18 | iptv | `iptv/iptv/controller/iptv_controller_models.dart` | Models | In |
 | 1697 | jellyfin | `jellyfin/jellyfin_screen.dart` | Orchestrator | Out |
 | 1648 | anime | `anime/catalog/anime_service.dart` | Data/Service | In |
 | 1536 | downloader | `downloader/media_downloader_screen.dart` | Orchestrator | Out |
@@ -381,7 +387,13 @@ features/iptv/iptv/
   screens/iptv_catalog_portal_panel.dart
   screens/iptv_catalog_portal_form.dart
   screens/iptv_catalog_portal_widgets.dart
-  controller/iptv_controller.dart
+  controller/iptv_controller.dart           # 477 — fields, init, dispose
+  controller/iptv_controller_portal.dart
+  controller/iptv_controller_browser.dart
+  controller/iptv_controller_live.dart
+  controller/iptv_controller_channels.dart
+  controller/iptv_controller_nav.dart
+  controller/iptv_controller_models.dart
 ```
 
 ### Player ([RFC-019 R19-A05](../rfc/019-[draft]-god-file-decomposition.md))
@@ -468,7 +480,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV splits complete (PT screen, catalog workspace, player). Remaining: `iptv_controller`, `shared/player/` controls (R19-A05).
+IPTV splits complete (PT screen, catalog workspace, player, controller). Remaining: `shared/player/` controls (R19-A05).
 
 ---
 
