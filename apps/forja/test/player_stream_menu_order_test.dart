@@ -3,6 +3,12 @@ import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
+StreamSource _source(String title) => StreamSource(
+      title: title,
+      url: 'https://example.com/$title',
+      type: 'mp4',
+    );
+
 void main() {
   group('PlayerStreamMenu panel provider order', () {
     test('follows settings rank and ignores playback state', () {
@@ -87,6 +93,25 @@ void main() {
       );
 
       expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink']);
+    });
+  });
+
+  group('PlayerStreamMenu panel stream order', () {
+    test('preserves extraction order regardless of list position', () {
+      final sources = [
+        _source('stream-a'),
+        _source('stream-b'),
+        _source('stream-c'),
+      ];
+
+      final order = PlayerStreamMenu.orderedSourceEntriesForPanel(sources);
+
+      expect(order.map((e) => e.key).toList(), [0, 1, 2]);
+      expect(order.map((e) => e.value.title).toList(), [
+        'stream-a',
+        'stream-b',
+        'stream-c',
+      ]);
     });
   });
 }

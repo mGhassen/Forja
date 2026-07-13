@@ -350,6 +350,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                   itemBuilder: (context, index) {
                     final slide = slides[index % slides.length];
                     return CachedNetworkImage(
+                      key: ValueKey(slide.id),
                       imageUrl: slide.imageUrl,
                       fit: BoxFit.cover,
                       alignment: Alignment.centerRight,

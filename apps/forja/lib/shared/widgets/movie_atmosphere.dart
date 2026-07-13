@@ -104,6 +104,11 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
   @override
   void didUpdateWidget(KenBurnsBackdrop oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _controller.dispose();
+      _setupAnimations();
+      return;
+    }
     if (oldWidget.cycleDuration != widget.cycleDuration ||
         oldWidget.minScale != widget.minScale ||
         oldWidget.maxScale != widget.maxScale ||

@@ -197,13 +197,7 @@ class PlayerStreamMenu {
     VoidCallback? onTogglePlayPause,
   }) {
     final statuses = state.sourceStatuses;
-    final ordered = _orderedSourceEntries(
-      sources,
-      state,
-      statuses: statuses,
-      useStatuses: useIndexedStatuses,
-      urlStatuses: urlStatuses,
-    );
+    final ordered = orderedSourceEntriesForPanel(sources);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -586,47 +580,12 @@ class PlayerStreamMenu {
     return title;
   }
 
-  static List<MapEntry<int, StreamSource>> _orderedSourceEntries(
+  /// Stable panel order — preserves resolver/extraction list order.
+  @visibleForTesting
+  static List<MapEntry<int, StreamSource>> orderedSourceEntriesForPanel(
     List<StreamSource> sources,
-    PlayerStreamMenuState state, {
-    List<PlayerSourceStatus> statuses = const [],
-    Map<String, PlayerSourceStatus> urlStatuses = const {},
-    bool useStatuses = false,
-  }) {
-    final entries = sources.asMap().entries.toList();
-
-    int tier(int index, StreamSource source) {
-      if (_isCurrentSource(source, state) && state.playbackConfirmed) {
-        return 0;
-      }
-      final fromUrl = urlStatuses[source.url];
-      if (fromUrl != null) {
-        return switch (fromUrl) {
-          PlayerSourceStatus.active => 0,
-          PlayerSourceStatus.ready => 1,
-          PlayerSourceStatus.checking => 2,
-          PlayerSourceStatus.failed => 3,
-        };
-      }
-      if (useStatuses && index < statuses.length) {
-        return switch (statuses[index]) {
-          PlayerSourceStatus.active => 0,
-          PlayerSourceStatus.ready => 1,
-          PlayerSourceStatus.checking => 2,
-          PlayerSourceStatus.failed => 3,
-        };
-      }
-      if (_isCurrentSource(source, state)) return 1;
-      return 1;
-    }
-
-    entries.sort((a, b) {
-      final tierDiff = tier(a.key, a.value).compareTo(tier(b.key, b.value));
-      if (tierDiff != 0) return tierDiff;
-      return a.key.compareTo(b.key);
-    });
-    return entries;
-  }
+  ) =>
+      sources.asMap().entries.toList();
 
   static bool _isCurrentSource(
     StreamSource source,

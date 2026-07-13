@@ -27,6 +27,12 @@ class _IptvSectionShelfSpec {
   final String label;
   final IconData icon;
   final List<Color> colors;
+
+  /// Shelf tabs use the vibrant hue first — Series tiles list gray→green but
+  /// the pill must not lead with the dark stop.
+  List<Color> get shelfGradientColors => section == IptvSection.series
+      ? [colors[1], colors[0]]
+      : colors;
 }
 
 const _kSectionShelf = <_IptvSectionShelfSpec>[
@@ -665,7 +671,7 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — section gradient when selected / hovered / focused.
+/// Shelf tab — section gradient when selected only.
 /// Hover/focus expands right to reveal a catalog reload control.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
@@ -716,7 +722,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    final showColor = widget.selected || _hover || _focused;
+    final showColor = widget.selected;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -730,12 +736,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
               ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: widget.selected
-                      ? widget.spec.colors
-                      : [
-                          widget.spec.colors[0].withValues(alpha: 0.55),
-                          widget.spec.colors[1].withValues(alpha: 0.45),
-                        ],
+                  colors: widget.spec.shelfGradientColors,
                 )
               : null,
           color: showColor ? null : Colors.transparent,
@@ -743,7 +744,8 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
           boxShadow: widget.selected && showColor
               ? [
                   BoxShadow(
-                    color: widget.spec.colors[0].withValues(alpha: 0.35),
+                    color: widget.spec.shelfGradientColors.first
+                        .withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -827,7 +829,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                       child: Icon(
                         Icons.refresh_rounded,
                         size: 16,
-                        color: showColor
+                        color: showColor || _revealReload
                             ? Colors.white.withValues(alpha: 0.95)
                             : Colors.white60,
                       ),

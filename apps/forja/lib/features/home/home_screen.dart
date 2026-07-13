@@ -693,7 +693,8 @@ class _HomeScreenState extends State<HomeScreen>
     final count = movies.length;
     var next = (_heroIndex + delta) % count;
     if (next < 0) next += count;
-    _goToHeroStep(next, movies);
+    final instant = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    _goToHeroStep(next, movies, instant: instant);
   }
 
   void _revealedHeroPlayFocus() {
@@ -1027,6 +1028,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _startHeroTimer() {
+    _heroTimer?.cancel();
     _heroTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
       if (!_heroController.hasClients) return;
       _heroController.nextPage(
@@ -1052,7 +1054,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  void _goToHeroStep(int stepIndex, List<Movie> movies) {
+  void _goToHeroStep(
+    int stepIndex,
+    List<Movie> movies, {
+    bool instant = false,
+  }) {
     if (!_heroController.hasClients || movies.isEmpty) return;
     final count = movies.length;
     final currentPage = _heroController.page?.round() ?? _heroLoopStart;
@@ -1066,8 +1072,14 @@ class _HomeScreenState extends State<HomeScreen>
       delta += count;
     }
 
+    final targetPage = currentPage + delta;
+    if (instant) {
+      _heroController.jumpToPage(targetPage);
+      return;
+    }
+
     _heroController.animateToPage(
-      currentPage + delta,
+      targetPage,
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutCubic,
     );
@@ -2045,6 +2057,7 @@ class _HomeScreenState extends State<HomeScreen>
                   itemBuilder: (context, index) {
                     final movie = movies[index % movies.length];
                     return CachedNetworkImage(
+                      key: ValueKey(movie.id),
                       imageUrl: movie.backdropPath.isNotEmpty
                           ? TmdbApi.getBackdropUrl(movie.backdropPath)
                           : TmdbApi.getImageUrl(movie.posterPath),
