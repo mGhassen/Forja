@@ -6,16 +6,20 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
   void _onHistoryChanged() => _refreshHistory();
 
   /// Reload only the Continue Watching list — cheap, no API hits other
-  /// than SharedPreferences. Called on app resume, on history mutation,
-  /// and after returning from any screen that may have updated history.
+  /// than SharedPreferences. Called on init, catalog refresh, app resume,
+  /// on history mutation, and after returning from player/details.
   Future<void> _refreshHistory() async {
     try {
       final list = await _s._service.getWatchHistory();
       if (!mounted) return;
       setState(() {
         _s._continueWatching = list.take(10).toList();
+        _s._historyResolved = true;
       });
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _s._historyResolved = true);
+    }
   }
 
   void _onTheme() {
@@ -34,16 +38,9 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _safeHistory() async {
-    try {
-      return await _s._service.getWatchHistory();
-    } catch (e) {
-      debugPrint('[AnimeScreen] watch history load failed: $e');
-      return const [];
-    }
-  }
-
   Future<void> _load() async {
+    unawaited(_refreshHistory());
+
     final spotlightFuture = _safeSection(_s._service.getSpotlight(), 'spotlight');
     final trendingFuture = _safeSection(_s._service.getTrending(), 'trending');
     final topAiringFuture = _safeSection(_s._service.getTopAiring(), 'top airing');
@@ -57,7 +54,6 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
     final top10Future = _safeSection(_s._service.getTop10Today(), 'top 10');
     final recentEpisodesFuture =
         _safeSection(_s._service.getRecentEpisodes(), 'recent episodes');
-    final historyFuture = _safeHistory();
 
     setState(() {
       _s._error = null;
@@ -72,7 +68,6 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       _s._latestCompletedFuture = latestCompletedFuture;
       _s._top10Future = top10Future;
       _s._recentEpisodesFuture = recentEpisodesFuture;
-      _s._historyFuture = historyFuture;
     });
 
     final results = await Future.wait([
@@ -85,19 +80,14 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       latestCompletedFuture,
       top10Future,
       recentEpisodesFuture,
-      historyFuture,
     ]);
     if (!mounted) return;
 
     final hasCatalog = results
-        .take(9)
         .cast<List<AnimeCard>>()
         .any((section) => section.isNotEmpty);
 
     setState(() {
-      _s._continueWatching =
-          (results[9] as List<Map<String, dynamic>>).take(10).toList();
-
       _s._catalogResolved = true;
       _s._error = hasCatalog ? null : 'Failed to load anime — check your connection';
       _s._moodFuture = _loadMood(_s._selectedMood);

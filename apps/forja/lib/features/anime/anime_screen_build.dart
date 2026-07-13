@@ -95,20 +95,9 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   _buildContinueWatching(),
                                   isFirstAfterHero: true,
                                 )
-                              else
+                              else if (!_s._historyResolved)
                                 hubRowSliver(context,
-                                  FutureBuilder<List<Map<String, dynamic>>>(
-                                    future: _s._historyFuture,
-                                    builder: (context, snap) {
-                                      if (snap.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return homeContinueWatchingSkeleton(
-                                          context,
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
-                                  ),
+                                  homeContinueWatchingSkeleton(context),
                                   isFirstAfterHero: true,
                                 ),
                               hubRowSliver(context,_buildMoodChips(), isFirstAfterHero: false),

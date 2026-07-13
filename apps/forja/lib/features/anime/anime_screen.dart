@@ -50,13 +50,12 @@ class _AnimeScreenState extends State<AnimeScreen>
   Future<List<AnimeCard>>? _latestCompletedFuture;
   Future<List<AnimeCard>>? _top10Future;
   Future<List<AnimeCard>>? _recentEpisodesFuture;
-  Future<List<Map<String, dynamic>>>? _historyFuture;
-
   bool _catalogResolved = false;
   String? _error;
 
   // Continue watching
   List<Map<String, dynamic>> _continueWatching = [];
+  bool _historyResolved = false;
   int? _resumingAnimeId;
 
 
