@@ -40,7 +40,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [024-[partial]-…](024-[partial]-tab-cache-eviction-stale.md) | Tab cache eviction + stale | v0.8.x | partial | 15/16 · 1 ⏭️ | [0.8.2](../backlog/done/0.8.2-[done].md) |
 | [017-[draft]-…](017-[draft]-deferred-engine-boot.md) | Deferred engine boot | v1.0.1 | draft | 0/6 | [0.5.0](../backlog/done/0.5.0-[done].md) slice |
 | [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/5 | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
-| [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 0/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
+| [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 2/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.0.1 | draft | 0/4 | [RFC-026](026-[draft]-media-details-player-ux.md) |
 | [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 10/18 · 7/15 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 0/8 · 2 🔄 | [1.0.2](../backlog/1.0.2-[draft].md) |

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 5** acceptance |
-| **Current slice** | Details + player splits (required for RFC-026); home/settings remainder later |
+| **Progress** | **2 / 5** acceptance · home/settings splits shipped |
+| **Current slice** | Phase D — details orchestrator 2,984 lines; webstreaming + episodes remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -21,8 +21,8 @@
 |--:|----|-------------|--------|
 | 1 | R19-A01 | No file under `features/` or `shared/player/` exceeds ~1200 lines | ⬜ |
 | 2 | R19-A02 | `features/player/` deleted | ⬜ |
-| 3 | R19-A03 | Inline `_HoverScale` / `_MovieSection` removed from Home where shared widget fits | ⬜ |
-| 4 | R19-A04 | Settings domains in separate files | ⬜ |
+| 3 | R19-A03 | Inline `_HoverScale` / `_MovieSection` removed from Home where shared widget fits | ✅ |
+| 4 | R19-A04 | Settings domains in separate files | ✅ |
 | 5 | R19-A05 | Player `controls/` folder with subtitle + quality extracted | ⬜ |
 
 ---
@@ -38,7 +38,7 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 
 | File | Lines (approx.) | Risk |
 |------|-----------------|------|
-| [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4061 | Single `_DetailsScreenState`; Phase A wired `MediaDetailsScrollPage`, `MediaDetailsRecommendationsSection`, `MediaDetailsTrackerHandlers` |
+| [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 2984 | Orchestrator + play/UI; torrent/Stremio in `details_screen_*.part.dart` mixins; Phase A wired shared widgets |
 | [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 1372 | Phase B done — orchestrator; hero in `home_hero.dart`, sections in `widgets/` |
 | [`settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Phase C done — orchestrator; playback/search/providers/debrid in `sections/` |
 | [`iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3563 | 6 sub-views + routing; 29 private widgets (IPTV — follow-on, not RFC-019 core) |
