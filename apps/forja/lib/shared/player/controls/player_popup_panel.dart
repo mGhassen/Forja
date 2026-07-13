@@ -94,6 +94,18 @@ class PlayerPopupPanel {
   }) {
     dismiss();
 
+    final tv = ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
+        false;
+    if (tv) {
+      centered = true;
+      anchorContext = null;
+      final overlaySize = MediaQuery.sizeOf(context);
+      width = (overlaySize.width * 0.72).clamp(420.0, 640.0);
+      maxHeight = overlaySize.height * 0.82;
+      margin = EdgeInsets.zero;
+      screenPadding = const EdgeInsets.all(24);
+    }
+
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
 
@@ -103,14 +115,18 @@ class PlayerPopupPanel {
 
     _entry = OverlayEntry(
       builder: (overlayContext) {
-        if (anchorContext != null && !anchorContext.mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (isShowing) dismiss();
-          });
-          return const SizedBox.shrink();
-        }
+        return ShellScope.rehost(
+          context,
+          Builder(
+            builder: (scopedContext) {
+              if (anchorContext != null && !anchorContext.mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (isShowing) dismiss();
+                });
+                return const SizedBox.shrink();
+              }
 
-        final overlaySize = MediaQuery.sizeOf(overlayContext);
+              final overlaySize = MediaQuery.sizeOf(scopedContext);
         final rawAnchorRect = anchorContext != null
             ? _anchorRectInOverlay(anchorContext, overlayContext)
             : null;
@@ -210,25 +226,28 @@ class PlayerPopupPanel {
           );
         }
 
-        return tvFocusableOverlay(
-          overlayContext: overlayContext,
-          onDismiss: close,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: close,
-                  behavior: HitTestBehavior.opaque,
-                  child: ColoredBox(
-                    color: centered
-                        ? Colors.black.withValues(alpha: 0.62)
-                        : Colors.transparent,
-                  ),
+              return tvFocusableOverlay(
+                overlayContext: scopedContext,
+                onDismiss: close,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: close,
+                        behavior: HitTestBehavior.opaque,
+                        child: ColoredBox(
+                          color: centered
+                              ? Colors.black.withValues(alpha: 0.62)
+                              : Colors.transparent,
+                        ),
+                      ),
+                    ),
+                    panelLayer,
+                  ],
                 ),
-              ),
-              panelLayer,
-            ],
+              );
+            },
           ),
         );
       },

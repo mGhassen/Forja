@@ -13,10 +13,11 @@ import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -94,6 +95,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   bool _disposed = false;
   bool _isTv = false;
+  bool _routePopAllowed = false;
   bool _showControls = true;
   bool _isPlaying = false;
   bool _hasError = false;
@@ -376,6 +378,91 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     _startHideTimer();
   }
 
+  Future<void> _showExoUnavailableDialog(
+    String feature,
+    BuildContext anchorContext,
+  ) async {
+    await PlayerPopupPanel.show(
+      context: context,
+      title: feature,
+      child: ListView(
+        padding: const EdgeInsets.all(8),
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            child: Text(
+              '$feature is not available in ExoPlayer.',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          if (widget.onSwitchPlayer != null)
+            PlayerPopupListTile(
+              label: 'Switch to MediaKit',
+              subtitle: 'Full player controls on Android TV',
+              onTap: () {
+                PlayerPopupPanel.dismiss();
+                unawaited(_showPlayerMenu(anchorContext));
+              },
+            ),
+        ],
+      ),
+    );
+    if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _showSourceMenu(BuildContext anchorContext) async {
+    if (_sources.isEmpty) return;
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Source',
+      leadingIcon: Icons.layers_outlined,
+      anchorContext: anchorContext,
+      child: ListView(
+        padding: const EdgeInsets.all(8),
+        shrinkWrap: true,
+        children: [
+          for (var i = 0; i < _sources.length; i++)
+            PlayerPopupListTile(
+              label: _sources[i].title,
+              selected: i == _sourceIndex,
+              status: i == _sourceIndex
+                  ? PlayerSourceStatus.active
+                  : PlayerSourceStatus.ready,
+              onTap: () async {
+                PlayerPopupPanel.dismiss();
+                if (i == _sourceIndex) return;
+                _sourceIndex = i;
+                await ExoPlayerBridge.stop(_viewId);
+                await _openCurrentSource();
+                if (_isTv) _claimPlayFocus();
+              },
+            ),
+        ],
+      ),
+    );
+    if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
+    if (widget.hubEpisodes != null &&
+        widget.hubEpisodes!.isNotEmpty &&
+        widget.onHubEpisodeSelected != null) {
+      PlayerPopupPanel.dismiss();
+      await PlayerHubEpisodePanel.show(
+        context: context,
+        episodes: widget.hubEpisodes!,
+        currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        onEpisodeSelected: widget.onHubEpisodeSelected!,
+        fallbackBackdropPath: widget.movie?.backdropPath,
+        fallbackPosterPath: widget.movie?.posterPath,
+      );
+      if (_isTv) _claimPlayFocus();
+      return;
+    }
+    await _showExoUnavailableDialog('Episodes', anchorContext);
+  }
+
   Future<void> _exit() async {
     if (dismissAnyPlayerChromeOverlay()) {
       if (_isTv) _claimPlayFocus();
@@ -383,11 +470,20 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     }
     await _saveProgress();
     if (!mounted) return;
-    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
-      ShellTvFocusCoordinator.handleShellBackKey();
+    _popPlayerRoute();
+  }
+
+  void _popPlayerRoute() {
+    if (!mounted) return;
+    if (_routePopAllowed) {
+      Navigator.of(context, rootNavigator: true).pop();
       return;
     }
-    Navigator.of(context).pop();
+    setState(() => _routePopAllowed = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+    });
   }
 
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {
@@ -398,6 +494,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     PlayerAppMenu.show(
       context,
       anchorContext: anchorContext,
+      centered: _isTv,
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
       onSelect: ({builtInEngine, externalPlayer}) async {
@@ -517,7 +614,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                               unawaited(_openCurrentSource());
                             },
                             onStream: _hasStreamPicker
-                                ? () => _mediaKitHint('Source picker')
+                                ? () => unawaited(_showSourceMenu(context))
                                 : null,
                           )
                         : null,
@@ -567,7 +664,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                             unawaited(_openCurrentSource());
                           },
                           onStream: _hasStreamPicker
-                              ? () => _mediaKitHint('Source picker')
+                              ? () => unawaited(_showSourceMenu(context))
                               : null,
                         )
                       : null,
@@ -756,46 +853,46 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                                 size: btnSize,
                                 iconSize: iconSz - 2,
                                 label: _streamPickerLabel(),
-                                onPressedWithContext: (_) =>
-                                    _mediaKitHint('Source picker'),
+                                onPressedWithContext: (ctx) =>
+                                    unawaited(_showSourceMenu(ctx)),
                               ),
                             if (_hasEpisodePicker)
                               PlayerFlatIconButton(
                                 icon: Icons.video_library_outlined,
                                 size: btnSize,
                                 iconSize: iconSz,
-                                onPressedWithContext: (_) =>
-                                    _mediaKitHint('Episodes'),
+                                onPressedWithContext: (ctx) =>
+                                    unawaited(_showEpisodesMenu(ctx)),
                               ),
                             PlayerFlatIconButton(
                               icon: Icons.audiotrack_rounded,
                               size: btnSize,
                               iconSize: iconSz,
                               tooltip: 'Audio',
-                              onPressedWithContext: (_) =>
-                                  _mediaKitHint('Audio'),
+                              onPressedWithContext: (ctx) =>
+                                  unawaited(_showExoUnavailableDialog('Audio', ctx)),
                             ),
                             PlayerFlatIconButton(
                               icon: Icons.subtitles_outlined,
                               size: btnSize,
                               iconSize: iconSz,
-                              onPressedWithContext: (_) =>
-                                  _mediaKitHint('Subtitles'),
+                              onPressedWithContext: (ctx) =>
+                                  unawaited(_showExoUnavailableDialog('Subtitles', ctx)),
                             ),
                             PlayerFlatIconButton(
                               icon: Icons.hd_outlined,
                               size: btnSize,
                               iconSize: iconSz,
                               tooltip: 'Quality',
-                              onPressedWithContext: (_) =>
-                                  _mediaKitHint('Quality'),
+                              onPressedWithContext: (ctx) =>
+                                  unawaited(_showExoUnavailableDialog('Quality', ctx)),
                             ),
                             PlayerFlatIconButton(
                               icon: Icons.settings_outlined,
                               size: btnSize,
                               iconSize: iconSz,
-                              onPressedWithContext: (_) =>
-                                  _mediaKitHint('Settings'),
+                              onPressedWithContext: (ctx) =>
+                                  unawaited(_showExoUnavailableDialog('Settings', ctx)),
                             ),
                           ],
                         ),
@@ -911,7 +1008,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                   size: btnSize,
                   iconSize: iconSz - 2,
                   label: _streamPickerLabel(),
-                  onPressedWithContext: (_) => _mediaKitHint('Source picker'),
+                  onPressedWithContext: (ctx) => unawaited(_showSourceMenu(ctx)),
                 ),
               ),
             if (_hasStreamPicker) const SizedBox(width: 2),
@@ -923,7 +1020,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                   icon: Icons.video_library_outlined,
                   size: btnSize,
                   iconSize: iconSz,
-                  onPressedWithContext: (_) => _mediaKitHint('Episodes'),
+                  onPressedWithContext: (ctx) => unawaited(_showEpisodesMenu(ctx)),
                 ),
               ),
             if (_hasEpisodePicker) const SizedBox(width: 2),
@@ -935,7 +1032,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 size: btnSize,
                 iconSize: iconSz,
                 tooltip: 'Audio',
-                onPressedWithContext: (_) => _mediaKitHint('Audio'),
+                onPressedWithContext: (ctx) =>
+                    unawaited(_showExoUnavailableDialog('Audio', ctx)),
               ),
             ),
             const SizedBox(width: 2),
@@ -946,7 +1044,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 icon: Icons.subtitles_outlined,
                 size: btnSize,
                 iconSize: iconSz,
-                onPressedWithContext: (_) => _mediaKitHint('Subtitles'),
+                onPressedWithContext: (ctx) =>
+                    unawaited(_showExoUnavailableDialog('Subtitles', ctx)),
               ),
             ),
             const SizedBox(width: 2),
@@ -958,7 +1057,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 size: btnSize,
                 iconSize: iconSz,
                 tooltip: 'Quality',
-                onPressedWithContext: (_) => _mediaKitHint('Quality'),
+                onPressedWithContext: (ctx) =>
+                    unawaited(_showExoUnavailableDialog('Quality', ctx)),
               ),
             ),
             const SizedBox(width: 2),
@@ -969,7 +1069,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 icon: Icons.settings_outlined,
                 size: btnSize,
                 iconSize: iconSz,
-                onPressedWithContext: (_) => _mediaKitHint('Settings'),
+                onPressedWithContext: (ctx) =>
+                    unawaited(_showExoUnavailableDialog('Settings', ctx)),
               ),
             ),
           ],
@@ -982,7 +1083,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   Widget build(BuildContext context) {
     final body = PopScope(
-      canPop: false,
+      canPop: _routePopAllowed,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         await _exit();

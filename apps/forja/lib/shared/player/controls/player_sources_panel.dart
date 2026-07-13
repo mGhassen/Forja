@@ -99,22 +99,19 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return TorrentSourcesPanel(
+    return playerOverlayShell(
+      context: context,
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: playerSidePanelTvScope(
-        context: context,
+      child: _PlayerSourcesBody(
+        movie: widget.movie,
+        season: widget.season,
+        episode: widget.episode,
+        currentMagnet: widget.currentMagnet,
+        onTorrentSelected: widget.onTorrentSelected,
+        onStremioSelected: widget.onStremioSelected,
         onClose: widget.onClose,
-        child: _PlayerSourcesBody(
-          movie: widget.movie,
-          season: widget.season,
-          episode: widget.episode,
-          currentMagnet: widget.currentMagnet,
-          onTorrentSelected: widget.onTorrentSelected,
-          onStremioSelected: widget.onStremioSelected,
-          onClose: widget.onClose,
-        ),
       ),
     );
   }

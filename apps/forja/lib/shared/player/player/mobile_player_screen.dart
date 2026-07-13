@@ -39,7 +39,6 @@ import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
@@ -460,6 +459,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
+  bool _routePopAllowed = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   Movie? _heroMovie;
   String? _episodeOverview;
@@ -1125,11 +1125,21 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     if (!mounted) return;
-    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
-      ShellTvFocusCoordinator.handleShellBackKey();
+    _popPlayerRoute();
+  }
+
+  void _popPlayerRoute() {
+    if (!mounted) return;
+    final result = _positionNotifier.value;
+    if (_routePopAllowed) {
+      Navigator.of(context, rootNavigator: true).pop(result);
       return;
     }
-    Navigator.of(context).pop(_positionNotifier.value);
+    setState(() => _routePopAllowed = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(result);
+    });
   }
 
   @override
@@ -4506,7 +4516,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _routePopAllowed,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         _exitPlayer();

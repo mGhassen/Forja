@@ -8,6 +8,103 @@ import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+
+/// True when player chrome should use centered TV dialogs (not side panels).
+bool playerTvUsesCenteredDialogs(BuildContext context) =>
+    ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+/// Dialog width / max height for centered player overlays on TV.
+({double width, double maxHeight}) playerTvDialogSize(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return (
+    width: (size.width * 0.72).clamp(420.0, 640.0),
+    maxHeight: size.height * 0.82,
+  );
+}
+
+/// Side panel on phone/desktop; centered dialog with D-pad on TV.
+Widget playerOverlayShell({
+  required BuildContext context,
+  required bool isOpen,
+  required VoidCallback onClose,
+  required Widget child,
+  bool enableBlur = false,
+  Uint8List? frozenFrame,
+  EdgeInsets? contentPadding,
+}) {
+  if (!playerTvUsesCenteredDialogs(context)) {
+    return TorrentSourcesPanel(
+      isOpen: isOpen,
+      onClose: onClose,
+      enableBlur: enableBlur,
+      frozenFrame: frozenFrame,
+      contentPadding: contentPadding,
+      child: playerSidePanelTvScope(
+        context: context,
+        onClose: onClose,
+        child: child,
+      ),
+    );
+  }
+
+  if (!isOpen) return const SizedBox.shrink();
+
+  final dialog = playerTvDialogSize(context);
+  final padding = contentPadding ??
+      TorrentSourcesPanel.defaultContentPadding(playerOverlay: !enableBlur);
+
+  return PlayerPopupPanel.tvFocusableOverlay(
+    overlayContext: context,
+    onDismiss: onClose,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: onClose,
+            behavior: HitTestBehavior.opaque,
+            child: ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
+          ),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Material(
+              type: MaterialType.transparency,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: dialog.width,
+                  maxHeight: dialog.maxHeight,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: ForjaShellColors.cinematic.menuSurface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: ForjaShellColors.cinematic.borderSubtle,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: playerSidePanelTvScope(
+                      context: context,
+                      onClose: onClose,
+                      child: FocusTraversalGroup(
+                        policy: ReadingOrderTraversalPolicy(),
+                        child: Padding(padding: padding, child: child),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 /// D-pad scope for player side panels (episodes, sources, stream list).
 Widget playerSidePanelTvScope({

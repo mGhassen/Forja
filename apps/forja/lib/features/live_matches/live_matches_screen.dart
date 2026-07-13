@@ -621,17 +621,23 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   int get _gridSortOrder => _hasSportChips ? 2 : 1;
 
-  double _matchCardWidth(BuildContext context) =>
-      shellContinueWatchingCardWidth(context);
+  static const _matchCardWidthScale = 1.15;
+  static const _matchCardHeightScale = 1.32;
 
-  double _matchCardHeight(BuildContext context) =>
-      shellContinueWatchingCardHeight(context);
+  double _matchCardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context) * _matchCardWidthScale;
+
+  double _matchCardHeight(BuildContext context) {
+    final height =
+        shellContinueWatchingCardHeight(context) * _matchCardHeightScale;
+    return height.clamp(190.0, 230.0);
+  }
 
   double _channelCardWidth(BuildContext context) =>
-      (_matchCardWidth(context) * 0.86).clamp(200.0, 240.0);
+      (_matchCardWidth(context) * 0.9).clamp(210.0, 260.0);
 
   double _channelCardHeight(BuildContext context) =>
-      (_matchCardHeight(context) * 0.84).clamp(118.0, 136.0);
+      (_matchCardHeight(context) * 0.88).clamp(130.0, 150.0);
 
   double _gridGap(BuildContext context) =>
       shellMovieCardRowGap(context).clamp(8.0, 12.0);
@@ -2650,6 +2656,26 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _loading = true;
   bool _isFullscreen = false;
 
+  final FocusNode _backFocusNode = FocusNode(
+    debugLabel: 'live-embed-back',
+  );
+
+  bool _tvFocus() =>
+      ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+
+  /// The embed is a native WebView platform view that grabs D-pad input on TV.
+  /// Pull focus back to the Flutter back button so it stays reachable.
+  void _focusBack() {
+    if (!mounted || !_tvFocus() || _isFullscreen) return;
+    if (_backFocusNode.canRequestFocus) _backFocusNode.requestFocus();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
+  }
+
   Future<void> _enterFullscreen() async {
     if (DesktopWindowChrome.isDesktop) {
       try {
@@ -2709,6 +2735,7 @@ class _LiveMatchesEmbedPlayerScreenState
 
   @override
   void dispose() {
+    _backFocusNode.dispose();
     if (DesktopWindowChrome.isDesktop) {
       Future.microtask(() async {
         try {
@@ -2754,7 +2781,7 @@ class _LiveMatchesEmbedPlayerScreenState
   }
 
   Widget _buildTopBar() {
-    return Padding(
+    final bar = Padding(
       padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
       child: Row(
         children: [
@@ -2763,6 +2790,7 @@ class _LiveMatchesEmbedPlayerScreenState
             onTap: () => Navigator.of(context).maybePop(),
             color: Colors.white,
             size: 26,
+            focusNode: _backFocusNode,
           ),
           const SizedBox(width: 8),
           Flexible(
@@ -2788,6 +2816,11 @@ class _LiveMatchesEmbedPlayerScreenState
           ),
         ],
       ),
+    );
+    if (!_tvFocus()) return bar;
+    return FocusScope(
+      debugLabel: 'live-embed-chrome',
+      child: FocusTraversalGroup(child: bar),
     );
   }
 
@@ -2834,6 +2867,7 @@ class _LiveMatchesEmbedPlayerScreenState
                 await ctrl.evaluateJavascript(source: _autoplayJs);
                 await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
               } catch (_) {}
+              WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
             },
             onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
             onExitFullscreen: (_) => unawaited(_exitFullscreen()),

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
@@ -89,7 +90,8 @@ class _TorrentFilePanelOverlayState extends State<_TorrentFilePanelOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return TorrentSourcesPanel(
+    return playerOverlayShell(
+      context: context,
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,

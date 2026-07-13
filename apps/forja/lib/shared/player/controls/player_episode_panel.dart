@@ -91,21 +91,18 @@ class _EpisodePanelOverlayState extends State<_EpisodePanelOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return TorrentSourcesPanel(
+    return playerOverlayShell(
+      context: context,
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: playerSidePanelTvScope(
-        context: context,
+      child: _EpisodePanelBody(
+        movie: widget.movie,
+        initialSeason: widget.initialSeason,
+        currentSeason: widget.currentSeason,
+        currentEpisode: widget.currentEpisode,
+        onEpisodeSelected: widget.onEpisodeSelected,
         onClose: widget.onClose,
-        child: _EpisodePanelBody(
-          movie: widget.movie,
-          initialSeason: widget.initialSeason,
-          currentSeason: widget.currentSeason,
-          currentEpisode: widget.currentEpisode,
-          onEpisodeSelected: widget.onEpisodeSelected,
-          onClose: widget.onClose,
-        ),
       ),
     );
   }
@@ -581,21 +578,18 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return TorrentSourcesPanel(
+    return playerOverlayShell(
+      context: context,
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: playerSidePanelTvScope(
-        context: context,
+      child: _HubEpisodePanelBody(
+        episodes: widget.episodes,
+        currentEpisode: widget.currentEpisode,
+        onEpisodeSelected: widget.onEpisodeSelected,
         onClose: widget.onClose,
-        child: _HubEpisodePanelBody(
-          episodes: widget.episodes,
-          currentEpisode: widget.currentEpisode,
-          onEpisodeSelected: widget.onEpisodeSelected,
-          onClose: widget.onClose,
-          fallbackBackdropPath: widget.fallbackBackdropPath,
-          fallbackPosterPath: widget.fallbackPosterPath,
-        ),
+        fallbackBackdropPath: widget.fallbackBackdropPath,
+        fallbackPosterPath: widget.fallbackPosterPath,
       ),
     );
   }

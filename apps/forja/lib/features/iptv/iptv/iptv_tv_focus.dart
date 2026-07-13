@@ -237,6 +237,7 @@ Widget iptvBackButton(
   Color color = Colors.white70,
   double size = 22,
   String tooltip = 'Back',
+  FocusNode? focusNode,
 }) {
   if (onTap == null) return const SizedBox.shrink();
   if (iptvUseTvFocus(context)) {
@@ -248,6 +249,7 @@ Widget iptvBackButton(
       hitSize: size + 12,
       borderRadius: 22,
       tooltip: tooltip,
+      focusNode: focusNode,
     );
   }
   return ForjaPlainIcon(
@@ -297,6 +299,7 @@ class _IptvFocusIconTap extends StatefulWidget {
     required this.hitSize,
     required this.borderRadius,
     this.tooltip,
+    this.focusNode,
   });
 
   final IconData icon;
@@ -306,6 +309,7 @@ class _IptvFocusIconTap extends StatefulWidget {
   final double hitSize;
   final double borderRadius;
   final String? tooltip;
+  final FocusNode? focusNode;
 
   @override
   State<_IptvFocusIconTap> createState() => _IptvFocusIconTapState();
@@ -341,6 +345,7 @@ class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
       context: context,
       onTap: widget.onTap,
       borderRadius: widget.borderRadius,
+      focusNode: widget.focusNode,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: child,

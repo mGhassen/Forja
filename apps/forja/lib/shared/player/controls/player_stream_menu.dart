@@ -1440,15 +1440,12 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return TorrentSourcesPanel(
+    return playerOverlayShell(
+      context: context,
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: playerSidePanelTvScope(
-        context: context,
-        onClose: widget.onClose,
-        child: _buildBody(),
-      ),
+      child: _buildBody(),
     );
   }
 }
