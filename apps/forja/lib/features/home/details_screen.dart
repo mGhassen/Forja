@@ -5,8 +5,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
-import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
@@ -23,7 +21,7 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
-import 'package:forja/shared/widgets/home_movie_row.dart';
+import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
@@ -203,12 +201,21 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   // MDBlist aggregated ratings
   Map<String, dynamic>? _mdblistRatings;
-  // User's Trakt rating (1-10, null if not rated)
-  int? _userTraktRating;
-  // User's Simkl rating (1-10, null if not rated)
-  int? _userSimklRating;
-  // Trakt collection status
-  bool _isInTraktCollection = false;
+  final MediaDetailsTrackerState _trackerState = MediaDetailsTrackerState();
+  MediaDetailsTrackerHandlers? _trackerHandlers;
+
+  MediaDetailsTrackerHandlers get _trackerHandlersOrCreate {
+    return _trackerHandlers ??= MediaDetailsTrackerHandlers(
+      context: context,
+      state: _trackerState,
+      movie: () => _movie,
+      season: () => _selectedSeason,
+      episode: () => _selectedEpisode,
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+  }
 
   // ─── lifecycle ────────────────────────────────────────────────────────────
 
@@ -230,9 +237,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _loadWatchedEpisodes();
     _fetchDetails();
     _fetchExternalRatings();
-    _fetchUserTraktRating();
-    _fetchUserSimklRating();
-    _fetchTraktCollectionStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _trackerHandlersOrCreate.load();
+    });
     _loadWebstreamingProviderOrder();
   }
 
@@ -1191,9 +1198,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       onOverflowAction: _handleHeroOverflowAction,
       trailers: _trailers,
       trailerLanguageCode: _originalLanguage,
-      userTraktRating: _userTraktRating,
-      userSimklRating: _userSimklRating,
-      isInTraktCollection: _isInTraktCollection,
+      userTraktRating: _trackerState.userTraktRating,
+      userSimklRating: _trackerState.userSimklRating,
+      isInTraktCollection: _trackerState.isInTraktCollection,
       playFocusNode: policy.heroPlayAutoFocus ? _detailsHeroPlayFocus : null,
       tvTabId: policy.useFocusableMoodChips ? MediaDetailsTv.tabId : null,
       tvFocusUp: policy.useFocusableMoodChips ? _popDetailsFromTvUp : null,
@@ -1222,26 +1229,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   Future<void> _handleHeroOverflowAction(String value) async {
-    switch (value) {
-      case 'trakt_rate':
-        if (await TraktService().isLoggedIn()) {
-          _showRatingDialog();
-        } else if (mounted) {
-          ForjaToast.error('Login to Trakt first in Settings');
-        }
-      case 'simkl_rate':
-        if (await SimklService().isLoggedIn()) {
-          _showSimklRatingDialog();
-        } else if (mounted) {
-          ForjaToast.error('Login to Simkl first in Settings');
-        }
-      case 'collect':
-        await _toggleTraktCollection();
-      case 'checkin':
-        await _traktCheckin();
-      case 'trakt_list':
-        await _addToTraktList();
-    }
+    await _trackerHandlersOrCreate.handleOverflow(value);
   }
 
   void _scrollDetailsHeroIntoView() {
@@ -1973,404 +1961,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       }
       if (mounted && ratings != null) setState(() => _mdblistRatings = ratings);
     } catch (_) {}
-  }
-
-  Future<void> _fetchUserTraktRating() async {
-    try {
-      if (!await TraktService().isLoggedIn()) return;
-      final type = _movie.mediaType == 'tv' ? 'shows' : 'movies';
-      final allRatings = await TraktService().getAllRatings();
-      final ratings = allRatings[type] as List? ?? [];
-      for (final r in ratings) {
-        final show = r['show'] ?? r['movie'];
-        if (show != null) {
-          final ids = show['ids'] as Map<String, dynamic>?;
-          if (ids != null && ids['tmdb'] == _movie.id) {
-            if (mounted) setState(() => _userTraktRating = r['rating'] as int?);
-            return;
-          }
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _rateTraktItem(int rating) async {
-    final success = await TraktService().rateItem(
-      tmdbId: _movie.id,
-      mediaType: _movie.mediaType,
-      rating: rating,
-    );
-    if (success && mounted) setState(() => _userTraktRating = rating);
-  }
-
-  Future<void> _removeTraktRating() async {
-    final success = await TraktService().removeRating(
-      tmdbId: _movie.id,
-      mediaType: _movie.mediaType,
-    );
-    if (success && mounted) setState(() => _userTraktRating = null);
-  }
-
-  // ─── Simkl rating ─────────────────────────────────────────────────────────
-
-  Future<void> _fetchUserSimklRating() async {
-    try {
-      if (!await SimklService().isLoggedIn()) return;
-      final ratings = await SimklService().getRatings();
-      for (final r in ratings) {
-        final ids = r['ids'] as Map<String, dynamic>? ?? {};
-        if (ids['tmdb'] == _movie.id) {
-          if (mounted) setState(() => _userSimklRating = r['rating'] as int?);
-          return;
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _rateSimklItem(int rating) async {
-    final success = await SimklService().addRating(
-      tmdbId: _movie.id,
-      mediaType: _movie.mediaType,
-      rating: rating,
-    );
-    if (success && mounted) setState(() => _userSimklRating = rating);
-  }
-
-  Future<void> _removeSimklRating() async {
-    final success = await SimklService().removeRating(
-      tmdbId: _movie.id,
-      mediaType: _movie.mediaType,
-    );
-    if (success && mounted) setState(() => _userSimklRating = null);
-  }
-
-  void _showSimklRatingDialog() {
-    int selected = _userSimklRating ?? 5;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: const Text(
-            'Rate on Simkl',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(10, (i) {
-                  final val = i + 1;
-                  return GestureDetector(
-                    onTap: () => setDialogState(() => selected = val),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1),
-                      child: Icon(
-                        val <= selected
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        color: const Color(0xFF0BF5E5),
-                        size: 28,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$selected / 10',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            if (_userSimklRating != null)
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _removeSimklRating();
-                },
-                child: const Text(
-                  'Remove',
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _rateSimklItem(selected);
-              },
-              child: const Text(
-                'Rate',
-                style: TextStyle(color: Color(0xFF0BF5E5)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Trakt collection ─────────────────────────────────────────────────────
-
-  Future<void> _fetchTraktCollectionStatus() async {
-    try {
-      if (!await TraktService().isLoggedIn()) return;
-      final collection = await TraktService().getCollection();
-      final type = _movie.mediaType == 'tv' ? 'shows' : 'movies';
-      final items = collection[type] as List? ?? [];
-      for (final item in items) {
-        final media = item['show'] ?? item['movie'];
-        if (media != null) {
-          final ids = media['ids'] as Map<String, dynamic>? ?? {};
-          if (ids['tmdb'] == _movie.id) {
-            if (mounted) setState(() => _isInTraktCollection = true);
-            return;
-          }
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _toggleTraktCollection() async {
-    if (!await TraktService().isLoggedIn()) {
-      if (!mounted) return;
-      ForjaToast.error('Login to Trakt first in Settings');
-      return;
-    }
-    if (_isInTraktCollection) {
-      final success = await TraktService().removeFromCollection(
-        tmdbId: _movie.id,
-        mediaType: _movie.mediaType,
-      );
-      if (success && mounted) setState(() => _isInTraktCollection = false);
-    } else {
-      final success = await TraktService().addToCollection(
-        tmdbId: _movie.id,
-        mediaType: _movie.mediaType,
-      );
-      if (success && mounted) setState(() => _isInTraktCollection = true);
-    }
-  }
-
-  // ─── Trakt check-in ───────────────────────────────────────────────────────
-
-  Future<void> _traktCheckin() async {
-    if (!await TraktService().isLoggedIn()) {
-      if (!mounted) return;
-      ForjaToast.error('Login to Trakt first in Settings');
-      return;
-    }
-    final success = await TraktService().checkin(
-      tmdbId: _movie.id,
-      mediaType: _movie.mediaType,
-      season: _movie.mediaType == 'tv' ? _selectedSeason : null,
-      episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
-    );
-    if (!mounted) return;
-    if (success) {
-      ForjaToast.success('Checked in on Trakt!');
-    } else {
-      // Offer to cancel existing check-in and retry
-      final shouldCancel = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: const Text(
-            'Check-in Failed',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: const Text(
-            'You may already have an active check-in.\nCancel existing and retry?',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Yes, retry'),
-            ),
-          ],
-        ),
-      );
-      if (shouldCancel == true && mounted) {
-        final cancelled = await TraktService().cancelCheckin();
-        if (cancelled && mounted) {
-          final retrySuccess = await TraktService().checkin(
-            tmdbId: _movie.id,
-            mediaType: _movie.mediaType,
-            season: _movie.mediaType == 'tv' ? _selectedSeason : null,
-            episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
-          );
-          if (!mounted) return;
-          ForjaToast.show(
-            retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed',
-            kind: retrySuccess ? ForjaToastKind.success : ForjaToastKind.error,
-          );
-        }
-      }
-    }
-  }
-
-  // ─── Trakt add to list ────────────────────────────────────────────────────
-
-  Future<void> _addToTraktList() async {
-    if (!await TraktService().isLoggedIn()) {
-      if (!mounted) return;
-      ForjaToast.error('Login to Trakt first in Settings');
-      return;
-    }
-    final lists = await TraktService().getUserLists();
-    if (!mounted || lists.isEmpty) {
-      if (mounted) {
-        ForjaToast.warning('No Trakt lists found. Create one in Lists screen.');
-      }
-      return;
-    }
-
-    final selected = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
-        title: const Text(
-          'Add to Trakt List',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: lists.length,
-            itemBuilder: (_, i) {
-              final list = lists[i];
-              final name = list['name']?.toString() ?? 'Untitled';
-              final count = list['item_count'] ?? 0;
-              return ListTile(
-                title: Text(name, style: const TextStyle(color: Colors.white)),
-                subtitle: Text(
-                  '$count items',
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-                onTap: () => Navigator.pop(ctx, list),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-    if (selected == null || !mounted) return;
-
-    final slug = selected['ids']?['slug']?.toString() ?? '';
-    if (slug.isEmpty) return;
-
-    final type = _movie.mediaType == 'tv' ? 'shows' : 'movies';
-    final entry = <String, dynamic>{
-      'ids': {'tmdb': _movie.id},
-    };
-    final success = await TraktService().addToList(
-      listId: slug,
-      movies: type == 'movies' ? [entry] : [],
-      shows: type == 'shows' ? [entry] : [],
-    );
-    if (!mounted) return;
-    ForjaToast.show(
-      success ? 'Added to "${selected['name']}"' : 'Failed to add to list',
-      kind: success ? ForjaToastKind.success : ForjaToastKind.error,
-    );
-  }
-
-  void _showRatingDialog() {
-    int selected = _userTraktRating ?? 5;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: const Text(
-            'Rate on Trakt',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(10, (i) {
-                  final val = i + 1;
-                  return GestureDetector(
-                    onTap: () => setDialogState(() => selected = val),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1),
-                      child: Icon(
-                        val <= selected
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        color: const Color(0xFFFFD700),
-                        size: 28,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$selected / 10',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            if (_userTraktRating != null)
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _removeTraktRating();
-                },
-                child: const Text(
-                  'Remove',
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _rateTraktItem(selected);
-              },
-              child: Text(
-                'Rate',
-                style: TextStyle(color: AppTheme.primaryColor),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _openRecommendation(Map<String, dynamic> rec) async {
@@ -3805,85 +3395,66 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final trailersOrder = showTrailers ? rowOrder++ : null;
     final recsOrder = rowOrder;
 
-    final scroll = SingleChildScrollView(
-      controller: _detailsScrollController,
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildDetailsHero(
-            heroHeight: heroHeight,
-            showEpisodeRail: showEpisodeRail,
+    final sections = <Widget>[
+      if (showCollection)
+        MediaDetailsBody.padContent(
+          context,
+          _buildCollectionItemsSection(
+            tvRowOrder: collectionOrder!,
+            tvFocusUp: firstRowIsCollection ? heroFocusUp : null,
           ),
-          MediaDetailsBody(
-            backgroundColor: AppTheme.bgDark,
-            bodyOverlap: showEpisodeRail
-                ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
-                : null,
-            topSpacing: showEpisodeRail
-                ? ShellTokens.detailsBodyTopSpacingWithEpisodes
-                : null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showCollection) ...[
-                  MediaDetailsBody.padContent(
-                    context,
-                    _buildCollectionItemsSection(
-                      tvRowOrder: collectionOrder!,
-                      tvFocusUp: firstRowIsCollection ? heroFocusUp : null,
-                    ),
-                  ),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                if (showTvPicker) ...[
-                  MediaDetailsBody.padContent(
-                    context,
-                    _buildTvPicker(
-                      tvRowOrderBase: pickerBase,
-                      tvFocusUp: heroFocusUp,
-                    ),
-                  ),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                if (showCast) ...[
-                  MediaDetailsCastSection(
-                    cast: _castMembers,
-                    title: 'Main Characters',
-                    tvTabId: MediaDetailsTv.tabId,
-                    tvRowId: 'cast',
-                    tvRowOrder: castOrder!,
-                    tvFocusUp: firstRowIsCast ? heroFocusUp : null,
-                  ),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                if (showTrailers) ...[
-                  MediaDetailsTrailersSection(
-                    trailers: _trailers,
-                    movie: _movie,
-                    languageCode: _originalLanguage,
-                    tvTabId: MediaDetailsTv.tabId,
-                    tvRowId: 'trailers',
-                    tvRowOrder: trailersOrder!,
-                    tvFocusUp: firstRowIsTrailers ? heroFocusUp : null,
-                  ),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                _buildRecommendationsSection(
-                  tvRowOrder: recsOrder,
-                  tvFocusUp: firstRowIsRecs ? heroFocusUp : null,
-                ),
-              ],
-            ),
+        ),
+      if (showTvPicker)
+        MediaDetailsBody.padContent(
+          context,
+          _buildTvPicker(
+            tvRowOrderBase: pickerBase,
+            tvFocusUp: heroFocusUp,
           ),
-        ],
+        ),
+      if (showCast)
+        MediaDetailsCastSection(
+          cast: _castMembers,
+          title: 'Main Characters',
+          tvTabId: MediaDetailsTv.tabId,
+          tvRowId: 'cast',
+          tvRowOrder: castOrder!,
+          tvFocusUp: firstRowIsCast ? heroFocusUp : null,
+        ),
+      if (showTrailers)
+        MediaDetailsTrailersSection(
+          trailers: _trailers,
+          movie: _movie,
+          languageCode: _originalLanguage,
+          tvTabId: MediaDetailsTv.tabId,
+          tvRowId: 'trailers',
+          tvRowOrder: trailersOrder!,
+          tvFocusUp: firstRowIsTrailers ? heroFocusUp : null,
+        ),
+      MediaDetailsRecommendationsSection(
+        movies: _similarMovies,
+        onMovieTap: (movie) => AppRouter.openMovie(context, movie: movie),
+        tvTabId: MediaDetailsTv.tabId,
+        tvRowOrder: recsOrder,
+        tvFocusUp: firstRowIsRecs ? heroFocusUp : null,
       ),
-    );
+    ];
 
-    return MediaDetailsTvScope(
-      heroPlayFocus: _detailsHeroPlayFocus,
+    return MediaDetailsScrollPage(
       scrollController: _detailsScrollController,
-      child: scroll,
+      tvHeroPlayFocus: _detailsHeroPlayFocus,
+      hero: _buildDetailsHero(
+        heroHeight: heroHeight,
+        showEpisodeRail: showEpisodeRail,
+      ),
+      backgroundColor: AppTheme.bgDark,
+      bodyOverlap: showEpisodeRail
+          ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
+          : null,
+      topSpacing: showEpisodeRail
+          ? ShellTokens.detailsBodyTopSpacingWithEpisodes
+          : null,
+      sections: sections,
     );
   }
 
@@ -4482,25 +4053,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ),
       );
     }
-  }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  //  RECOMMENDATIONS SECTION
-  // ═════════════════════════════════════════════════════════════════════════════
-
-  Widget _buildRecommendationsSection({
-    required int tvRowOrder,
-    VoidCallback? tvFocusUp,
-  }) {
-    return HomeMovieRow(
-      title: 'More Like This',
-      movies: _similarMovies,
-      onMovieTap: (movie) => AppRouter.openMovie(context, movie: movie),
-      tvTabId: MediaDetailsTv.tabId,
-      tvRowId: 'recommendations',
-      tvRowOrder: tvRowOrder,
-      tvFocusUp: tvFocusUp,
-    );
   }
 }
 

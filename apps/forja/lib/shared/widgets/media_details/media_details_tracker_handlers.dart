@@ -42,13 +42,13 @@ class MediaDetailsTrackerHandlers {
     switch (value) {
       case 'trakt_rate':
         if (await TraktService().isLoggedIn()) {
-          _showTraktRatingDialog();
+          showTraktRatingDialog();
         } else if (mounted) {
           ForjaToast.error('Login to Trakt first in Settings');
         }
       case 'simkl_rate':
         if (await SimklService().isLoggedIn()) {
-          _showSimklRatingDialog();
+          showSimklRatingDialog();
         } else if (mounted) {
           ForjaToast.error('Login to Simkl first in Settings');
         }
@@ -204,9 +204,12 @@ class MediaDetailsTrackerHandlers {
     if (!mounted) return;
     if (success) {
       ForjaToast.success('Checked in on Trakt!');
-      return;
+    } else {
+      await _retryTraktCheckinAfterCancel();
     }
+  }
 
+  Future<void> _retryTraktCheckinAfterCancel() async {
     final shouldCancel = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -233,8 +236,13 @@ class MediaDetailsTrackerHandlers {
       episode: movie().mediaType == 'tv' ? episode() : null,
     );
     if (!mounted) return;
-    ForjaToast.error(retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed');
+    ForjaToast.show(
+      retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed',
+      kind: retrySuccess ? ForjaToastKind.success : ForjaToastKind.error,
+    );
   }
+
+  void showTraktRatingDialog() => _showTraktRatingDialog();
 
   Future<void> _addToTraktList() async {
     if (!await TraktService().isLoggedIn()) {
@@ -244,28 +252,43 @@ class MediaDetailsTrackerHandlers {
     }
 
     final lists = await TraktService().getUserLists();
-    if (!mounted) return;
-    if (lists.isEmpty) {
-      ForjaToast.warning('No Trakt lists found');
+    if (!mounted || lists.isEmpty) {
+      if (mounted) {
+        ForjaToast.warning(
+          'No Trakt lists found. Create one in Lists screen.',
+        );
+      }
       return;
     }
 
     final selected = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => SimpleDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF141414),
-        title: const Text('Add to Trakt list', style: TextStyle(color: Colors.white)),
-        children: lists
-            .map(
-              (list) => SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, list),
-                child: Text(
-                  list['name']?.toString() ?? 'List',
-                  style: const TextStyle(color: Colors.white),
+        title: const Text(
+          'Add to Trakt List',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: lists.length,
+            itemBuilder: (_, i) {
+              final list = lists[i];
+              final name = list['name']?.toString() ?? 'Untitled';
+              final count = list['item_count'] ?? 0;
+              return ListTile(
+                title: Text(name, style: const TextStyle(color: Colors.white)),
+                subtitle: Text(
+                  '$count items',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
-              ),
-            )
-            .toList(),
+                onTap: () => Navigator.pop(ctx, list),
+              );
+            },
+          ),
+        ),
       ),
     );
     if (selected == null || !mounted) return;
@@ -274,14 +297,19 @@ class MediaDetailsTrackerHandlers {
     if (slug.isEmpty) return;
 
     final type = movie().mediaType == 'tv' ? 'shows' : 'movies';
-    final entry = <String, dynamic>{'ids': {'tmdb': movie().id}};
+    final entry = <String, dynamic>{
+      'ids': {'tmdb': movie().id},
+    };
     final success = await TraktService().addToList(
       listId: slug,
       movies: type == 'movies' ? [entry] : [],
       shows: type == 'shows' ? [entry] : [],
     );
     if (!mounted) return;
-    ForjaToast.error(success ? 'Added to "${selected['name']}"' : 'Failed to add to list');
+    ForjaToast.show(
+      success ? 'Added to "${selected['name']}"' : 'Failed to add to list',
+      kind: success ? ForjaToastKind.success : ForjaToastKind.error,
+    );
   }
 
   void _showTraktRatingDialog() {
@@ -348,6 +376,8 @@ class MediaDetailsTrackerHandlers {
       ),
     );
   }
+
+  void showSimklRatingDialog() => _showSimklRatingDialog();
 
   void _showSimklRatingDialog() {
     int selected = state.userSimklRating ?? 5;

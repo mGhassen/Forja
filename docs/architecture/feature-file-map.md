@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 5 files · ~20.5k LOC |
-| **Next action** | Pick Phase A–E below — [1.0.1](../backlog/1.0.1-[open].md) defers code splits until chosen |
+| **Next action** | Phase A done — pick Phase B (home), C (settings), or D (details logic splits) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -33,7 +33,7 @@
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
 | **iptv** | 21 | ~17,900 | `iptv_pt_screen.dart` (3,563) |
-| **home** | 4 | ~10,000 | `details_screen.dart` (4,509) |
+| **home** | 4 | ~9,600 | `details_screen.dart` (4,061) |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
 | **settings** | 4 | ~4,300 | `settings_screen.dart` (3,844) |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
@@ -50,7 +50,7 @@
 
 | File | Lines | Role | TV scope | Root cause |
 |------|------:|------|----------|------------|
-| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4,509 | Details | In (from Home) | Single `_DetailsScreenState` (~4,400 lines); 3 shared widgets built but **not wired** |
+| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 4,061 | Details | In (from Home) | Phase A wired scroll, recommendations, tracker handlers |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 4,091 | Orchestrator | In | `_HomeScreenState` ~2,176 lines + 9 inline section widgets; duplicates `HeroTitle` |
 | [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 3,844 | Orchestrator | In | All settings domains in one `_SettingsScreenState` |
 | [`iptv/iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3,563 | Orchestrator | In | 6 sub-views + routing; 29 private widgets |
@@ -92,7 +92,7 @@ Paths relative to `apps/forja/lib/features/`.
 
 | Lines | Feature | File | Role | TV scope |
 |------:|---------|------|------|----------|
-| 4509 | home | `home/details_screen.dart` | Details | In |
+| 4061 | home | `home/details_screen.dart` | Details | In |
 | 4091 | home | `home/home_screen.dart` | Orchestrator | In |
 | 3844 | settings | `settings/settings_screen.dart` | Orchestrator | In |
 | 3563 | iptv | `iptv/iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
@@ -271,13 +271,15 @@ features/home/details/          # later → features/media/details/ (R26-C03)
   details_webstreaming.dart
 ```
 
-**Built but not wired** in `details_screen.dart`:
+**Built and wired** in `details_screen.dart` (Phase A, 2026-07):
 
 | Widget | Path | Replaces |
 |--------|------|----------|
-| `MediaDetailsScrollPage` | `shared/widgets/media_details/media_details_scroll_page.dart` | `_buildScrollLayout` |
+| `MediaDetailsScrollPage` | `shared/widgets/media_details/media_details_scroll_page.dart` | Inline scroll + `MediaDetailsTvScope` wrapper |
 | `MediaDetailsRecommendationsSection` | `shared/widgets/media_details/media_details_recommendations_section.dart` | `_buildRecommendationsSection` |
-| `MediaDetailsTrackerHandlers` | `shared/widgets/media_details/media_details_tracker_handlers.dart` | ~900 lines Trakt/Simkl duplicate |
+| `MediaDetailsTrackerHandlers` | `shared/widgets/media_details/media_details_tracker_handlers.dart` | Trakt/Simkl rating, collection, check-in, list (~400 lines) |
+
+**Remaining** (Phase D): `details_torrents.dart`, `details_stremio.dart`, `details_episodes.dart`, `details_webstreaming.dart`
 
 ### Settings target ([RFC-019 R19-A04](../rfc/019-[draft]-god-file-decomposition.md))
 
@@ -332,15 +334,15 @@ From [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) and [forja-shared-u
 
 Map and targets only. No Dart changes.
 
-### Phase A — details quick wins (~3 PRs, lowest risk)
+### Phase A — details quick wins (shipped 2026-07)
 
-| PR | Action | Est. lines removed |
-|----|--------|-------------------:|
-| A1 | Wire `MediaDetailsScrollPage` | ~110 |
-| A2 | Wire `MediaDetailsRecommendationsSection` | ~80 |
-| A3 | Adopt `MediaDetailsTrackerHandlers` | ~900 |
+| PR | Action | Status |
+|----|--------|--------|
+| A1 | Wire `MediaDetailsScrollPage` | Done |
+| A2 | Wire `MediaDetailsRecommendationsSection` | Done |
+| A3 | Adopt `MediaDetailsTrackerHandlers` | Done |
 
-Target: `details_screen.dart` 4,509 → ~3,400 without folder moves.
+`details_screen.dart`: 4,509 → 4,061 lines.
 
 ### Phase B — home decomposition (~5 PRs)
 
@@ -372,7 +374,7 @@ IPTV PT widget extraction, `iptv_controller` trim, player `controls/` (R19-A05),
 
 | If your priority is… | Start with | Why |
 |------------------------|------------|-----|
-| Lowest risk / existing code | **Phase A** | Widgets already written; no folder moves |
+| Lowest risk / existing code | **Phase A** | Done — scroll, recommendations, tracker handlers wired |
 | Home TV polish | **Phase B** | Most TV shell refs in `home_screen.dart` |
 | Fast file-count win | **Phase C** | Settings lowest coupling |
 | RFC-026 / media module unblock | **Phase D** | Required before `features/media/` move |
