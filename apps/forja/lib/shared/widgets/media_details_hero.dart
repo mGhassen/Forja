@@ -42,6 +42,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.networks = const [],
     this.creators = const [],
     this.bodyOverlap,
+    this.pageBottomChild,
   });
 
   final Movie movie;
@@ -68,6 +69,8 @@ class MediaDetailsHero extends StatefulWidget {
   final List<String> networks;
   final List<String> creators;
   final double? bodyOverlap;
+  /// Rendered on the page backdrop below hero chrome (e.g. TV season rail).
+  final Widget? pageBottomChild;
 
   @override
   State<MediaDetailsHero> createState() => _MediaDetailsHeroState();
@@ -624,6 +627,10 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
   @override
   Widget build(BuildContext context) {
     final h = widget.height ?? MediaQuery.sizeOf(context).height;
+    final bleed = widget.pageBottomChild != null
+        ? ShellTokens.detailsEpisodeBackdropBleed
+        : 0.0;
+    final totalH = h + bleed;
     final shellBg = _shellBg(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
@@ -634,6 +641,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
     final bodyOverlap =
         widget.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
+    final pageBleed = bleed > 0;
 
     return VisibilityDetector(
       key: ValueKey('media-hero-${widget.movie.id}'),
@@ -645,7 +653,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
         _syncTrailerPlayback();
       },
       child: SizedBox(
-        height: h,
+        height: totalH,
         width: double.infinity,
         child: ClipRect(
           child: Stack(
@@ -669,13 +677,18 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     opacity: _showTrailer ? 0 : 1,
                     child: _CinematicHeroBottomGradient(
                       shellBg: shellBg,
-                      overlap: bodyOverlap,
+                      overlap: pageBleed ? 0 : bodyOverlap,
+                      softFade: pageBleed,
                     ),
                   ),
                 ),
               ),
             if (_hasTrailerKey && _showTrailer)
-              Positioned.fill(
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: h,
                 child: ClipRect(
                   child: IgnorePointer(
                     child: Stack(
@@ -748,12 +761,12 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: h * 0.55 + bodyOverlap,
+                height: (pageBleed ? totalH * 0.42 : h * 0.55 + bodyOverlap),
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 600),
                     opacity: _showTrailer ? 0 : 1,
-                    child: _HeroBottomFade(shellBg: shellBg),
+                    child: _HeroBottomFade(shellBg: shellBg, soft: pageBleed),
                   ),
                 ),
               ),
@@ -761,7 +774,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: 72 + bottomInset,
+              bottom: bleed + 72 + bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Align(
@@ -815,6 +828,29 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                 },
               ),
             ),
+            if (widget.pageBottomChild != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        0,
+                        ShellTokens.detailsEpisodeSectionTopPadding,
+                        0,
+                        ShellTokens.detailsEpisodeSectionBottomPadding,
+                      ),
+                      child: widget.pageBottomChild!,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -852,9 +888,10 @@ class _TrailerMuteButton extends StatelessWidget {
 }
 
 class _HeroBottomFade extends StatelessWidget {
-  const _HeroBottomFade({required this.shellBg});
+  const _HeroBottomFade({required this.shellBg, this.soft = false});
 
   final Color shellBg;
+  final bool soft;
 
   @override
   Widget build(BuildContext context) {
@@ -863,14 +900,24 @@ class _HeroBottomFade extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            shellBg.withValues(alpha: 0.45),
-            shellBg.withValues(alpha: 0.82),
-            shellBg,
-            shellBg,
-          ],
-          stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
+          colors: soft
+              ? [
+                  Colors.transparent,
+                  shellBg.withValues(alpha: 0.18),
+                  shellBg.withValues(alpha: 0.48),
+                  shellBg.withValues(alpha: 0.78),
+                  shellBg,
+                ]
+              : [
+                  Colors.transparent,
+                  shellBg.withValues(alpha: 0.45),
+                  shellBg.withValues(alpha: 0.82),
+                  shellBg,
+                  shellBg,
+                ],
+          stops: soft
+              ? const [0.0, 0.42, 0.68, 0.9, 1.0]
+              : const [0.0, 0.35, 0.68, 0.92, 1.0],
         ),
       ),
     );
@@ -881,22 +928,25 @@ class _CinematicHeroBottomGradient extends StatelessWidget {
   const _CinematicHeroBottomGradient({
     required this.shellBg,
     this.overlap = 0,
+    this.softFade = false,
   });
 
   final Color shellBg;
   final double overlap;
+  final bool softFade;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final fraction = softFade ? 0.42 : 0.55;
         return IgnorePointer(
           child: Align(
             alignment: Alignment.bottomCenter,
             child: SizedBox(
-              height: constraints.maxHeight * 0.55 + overlap,
+              height: constraints.maxHeight * fraction + overlap,
               width: double.infinity,
-              child: _HeroBottomFade(shellBg: shellBg),
+              child: _HeroBottomFade(shellBg: shellBg, soft: softFade),
             ),
           ),
         );

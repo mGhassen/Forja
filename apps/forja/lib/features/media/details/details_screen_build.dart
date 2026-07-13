@@ -6,6 +6,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
   Widget _buildDetailsHero({
     required double heroHeight,
     bool showEpisodeRail = false,
+    Widget? pageBottomChild,
   }) {
     return MediaDetailsHero(
       movie: _s._movie,
@@ -14,9 +15,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       trailerLanguageCode: _s._originalLanguage,
       progress: _s._lastProgress,
       height: heroHeight,
-      bodyOverlap: showEpisodeRail
-          ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
-          : null,
+      pageBottomChild: pageBottomChild,
       tagline: _s._tagline,
       certification: _s._certification,
       status: _s._status,
@@ -233,18 +232,17 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final showCollection = _s._isCollection && _s._collectionItems.isNotEmpty;
     final firstRowIsCollection = showCollection;
-    final firstRowIsCast = !showCollection && !showTvPicker && showCast;
+    final firstRowIsCast = !showCollection && showCast;
     final firstRowIsTrailers =
-        !showCollection && !showTvPicker && !showCast && showTrailers;
+        !showCollection && !showCast && showTrailers;
     final firstRowIsRecs =
-        !showCollection && !showTvPicker && !showCast && !showTrailers;
+        !showCollection && !showCast && !showTrailers;
 
     var rowOrder = 0;
-    final collectionOrder = showCollection ? rowOrder++ : null;
-    final pickerBase = rowOrder;
     if (showTvPicker) {
       rowOrder += _detailsPickerRowCount();
     }
+    final collectionOrder = showCollection ? rowOrder++ : null;
     final castOrder = showCast ? rowOrder++ : null;
     final trailersOrder = showTrailers ? rowOrder++ : null;
     final recsOrder = rowOrder;
@@ -258,14 +256,6 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
             tvRowOrder: collectionOrder!,
             tvFocusUp: firstRowIsCollection ? heroFocusUp : null,
             onOpenItem: _s._openCollectionItem,
-          ),
-        ),
-      if (showTvPicker)
-        MediaDetailsBody.padContent(
-          context,
-          _s._buildTvPicker(
-            tvRowOrderBase: pickerBase,
-            tvFocusUp: heroFocusUp,
           ),
         ),
       if (showCast)
@@ -302,14 +292,17 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       hero: _buildDetailsHero(
         heroHeight: heroHeight,
         showEpisodeRail: showEpisodeRail,
+        pageBottomChild: showTvPicker
+            ? MediaDetailsBody.padContent(
+                context,
+                _s._buildTvPicker(
+                  tvRowOrderBase: 0,
+                  tvFocusUp: heroFocusUp,
+                ),
+              )
+            : null,
       ),
       backgroundColor: AppTheme.bgDark,
-      bodyOverlap: showEpisodeRail
-          ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
-          : null,
-      topSpacing: showEpisodeRail
-          ? ShellTokens.detailsBodyTopSpacingWithEpisodes
-          : null,
       sections: sections,
     );
   }

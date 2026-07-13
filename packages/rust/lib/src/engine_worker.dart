@@ -27,6 +27,9 @@ enum EngineJobKind {
   megaResolve,
   musicRequest,
   kisskhCatalog,
+  mangaCatalog,
+  booksCatalog,
+  catalogCore,
   metadataRequest,
   subtitleRequest,
   tmdbGet,
@@ -74,6 +77,7 @@ abstract final class EngineWorkerPool {
   static const _poolSize = 3;
 
   static final List<SendPort> _ports = [];
+  static final List<Isolate> _isolates = [];
   static int _roundRobin = 0;
   static int _nextJobId = 0;
   static String? _libraryPath;
@@ -103,17 +107,19 @@ abstract final class EngineWorkerPool {
     final readyPorts = List.generate(_poolSize, (_) => ReceivePort());
     try {
       for (var i = 0; i < _poolSize; i++) {
-        await Isolate.spawn(
+        final isolate = await Isolate.spawn(
           _engineWorkerMain,
           [readyPorts[i].sendPort, libraryPath],
           debugName: 'forja-engine-worker-$i',
         );
         final startup = await readyPorts[i].first;
         if (startup is _WorkerStartupFailure) {
+          isolate.kill(priority: Isolate.immediate);
           throw StateError(
             'Engine worker failed to load Rust library: ${startup.error}',
           );
         }
+        _isolates.add(isolate);
         _ports.add(startup as SendPort);
       }
     } finally {
@@ -121,6 +127,23 @@ abstract final class EngineWorkerPool {
         p.close();
       }
     }
+  }
+
+  /// Kill worker isolates so the VM can exit without waiting on check-in.
+  static Future<void> shutdown() async {
+    final starting = _starting;
+    if (starting != null) {
+      try {
+        await starting.timeout(const Duration(seconds: 2));
+      } catch (_) {}
+    }
+    _starting = null;
+    _ports.clear();
+    _roundRobin = 0;
+    for (final isolate in _isolates) {
+      isolate.kill(priority: Isolate.immediate);
+    }
+    _isolates.clear();
   }
 
   static Future<String> run(
@@ -247,6 +270,12 @@ String _dispatchJob(_WorkerJob job) {
       return rust.musicRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.kisskhCatalog:
       return rust.kisskhCatalogJson(job.args['requestJson']! as String);
+    case EngineJobKind.mangaCatalog:
+      return rust.mangaCatalogJson(job.args['requestJson']! as String);
+    case EngineJobKind.booksCatalog:
+      return rust.booksCatalogJson(job.args['requestJson']! as String);
+    case EngineJobKind.catalogCore:
+      return rust.catalogCoreJson(job.args['requestJson']! as String);
     case EngineJobKind.metadataRequest:
       return rust.metadataRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.subtitleRequest:

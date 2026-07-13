@@ -8,3 +8,6 @@ license.workspace = true
 stremio-core = { path = "../stremio-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+scraper = { workspace = true }
+regex = { workspace = true }
+urlencoding = "2"

@@ -39,6 +39,8 @@ indexer-core = { path = "../indexer-core" }
 debrid-core = { path = "../debrid-core" }
 music-core = { path = "../music-core" }
 kisskh-core = { path = "../kisskh-core" }
+books-core = { path = "../books-core" }
+catalog-core = { path = "../catalog-core" }
 live-matches-core = { path = "../live-matches-core" }
 resolver-engine = { path = "../resolver-engine" }
 uniffi = { workspace = true }

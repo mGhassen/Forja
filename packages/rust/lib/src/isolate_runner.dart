@@ -108,6 +108,24 @@ Future<String> runKisskhCatalogJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runMangaCatalogJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.mangaCatalog,
+      {'requestJson': requestJson},
+    );
+
+Future<String> runBooksCatalogJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.booksCatalog,
+      {'requestJson': requestJson},
+    );
+
+Future<String> runCatalogCoreJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.catalogCore,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runMetadataRequestJson(String requestJson) =>
     EngineWorkerPool.run(
       EngineJobKind.metadataRequest,

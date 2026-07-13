@@ -300,6 +300,47 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final showEpisodes = _episodes.isNotEmpty;
     final relatedOrder = showEpisodes ? 1 : 0;
 
+    final episodePicker = showEpisodes
+        ? MediaDetailsBody.padContent(
+            context,
+            TvSeasonEpisodePicker(
+              tmdbId: a.id,
+              seasonCount: 1,
+              selectedSeason: 1,
+              selectedEpisode: _selectedEpisode,
+              isLoadingSeason: false,
+              seasonData: null,
+              watchedEpisodes: const {},
+              fallbackPosterPath: a.coverUrl,
+              customEpisodesBySeason: _episodeMaps(),
+              episodeProgress: _episodeProgressMap(),
+              onSeasonSelected: (_) {},
+              onEpisodeSelected: (ep) {
+                setState(() => _selectedEpisode = ep);
+                final match = _episodes.where((e) => e.number == ep);
+                if (match.isNotEmpty && match.first.aired) {
+                  _play(ep);
+                }
+              },
+              onToggleWatched: (_, _) {},
+              tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+              tvSeasonRowId: 'seasons',
+              tvEpisodeRowId: 'episodes',
+              tvRowOrderBase: 0,
+              tvFocusUp: heroFocusUp,
+            ),
+          )
+        : MediaDetailsBody.padContent(
+            context,
+            Text(
+              'No episodes available yet',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 14,
+              ),
+            ),
+          );
+
     final scroll = SingleChildScrollView(
       controller: _detailsScrollController,
       physics: const BouncingScrollPhysics(),
@@ -318,7 +359,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             overview: a.cleanDescription,
             facts: _facts(a),
             height: heroHeight,
-            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
+            pageBottomChild: episodePicker,
             positionMs: posMs,
             durationMs: durMs,
             actionRow: DetailsHeroTvActionScope(
@@ -374,64 +415,19 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               ),
             ),
           ),
-          MediaDetailsBody(
-            backgroundColor: AppTheme.bgDark,
-            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
-            topSpacing: ShellTokens.detailsBodyTopSpacingWithEpisodes,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showEpisodes)
-                  MediaDetailsBody.padContent(
-                    context,
-                    TvSeasonEpisodePicker(
-                      tmdbId: a.id,
-                      seasonCount: 1,
-                      selectedSeason: 1,
-                      selectedEpisode: _selectedEpisode,
-                      isLoadingSeason: false,
-                      seasonData: null,
-                      watchedEpisodes: const {},
-                      fallbackPosterPath: a.coverUrl,
-                      customEpisodesBySeason: _episodeMaps(),
-                      episodeProgress: _episodeProgressMap(),
-                      onSeasonSelected: (_) {},
-                      onEpisodeSelected: (ep) {
-                        setState(() => _selectedEpisode = ep);
-                        final match = _episodes.where((e) => e.number == ep);
-                        if (match.isNotEmpty && match.first.aired) {
-                          _play(ep);
-                        }
-                      },
-                      onToggleWatched: (_, _) {},
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvSeasonRowId: 'seasons',
-                      tvEpisodeRowId: 'episodes',
-                      tvRowOrderBase: 0,
-                      tvFocusUp: heroFocusUp,
-                    ),
-                  )
-                else
-                  MediaDetailsBody.padContent(
-                    context,
-                    Text(
-                      'No episodes available yet',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                if (_related.isNotEmpty) ...[
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+          if (_related.isNotEmpty)
+            MediaDetailsBody(
+              backgroundColor: AppTheme.bgDark,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   _buildRelated(
                     tvRowOrder: relatedOrder,
                     tvFocusUp: showEpisodes ? null : heroFocusUp,
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );

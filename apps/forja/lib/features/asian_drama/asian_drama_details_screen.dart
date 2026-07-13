@@ -304,6 +304,45 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _popDetailsFromTvUp : null;
 
+    final episodePicker = det.episodes.isNotEmpty
+        ? MediaDetailsBody.padContent(
+            context,
+            TvSeasonEpisodePicker(
+              tmdbId: det.id,
+              seasonCount: 1,
+              selectedSeason: 1,
+              selectedEpisode: _selectedEpisode,
+              isLoadingSeason: false,
+              seasonData: null,
+              watchedEpisodes: const {},
+              fallbackPosterPath: det.cover,
+              customEpisodesBySeason: _episodeMaps(det),
+              episodeProgress: _episodeProgressMap(),
+              onSeasonSelected: (_) {},
+              onEpisodeSelected: (ep) {
+                setState(() => _selectedEpisode = ep);
+                final match = lookup[ep];
+                if (match != null) _play(match);
+              },
+              onToggleWatched: (_, _) {},
+              tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+              tvSeasonRowId: 'seasons',
+              tvEpisodeRowId: 'episodes',
+              tvRowOrderBase: 0,
+              tvFocusUp: heroFocusUp,
+            ),
+          )
+        : MediaDetailsBody.padContent(
+            context,
+            Text(
+              'No episodes available yet',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 14,
+              ),
+            ),
+          );
+
     final scroll = SingleChildScrollView(
       controller: _detailsScrollController,
       physics: const BouncingScrollPhysics(),
@@ -317,7 +356,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             overview: det.description.trim(),
             facts: _facts(det),
             height: heroHeight,
-            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
+            pageBottomChild: episodePicker,
             positionMs: posMs,
             durationMs: durMs,
             actionRow: DetailsHeroTvActionScope(
@@ -352,55 +391,6 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                   ],
                 ],
               ),
-            ),
-          ),
-          MediaDetailsBody(
-            backgroundColor: AppTheme.bgDark,
-            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
-            topSpacing: ShellTokens.detailsBodyTopSpacingWithEpisodes,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (det.episodes.isNotEmpty)
-                  MediaDetailsBody.padContent(
-                    context,
-                    TvSeasonEpisodePicker(
-                      tmdbId: det.id,
-                      seasonCount: 1,
-                      selectedSeason: 1,
-                      selectedEpisode: _selectedEpisode,
-                      isLoadingSeason: false,
-                      seasonData: null,
-                      watchedEpisodes: const {},
-                      fallbackPosterPath: det.cover,
-                      customEpisodesBySeason: _episodeMaps(det),
-                      episodeProgress: _episodeProgressMap(),
-                      onSeasonSelected: (_) {},
-                      onEpisodeSelected: (ep) {
-                        setState(() => _selectedEpisode = ep);
-                        final match = lookup[ep];
-                        if (match != null) _play(match);
-                      },
-                      onToggleWatched: (_, _) {},
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvSeasonRowId: 'seasons',
-                      tvEpisodeRowId: 'episodes',
-                      tvRowOrderBase: 0,
-                      tvFocusUp: heroFocusUp,
-                    ),
-                  )
-                else
-                  MediaDetailsBody.padContent(
-                    context,
-                    Text(
-                      'No episodes available yet',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-              ],
             ),
           ),
         ],

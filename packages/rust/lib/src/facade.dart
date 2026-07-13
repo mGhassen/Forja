@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'engine.dart';
+import 'engine_jobs.dart';
 import 'engine_worker.dart';
 import 'isolate_runner.dart';
 import 'library_path.dart';
@@ -91,6 +92,12 @@ abstract final class Engine {
   static void cancelPendingResolve() {
     if (!isReady) return;
     RustLib.instance.engineCancelPending();
+  }
+
+  /// Tear down worker isolates and async job polling before process exit.
+  static Future<void> shutdown() async {
+    EngineJobs.shutdown();
+    await EngineWorkerPool.shutdown();
   }
 
   static String? buildMovieUrl(String providerId, String tmdbId) {

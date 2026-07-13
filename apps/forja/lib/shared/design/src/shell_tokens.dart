@@ -139,6 +139,12 @@ abstract final class ShellTokens {
   /// (shell bg → transparent). Was 0.58; ~46% of total hero width at 20% start.
   static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
+
+  /// Home desktop/TV — page backdrop height (hero chrome + first row on image).
+  static const double homeBackdropViewportFraction = 0.75;
+  static const double homePageBottomSectionTopPadding = 8;
+  /// Extra hero height so the featured row sits slightly lower on the backdrop.
+  static const double homePageBottomSectionDownOffset = 80;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).
@@ -202,11 +208,13 @@ abstract final class ShellTokens {
   /// Horizontal inset for home catalog rows ([ShellSectionTitle], poster lists).
   static const double homeSectionHorizontalPadding = 24;
 
-  /// Media details — body below full-bleed hero (hero stays edge-to-edge).
+  /// Extra pull-up for movie details body (cast/trailers) — not used for TV episodes.
   static const double detailsHeroBodyOverlap = 120;
 
-  /// Extra pull-up when the TV episode rail sits in the first viewport.
-  static const double detailsHeroBodyOverlapWithEpisodes = 168;
+  /// Backdrop extends this far below the hero chrome so seasons sit on the image.
+  static const double detailsEpisodeBackdropBleed = 260;
+  static const double detailsEpisodeSectionTopPadding = 8;
+  static const double detailsEpisodeSectionBottomPadding = 12;
   static const double detailsHeroContentTopInset = 88;
   static const double detailsHeroDescriptionWidthFraction = 0.40;
   static const double detailsBodyTopSpacing = 36;
@@ -248,8 +256,8 @@ abstract final class ShellTokens {
   /// Cinematic hero band (~82% viewport) — see media-details feature doc.
   static const double detailsHeroViewportFraction = 0.82;
 
-  /// Shorter hero when the TV episode rail must peek into the first screen.
-  static const double detailsHeroWithEpisodesFraction = 0.68;
+  /// TV uses the same hero chrome height; [detailsEpisodeBackdropBleed] carries the image lower.
+  static const double detailsHeroWithEpisodesFraction = 0.82;
 
   /// Hero height for media details — prefer [viewportHeight] from a [LayoutBuilder].
   static double detailsHeroHeight(

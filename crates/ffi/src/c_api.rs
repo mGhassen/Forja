@@ -701,6 +701,27 @@ pub unsafe extern "C" fn ffi_kisskh_catalog_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_manga_catalog_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::manga_catalog_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_books_catalog_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::books_catalog_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_catalog_core_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::catalog_core_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_metadata_request_json(
     request_json: *const c_char,
 ) -> *mut c_char {

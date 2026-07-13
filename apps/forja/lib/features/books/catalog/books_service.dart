@@ -1,11 +1,6 @@
-import 'package:html/parser.dart' as hp;
 import 'package:flutter/foundation.dart';
 
 import 'package:rust/rust.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Models
-// ─────────────────────────────────────────────────────────────────────────────
 
 class BookEditionDetails {
   final String editionId;
@@ -23,223 +18,76 @@ class BookEditionDetails {
     this.extension,
     this.pages,
   });
+
+  factory BookEditionDetails.fromJson(Map<String, dynamic> json) =>
+      BookEditionDetails(
+        editionId: (json['editionId'] ?? json['edition_id'] ?? '') as String,
+        md5: (json['md5'] ?? '') as String,
+        adsUrl: (json['adsUrl'] ?? json['ads_url'] ?? '') as String,
+        size: json['size'] as String?,
+        extension: json['extension'] as String?,
+        pages: json['pages'] as String?,
+      );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Service
-// ─────────────────────────────────────────────────────────────────────────────
-
 class BooksService {
-  static const String _base = 'https://libgen.li';
-
-  static const Map<String, String> _headers = {
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-  };
-
-  // ── Search ─────────────────────────────────────────────────────────────────
-  // Equivalent to: GET /libgen/search/:query
-  // Only returns epub files (mirrors the JS filter).
-
   Future<List<BookResult>> search(String query) async {
     if (query.trim().isEmpty) return [];
     try {
-      final url = Uri.parse(
-        '$_base/index.php?req=${Uri.encodeComponent(query)}&curtab=f',
-      );
-      debugPrint('[LibGen] search: $url');
-
-      final response = await animeHttp('GET', url.toString(), headers: _headers);
-      if (response.status != 200) {
-        debugPrint('[LibGen] search HTTP ${response.status}');
-        return [];
-      }
-
-      final document = hp.parse(response.body);
-      final results = <BookResult>[];
-
-      // libgen uses multiple table structures; select all tr
-      final rows = document.querySelectorAll('table tbody tr, table tr');
-
-      for (final row in rows) {
-        final tds = row.querySelectorAll('td');
-        if (tds.length < 8) continue;
-
-        final firstTd = tds[0];
-
-        // Title link — must have edition.php href
-        final titleLink = firstTd.querySelector('a[href*="edition.php"]');
-        if (titleLink == null) continue;
-
-        final title = titleLink.text.trim();
-        if (title.isEmpty) continue;
-
-        final editionHref = titleLink.attributes['href'] ?? '';
-        final editionIdMatch = RegExp(r'id=(\d+)').firstMatch(editionHref);
-        final editionId = editionIdMatch?.group(1);
-        if (editionId == null || editionId.isEmpty) continue;
-
-        final series = firstTd.querySelector('b')?.text.trim() ?? '';
-        final isbn =
-            firstTd.querySelector('font[color="green"]')?.text.trim() ?? '';
-        final fileId =
-            firstTd.querySelector('.badge-secondary')?.text.trim() ?? '';
-
-        final author    = tds[1].text.trim();
-        final publisher = tds[2].text.trim();
-        final year      = tds[3].text.trim();
-        final language  = tds[4].text.trim();
-        final pages     = tds[5].text.trim();
-
-        // size td may have a nested <a>
-        final sizeTd = tds[6];
-        final size = sizeTd.querySelector('a')?.text.trim().isNotEmpty == true
-            ? sizeTd.querySelector('a')!.text.trim()
-            : sizeTd.text.trim();
-
-        final format = tds[7].text.trim();
-
-        // Only epub
-        if (format.toLowerCase() != 'epub') continue;
-
-        // Download links from td[8] if present
-        final downloadLinks = <Map<String, String>>[];
-        if (tds.length > 8) {
-          final dlTd = tds[8];
-          for (final a in dlTd.querySelectorAll('a')) {
-            final href = a.attributes['href'] ?? '';
-            if (href.isEmpty) continue;
-            final linkTitle = a.attributes['data-original-title'] ??
-                a.querySelector('.badge')?.text.trim() ??
-                '';
-            downloadLinks.add({'title': linkTitle, 'href': href});
-          }
-        }
-
-        results.add(BookResult(
-          title: title,
-          series: series,
-          author: author,
-          publisher: publisher,
-          year: year,
-          language: language,
-          pages: pages,
-          size: size,
-          format: format,
-          isbn: isbn,
-          editionId: editionId,
-          editionUrl: '$_base/edition.php?id=$editionId',
-          fileId: fileId,
-          downloadLinks: downloadLinks,
-        ));
-      }
-
-      debugPrint('[LibGen] found ${results.length} epub results');
-      return results;
+      final decoded = await booksCatalog({
+        'action': 'search',
+        'query': query,
+      });
+      return ((decoded['results'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => BookResult.fromJson(e.cast<String, dynamic>()))
+          .toList();
     } catch (e, st) {
       debugPrint('[LibGen] search error: $e\n$st');
       return [];
     }
   }
 
-  // ── Edition details → MD5 ──────────────────────────────────────────────────
-  // Equivalent to: GET /libgen/edition/:editionId
-
   Future<BookEditionDetails?> getEditionDetails(String editionId) async {
     try {
-      final url = Uri.parse('$_base/edition.php?id=$editionId');
-      debugPrint('[LibGen] edition: $url');
-
-      final response = await animeHttp('GET', url.toString(), headers: _headers);
-      if (response.status != 200) return null;
-
-      final document = hp.parse(response.body);
-
-      // Extract MD5 from ads.php?md5=... link
-      final adsLink = document
-          .querySelector('a[href^="ads.php?md5="]')
-          ?.attributes['href'];
-      final md5Match = RegExp(r'md5=([a-f0-9]+)').firstMatch(adsLink ?? '');
-      final md5 = md5Match?.group(1);
-      if (md5 == null || md5.isEmpty) {
-        debugPrint('[LibGen] MD5 not found for edition $editionId');
-        return null;
-      }
-
-      // Extract additional file info from #tablelibgen
-      String? size, extension, pages;
-      for (final row
-          in document.querySelectorAll('table#tablelibgen tr')) {
-        final tds = row.querySelectorAll('td');
-        if (tds.length < 2) continue;
-        final text = tds[1].text;
-
-        final sizeMatch = RegExp(r'Size:\s*([^\n]+)').firstMatch(text);
-        if (sizeMatch != null) size = sizeMatch.group(1)?.trim();
-
-        final extMatch = RegExp(r'Extension:\s*(\w+)').firstMatch(text);
-        if (extMatch != null) extension = extMatch.group(1)?.trim();
-
-        final pagesMatch = RegExp(r'Pages:\s*(\d+)').firstMatch(text);
-        if (pagesMatch != null) pages = pagesMatch.group(1)?.trim();
-      }
-
-      debugPrint('[LibGen] MD5: $md5');
-      return BookEditionDetails(
-        editionId: editionId,
-        md5: md5,
-        adsUrl: '$_base/ads.php?md5=$md5',
-        size: size,
-        extension: extension,
-        pages: pages,
-      );
+      final decoded = await booksCatalog({
+        'action': 'edition',
+        'edition_id': editionId,
+      });
+      final edition = decoded['edition'];
+      if (edition is! Map) return null;
+      return BookEditionDetails.fromJson(edition.cast<String, dynamic>());
     } catch (e) {
       debugPrint('[LibGen] edition details error: $e');
       return null;
     }
   }
 
-  // ── Download link from MD5 ─────────────────────────────────────────────────
-  // Equivalent to: GET /libgen/download/:md5
-
   Future<String?> getDownloadUrl(String md5) async {
     try {
-      final adsUrl = Uri.parse('$_base/ads.php?md5=$md5');
-      debugPrint('[LibGen] ads page: $adsUrl');
-
-      final response = await animeHttp('GET', adsUrl.toString(), headers: _headers);
-      if (response.status != 200) return null;
-
-      final document = hp.parse(response.body);
-
-      // Extract get.php link from #main table
-      final getLink = document
-          .querySelector('table#main a[href^="get.php"]')
-          ?.attributes['href'];
-
-      if (getLink == null || getLink.isEmpty) {
-        debugPrint('[LibGen] get.php link not found for md5 $md5');
-        return null;
-      }
-
-      final fullUrl = '$_base/$getLink';
-      debugPrint('[LibGen] download URL: $fullUrl');
-      return fullUrl;
+      final decoded = await booksCatalog({
+        'action': 'download_url',
+        'md5': md5,
+      });
+      final url = decoded['url'] as String?;
+      return url?.isNotEmpty == true ? url : null;
     } catch (e) {
       debugPrint('[LibGen] download url error: $e');
       return null;
     }
   }
 
-  // ── Convenience: full resolution in one call ───────────────────────────────
-  // editionId → MD5 → download URL
-
   Future<String?> resolveDownloadUrl(String editionId) async {
-    final details = await getEditionDetails(editionId);
-    if (details == null) return null;
-    return getDownloadUrl(details.md5);
+    try {
+      final decoded = await booksCatalog({
+        'action': 'resolve',
+        'edition_id': editionId,
+      });
+      final url = decoded['downloadUrl'] as String? ?? decoded['download_url'] as String?;
+      return url?.isNotEmpty == true ? url : null;
+    } catch (e) {
+      debugPrint('[LibGen] resolve download error: $e');
+      return null;
+    }
   }
 }

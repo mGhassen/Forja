@@ -393,6 +393,21 @@ class RustLib {
         return _readString(_native.ffi_kisskh_catalog_json(ptr));
       });
 
+  String mangaCatalogJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_manga_catalog_json(ptr));
+      });
+
+  String booksCatalogJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_books_catalog_json(ptr));
+      });
+
+  String catalogCoreJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_catalog_core_json(ptr));
+      });
+
   String metadataRequestJson(String requestJson) => using((arena) {
         final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_metadata_request_json(ptr));
@@ -942,6 +957,21 @@ final class _FfiNative {
               'ffi_kisskh_catalog_json',
             )
             .asFunction(),
+        ffi_manga_catalog_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_manga_catalog_json',
+            )
+            .asFunction(),
+        ffi_books_catalog_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_books_catalog_json',
+            )
+            .asFunction(),
+        ffi_catalog_core_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_catalog_core_json',
+            )
+            .asFunction(),
         ffi_metadata_request_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_metadata_request_json',
@@ -1275,6 +1305,12 @@ final class _FfiNative {
       ffi_music_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_kisskh_catalog_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_manga_catalog_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_books_catalog_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_catalog_core_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

@@ -21,8 +21,10 @@ members = [
     "debrid-core",
     "music-core",
     "kisskh-core",
+    "books-core",
     "live-matches-core",
     "resolver-engine",
+    "catalog-core",
 ]
 
 [workspace.package]

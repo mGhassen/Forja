@@ -178,11 +178,17 @@ Widget homeCatalogCardRowSkeleton(BuildContext context, {int itemCount = 5}) {
 double homeCinematicHeroBodyHeight(
   BuildContext context, {
   required bool compact,
+  bool pageBottomBleed = false,
 }) {
   if (compact) {
     final screenH = MediaQuery.sizeOf(context).height;
     final target = screenH * ShellTokens.heroHeightFractionCompact;
     return math.max(ShellTokens.heroMinHeightCompact, target);
+  }
+  if (pageBottomBleed) {
+    return MediaQuery.sizeOf(context).height *
+            ShellTokens.homeBackdropViewportFraction +
+        ShellTokens.homePageBottomSectionDownOffset;
   }
   return MediaQuery.sizeOf(context).height * shellHeroHeightFraction(context);
 }
@@ -190,10 +196,18 @@ double homeCinematicHeroBodyHeight(
 Widget homeCinematicHeroShimmer(BuildContext context) {
   final compact = !ShellScope.metricsOf(context).usesTvDensity &&
       MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
-  final height = homeCinematicHeroBodyHeight(context, compact: compact) +
+  final pageBottomBleed = !compact && _usesShellHomeLayoutForShimmer(context);
+  final height = homeCinematicHeroBodyHeight(
+        context,
+        compact: compact,
+        pageBottomBleed: pageBottomBleed,
+      ) +
       MediaQuery.paddingOf(context).top;
   return homeHubHeroShimmer(height: height);
 }
+
+bool _usesShellHomeLayoutForShimmer(BuildContext context) =>
+    ShellScope.profileOf(context) != ShellProfile.mobile;
 
 Widget homeHubHeroShimmer({required double height}) {
   return homeLoadingShimmer(

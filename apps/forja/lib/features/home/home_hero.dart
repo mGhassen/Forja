@@ -43,6 +43,7 @@ class HomeCinematicHero extends StatefulWidget {
     required this.controller,
     required this.onOpenDetails,
     required this.onWatchNow,
+    this.pageBottomChild,
   });
 
   final Future<List<Movie>> moviesFuture;
@@ -52,6 +53,8 @@ class HomeCinematicHero extends StatefulWidget {
   final HomeHeroController controller;
   final Future<void> Function(Movie movie) onOpenDetails;
   final Future<void> Function(Movie movie) onWatchNow;
+  /// First catalog row rendered on the extended page backdrop (desktop/TV).
+  final Widget? pageBottomChild;
 
   @override
   State<HomeCinematicHero> createState() => _HomeCinematicHeroState();
@@ -125,14 +128,42 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
+  double _homeBackdropHeight(BuildContext context, {required bool compact}) {
+    final topBarBleed = _desktopTopBarBleed(context);
+    final pageBleed = widget.pageBottomChild != null && !compact;
+    if (pageBleed) {
+      return _snapToDevicePixels(
+        context,
+        MediaQuery.sizeOf(context).height *
+                ShellTokens.homeBackdropViewportFraction +
+            topBarBleed +
+            ShellTokens.homePageBottomSectionDownOffset,
+      );
+    }
+    return _snapToDevicePixels(
+      context,
+      _cinematicHeroHeight(context, compact: compact) + topBarBleed,
+    );
+  }
+
+  double _homeHeroTextBottomInset(
+    BuildContext context, {
+    required bool compact,
+    required double defaultBottom,
+  }) {
+    if (widget.pageBottomChild == null || compact) return defaultBottom;
+    return HomeMovieSection.sectionHeight(context, compactTop: true) +
+        ShellTokens.homePageBottomSectionTopPadding +
+        defaultBottom;
+  }
+
   void _publishHomeHeroHeight() {
     if (_heroHeightSyncScheduled) return;
     _heroHeightSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _heroHeightSyncScheduled = false;
       if (!mounted) return;
-      final height = _cinematicHeroHeight(context, compact: widget.compact) +
-          (widget.usesShellHomeLayout ? _desktopTopBarBleed(context) : 0);
+      final height = _homeBackdropHeight(context, compact: widget.compact);
       if (ShellBus.homeHeroHeight.value != height) {
         ShellBus.homeHeroHeight.value = height;
       }
@@ -337,13 +368,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   }
 
   Widget _buildCinematicHeroShimmer({required bool compact}) {
-    final height = _cinematicHeroHeight(context, compact: compact) +
-        _desktopTopBarBleed(context);
-    return homeHubHeroShimmer(height: height);
+    return homeHubHeroShimmer(
+      height: _homeBackdropHeight(context, compact: compact),
+    );
   }
 
   Widget _buildCinematicHeroBlock(List<Movie> movies, {required bool compact}) {
-    final heroMovie = movies[_heroIndex];
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
     if (policy.heroPlayAutoFocus && !_tvHeroInitialFocusDone) {
@@ -355,13 +385,36 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         }
       });
     }
-    final backdropHeight = _cinematicHeroHeight(context, compact: compact);
+    final pageBleed = widget.pageBottomChild != null && !compact;
+    final imageHeight = _homeBackdropHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
-    final imageHeight =
-        _snapToDevicePixels(context, backdropHeight + topBarBleed);
     final textTop = topBarBleed + homeHeroTextTopInset(context);
     final compactRightInset =
         compact ? metrics.heroCompactRightInset : 48.0;
+    final textRight = compact
+        ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
+        : shellScaled(context, 48).clamp(24.0, 48.0);
+    final textBottom = shellScaled(context, 16).clamp(8.0, 16.0);
+    final textBottomInset = _homeHeroTextBottomInset(
+      context,
+      compact: compact,
+      defaultBottom: textBottom,
+    );
+    final textLeft = shellHomeSectionHorizontalPadding(context);
+    final desktopTextWidth = math.min(
+      MediaQuery.sizeOf(context).width * 0.34,
+      ShellTokens.heroTextColumnWidthDesktop,
+    );
+    final shellBg = Theme.of(context).scaffoldBackgroundColor;
+    final imageStartFraction = compact
+        ? ShellTokens.heroImageStartFractionCompact
+        : ShellTokens.heroImageStartFraction;
+    final solidLeftWidth =
+        MediaQuery.sizeOf(context).width * imageStartFraction;
+    final textColumnWidth = compact
+        ? MediaQuery.sizeOf(context).width - textLeft - textRight
+        : desktopTextWidth;
+    final heroTextMovie = movies[_heroIndex];
 
     return SizedBox(
       height: imageHeight,
@@ -369,61 +422,52 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: imageHeight,
-            child: _buildDesktopHeroBackdrop(
-              movies,
-              compact: compact,
+          ColoredBox(color: shellBg),
+          Positioned.fill(
+            child: PageView.builder(
+              clipBehavior: Clip.hardEdge,
+              controller: _heroController,
+              itemCount: _heroLoopLength,
+              onPageChanged: (i) => _onHeroPageChanged(i, movies),
+              itemBuilder: (context, index) {
+                final movie = movies[index % movies.length];
+                return _buildHeroSlideBackdrop(
+                  movie,
+                  imageStartFraction: imageStartFraction,
+                );
+              },
             ),
           ),
           Positioned(
-            left: shellHomeSectionHorizontalPadding(context),
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: solidLeftWidth,
+            child: IgnorePointer(
+              child: ColoredBox(color: shellBg),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _buildDesktopHeroImageGradients(
+                shellBg,
+                imageStartFraction: imageStartFraction,
+                softBottomFade: pageBleed,
+              ),
+            ),
+          ),
+          Positioned(
+            left: textLeft,
             top: textTop,
-            right: compact
-                ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
-                : shellScaled(context, 48).clamp(24.0, 48.0),
-            bottom: shellScaled(context, 16).clamp(8.0, 16.0),
-            child: compact
-                ? LayoutBuilder(
-                    builder: (context, constraints) {
-                      return ClipRect(
-                        child: Align(
-                          alignment: Alignment.bottomLeft,
-                          child: _buildCompactHeroTextColumn(
-                            heroMovie,
-                            metrics: metrics,
-                            maxHeight: constraints.maxHeight,
-                            maxWidth: constraints.maxWidth,
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      return ClipRect(
-                        child: Align(
-                          alignment: Alignment(
-                            -1,
-                            ShellTokens.heroTextColumnVerticalAlign,
-                          ),
-                          child: SizedBox(
-                            width: math.min(
-                              MediaQuery.sizeOf(context).width * 0.34,
-                              ShellTokens.heroTextColumnWidthDesktop,
-                            ),
-                            child: _buildDesktopHeroTextColumn(
-                              heroMovie,
-                              maxHeight: constraints.maxHeight,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            bottom: textBottomInset,
+            width: textColumnWidth,
+            child: _buildHeroTextSlide(
+              movie: heroTextMovie,
+              isActive: true,
+              compact: compact,
+              metrics: metrics,
+              desktopTextWidth: desktopTextWidth,
+            ),
           ),
           Positioned(
             right: shellScaled(context, 20).clamp(10.0, 20.0),
@@ -448,9 +492,62 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               bottom: 0,
               child: _buildTvHeroGalleryFocus(movies),
             ),
+          if (pageBleed)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: widget.pageBottomChild!,
+            ),
         ],
       ),
     );
+  }
+
+  Widget _buildHeroTextSlide({
+    required Movie movie,
+    required bool isActive,
+    required bool compact,
+    required ShellMetrics metrics,
+    required double desktopTextWidth,
+  }) {
+    return compact
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              return ClipRect(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: _buildCompactHeroTextColumn(
+                    movie,
+                    metrics: metrics,
+                    maxHeight: constraints.maxHeight,
+                    maxWidth: constraints.maxWidth,
+                    isActive: isActive,
+                  ),
+                ),
+              );
+            },
+          )
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              return ClipRect(
+                child: Align(
+                  alignment: Alignment(
+                    -1,
+                    ShellTokens.heroTextColumnVerticalAlign,
+                  ),
+                  child: SizedBox(
+                    width: desktopTextWidth,
+                    child: _buildDesktopHeroTextColumn(
+                      movie,
+                      maxHeight: constraints.maxHeight,
+                      isActive: isActive,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
   }
 
   Widget _buildTvHeroGalleryFocus(List<Movie> movies) {
@@ -475,6 +572,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     required ShellMetrics metrics,
     double? maxHeight,
     double? maxWidth,
+    bool isActive = true,
   }) {
     if (maxHeight != null && maxWidth != null) {
       final actionGap = shellHeroActionGap(context);
@@ -516,7 +614,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               ),
             ),
             SizedBox(height: actionGap),
-            _buildHeroActionRow(heroMovie),
+            _buildHeroActionRow(heroMovie, isActive: isActive),
           ],
         ),
       );
@@ -536,7 +634,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         SizedBox(height: shellHeroMetaGap(context)),
         _buildHeroMetaRow(heroMovie, singleLine: true),
         SizedBox(height: shellHeroActionGap(context)),
-        _buildHeroActionRow(heroMovie),
+        _buildHeroActionRow(heroMovie, isActive: isActive),
       ],
     );
   }
@@ -544,6 +642,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   Widget _buildDesktopHeroImageGradients(
     Color shellBg, {
     required double imageStartFraction,
+    bool softBottomFade = false,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -595,21 +694,31 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               left: 0,
               right: 0,
               bottom: 0,
-              height: height * 0.55,
+              height: height * (softBottomFade ? 0.42 : 0.55),
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        shellBg.withValues(alpha: 0.45),
-                        shellBg.withValues(alpha: 0.82),
-                        shellBg,
-                        shellBg,
-                      ],
-                      stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
+                      colors: softBottomFade
+                          ? [
+                              Colors.transparent,
+                              shellBg.withValues(alpha: 0.18),
+                              shellBg.withValues(alpha: 0.48),
+                              shellBg.withValues(alpha: 0.78),
+                              shellBg,
+                            ]
+                          : [
+                              Colors.transparent,
+                              shellBg.withValues(alpha: 0.45),
+                              shellBg.withValues(alpha: 0.82),
+                              shellBg,
+                              shellBg,
+                            ],
+                      stops: softBottomFade
+                          ? const [0.0, 0.42, 0.68, 0.9, 1.0]
+                          : const [0.0, 0.35, 0.68, 0.92, 1.0],
                     ),
                   ),
                 ),
@@ -624,6 +733,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   Widget _buildDesktopHeroTextColumn(
     Movie heroMovie, {
     required double maxHeight,
+    bool isActive = true,
   }) {
     const overviewStyle = TextStyle(
       fontSize: ShellTokens.heroOverviewFontSizeDesktop,
@@ -691,58 +801,38 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           ),
         ],
         const SizedBox(height: actionGap),
-        _buildHeroActionRow(heroMovie),
+        _buildHeroActionRow(heroMovie, isActive: isActive),
       ],
     );
   }
 
-  Widget _buildDesktopHeroBackdrop(List<Movie> movies, {bool compact = false}) {
+  Widget _buildHeroSlideBackdrop(
+    Movie movie, {
+    required double imageStartFraction,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final shellBg = Theme.of(context).scaffoldBackgroundColor;
-        final imageLeft = constraints.maxWidth *
-            (compact
-                ? ShellTokens.heroImageStartFractionCompact
-                : ShellTokens.heroImageStartFraction);
+        final imageLeft = constraints.maxWidth * imageStartFraction;
 
         return ClipRect(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ColoredBox(color: shellBg),
-              Positioned(
-                left: imageLeft,
-                top: 0,
-                right: 0,
-                bottom: 0,
-                child: PageView.builder(
-                  clipBehavior: Clip.hardEdge,
-                  controller: _heroController,
-                  itemCount: _heroLoopLength,
-                  onPageChanged: (i) => _onHeroPageChanged(i, movies),
-                  itemBuilder: (context, index) {
-                    final movie = movies[index % movies.length];
-                    return CachedNetworkImage(
-                      key: ValueKey(movie.id),
-                      imageUrl: movie.backdropPath.isNotEmpty
-                          ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                          : TmdbApi.getImageUrl(movie.posterPath),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.centerRight,
-                      filterQuality: FilterQuality.medium,
-                      placeholder: (c, u) => ColoredBox(color: shellBg),
-                      errorWidget: (c, u, e) => ColoredBox(color: shellBg),
-                    );
-                  },
-                ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: constraints.maxWidth - imageLeft,
+              height: constraints.maxHeight,
+              child: CachedNetworkImage(
+                key: ValueKey(movie.id),
+                imageUrl: movie.backdropPath.isNotEmpty
+                    ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                    : TmdbApi.getImageUrl(movie.posterPath),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                filterQuality: FilterQuality.medium,
+                placeholder: (c, u) => ColoredBox(color: shellBg),
+                errorWidget: (c, u, e) => ColoredBox(color: shellBg),
               ),
-              _buildDesktopHeroImageGradients(
-                shellBg,
-                imageStartFraction: compact
-                    ? ShellTokens.heroImageStartFractionCompact
-                    : ShellTokens.heroImageStartFraction,
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -755,39 +845,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     bool desktop = false,
     bool compact = false,
   }) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeIn,
-      layoutBuilder: (currentChild, previousChildren) {
-        return Stack(
-          alignment: Alignment.bottomLeft,
-          clipBehavior: Clip.none,
-          children: [
-            ...previousChildren,
-            if (currentChild != null) currentChild,
-          ],
-        );
-      },
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.08),
-            end: Offset.zero,
-          ).animate(animation),
-          child: child,
-        ),
-      ),
-      child: HeroTitle(
-        key: ValueKey(heroMovie.id),
-        movie: heroMovie,
-        logoUrl: _heroLogos[heroMovie.id],
-        style: HeroTitleStyle.home,
-        isLandscape: isLandscape,
-        desktop: desktop,
-        compact: compact,
-      ),
+    return HeroTitle(
+      key: ValueKey(heroMovie.id),
+      movie: heroMovie,
+      logoUrl: _heroLogos[heroMovie.id],
+      style: HeroTitleStyle.home,
+      isLandscape: isLandscape,
+      desktop: desktop,
+      compact: compact,
     );
   }
 
@@ -932,19 +997,19 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  Widget _buildHeroActionRow(Movie heroMovie) {
+  Widget _buildHeroActionRow(Movie heroMovie, {bool isActive = true}) {
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
     final tvNav = policy.useFocusableMoodChips;
     const heroItemCount = 3;
     final play = HeroPillPlayButton(
       label: 'Play',
-      focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      focusNode: isActive && policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? 'home' : null,
       tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tvNav ? 0 : null,
       onUpEdge: tvNav ? _focusHomeHeroGallery : null,
-      onKeyEvent: policy.heroPlayAutoFocus
+      onKeyEvent: isActive && policy.heroPlayAutoFocus
           ? (node, event) {
               if (!shellTvIsNavigationKey(event)) {
                 return KeyEventResult.ignored;
@@ -994,7 +1059,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     return DetailsHeroTvActionScope(
       tabId: 'home',
       itemCount: heroItemCount,
-      onFocusUp: _focusHomeHeroGallery,
+      onFocusUp: isActive ? _focusHomeHeroGallery : null,
       child: body,
     );
   }

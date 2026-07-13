@@ -52,4 +52,19 @@ abstract final class EngineJobs {
       _pending.remove(entry.key);
     }
   }
+
+  /// Stop polling and fail in-flight async jobs during app shutdown.
+  static void shutdown() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    if (RustLib.isInitialized) {
+      RustLib.instance.engineCancelPending();
+    }
+    for (final completer in _pending.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(StateError('Engine shutting down'));
+      }
+    }
+    _pending.clear();
+  }
 }

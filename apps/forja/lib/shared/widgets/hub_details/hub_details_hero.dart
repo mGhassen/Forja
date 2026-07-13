@@ -24,6 +24,7 @@ class HubDetailsHero extends StatelessWidget {
     this.positionMs,
     this.durationMs,
     this.bodyOverlap,
+    this.pageBottomChild,
   });
 
   final String backdropUrl;
@@ -39,10 +40,15 @@ class HubDetailsHero extends StatelessWidget {
   final int? positionMs;
   final int? durationMs;
   final double? bodyOverlap;
+  final Widget? pageBottomChild;
 
   @override
   Widget build(BuildContext context) {
     final h = height ?? ShellTokens.detailsHeroHeight(context, showEpisodeRail: true);
+    final bleed = pageBottomChild != null
+        ? ShellTokens.detailsEpisodeBackdropBleed
+        : 0.0;
+    final totalH = h + bleed;
     final shellBg = AppTheme.bgDark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
@@ -52,9 +58,10 @@ class HubDetailsHero extends StatelessWidget {
     final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
     final bodyOverlap =
         this.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
+    final pageBleed = bleed > 0;
 
     return SizedBox(
-      height: h,
+      height: totalH,
       width: double.infinity,
       child: ClipRect(
         child: Stack(
@@ -71,7 +78,8 @@ class HubDetailsHero extends StatelessWidget {
                 child: IgnorePointer(
                   child: _CinematicHeroBottomGradient(
                     shellBg: shellBg,
-                    overlap: bodyOverlap,
+                    overlap: pageBleed ? 0 : bodyOverlap,
+                    softFade: pageBleed,
                   ),
                 ),
               ),
@@ -84,14 +92,16 @@ class HubDetailsHero extends StatelessWidget {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: h * 0.55 + bodyOverlap,
-                child: IgnorePointer(child: _HeroBottomFade(shellBg: shellBg)),
+                height: pageBleed ? totalH * 0.42 : h * 0.55 + bodyOverlap,
+                child: IgnorePointer(
+                  child: _HeroBottomFade(shellBg: shellBg, soft: pageBleed),
+                ),
               ),
             Positioned(
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: 72 + bottomInset,
+              bottom: bleed + 72 + bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Align(
@@ -123,6 +133,29 @@ class HubDetailsHero extends StatelessWidget {
                 },
               ),
             ),
+            if (pageBottomChild != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        0,
+                        ShellTokens.detailsEpisodeSectionTopPadding,
+                        0,
+                        ShellTokens.detailsEpisodeSectionBottomPadding,
+                      ),
+                      child: pageBottomChild!,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -609,9 +642,10 @@ class HubHeroMetaLine extends StatelessWidget {
 }
 
 class _HeroBottomFade extends StatelessWidget {
-  const _HeroBottomFade({required this.shellBg});
+  const _HeroBottomFade({required this.shellBg, this.soft = false});
 
   final Color shellBg;
+  final bool soft;
 
   @override
   Widget build(BuildContext context) {
@@ -620,14 +654,24 @@ class _HeroBottomFade extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            shellBg.withValues(alpha: 0.45),
-            shellBg.withValues(alpha: 0.82),
-            shellBg,
-            shellBg,
-          ],
-          stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
+          colors: soft
+              ? [
+                  Colors.transparent,
+                  shellBg.withValues(alpha: 0.18),
+                  shellBg.withValues(alpha: 0.48),
+                  shellBg.withValues(alpha: 0.78),
+                  shellBg,
+                ]
+              : [
+                  Colors.transparent,
+                  shellBg.withValues(alpha: 0.45),
+                  shellBg.withValues(alpha: 0.82),
+                  shellBg,
+                  shellBg,
+                ],
+          stops: soft
+              ? const [0.0, 0.42, 0.68, 0.9, 1.0]
+              : const [0.0, 0.35, 0.68, 0.92, 1.0],
         ),
       ),
     );
@@ -635,22 +679,28 @@ class _HeroBottomFade extends StatelessWidget {
 }
 
 class _CinematicHeroBottomGradient extends StatelessWidget {
-  const _CinematicHeroBottomGradient({required this.shellBg, this.overlap = 0});
+  const _CinematicHeroBottomGradient({
+    required this.shellBg,
+    this.overlap = 0,
+    this.softFade = false,
+  });
 
   final Color shellBg;
   final double overlap;
+  final bool softFade;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final fraction = softFade ? 0.42 : 0.55;
         return IgnorePointer(
           child: Align(
             alignment: Alignment.bottomCenter,
             child: SizedBox(
-              height: constraints.maxHeight * 0.55 + overlap,
+              height: constraints.maxHeight * fraction + overlap,
               width: double.infinity,
-              child: _HeroBottomFade(shellBg: shellBg),
+              child: _HeroBottomFade(shellBg: shellBg, soft: softFade),
             ),
           ),
         );

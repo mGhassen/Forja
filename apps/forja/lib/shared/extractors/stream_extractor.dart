@@ -659,6 +659,14 @@ class StreamExtractor {
     if (_headlessWebView != null) {
       _log('Disposing headless WebView...');
       try {
+        final controller = _headlessWebView?.webViewController;
+        if (controller != null) {
+          await controller.evaluateJavascript(source: '''
+            document.querySelectorAll('video,audio').forEach(function(m) {
+              try { m.pause(); m.removeAttribute('src'); m.load(); } catch(e) {}
+            });
+          ''');
+        }
         await _headlessWebView?.dispose();
       } catch (e) {
         _log('Error during disposal: $e');

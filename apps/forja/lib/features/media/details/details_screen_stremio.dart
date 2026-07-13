@@ -55,7 +55,8 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
         return;
       }
       if (_s._movie.mediaType == 'tv')
-        stremioId = '$stremioId:$_s._selectedSeason:$_s._selectedEpisode';
+        stremioId =
+            '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
       final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
 
       int pendingCount = _s._streamAddons.length;
@@ -522,7 +523,8 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     try {
       String stremioId = _s._movie.imdbId ?? '';
       if (_s._movie.mediaType == 'tv')
-        stremioId = '$stremioId:$_s._selectedSeason:$_s._selectedEpisode';
+        stremioId =
+            '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
       final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
       final streams = await _s._stremio.getStreams(
         baseUrl: addon['baseUrl'],

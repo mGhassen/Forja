@@ -245,6 +245,9 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       await _shutdownMediaKitPlayers();
     } catch (_) {}
     try {
+      await Engine.shutdown();
+    } catch (_) {}
+    try {
       await TorrentStreamService().cleanup();
     } catch (_) {}
     try {
@@ -287,6 +290,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       if (_appShutdownStarted) return;
       _appShutdownStarted = true;
       unawaited(_shutdownMediaKitPlayers());
+      unawaited(Engine.shutdown());
       TorrentStreamService().cleanup();
       WebViewCleanup.cleanupWebView2Cache();
       site111477_proxy.purge111477Cache();

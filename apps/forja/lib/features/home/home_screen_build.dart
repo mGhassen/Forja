@@ -50,6 +50,17 @@ mixin _HomeScreenBuild on State<HomeScreen> {
 
     final usesShellHome = _usesShellHomeLayout(context);
     final fullHero = homeIsFullCinematicHero(context);
+    final featuredSection = usesShellHome && fullHero
+        ? HomeMovieSection(
+            title: 'Featured This Month',
+            future: _s._featuredThisMonthFuture,
+            onMovieTap: _s._openDetails,
+            compactTop: true,
+            tvFocusUp: _s._homeHeroController.revealPlayFocus,
+            tvRowId: 'featured',
+            tvRowOrder: 0,
+          )
+        : null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _s._syncHomeScrollOffset();
@@ -76,6 +87,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                     controller: _s._homeHeroController,
                     onOpenDetails: _s._openDetails,
                     onWatchNow: _s._watchNow,
+                    pageBottomChild: featuredSection,
                   ),
                 ),
               ),
@@ -99,20 +111,6 @@ mixin _HomeScreenBuild on State<HomeScreen> {
               if (usesShellHome)
                 _homeRowSliver(
                   HomeMovieSection(
-                    title: 'Featured This Month',
-                    future: _s._featuredThisMonthFuture,
-                    onMovieTap: _s._openDetails,
-                    compactTop: true,
-                    tvFocusUp: _s._homeHeroController.revealPlayFocus,
-                    tvRowId: 'featured',
-                    tvRowOrder: 0,
-                  ),
-                  isFirstAfterHero: false,
-                ),
-
-              if (usesShellHome)
-                _homeRowSliver(
-                  HomeMovieSection(
                     title: 'Popular',
                     future: _s._popularFuture,
                     onMovieTap: _s._openDetails,
@@ -120,7 +118,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                     tvRowId: 'popular',
                     tvRowOrder: 1,
                   ),
-                  isFirstAfterHero: false,
+                  isFirstAfterHero: featuredSection == null,
                 ),
 
               if (usesShellHome)

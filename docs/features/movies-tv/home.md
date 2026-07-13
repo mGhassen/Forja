@@ -4,7 +4,7 @@
 
 ## What it is
 
-Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Navigation Bar**.
+Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills **75% of the viewport** and **Featured This Month** sits on that image (same page-level backdrop pattern as TV series details). If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Navigation Bar**.
 
 ## How to open it
 
@@ -20,7 +20,8 @@ Tap **Home** in the navigation bar (first tab by default).
 - Resume from **Continue watching** (local watch history)
 - Tap **Play** on the hero to auto-start **webstreaming** (best extractor) on the details screen — not torrent search
 - **Info | +** pill opens details or toggles My List
-- On **Android TV**, D-pad **←/→** on the hero gallery (backdrop) changes the featured title and backdrop image; **OK** on the gallery opens details for the current title
+- Swipe or drag on the hero (or tap the step indicators on the right) to cycle featured titles — the full hero slide moves together: backdrop, title, metadata, overview, and actions
+- On **Android TV**, D-pad **←/→** on the hero gallery swaps the entire hero slide; **OK** on the gallery opens details for the current title
 - Open any poster to view details and play
 - Jump into a Stremio addon catalog rail when configured
 - View Trakt recommendation and calendar sections when connected

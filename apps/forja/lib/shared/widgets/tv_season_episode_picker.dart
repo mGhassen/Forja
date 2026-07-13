@@ -397,29 +397,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 ),
               ),
             ],
-            const Spacer(),
-            _PickerPill(
-              onTap: () => setState(() => _oldestFirst = !_oldestFirst),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.swap_vert_rounded,
-                    size: 18,
-                    color: Colors.white.withValues(alpha: 0.85),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _oldestFirst ? 'Oldest' : 'Newest',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
         if (widget.seasonCount > 1) ...[
@@ -592,45 +569,6 @@ class _SeasonCardState extends State<_SeasonCard> {
 
   Widget _fallback() {
     return Container(color: Colors.white.withValues(alpha: 0.06));
-  }
-}
-
-class _PickerPill extends StatelessWidget {
-  const _PickerPill({
-    required this.child,
-    this.onTap,
-  });
-
-  final Widget child;
-  final VoidCallback? onTap;
-
-  static const double _radius = 22;
-
-  @override
-  Widget build(BuildContext context) {
-    const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 9);
-    final policy = ShellScope.inputPolicyOf(context);
-    final decoration = BoxDecoration(
-      color: const Color(0xFF2A2A2A),
-      borderRadius: BorderRadius.circular(_radius),
-    );
-
-    final pill = shellRoundedInkHost(
-      radius: _radius,
-      decoration: decoration,
-      onTap: policy.useFocusableMoodChips ? null : onTap,
-      padding: padding,
-      child: child,
-    );
-
-    if (onTap == null || !policy.useFocusableMoodChips) return pill;
-
-    return FocusableControl(
-      onTap: onTap,
-      borderRadius: _radius,
-      scaleOnFocus: ShellTokens.focusActiveScale,
-      child: pill,
-    );
   }
 }
 

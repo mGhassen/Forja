@@ -54,6 +54,9 @@
 | KissKh catalog | `runKisskhCatalogJson` → `kisskh-core` | Engine |
 | Anime extractors + resolve | `runAnimeExtractorJson` → `anime-core` | Engine |
 | Live matches APIs | `runLiveMatchesFetchJson` → `live-matches-core` | Engine |
+| Manga catalog | `runMangaCatalogJson` → `manga-core` | Engine |
+| LibGen books | `runBooksCatalogJson` → `books-core` | Engine |
+| BestSimilar catalog | `runCatalogCoreJson` → `catalog-core` | Engine |
 
 ### ❌ Permanent host — never port to Rust
 
@@ -90,17 +93,25 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 ---
 
+### ✅ Shipped (P1 slice — 2026-07)
+
+| Item | Crate / FFI | Dart after |
+|------|-------------|------------|
+| Manga weebcentral parse | `manga-core` · `manga_catalog_json` | `manga_service.dart` — likes + thin wrapper |
+| LibGen books scrape | `books-core` · `books_catalog_json` | `books_service.dart` — thin wrapper |
+| BestSimilar autocomplete + details | `catalog-core` · `catalog_core_json` | `bestsimilar_scraper.dart` — cache + models |
+
 ### P1 — Large vertical scrapers
 
-| Dart today | LOC | Target crate | Notes |
-|------------|----:|--------------|-------|
-| `ArabicService` | 1365 | `arabic-core` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter |
-| `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic-core` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host |
-| `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook-core` (new) | Multi-platform HTML/API scrape |
-| `MangaService` | 453 | `manga-core` | **Parse** weebcentral HTML (fetch already Rust) |
-| `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics-core` | `ReadComicsOnlineScraper`, `ComicPageExtractor` |
-| `BooksService` | 245 | `books-core` (new) | Libgen-style HTML scrape |
-| `BestSimilarScraper` | 454 | `tmdb-core` or `catalog-core` | Home “because you watched” recs |
+| Dart today | LOC | Target crate | Notes | Status |
+|------------|----:|--------------|-------|--------|
+| `MangaService` | 453 → ~250 | `manga-core` | Parse weebcentral HTML (fetch+parse in Rust) | ✅ |
+| `BooksService` | 245 → ~90 | `books-core` | Libgen-style HTML scrape | ✅ |
+| `BestSimilarScraper` | 454 → ~230 | `catalog-core` | Autocomplete JSON + detail HTML parse | ✅ |
+| `ArabicService` | 1365 | `arabic-core` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter | ⬜ |
+| `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic-core` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⬜ |
+| `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook-core` (new) | Multi-platform HTML/API scrape | ⬜ |
+| `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics-core` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⬜ |
 
 ---
 
@@ -226,9 +237,11 @@ Each hub owns **vertical browse + stream orchestration** for its tab. Metadata f
 |---------|---------|--------------|------------|--------|
 | `AnimeService` | `anime/catalog/` | AniList GraphQL + extractors + Anikoto resolve (Rust) | `miruro_pipe_session`, history prefs, stream race UX | ✅ |
 | `KissKhService` | `asian_drama/catalog/` | `kisskh-core` catalog API | `KissKhExtractor` (WebView C3), watch history | ✅ |
+| `MangaService` | `manga/catalog/` | `manga-core` fetch+parse | Likes (`SharedPreferences`) | ✅ |
+| `BooksService` | `books/catalog/` | `books-core` | — | ✅ |
+| `BestSimilarScraper` | `shared/catalog/` | `catalog-core` | TMDB poster enrichment in home/similar screens | ✅ |
 | `AnimeArabicService` | `anime_arabic/catalog/` | Mega proxy (Rust) | `AnimeArabicExtractor` (iframe scrape) | Port parse → engine where possible |
-| `ArabicService` | `shared/extractors/` (used by `arabic/`) | — | Multi-site C2 | Port to `crates/*` |
-| `MangaService` | `manga/catalog/` | Fetch in Rust | Parse/orchestration Dart | Port parse → engine |
+| `ArabicService` | `shared/extractors/` (used by `arabic/`) | — | Multi-site C2 + WebView fallback | ⬜ `arabic-core` |
 | `ComicsService` + `ReadComicsOnlineScraper` | `comics/catalog/` | — | C2 scrape | Port → engine |
 | `BooksService` | `books/catalog/` | — | C2 scrape | Port → engine |
 | `AudiobookService` | `audiobooks/catalog/` | Platform APIs partial Rust | Scrape orchestration | Port → engine |

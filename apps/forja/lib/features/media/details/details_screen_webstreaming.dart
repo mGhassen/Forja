@@ -439,7 +439,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
 
           final isTv = _s._movie.mediaType == 'tv';
           final title = isTv
-              ? '${_s._movie.title} - S$_s._selectedSeason E$_s._selectedEpisode'
+              ? '${_s._movie.title} - S${_s._selectedSeason} E${_s._selectedEpisode}'
               : _s._movie.title;
           final ctx = loadingDialogContext;
           if (ctx != null && ctx.mounted) {
@@ -549,7 +549,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
   }) async {
     final isTv = _s._movie.mediaType == 'tv';
     final title = isTv
-        ? '${_s._movie.title} - S$_s._selectedSeason E$_s._selectedEpisode'
+        ? '${_s._movie.title} - S${_s._selectedSeason} E${_s._selectedEpisode}'
         : _s._movie.title;
     final providerId = _s._webstreamingActiveProviderId ?? 'videasy';
     final resolvedSources = _s._webstreamingStreams.isNotEmpty

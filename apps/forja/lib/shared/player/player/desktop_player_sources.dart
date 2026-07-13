@@ -719,16 +719,35 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       VidsrcExtractor.cancelPending();
       VideasyExtractor.cancelPending();
       NuvioService.instance.cancelPending();
+      DomainStreamProviderResolver.cancelAllPending();
       _s._statusController.clear();
       _s._playbackConfirmed = false;
 
-      // Validated — now swap.
-      if (_s._player.platform is NativePlayer) {
-        final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
-        await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
-      }
+      // Validated — stop the prior stream before opening the new one.
+      _s._autoTracksAppliedForSource = false;
+      _s._durationNotifier.value = Duration.zero;
+      _s._positionNotifier.value = Duration.zero;
+      _s._bufferedNotifier.value = Duration.zero;
+      await resetPlayerForOpen(_s._player);
+      await applyMediaHttpHeaders(_s._player, headers);
       await _s._player.open(Media(openUrl, httpHeaders: headers));
       if (!mounted || _s._fallbackAborted(switchGen)) return;
+      _s._player.setVolume(_s._volumeNotifier.value);
+      final opened = await waitForMediaOpen(_s._player, streamUrl: openUrl);
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!opened) {
+        _s._statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        _markSourceFailed(index);
+        unawaited(
+          _recordStreamPlayFailure(_s._currentProvider ?? ''),
+        );
+        return;
+      }
 
       if (_s._currentProvider == 'service111477') {
         setState(() {
