@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 5 files · ~20.5k LOC |
-| **Next action** | Phase D — details orchestrator **2,171** lines; next: play methods + panel filters, then RFC-026 media move |
+| **Next action** | Phase D nearly done — details orchestrator **1,144** lines (target &lt;800); optional trim of build/fetch, then RFC-026 media move |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -33,7 +33,7 @@
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
 | **iptv** | 21 | ~17,900 | `iptv_pt_screen.dart` (3,563) |
-| **home** | 16+ | ~9,600 | `details_screen.dart` (2,171) + `details_screen_*.part.dart` |
+| **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.part.dart` |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
@@ -50,7 +50,7 @@
 
 | File | Lines | Role | TV scope | Root cause |
 |------|------:|------|----------|------------|
-| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 2,171 | Details orchestrator | In (from Home) | Phase D — torrent/Stremio/webstreaming/episodes in part mixins |
+| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 1,144 | Details orchestrator | In (from Home) | Phase D — logic in 6 part mixins; build/fetch remain |
 | [`iptv/iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 3,563 | Orchestrator | In | 6 sub-views + routing; 29 private widgets |
 | [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 3,539 | Orchestrator | In | Sports models + channel UI + embed player in one file |
 
@@ -99,13 +99,15 @@ Paths relative to `apps/forja/lib/features/`.
 
 | Lines | Feature | File | Role | TV scope |
 |------:|---------|------|------|----------|
-| 2171 | home | `home/details_screen.dart` | Details orchestrator | In |
+| 1144 | home | `home/details_screen.dart` | Details orchestrator | In |
 | 1372 | home | `home/home_screen.dart` | Orchestrator | In |
 | 999 | home | `home/home_hero.dart` | Hero | In |
 | 748 | settings | `settings/settings_screen.dart` | Orchestrator | In |
 | 596 | home | `home/details_screen_webstreaming.part.dart` | Details webstreaming mixin | In |
 | 576 | home | `home/widgets/home_mood_section.dart` | Section | In |
 | 562 | home | `home/details_screen_stremio.part.dart` | Details Stremio/Nuvio mixin | In |
+| 542 | home | `home/details_screen_play.part.dart` | Details play/auto-play mixin | In |
+| 499 | home | `home/details_screen_panel.part.dart` | Details sources panel mixin | In |
 | 491 | home | `home/widgets/continue_watching_section.dart` | Section | In |
 | 391 | home | `home/details_screen_torrent.part.dart` | Details torrent mixin | In |
 | 231 | home | `home/details_screen_episodes.part.dart` | Details TV picker mixin | In |
@@ -303,9 +305,11 @@ features/home/details/          # later → features/media/details/ (R26-C03)
 | Stremio/Nuvio fetch + cancel | `details_screen_stremio.part.dart` (`_DetailsScreenStremio` mixin) | 562 |
 | Webstreaming extract/play/cache | `details_screen_webstreaming.part.dart` (`_DetailsScreenWebstreaming` mixin) | 596 |
 | TV season/episode picker + fetch | `details_screen_episodes.part.dart` (`_DetailsScreenEpisodes` mixin) | 231 |
+| Play + auto-play | `details_screen_play.part.dart` (`_DetailsScreenPlay` mixin) | 542 |
+| Panel filters + sources UI | `details_screen_panel.part.dart` (`_DetailsScreenPanel` mixin) | 499 |
 | Collection list UI | `widgets/details_collection_section.dart` | 158 |
 
-`details_screen.dart`: 4,061 → **2,171** lines (−1,890).
+`details_screen.dart`: 4,061 → **1,144** lines (−2,917).
 
 ### Settings target ([RFC-019 R19-A04](../rfc/019-[draft]-god-file-decomposition.md))
 
@@ -404,10 +408,12 @@ Map and targets only. No Dart changes.
 | D3 | Collection section → `widgets/details_collection_section.dart` | Done |
 | D4 | Webstreaming extract → `details_screen_webstreaming.part.dart` | Done |
 | D5 | Episodes / TV picker → `details_screen_episodes.part.dart` | Done |
-| D6 | Play methods + panel filter getters | ⬜ |
-| D7 | RFC-026 R26-C03 → `features/media/details/` | ⬜ |
+| D6 | Play + auto-play → `details_screen_play.part.dart` | Done |
+| D7 | Panel filters + sources UI → `details_screen_panel.part.dart` | Done |
+| D8 | Build/fetch trim (optional — reach &lt;800 orchestrator) | ⬜ |
+| D9 | RFC-026 R26-C03 → `features/media/details/` | ⬜ |
 
-`details_screen.dart`: 4,061 → **2,171** lines.
+`details_screen.dart`: 4,061 → **1,144** lines.
 
 ### Phase E — IPTV, player, remainder
 

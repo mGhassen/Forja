@@ -1,0 +1,499 @@
+part of 'details_screen.dart';
+
+mixin _DetailsScreenPanel on State<DetailsScreen> {
+  _DetailsScreenState get _s => this as _DetailsScreenState;
+
+  // ─── audio filter helpers ────────────────────────────────────────────────
+
+  /// Torrent results after applying panel filters.
+  List<TorrentResult> get _filteredTorrentResults => filterTorrentResults(
+    _s._allTorrentResults,
+    searchQuery: _s._sourceSearchQuery,
+    qualityFilters: _s._activeQualityFilters,
+    languageFilters: _s._activeLanguageFilters,
+    techFilters: _s._activeTechFilters,
+    audioFilters: _s._activeAudioFilters,
+    sizeFilters: _s._activeSizeFilters,
+  );
+
+  bool get _panelShowsMerged =>
+      _s._panelKindFilter == 'all' && _s._panelShowTorrent && _s._panelShowStremio;
+
+  bool get _panelShowsTorrents =>
+      _s._panelKindFilter == 'torrents' || _panelShowsMerged;
+
+  bool get _panelShowsStremio =>
+      _s._panelKindFilter == 'stremio' || _panelShowsMerged;
+
+  bool get _panelShowsNuvio => _s._panelKindFilter == 'nuvio';
+
+  List<Map<String, dynamic>> get _filteredPanelStremioStreams {
+    final streams = _s._selectedSourceId == 'all_stremio' || _panelShowsMerged
+        ? _s._allCombinedStremioStreams
+        : _s._stremioStreams;
+    return streams
+        .whereType<Map<String, dynamic>>()
+        .where((s) => _matchesPanelStreamFilters(s))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get _filteredPanelNuvioStreams {
+    final streams = _s._selectedSourceId == 'all_nuvio'
+        ? _s._nuvioStreams
+        : (_s._selectedSourceId.startsWith('nuvio:')
+              ? _s._nuvioStreams
+                    .where((s) => s['_addonBaseUrl'] == _s._selectedSourceId)
+                    .toList()
+              : <dynamic>[]);
+    return streams
+        .whereType<Map<String, dynamic>>()
+        .where((s) => _matchesPanelStreamFilters(s))
+        .toList();
+  }
+
+  List<String> get _panelFilterNames {
+    final names = <String>[];
+    if (_panelShowsTorrents) {
+      names.addAll(_s._allTorrentResults.map((r) => r.name));
+    }
+    if (_panelShowsStremio) {
+      final streams = _panelShowsMerged || _s._selectedSourceId == 'all_stremio'
+          ? _s._allCombinedStremioStreams
+          : _s._stremioStreams;
+      names.addAll(
+        streams.map(
+          (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+        ),
+      );
+    }
+    if (_panelShowsNuvio) {
+      final streams = _s._selectedSourceId == 'all_nuvio'
+          ? _s._nuvioStreams
+          : (_s._selectedSourceId.startsWith('nuvio:')
+                ? _s._nuvioStreams
+                      .where((s) => s['_addonBaseUrl'] == _s._selectedSourceId)
+                      .toList()
+                : <dynamic>[]);
+      names.addAll(
+        streams.map(
+          (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+        ),
+      );
+    }
+    return names;
+  }
+
+  Set<String> get _panelAvailableQualities =>
+      collectQualities(_panelFilterNames);
+
+  Set<String> get _panelAvailableLanguages =>
+      collectLanguages(_panelFilterNames);
+
+  Set<String> get _panelAvailableTech => collectTechTags(_panelFilterNames);
+
+  Set<String> get _panelAvailableSizeRanges {
+    final sizes = <double>[];
+    if (_panelShowsTorrents) {
+      for (final r in _s._allTorrentResults) {
+        final bytes = r.sizeInBytes > 0
+            ? r.sizeInBytes
+            : TorrentReleaseMetadata.parseSizeBytes(r.size);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    if (_panelShowsStremio) {
+      final streams = _panelShowsMerged || _s._selectedSourceId == 'all_stremio'
+          ? _s._allCombinedStremioStreams
+          : _s._stremioStreams;
+      for (final s in streams.whereType<Map<String, dynamic>>()) {
+        final bytes = _streamSizeBytes(s);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    if (_panelShowsNuvio) {
+      final streams = _s._selectedSourceId == 'all_nuvio'
+          ? _s._nuvioStreams
+          : (_s._selectedSourceId.startsWith('nuvio:')
+                ? _s._nuvioStreams
+                      .where((s) => s['_addonBaseUrl'] == _s._selectedSourceId)
+                      .toList()
+                : <dynamic>[]);
+      for (final s in streams.whereType<Map<String, dynamic>>()) {
+        final bytes = _streamSizeBytes(s);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    return collectSizeRanges(sizes);
+  }
+
+  double _streamSizeBytes(Map<String, dynamic> s) {
+    final label = TorrentReleaseMetadata.resolveStreamSizeLabel(s);
+    if (label != null) {
+      final bytes = TorrentReleaseMetadata.parseSizeBytes(label);
+      if (bytes > 0) return bytes;
+    }
+    final hints = s['behaviorHints'];
+    if (hints is Map) {
+      final videoSize = hints['videoSize'] ?? hints['video_size'];
+      if (videoSize is num && videoSize > 0) return videoSize.toDouble();
+      final parsed = double.tryParse(videoSize?.toString() ?? '');
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final blob =
+        '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''} ${s['size'] ?? ''}';
+    return TorrentReleaseMetadata.parseSizeBytes(blob);
+  }
+
+  bool _matchesPanelFilters(String name) =>
+      TorrentReleaseMetadata.parse(name).matchesFiltersForName(
+        name,
+        searchQuery: _s._sourceSearchQuery,
+        qualityFilters: _s._activeQualityFilters,
+        languageFilters: _s._activeLanguageFilters,
+        techFilters: _s._activeTechFilters,
+        audioFilters: _s._activeAudioFilters,
+      );
+
+  bool _matchesPanelStreamFilters(Map<String, dynamic> s) {
+    final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
+    if (!_matchesPanelFilters(name)) return false;
+    return TorrentReleaseMetadata.matchesSizeFilters(
+      _streamSizeBytes(s),
+      _s._activeSizeFilters,
+    );
+  }
+  void _resetPanelFilters() {
+    _s._sourceSearchQuery = '';
+    _s._activeQualityFilters = {};
+    _s._activeLanguageFilters = {};
+    _s._activeTechFilters = {};
+    _s._activeAudioFilters = {};
+    _s._activeSizeFilters = {};
+  }
+
+  int? get _panelVisibleCount {
+    var count = 0;
+    if (_panelShowsTorrents) count += _filteredTorrentResults.length;
+    if (_panelShowsStremio) count += _filteredPanelStremioStreams.length;
+    if (_panelShowsNuvio) count += _filteredPanelNuvioStreams.length;
+    return count;
+  }
+
+  bool get _isTorrentSource =>
+      _s._selectedSourceId == 'forja' ||
+      _s._selectedSourceId == 'jackett' ||
+      _s._selectedSourceId == 'prowlarr';
+
+  bool get _isNuvioSource =>
+      _s._selectedSourceId == 'nuvio_picker' ||
+      _s._selectedSourceId == 'all_nuvio' ||
+      _s._selectedSourceId.startsWith('nuvio:') ||
+      _s._selectedSourceId.startsWith('nuvio://');
+
+
+  List<Map<String, dynamic>> _sourceChips() {
+    final chips = <Map<String, dynamic>>[];
+    if (_s._panelKindFilter == 'torrents') {
+      chips.add({'id': 'forja', 'label': 'Forja'});
+      if (_s._isJackettConfigured)
+        chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
+      if (_s._isProwlarrConfigured)
+        chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
+      for (final a in _s._streamAddons) {
+        if (a['type'] == 'torrent')
+          chips.add({'id': a['baseUrl'], 'label': a['name']});
+      }
+    } else if (_s._panelKindFilter == 'nuvio') {
+      if (_s._nuvioSelectedAddonUrl == null) {
+        for (final a in _s._nuvioAddons) {
+          chips.add({
+            'id': 'nuvio_addon::${a.manifestUrl}',
+            'label': '📦 ${a.name}',
+          });
+        }
+      } else {
+        chips.add({'id': 'nuvio_back', 'label': '← Addons'});
+        final addon = _s._nuvioAddons.firstWhere(
+          (a) => a.manifestUrl == _s._nuvioSelectedAddonUrl,
+          orElse: () => NuvioAddon(
+            manifestUrl: _s._nuvioSelectedAddonUrl!,
+            name: '',
+            version: '',
+            scrapers: const [],
+          ),
+        );
+        for (final s in addon.scrapers) {
+          if (!s.enabled) continue;
+          chips.add({'id': 'nuvio:${s.id}', 'label': s.name});
+        }
+      }
+    } else if (_s._panelKindFilter == 'stremio') {
+      if (_s._streamAddons.length > 1) {
+        chips.add({'id': 'all_stremio', 'label': '⚡ All'});
+      }
+      for (final a in _s._streamAddons) {
+        if (_s._loadedAddonBaseUrls.contains(a['baseUrl'])) {
+          chips.add({'id': a['baseUrl'], 'label': a['name']});
+        }
+      }
+    }
+    return chips;
+  }
+
+  void _scrollChipsBack() {
+    _s._chipsScrollController.animateTo(
+      (_s._chipsScrollController.offset - 160).clamp(
+        0.0,
+        _s._chipsScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _scrollChipsForward() {
+    _s._chipsScrollController.animateTo(
+      (_s._chipsScrollController.offset + 160).clamp(
+        0.0,
+        _s._chipsScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _onSourceChipTap(String id) {
+    if (id.startsWith('nuvio_addon::')) {
+      setState(() {
+        _s._nuvioSelectedAddonUrl = id.substring('nuvio_addon::'.length);
+        _s._nuvioSelectedScraperId = null;
+        _s._selectedSourceId = 'nuvio_picker';
+        _s._nuvioStreams = [];
+        _s._errorMessage = null;
+      });
+      return;
+    }
+    if (id == 'nuvio_back') {
+      setState(() {
+        _s._nuvioSelectedAddonUrl = null;
+        _s._nuvioSelectedScraperId = null;
+        _s._selectedSourceId = 'nuvio_picker';
+        _s._nuvioStreams = [];
+        _s._errorMessage = null;
+      });
+      return;
+    }
+    if (id.startsWith('nuvio:')) {
+      final scraperId = id.substring('nuvio:'.length);
+      setState(() {
+        _s._selectedSourceId = id;
+        _s._nuvioSelectedScraperId = scraperId;
+        _resetPanelFilters();
+      });
+      _s._runSingleNuvioScraper(scraperId);
+      return;
+    }
+    setState(() {
+      _s._selectedSourceId = id;
+      _resetPanelFilters();
+    });
+    if (id == 'forja') {
+      _s._autoSearch();
+    } else if (id == 'jackett') {
+      _s._searchJackett();
+    } else if (id == 'prowlarr') {
+      _s._searchProwlarr();
+    } else if (id == 'all_stremio') {
+      setState(() {
+        _s._applyStremioFilter();
+        _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
+            ? 'No streams found from any addon'
+            : null;
+      });
+    } else if (id == 'all_nuvio' || id.startsWith('nuvio://')) {
+      setState(() => _s._errorMessage = null);
+    } else {
+      final chip = _sourceChips().firstWhere(
+        (c) => c['id'] == id,
+        orElse: () => {'label': 'addon'},
+      );
+      setState(() {
+        _s._applyStremioFilter();
+        _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
+            ? 'No streams found in ${chip['label']}'
+            : null;
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  STREAM LIST
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _torrentTileFor(TorrentResult r) {
+    double prog = 0;
+    var preselected = false;
+    if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
+      if (_s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId'])) {
+        preselected = true;
+        final pos = (_s._lastProgress!['position'] as int?) ?? 0;
+        final dur = (_s._lastProgress!['duration'] as int?) ?? 0;
+        if (dur > 0) {
+          prog = (pos / dur).clamp(0.0, 1.0);
+        }
+      }
+    }
+    return TorrentSourceTile(
+      result: r,
+      progress: prog,
+      isResumable: preselected,
+      highlightStart: widget.startPosition != null,
+      onPlay: () => _s._playTorrent(
+        r,
+        startPosition: preselected
+            ? resumeStartPositionFromProgress(_s._lastProgress!)
+            : widget.startPosition,
+      ),
+    );
+  }
+
+  Widget _stremioTileFor(
+    Map<String, dynamic> s, {
+    required bool showAddonName,
+  }) {
+    final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
+    final description = s['description'] ?? '';
+    double prog = 0;
+    var resumable = false;
+    if (_s._lastProgress != null) {
+      final String? sid = s['infoHash'] != null
+          ? 'magnet:?xt=urn:btih:${s['infoHash']}'
+          : s['url'];
+      if (sid != null) {
+        final hs = _s._lastProgress!['sourceId'] as String;
+        final match = s['infoHash'] != null
+            ? _s._getHash(hs) == _s._getHash(sid)
+            : hs == sid;
+        if (match) {
+          final pos = _s._lastProgress!['position'] as int;
+          final dur = _s._lastProgress!['duration'] as int;
+          if (dur > 0) {
+            prog = (pos / dur).clamp(0.0, 1.0);
+            resumable = true;
+          }
+        }
+      }
+    }
+    final presentation = stremioTilePresentation(s, isResumable: resumable);
+    return StremioSourceTile(
+      title: title,
+      description: description,
+      leadingIcon: presentation.leadingIcon,
+      leadingColor: presentation.leadingColor,
+      isExternal: presentation.isExternal,
+      addonName: s['_addonName']?.toString(),
+      showAddonName: showAddonName,
+      sizeText: s['size']?.toString(),
+      seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
+      stream: s,
+      progress: prog,
+      isResumable: resumable,
+      highlightStart: widget.startPosition != null,
+      onTap: () => _s._playStremioStream(
+        s,
+        startPosition: resumable
+            ? Duration(milliseconds: _s._lastProgress!['position'] as int)
+            : widget.startPosition,
+      ),
+    );
+  }
+
+  Widget _buildStreamList({bool inPanel = false}) {
+    if (_s._errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            _s._errorMessage!,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      );
+    }
+
+    final torrents = _panelShowsTorrents
+        ? _filteredTorrentResults
+        : <TorrentResult>[];
+    final stremio = _panelShowsStremio
+        ? _filteredPanelStremioStreams
+        : <Map<String, dynamic>>[];
+    final nuvio = _panelShowsNuvio
+        ? _filteredPanelNuvioStreams
+        : <Map<String, dynamic>>[];
+    final count = torrents.length + stremio.length + nuvio.length;
+    final rawCount =
+        (_panelShowsTorrents ? _s._allTorrentResults.length : 0) +
+        (_panelShowsStremio
+            ? (_panelShowsMerged || _s._selectedSourceId == 'all_stremio'
+                  ? _s._allCombinedStremioStreams.length
+                  : _s._stremioStreams.length)
+            : 0) +
+        (_panelShowsNuvio ? _s._nuvioStreams.length : 0);
+    final isFetching =
+        (_panelShowsTorrents && _s._isSearching) ||
+        (_panelShowsStremio && _s._isStremioFetching) ||
+        (_panelShowsNuvio && _s._isNuvioFetching);
+
+    if (!_s._isSearching && !isFetching && count == 0) {
+      String msg;
+      if (rawCount > 0 &&
+          (_s._sourceSearchQuery.isNotEmpty ||
+              _s._activeAudioFilters.isNotEmpty ||
+              _s._activeQualityFilters.isNotEmpty ||
+              _s._activeLanguageFilters.isNotEmpty ||
+              _s._activeTechFilters.isNotEmpty ||
+              _s._activeSizeFilters.isNotEmpty)) {
+        msg = 'No results match your filters';
+      } else if (_panelShowsTorrents &&
+          _s._activeAudioFilters.isNotEmpty &&
+          _s._allTorrentResults.isNotEmpty) {
+        msg = 'No results match the audio filter';
+      } else if (_panelShowsNuvio && _s._nuvioSelectedScraperId == null) {
+        msg = _s._nuvioSelectedAddonUrl == null
+            ? 'Pick an addon to see its providers'
+            : 'Pick a provider to fetch streams';
+      } else {
+        msg = 'No streams found';
+      }
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text(
+            msg,
+            style: TextStyle(color: ForjaShellColors.cinematic.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    final showAddonName =
+        _panelShowsMerged || _s._selectedSourceId == 'all_stremio';
+
+    return ListView.separated(
+      shrinkWrap: !inPanel,
+      physics: inPanel
+          ? const BouncingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
+      itemCount: count,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (_, i) {
+        if (i < torrents.length) return _torrentTileFor(torrents[i]);
+        final j = i - torrents.length;
+        if (j < stremio.length) {
+          return _stremioTileFor(stremio[j], showAddonName: showAddonName);
+        }
+        return _stremioTileFor(nuvio[j - stremio.length], showAddonName: true);
+      },
+    );
+  }
+}
