@@ -74,6 +74,7 @@ class HubDetailsPlayRow extends StatelessWidget {
     this.focusNode,
     this.tvTabId,
     this.tvItemIndex,
+    this.onUpEdge,
   });
 
   final String label;
@@ -82,6 +83,7 @@ class HubDetailsPlayRow extends StatelessWidget {
   final FocusNode? focusNode;
   final String? tvTabId;
   final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +91,7 @@ class HubDetailsPlayRow extends StatelessWidget {
       label: label,
       onTap: enabled ? onPlay : null,
       focusNode: focusNode,
+      onUpEdge: onUpEdge,
       tvTabId: tvTabId,
       tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tvItemIndex,

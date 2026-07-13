@@ -17,6 +17,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 
 typedef _AnimeResolvedHit = ({AnimeEmbed embed, ExtractedMedia media});
@@ -321,15 +322,19 @@ Future<T?> openAnimePlayer<T>(
   Duration? startPosition,
   bool freshResolve = false,
 }) {
+  final hostContext = context;
   return Navigator.of(context, rootNavigator: true).push<T>(
     AppRouter.fadeRoute(
-      (_) => AnimePlayerScreen(
-        anime: anime,
-        episodeNumber: episodeNumber,
-        category: category,
-        allEpisodes: allEpisodes,
-        startPosition: startPosition,
-        freshResolve: freshResolve,
+      (_) => ShellScope.rehost(
+        hostContext,
+        AnimePlayerScreen(
+          anime: anime,
+          episodeNumber: episodeNumber,
+          category: category,
+          allEpisodes: allEpisodes,
+          startPosition: startPosition,
+          freshResolve: freshResolve,
+        ),
       ),
     ),
   );
@@ -1027,13 +1032,17 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final resolverRoute = ModalRoute.of(context);
 
     Future<void> openEpisode(int epNumber) async {
+      final hostContext = context;
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
-          (_) => AnimePlayerScreen(
-            anime: widget.anime,
-            episodeNumber: epNumber,
-            category: _category,
-            allEpisodes: episodes,
+          (_) => ShellScope.rehost(
+            hostContext,
+            AnimePlayerScreen(
+              anime: widget.anime,
+              episodeNumber: epNumber,
+              category: _category,
+              allEpisodes: episodes,
+            ),
           ),
         ),
       );

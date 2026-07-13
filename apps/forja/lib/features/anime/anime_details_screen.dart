@@ -36,6 +36,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   final AnimeService _service = AnimeService();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'anime-details-play');
+  bool _detailsHeroInitialFocusDone = false;
 
   AnimeCard? _full;
   List<AnimeEpisode> _episodes = [];
@@ -88,6 +89,10 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
           curve: Curves.easeOutCubic,
         )
         .whenComplete(focusPlay);
+  }
+
+  void _popDetailsFromTvUp() {
+    maybePopShellOverlay();
   }
 
   AnimeCard get _data => _full ?? widget.anime;
@@ -275,8 +280,23 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final heroHeight = ShellTokens.detailsHeroHeight(context, showEpisodeRail: true);
     final posMs = (_progress?['positionMs'] as num?)?.toInt();
     final durMs = (_progress?['durationMs'] as num?)?.toInt();
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+
+    if (policy.heroPlayAutoFocus &&
+        !_detailsHeroInitialFocusDone &&
+        _error == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _detailsHeroInitialFocusDone) return;
+        if (_heroPlayFocus.canRequestFocus) {
+          _heroPlayFocus.requestFocus();
+          _detailsHeroInitialFocusDone = true;
+        }
+      });
+    }
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
+    final heroPopUp = tvFocus ? _popDetailsFromTvUp : null;
     final showEpisodes = _episodes.isNotEmpty;
     final relatedOrder = showEpisodes ? 1 : 0;
 
@@ -304,7 +324,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
               itemCount: hasProgress ? 2 : 1,
-              onFocusUp: heroFocusUp,
+              onFocusUp: heroPopUp,
               child: Row(
                 children: [
                   HubDetailsPlayRow(
@@ -313,15 +333,16 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                         : 'Play Ep 1',
                     enabled: _episodes.isNotEmpty,
                     onPlay: () => _play(resumeEp ?? 1),
-                    focusNode: _heroPlayFocus,
-                    tvTabId: MediaDetailsTv.tabId,
+                    focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                    onUpEdge: heroPopUp,
+                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvItemIndex: 0,
                   ),
                   if (hasProgress) ...[
                     const SizedBox(width: 10),
                     HeroPillIconGroup(
-                      tvTabId: MediaDetailsTv.tabId,
-                      tvRowId: MediaDetailsTv.heroRowId,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
                       tvItemIndexStart: 1,
                       slots: [
                         HeroPillIconSlot(
@@ -383,7 +404,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                         }
                       },
                       onToggleWatched: (_, _) {},
-                      tvTabId: MediaDetailsTv.tabId,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvSeasonRowId: 'seasons',
                       tvEpisodeRowId: 'episodes',
                       tvRowOrderBase: 0,
@@ -436,7 +457,9 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     return HubCatalogSection<AnimeCard>(
       title: 'More Like This',
       items: _related,
-      tvTabId: MediaDetailsTv.tabId,
+      tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
+          ? MediaDetailsTv.tabId
+          : null,
       tvRowId: 'related',
       tvRowOrder: tvRowOrder,
       tvFocusUp: tvFocusUp,
@@ -445,7 +468,9 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
         title: r.displayTitle,
         onTap: () => openAnimeDetails(context, r),
         listIndex: index,
-        tvTabId: MediaDetailsTv.tabId,
+        tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
+            ? MediaDetailsTv.tabId
+            : null,
         tvRowId: 'related',
       ),
     );

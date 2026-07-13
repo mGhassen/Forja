@@ -37,13 +37,22 @@ class ShellScope extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<ShellScope>();
 
   /// Re-provide shell context inside [showDialog] / overlay routes.
+  ///
+  /// When [hostContext] is already under [ShellScope], that scope is copied.
+  /// Root-navigator routes (e.g. anime resolver) may lack an ancestor scope;
+  /// fall back to [resolveShellProfile] like [UpdateDialog].
   static Widget rehost(BuildContext hostContext, Widget child) {
-    final scope = of(hostContext);
-    return ShellScope(
-      profile: scope.profile,
-      config: scope.config,
-      child: child,
-    );
+    final existing = maybeOf(hostContext);
+    if (existing != null) {
+      return ShellScope(
+        profile: existing.profile,
+        config: existing.config,
+        child: child,
+      );
+    }
+    final profile = resolveShellProfile(hostContext);
+    final config = shellPlatformConfigFor(profile);
+    return ShellScope(profile: profile, config: config, child: child);
   }
 
   @override

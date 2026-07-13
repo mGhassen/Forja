@@ -15,6 +15,7 @@ import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:rust/rust.dart';
 
@@ -379,6 +380,11 @@ class LiveMatchesScreen extends StatefulWidget {
 
 class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     with TickerProviderStateMixin {
+  static const _tabId = 'live_matches';
+  static const _topBarRowId = 'live-top-bar';
+  static const _chipRowId = 'sport-chips';
+  static const _gridRowId = 'grid';
+
   // tabs: All + each sport
   List<_Sport> _sports = [];
   bool _loading = true;
@@ -394,17 +400,93 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   List<_CdnSportEvent> _cdnSports = [];
   bool _cdnShowChannels = true; // true = channels, false = sports
 
+  final FocusNode _refreshFocusNode =
+      FocusNode(debugLabel: 'live-matches-refresh');
+
+  bool _tvFocus(BuildContext context) =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  bool get _hasSportChips => _tabController != null && _sports.isNotEmpty;
+
+  int get _chipSortOrder => 1;
+
+  int get _gridSortOrder => _hasSportChips ? 2 : 1;
+
   @override
   void initState() {
     super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      _tabId,
+      restoreFocus: _restoreLiveMatchesTvFocus,
+    );
     _load();
   }
 
   @override
   void dispose() {
-    ShellTvFocusCoordinator.clearTab('live_matches');
+    _refreshFocusNode.dispose();
+    ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  void _focusTopBarRefresh() {
+    if (!_refreshFocusNode.canRequestFocus) return;
+    _refreshFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      _tabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _refreshFocusNode),
+    );
+  }
+
+  void _topBarDownEdge() {
+    if (_hasSportChips) {
+      final chip = ShellTvFocusCoordinator.rowHandle(_tabId, _chipRowId);
+      if (chip != null && chip.itemCount > 0) {
+        final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
+        ShellTvFocusCoordinator.focusRowItem(_tabId, _chipRowId, idx);
+        return;
+      }
+    }
+    _restoreLiveMatchesTvFocus();
+  }
+
+  VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
+    if (!_tvFocus(context) || index ~/ crossCount != 0) return null;
+    return _focusTopBarRefresh;
+  }
+
+  bool _focusGridItem(int index) {
+    final handle = ShellTvFocusCoordinator.rowHandle(_tabId, _gridRowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    final idx = index.clamp(0, handle.itemCount - 1);
+    return ShellTvFocusCoordinator.focusRowItem(_tabId, _gridRowId, idx);
+  }
+
+  bool _restoreLiveMatchesTvFocus() {
+    bool tryFocus() {
+      final handle = ShellTvFocusCoordinator.rowHandle(_tabId, _gridRowId);
+      if (handle == null || handle.itemCount <= 0) return false;
+      final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
+      return _focusGridItem(idx);
+    }
+
+    if (tryFocus()) return true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ShellTvFocus.currentNavTabId != _tabId) return;
+      tryFocus();
+    });
+    return false;
+  }
+
+  void _registerGridRow(int itemCount) {
+    shellTvRegisterRow(
+      tabId: _tabId,
+      rowId: _gridRowId,
+      sortOrder: _gridSortOrder,
+      itemCount: itemCount,
+      onFocusUp: _focusTopBarRefresh,
+    );
   }
 
   Future<void> _load() async {
@@ -526,6 +608,52 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   Widget _buildHeader() {
+    final tvFocus = _tvFocus(context);
+    if (tvFocus) {
+      shellTvRegisterRow(
+        tabId: _tabId,
+        rowId: _topBarRowId,
+        sortOrder: 0,
+        itemCount: 1,
+      );
+    }
+
+    final refresh = tvFocus
+        ? shellFocusableTap(
+            context: context,
+            onTap: _load,
+            borderRadius: 24,
+            focusNode: _refreshFocusNode,
+            tvTabId: _tabId,
+            tvRowId: _topBarRowId,
+            tvItemIndex: 0,
+            tvZone: ShellTvZone.topBar,
+            onDownEdge: _topBarDownEdge,
+            onFocusChange: (focused) {
+              if (focused) {
+                ShellTvFocusCoordinator.saveFocus(
+                  _tabId,
+                  ShellTvFocusMemory(
+                    zone: ShellTvZone.topBar,
+                    node: _refreshFocusNode,
+                  ),
+                );
+              }
+            },
+            child: const Tooltip(
+              message: 'Refresh',
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.refresh_rounded, color: Colors.white70),
+              ),
+            ),
+          )
+        : IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+            onPressed: _load,
+          );
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         ShellTokens.compactChromeLeadingInset(context),
@@ -550,11 +678,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             ),
           ),
           const Spacer(),
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-            onPressed: _load,
-          ),
+          refresh,
         ],
       ),
     );
@@ -564,6 +688,13 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     final policy = ShellScope.inputPolicyOf(context);
     if (policy.useFocusableMoodChips && _tabController != null) {
       final labels = ['All', ..._sports.map((s) => s.name)];
+      shellTvRegisterRow(
+        tabId: _tabId,
+        rowId: _chipRowId,
+        sortOrder: _chipSortOrder,
+        itemCount: labels.length,
+        onFocusUp: _focusTopBarRefresh,
+      );
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.fromLTRB(
@@ -582,7 +713,26 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
                   selected: _tabController!.index == i,
                   onTap: () => _tabController!.animateTo(i),
                   listIndex: i,
-                  tvTabId: 'live_matches',
+                  tvTabId: _tabId,
+                  tvRowId: _chipRowId,
+                  onLeftEdge: shellTvChipLeftEdge(
+                    context,
+                    tabId: _tabId,
+                    rowId: _chipRowId,
+                    index: i,
+                  ),
+                  onRightEdge: shellTvChipRightEdge(
+                    tabId: _tabId,
+                    rowId: _chipRowId,
+                    index: i,
+                    itemCount: labels.length,
+                  ),
+                  onDownEdge: shellTvChipDownToRow(
+                    tabId: _tabId,
+                    chipRowId: _chipRowId,
+                    resultsRowId: _gridRowId,
+                  ),
+                  onUpEdge: _focusTopBarRefresh,
                 ),
               ),
           ],
@@ -650,6 +800,10 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
+        final tvFocus = _tvFocus(context);
+        if (tvFocus) {
+          _registerGridRow(streams.length);
+        }
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -663,6 +817,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             stream: streams[i],
             gridIndex: i,
             gridColumns: crossCount,
+            onUpEdge: _gridUpEdge(context, i, crossCount),
             onTap: () => _openDamiTvStream(streams[i]),
           ),
         );
@@ -1061,11 +1216,13 @@ class _CdnChannelCard extends StatefulWidget {
   final VoidCallback onTap;
   final int? gridIndex;
   final int? gridColumns;
+  final VoidCallback? onUpEdge;
   const _CdnChannelCard({
     required this.channel,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
+    this.onUpEdge,
   });
 
   @override
@@ -1091,7 +1248,9 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
+      onUpEdge: widget.onUpEdge,
       tvTabId: 'live_matches',
+      tvRowId: 'grid',
       tvZone: ShellTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -1209,11 +1368,13 @@ class _CdnSportCard extends StatefulWidget {
   final VoidCallback onTap;
   final int? gridIndex;
   final int? gridColumns;
+  final VoidCallback? onUpEdge;
   const _CdnSportCard({
     required this.event,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
+    this.onUpEdge,
   });
 
   @override
@@ -1239,7 +1400,9 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
+      onUpEdge: widget.onUpEdge,
       tvTabId: 'live_matches',
+      tvRowId: 'grid',
       tvZone: ShellTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -1781,11 +1944,13 @@ class _DamiTvMatchCard extends StatefulWidget {
   final VoidCallback onTap;
   final int? gridIndex;
   final int? gridColumns;
+  final VoidCallback? onUpEdge;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
+    this.onUpEdge,
   });
 
   @override
@@ -1814,7 +1979,9 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
+      onUpEdge: widget.onUpEdge,
       tvTabId: 'live_matches',
+      tvRowId: 'grid',
       tvZone: ShellTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),

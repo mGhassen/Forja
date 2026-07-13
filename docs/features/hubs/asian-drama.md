@@ -14,7 +14,7 @@ Tap **Asian Drama** in the navigation bar.
 
 - Browse hero and explore sections
 - Search dramas — **desktop / TV:** same layout as the Search tab (large search field, trending title suggestions on the left, poster grid on the right; **Select** a suggestion to run that search; on desktop, hover a result card to reveal the info button — click it or double-click the card to open details); **mobile:** search bar + results grid
-- Open details with episodes
+- Open details with episodes — on **TV**, **Play** / **Resume** is focused when the page opens; **↑** from hero actions closes details; **←** from the leftmost hero action moves focus to the shell nav rail; **↑** from the episode rail returns focus to **Play**
 - Play with subtitle support where available
 - While a stream resolves, the loading screen shows the drama artwork (same style as Movies & TV playback)
 - Resume from continue watching — **same player launch as details → Resume** (saved episode list + seek position; no extra kisskh call); clear progress with the trash icon next to **Resume** on details

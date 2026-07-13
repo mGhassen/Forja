@@ -11,6 +11,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
@@ -54,13 +55,17 @@ Future<T?> openAsianDramaPlayer<T>(
   List<KdramaEpisode> allEpisodes = const [],
   Duration? startPosition,
 }) {
+  final hostContext = context;
   return Navigator.of(context, rootNavigator: true).push<T>(
     AppRouter.fadeRoute(
-      (_) => AsianDramaPlayerScreen(
-        drama: drama,
-        episode: episode,
-        allEpisodes: allEpisodes,
-        startPosition: startPosition,
+      (_) => ShellScope.rehost(
+        hostContext,
+        AsianDramaPlayerScreen(
+          drama: drama,
+          episode: episode,
+          allEpisodes: allEpisodes,
+          startPosition: startPosition,
+        ),
       ),
     ),
   );
@@ -290,12 +295,16 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         } catch (_) {}
       }
       if (ep == null) return;
+      final hostContext = context;
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
-          (_) => AsianDramaPlayerScreen(
-            drama: drama,
-            episode: ep!,
-            allEpisodes: list,
+          (_) => ShellScope.rehost(
+            hostContext,
+            AsianDramaPlayerScreen(
+              drama: drama,
+              episode: ep!,
+              allEpisodes: list,
+            ),
           ),
         ),
       );
@@ -324,12 +333,16 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           }
         }
         if (target == null) return;
+        final hostContext = context;
         await navigator.pushReplacement(
           AppRouter.fadeRoute(
-            (_) => AsianDramaPlayerScreen(
-              drama: drama,
-              episode: target!,
-              allEpisodes: episodes,
+            (_) => ShellScope.rehost(
+              hostContext,
+              AsianDramaPlayerScreen(
+                drama: drama,
+                episode: target!,
+                allEpisodes: episodes,
+              ),
             ),
           ),
         );

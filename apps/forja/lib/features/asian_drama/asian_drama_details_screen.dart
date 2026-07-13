@@ -42,6 +42,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   final KissKhService _service = KissKhService();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'asian-drama-details-play');
+  bool _detailsHeroInitialFocusDone = false;
   KdramaDetails? _details;
   Map<String, dynamic>? _progress;
   bool _loading = true;
@@ -82,6 +83,10 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
           curve: Curves.easeOutCubic,
         )
         .whenComplete(focusPlay);
+  }
+
+  void _popDetailsFromTvUp() {
+    maybePopShellOverlay();
   }
 
   void _onHistoryChanged() => _refreshProgress();
@@ -283,8 +288,21 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     final posMs = (_progress?['positionMs'] as num?)?.toInt();
     final durMs = (_progress?['durationMs'] as num?)?.toInt();
     final lookup = _episodeLookup(det);
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+
+    if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _detailsHeroInitialFocusDone) return;
+        if (_heroPlayFocus.canRequestFocus) {
+          _heroPlayFocus.requestFocus();
+          _detailsHeroInitialFocusDone = true;
+        }
+      });
+    }
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
+    final heroPopUp = tvFocus ? _popDetailsFromTvUp : null;
 
     final scroll = SingleChildScrollView(
       controller: _detailsScrollController,
@@ -305,22 +323,23 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
               itemCount: hasResume ? 2 : 1,
-              onFocusUp: heroFocusUp,
+              onFocusUp: heroPopUp,
               child: Row(
                 children: [
                   HubDetailsPlayRow(
                     label: hasResume ? 'Resume' : 'Play',
                     enabled: det.episodes.isNotEmpty,
                     onPlay: hasResume ? _resume : _playFirst,
-                    focusNode: _heroPlayFocus,
-                    tvTabId: MediaDetailsTv.tabId,
+                    focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                    onUpEdge: heroPopUp,
+                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvItemIndex: 0,
                   ),
                   if (hasResume) ...[
                     const SizedBox(width: 10),
                     HeroPillIconGroup(
-                      tvTabId: MediaDetailsTv.tabId,
-                      tvRowId: MediaDetailsTv.heroRowId,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
                       tvItemIndexStart: 1,
                       slots: [
                         HeroPillIconSlot(
@@ -363,7 +382,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                         if (match != null) _play(match);
                       },
                       onToggleWatched: (_, _) {},
-                      tvTabId: MediaDetailsTv.tabId,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvSeasonRowId: 'seasons',
                       tvEpisodeRowId: 'episodes',
                       tvRowOrderBase: 0,
