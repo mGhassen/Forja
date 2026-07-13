@@ -29,7 +29,9 @@ part 'iptv_pt_catalog_shell.dart';
 part 'iptv_pt_widgets_common.dart';
 part 'iptv_pt_widgets_portal.dart';
 part 'iptv_pt_widgets_section.dart';
-part 'iptv_pt_widgets_browser.dart';
+part 'iptv_pt_browser_view.dart';
+part 'iptv_pt_browser_sidebar.dart';
+part 'iptv_pt_browser_streams.dart';
 part 'iptv_pt_widgets_episode.dart';
 part 'iptv_pt_widgets_channels.dart';
 

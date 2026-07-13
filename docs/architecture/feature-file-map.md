@@ -32,7 +32,7 @@
 
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
-| **iptv** | 32 | ~17,900 | `iptv_pt_widgets_browser.dart` (1,507) + `iptv_catalog_portal_form.dart` (940) |
+| **iptv** | 34 | ~17,900 | `iptv_catalog_portal_form.dart` (942) + `iptv_pt_browser_streams.dart` (809) |
 | **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.dart` |
 | **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
@@ -48,7 +48,7 @@
 
 ## Tier 1 — critical god files (&gt;3k lines)
 
-No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_pt_widgets_browser.dart` (1,507), `iptv_catalog_portal_form.dart` (940).
+No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_portal_form.dart` (942), `iptv_pt_browser_streams.dart` (809), `iptv_controller.dart` (1,815).
 
 ---
 
@@ -123,12 +123,14 @@ Paths relative to `apps/forja/lib/features/`.
 | 376 | home | `home/details_screen_build.dart` | Details build mixin | In |
 | 240 | home | `home/details_screen_fetch.dart` | Details fetch mixin | In |
 | 231 | home | `home/details_screen_episodes.dart` | Details episodes mixin | In |
-| 1507 | iptv | `iptv/iptv/screens/iptv_pt_widgets_browser.dart` | Browser view + stream cards | In |
-| 921 | iptv | `iptv/iptv/screens/iptv_pt_player_ui.dart` | Player UI mixin | In |
 | 942 | iptv | `iptv/iptv/screens/iptv_catalog_portal_form.dart` | Portal add/edit dialog | In |
+| 921 | iptv | `iptv/iptv/screens/iptv_pt_player_ui.dart` | Player UI mixin | In |
+| 809 | iptv | `iptv/iptv/screens/iptv_pt_browser_streams.dart` | Stream cards + EPG widgets | In |
+| 798 | iptv | `iptv/iptv/screens/iptv_pt_browser_view.dart` | Browser view state | In |
 | 797 | iptv | `iptv/iptv/screens/iptv_pt_player_engine.dart` | Player engine mixin | In |
 | 1457 | live_matches | `live_matches/live_matches_widgets.dart` | Cards + embed player | In |
 | 815 | iptv | `iptv/iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
+| 93 | iptv | `iptv/iptv/screens/iptv_pt_browser_sidebar.dart` | Category sidebar row | In |
 | 786 | iptv | `iptv/iptv/screens/iptv_catalog_top_bar.dart` | Catalog top bar + shelf tabs | In |
 | 736 | iptv | `iptv/iptv/screens/iptv_catalog_portal_widgets.dart` | Portal dialog fields/tiles | In |
 | 712 | live_matches | `live_matches/live_matches_build.dart` | Build mixin | In |
@@ -372,7 +374,8 @@ features/settings/
 features/iptv/iptv/
   screens/iptv_pt_screen.dart       # 152 — routing only (Phase E done)
   screens/iptv_pt_catalog_shell.dart
-  screens/iptv_pt_widgets_*.dart    # browser, channels, episode, portal, section, common
+  screens/iptv_pt_browser_*.dart      # view, sidebar, streams
+  screens/iptv_pt_widgets_*.dart    # channels, episode, portal, section, common
   screens/iptv_catalog_workspace.dart   # 67 — shelf constants + part directives
   screens/iptv_catalog_top_bar.dart
   screens/iptv_catalog_portal_panel.dart
