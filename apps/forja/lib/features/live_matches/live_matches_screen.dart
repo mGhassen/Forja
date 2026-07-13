@@ -180,10 +180,7 @@ class _DamiTvStream {
     if (statusLower == 'live') return 'live';
 
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    if (startsAt > 0 &&
-        endsAt > startsAt &&
-        now >= startsAt &&
-        now <= endsAt) {
+    if (startsAt > 0 && endsAt > startsAt && now >= startsAt && now <= endsAt) {
       return 'live';
     }
     if (startsAt > now) {
@@ -601,7 +598,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   String _sportFilter = 'all';
 
   TabController? _tabController;
-  _LiveMatchesServer _server = _LiveMatchesServer.ppv;
+  _LiveMatchesServer _server = _LiveMatchesServer.all;
   List<_DamiTvStream> _damiTvStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
   List<_CdnChannel> _cdnChannels = [];
@@ -944,6 +941,10 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       _error = null;
       _sportFilter = 'all';
     });
+    if (_server == _LiveMatchesServer.all) {
+      await _loadAll();
+      return;
+    }
     if (_server == _LiveMatchesServer.ppv) {
       await _loadDamiTv();
       return;
@@ -955,6 +956,74 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     if (_server == _LiveMatchesServer.cdnLive) {
       await _loadCdn();
       return;
+    }
+  }
+
+  void _applySportTabs(List<_Sport> cats) {
+    final oldCtrl = _tabController;
+    setState(() {
+      _tabController = null;
+      _sports = cats;
+      _loading = false;
+    });
+    oldCtrl?.dispose();
+    if (!mounted) return;
+    final newCtrl = TabController(length: cats.length + 1, vsync: this);
+    newCtrl.addListener(() {
+      if (!newCtrl.indexIsChanging) {
+        final idx = newCtrl.index;
+        setState(() => _sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
+      }
+    });
+    setState(() => _tabController = newCtrl);
+  }
+
+  Future<void> _loadAll() async {
+    try {
+      final results = await Future.wait([
+        _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),
+        _fetchStreamedMatches().catchError((_) => <_StreamedMatch>[]),
+        _fetchCdnChannels().catchError((_) => <_CdnChannel>[]),
+        _fetchCdnSports().catchError((_) => <_CdnSportEvent>[]),
+      ]);
+      final ppvStreams = results[0] as List<_DamiTvStream>;
+      final streamedMatches = results[1] as List<_StreamedMatch>;
+      final cdnChannels = results[2] as List<_CdnChannel>;
+      final cdnSports = results[3] as List<_CdnSportEvent>;
+
+      final seenCats = <String>{};
+      final cats = <_Sport>[];
+      void addCat(String id, String name) {
+        if (id.isEmpty || !seenCats.add(id)) return;
+        cats.add(_Sport(id: id, name: name));
+      }
+
+      for (final s in ppvStreams) {
+        addCat(s.categoryName, s.categoryName);
+      }
+      for (final m in streamedMatches) {
+        addCat(m.category, m.categoryLabel);
+      }
+      for (final e in cdnSports) {
+        addCat(e.tournament, e.tournament);
+      }
+      cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+      if (!mounted) return;
+      setState(() {
+        _damiTvStreams = ppvStreams;
+        _streamedMatches = streamedMatches;
+        _cdnChannels = cdnChannels;
+        _cdnSports = cdnSports;
+      });
+      _applySportTabs(cats);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
@@ -1099,6 +1168,16 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   List<_StreamedMatch> get _filteredStreamed => _sportFilter == 'all'
       ? _streamedMatches
       : _streamedMatches.where((m) => m.category == _sportFilter).toList();
+
+  List<_CdnSportEvent> get _filteredCdnSports => _sportFilter == 'all'
+      ? _cdnSports
+      : _cdnSports.where((s) => s.tournament == _sportFilter).toList();
+
+  List<_LiveMatchGridEntry> get _allGridEntries => [
+    ..._filteredDamiTv.map(_LiveMatchGridEntry.ppv),
+    ..._filteredStreamed.map(_LiveMatchGridEntry.streamed),
+    ..._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport),
+  ];
 
   // ── build ─────────────────────────────────────────────────────────────────
 
@@ -1260,11 +1339,80 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         buttonIcon: Icons.refresh,
       );
     }
+    if (_server == _LiveMatchesServer.all) return _buildAllBody();
     if (_server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_server == _LiveMatchesServer.streamed) return _buildStreamedBody();
     if (_server == _LiveMatchesServer.cdnLive) return _buildCdnBody();
 
     return const SizedBox.shrink();
+  }
+
+  Widget _buildAllBody() {
+    final entries = _allGridEntries;
+    if (entries.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
+            SizedBox(height: 16),
+            Text(
+              'No streams available',
+              style: TextStyle(color: Colors.white38, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = _matchCardWidth(context);
+        final cardHeight = _matchCardHeight(context);
+        final gap = _gridGap(context);
+        final crossCount = _gridColumns(constraints, cardWidth);
+        final tvFocus = _tvFocus(context);
+        if (tvFocus) {
+          _registerGridRow(entries.length);
+        }
+        return GridView.builder(
+          padding: _gridPadding(context),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossCount,
+            mainAxisExtent: cardHeight,
+            crossAxisSpacing: gap,
+            mainAxisSpacing: gap,
+          ),
+          itemCount: entries.length,
+          itemBuilder: (context, i) {
+            final entry = entries[i];
+            final upEdge = _gridUpEdge(context, i, crossCount);
+            return switch (entry) {
+              _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
+                stream: stream,
+                gridIndex: i,
+                gridColumns: crossCount,
+                onUpEdge: upEdge,
+                onTap: () => _openDamiTvStream(stream),
+              ),
+              _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
+                match: match,
+                gridIndex: i,
+                gridColumns: crossCount,
+                onUpEdge: upEdge,
+                onTap: () => _openStreamedMatch(match),
+              ),
+              _LiveMatchGridEntryCdnSport(:final event) => _CdnSportCard(
+                event: event,
+                gridIndex: i,
+                gridColumns: crossCount,
+                onUpEdge: upEdge,
+                onTap: () => _openCdnSportEvent(event),
+              ),
+            };
+          },
+        );
+      },
+    );
   }
 
   Widget _buildStreamedBody() {
@@ -1768,9 +1916,38 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 }
 
-enum _LiveMatchesServer { ppv, streamed, cdnLive }
+enum _LiveMatchesServer { all, ppv, streamed, cdnLive }
+
+sealed class _LiveMatchGridEntry {
+  const _LiveMatchGridEntry();
+
+  factory _LiveMatchGridEntry.ppv(_DamiTvStream stream) =
+      _LiveMatchGridEntryPpv;
+
+  factory _LiveMatchGridEntry.streamed(_StreamedMatch match) =
+      _LiveMatchGridEntryStreamed;
+
+  factory _LiveMatchGridEntry.cdnSport(_CdnSportEvent event) =
+      _LiveMatchGridEntryCdnSport;
+}
+
+final class _LiveMatchGridEntryPpv extends _LiveMatchGridEntry {
+  const _LiveMatchGridEntryPpv(this.stream);
+  final _DamiTvStream stream;
+}
+
+final class _LiveMatchGridEntryStreamed extends _LiveMatchGridEntry {
+  const _LiveMatchGridEntryStreamed(this.match);
+  final _StreamedMatch match;
+}
+
+final class _LiveMatchGridEntryCdnSport extends _LiveMatchGridEntry {
+  const _LiveMatchGridEntryCdnSport(this.event);
+  final _CdnSportEvent event;
+}
 
 String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
+  _LiveMatchesServer.all => 'All',
   _LiveMatchesServer.ppv => 'PPV',
   _LiveMatchesServer.streamed => 'Streamed',
   _LiveMatchesServer.cdnLive => 'CDN Live',
@@ -1778,6 +1955,7 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
 
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
     switch (server) {
+      _LiveMatchesServer.all => 'PPV · Streamed · CDN Live',
       _LiveMatchesServer.ppv => 'ppv.is',
       _LiveMatchesServer.streamed => 'streamed.pk',
       _LiveMatchesServer.cdnLive => 'cdn-live.tv',
@@ -1827,44 +2005,69 @@ class _LiveMatchesServerSheet extends StatelessWidget {
             style: TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          ..._LiveMatchesServer.values.map(
-            (server) => shellFocusableTap(
-              context: context,
-              onTap: () => onSelected(server),
-              borderRadius: 12,
-              navLeftAlways: true,
-              tvTabId: 'live_matches',
-              tvZone: ShellTvZone.row,
-              child: ListTile(
-                leading: Icon(
-                  Icons.dns_rounded,
-                  color: server == current
-                      ? ForjaShellColors.sectionAccent
-                      : Colors.white54,
-                ),
-                title: Text(
-                  _liveMatchesServerLabel(server),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: server == current
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  _liveMatchesServerSubtitle(server),
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-                trailing: server == current
-                    ? Icon(
-                        Icons.check_rounded,
-                        color: ForjaShellColors.sectionAccent,
-                      )
-                    : const Icon(Icons.chevron_right, color: Colors.white38),
-              ),
-            ),
+          _LiveMatchesServerSheetOption(
+            server: _LiveMatchesServer.all,
+            current: current,
+            onSelected: onSelected,
           ),
+          ..._LiveMatchesServer.values
+              .where((server) => server != _LiveMatchesServer.all)
+              .map(
+                (server) => _LiveMatchesServerSheetOption(
+                  server: server,
+                  current: current,
+                  onSelected: onSelected,
+                ),
+              ),
         ],
+      ),
+    );
+  }
+}
+
+class _LiveMatchesServerSheetOption extends StatelessWidget {
+  const _LiveMatchesServerSheetOption({
+    required this.server,
+    required this.current,
+    required this.onSelected,
+  });
+
+  final _LiveMatchesServer server;
+  final _LiveMatchesServer current;
+  final ValueChanged<_LiveMatchesServer> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: () => onSelected(server),
+      borderRadius: 12,
+      navLeftAlways: true,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.row,
+      child: ListTile(
+        leading: Icon(
+          server == _LiveMatchesServer.all
+              ? Icons.grid_view_rounded
+              : Icons.dns_rounded,
+          color: server == current
+              ? ForjaShellColors.sectionAccent
+              : Colors.white54,
+        ),
+        title: Text(
+          _liveMatchesServerLabel(server),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: server == current ? FontWeight.w700 : FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          _liveMatchesServerSubtitle(server),
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+        trailing: server == current
+            ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
+            : const Icon(Icons.chevron_right, color: Colors.white38),
       ),
     );
   }
@@ -1922,7 +2125,8 @@ class _TeamBadge extends StatelessWidget {
   }
 }
 
-bool _isLiveMatchBadgeLabel(String label) => label.toLowerCase().contains('live');
+bool _isLiveMatchBadgeLabel(String label) =>
+    label.toLowerCase().contains('live');
 
 String _liveMatchBadgeDisplay(String label) {
   if (_isLiveMatchBadgeLabel(label)) return '● LIVE';
@@ -2915,7 +3119,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                   ],
                 ),
               ),
-              if (hasSources) ShellCardPlayOverlay(active: active, visible: active),
+              if (hasSources)
+                ShellCardPlayOverlay(active: active, visible: active),
               _LiveMatchCornerBadge(
                 label: m.categoryLabel.toUpperCase(),
                 live: false,
@@ -3118,7 +3323,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                   ],
                 ),
               ),
-              if (hasIframe) ShellCardPlayOverlay(active: active, visible: active),
+              if (hasIframe)
+                ShellCardPlayOverlay(active: active, visible: active),
               _LiveMatchCornerBadge(
                 label: s.categoryName.toUpperCase(),
                 live: false,
