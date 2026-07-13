@@ -30,7 +30,12 @@ Widget shellRoundedInkHost({
   Color? backgroundColor,
   BoxDecoration? decoration,
   EdgeInsetsGeometry? padding,
+  bool suppressInkHover = false,
 }) {
+  final hoverColor =
+      suppressInkHover ? Colors.transparent : ForjaShellColors.inkHover;
+  final splashColor =
+      suppressInkHover ? Colors.transparent : ForjaShellColors.inkSplash;
   final borderRadius = BorderRadius.circular(radius);
   Widget body = child;
   if (padding != null) {
@@ -62,16 +67,16 @@ Widget shellRoundedInkHost({
             child: InkWell(
               borderRadius: borderRadius,
               onTap: onTap,
-              hoverColor: ForjaShellColors.inkHover,
-              splashColor: ForjaShellColors.inkSplash,
+              hoverColor: hoverColor,
+              splashColor: splashColor,
               child: body,
             ),
           )
         : InkWell(
             borderRadius: borderRadius,
             onTap: onTap,
-            hoverColor: ForjaShellColors.inkHover,
-            splashColor: ForjaShellColors.inkSplash,
+            hoverColor: hoverColor,
+            splashColor: splashColor,
             child: body,
           ),
   );

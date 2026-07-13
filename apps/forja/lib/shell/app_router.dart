@@ -231,10 +231,13 @@ class AppRouter {
   }) {
     final routeBuilder = fadeTransition ? fadeRoute<T> : slideRoute<T>;
     const settings = RouteSettings(name: playerRouteName);
+    final hostContext = context;
     final navigator = Navigator.of(context, rootNavigator: true);
     return navigator.pushAndRemoveUntil<T>(
       routeBuilder(
-        (_) => PlayerScreen(
+        (_) => ShellScope.rehost(
+          hostContext,
+          PlayerScreen(
           streamUrl: streamUrl,
           audioUrl: audioUrl,
           title: title,
@@ -266,6 +269,7 @@ class AppRouter {
           sourcesListNotifier: sourcesListNotifier,
           providerSourcesCache: providerSourcesCache,
           providerProbesNotifier: providerProbesNotifier,
+          ),
         ),
         settings: settings,
       ),

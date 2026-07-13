@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
@@ -11,6 +12,8 @@ import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
@@ -1136,83 +1139,105 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
         children: [
         Material(
           color: Colors.transparent,
-          child: InkWell(
-            onTap: canLoad
-                ? () => unawaited(
-                      _tapServer(
-                        providerId: providerId,
-                        state: state,
-                        cache: cache,
-                      ),
-                    )
-                : null,
-            hoverColor: ForjaShellColors.inkHover,
-            splashColor: ForjaShellColors.inkSplash,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  PlayerStreamMenu._statusGlyph(
-                    status: status,
-                    isPlaying: isPlaying,
-                    isLoaded: isLoaded,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          presentation.label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: isPlaying
-                                ? Colors.white
-                                : status == PlayerSourceStatus.failed
-                                    ? Colors.white.withValues(alpha: 0.42)
-                                    : isLoaded
-                                        ? Colors.white.withValues(alpha: 0.92)
-                                        : Colors.white
-                                            .withValues(alpha: 0.62),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
-                            decoration: status == PlayerSourceStatus.failed
-                                ? TextDecoration.lineThrough
-                                : null,
-                            decorationColor: Colors.white38,
+          child: Builder(
+            builder: (context) {
+              final header = InkWell(
+                onTap: canLoad
+                    ? () => unawaited(
+                          _tapServer(
+                            providerId: providerId,
+                            state: state,
+                            cache: cache,
                           ),
-                        ),
-                        if (subtitle != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              subtitle,
+                        )
+                    : null,
+                hoverColor: ForjaShellColors.inkHover,
+                splashColor: ForjaShellColors.inkSplash,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      PlayerStreamMenu._statusGlyph(
+                        status: status,
+                        isPlaying: isPlaying,
+                        isLoaded: isLoaded,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              presentation.label,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: isPlaying
-                                    ? playerSourceStatusColor(
-                                        PlayerSourceStatus.active,
-                                      )
-                                    : Colors.white.withValues(alpha: 0.42),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                                    ? Colors.white
+                                    : status == PlayerSourceStatus.failed
+                                        ? Colors.white.withValues(alpha: 0.42)
+                                        : isLoaded
+                                            ? Colors.white.withValues(alpha: 0.92)
+                                            : Colors.white
+                                                .withValues(alpha: 0.62),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                height: 1.25,
+                                decoration: status == PlayerSourceStatus.failed
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                decorationColor: Colors.white38,
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                            if (subtitle != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  subtitle,
+                                  style: TextStyle(
+                                    color: isPlaying
+                                        ? playerSourceStatusColor(
+                                            PlayerSourceStatus.active,
+                                          )
+                                        : Colors.white.withValues(alpha: 0.42),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      PlayerStreamMenu._serverTrailingBadges(
+                        categoryBadge: presentation.categoryBadge,
+                        scoreScope: scoreScope,
+                        providerId: providerId,
+                        hideCategoryBadge: hideCategoryBadge,
+                      ),
+                    ],
                   ),
-                  PlayerStreamMenu._serverTrailingBadges(
-                    categoryBadge: presentation.categoryBadge,
-                    scoreScope: scoreScope,
+                ),
+              );
+              if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips ||
+                  !canLoad) {
+                return header;
+              }
+              return shellFocusableTap(
+                context: context,
+                onTap: () => unawaited(
+                  _tapServer(
                     providerId: providerId,
-                    hideCategoryBadge: hideCategoryBadge,
+                    state: state,
+                    cache: cache,
                   ),
-                ],
-              ),
-            ),
+                ),
+                borderRadius: 8,
+                showFocusBorder: true,
+                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                child: header,
+              );
+            },
           ),
         ),
         if (isLoaded)
@@ -1418,7 +1443,11 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: _buildBody(),
+      child: playerSidePanelTvScope(
+        context: context,
+        onClose: widget.onClose,
+        child: _buildBody(),
+      ),
     );
   }
 }
@@ -1486,17 +1515,19 @@ class _FlatMenuRow extends StatefulWidget {
 
 class _FlatMenuRowState extends State<_FlatMenuRow> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final failed = widget.status == PlayerSourceStatus.failed;
     final canPlay = widget.onPlay != null && !widget.isPlaying && !failed;
-    final showPlayArrow = canPlay && _hovered;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final showPlayArrow = canPlay && (_hovered || (tvFocus && _focused));
     final showTransport =
         widget.onTogglePlayPause != null && widget.isPlaying;
     final activeColor = playerSourceStatusColor(PlayerSourceStatus.active);
 
-    return MouseRegion(
+    final row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
@@ -1504,7 +1535,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
             ? Colors.white.withValues(alpha: 0.1)
             : Colors.transparent,
         child: InkWell(
-          onTap: widget.onCheck,
+          onTap: tvFocus ? null : widget.onCheck,
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: Padding(
@@ -1599,6 +1630,23 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
           ),
         ),
       ),
+    );
+
+    if (!tvFocus) return row;
+    return shellFocusableTap(
+      context: context,
+      onTap: () {
+        if (canPlay && widget.onPlay != null) {
+          widget.onPlay!();
+        } else {
+          widget.onCheck?.call();
+        }
+      },
+      borderRadius: 8,
+      showFocusBorder: true,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: row,
     );
   }
 }

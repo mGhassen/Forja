@@ -103,10 +103,11 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   void _exitTrailer() {
     if (PlayerPopupPanel.isShowing) {
       PlayerPopupPanel.dismiss();
+      _claimPlayFocus();
       return;
     }
     if (!mounted) return;
-    Navigator.of(context).pop();
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   bool _handleKeyEvent(KeyEvent event) {

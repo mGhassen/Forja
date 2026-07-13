@@ -236,7 +236,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
         tvZone: ShellTvZone.topBar,
         tvItemIndex: 0,
         focusNode: _searchFocus,
-        onDownEdge: () => ShellTvFocus.focusHomeHeroPlay(),
+        onDownEdge: () => ShellTvFocus.focusHomeHeroGallery(),
         child: SizedBox(
           height: searchH,
           width: searchW,
@@ -362,7 +362,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             listIndex: 1,
                             focusNode: tvFocus ? _menuFocus : null,
                             onDownEdge: tvFocus
-                                ? () => ShellTvFocus.focusHomeHeroPlay()
+                                ? () => ShellTvFocus.focusHomeHeroGallery()
                                 : null,
                           ),
                           SizedBox(width: tabGap),
@@ -374,7 +374,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             tvFocus: tvFocus,
                             listIndex: 2,
                             onDownEdge: tvFocus
-                                ? () => ShellTvFocus.focusHomeHeroPlay()
+                                ? () => ShellTvFocus.focusHomeHeroGallery()
                                 : null,
                           ),
                           SizedBox(width: tabGap),
@@ -388,7 +388,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             listIndex: 3,
                             focusNode: tvFocus ? _categoriesTabFocus : null,
                             onDownEdge: tvFocus
-                                ? () => ShellTvFocus.focusHomeHeroPlay()
+                                ? () => ShellTvFocus.focusHomeHeroGallery()
                                 : null,
                           ),
                         ],

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 
 /// Floating chevron back control for media details — sits below macOS traffic lights.
 class MediaDetailsBackButton extends StatelessWidget {
@@ -22,11 +23,9 @@ class MediaDetailsBackButton extends StatelessWidget {
     return Positioned(
       top: topInset(context),
       left: ShellTokens.detailsBackButtonLeftInset(context),
-      child: ForjaPlainIcon(
+      child: ShellBackIconButton(
         icon: Icons.chevron_left_rounded,
         size: 28,
-        color: Colors.white,
-        hoverScale: 1.15,
         tooltip: 'Back',
         onTap: onPressed ?? () => Navigator.maybePop(context),
       ),

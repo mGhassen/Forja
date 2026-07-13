@@ -12,6 +12,7 @@ abstract final class ShellTvFocus {
   static String? currentNavTabId;
 
   static FocusNode? homeHeroPlay;
+  static FocusNode? homeHeroGallery;
   static FocusNode? homeSearch;
   static FocusNode? homeMenu;
 
@@ -50,6 +51,13 @@ abstract final class ShellTvFocus {
 
   static bool focusHomeHeroPlay() {
     final node = homeHeroPlay;
+    if (node == null || !node.canRequestFocus) return false;
+    node.requestFocus();
+    return true;
+  }
+
+  static bool focusHomeHeroGallery() {
+    final node = homeHeroGallery;
     if (node == null || !node.canRequestFocus) return false;
     node.requestFocus();
     return true;

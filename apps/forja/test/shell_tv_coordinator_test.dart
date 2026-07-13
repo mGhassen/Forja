@@ -5,6 +5,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/design/src/forja_shell_chip.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -230,6 +231,101 @@ void main() {
       _wrapTv(HomeMovieCard(movie: _testMovie(), onTap: () {})),
     );
     expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('hero row left edge focuses active nav tab', (tester) async {
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    final play = FocusNode(debugLabel: 'details-play');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: MediaDetailsTv.tabId,
+      rowId: MediaDetailsTv.heroRowId,
+      index: 0,
+      node: play,
+    );
+    shellTvRegisterRow(
+      tabId: MediaDetailsTv.tabId,
+      rowId: MediaDetailsTv.heroRowId,
+      sortOrder: MediaDetailsTv.heroRowSortOrder,
+      itemCount: 1,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
+            FocusableControl(
+              focusNode: play,
+              tvMeta: const ShellTvFocusMeta(
+                tabId: MediaDetailsTv.tabId,
+                zone: ShellTvZone.row,
+                rowId: MediaDetailsTv.heroRowId,
+                itemIndex: 0,
+              ),
+              onTap: () {},
+              child: const SizedBox(width: 100, height: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    play.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+
+    expect(homeNav.hasFocus, isTrue);
+    expect(play.hasFocus, isFalse);
+
+    homeNav.dispose();
+    play.dispose();
+  });
+
+  testWidgets('non-hero row left edge stays trapped at first item', (tester) async {
+    final first = FocusNode(debugLabel: 'first-rec');
+    ShellTvFocus.currentNavTabId = 'home';
+    shellTvRegisterRow(
+      tabId: MediaDetailsTv.tabId,
+      rowId: 'recommendations',
+      sortOrder: 0,
+      itemCount: 1,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: MediaDetailsTv.tabId,
+      rowId: 'recommendations',
+      index: 0,
+      node: first,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        FocusableControl(
+          focusNode: first,
+          tvMeta: const ShellTvFocusMeta(
+            tabId: MediaDetailsTv.tabId,
+            zone: ShellTvZone.row,
+            rowId: 'recommendations',
+            itemIndex: 0,
+          ),
+          onTap: () {},
+          child: const SizedBox(width: 100, height: 40),
+        ),
+      ),
+    );
+    await tester.pump();
+    first.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+
+    expect(first.hasFocus, isTrue);
+    first.dispose();
   });
 
   testWidgets('row-bound FocusableControl traps RIGHT at last item', (tester) async {

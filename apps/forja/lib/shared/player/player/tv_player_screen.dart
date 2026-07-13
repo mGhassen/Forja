@@ -4,7 +4,7 @@ import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
-/// Android TV player — [MobilePlayerScreen] with D-pad / remote key handling.
+/// Android TV player — [MobilePlayerScreen] with D-pad focus traversal on chrome.
 class TvPlayerScreen extends StatelessWidget {
   const TvPlayerScreen({
     super.key,

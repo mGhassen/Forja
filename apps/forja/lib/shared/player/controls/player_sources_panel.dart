@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
@@ -102,14 +103,18 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: _PlayerSourcesBody(
-        movie: widget.movie,
-        season: widget.season,
-        episode: widget.episode,
-        currentMagnet: widget.currentMagnet,
-        onTorrentSelected: widget.onTorrentSelected,
-        onStremioSelected: widget.onStremioSelected,
+      child: playerSidePanelTvScope(
+        context: context,
         onClose: widget.onClose,
+        child: _PlayerSourcesBody(
+          movie: widget.movie,
+          season: widget.season,
+          episode: widget.episode,
+          currentMagnet: widget.currentMagnet,
+          onTorrentSelected: widget.onTorrentSelected,
+          onStremioSelected: widget.onStremioSelected,
+          onClose: widget.onClose,
+        ),
       ),
     );
   }

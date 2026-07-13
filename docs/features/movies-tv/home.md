@@ -20,6 +20,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - Resume from **Continue watching** (local watch history)
 - Tap **Play** on the hero to auto-start **webstreaming** (best extractor) on the details screen — not torrent search
 - **Info | +** pill opens details or toggles My List
+- On **Android TV**, D-pad **←/→** on the hero gallery (backdrop) changes the featured title; **OK** on the gallery opens details for the current title
 - Open any poster to view details and play
 - Jump into a Stremio addon catalog rail when configured
 - View Trakt recommendation and calendar sections when connected

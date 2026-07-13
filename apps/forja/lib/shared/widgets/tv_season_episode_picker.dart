@@ -486,20 +486,28 @@ class _SeasonCard extends StatefulWidget {
 
 class _SeasonCardState extends State<_SeasonCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = widget.selected
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    final borderColor = widget.selected || active
         ? ForjaShellColors.chipSelectedBorder
         : ForjaShellColors.cinematic.borderSubtle;
-    final borderWidth = widget.selected ? 2.0 : 1.0;
-    final scale = _hovered && !widget.selected ? 1.04 : 1.0;
+    final borderWidth = widget.selected || active ? 2.0 : 1.0;
+    final scale = active && !widget.selected ? 1.04 : 1.0;
 
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
       borderRadius: _SeasonCard.radius,
       scaleOnFocus: 1.0,
+      onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       onLeftEdge: widget.onLeftEdge,
       tvTabId: widget.tvTabId,
@@ -517,7 +525,7 @@ class _SeasonCardState extends State<_SeasonCard> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(_SeasonCard.radius),
             border: Border.all(color: borderColor, width: borderWidth),
-            boxShadow: widget.selected
+            boxShadow: widget.selected || active
                 ? [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.45),

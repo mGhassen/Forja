@@ -1,7 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/shell_back_icon_button.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 enum PlayerSourceStatus { ready, active, failed, checking }
 
@@ -205,22 +210,26 @@ class PlayerPopupPanel {
           );
         }
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: close,
-                behavior: HitTestBehavior.opaque,
-                child: ColoredBox(
-                  color: centered
-                      ? Colors.black.withValues(alpha: 0.62)
-                      : Colors.transparent,
+        return tvFocusableOverlay(
+          overlayContext: overlayContext,
+          onDismiss: close,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: close,
+                  behavior: HitTestBehavior.opaque,
+                  child: ColoredBox(
+                    color: centered
+                        ? Colors.black.withValues(alpha: 0.62)
+                        : Colors.transparent,
+                  ),
                 ),
               ),
-            ),
-            panelLayer,
-          ],
+              panelLayer,
+            ],
+          ),
         );
       },
     );
@@ -258,6 +267,60 @@ class PlayerPopupPanel {
     final available = spaceAbove >= spaceBelow ? spaceAbove : spaceBelow;
     return available.clamp(120, maxHeight);
   }
+
+  static Widget tvFocusableOverlay({
+    required BuildContext overlayContext,
+    required VoidCallback onDismiss,
+    required Widget child,
+  }) {
+    final tv = ShellScope.maybeOf(overlayContext)?.inputPolicy.useFocusableMoodChips ??
+        false;
+    if (!tv) return child;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.escape ||
+            key == LogicalKeyboardKey.goBack) {
+          onDismiss();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: child,
+    );
+  }
+}
+
+class _TvPopupListFocusScope extends StatefulWidget {
+  const _TvPopupListFocusScope({required this.child});
+
+  final Widget child;
+
+  static bool claimAutofocus(BuildContext context) {
+    return context
+            .findAncestorStateOfType<_TvPopupListFocusScopeState>()
+            ?.claim() ??
+        false;
+  }
+
+  @override
+  State<_TvPopupListFocusScope> createState() =>
+      _TvPopupListFocusScopeState();
+}
+
+class _TvPopupListFocusScopeState extends State<_TvPopupListFocusScope> {
+  bool _claimed = false;
+
+  bool claim() {
+    if (_claimed) return false;
+    _claimed = true;
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _PanelShell extends StatelessWidget {
@@ -279,7 +342,9 @@ class _PanelShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final tvFocus =
+        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final shell = DecoratedBox(
       decoration: BoxDecoration(
         color: ForjaShellColors.cinematic.menuSurface,
         borderRadius: BorderRadius.circular(14),
@@ -293,10 +358,10 @@ class _PanelShell extends StatelessWidget {
             child: Row(
               children: [
                 if (onBack != null)
-                  ForjaPlainIcon(
+                  ShellBackIconButton(
                     icon: Icons.arrow_back_rounded,
                     size: 20,
-                    color: Colors.white,
+                    tooltip: 'Back',
                     onTap: onBack,
                   )
                 else if (leadingIcon != null)
@@ -325,10 +390,15 @@ class _PanelShell extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, color: Color(0xFF2A2A2A)),
-          Flexible(child: child),
+          Flexible(
+            child: _TvPopupListFocusScope(child: child),
+          ),
         ],
       ),
     );
+
+    if (!tvFocus) return shell;
+    return FocusTraversalGroup(child: shell);
   }
 }
 
@@ -407,7 +477,9 @@ class PlayerPopupListTile extends StatelessWidget {
                 ? const Color(0xFF22C55E).withValues(alpha: 0.07)
                 : Colors.transparent;
 
-    return Material(
+    final tvFocus =
+        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tile = Material(
       color: rowColor,
       borderRadius: BorderRadius.circular(8),
       clipBehavior: Clip.antiAlias,
@@ -511,6 +583,17 @@ class PlayerPopupListTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (!tvFocus || onTap == null) return tile;
+
+    return FocusableControl(
+      autoFocus: _TvPopupListFocusScope.claimAutofocus(context),
+      onTap: onTap,
+      borderRadius: 8,
+      showFocusBorder: true,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      child: tile,
     );
   }
 }

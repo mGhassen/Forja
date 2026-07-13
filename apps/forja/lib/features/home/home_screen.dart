@@ -116,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen>
       PageController(initialPage: _heroLoopStart);
   final ScrollController _homeScrollController = ScrollController();
   final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hero-play');
+  final FocusNode _tvHeroGalleryFocus = FocusNode(debugLabel: 'hero-gallery');
   bool _tvHeroInitialFocusDone = false;
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
@@ -677,6 +678,24 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _focusHomeHeroGallery() {
+    ShellTvFocusCoordinator.revealHeroForTab('home');
+    ShellTvFocus.focusHomeHeroGallery();
+  }
+
+  void _focusHomeHeroMenu() {
+    ShellTvFocusCoordinator.revealHeroForTab('home');
+    ShellTvFocus.focusHomeMenu();
+  }
+
+  void _stepHeroFilm(int delta, List<Movie> movies) {
+    if (movies.isEmpty) return;
+    final count = movies.length;
+    var next = (_heroIndex + delta) % count;
+    if (next < 0) next += count;
+    _goToHeroStep(next, movies);
+  }
+
   void _revealedHeroPlayFocus() {
     void focusPlay() {
       if (!mounted) return;
@@ -701,6 +720,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+    ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
     ShellTvFocusCoordinator.registerTabDefaults(
       'home',
       defaultFocus: () => _tvHeroPlayFocus,
@@ -1167,9 +1187,13 @@ class _HomeScreenState extends State<HomeScreen>
     if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
       ShellTvFocus.homeHeroPlay = null;
     }
+    if (ShellTvFocus.homeHeroGallery == _tvHeroGalleryFocus) {
+      ShellTvFocus.homeHeroGallery = null;
+    }
     _heroTimer?.cancel();
     _heroController.dispose();
     _tvHeroPlayFocus.dispose();
+    _tvHeroGalleryFocus.dispose();
     _historySeedSub?.cancel();
     super.dispose();
   }
@@ -1735,8 +1759,38 @@ class _HomeScreenState extends State<HomeScreen>
                     child: _buildHeroStepIndicators(movies),
                   ),
           ),
+          if (policy.useFocusableMoodChips)
+            Positioned(
+              left: MediaQuery.sizeOf(context).width *
+                  (compact
+                      ? ShellTokens.heroImageStartFractionCompact
+                      : ShellTokens.heroImageStartFraction),
+              top: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildTvHeroGalleryFocus(movies),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTvHeroGalleryFocus(List<Movie> movies) {
+    return shellFocusableTap(
+      context: context,
+      focusNode: _tvHeroGalleryFocus,
+      tvTabId: 'home',
+      tvZone: ShellTvZone.hero,
+      showFocusBorder: true,
+      scaleOnFocus: 1,
+      borderRadius: 8,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+      onLeftEdge: () => _stepHeroFilm(-1, movies),
+      onRightEdge: () => _stepHeroFilm(1, movies),
+      onUpEdge: _focusHomeHeroMenu,
+      onDownEdge: _revealedHeroPlayFocus,
+      onTap: movies.isEmpty ? null : () => _openDetails(movies[_heroIndex]),
+      child: const SizedBox.expand(),
     );
   }
 
@@ -2211,12 +2265,7 @@ class _HomeScreenState extends State<HomeScreen>
       tvTabId: tvNav ? 'home' : null,
       tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tvNav ? 0 : null,
-      onUpEdge: tvNav
-          ? () {
-              ShellTvFocusCoordinator.revealHeroForTab('home');
-              ShellTvFocus.focusHomeMenu();
-            }
-          : null,
+      onUpEdge: tvNav ? _focusHomeHeroGallery : null,
       onKeyEvent: policy.heroPlayAutoFocus
           ? (node, event) {
               if (!shellTvIsNavigationKey(event)) {
@@ -2244,12 +2293,7 @@ class _HomeScreenState extends State<HomeScreen>
           tvTabId: tvNav ? 'home' : null,
           tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
           tvItemIndexStart: tvNav ? 1 : null,
-          onUpEdge: tvNav
-          ? () {
-              ShellTvFocusCoordinator.revealHeroForTab('home');
-              ShellTvFocus.focusHomeMenu();
-            }
-          : null,
+          onUpEdge: tvNav ? _focusHomeHeroGallery : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,
@@ -2272,10 +2316,7 @@ class _HomeScreenState extends State<HomeScreen>
     return DetailsHeroTvActionScope(
       tabId: 'home',
       itemCount: heroItemCount,
-      onFocusUp: () {
-        ShellTvFocusCoordinator.revealHeroForTab('home');
-        ShellTvFocus.focusHomeMenu();
-      },
+      onFocusUp: _focusHomeHeroGallery,
       child: body,
     );
   }

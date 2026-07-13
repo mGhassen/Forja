@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -92,13 +95,17 @@ class _EpisodePanelOverlayState extends State<_EpisodePanelOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: _EpisodePanelBody(
-        movie: widget.movie,
-        initialSeason: widget.initialSeason,
-        currentSeason: widget.currentSeason,
-        currentEpisode: widget.currentEpisode,
-        onEpisodeSelected: widget.onEpisodeSelected,
+      child: playerSidePanelTvScope(
+        context: context,
         onClose: widget.onClose,
+        child: _EpisodePanelBody(
+          movie: widget.movie,
+          initialSeason: widget.initialSeason,
+          currentSeason: widget.currentSeason,
+          currentEpisode: widget.currentEpisode,
+          onEpisodeSelected: widget.onEpisodeSelected,
+          onClose: widget.onClose,
+        ),
       ),
     );
   }
@@ -437,7 +444,15 @@ class _SeasonDropdown extends StatelessWidget {
         );
       }),
       builder: (context, controller, child) {
-        return Material(
+        void toggle() {
+          if (controller.isOpen) {
+            controller.close();
+          } else {
+            controller.open();
+          }
+        }
+
+        final trigger = Material(
           color: Colors.transparent,
           borderRadius: borderRadius,
           clipBehavior: Clip.antiAlias,
@@ -445,13 +460,7 @@ class _SeasonDropdown extends StatelessWidget {
             decoration: shellChipDecoration(selected: true, radius: radius),
             child: InkWell(
               borderRadius: borderRadius,
-              onTap: () {
-                if (controller.isOpen) {
-                  controller.close();
-                } else {
-                  controller.open();
-                }
-              },
+              onTap: toggle,
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -476,6 +485,16 @@ class _SeasonDropdown extends StatelessWidget {
               ),
             ),
           ),
+        );
+        if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          return trigger;
+        }
+        return shellFocusableTap(
+          context: context,
+          onTap: toggle,
+          borderRadius: radius,
+          showFocusBorder: true,
+          child: trigger,
         );
       },
     );
@@ -566,13 +585,17 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: _HubEpisodePanelBody(
-        episodes: widget.episodes,
-        currentEpisode: widget.currentEpisode,
-        onEpisodeSelected: widget.onEpisodeSelected,
+      child: playerSidePanelTvScope(
+        context: context,
         onClose: widget.onClose,
-        fallbackBackdropPath: widget.fallbackBackdropPath,
-        fallbackPosterPath: widget.fallbackPosterPath,
+        child: _HubEpisodePanelBody(
+          episodes: widget.episodes,
+          currentEpisode: widget.currentEpisode,
+          onEpisodeSelected: widget.onEpisodeSelected,
+          onClose: widget.onClose,
+          fallbackBackdropPath: widget.fallbackBackdropPath,
+          fallbackPosterPath: widget.fallbackPosterPath,
+        ),
       ),
     );
   }
@@ -798,7 +821,7 @@ class _EpisodeRow extends StatelessWidget {
     final showProgress =
         WatchProgressBar.isResumable(positionMs, durationMs);
 
-    return Material(
+    final tile = Material(
       color: selected
           ? Colors.white.withValues(alpha: 0.1)
           : Colors.transparent,
@@ -940,6 +963,19 @@ class _EpisodeRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips ||
+        onTap == null) {
+      return tile;
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 10,
+      showFocusBorder: true,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      child: tile,
     );
   }
 

@@ -13,8 +13,71 @@ import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-class PlayerFlatIconButton extends StatelessWidget {
+/// D-pad / hover highlight for player chrome — works even without [ShellScope].
+bool playerChromeFocusActive(
+  BuildContext context, {
+  required bool tvFocusable,
+  required bool hovered,
+  required bool focused,
+}) {
+  if (tvFocusable && focused) return true;
+  final policy =
+      ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+  return ShellInputPolicy.interactiveActive(
+    policy,
+    hovered: hovered,
+    focused: focused,
+  );
+}
+
+bool playerChromeTvFocused({
+  required bool tvFocusable,
+  required bool focused,
+}) =>
+    tvFocusable && focused;
+
+Color playerChromeIconColor({
+  required bool enabled,
+  required bool active,
+  required bool highlight,
+  required bool tvFocused,
+}) {
+  if (!enabled) return Colors.white.withValues(alpha: 0.4);
+  if (active) return Colors.white;
+  if (tvFocused) return ForjaShellColors.brandGreen;
+  if (highlight) return Colors.white;
+  return Colors.white.withValues(alpha: 0.54);
+}
+
+Color playerChromeBackgroundColor({
+  required bool active,
+  required bool highlight,
+  required bool tvFocused,
+}) {
+  if (active) return Colors.white.withValues(alpha: 0.18);
+  if (tvFocused) return ForjaShellColors.brandGreen.withValues(alpha: 0.14);
+  if (highlight) return Colors.white.withValues(alpha: 0.14);
+  return Colors.transparent;
+}
+
+ShapeBorder playerChromeButtonShape({
+  required bool isCircle,
+  required bool tvFocused,
+  double borderRadius = 8,
+}) {
+  final side = tvFocused
+      ? const BorderSide(color: ForjaShellColors.brandGreen, width: 1.5)
+      : BorderSide.none;
+  if (isCircle) return CircleBorder(side: side);
+  return RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(borderRadius),
+    side: side,
+  );
+}
+
+class PlayerFlatIconButton extends StatefulWidget {
   const PlayerFlatIconButton({
     super.key,
     required this.icon,
@@ -41,50 +104,110 @@ class PlayerFlatIconButton extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
+  State<PlayerFlatIconButton> createState() => _PlayerFlatIconButtonState();
+}
+
+class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _highlight => playerChromeFocusActive(
+        context,
+        tvFocusable: widget.tvFocusable,
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  bool get _tvFocused => playerChromeTvFocused(
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
+
+  Color get _iconColor => playerChromeIconColor(
+        enabled: true,
+        active: widget.active,
+        highlight: _highlight,
+        tvFocused: _tvFocused,
+      );
+
+  Color get _labelColor => _iconColor;
+
+  Color get _backgroundColor => playerChromeBackgroundColor(
+        active: widget.active,
+        highlight: _highlight,
+        tvFocused: _tvFocused,
+      );
+
+  @override
   Widget build(BuildContext context) {
-    final onTap = onPressedWithContext != null
-        ? () => onPressedWithContext!(context)
-        : onPressed;
+    final onTap = widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : widget.onPressed;
+    final borderRadius =
+        widget.label == null ? widget.size / 2 : 8.0;
+    final shape = playerChromeButtonShape(
+      isCircle: widget.label == null,
+      tvFocused: _tvFocused,
+    );
     final child = Material(
-      color: active ? Colors.white.withValues(alpha: 0.18) : Colors.transparent,
-      shape: label == null ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: _backgroundColor,
+      shape: shape,
       child: InkWell(
         onTap: onTap,
-        customBorder: label == null ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        hoverColor: Colors.transparent,
+        splashColor: Colors.white.withValues(alpha: 0.08),
+        customBorder: shape,
         child: SizedBox(
-          width: label == null ? size : null,
-          height: size,
-          child: label == null
-              ? Icon(icon, color: Colors.white, size: iconSize)
+          width: widget.label == null ? widget.size : null,
+          height: widget.size,
+          child: widget.label == null
+              ? Icon(widget.icon, color: _iconColor, size: widget.iconSize)
               : Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(icon, color: Colors.white, size: iconSize - 2),
+                      Icon(
+                        widget.icon,
+                        color: _iconColor,
+                        size: widget.iconSize - 2,
+                      ),
                       const SizedBox(width: 6),
-                      Text(label!, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                      Text(
+                        widget.label!,
+                        style: TextStyle(color: _labelColor, fontSize: 13),
+                      ),
                     ],
                   ),
                 ),
         ),
       ),
     );
-    final button = tvFocusable
+    final button = widget.tvFocusable
         ? FocusableControl(
-            focusNode: focusNode,
+            focusNode: widget.focusNode,
             onTap: onTap,
-            borderRadius: label == null ? size / 2 : 8,
+            borderRadius: borderRadius,
+            scaleOnFocus: 1.06,
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            onHoverChange: (hovered) => setState(() => _hovered = hovered),
             child: child,
           )
-        : child;
-    if (tooltip == null) return button;
-    return Tooltip(message: tooltip!, child: button);
+        : MouseRegion(
+            onEnter: (_) => setState(() => _hovered = true),
+            onExit: (_) => setState(() {
+              _hovered = false;
+            }),
+            cursor: SystemMouseCursors.click,
+            child: child,
+          );
+    if (widget.tooltip == null) return button;
+    return Tooltip(message: widget.tooltip!, child: button);
   }
 }
 
 /// Unified stream source control — flat, matches other player icon buttons.
-class PlayerStreamPickerButton extends StatelessWidget {
+class PlayerStreamPickerButton extends StatefulWidget {
   const PlayerStreamPickerButton({
     super.key,
     required this.label,
@@ -105,20 +228,56 @@ class PlayerStreamPickerButton extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
+  State<PlayerStreamPickerButton> createState() =>
+      _PlayerStreamPickerButtonState();
+}
+
+class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _highlight => playerChromeFocusActive(
+        context,
+        tvFocusable: widget.tvFocusable,
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  bool get _tvFocused => playerChromeTvFocused(
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
+
+  @override
   Widget build(BuildContext context) {
-    final onTap = enabled && onPressedWithContext != null
-        ? () => onPressedWithContext!(context)
+    final onTap = widget.enabled && widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
         : null;
+    final fgAlpha = widget.enabled
+        ? (_tvFocused ? 1.0 : _highlight ? 0.95 : 0.88)
+        : 0.4;
+    final iconColor = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : Colors.white.withValues(alpha: widget.enabled ? 0.92 : 0.4);
+    final shape = playerChromeButtonShape(
+      isCircle: false,
+      tvFocused: _tvFocused,
+    );
     final child = Material(
-      color: Colors.transparent,
+      color: playerChromeBackgroundColor(
+        active: false,
+        highlight: _highlight,
+        tvFocused: _tvFocused,
+      ),
+      shape: shape,
       child: InkWell(
         onTap: onTap,
-        customBorder: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        customBorder: shape,
         borderRadius: BorderRadius.circular(8),
+        hoverColor: Colors.transparent,
+        splashColor: Colors.white.withValues(alpha: 0.08),
         child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: size, maxWidth: 148),
+          constraints: BoxConstraints(minHeight: widget.size, maxWidth: 148),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Row(
@@ -126,26 +285,33 @@ class PlayerStreamPickerButton extends StatelessWidget {
               children: [
                 Icon(
                   Icons.layers_outlined,
-                  color: Colors.white.withValues(alpha: enabled ? 0.92 : 0.4),
-                  size: iconSize,
+                  color: iconColor,
+                  size: widget.iconSize,
                 ),
                 const SizedBox(width: 5),
                 Flexible(
                   child: Text(
-                    label,
+                    widget.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: enabled ? 0.88 : 0.4),
+                      color: _tvFocused
+                          ? ForjaShellColors.brandGreen
+                          : Colors.white.withValues(alpha: fgAlpha),
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight:
+                          _tvFocused ? FontWeight.w600 : FontWeight.w500,
                     ),
                   ),
                 ),
                 Icon(
                   Icons.expand_more_rounded,
                   size: 16,
-                  color: Colors.white.withValues(alpha: enabled ? 0.45 : 0.25),
+                  color: _tvFocused
+                      ? ForjaShellColors.brandGreen
+                      : Colors.white.withValues(
+                          alpha: widget.enabled ? 0.45 : 0.25,
+                        ),
                 ),
               ],
             ),
@@ -153,15 +319,106 @@ class PlayerStreamPickerButton extends StatelessWidget {
         ),
       ),
     );
-    final button = tvFocusable
+    final button = widget.tvFocusable
         ? FocusableControl(
-            focusNode: focusNode,
+            focusNode: widget.focusNode,
             onTap: onTap,
             borderRadius: 8,
+            scaleOnFocus: 1.04,
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            onHoverChange: (hovered) => setState(() => _hovered = hovered),
             child: child,
           )
         : child;
-    return Tooltip(message: 'Source — $label', child: button);
+    return Tooltip(message: 'Source — ${widget.label}', child: button);
+  }
+}
+
+/// Floating skip / next-episode chip with TV D-pad focus.
+class PlayerFloatingChip extends StatefulWidget {
+  const PlayerFloatingChip({
+    super.key,
+    required this.label,
+    this.onPressed,
+    this.loading = false,
+    this.trailingIcon = Icons.skip_next_rounded,
+    this.focusNode,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final IconData trailingIcon;
+  final FocusNode? focusNode;
+
+  @override
+  State<PlayerFloatingChip> createState() => _PlayerFloatingChipState();
+}
+
+class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
+  bool _focused = false;
+
+  bool get _tvFocused =>
+      playerChromeTvFocused(tvFocusable: true, focused: _focused);
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor =
+        _tvFocused ? ForjaShellColors.brandGreen : Colors.white24;
+    final fill = _tvFocused
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+        : Colors.white.withValues(alpha: 0.15);
+    final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+
+    final body = Material(
+      color: Colors.transparent,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor, width: _tvFocused ? 1.5 : 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.loading)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: fg,
+                  ),
+                )
+              else
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              if (!widget.loading) ...[
+                const SizedBox(width: 6),
+                Icon(widget.trailingIcon, color: fg, size: 18),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      onTap: widget.onPressed,
+      borderRadius: 8,
+      scaleOnFocus: 1.04,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: body,
+    );
   }
 }
 
@@ -295,11 +552,13 @@ class PlayerTopStatusActions extends StatelessWidget {
     required this.onRetry,
     this.onStream,
     this.streamEnabled = true,
+    this.tvFocusable = false,
   });
 
   final VoidCallback onRetry;
   final VoidCallback? onStream;
   final bool streamEnabled;
+  final bool tvFocusable;
 
   @override
   Widget build(BuildContext context) {
@@ -316,8 +575,8 @@ class PlayerTopStatusActions extends StatelessWidget {
   }
 
   Widget _link(String label, VoidCallback onTap) {
-    return TextButton(
-      onPressed: onTap,
+    final button = TextButton(
+      onPressed: tvFocusable ? null : onTap,
       style: TextButton.styleFrom(
         foregroundColor: Colors.white.withValues(alpha: 0.75),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -326,6 +585,16 @@ class PlayerTopStatusActions extends StatelessWidget {
         textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
       child: Text(label),
+    );
+    if (!tvFocusable) return button;
+    return Builder(
+      builder: (context) => shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 8,
+        showFocusBorder: true,
+        child: button,
+      ),
     );
   }
 }
@@ -340,6 +609,7 @@ class PlayerTopBarActions extends StatelessWidget {
     this.pipActive = false,
     this.onPlayer,
     this.showPlayer = false,
+    this.tvFocusable = false,
   });
 
   final VoidCallback? onCast;
@@ -349,6 +619,7 @@ class PlayerTopBarActions extends StatelessWidget {
   final bool pipActive;
   final ValueChanged<BuildContext>? onPlayer;
   final bool showPlayer;
+  final bool tvFocusable;
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +632,7 @@ class PlayerTopBarActions extends StatelessWidget {
             tooltip: 'Player',
             onPressedWithContext: onPlayer!,
             size: 44,
+            tvFocusable: tvFocusable,
           ),
         if (showCast && onCast != null)
           PlayerFlatIconButton(
@@ -368,6 +640,7 @@ class PlayerTopBarActions extends StatelessWidget {
             tooltip: 'Cast',
             onPressed: onCast!,
             size: 44,
+            tvFocusable: tvFocusable,
           ),
         if (showPip && onPip != null)
           PlayerFlatIconButton(
@@ -377,6 +650,7 @@ class PlayerTopBarActions extends StatelessWidget {
             tooltip: 'Picture in Picture',
             onPressed: onPip!,
             size: 44,
+            tvFocusable: tvFocusable,
           ),
       ],
     );
@@ -700,7 +974,12 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
   bool _pressed = false;
   bool _focused = false;
 
-  Widget _buildCore({required bool highlight}) {
+  Widget _buildCore({required bool highlight, required bool tvFocused}) {
+    final borderColor = tvFocused
+        ? ForjaShellColors.brandGreen
+        : Colors.white.withValues(alpha: highlight ? 0.35 : 0.2);
+    final fillAlpha = tvFocused ? 0.16 : (highlight ? 0.22 : 0.14);
+    final iconColor = tvFocused ? ForjaShellColors.brandGreen : Colors.white;
     return GestureDetector(
       onTap: widget.onPressed,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -714,10 +993,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
           height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: highlight ? 0.22 : 0.14),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: highlight ? 0.35 : 0.2),
-            ),
+            color: Colors.white.withValues(alpha: fillAlpha),
+            border: Border.all(color: borderColor, width: tvFocused ? 1.5 : 1),
           ),
           child: widget.showSpinner
               ? Center(
@@ -732,7 +1009,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
                 )
               : Icon(
                   widget.icon,
-                  color: Colors.white,
+                  color: iconColor,
                   size: widget.iconSize,
                 ),
         ),
@@ -742,44 +1019,51 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final policy =
-        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-
     if (widget.tvFocusable) {
-      final highlight = ShellInputPolicy.interactiveActive(
-        policy,
+      final highlight = playerChromeFocusActive(
+        context,
+        tvFocusable: true,
         hovered: false,
+        focused: _focused,
+      );
+      final tvFocused = playerChromeTvFocused(
+        tvFocusable: true,
         focused: _focused,
       );
       return FocusableControl(
         focusNode: widget.focusNode,
         onTap: widget.onPressed,
         borderRadius: widget.size / 2,
-        scaleOnFocus: 1.0,
+        scaleOnFocus: 1.06,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        child: _buildCore(highlight: highlight),
+        child: _buildCore(highlight: highlight, tvFocused: tvFocused),
       );
     }
 
-    final highlight = ShellInputPolicy.interactiveActive(
-      policy,
+    final highlight = playerChromeFocusActive(
+      context,
+      tvFocusable: false,
       hovered: _hovered,
       focused: false,
     );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
+        final policy =
+            ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
         setState(() => _hovered = true);
       },
       onExit: (_) {
+        final policy =
+            ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
         setState(() {
           _hovered = false;
           _pressed = false;
         });
       },
-      child: _buildCore(highlight: highlight),
+      child: _buildCore(highlight: highlight, tvFocused: false),
     );
   }
 }

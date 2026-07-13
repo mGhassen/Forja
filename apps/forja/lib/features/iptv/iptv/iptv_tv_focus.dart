@@ -27,6 +27,68 @@ bool iptvFocusActive(
 /// Idle tint → white when focused/hovered (no scale).
 Color iptvFocusFg(Color idle, bool active) => active ? Colors.white : idle;
 
+/// Button/chip surface when D-pad focused — matches top-bar portal hover.
+BoxDecoration iptvFocusButtonDecoration({
+  required bool active,
+  required double borderRadius,
+  Color? idleBg,
+  Color? idleBorder,
+  bool subtle = false,
+}) {
+  final radius = BorderRadius.circular(borderRadius);
+  if (!active) {
+    return BoxDecoration(
+      color: idleBg ??
+          (subtle ? IptvShellStyle.surfaceMuted : IptvShellStyle.chipSelectedBg),
+      borderRadius: radius,
+      border: Border.all(
+        color: idleBorder ??
+            (subtle
+                ? Colors.white.withValues(alpha: 0.15)
+                : IptvShellStyle.chipSelectedBorder),
+      ),
+    );
+  }
+  return BoxDecoration(
+    color: Colors.white.withValues(alpha: subtle ? 0.14 : 0.18),
+    borderRadius: radius,
+    border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+  );
+}
+
+/// Outline border colors for IPTV dialog text fields (share code, URL, etc.).
+Color iptvDialogFieldBorderColor({required bool focused}) =>
+    Colors.white.withValues(alpha: focused ? 0.35 : 0.12);
+
+InputDecoration iptvDialogFieldDecoration({
+  required bool focused,
+  String? hintText,
+  TextStyle? hintStyle,
+  Widget? suffixIcon,
+}) {
+  const radius = 8.0;
+  final borderRadius = BorderRadius.circular(radius);
+  final idle = BorderSide(color: iptvDialogFieldBorderColor(focused: false));
+  final active = BorderSide(
+    color: iptvDialogFieldBorderColor(focused: true),
+    width: 1.5,
+  );
+  return InputDecoration(
+    hintText: hintText,
+    hintStyle: hintStyle,
+    isDense: true,
+    filled: true,
+    fillColor: Colors.white.withValues(alpha: focused ? 0.08 : 0.04),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    suffixIcon: suffixIcon,
+    suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+    border: OutlineInputBorder(borderRadius: borderRadius, borderSide: idle),
+    enabledBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: idle),
+    focusedBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: active),
+    disabledBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: idle),
+  );
+}
+
 /// Focus a registered IPTV row item (restores last index when [index] is null).
 bool iptvFocusRowItem(String rowId, [int? index]) {
   final handle = ShellTvFocusCoordinator.rowHandle('iptv', rowId);
@@ -68,6 +130,7 @@ Widget iptvTap({
   ValueChanged<bool>? onFocusChange,
   ValueChanged<bool>? onHoverChange,
   bool showFocusBorder = false,
+  bool suppressInkHover = false,
 }) {
   if (onTap == null) return child;
   final resolvedScale = scaleOnFocus ??
@@ -93,6 +156,7 @@ Widget iptvTap({
     onFocusChange: onFocusChange,
     onHoverChange: onHoverChange,
     showFocusBorder: showFocusBorder,
+    suppressInkHover: suppressInkHover,
     child: child,
   );
 }
@@ -364,7 +428,7 @@ class _IptvTextActionState extends State<IptvTextAction> {
   }
 }
 
-class IptvPrimaryButton extends StatelessWidget {
+class IptvPrimaryButton extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
@@ -387,32 +451,53 @@ class IptvPrimaryButton extends StatelessWidget {
   });
 
   @override
+  State<IptvPrimaryButton> createState() => _IptvPrimaryButtonState();
+}
+
+class _IptvPrimaryButtonState extends State<IptvPrimaryButton> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
   Widget build(BuildContext context) {
+    final tv = iptvUseTvFocus(context);
+    final decoration = tv
+        ? iptvFocusButtonDecoration(
+            active: _active,
+            borderRadius: 14,
+            subtle: widget.subtle,
+          )
+        : IptvShellStyle.primaryButtonDecoration(subtle: widget.subtle);
+
     return Material(
       color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: subtle ? IptvShellStyle.surfaceMuted : IptvShellStyle.chipSelectedBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: subtle
-                ? Colors.white.withValues(alpha: 0.15)
-                : Colors.transparent,
-          ),
-        ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        decoration: decoration,
         child: iptvTap(
           context: context,
-          onTap: busy ? null : onPressed,
+          onTap: widget.busy ? null : widget.onPressed,
           borderRadius: 14,
-          tvRowId: tvRowId,
-          tvItemIndex: tvItemIndex,
-          focusNode: focusNode,
+          tvRowId: widget.tvRowId,
+          tvItemIndex: widget.tvItemIndex,
+          focusNode: widget.focusNode,
+          onFocusChange: tv
+              ? (focused) => setState(() => _focused = focused)
+              : null,
+          onHoverChange: tv
+              ? (hovered) => setState(() => _hovered = hovered)
+              : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (busy)
+                if (widget.busy)
                   const SizedBox(
                     width: 16,
                     height: 16,
@@ -422,10 +507,10 @@ class IptvPrimaryButton extends StatelessWidget {
                     ),
                   )
                 else
-                  Icon(icon, color: Colors.white, size: 18),
+                  Icon(widget.icon, color: Colors.white, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  label,
+                  widget.label,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,

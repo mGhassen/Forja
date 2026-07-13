@@ -132,6 +132,7 @@ Widget shellFocusableTap({
   ShellTvZone? tvZone,
   ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
   bool showFocusBorder = false,
+  bool suppressInkHover = false,
 }) {
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
@@ -175,6 +176,7 @@ Widget shellFocusableTap({
   Widget body = shellRoundedInkHost(
     radius: borderRadius,
     onTap: onTap,
+    suppressInkHover: suppressInkHover,
     child: child,
   );
 

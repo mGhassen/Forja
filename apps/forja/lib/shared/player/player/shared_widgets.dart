@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
 
@@ -334,7 +335,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
               border: _tvFocused
-                  ? Border.all(color: Colors.white, width: 1.5)
+                  ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
                   : null,
             ),
             child: Padding(

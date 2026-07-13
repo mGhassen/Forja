@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
-import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/services/pip_service.dart';
@@ -109,7 +110,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   late List<_ExoSource> _sources;
   int _sourceIndex = 0;
-  final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv');
+  final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
 
   @override
   void initState() {
@@ -160,6 +161,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     final wasTv = _isTv;
     _isTv = await ExoPlayerBridge.isTelevision();
     if (mounted && _isTv != wasTv) setState(() {});
+    if (_isTv) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _claimPlayFocus());
+    }
     _sources = await _buildRankedSources();
     _eventSub = ExoPlayerBridge.eventsFor(_viewId).listen(_onNativeEvent);
     await Future<void>.delayed(Duration.zero);
@@ -333,11 +337,24 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   }
 
   void _toggleControls() {
+    if (_isTv) {
+      setState(() => _showControls = true);
+      return;
+    }
     setState(() => _showControls = !_showControls);
     if (_showControls) _startHideTimer();
   }
 
+  void _claimPlayFocus() {
+    if (!_isTv) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_playFocus.canRequestFocus) return;
+      _playFocus.requestFocus();
+    });
+  }
+
   void _startHideTimer() {
+    if (_isTv) return;
     _hideTimer?.cancel();
     if (!_isPlaying) return;
     _hideTimer = Timer(const Duration(seconds: 4), () {
@@ -360,6 +377,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   }
 
   Future<void> _exit() async {
+    if (dismissAnyPlayerChromeOverlay()) {
+      if (_isTv) _claimPlayFocus();
+      return;
+    }
     await _saveProgress();
     if (!mounted) return;
     if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
@@ -431,7 +452,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   void dispose() {
     _disposed = true;
-    _tvKeyFocus.dispose();
+    _playFocus.dispose();
     _statusController.dispose();
     _isBufferingNotifier.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -476,49 +497,108 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           top: 0,
           left: 0,
           right: 0,
-          child: PlayerTopBar(
-            title: widget.title,
-            season: widget.hubEpisodes != null ? null : widget.selectedSeason,
-            episode: widget.hubEpisodes != null ? null : widget.selectedEpisode,
-            episodeLine: _episodeLine,
-            statusMessage: _hasError ? _errorMessage : null,
-            statusActions: _hasError
-                ? PlayerTopStatusActions(
-                    onRetry: () {
-                      _sourceIndex = 0;
-                      unawaited(_openCurrentSource());
-                    },
-                    onStream: _hasStreamPicker
-                        ? () => _mediaKitHint('Source picker')
+          child: tvFocus
+              ? FocusTraversalOrder(
+                  order: const NumericFocusOrder(1),
+                  child: PlayerTopBar(
+                    title: widget.title,
+                    season: widget.hubEpisodes != null
+                        ? null
+                        : widget.selectedSeason,
+                    episode: widget.hubEpisodes != null
+                        ? null
+                        : widget.selectedEpisode,
+                    episodeLine: _episodeLine,
+                    statusMessage: _hasError ? _errorMessage : null,
+                    statusActions: _hasError
+                        ? PlayerTopStatusActions(
+                            onRetry: () {
+                              _sourceIndex = 0;
+                              unawaited(_openCurrentSource());
+                            },
+                            onStream: _hasStreamPicker
+                                ? () => _mediaKitHint('Source picker')
+                                : null,
+                          )
                         : null,
-                  )
-                : null,
-            onBack: () => unawaited(_exit()),
-            tvFocusable: tvFocus,
-            trailing: PlayerTopBarActions(
-              showPlayer: widget.onSwitchPlayer != null,
-              onPlayer: widget.onSwitchPlayer != null
-                  ? (anchorContext) => unawaited(_showPlayerMenu(anchorContext))
-                  : null,
-              showCast:
-                  CastingService.instance.isAirPlayAvailable ||
-                  CastingService.instance.isChromecastAvailable,
-              onCast: () {
-                showPlayerCastPicker(
-                  context,
-                  streamUrl: _currentStreamUrl(),
+                    onBack: () => unawaited(_exit()),
+                    tvFocusable: true,
+                    trailing: PlayerTopBarActions(
+                      tvFocusable: true,
+                      showPlayer: widget.onSwitchPlayer != null,
+                      onPlayer: widget.onSwitchPlayer != null
+                          ? (anchorContext) =>
+                              unawaited(_showPlayerMenu(anchorContext))
+                          : null,
+                      showCast:
+                          CastingService.instance.isAirPlayAvailable ||
+                          CastingService.instance.isChromecastAvailable,
+                      onCast: () {
+                        showPlayerCastPicker(
+                          context,
+                          streamUrl: _currentStreamUrl(),
+                          title: widget.title,
+                          headers: widget.headers,
+                          statusController: _statusController,
+                        );
+                        _startHideTimer();
+                      },
+                      showPip: PipService.instance.isSupported,
+                      onPip: () {
+                        _mediaKitHint('Picture-in-picture');
+                      },
+                    ),
+                  ),
+                )
+              : PlayerTopBar(
                   title: widget.title,
-                  headers: widget.headers,
-                  statusController: _statusController,
-                );
-                _startHideTimer();
-              },
-              showPip: PipService.instance.isSupported,
-              onPip: () {
-                _mediaKitHint('Picture-in-picture');
-              },
-            ),
-          ),
+                  season: widget.hubEpisodes != null
+                      ? null
+                      : widget.selectedSeason,
+                  episode: widget.hubEpisodes != null
+                      ? null
+                      : widget.selectedEpisode,
+                  episodeLine: _episodeLine,
+                  statusMessage: _hasError ? _errorMessage : null,
+                  statusActions: _hasError
+                      ? PlayerTopStatusActions(
+                          onRetry: () {
+                            _sourceIndex = 0;
+                            unawaited(_openCurrentSource());
+                          },
+                          onStream: _hasStreamPicker
+                              ? () => _mediaKitHint('Source picker')
+                              : null,
+                        )
+                      : null,
+                  onBack: () => unawaited(_exit()),
+                  tvFocusable: tvFocus,
+                  trailing: PlayerTopBarActions(
+                    tvFocusable: tvFocus,
+                    showPlayer: widget.onSwitchPlayer != null,
+                    onPlayer: widget.onSwitchPlayer != null
+                        ? (anchorContext) =>
+                            unawaited(_showPlayerMenu(anchorContext))
+                        : null,
+                    showCast:
+                        CastingService.instance.isAirPlayAvailable ||
+                        CastingService.instance.isChromecastAvailable,
+                    onCast: () {
+                      showPlayerCastPicker(
+                        context,
+                        streamUrl: _currentStreamUrl(),
+                        title: widget.title,
+                        headers: widget.headers,
+                        statusController: _statusController,
+                      );
+                      _startHideTimer();
+                    },
+                    showPip: PipService.instance.isSupported,
+                    onPip: () {
+                      _mediaKitHint('Picture-in-picture');
+                    },
+                  ),
+                ),
         ),
         if (widget.movie != null)
           Positioned(
@@ -547,7 +627,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
               ),
             ),
           ),
-        if (showCenterActions)
+        if (showCenterActions && !tvFocus)
           Positioned.fill(
             child: Center(
               child: Row(
@@ -590,127 +670,137 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PlayerTouchSeekBar(
-                    duration: _duration,
-                    position: _position,
-                    bufferedPosition: _buffered,
-                    onSeek: (t) {
-                      unawaited(ExoPlayerBridge.seekTo(_viewId, t));
-                      _startHideTimer();
-                    },
-                    onDragStart: () => _hideTimer?.cancel(),
-                    onDragEnd: _startHideTimer,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: _isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            onPressed: _togglePlayPause,
-                          ),
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: Icons.replay_10_rounded,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            onPressed: () => unawaited(
-                              _seekRelative(const Duration(seconds: -10)),
-                            ),
-                          ),
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: Icons.forward_10_rounded,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            onPressed: () => unawaited(
-                              _seekRelative(const Duration(seconds: 10)),
-                            ),
-                          ),
-                          PlayerVolumeControl(
-                            volume: _volume,
-                            maxVolume: 150,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            tvFocusable: tvFocus,
-                            compact: compact,
-                            onVolumeChanged: (v) => unawaited(_setVolume(v)),
-                            onInteraction: _startHideTimer,
-                            onDragStart: () => _hideTimer?.cancel(),
-                            onDragEnd: _startHideTimer,
-                          ),
-                          const SizedBox(width: 6),
-                          PlayerTimeRange(
-                            position: _position,
+                  tvFocus
+                      ? FocusTraversalOrder(
+                          order: const NumericFocusOrder(2),
+                          child: CustomSeekbar(
                             duration: _duration,
-                            fontSize: 11,
+                            position: _position,
+                            bufferedPosition: _buffered,
+                            tvFocusable: true,
+                            onSeek: (t) {
+                              unawaited(ExoPlayerBridge.seekTo(_viewId, t));
+                            },
                           ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          if (_hasStreamPicker)
-                            PlayerStreamPickerButton(
-                              tvFocusable: tvFocus,
-                              size: btnSize,
-                              iconSize: iconSz - 2,
-                              label: _streamPickerLabel(),
-                              onPressedWithContext: (_) =>
-                                  _mediaKitHint('Source picker'),
-                            ),
-                          if (_hasEpisodePicker)
+                        )
+                      : PlayerTouchSeekBar(
+                          duration: _duration,
+                          position: _position,
+                          bufferedPosition: _buffered,
+                          onSeek: (t) {
+                            unawaited(ExoPlayerBridge.seekTo(_viewId, t));
+                            _startHideTimer();
+                          },
+                          onDragStart: () => _hideTimer?.cancel(),
+                          onDragEnd: _startHideTimer,
+                        ),
+                  const SizedBox(height: 8),
+                  if (tvFocus)
+                    _buildTvExoTransportRow(
+                      btnSize: btnSize,
+                      iconSz: iconSz,
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
                             PlayerFlatIconButton(
-                              tvFocusable: tvFocus,
-                              icon: Icons.video_library_outlined,
+                              icon: _isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              onPressed: _togglePlayPause,
+                            ),
+                            PlayerFlatIconButton(
+                              icon: Icons.replay_10_rounded,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              onPressed: () => unawaited(
+                                _seekRelative(const Duration(seconds: -10)),
+                              ),
+                            ),
+                            PlayerFlatIconButton(
+                              icon: Icons.forward_10_rounded,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              onPressed: () => unawaited(
+                                _seekRelative(const Duration(seconds: 10)),
+                              ),
+                            ),
+                            PlayerVolumeControl(
+                              volume: _volume,
+                              maxVolume: 150,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              compact: compact,
+                              onVolumeChanged: (v) => unawaited(_setVolume(v)),
+                              onInteraction: _startHideTimer,
+                              onDragStart: () => _hideTimer?.cancel(),
+                              onDragEnd: _startHideTimer,
+                            ),
+                            const SizedBox(width: 6),
+                            PlayerTimeRange(
+                              position: _position,
+                              duration: _duration,
+                              fontSize: 11,
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            if (_hasStreamPicker)
+                              PlayerStreamPickerButton(
+                                size: btnSize,
+                                iconSize: iconSz - 2,
+                                label: _streamPickerLabel(),
+                                onPressedWithContext: (_) =>
+                                    _mediaKitHint('Source picker'),
+                              ),
+                            if (_hasEpisodePicker)
+                              PlayerFlatIconButton(
+                                icon: Icons.video_library_outlined,
+                                size: btnSize,
+                                iconSize: iconSz,
+                                onPressedWithContext: (_) =>
+                                    _mediaKitHint('Episodes'),
+                              ),
+                            PlayerFlatIconButton(
+                              icon: Icons.audiotrack_rounded,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              tooltip: 'Audio',
+                              onPressedWithContext: (_) =>
+                                  _mediaKitHint('Audio'),
+                            ),
+                            PlayerFlatIconButton(
+                              icon: Icons.subtitles_outlined,
                               size: btnSize,
                               iconSize: iconSz,
                               onPressedWithContext: (_) =>
-                                  _mediaKitHint('Episodes'),
+                                  _mediaKitHint('Subtitles'),
                             ),
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: Icons.audiotrack_rounded,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            tooltip: 'Audio',
-                            onPressedWithContext: (_) => _mediaKitHint('Audio'),
-                          ),
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: Icons.subtitles_outlined,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            onPressedWithContext: (_) =>
-                                _mediaKitHint('Subtitles'),
-                          ),
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: Icons.hd_outlined,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            tooltip: 'Quality',
-                            onPressedWithContext: (_) =>
-                                _mediaKitHint('Quality'),
-                          ),
-                          PlayerFlatIconButton(
-                            tvFocusable: tvFocus,
-                            icon: Icons.settings_outlined,
-                            size: btnSize,
-                            iconSize: iconSz,
-                            onPressedWithContext: (_) =>
-                                _mediaKitHint('Settings'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                            PlayerFlatIconButton(
+                              icon: Icons.hd_outlined,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              tooltip: 'Quality',
+                              onPressedWithContext: (_) =>
+                                  _mediaKitHint('Quality'),
+                            ),
+                            PlayerFlatIconButton(
+                              icon: Icons.settings_outlined,
+                              size: btnSize,
+                              iconSize: iconSz,
+                              onPressedWithContext: (_) =>
+                                  _mediaKitHint('Settings'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -720,9 +810,169 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     );
 
     if (!tvFocus) return overlay;
-    return FocusScope(
-      debugLabel: 'player-chrome',
-      child: FocusTraversalGroup(child: overlay),
+    return SizedBox.expand(
+      child: FocusScope(
+        debugLabel: 'exo-player-chrome',
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: overlay,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTvExoTransportRow({
+    required double btnSize,
+    required double iconSz,
+  }) {
+    Widget ordered(int order, Widget child) => FocusTraversalOrder(
+          order: NumericFocusOrder(order.toDouble()),
+          child: child,
+        );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ordered(
+              3,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                focusNode: _playFocus,
+                icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                size: btnSize,
+                iconSize: iconSz,
+                onPressed: _togglePlayPause,
+              ),
+            ),
+            const SizedBox(width: 2),
+            ordered(
+              4,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                icon: Icons.replay_10_rounded,
+                size: btnSize,
+                iconSize: iconSz,
+                onPressed: () =>
+                    unawaited(_seekRelative(const Duration(seconds: -10))),
+              ),
+            ),
+            const SizedBox(width: 2),
+            ordered(
+              5,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                icon: Icons.forward_10_rounded,
+                size: btnSize,
+                iconSize: iconSz,
+                onPressed: () =>
+                    unawaited(_seekRelative(const Duration(seconds: 10))),
+              ),
+            ),
+            const SizedBox(width: 2),
+            ordered(
+              6,
+              PlayerVolumeControl(
+                volume: _volume,
+                maxVolume: 150,
+                size: btnSize,
+                iconSize: iconSz,
+                tvFocusable: true,
+                compact: true,
+                onVolumeChanged: (v) => unawaited(_setVolume(v)),
+                onInteraction: () {},
+                onDragStart: () {},
+                onDragEnd: () {},
+              ),
+            ),
+            const SizedBox(width: 6),
+            ExcludeFocus(
+              child: PlayerTimeRange(
+                position: _position,
+                duration: _duration,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_hasStreamPicker)
+              ordered(
+                7,
+                PlayerStreamPickerButton(
+                  tvFocusable: true,
+                  size: btnSize,
+                  iconSize: iconSz - 2,
+                  label: _streamPickerLabel(),
+                  onPressedWithContext: (_) => _mediaKitHint('Source picker'),
+                ),
+              ),
+            if (_hasStreamPicker) const SizedBox(width: 2),
+            if (_hasEpisodePicker)
+              ordered(
+                8,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.video_library_outlined,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  onPressedWithContext: (_) => _mediaKitHint('Episodes'),
+                ),
+              ),
+            if (_hasEpisodePicker) const SizedBox(width: 2),
+            ordered(
+              9,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                icon: Icons.audiotrack_rounded,
+                size: btnSize,
+                iconSize: iconSz,
+                tooltip: 'Audio',
+                onPressedWithContext: (_) => _mediaKitHint('Audio'),
+              ),
+            ),
+            const SizedBox(width: 2),
+            ordered(
+              10,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                icon: Icons.subtitles_outlined,
+                size: btnSize,
+                iconSize: iconSz,
+                onPressedWithContext: (_) => _mediaKitHint('Subtitles'),
+              ),
+            ),
+            const SizedBox(width: 2),
+            ordered(
+              11,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                icon: Icons.hd_outlined,
+                size: btnSize,
+                iconSize: iconSz,
+                tooltip: 'Quality',
+                onPressedWithContext: (_) => _mediaKitHint('Quality'),
+              ),
+            ),
+            const SizedBox(width: 2),
+            ordered(
+              12,
+              PlayerFlatIconButton(
+                tvFocusable: true,
+                icon: Icons.settings_outlined,
+                size: btnSize,
+                iconSize: iconSz,
+                onPressedWithContext: (_) => _mediaKitHint('Settings'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -826,26 +1076,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       ),
     );
 
-    if (!_isTv) return body;
-    return PlayerTvKeyScope(
-      enabled: true,
-      focusNode: _tvKeyFocus,
-      showControls: _showControls,
-      onBack: () => unawaited(_exit()),
-      onPlayPause: _togglePlayPause,
-      onShowControls: () {
-        setState(() => _showControls = true);
-        _startHideTimer();
-      },
-      onSeekBack: () =>
-          unawaited(_seekRelative(const Duration(seconds: -10))),
-      onSeekForward: () =>
-          unawaited(_seekRelative(const Duration(seconds: 10))),
-      onVolumeUp: () => unawaited(_setVolume(_volume + 5)),
-      onVolumeDown: () => unawaited(_setVolume(_volume - 5)),
-      onToggleControls: _toggleControls,
-      child: body,
-    );
+    return body;
   }
 }
 

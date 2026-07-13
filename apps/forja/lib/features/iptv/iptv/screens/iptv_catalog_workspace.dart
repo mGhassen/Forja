@@ -693,6 +693,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
               onTap: widget.onTap,
               borderRadius: _kShelfTabRadius,
               scaleOnFocus: 1.0,
+              suppressInkHover: true,
               tvZone: ShellTvZone.topBar,
               tvRowId: 'iptv-sections',
               listIndex: widget.listIndex,
@@ -745,6 +746,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                   onTap: widget.onReload,
                   borderRadius: 8,
                   scaleOnFocus: 1.0,
+                  suppressInkHover: true,
                   tvZone: ShellTvZone.topBar,
                   tvRowId: 'iptv-section-reload',
                   listIndex: widget.listIndex,
@@ -1235,6 +1237,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   String? _shareCodeError;
   String? _lastImportedCode;
   Timer? _manualSubmitDebounce;
+  bool _expandFocused = false;
+  bool _pasteEditing = false;
 
   bool get _editing => widget.existing != null;
 
@@ -1257,6 +1261,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _pasteKeyHandler = _pasteFocus.onKeyEvent;
     _pasteFocus.onKeyEvent = _handlePasteKey;
     _pasteFocus.addListener(() {
+      if (!_pasteFocus.hasFocus && _pasteEditing && mounted) {
+        setState(() => _pasteEditing = false);
+      }
       if (mounted) setState(() {});
     });
     _pasteCtrl.addListener(() {
@@ -1267,7 +1274,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _passCtrl.addListener(_scheduleManualSubmit);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_editing) {
+      if (iptvUseTvFocus(context)) {
+        if (_editing) {
+          _urlFocus.requestFocus();
+        } else {
+          _focusDialogItem(1);
+        }
+      } else if (_editing) {
         _urlFocus.requestFocus();
       } else {
         _pasteFocus.requestFocus();
@@ -1276,20 +1289,26 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   KeyEventResult _handlePasteKey(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.arrowDown &&
-        mounted &&
-        iptvUseTvFocus(context) &&
-        !_editing) {
-      _expandFocus.requestFocus();
-      return KeyEventResult.handled;
-    }
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.arrowUp &&
-        mounted &&
-        iptvUseTvFocus(context) &&
-        !_editing) {
-      return KeyEventResult.handled;
+    if (mounted && iptvUseTvFocus(context) && !_editing) {
+      if (!_pasteEditing) {
+        if (shellTvIsActivateKey(event)) {
+          setState(() => _pasteEditing = true);
+          return KeyEventResult.handled;
+        }
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          _expandFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.arrowUp) {
+          return KeyEventResult.handled;
+        }
+      } else if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.escape) {
+        setState(() => _pasteEditing = false);
+        return KeyEventResult.handled;
+      }
     }
     return _pasteKeyHandler?.call(node, event) ?? KeyEventResult.ignored;
   }
@@ -1355,27 +1374,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
   }
 
-  KeyEventResult _dialogFieldArrowKey(
-    FocusNode node,
-    KeyEvent event,
-    int index, {
-    bool allowUp = true,
-    bool allowDown = true,
-  }) {
-    if (!mounted || !iptvUseTvFocus(context) || event is! KeyDownEvent) {
-      return KeyEventResult.ignored;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && allowDown) {
-      _focusDialogItem(index + 1);
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp && allowUp) {
-      _focusDialogItem(index - 1);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
   @override
   void dispose() {
     _manualSubmitDebounce?.cancel();
@@ -1428,10 +1426,20 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     setState(() => _showManualForm = !_showManualForm);
     if (opening) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _urlFocus.requestFocus();
+        if (mounted && iptvUseTvFocus(context)) {
+          _focusDialogItem(2);
+        } else if (mounted) {
+          _urlFocus.requestFocus();
+        }
       });
     } else {
-      _pasteFocus.requestFocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && iptvUseTvFocus(context)) {
+          _focusDialogItem(0);
+        } else if (mounted) {
+          _pasteFocus.requestFocus();
+        }
+      });
     }
   }
 
@@ -1718,29 +1726,39 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   Widget _manualFormToggle() {
     const size = 26.0;
+    final active = iptvUseTvFocus(context) &&
+        iptvFocusActive(context, hovered: false, focused: _expandFocused);
     final child = Tooltip(
       message: _showManualForm ? 'Hide manual entry' : 'Enter URL manually',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: size,
         height: size,
-        decoration: BoxDecoration(
-          color: IptvShellStyle.surface,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: IptvShellStyle.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
+        decoration: active
+            ? iptvFocusButtonDecoration(
+                active: true,
+                borderRadius: 7,
+                idleBg: IptvShellStyle.surface,
+                idleBorder: IptvShellStyle.border,
+                subtle: true,
+              )
+            : BoxDecoration(
+                color: IptvShellStyle.surface,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: IptvShellStyle.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
         child: Icon(
           _showManualForm
               ? Icons.keyboard_arrow_up_rounded
               : Icons.keyboard_arrow_down_rounded,
-          color: IptvShellStyle.textSecondary,
+          color: iptvFocusFg(IptvShellStyle.textSecondary, active),
           size: 16,
         ),
       ),
@@ -1755,6 +1773,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         tvItemIndex: 1,
         onUpEdge: () => _focusDialogItem(0),
         onDownEdge: () => _focusDialogItem(_showManualForm ? 2 : _dialogOkIndex),
+        onFocusChange: (focused) => setState(() => _expandFocused = focused),
         child: child,
       );
     }
@@ -1815,6 +1834,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                   controller: _pasteCtrl,
                   focusNode: _pasteFocus,
                   enabled: !_importingShareCode,
+                  readOnly: iptvUseTvFocus(context) && !_pasteEditing,
+                  enableInteractiveSelection:
+                      !iptvUseTvFocus(context) || _pasteEditing,
                   maxLength: _codeLen,
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.characters,
@@ -1880,7 +1902,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   Widget _shareCodeCell(int index) {
     final text = index < _pasteCtrl.text.length ? _pasteCtrl.text[index] : '';
-    final active = _pasteFocus.hasFocus && index == _activeCodeIndex;
+    final pasteFocused = _pasteFocus.hasFocus;
+    final active = pasteFocused && index == _activeCodeIndex;
+    final borderColor = iptvDialogFieldBorderColor(focused: pasteFocused);
     return GestureDetector(
       onTap: () => _focusShareCodeCell(index),
       child: AnimatedContainer(
@@ -1892,10 +1916,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           color: Colors.white.withValues(alpha: active ? 0.08 : 0.05),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: active
-                ? IptvShellStyle.accent.withValues(alpha: 0.9)
-                : Colors.white.withValues(alpha: 0.12),
-            width: active ? 1.5 : 1,
+            color: borderColor,
+            width: pasteFocused ? 1.5 : 1,
           ),
         ),
         child: Text(
@@ -1921,31 +1943,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     int dialogIndex = -1,
   }) {
     final tv = iptvUseTvFocus(context);
-    final fieldDecoration = InputDecoration(
-      hintText: hint,
-      hintStyle: GoogleFonts.poppins(
-        color: Colors.white.withValues(alpha: 0.25),
-        fontSize: 14,
-      ),
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-      suffixIcon: suffix,
-      suffixIconConstraints: const BoxConstraints(
-        minWidth: 40,
-        minHeight: 40,
-      ),
-      border: UnderlineInputBorder(
-        borderSide: BorderSide(color: IptvShellStyle.border),
-      ),
-      enabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: IptvShellStyle.border),
-      ),
-      focusedBorder: UnderlineInputBorder(
-        borderSide: BorderSide(
-          color: IptvShellStyle.textPrimary,
-          width: 1.5,
-        ),
-      ),
+    final hintStyle = GoogleFonts.poppins(
+      color: Colors.white.withValues(alpha: 0.25),
+      fontSize: 14,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1960,43 +1960,20 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           ),
         ),
         const SizedBox(height: 6),
-        if (tv && focusNode != null && dialogIndex >= 0 && !obscure)
-          TvBrowseTextField(
+        if (tv && focusNode != null && dialogIndex >= 0)
+          _IptvPortalDialogField(
             controller: c,
             focusNode: focusNode,
-            onChanged: (_) {},
-            browsePlaceholder: hint ?? '',
-            browseHintStyle: GoogleFonts.poppins(
-              color: Colors.white.withValues(alpha: 0.25),
-              fontSize: 14,
-            ),
+            obscureText: obscure,
+            hintText: hint,
+            hintStyle: hintStyle,
+            suffixIcon: suffix,
             style: GoogleFonts.poppins(
               color: IptvShellStyle.textPrimary,
               fontSize: 14,
             ),
-            decoration: fieldDecoration.copyWith(
-              hintText: null,
-            ),
-            onKeyEvent: (node, event) => _dialogFieldArrowKey(
-              node,
-              event,
-              dialogIndex,
-            ),
-          )
-        else if (tv && focusNode != null && dialogIndex >= 0)
-          Focus(
-            focusNode: focusNode,
-            onKeyEvent: (node, event) =>
-                _dialogFieldArrowKey(node, event, dialogIndex),
-            child: TextField(
-              controller: c,
-              obscureText: obscure,
-              style: GoogleFonts.poppins(
-                color: IptvShellStyle.textPrimary,
-                fontSize: 14,
-              ),
-              decoration: fieldDecoration,
-            ),
+            onArrowUp: () => _focusDialogItem(dialogIndex - 1),
+            onArrowDown: () => _focusDialogItem(dialogIndex + 1),
           )
         else
           TextField(
@@ -2007,9 +1984,130 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
               color: IptvShellStyle.textPrimary,
               fontSize: 14,
             ),
-            decoration: fieldDecoration,
+            decoration: iptvDialogFieldDecoration(
+              focused: focusNode?.hasFocus ?? false,
+              hintText: hint,
+              hintStyle: hintStyle,
+              suffixIcon: suffix,
+            ),
           ),
       ],
+    );
+  }
+}
+
+/// Dialog form field — TV browse mode: focus highlights; Enter opens keyboard.
+class _IptvPortalDialogField extends StatefulWidget {
+  const _IptvPortalDialogField({
+    required this.controller,
+    required this.focusNode,
+    required this.onArrowUp,
+    required this.onArrowDown,
+    this.obscureText = false,
+    this.style,
+    this.hintText,
+    this.hintStyle,
+    this.suffixIcon,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onArrowUp;
+  final VoidCallback onArrowDown;
+  final bool obscureText;
+  final TextStyle? style;
+  final String? hintText;
+  final TextStyle? hintStyle;
+  final Widget? suffixIcon;
+
+  @override
+  State<_IptvPortalDialogField> createState() => _IptvPortalDialogFieldState();
+}
+
+class _IptvPortalDialogFieldState extends State<_IptvPortalDialogField> {
+  FocusOnKeyEventCallback? _previousHandler;
+  bool _editing = false;
+
+  bool get _tvBrowse => iptvUseTvFocus(context) && !_editing;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachKeyHandler();
+    widget.focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _IptvPortalDialogField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.removeListener(_onFocusChange);
+      widget.focusNode.addListener(_onFocusChange);
+      oldWidget.focusNode.onKeyEvent = _previousHandler;
+      _attachKeyHandler();
+    }
+  }
+
+  void _onFocusChange() {
+    if (!widget.focusNode.hasFocus && _editing && mounted) {
+      setState(() => _editing = false);
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _attachKeyHandler() {
+    _previousHandler = widget.focusNode.onKeyEvent;
+    widget.focusNode.onKeyEvent = _handleKey;
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_onFocusChange);
+    widget.focusNode.onKeyEvent = _previousHandler;
+    super.dispose();
+  }
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (_tvBrowse && shellTvIsActivateKey(event)) {
+      setState(() => _editing = true);
+      return KeyEventResult.handled;
+    }
+    if (_tvBrowse && event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        widget.onArrowDown();
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        widget.onArrowUp();
+        return KeyEventResult.handled;
+      }
+    }
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape &&
+        _editing) {
+      setState(() => _editing = false);
+      return KeyEventResult.handled;
+    }
+    return _previousHandler?.call(node, event) ?? KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = iptvUseTvFocus(context);
+    return TextField(
+      controller: widget.controller,
+      focusNode: widget.focusNode,
+      obscureText: widget.obscureText,
+      readOnly: tv && !_editing,
+      enableInteractiveSelection: !tv || _editing,
+      style: widget.style,
+      decoration: iptvDialogFieldDecoration(
+        focused: widget.focusNode.hasFocus,
+        hintText: widget.hintText,
+        hintStyle: widget.hintStyle,
+        suffixIcon: widget.suffixIcon,
+      ),
     );
   }
 }

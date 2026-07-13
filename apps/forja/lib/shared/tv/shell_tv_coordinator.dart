@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -194,6 +195,9 @@ abstract final class ShellTvFocusCoordinator {
     switch (ShellNavigationLevels.resolveBackTarget()) {
       case ShellNavLevel.player:
         ShellTvBackExit.reset();
+        if (dismissAnyPlayerChromeOverlay()) {
+          return true;
+        }
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:
@@ -411,6 +415,7 @@ abstract final class ShellTvFocusCoordinator {
   static bool _restoreFromMemory(String tabId, ShellTvFocusMemory memory) {
     switch (memory.zone) {
       case ShellTvZone.hero:
+        if (_tryRestoreLiveNode(memory)) return true;
         return focusHero(revealFull: true, tabId: tabId);
       case ShellTvZone.row:
         if (memory.rowId != null) {
@@ -890,7 +895,12 @@ class ShellTvFocusMeta {
       return () => true;
     }
     return () {
-      if (idx <= 0) return true;
+      if (idx <= 0) {
+        if (rid == MediaDetailsTv.heroRowId) {
+          ShellTvFocusCoordinator.focusActiveNavTab();
+        }
+        return true;
+      }
       return ShellTvFocusCoordinator.focusAdjacentInRow(
         tabId: tid,
         rowId: rid,

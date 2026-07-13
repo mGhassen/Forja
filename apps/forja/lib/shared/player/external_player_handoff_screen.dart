@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
@@ -69,10 +70,9 @@ class _ExternalPlayerHandoffScreenState
             Positioned(
               top: isDesktop ? 12 : 4,
               left: 12,
-              child: ForjaPlainIcon(
+              child: ShellBackIconButton(
                 icon: Icons.chevron_left_rounded,
                 size: 28,
-                color: ForjaShellColors.textPrimary,
                 tooltip: 'Back',
                 onTap: () => Navigator.of(context).pop(),
               ),
