@@ -17,6 +17,8 @@ namespace forja {
     string decrypt_paste_response(string url_with_hash, string raw_response);
     string openssl_aes_decrypt_json(string b64, string passphrase);
     string decode_xtream_text(string text);
+    string live_matches_fetch_json(string request_json);
+    string iptv_reddit_catalog_json(string request_json);
     string parse_xtream_categories_json(string json);
     string parse_xtream_streams_json(string json, string section);
     string parse_xtream_series_episodes_json(string json);
@@ -34,7 +36,9 @@ namespace forja {
     string jellyfin_request_json(string request_json);
     string anilist_query_json(string query, string variables_json);
     string manga_fetch_html(string url, string headers_json, u64 timeout_secs);
+    string kisskh_catalog_json(string request_json);
     string anime_request_json(string request_json);
+    string anime_extractor_json(string request_json);
     string indexer_request_json(string request_json);
     string debrid_request_json(string request_json);
     string parse_knaben_html_json(string html);

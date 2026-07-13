@@ -62,6 +62,12 @@ Future<String> runAnimeRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runAnimeExtractorJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.animeExtractor,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIndexerRequestJson(String requestJson) =>
     EngineWorkerPool.run(
       EngineJobKind.indexerRequest,
@@ -93,6 +99,12 @@ Future<String> runMegaResolveJson(String embedUrl) => EngineWorkerPool.run(
 Future<String> runMusicRequestJson(String requestJson) =>
     EngineWorkerPool.run(
       EngineJobKind.musicRequest,
+      {'requestJson': requestJson},
+    );
+
+Future<String> runKisskhCatalogJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.kisskhCatalog,
       {'requestJson': requestJson},
     );
 
@@ -156,6 +168,16 @@ Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,
       {'url': url, 'timeout_secs': timeoutSecs},
+    );
+
+Future<String> runLiveMatchesFetchJson(String requestJson) => EngineJobs.run(
+      EngineAsyncJob.liveMatchesFetch,
+      {'requestJson': requestJson},
+    );
+
+Future<String> runIptvRedditCatalogJson(String requestJson) => EngineJobs.run(
+      EngineAsyncJob.iptvRedditCatalog,
+      {'requestJson': requestJson},
     );
 
 // ── CPU / fast — worker pool ────────────────────────────────────────────────

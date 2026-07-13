@@ -301,6 +301,16 @@ class RustLib {
         );
       });
 
+  String liveMatchesFetchJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_live_matches_fetch_json(ptr));
+      });
+
+  String iptvRedditCatalogJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_iptv_reddit_catalog_json(ptr));
+      });
+
   String tmdbGetJson(String resourcePath, {int timeoutSecs = 15}) =>
       using((arena) {
         final ptr =
@@ -348,6 +358,11 @@ class RustLib {
         return _readString(_native.ffi_anime_request_json(ptr));
       });
 
+  String animeExtractorJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_anime_extractor_json(ptr));
+      });
+
   String indexerRequestJson(String requestJson) => using((arena) {
         final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_indexer_request_json(ptr));
@@ -371,6 +386,11 @@ class RustLib {
   String musicRequestJson(String requestJson) => using((arena) {
         final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_music_request_json(ptr));
+      });
+
+  String kisskhCatalogJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_kisskh_catalog_json(ptr));
       });
 
   String metadataRequestJson(String requestJson) => using((arena) {
@@ -847,6 +867,16 @@ final class _FfiNative {
               'ffi_iptv_probe_stream_json',
             )
             .asFunction(),
+        ffi_live_matches_fetch_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_live_matches_fetch_json',
+            )
+            .asFunction(),
+        ffi_iptv_reddit_catalog_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_iptv_reddit_catalog_json',
+            )
+            .asFunction(),
         ffi_tmdb_get_json = lib
             .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
               'ffi_tmdb_get_json',
@@ -877,6 +907,11 @@ final class _FfiNative {
               'ffi_anime_request_json',
             )
             .asFunction(),
+        ffi_anime_extractor_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_anime_extractor_json',
+            )
+            .asFunction(),
         ffi_indexer_request_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_indexer_request_json',
@@ -900,6 +935,11 @@ final class _FfiNative {
         ffi_music_request_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_music_request_json',
+            )
+            .asFunction(),
+        ffi_kisskh_catalog_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_kisskh_catalog_json',
             )
             .asFunction(),
         ffi_metadata_request_json = lib
@@ -1200,6 +1240,10 @@ final class _FfiNative {
   ) ffi_http_post_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
       ffi_iptv_probe_stream_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_live_matches_fetch_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_iptv_reddit_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
       ffi_tmdb_get_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -1218,6 +1262,8 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_anime_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_anime_extractor_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_indexer_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_debrid_request_json;
@@ -1227,6 +1273,8 @@ final class _FfiNative {
       ffi_mega_resolve_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_music_request_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_kisskh_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

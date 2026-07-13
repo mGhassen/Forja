@@ -234,6 +234,16 @@ fn iptv_probe_stream_json(url: String, timeout_secs: u64) -> String {
     iptv_core::stream_probe::probe_stream_alive_json(&url, timeout_secs)
 }
 
+fn live_matches_fetch_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    live_matches_core::fetch_json(&request_json)
+}
+
+fn iptv_reddit_catalog_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    iptv_core::reddit_catalog::catalog_json(&request_json)
+}
+
 fn tmdb_get_json(resource_path: String, timeout_secs: u64) -> String {
     utils::engine_cancel::enter_job();
     tmdb_core::get_json(&resource_path, timeout_secs)
@@ -263,6 +273,11 @@ fn anime_request_json(request_json: String) -> String {
     anime_core::request_json(&request_json)
 }
 
+fn anime_extractor_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    anime_core::anime_extractor_json(&request_json)
+}
+
 fn indexer_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     indexer_core::request_json(&request_json)
@@ -276,6 +291,11 @@ fn debrid_request_json(request_json: String) -> String {
 fn music_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     music_core::request_json(&request_json)
+}
+
+fn kisskh_catalog_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    kisskh_core::catalog_json(&request_json)
 }
 
 fn metadata_request_json(request_json: String) -> String {

@@ -24,7 +24,18 @@
 
 ## Rust migration backlog (rechecked 2026-07)
 
-**~11.8k LOC** of Dart scrape/catalog logic remains in `apps/forja` (excluding permanent host adapters). HTTP already routes through `animeHttp` → `anime-core` in most places; **parse + orchestration** is what should move.
+**~9k LOC** of Dart scrape/catalog logic remains in `apps/forja` (excluding permanent host adapters). HTTP already routes through `animeHttp` → `anime-core` in most places; **parse + orchestration** is what should move.
+
+### ✅ Shipped (P0 / P2 / P3 slice — 2026-07)
+
+| Item | Crate / FFI | Dart after |
+|------|-------------|------------|
+| KissKh catalog API | `crates/kisskh-core` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
+| Anime extractors (5) | `crates/anime-core/extractors/*` · `anime_extractor_json` | Deleted Dart extractors; `miruro_pipe_session.dart` stays host |
+| Live matches fetch | `crates/live-matches-core` · `live_matches_fetch_json` | `live_matches_models.dart` — playback/embed host only |
+| IPTV Reddit scraper | `crates/iptv-core/reddit_catalog` · `iptv_reddit_catalog_json` | `iptv_network.dart` — probe/session host |
+
+| Anime Anikoto resolve + direct embed | `crates/anime-core/resolve/*` · `anime_extractor_json` | `anime_service.dart` — orchestration + cache only |
 
 ### ✅ Correct today — do not move
 
@@ -39,6 +50,10 @@
 | Manga HTTP fetch | `mangaFetchHtml` → `manga-core` | Fetch only — **parse still Dart** |
 | Jellyfin HTTP | `runJellyfinRequestJson` → `jellyfin-core` | API in Rust; OAuth/cache/models stay host |
 | IPTV probe | `runIptvProbeStreamJson` → `iptv-core` | Engine |
+| IPTV Reddit catalog | `runIptvRedditCatalogJson` → `iptv-core` | Engine |
+| KissKh catalog | `runKisskhCatalogJson` → `kisskh-core` | Engine |
+| Anime extractors + resolve | `runAnimeExtractorJson` → `anime-core` | Engine |
+| Live matches APIs | `runLiveMatchesFetchJson` → `live-matches-core` | Engine |
 
 ### ❌ Permanent host — never port to Rust
 
@@ -61,15 +76,15 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 ### P0 — TV-scope hubs (ship first)
 
-| Dart today | LOC | Target crate | Port scope | Keep on host |
-|------------|----:|--------------|------------|--------------|
-| `AllAnimeExtractor` | 379 | `anime-core/extractors/allanime` | AES decrypt, clock API, GraphQL persisted query | — |
-| `MiruroExtractor` + `miruro_pipe_session` | 576 | `anime-core/extractors/miruro` | Pipe session + stream URL parse | — |
-| `AnimeRealmsExtractor` | 206 | `anime-core/extractors/animerealms` | HTML/JSON parse | — |
-| `HentainiExtractor` | 307 | `anime-core/extractors/hentaini` | HTML parse | — |
-| `WatchHentaiExtractor` | 351 | `anime-core/extractors/watchhentai` | HTML parse | — |
-| `AnimeService` (stream race slice) | ~800 of 1648 | `anime-core/resolve` | Anikoto slug lookup, embed page parse, provider race inputs | Watch-history prefs, UI-facing orchestration in thin Dart |
-| `KissKhService` | 663 | `kisskh-core` (new) | JSON API browse/details/episode list parse | `KissKhExtractor` (C3) |
+| Dart today | LOC | Target crate | Port scope | Keep on host | Status |
+|------------|----:|--------------|------------|--------------|--------|
+| `AllAnimeExtractor` | 379 | `anime-core/extractors/allanime` | AES decrypt, clock API, GraphQL persisted query | — | ✅ |
+| `MiruroExtractor` + `miruro_pipe_session` | 576 | `anime-core/extractors/miruro` | Pipe session + stream URL parse | `miruro_pipe_session` (CF WebView) | ✅ |
+| `AnimeRealmsExtractor` | 206 | `anime-core/extractors/animerealms` | HTML/JSON parse | — | ✅ |
+| `HentainiExtractor` | 307 | `anime-core/extractors/hentaini` | HTML parse | — | ✅ |
+| `WatchHentaiExtractor` | 351 | `anime-core/extractors/watchhentai` | HTML parse | — | ✅ |
+| `AnimeService` (stream race slice) | ~280 of 1321 | `anime-core/resolve` | Anikoto resolve, megaplay/vidwish extract, stream probe | Watch-history prefs, embed build, stream race UX | ✅ |
+| `KissKhService` | 571 | `kisskh-core` | JSON API browse/details/episode list parse | `KissKhExtractor` (C3) | ✅ |
 
 **After P0:** `AnimeService` shrinks to orchestration (history, SUB/DUB prefs, calling engine jobs). `resolver-engine` already has `kisskh` host-required plugin — metadata port unblocks cleaner split.
 
@@ -91,11 +106,11 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 ### P2 — IPTV + live matches + Jellyfin cleanup
 
-| Dart today | LOC | Target | Notes |
-|------------|----:|--------|-------|
-| `IptvScraper` (in `iptv_network.dart`) | ~650 | `iptv-core` | Reddit OAuth + paste/M3U link scrape — raw `http` in Dart today |
-| `live_matches_models.dart` fetch fns | ~200 | `live-matches-core` (new) | Uses raw `package:http` — Streamed.pk + CDN APIs |
-| `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` |
+| Dart today | LOC | Target | Notes | Status |
+|------------|----:|--------|-------|--------|
+| `IptvScraper` (in `iptv_network.dart`) | ~650 | `iptv-core` | Reddit OAuth + paste/M3U link scrape | ✅ |
+| `live_matches_models.dart` fetch fns | ~200 | `live-matches-core` | Streamed.pk + CDN APIs | ✅ |
+| `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
 ---
 
@@ -209,8 +224,8 @@ Each hub owns **vertical browse + stream orchestration** for its tab. Metadata f
 
 | Service | Feature | Engine parts | Host parts | Action |
 |---------|---------|--------------|------------|--------|
-| `AnimeService` | `anime/catalog/` | AniList GraphQL (Rust) | `AllAnimeExtractor`, `MiruroExtractor`, `AnimeRealmsExtractor`, `WatchHentaiExtractor`, `HentainiExtractor` | Port C2 extractors → `crates/anime-core` |
-| `KissKhService` | `asian_drama/catalog/` | HTTP metadata, subtitle decrypt (Rust) | `KissKhExtractor` (WebView C3) | Keep WebView on host; metadata ✅ |
+| `AnimeService` | `anime/catalog/` | AniList GraphQL + extractors + Anikoto resolve (Rust) | `miruro_pipe_session`, history prefs, stream race UX | ✅ |
+| `KissKhService` | `asian_drama/catalog/` | `kisskh-core` catalog API | `KissKhExtractor` (WebView C3), watch history | ✅ |
 | `AnimeArabicService` | `anime_arabic/catalog/` | Mega proxy (Rust) | `AnimeArabicExtractor` (iframe scrape) | Port parse → engine where possible |
 | `ArabicService` | `shared/extractors/` (used by `arabic/`) | — | Multi-site C2 | Port to `crates/*` |
 | `MangaService` | `manga/catalog/` | Fetch in Rust | Parse/orchestration Dart | Port parse → engine |

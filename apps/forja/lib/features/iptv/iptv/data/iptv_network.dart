@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'models.dart';
-import 'pastesh_decryptor.dart';
 
 Future<String?> _engineHttpGet(
   String url, {
@@ -17,31 +16,6 @@ Future<String?> _engineHttpGet(
       url,
       timeoutSecs: secs,
       headersJson: hdr,
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) return null;
-    final status = parsed['status'] as int;
-    if (status < 200 || status >= 300) return null;
-    return parsed['body'] as String;
-  } catch (_) {
-    return null;
-  }
-}
-
-Future<String?> _engineHttpPost(
-  String url, {
-  Duration timeout = const Duration(seconds: 10),
-  Map<String, String>? headers,
-  String body = '',
-}) async {
-  try {
-    final hdr = jsonEncode(headers ?? const {});
-    final secs = timeout.inSeconds.clamp(1, 120);
-    final raw = await runHttpPostJson(
-      url,
-      timeoutSecs: secs,
-      headersJson: hdr,
-      body: body,
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) return null;
@@ -515,22 +489,8 @@ class IptvScraper {
   static const _xml2ScrapeEnabled = false;
 
   static const catalogSubCount = 4;
-  // Reddit killed unauthenticated `.json` access in mid-2026 and all CORS
-  // proxies are dead. We now use OAuth2 "installed_client" grants with
-  // open-source Reddit app client IDs for anonymous bearer tokens.
-  // This gives 100 posts/page with full pagination — unlimited scraping.
-  // Falls back to RSS if all OAuth2 attempts fail.
+  // Reddit OAuth + catalog fetch live in Rust (`iptv_reddit_catalog_json`).
   static const _catalogSubs = ['IPTV_ZONENEW', 'FreeIPTV', 'iptvguru', 'IPTVfree'];
-  static const _oauthUa = 'Forja/1.3.6 (by /u/ForjaApp)';
-  // Open-source Reddit client IDs (public, installed-app type).
-  static const _oauthClientIds = [
-    'ohXpoqrZYub1kg',  // Slide for Reddit
-    'NOe2iKrPPzwscA',  // RedReader
-    'JrPdG8Z6dkWNxA',  // Stealth
-  ];
-  static String? _oauthToken;
-  static DateTime? _oauthTokenExpiry;
-  static int _oauthClientIdx = 0;
   static const _ua = 'Mozilla/5.0 (Linux; Android 11; Forja) '
       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
@@ -1013,34 +973,18 @@ class IptvScraper {
       _pasteDomains.any((d) => url.contains(d));
 
   static Future<String?> _fetchPaste(String url) async {
-    // paste.sh → AES-256-CBC encrypted, fragment is the client key
-    if (url.contains('paste.sh/') && url.contains('#')) {
-      final out = await PasteShDecryptor.decrypt(url);
-      return out.isEmpty ? null : out;
+    try {
+      final raw = await runIptvRedditCatalogJson(
+        jsonEncode({'action': 'fetch_paste', 'url': url}),
+      );
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) return null;
+      final body = parsed['body'] as String?;
+      if (body == null || body.isEmpty) return null;
+      return body;
+    } catch (_) {
+      return null;
     }
-    if (url.contains('pastebin.com/') && !url.contains('/raw/')) {
-      final id = _lastPathSegment(url);
-      return _httpGetText('https://pastebin.com/raw/$id');
-    }
-    if (url.contains('pastes.dev/')) {
-      final id = _lastPathSegment(url);
-      return _httpGetText('https://api.pastes.dev/$id');
-    }
-    if (url.contains('rentry.co/') && !url.contains('/raw')) {
-      final id = _lastPathSegment(url);
-      return _httpGetText('https://rentry.co/$id/raw');
-    }
-    return _httpGetText(url);
-  }
-
-  static String _lastPathSegment(String url) {
-    var s = url;
-    final h = s.indexOf('#');
-    if (h >= 0) s = s.substring(0, h);
-    final q = s.indexOf('?');
-    if (q >= 0) s = s.substring(0, q);
-    final slash = s.lastIndexOf('/');
-    return slash >= 0 ? s.substring(slash + 1) : s;
   }
 
   /// Strip a URL down to host + masked path so it doesn't appear in user logs.
@@ -1058,15 +1002,6 @@ class IptvScraper {
     }
   }
 
-  static Future<String?> _httpGetText(String url) => _engineHttpGet(
-        url,
-        timeout: const Duration(seconds: 15),
-        headers: const {
-          'User-Agent': _ua,
-          'Accept': 'text/html,application/json,*/*',
-        },
-      );
-
   /// Decode common XML/HTML entities in RSS content.
   static String _decodeXmlEntities(String s) => s
       .replaceAll('&amp;', '&')
@@ -1076,121 +1011,45 @@ class IptvScraper {
       .replaceAll('&#39;', "'")
       .replaceAll('&#32;', ' ');
 
-  // ── Reddit OAuth2 "installed_client" anonymous auth ──────────────────
-  // Grants an anonymous bearer token without needing a Reddit account.
-  // Token is cached and auto-refreshed. Client IDs rotate on failure.
-  static Future<String?> _getOAuthToken() async {
-    // Return cached token if still valid.
-    if (_oauthToken != null &&
-        _oauthTokenExpiry != null &&
-        DateTime.now().isBefore(_oauthTokenExpiry!)) {
-      return _oauthToken;
-    }
-    // Try each client ID until one works.
-    for (var i = 0; i < _oauthClientIds.length; i++) {
-      final idx = (_oauthClientIdx + i) % _oauthClientIds.length;
-      final clientId = _oauthClientIds[idx];
-      try {
-        final body = await _engineHttpPost(
-          'https://www.reddit.com/api/v1/access_token',
-          timeout: const Duration(seconds: 8),
-          headers: {
-            'User-Agent': _oauthUa,
-            'Authorization': 'Basic ${base64.encode(utf8.encode('$clientId:'))}',
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body:
-              'grant_type=https%3A%2F%2Foauth.reddit.com%2Fgrants%2Finstalled_client&device_id=DO_NOT_TRACK_THIS_DEVICE',
-        );
-        if (body != null) {
-          final data = json.decode(body) as Map<String, dynamic>;
-          final token = data['access_token'] as String?;
-          final expiresIn = data['expires_in'] as int? ?? 3600;
-          if (token != null && token.isNotEmpty) {
-            _oauthToken = token;
-            _oauthTokenExpiry = DateTime.now()
-                .add(Duration(seconds: expiresIn - 60));
-            _oauthClientIdx = idx;
-            debugPrint('[Catalog] OAuth token obtained (client #$idx)');
-            return token;
-          }
-        }
-        debugPrint('[Catalog] OAuth auth failed (client #$idx)');
-      } catch (e) {
-        debugPrint('[Catalog] OAuth auth error (client #$idx): $e');
-      }
-    }
-    // All client IDs failed — rotate for next attempt.
-    _oauthClientIdx =
-        (_oauthClientIdx + 1) % _oauthClientIds.length;
-    _oauthToken = null;
-    _oauthTokenExpiry = null;
-    return null;
-  }
-
-  /// Fetches subreddit listing via OAuth2 JSON API.
-  /// Returns raw JSON string or null on failure.
+  /// Fetches subreddit listing via OAuth2 JSON API (Rust engine).
   static Future<String?> _fetchCatalogOAuth(
       {required String sub, String? after}) async {
-    final token = await _getOAuthToken();
-    if (token == null) return null;
-
-    final base =
-        'https://oauth.reddit.com/r/$sub/new?limit=100&sort=new&raw_json=1';
-    final url = (after == null || after.isEmpty)
-        ? base
-        : '$base&after=$after';
-
     debugPrint('[Catalog] OAuth GET r/$sub (after=$after)');
     try {
-      final body = await _engineHttpGet(
-        url,
-        timeout: const Duration(seconds: 12),
-        headers: {
-          'User-Agent': _oauthUa,
-          'Authorization': 'Bearer $token',
-        },
+      final raw = await runIptvRedditCatalogJson(
+        jsonEncode({
+          'action': 'oauth_listing',
+          'sub': sub,
+          if (after != null && after.isNotEmpty) 'after': after,
+        }),
       );
-      if (body != null) {
-        final t = body.trimLeft();
-        if (t.startsWith('{') || t.startsWith('[')) return body;
-      }
-      if (body == null) {
-        _oauthToken = null;
-        _oauthTokenExpiry = null;
-      }
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) return null;
+      return parsed['body'] as String?;
     } catch (e) {
       debugPrint('[Catalog]   OAuth failed: $e');
+      return null;
     }
-    return null;
   }
 
   /// Fetches subreddit listing as RSS (Atom). Fallback when OAuth fails.
   static Future<String?> _fetchCatalogRss(
       {required String sub, String? after}) async {
-    final base =
-        'https://www.reddit.com/r/$sub/new/.rss?limit=25';
-    final url = (after == null || after.isEmpty)
-        ? base
-        : '$base&after=$after';
-
-    debugPrint('[Catalog] GET RSS ${_redact(url)}');
+    debugPrint('[Catalog] GET RSS r/$sub (after=$after)');
     try {
-      final body = await _engineHttpGet(
-        url,
-        timeout: const Duration(seconds: 15),
-        headers: const {
-          'User-Agent': _oauthUa,
-          'Accept': 'application/atom+xml, application/xml, */*',
-        },
+      final raw = await runIptvRedditCatalogJson(
+        jsonEncode({
+          'action': 'rss_listing',
+          'sub': sub,
+          if (after != null && after.isNotEmpty) 'after': after,
+        }),
       );
-      if (body != null && body.contains('<entry>')) {
-        return body;
-      }
-      debugPrint('[Catalog]   RSS fetch failed');
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) return null;
+      return parsed['body'] as String?;
     } catch (e) {
       debugPrint('[Catalog]   RSS failed: $e');
+      return null;
     }
-    return null;
   }
 }

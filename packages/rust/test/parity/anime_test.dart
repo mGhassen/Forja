@@ -17,11 +17,25 @@ void main() {
     expect(decoded['error'], isNotNull);
   });
 
-  test('animeRequestJson rejects unsupported method', () {
-    final raw = RustLib.instance.animeRequestJson(
-      jsonEncode({'url': 'https://example.com', 'method': 'PATCH'}),
-    );
+  test('animeExtractorJson rejects unknown action', () {
+    final raw = RustLib.instance.animeExtractorJson('{"action":"nope"}');
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     expect(decoded['error'], isNotNull);
+  });
+
+  test('animeExtractorJson returns allanime providers', () {
+    final raw = RustLib.instance.animeExtractorJson(
+      '{"action":"allanime_known_providers"}',
+    );
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    expect(decoded['providers'], contains('Default'));
+  });
+
+  test('animeExtractorJson probe_stream_url empty returns false', () {
+    final raw = RustLib.instance.animeExtractorJson(
+      '{"action":"probe_stream_url","url":"","headers":{}}',
+    );
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    expect(decoded['reachable'], isFalse);
   });
 }

@@ -407,11 +407,6 @@ const _ua = {
   'Referer': 'https://ppv.is/',
 };
 
-const _ppvStreamApis = [
-  'https://api.ppv.st/api/streams',
-  'https://api.ppv.cx/api/streams',
-];
-
 /// Force play on embed players that gate behind a gesture / big-play overlay.
 /// One retry only — repeated clicks restart playback and cause visible stutter.
 const _autoplayJs = r'''
@@ -471,14 +466,6 @@ const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';
 
-const _streamedUa = {
-  'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json',
-  'Origin': _streamedBase,
-  'Referer': _streamedReferer,
-};
-
 String _streamedImageUrl(String path) {
   if (path.isEmpty) return '';
   if (path.startsWith('http')) return path;
@@ -529,135 +516,141 @@ Future<String?> _resolvePpvPlayUrl(String embedUrl) async {
 }
 
 Future<List<_Sport>> _fetchStreamedSports() async {
-  final resp = await http
-      .get(Uri.parse('$_streamedBase/api/sports'), headers: _streamedUa)
-      .timeout(const Duration(seconds: 12));
-  if (resp.statusCode != 200) return [];
-  final list = jsonDecode(resp.body) as List? ?? [];
-  return list
-      .map((s) {
-        final j = s as Map<String, dynamic>;
-        final id = (j['id'] ?? '').toString();
-        final name = (j['name'] ?? '').toString();
-        if (id.isEmpty || name.isEmpty) return null;
-        return _Sport(id: id, name: name);
-      })
-      .whereType<_Sport>()
-      .toList();
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({'action': 'streamed_sports'}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((s) {
+          final j = s as Map<String, dynamic>;
+          final id = (j['id'] ?? '').toString();
+          final name = (j['name'] ?? '').toString();
+          if (id.isEmpty || name.isEmpty) return null;
+          return _Sport(id: id, name: name);
+        })
+        .whereType<_Sport>()
+        .toList();
+  } catch (_) {
+    return [];
+  }
 }
 
 Future<List<_StreamedMatch>> _fetchStreamedMatches() async {
-  final resp = await http
-      .get(Uri.parse('$_streamedBase/api/matches/all'), headers: _streamedUa)
-      .timeout(const Duration(seconds: 15));
-  if (resp.statusCode != 200) return [];
-  final list = jsonDecode(resp.body) as List? ?? [];
-  return list
-      .map((m) {
-        try {
-          return _StreamedMatch.fromJson(m as Map<String, dynamic>);
-        } catch (_) {
-          return null;
-        }
-      })
-      .whereType<_StreamedMatch>()
-      .toList();
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({'action': 'streamed_matches'}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((m) {
+          try {
+            return _StreamedMatch.fromJson(m as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<_StreamedMatch>()
+        .toList();
+  } catch (_) {
+    return [];
+  }
 }
 
 Future<List<_StreamedStream>> _fetchStreamedStreams(
   _StreamedSourceRef sourceRef,
 ) async {
-  final resp = await http
-      .get(
-        Uri.parse(
-          '$_streamedBase/api/stream/${sourceRef.source}/${sourceRef.id}',
-        ),
-        headers: _streamedUa,
-      )
-      .timeout(const Duration(seconds: 12));
-  if (resp.statusCode != 200) return [];
-  final list = jsonDecode(resp.body) as List? ?? [];
-  return list
-      .map((s) {
-        try {
-          return _StreamedStream.fromJson(s as Map<String, dynamic>);
-        } catch (_) {
-          return null;
-        }
-      })
-      .whereType<_StreamedStream>()
-      .where((s) => s.embedUrl.isNotEmpty)
-      .toList();
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({
+        'action': 'streamed_streams',
+        'source': sourceRef.source,
+        'id': sourceRef.id,
+      }),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((s) {
+          try {
+            return _StreamedStream.fromJson(s as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<_StreamedStream>()
+        .where((s) => s.embedUrl.isNotEmpty)
+        .toList();
+  } catch (_) {
+    return [];
+  }
 }
 
 Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
-  for (final endpoint in _ppvStreamApis) {
-    try {
-      final resp = await http
-          .get(Uri.parse(endpoint), headers: _ua)
-          .timeout(const Duration(seconds: 12));
-      if (resp.statusCode != 200) continue;
-      final body = jsonDecode(resp.body) as Map<String, dynamic>;
-      if (body['success'] != true) continue;
-
-      final result = <_DamiTvStream>[];
-      final categories = body['streams'] as List? ?? [];
-      for (final cat in categories) {
-        final streams = cat['streams'] as List? ?? [];
-        for (final s in streams) {
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({'action': 'damitv_streams'}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((s) {
           try {
-            result.add(_DamiTvStream.fromJson(s as Map<String, dynamic>));
-          } catch (_) {}
-        }
-      }
-      if (result.isNotEmpty) return result;
-    } catch (_) {
-      continue;
-    }
+            return _DamiTvStream.fromJson(s as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<_DamiTvStream>()
+        .toList();
+  } catch (_) {
+    return [];
   }
-  return [];
 }
 
 Future<List<_CdnChannel>> _fetchCdnChannels() async {
-  final resp = await http
-      .get(
-        Uri.parse(
-          'https://api.cdn-live.tv/api/v1/channels/?user=cdnlivetv&plan=free',
-        ),
-        headers: _ua,
-      )
-      .timeout(const Duration(seconds: 12));
-  if (resp.statusCode != 200) return [];
-  final body = jsonDecode(resp.body) as Map<String, dynamic>;
-  return ((body['channels'] as List?) ?? [])
-      .map((c) => _CdnChannel.fromJson(c as Map<String, dynamic>))
-      .toList();
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({'action': 'cdn_channels'}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((c) => _CdnChannel.fromJson(c as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return [];
+  }
 }
 
 Future<List<_CdnSportEvent>> _fetchCdnSports() async {
-  final resp = await http
-      .get(
-        Uri.parse(
-          'https://api.cdn-live.tv/api/v1/events/sports/?user=cdnlivetv&plan=free',
-        ),
-        headers: _ua,
-      )
-      .timeout(const Duration(seconds: 12));
-  if (resp.statusCode != 200) return [];
-  final body = jsonDecode(resp.body) as Map<String, dynamic>;
-  final cdnData = body['cdn-live-tv'] as Map<String, dynamic>?;
-  if (cdnData == null) return [];
-
-  final result = <_CdnSportEvent>[];
-  for (final key in ['Soccer', 'NFL', 'NBA', 'NHL']) {
-    final events = (cdnData[key] as List?) ?? [];
-    for (final e in events) {
-      try {
-        result.add(_CdnSportEvent.fromJson(e as Map<String, dynamic>));
-      } catch (_) {}
-    }
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({'action': 'cdn_sports'}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((e) {
+          try {
+            return _CdnSportEvent.fromJson(e as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<_CdnSportEvent>()
+        .toList();
+  } catch (_) {
+    return [];
   }
-  return result;
 }
 enum _LiveMatchesServer { all, ppv, streamed, cdnLive }
 

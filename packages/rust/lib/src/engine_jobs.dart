@@ -16,6 +16,8 @@ abstract final class EngineAsyncJob {
   static const seek111477Start = 9;
   static const resolverEngineResolve = 10;
   static const resolverEngineContinue = 11;
+  static const liveMatchesFetch = 12;
+  static const iptvRedditCatalog = 13;
 }
 
 /// Non-blocking long I/O via Rust tokio runtime; main isolate polls for result.

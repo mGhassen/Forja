@@ -1,0 +1,333 @@
+use std::collections::{HashMap, HashSet};
+
+use regex::Regex;
+use serde::Serialize;
+use serde_json::Value;
+
+use crate::extractors::common::{anime_get, jaccard, tokenize};
+
+const ANIKOTO_API: &str = "https://anikotoapi.site";
+const ANIKOTO_TV: &str = "https://anikototv.to";
+const UA: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
+     (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+const STOPWORDS: &[&str] = &[
+    "the", "a", "an", "of", "and", "or", "to", "in", "on", "no", "wa", "ga", "ni", "wo", "de",
+    "mo", "season", "part", "arc", "tv", "special", "ova", "ona",
+];
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AnikotoEpisodeOut {
+    pub id: i64,
+    pub number: i32,
+    pub title: String,
+    #[serde(rename = "embed_id")]
+    pub embed_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AnikotoSeriesOut {
+    pub id: i64,
+    pub episodes: Vec<AnikotoEpisodeOut>,
+}
+
+#[derive(Debug, Clone)]
+struct Candidate {
+    slug: String,
+    id: i64,
+    episodes: i32,
+}
+
+fn json_headers() -> HashMap<String, String> {
+    HashMap::from([
+        ("Accept".into(), "application/json".into()),
+        ("User-Agent".into(), UA.into()),
+    ])
+}
+
+fn html_headers() -> HashMap<String, String> {
+    HashMap::from([
+        ("User-Agent".into(), UA.into()),
+        ("Accept".into(), "text/html".into()),
+    ])
+}
+
+fn anikoto_get(path: &str) -> Result<Value, String> {
+    let url = format!("{ANIKOTO_API}{path}");
+    let resp = anime_get(&url, &json_headers(), 15)?;
+    if resp.status != 200 {
+        return Err(format!("HTTP {}", resp.status));
+    }
+    let v: Value = serde_json::from_str(&resp.body).map_err(|e| e.to_string())?;
+    if v.get("ok") == Some(&Value::Bool(false)) {
+        return Err(v
+            .get("error")
+            .or_else(|| v.get("code"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("anikoto error")
+            .to_string());
+    }
+    Ok(v)
+}
+
+fn search_slugs(query: &str) -> Vec<String> {
+    let q = query.trim();
+    if q.is_empty() {
+        return vec![];
+    }
+    let url = format!(
+        "{ANIKOTO_TV}/search?keyword={}",
+        urlencoding::encode(q)
+    );
+    let Ok(resp) = anime_get(&url, &html_headers(), 15) else {
+        return vec![];
+    };
+    if resp.status != 200 {
+        return vec![];
+    }
+    let re = Regex::new(r"/watch/([a-z0-9-]+)").expect("watch slug regex");
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    for cap in re.captures_iter(&resp.body) {
+        if let Some(slug) = cap.get(1) {
+            let s = slug.as_str().to_string();
+            if seen.insert(s.clone()) {
+                out.push(s);
+                if out.len() >= 12 {
+                    break;
+                }
+            }
+        }
+    }
+    out
+}
+
+fn id_from_slug(slug: &str) -> Option<i64> {
+    let url = format!("{ANIKOTO_TV}/watch/{slug}");
+    let resp = anime_get(&url, &html_headers(), 15).ok()?;
+    if resp.status != 200 {
+        return None;
+    }
+    let re = Regex::new(r#"data-id="(\d+)""#).ok()?;
+    let cap = re.captures(&resp.body)?;
+    cap.get(1)?.as_str().parse().ok()
+}
+
+fn load_series(anikoto_id: i64) -> Result<AnikotoSeriesOut, String> {
+    let j = anikoto_get(&format!("/series/{anikoto_id}"))?;
+    let eps = j
+        .pointer("/data/episodes")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let episodes = eps
+        .iter()
+        .filter_map(|e| {
+            Some(AnikotoEpisodeOut {
+                id: e.get("id")?.as_i64()?,
+                number: e.get("number")?.as_i64()? as i32,
+                title: e.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                embed_id: e
+                    .get("episode_embed_id")
+                    .map(|v| v.as_str().unwrap_or("").to_string())
+                    .unwrap_or_default(),
+            })
+        })
+        .collect();
+    Ok(AnikotoSeriesOut {
+        id: anikoto_id,
+        episodes,
+    })
+}
+
+fn slug_tokens(slug: &str) -> HashSet<String> {
+    let hash_re = Regex::new(r"^[a-z0-9]{5}$").expect("hash token regex");
+    slug.split('-')
+        .filter(|t| t.len() > 1 && !hash_re.is_match(t))
+        .flat_map(|t| tokenize(t, STOPWORDS))
+        .collect()
+}
+
+fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<i64> {
+    if cands.is_empty() {
+        return None;
+    }
+    if expected > 0 {
+        cands.sort_by(|a, b| {
+            let da = (a.episodes - expected).abs();
+            let db = (b.episodes - expected).abs();
+            da.cmp(&db).then_with(|| b.episodes.cmp(&a.episodes))
+        });
+        let best = &cands[0];
+        if best.episodes < (expected as f64 / 2.0).ceil() as i32 {
+            return None;
+        }
+        Some(best.id)
+    } else {
+        cands.sort_by(|a, b| b.episodes.cmp(&a.episodes));
+        Some(cands[0].id)
+    }
+}
+
+pub fn anikoto_resolve(
+    anilist_id: i64,
+    title_english: &str,
+    title_romaji: &str,
+    expected_episodes: i32,
+) -> Result<Option<AnikotoSeriesOut>, String> {
+    let ani_id = anilist_id.to_string();
+
+    // Strategy A: recent-anime feed
+    const MAX_PAGES: i32 = 6;
+    const PER_PAGE: i32 = 60;
+    for page in 1..=MAX_PAGES {
+        let path = format!("/recent-anime?page={page}&per_page={PER_PAGE}");
+        match anikoto_get(&path) {
+            Ok(list) => {
+                let data = list.get("data").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+                for raw in &data {
+                    let Some(m) = raw.as_object() else { continue };
+                    let Some(found_ani) = m.get("ani_id").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    if found_ani == ani_id {
+                        let Some(id) = m.get("id").and_then(|v| v.as_i64()) else {
+                            continue;
+                        };
+                        return Ok(Some(load_series(id)?));
+                    }
+                }
+                if data.len() < PER_PAGE as usize {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    // Strategy B: HTML search + probe
+    let mut queries = Vec::new();
+    for q in [title_english, title_romaji] {
+        let t = q.trim();
+        if !t.is_empty() && !queries.iter().any(|x: &String| x == t) {
+            queries.push(t.to_string());
+        }
+    }
+
+    let mut candidates = HashSet::new();
+    for q in &queries {
+        for slug in search_slugs(q) {
+            candidates.insert(slug);
+            if candidates.len() >= 10 {
+                break;
+            }
+        }
+        if candidates.len() >= 10 {
+            break;
+        }
+    }
+
+    let probe: Vec<String> = candidates.into_iter().take(8).collect();
+    let mut resolved = Vec::new();
+    let mut ani_id_matches = Vec::new();
+
+    for slug in probe {
+        let Some(id) = id_from_slug(&slug) else { continue };
+        let Ok(j) = anikoto_get(&format!("/series/{id}")) else {
+            continue;
+        };
+        let found_ani = j
+            .pointer("/data/anime/ani_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let ep_count = j
+            .pointer("/data/episodes")
+            .and_then(|v| v.as_array())
+            .map(|a| a.len() as i32)
+            .unwrap_or(0);
+        let cand = Candidate {
+            slug,
+            id,
+            episodes: ep_count,
+        };
+        if found_ani == ani_id {
+            ani_id_matches.push(cand);
+        } else {
+            resolved.push(cand);
+        }
+    }
+
+    if !ani_id_matches.is_empty() {
+        if let Some(id) = pick_best_ani_id_match(&mut ani_id_matches, expected_episodes) {
+            return Ok(Some(load_series(id)?));
+        }
+        if !resolved.is_empty() {
+            resolved.extend(ani_id_matches);
+        } else if !ani_id_matches.is_empty() {
+            ani_id_matches.sort_by(|a, b| b.episodes.cmp(&a.episodes));
+            return Ok(Some(load_series(ani_id_matches[0].id)?));
+        }
+    }
+
+    // Strategy C: fuzzy slug match
+    if !resolved.is_empty() {
+        let mut title_tokens = HashSet::new();
+        for q in &queries {
+            title_tokens.extend(tokenize(q, STOPWORDS));
+        }
+        if !title_tokens.is_empty() {
+            let mut best: Option<&Candidate> = None;
+            let mut best_score = 0.0_f64;
+            for c in &resolved {
+                let slug_tokens = slug_tokens(&c.slug);
+                if slug_tokens.is_empty() {
+                    continue;
+                }
+                let score = jaccard(&slug_tokens, &title_tokens);
+                if score > best_score {
+                    best_score = score;
+                    best = Some(c);
+                }
+            }
+            if let Some(c) = best {
+                if best_score >= 0.40 {
+                    return Ok(Some(load_series(c.id)?));
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slug_tokens_drop_hash_suffix() {
+        let tokens = slug_tokens("jujutsu-kaisen-season-abc12");
+        assert!(tokens.contains("jujutsu"));
+        assert!(tokens.contains("kaisen"));
+        assert!(!tokens.contains("abc12"));
+    }
+
+    #[test]
+    fn pick_best_ani_id_prefers_episode_fit() {
+        let mut cands = vec![
+            Candidate {
+                slug: "a".into(),
+                id: 1,
+                episodes: 1,
+            },
+            Candidate {
+                slug: "b".into(),
+                id: 2,
+                episodes: 26,
+            },
+        ];
+        assert_eq!(pick_best_ani_id_match(&mut cands, 26), Some(2));
+    }
+}

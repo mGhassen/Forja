@@ -37,6 +37,8 @@ pub enum JobKind {
     Seek111477Start = 9,
     ResolverEngineResolve = 10,
     ResolverEngineContinue = 11,
+    LiveMatchesFetch = 12,
+    IptvRedditCatalog = 13,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -237,6 +239,30 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             tokio::task::spawn_blocking(move || {
                 utils::engine_cancel::attach_job_token(token);
                 Ok(resolver_engine::continue_with_host(&request_json))
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
+        k if k == JobKind::LiveMatchesFetch as u32 => {
+            let req: RequestJsonPayload =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let request_json = req.request_json;
+            let token = utils::engine_cancel::cancellation_token();
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                Ok(live_matches_core::fetch_json(&request_json))
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
+        k if k == JobKind::IptvRedditCatalog as u32 => {
+            let req: RequestJsonPayload =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let request_json = req.request_json;
+            let token = utils::engine_cancel::cancellation_token();
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                Ok(iptv_core::reddit_catalog::catalog_json(&request_json))
             })
             .await
             .map_err(|e| e.to_string())?

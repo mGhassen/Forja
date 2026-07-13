@@ -1,6 +1,4 @@
-import 'package:forja/features/anime/catalog/allanime_extractor.dart';
-import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
-import 'package:forja/features/anime/catalog/miruro_extractor.dart';
+import 'package:rust/rust.dart';
 
 /// Flat catalog of every anime stream source the player can race.
 ///
@@ -63,14 +61,13 @@ class AnimeStreamProviders {
       'watchhentai': 'WatchHentai',
       'hentaini': 'Hentaini',
     };
-    for (final p in MiruroExtractor.knownProviders) {
-      out['miruro:$p'] =
-          MiruroExtractor.upstreamSources[p] ?? p;
+    for (final p in miruroKnownProviders) {
+      out['miruro:$p'] = miruroUpstreamLabel(p);
     }
-    for (final p in AllAnimeExtractor.knownProviders) {
+    for (final p in allAnimeKnownProviders) {
       out['allanime:$p'] = p;
     }
-    for (final p in AnimeRealmsExtractor.defaultProviders) {
+    for (final p in animeRealmsDefaultProviders) {
       out['animerealms:$p'] = _titleCaseProvider(p);
     }
     return out;

@@ -56,11 +56,15 @@ dependencies = [
 name = "anime-core"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "base64",
+ "ctr",
+ "flate2",
  "regex",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "urlencoding",
  "utils",
@@ -1003,6 +1007,8 @@ dependencies = [
  "indexer-core",
  "iptv-core",
  "jellyfin-core",
+ "kisskh-core",
+ "live-matches-core",
  "manga-core",
  "music-core",
  "proxy",
@@ -1719,6 +1725,7 @@ dependencies = [
  "sha2",
  "thiserror 2.0.18",
  "tokio",
+ "utils",
 ]
 
 [[package]]
@@ -1766,6 +1773,17 @@ dependencies = [
  "cfg-if",
  "futures-util",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kisskh-core"
+version = "0.1.0"
+dependencies = [
+ "anime-core",
+ "regex",
+ "serde",
+ "serde_json",
+ "urlencoding",
 ]
 
 [[package]]
@@ -2121,6 +2139,17 @@ name = "litrs"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
+
+[[package]]
+name = "live-matches-core"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "utils",
+]
 
 [[package]]
 name = "lock_api"

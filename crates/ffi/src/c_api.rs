@@ -312,6 +312,20 @@ pub unsafe extern "C" fn ffi_iptv_probe_stream_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_live_matches_fetch_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::live_matches_fetch_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_iptv_reddit_catalog_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::iptv_reddit_catalog_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_tmdb_get_json(
     resource_path: *const c_char,
     timeout_secs: u64,
@@ -365,6 +379,13 @@ pub unsafe extern "C" fn ffi_anime_request_json(
     request_json: *const c_char,
 ) -> *mut c_char {
     to_c_string(crate::anime_request_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_anime_extractor_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::anime_extractor_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
@@ -670,6 +691,13 @@ pub unsafe extern "C" fn ffi_mega_resolve_json(embed_url: *const c_char) -> *mut
 #[no_mangle]
 pub unsafe extern "C" fn ffi_music_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::music_request_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_kisskh_catalog_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::kisskh_catalog_json(from_c_str(request_json)))
 }
 
 #[no_mangle]

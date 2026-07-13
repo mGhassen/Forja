@@ -20,6 +20,8 @@ members = [
     "indexer-core",
     "debrid-core",
     "music-core",
+    "kisskh-core",
+    "live-matches-core",
     "resolver-engine",
 ]
 

@@ -1,16 +1,20 @@
+mod extractors;
 mod http;
 mod introdb;
 mod lyrics;
 mod mdblist;
 mod metadata;
 mod paper2audio;
+mod resolve;
 mod subtitle;
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
+pub use extractors::extractor_json as anime_extractor_json;
 pub use http::AnimeHttpResponse;
 pub use metadata::metadata_request_json;
+pub use resolve::resolve_json as anime_resolve_json;
 pub use subtitle::subtitle_request_json;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

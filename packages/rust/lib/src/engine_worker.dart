@@ -20,11 +20,13 @@ enum EngineJobKind {
   httpGet,
   httpPost,
   animeRequest,
+  animeExtractor,
   indexerRequest,
   debridRequest,
   site111477IndexRequest,
   megaResolve,
   musicRequest,
+  kisskhCatalog,
   metadataRequest,
   subtitleRequest,
   tmdbGet,
@@ -231,6 +233,8 @@ String _dispatchJob(_WorkerJob job) {
       );
     case EngineJobKind.animeRequest:
       return rust.animeRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.animeExtractor:
+      return rust.animeExtractorJson(job.args['requestJson']! as String);
     case EngineJobKind.indexerRequest:
       return rust.indexerRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.debridRequest:
@@ -241,6 +245,8 @@ String _dispatchJob(_WorkerJob job) {
       return rust.megaResolveJson(job.args['embedUrl']! as String);
     case EngineJobKind.musicRequest:
       return rust.musicRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.kisskhCatalog:
+      return rust.kisskhCatalogJson(job.args['requestJson']! as String);
     case EngineJobKind.metadataRequest:
       return rust.metadataRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.subtitleRequest:
