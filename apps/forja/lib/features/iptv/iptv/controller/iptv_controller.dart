@@ -374,6 +374,10 @@ class IptvController extends ChangeNotifier {
       return;
     }
     if (activeSection == section && !isLoading) return;
+    if (activeSection != section) {
+      activeSection = section;
+      notifyListeners();
+    }
     await openSection(section);
   }
 
@@ -1020,27 +1024,17 @@ class IptvController extends ChangeNotifier {
         _healthQueue.clear();
         cancelAllLazyChecks();
         _epgCache.clear();
-        if (section == IptvSection.live) {
-          final key = IptvAliveStore.portalKey(p.portal);
-          liveOnly = await IptvAliveStore.loadLiveOnly(key);
-          final alive = await IptvAliveStore.load(key);
-          if (alive != null) {
-            aliveStreamIds = alive.aliveIds;
-            aliveCheckedAt = alive.checkedAt;
-            _seedHealthFromCache();
-          } else {
-            aliveStreamIds = const {};
-            aliveCheckedAt = null;
-          }
-        } else {
-          liveOnly = false;
-          aliveStreamIds = const {};
-          aliveCheckedAt = null;
-        }
-        if (persistSection) {
-          await IptvStore.saveLastSection(section);
-        }
+        liveOnly = false;
+        aliveStreamIds = const {};
+        aliveCheckedAt = null;
         notifyListeners();
+        unawaited(
+          _hydrateLiveSectionPrefs(
+            portal: p,
+            section: section,
+            persistSection: persistSection,
+          ),
+        );
         return;
       }
     }
@@ -1103,6 +1097,44 @@ class IptvController extends ChangeNotifier {
 
   String _catalogCacheKey(String portalKey, IptvSection section) =>
       '$portalKey|${section.name}';
+
+  Future<void> _hydrateLiveSectionPrefs({
+    required VerifiedPortal portal,
+    required IptvSection section,
+    required bool persistSection,
+  }) async {
+    if (section == IptvSection.live) {
+      final key = IptvAliveStore.portalKey(portal.portal);
+      final liveOnlyPref = await IptvAliveStore.loadLiveOnly(key);
+      final alive = await IptvAliveStore.load(key);
+      if (activePortal?.key != portal.key || activeSection != section) {
+        return;
+      }
+      liveOnly = liveOnlyPref;
+      if (alive != null) {
+        aliveStreamIds = alive.aliveIds;
+        aliveCheckedAt = alive.checkedAt;
+        _seedHealthFromCache();
+      } else {
+        aliveStreamIds = const {};
+        aliveCheckedAt = null;
+      }
+    } else {
+      if (activePortal?.key != portal.key || activeSection != section) {
+        return;
+      }
+      liveOnly = false;
+      aliveStreamIds = const {};
+      aliveCheckedAt = null;
+    }
+    if (persistSection) {
+      await IptvStore.saveLastSection(section);
+    }
+    if (activePortal?.key != portal.key || activeSection != section) {
+      return;
+    }
+    notifyListeners();
+  }
 
   void _invalidatePortalCatalogCache(String portalKey) {
     final prefix = '$portalKey|';

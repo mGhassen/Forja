@@ -28,10 +28,10 @@ class _IptvSectionShelfSpec {
   final IconData icon;
   final List<Color> colors;
 
-  /// Compact shelf pill — solid vibrant accent (tile gradients are too dark).
-  Color get shelfAccent => section == IptvSection.series
-      ? colors.last
-      : colors.first;
+  /// Shelf pill gradients — Live only: drop the near-black tile stop.
+  List<Color> get shelfGradientColors => section == IptvSection.live
+      ? const [Color(0xFFEF4444), Color(0xFF7C2D12)]
+      : colors;
 }
 
 const _kSectionShelf = <_IptvSectionShelfSpec>[
@@ -51,7 +51,7 @@ const _kSectionShelf = <_IptvSectionShelfSpec>[
     section: IptvSection.series,
     label: 'Series',
     icon: Icons.video_library_rounded,
-    colors: [Color(0xFF374151), Color(0xFF1CE783)],
+    colors: [Color(0xFF1CE783), Color(0xFF13AA2E)],
   ),
 ];
 
@@ -670,7 +670,7 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — solid section accent when selected.
+/// Shelf tab — section gradient when selected.
 /// Hover/focus expands right to reveal a catalog reload control.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
@@ -727,16 +727,24 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: Duration.zero,
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
-          color: showColor ? widget.spec.shelfAccent : Colors.transparent,
+          gradient: showColor
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: widget.spec.shelfGradientColors,
+                )
+              : null,
+          color: showColor ? null : Colors.transparent,
           borderRadius: _radius,
           boxShadow: widget.selected && showColor
               ? [
                   BoxShadow(
-                    color: widget.spec.shelfAccent.withValues(alpha: 0.35),
+                    color: widget.spec.shelfGradientColors.first
+                        .withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
