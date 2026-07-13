@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **2 / 5** acceptance · home/settings splits shipped; player screen god-files split |
-| **Current slice** | `shared/player/player/*` orchestrators done; `controls/` + `trailer_player_screen` still &gt;1.2k (R19-A01) |
+| **Current slice** | `shared/player/player/*` orchestrators done; `player_chrome_overlay.dart` + `trailer_player_screen.dart` still &gt;1.2k (R19-A01) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

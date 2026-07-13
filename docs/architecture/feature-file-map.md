@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 0 files in `features/` · 0 monoliths in `shared/player/player/` |
-| **Next action** | `shared/player/controls/` + `trailer_player_screen.dart` still &gt;1.2k (R19-A01); `features/player/` delete (R19-A02) |
+| **Next action** | `player_chrome_overlay.dart` + `trailer_player_screen.dart` still &gt;1.2k (R19-A01); `features/player/` delete (R19-A02) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -501,7 +501,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-IPTV + mobile/desktop player screen splits done (`player/` parts all ≤1,126). Remaining R19-A01: `player_stream_menu.dart` (1,550), `trailer_player_screen.dart` (1,404), `player_chrome_overlay.dart` (1,287).
+IPTV + mobile/desktop player screen splits done (`player/` parts all ≤1,126). Remaining R19-A01: `player_chrome_overlay.dart` (1,287), `trailer_player_screen.dart` (1,404).
 
 ---
 
