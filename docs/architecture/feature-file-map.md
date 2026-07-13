@@ -12,7 +12,7 @@
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
 | **Tier 1 (&gt;3k)** | 0 files in `features/` · player screens in `shared/player/` (~5.7k each) |
-| **Next action** | Catalog workspace split done; next: `iptv_pt_player_screen` or player `controls/` (R19-A05) |
+| **Next action** | IPTV player split done; next: `shared/player/` controls extract (R19-A05) |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
 
@@ -80,7 +80,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_pt_widge
 | [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | Phase C done — see Tier 1c |
 | [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvCatalogTopBar` + `IptvPortalPanel` in parts |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
-| [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 2,061 | Player | In | libmpv + channel guide overlays |
+| [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 288 | Orchestrator | In | State + lifecycle; engine/ui mixins |
 | [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 1,783 | Data/Service | In | Non-UI god object |
 | [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
 | [`anime/catalog/anime_service.dart`](../../apps/forja/lib/features/anime/catalog/anime_service.dart) | 1,648 | Data/Service | In | Catalog backend |
@@ -124,7 +124,9 @@ Paths relative to `apps/forja/lib/features/`.
 | 240 | home | `home/details_screen_fetch.dart` | Details fetch mixin | In |
 | 231 | home | `home/details_screen_episodes.dart` | Details episodes mixin | In |
 | 1507 | iptv | `iptv/iptv/screens/iptv_pt_widgets_browser.dart` | Browser view + stream cards | In |
+| 921 | iptv | `iptv/iptv/screens/iptv_pt_player_ui.dart` | Player UI mixin | In |
 | 942 | iptv | `iptv/iptv/screens/iptv_catalog_portal_form.dart` | Portal add/edit dialog | In |
+| 797 | iptv | `iptv/iptv/screens/iptv_pt_player_engine.dart` | Player engine mixin | In |
 | 1457 | live_matches | `live_matches/live_matches_widgets.dart` | Cards + embed player | In |
 | 815 | iptv | `iptv/iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
 | 786 | iptv | `iptv/iptv/screens/iptv_catalog_top_bar.dart` | Catalog top bar + shelf tabs | In |
@@ -136,7 +138,8 @@ Paths relative to `apps/forja/lib/features/`.
 | 360 | live_matches | `live_matches/live_matches_data.dart` | Data mixin | In |
 | 66 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Library root | In |
 | 2401 | music | `music/music_screen.dart` | Orchestrator | Out |
-| 2061 | iptv | `iptv/iptv/screens/iptv_pt_player_screen.dart` | Player | In |
+| 288 | iptv | `iptv/iptv/screens/iptv_pt_player_screen.dart` | Player orchestrator | In |
+| 68 | iptv | `iptv/iptv/screens/iptv_pt_player_widgets.dart` | Source chip | In |
 | 191 | iptv | `iptv/iptv/screens/iptv_pt_widgets_episode.dart` | Episode list | In |
 | 152 | iptv | `iptv/iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
 | 137 | iptv | `iptv/iptv/screens/iptv_pt_widgets_section.dart` | Section pick (legacy) | In |
@@ -462,7 +465,7 @@ Map and targets only. No Dart changes.
 
 ### Phase E — IPTV, player, remainder
 
-Catalog workspace split complete (`iptv_catalog_workspace.dart` 67-line library root). Remaining: `iptv_pt_player_screen`, `iptv_controller`, player `controls/` (R19-A05).
+IPTV splits complete (PT screen, catalog workspace, player). Remaining: `iptv_controller`, `shared/player/` controls (R19-A05).
 
 ---
 

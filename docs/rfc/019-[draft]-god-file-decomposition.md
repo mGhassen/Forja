@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **2 / 5** acceptance · home/settings splits shipped |
-| **Current slice** | IPTV catalog workspace split done (67-line library root); player `controls/` (R19-A05) remains |
+| **Current slice** | IPTV player split done (288-line orchestrator); `shared/player/` controls (R19-A05) remains |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,6 +42,7 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 | [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Phase B done — orchestrator; `home_screen_feed.dart`, `home_screen_build.dart`, `home_hero.dart`, `widgets/` |
 | [`settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Phase C done — orchestrator; playback/search/providers/debrid in `sections/` |
 | [`iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 152 | Phase E done — routing orchestrator; 7 `iptv_pt_widgets_*.dart` part files |
+| [`iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 288 | Player orchestrator; `iptv_pt_player_engine.dart`, `iptv_pt_player_ui.dart` mixins |
 | [`live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Phase E done — orchestrator; `live_matches_models.dart`, `live_matches_widgets.dart`, data/build/playback mixins |
 | [`search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator; `search_search.dart`, `search_tv.dart`, `search_build.dart`, `search_widgets.dart` |
 | [`anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator; `anime_screen_feed.dart`, `anime_screen_build.dart`, `anime_widgets.dart` |
