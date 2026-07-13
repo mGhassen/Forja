@@ -30,6 +30,7 @@ void main() {
   group('isAndroidTvHeadlessWebViewBlocked', () {
     tearDown(() {
       SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      SettingsService.allowAndroidTvHeadlessWebViewExtractors = true;
     });
 
     test('false on phone profile', () {
@@ -37,9 +38,16 @@ void main() {
       expect(isAndroidTvHeadlessWebViewBlocked, isFalse);
     });
 
-    test('true on androidTv profile', () {
+    test('true on androidTv profile when extractors disallowed', () {
       SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      SettingsService.allowAndroidTvHeadlessWebViewExtractors = false;
       expect(isAndroidTvHeadlessWebViewBlocked, isTrue);
+    });
+
+    test('false on androidTv when allowAndroidTvHeadlessWebViewExtractors', () {
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      SettingsService.allowAndroidTvHeadlessWebViewExtractors = true;
+      expect(isAndroidTvHeadlessWebViewBlocked, isFalse);
     });
   });
 

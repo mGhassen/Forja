@@ -161,6 +161,15 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       .where((p) => p.status == StreamProviderProbeStatus.success)
       .length;
 
+  int get _probeSkipped => _probes
+      .where((p) => p.status == StreamProviderProbeStatus.skippedOnTv)
+      .length;
+
+  List<String> get _skippedProbeLabels => _probes
+      .where((p) => p.status == StreamProviderProbeStatus.skippedOnTv)
+      .map((p) => p.label.toUpperCase())
+      .toList(growable: false);
+
   double get _probeProgress =>
       _probeTotal > 0 ? _probeChecked / _probeTotal : 0;
 
@@ -257,7 +266,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         ),
         const SizedBox(height: 10),
         Text(
-          '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP',
+          _probeSkipped > 0
+              ? '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP  ·  $_probeSkipped SKIPPED ON TV'
+              : '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP',
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.5),
             fontSize: 11,
@@ -266,6 +277,25 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             fontFamily: 'Poppins',
           ),
         ),
+        if (_probeSkipped > 0) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              _skippedProbeLabels.join(' · '),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 1.2,
+                fontFamily: 'Poppins',
+              ),
+            ),
+          ),
+        ],
         if (widget.subtitle != null) ...[
           const SizedBox(height: 6),
           Text(

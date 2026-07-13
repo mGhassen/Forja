@@ -48,6 +48,7 @@ abstract final class ProviderScoreProbeSync {
         await ProviderScoreMemory.recordServerFailure(scope, providerId);
       case StreamProviderProbeStatus.trying:
       case StreamProviderProbeStatus.pending:
+      case StreamProviderProbeStatus.skippedOnTv:
         break;
     }
   }

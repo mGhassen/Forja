@@ -859,13 +859,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         settingsOrder: _webstreamingProviderOrder,
       );
       if (orderedKeys.isNotEmpty) {
+        final firstActiveIdx = orderedKeys.indexWhere(
+          (k) => !TvStreamFallback.isSkippedOnTv(k, providers),
+        );
         probeNotifier.value = [
           for (var i = 0; i < orderedKeys.length; i++)
             StreamProviderProbe(
               id: orderedKeys[i],
               label: _webstreamingProviderLabel(orderedKeys[i]),
-              status: StreamProviderProbeStatus.pending,
-              isPreferred: i == 0,
+              status: TvStreamFallback.isSkippedOnTv(orderedKeys[i], providers)
+                  ? StreamProviderProbeStatus.skippedOnTv
+                  : StreamProviderProbeStatus.pending,
+              isPreferred: i == (firstActiveIdx >= 0 ? firstActiveIdx : 0),
             ),
         ];
       }
@@ -875,6 +880,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           'success' => StreamProviderProbeStatus.success,
           'failed' => StreamProviderProbeStatus.failed,
           'trying' => StreamProviderProbeStatus.trying,
+          'skipped' => StreamProviderProbeStatus.skippedOnTv,
           _ => StreamProviderProbeStatus.pending,
         };
       }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
 /// A magnet / torrent link — NOT a direct HTTP(S) stream.
@@ -206,7 +207,7 @@ class StreamProviderResolver {
     if (provider == null || provider['movie'] == null || provider['tv'] == null) {
       return null;
     }
-    if (SettingsService.platformProfile == PlatformProfile.androidTv) {
+    if (isAndroidTvHeadlessWebViewBlocked) {
       debugPrint(
         '[StreamProviderResolver] WebView sniffer skipped on Android TV for $key',
       );
@@ -240,7 +241,7 @@ class StreamProviderResolver {
     required int episode,
     required bool Function() isCancelled,
   }) async {
-    if (SettingsService.platformProfile == PlatformProfile.androidTv) {
+    if (isAndroidTvHeadlessWebViewBlocked) {
       debugPrint(
         '[StreamProviderResolver] WebStreamr VidSrc WebView fallback skipped on Android TV',
       );

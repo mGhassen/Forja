@@ -1,4 +1,12 @@
-enum StreamProviderProbeStatus { pending, trying, success, failed }
+enum StreamProviderProbeStatus {
+  pending,
+  trying,
+  success,
+  failed,
+
+  /// Headless WebView sniffers blocked on Android TV (issue 031).
+  skippedOnTv,
+}
 
 class StreamProviderProbe {
   const StreamProviderProbe({

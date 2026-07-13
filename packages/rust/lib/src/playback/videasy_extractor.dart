@@ -488,7 +488,8 @@ class _VideasyWasm {
       final ok = await _ready!.future;
       return ok ? this : null;
     }
-    if (SettingsService.platformProfile == PlatformProfile.androidTv) {
+    if (SettingsService.platformProfile == PlatformProfile.androidTv &&
+        !SettingsService.allowAndroidTvHeadlessWebViewExtractors) {
       onLog('[Videasy] WASM WebView blocked on Android TV');
       _ready = Completer<bool>()..complete(false);
       return null;

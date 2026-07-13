@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:rust/rust.dart';
 
 /// Playback orchestrator — parallel resolve + ranked candidates.
@@ -113,6 +114,14 @@ abstract final class PlaybackEngine {
         if (_isHeavyProvider(key) && inFlight > 0) break;
         final rank = effectiveRanks?[key] ?? nextIndex;
         nextIndex++;
+        if (TvStreamFallback.isSkippedOnTv(key, providers)) {
+          onProgress?.call(key, 'skipped');
+          settled++;
+          if (settled >= total) {
+            finishIfOpen();
+          }
+          continue;
+        }
         inFlight++;
         inFlightKeys.add(key);
         onProgress?.call(key, 'trying');

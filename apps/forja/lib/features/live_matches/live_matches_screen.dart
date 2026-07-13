@@ -12,7 +12,10 @@ import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_mood_circle.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -173,11 +176,19 @@ class _DamiTvStream {
   }
 
   String get timeLabel {
+    final statusLower = status.toLowerCase();
+    if (statusLower == 'live') return 'live';
+
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    if (now >= startsAt && now <= endsAt) return '🔴 Live Now';
+    if (startsAt > 0 &&
+        endsAt > startsAt &&
+        now >= startsAt &&
+        now <= endsAt) {
+      return 'live';
+    }
     if (startsAt > now) {
       final dt = DateTime.fromMillisecondsSinceEpoch(startsAt * 1000);
-      return '⏰ ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
     return '';
   }
@@ -253,9 +264,9 @@ class _StreamedMatch {
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
     final now = DateTime.now();
     final delta = now.difference(dt);
-    if (delta.inMinutes >= 0 && delta.inHours < 6) return '🔴 Live Now';
+    if (delta.inMinutes >= 0 && delta.inHours < 6) return 'live';
     if (dt.isAfter(now)) {
-      return '⏰ ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
     return '';
   }
@@ -597,11 +608,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   List<_CdnSportEvent> _cdnSports = [];
   bool _cdnShowChannels = true; // true = channels, false = sports
 
-  static const _serverChipCount = 2;
-  static const _topBarRefreshIndex = 2;
+  static const _topBarServersIndex = 0;
+  static const _topBarRefreshIndex = 1;
 
-  final FocusNode _refreshFocusNode =
-      FocusNode(debugLabel: 'live-matches-refresh');
+  final FocusNode _refreshFocusNode = FocusNode(
+    debugLabel: 'live-matches-refresh',
+  );
 
   bool _tvFocus(BuildContext context) =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -611,6 +623,191 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   int get _chipSortOrder => 1;
 
   int get _gridSortOrder => _hasSportChips ? 2 : 1;
+
+  double _matchCardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context);
+
+  double _matchCardHeight(BuildContext context) =>
+      shellContinueWatchingCardHeight(context);
+
+  double _channelCardWidth(BuildContext context) =>
+      (_matchCardWidth(context) * 0.86).clamp(200.0, 240.0);
+
+  double _channelCardHeight(BuildContext context) =>
+      (_matchCardHeight(context) * 0.84).clamp(118.0, 136.0);
+
+  double _gridGap(BuildContext context) =>
+      shellMovieCardRowGap(context).clamp(8.0, 12.0);
+
+  EdgeInsets _gridPadding(BuildContext context) {
+    final horizontal = shellHomeSectionHorizontalPadding(context);
+    return EdgeInsets.fromLTRB(horizontal, 4, horizontal, 20);
+  }
+
+  int _gridColumns(BoxConstraints constraints, double cardWidth) =>
+      (constraints.maxWidth / cardWidth).floor().clamp(1, 8);
+
+  ({IconData icon, Color accent}) _sportCircleMeta(String label) {
+    final key = label.toLowerCase();
+    if (key == 'all') {
+      return (
+        icon: Icons.grid_view_rounded,
+        accent: ForjaShellColors.sectionAccent,
+      );
+    }
+    if (key.contains('american football') || key.contains('nfl')) {
+      return (
+        icon: Icons.sports_football_rounded,
+        accent: const Color(0xFF22C55E),
+      );
+    }
+    if (key.contains('basketball') || key.contains('nba')) {
+      return (
+        icon: Icons.sports_basketball_rounded,
+        accent: const Color(0xFFF97316),
+      );
+    }
+    if (key.contains('soccer') || key.contains('football')) {
+      return (
+        icon: Icons.sports_soccer_rounded,
+        accent: const Color(0xFF10B981),
+      );
+    }
+    if (key.contains('baseball') || key.contains('mlb')) {
+      return (
+        icon: Icons.sports_baseball_rounded,
+        accent: const Color(0xFFEF4444),
+      );
+    }
+    if (key.contains('hockey') || key.contains('nhl')) {
+      return (
+        icon: Icons.sports_hockey_rounded,
+        accent: const Color(0xFF38BDF8),
+      );
+    }
+    if (key.contains('tennis')) {
+      return (
+        icon: Icons.sports_tennis_rounded,
+        accent: const Color(0xFFA3E635),
+      );
+    }
+    if (key.contains('cricket')) {
+      return (
+        icon: Icons.sports_cricket_rounded,
+        accent: const Color(0xFF84CC16),
+      );
+    }
+    if (key.contains('mma') ||
+        key.contains('boxing') ||
+        key.contains('fight')) {
+      return (icon: Icons.sports_mma_rounded, accent: const Color(0xFFF43F5E));
+    }
+    if (key.contains('motor') || key.contains('racing') || key.contains('f1')) {
+      return (
+        icon: Icons.sports_motorsports_rounded,
+        accent: const Color(0xFFEAB308),
+      );
+    }
+    if (key.contains('24/7') || key.contains('stream')) {
+      return (icon: Icons.live_tv_rounded, accent: const Color(0xFF8B5CF6));
+    }
+    if (key.contains('misc')) {
+      return (icon: Icons.sports_rounded, accent: const Color(0xFF64748B));
+    }
+    return (icon: Icons.sports_rounded, accent: ForjaShellColors.sectionAccent);
+  }
+
+  String _sportLabelAt(int index) =>
+      index == 0 ? 'All' : _sports[index - 1].name;
+
+  Widget _buildSportCircleItem({
+    required ShellMoodCircleLayout layout,
+    required int index,
+    required int itemCount,
+    required bool tvFocus,
+  }) {
+    final label = _sportLabelAt(index);
+    final meta = _sportCircleMeta(label);
+    final selected = _tabController!.index == index;
+
+    return ShellMoodCircleItem(
+      layout: layout,
+      label: label,
+      icon: meta.icon,
+      accent: meta.accent,
+      selected: selected,
+      listIndex: index,
+      tvTabId: _tabId,
+      tvRowId: _chipRowId,
+      onTap: () {
+        if (index != _tabController!.index) {
+          _tabController!.animateTo(index);
+        } else if (tvFocus) {
+          ShellTvFocusCoordinator.focusFromChipStripDown(
+            tabId: _tabId,
+            chipRowId: _chipRowId,
+            resultsRowId: _gridRowId,
+          );
+        }
+      },
+      onLeftEdge: shellTvChipLeftEdge(
+        context,
+        tabId: _tabId,
+        rowId: _chipRowId,
+        index: index,
+      ),
+      onRightEdge: shellTvChipRightEdge(
+        tabId: _tabId,
+        rowId: _chipRowId,
+        index: index,
+        itemCount: itemCount,
+      ),
+      onDownEdge: shellTvChipDownToRow(
+        tabId: _tabId,
+        chipRowId: _chipRowId,
+        resultsRowId: _gridRowId,
+      ),
+      onUpEdge: () => _focusTopBarItem(_topBarServersIndex),
+    );
+  }
+
+  Widget _buildCenteredSportCircles({
+    required ShellMoodCircleLayout layout,
+    required int itemCount,
+    required bool scaleToFit,
+    required bool tvFocus,
+  }) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < itemCount; i++) ...[
+          if (i > 0) SizedBox(width: layout.horizontalGap),
+          _buildSportCircleItem(
+            layout: layout,
+            index: i,
+            itemCount: itemCount,
+            tvFocus: tvFocus,
+          ),
+        ],
+      ],
+    );
+
+    return SizedBox(
+      height: layout.rowHeight,
+      width: double.infinity,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: scaleToFit
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: row,
+              )
+            : Center(child: row),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -631,8 +828,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   void _focusTopBarItem(int index) {
-    if (index < _serverChipCount) {
-      ShellTvFocusCoordinator.focusRowItem(_tabId, _topBarRowId, index);
+    if (index == _topBarServersIndex) {
+      ShellTvFocusCoordinator.focusRowItem(
+        _tabId,
+        _topBarRowId,
+        _topBarServersIndex,
+      );
       return;
     }
     if (!_refreshFocusNode.canRequestFocus) return;
@@ -644,41 +845,45 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   Future<void> _selectServer(_LiveMatchesServer server) async {
-    if (server == _server) {
-      if (_tvFocus(context)) _topBarDownEdge();
-      return;
-    }
+    if (server == _server) return;
     setState(() => _server = server);
     await _load();
   }
 
-  Widget _serverChip({
-    required _LiveMatchesServer server,
-    required String label,
-    required int index,
-  }) {
+  void _openServerPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _LiveMatchesServerSheet(
+        current: _server,
+        onSelected: (server) {
+          Navigator.pop(context);
+          unawaited(_selectServer(server));
+        },
+      ),
+    );
+  }
+
+  Widget _serversTopBarButton() {
     return ForjaShellChip(
-      label: label,
-      icon: Icons.sports_soccer_rounded,
-      selected: _server == server,
-      listIndex: index,
+      label: 'Servers',
+      icon: Icons.dns_rounded,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      fontSize: 11.5,
+      listIndex: _topBarServersIndex,
       tvTabId: _tabId,
       tvRowId: _topBarRowId,
-      onTap: () => _selectServer(server),
+      onTap: _openServerPicker,
       onLeftEdge: shellTvChipLeftEdge(
         context,
         tabId: _tabId,
         rowId: _topBarRowId,
-        index: index,
+        index: _topBarServersIndex,
       ),
-      onRightEdge: index < _serverChipCount - 1
-          ? shellTvChipRightEdge(
-              tabId: _tabId,
-              rowId: _topBarRowId,
-              index: index,
-              itemCount: _serverChipCount,
-            )
-          : () => _focusTopBarItem(_topBarRefreshIndex),
+      onRightEdge: () => _focusTopBarItem(_topBarRefreshIndex),
       onDownEdge: _topBarDownEdge,
     );
   }
@@ -697,7 +902,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_tvFocus(context) || index ~/ crossCount != 0) return null;
-    return () => _focusTopBarItem(0);
+    return () => _focusTopBarItem(_topBarServersIndex);
   }
 
   bool _focusGridItem(int index) {
@@ -729,7 +934,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       rowId: _gridRowId,
       sortOrder: _gridSortOrder,
       itemCount: itemCount,
-      onFocusUp: () => _focusTopBarItem(0),
+      onFocusUp: () => _focusTopBarItem(_topBarServersIndex),
     );
   }
 
@@ -782,11 +987,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         if (mounted) setState(() => _tabController = newCtrl);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -877,11 +1083,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         if (mounted) setState(() => _tabController = newCtrl);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -902,7 +1109,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       children: [
         _buildHeader(),
         if (_tabController != null && _sports.isNotEmpty) _buildSportTabs(),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Expanded(child: _buildBody()),
       ],
     );
@@ -924,13 +1131,14 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             context: context,
             onTap: _load,
             borderRadius: 24,
+            scaleOnFocus: 1.0,
             focusNode: _refreshFocusNode,
             tvTabId: _tabId,
             tvRowId: _topBarRowId,
             tvItemIndex: _topBarRefreshIndex,
             tvZone: ShellTvZone.topBar,
             onDownEdge: _topBarDownEdge,
-            onLeftEdge: () => _focusTopBarItem(_serverChipCount - 1),
+            onLeftEdge: () => _focusTopBarItem(_topBarServersIndex),
             onFocusChange: (focused) {
               if (focused) {
                 ShellTvFocusCoordinator.saveFocus(
@@ -959,102 +1167,81 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     return Padding(
       padding: EdgeInsets.fromLTRB(
         ShellTokens.compactChromeLeadingInset(context),
-        16,
-        24,
-        12,
+        10,
+        ShellTokens.bodyHorizontalPadding,
+        8,
       ),
-      child: Row(
-        children: [
-          _serverChip(
-            server: _LiveMatchesServer.ppv,
-            label: 'PPV',
-            index: 0,
-          ),
-          const SizedBox(width: 8),
-          _serverChip(
-            server: _LiveMatchesServer.streamed,
-            label: 'Streamed',
-            index: 1,
-          ),
-          const Spacer(),
-          refresh,
-        ],
-      ),
+      child: Row(children: [_serversTopBarButton(), const Spacer(), refresh]),
     );
   }
 
   Widget _buildSportTabs() {
-    final policy = ShellScope.inputPolicyOf(context);
-    if (policy.useFocusableMoodChips && _tabController != null) {
-      final labels = ['All', ..._sports.map((s) => s.name)];
-      shellTvRegisterRow(
-        tabId: _tabId,
-        rowId: _chipRowId,
-        sortOrder: _chipSortOrder,
-        itemCount: labels.length,
-        onFocusUp: () => _focusTopBarItem(0),
-      );
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.fromLTRB(
-          ShellTokens.compactChromeLeadingInset(context),
-          8,
-          ShellTokens.bodyHorizontalPadding,
-          8,
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < labels.length; i++)
-              Padding(
-                padding: EdgeInsets.only(right: i < labels.length - 1 ? 8 : 0),
-                child: ForjaShellChip(
-                  label: labels[i],
-                  selected: _tabController!.index == i,
-                  onTap: () => _tabController!.animateTo(i),
-                  listIndex: i,
-                  tvTabId: _tabId,
-                  tvRowId: _chipRowId,
-                  onLeftEdge: shellTvChipLeftEdge(
-                    context,
-                    tabId: _tabId,
-                    rowId: _chipRowId,
-                    index: i,
-                  ),
-                  onRightEdge: shellTvChipRightEdge(
-                    tabId: _tabId,
-                    rowId: _chipRowId,
-                    index: i,
-                    itemCount: labels.length,
-                  ),
-                  onDownEdge: shellTvChipDownToRow(
-                    tabId: _tabId,
-                    chipRowId: _chipRowId,
-                    resultsRowId: _gridRowId,
-                  ),
-                  onUpEdge: () => _focusTopBarItem(0),
-                ),
-              ),
-          ],
-        ),
-      );
+    if (_tabController == null || _sports.isEmpty) {
+      return const SizedBox.shrink();
     }
-    final tabs = [
-      const Tab(text: 'All'),
-      ..._sports.map((s) => Tab(text: s.name)),
-    ];
+
+    final itemCount = _sports.length + 1;
+    final tvFocus = _tvFocus(context);
+
     return Padding(
       padding: EdgeInsets.only(
         left: ShellTokens.compactChromeLeadingInset(context),
+        right: ShellTokens.bodyHorizontalPadding,
+        top: 2,
+        bottom: 4,
       ),
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicatorColor: ForjaShellColors.cinematic.navUnderline,
-        labelColor: ForjaShellColors.cinematic.textPrimary,
-        unselectedLabelColor: ForjaShellColors.cinematic.textSecondary,
-        tabAlignment: TabAlignment.start,
-        dividerColor: ForjaShellColors.cinematic.borderSubtle,
-        tabs: tabs,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (tvFocus) {
+            shellTvRegisterRow(
+              tabId: _tabId,
+              rowId: _chipRowId,
+              sortOrder: _chipSortOrder,
+              itemCount: itemCount,
+              onFocusUp: () => _focusTopBarItem(_topBarServersIndex),
+            );
+          }
+
+          final layout = ShellMoodCircleLayout.resolve(
+            context,
+            itemCount: itemCount,
+            maxWidth: constraints.maxWidth,
+          );
+
+          if (tvFocus) {
+            return _buildCenteredSportCircles(
+              layout: layout,
+              itemCount: itemCount,
+              scaleToFit: true,
+              tvFocus: tvFocus,
+            );
+          }
+
+          if (layout.contentWidth(itemCount) <= constraints.maxWidth) {
+            return _buildCenteredSportCircles(
+              layout: layout,
+              itemCount: itemCount,
+              scaleToFit: false,
+              tvFocus: tvFocus,
+            );
+          }
+
+          return FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: HorizontalScroller(
+              height: layout.rowHeight,
+              padding: EdgeInsets.zero,
+              itemCount: itemCount,
+              separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
+              itemBuilder: (context, i) => _buildSportCircleItem(
+                layout: layout,
+                index: i,
+                itemCount: itemCount,
+                tvFocus: tvFocus,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1099,18 +1286,21 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
+        final cardWidth = _matchCardWidth(context);
+        final cardHeight = _matchCardHeight(context);
+        final gap = _gridGap(context);
+        final crossCount = _gridColumns(constraints, cardWidth);
         final tvFocus = _tvFocus(context);
         if (tvFocus) {
           _registerGridRow(matches.length);
         }
         return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: _gridPadding(context),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossCount,
-            mainAxisExtent: 200,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            mainAxisExtent: cardHeight,
+            crossAxisSpacing: gap,
+            mainAxisSpacing: gap,
           ),
           itemCount: matches.length,
           itemBuilder: (context, i) => _StreamedMatchCard(
@@ -1144,18 +1334,21 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
+        final cardWidth = _matchCardWidth(context);
+        final cardHeight = _matchCardHeight(context);
+        final gap = _gridGap(context);
+        final crossCount = _gridColumns(constraints, cardWidth);
         final tvFocus = _tvFocus(context);
         if (tvFocus) {
           _registerGridRow(streams.length);
         }
         return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: _gridPadding(context),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossCount,
-            mainAxisExtent: 200,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            mainAxisExtent: cardHeight,
+            crossAxisSpacing: gap,
+            mainAxisSpacing: gap,
           ),
           itemCount: streams.length,
           itemBuilder: (context, i) => _DamiTvMatchCard(
@@ -1191,18 +1384,33 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       return Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: EdgeInsets.fromLTRB(
+              shellHomeSectionHorizontalPadding(context),
+              4,
+              ShellTokens.bodyHorizontalPadding,
+              6,
+            ),
             child: Row(
               children: [
                 ForjaShellChip(
                   label: '📺 Channels',
                   selected: _cdnShowChannels,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  fontSize: 11.5,
                   onTap: () => setState(() => _cdnShowChannels = true),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 ForjaShellChip(
                   label: '⚽ Sports',
                   selected: !_cdnShowChannels,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  fontSize: 11.5,
                   onTap: () => setState(() => _cdnShowChannels = false),
                 ),
               ],
@@ -1211,23 +1419,27 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final crossCount = (constraints.maxWidth / 280).floor().clamp(
-                  1,
-                  6,
-                );
+                final cardWidth = _channelCardWidth(context);
+                final cardHeight = _channelCardHeight(context);
+                final gap = _gridGap(context);
+                final crossCount = _gridColumns(constraints, cardWidth);
+                if (_tvFocus(context)) {
+                  _registerGridRow(channels.length);
+                }
                 return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  padding: _gridPadding(context),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossCount,
-                    mainAxisExtent: 160,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    mainAxisExtent: cardHeight,
+                    crossAxisSpacing: gap,
+                    mainAxisSpacing: gap,
                   ),
                   itemCount: channels.length,
                   itemBuilder: (context, i) => _CdnChannelCard(
                     channel: channels[i],
                     gridIndex: i,
                     gridColumns: crossCount,
+                    onUpEdge: _gridUpEdge(context, i, crossCount),
                     onTap: () => _openCdnChannel(channels[i]),
                   ),
                 );
@@ -1258,18 +1470,33 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       return Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: EdgeInsets.fromLTRB(
+              shellHomeSectionHorizontalPadding(context),
+              4,
+              ShellTokens.bodyHorizontalPadding,
+              6,
+            ),
             child: Row(
               children: [
                 ForjaShellChip(
                   label: '📺 Channels',
                   selected: _cdnShowChannels,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  fontSize: 11.5,
                   onTap: () => setState(() => _cdnShowChannels = true),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 ForjaShellChip(
                   label: '⚽ Sports',
                   selected: !_cdnShowChannels,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  fontSize: 11.5,
                   onTap: () => setState(() => _cdnShowChannels = false),
                 ),
               ],
@@ -1278,23 +1505,27 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final crossCount = (constraints.maxWidth / 300).floor().clamp(
-                  1,
-                  6,
-                );
+                final cardWidth = _matchCardWidth(context);
+                final cardHeight = _matchCardHeight(context);
+                final gap = _gridGap(context);
+                final crossCount = _gridColumns(constraints, cardWidth);
+                if (_tvFocus(context)) {
+                  _registerGridRow(sports.length);
+                }
                 return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  padding: _gridPadding(context),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossCount,
-                    mainAxisExtent: 200,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    mainAxisExtent: cardHeight,
+                    crossAxisSpacing: gap,
+                    mainAxisSpacing: gap,
                   ),
                   itemCount: sports.length,
                   itemBuilder: (context, i) => _CdnSportCard(
                     event: sports[i],
                     gridIndex: i,
                     gridColumns: crossCount,
+                    onUpEdge: _gridUpEdge(context, i, crossCount),
                     onTap: () => _openCdnSportEvent(sports[i]),
                   ),
                 );
@@ -1539,6 +1770,106 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
 enum _LiveMatchesServer { ppv, streamed, cdnLive }
 
+String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
+  _LiveMatchesServer.ppv => 'PPV',
+  _LiveMatchesServer.streamed => 'Streamed',
+  _LiveMatchesServer.cdnLive => 'CDN Live',
+};
+
+String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
+    switch (server) {
+      _LiveMatchesServer.ppv => 'ppv.is',
+      _LiveMatchesServer.streamed => 'streamed.pk',
+      _LiveMatchesServer.cdnLive => 'cdn-live.tv',
+    };
+
+// ─── Server picker sheet ────────────────────────────────────────────────────
+
+class _LiveMatchesServerSheet extends StatelessWidget {
+  const _LiveMatchesServerSheet({
+    required this.current,
+    required this.onSelected,
+  });
+
+  final _LiveMatchesServer current;
+  final ValueChanged<_LiveMatchesServer> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Servers',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Choose a live match source:',
+            style: TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          ..._LiveMatchesServer.values.map(
+            (server) => shellFocusableTap(
+              context: context,
+              onTap: () => onSelected(server),
+              borderRadius: 12,
+              navLeftAlways: true,
+              tvTabId: 'live_matches',
+              tvZone: ShellTvZone.row,
+              child: ListTile(
+                leading: Icon(
+                  Icons.dns_rounded,
+                  color: server == current
+                      ? ForjaShellColors.sectionAccent
+                      : Colors.white54,
+                ),
+                title: Text(
+                  _liveMatchesServerLabel(server),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: server == current
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  _liveMatchesServerSubtitle(server),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+                trailing: server == current
+                    ? Icon(
+                        Icons.check_rounded,
+                        color: ForjaShellColors.sectionAccent,
+                      )
+                    : const Icon(Icons.chevron_right, color: Colors.white38),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Chips ────────────────────────────────────────────────────────────────────
 
 class _TeamBadge extends StatelessWidget {
@@ -1551,13 +1882,13 @@ class _TeamBadge extends StatelessWidget {
     return Column(
       children: [
         CircleAvatar(
-          radius: 24,
+          radius: 18,
           backgroundColor: Colors.white12,
           child: badge != null && badge!.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: badge!,
-                  width: 38,
-                  height: 38,
+                  width: 30,
+                  height: 30,
                   fit: BoxFit.contain,
                   errorWidget: (_, _, _) => Text(
                     name.isNotEmpty ? name[0] : '?',
@@ -1575,15 +1906,15 @@ class _TeamBadge extends StatelessWidget {
                   ),
                 ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         SizedBox(
-          width: 60,
+          width: 50,
           child: Text(
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 9.5),
+            style: const TextStyle(color: Colors.white70, fontSize: 8.5),
           ),
         ),
       ],
@@ -1591,56 +1922,64 @@ class _TeamBadge extends StatelessWidget {
   }
 }
 
-// ─── Live match card play overlay ────────────────────────────────────────────
+bool _isLiveMatchBadgeLabel(String label) => label.toLowerCase().contains('live');
 
-/// Centered glass play control — always on top of card art; scales on hover/focus.
-class _LiveMatchCardPlayOverlay extends StatelessWidget {
-  const _LiveMatchCardPlayOverlay({required this.active});
+String _liveMatchBadgeDisplay(String label) {
+  if (_isLiveMatchBadgeLabel(label)) return '● LIVE';
+  return label;
+}
 
-  final bool active;
+class _LiveMatchCornerBadge extends StatelessWidget {
+  const _LiveMatchCornerBadge({
+    required this.label,
+    required this.live,
+    this.color,
+    this.top = 8,
+    this.left,
+    this.right = 8,
+  });
 
-  static const _diameter = 48.0;
-  static const _iconSize = 28.0;
+  final String label;
+  final bool live;
+  final Color? color;
+  final double top;
+  final double? left;
+  final double? right;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Center(
-          child: AnimatedScale(
-            scale: active ? ShellTokens.focusActiveScale : 1.0,
-            duration: const Duration(milliseconds: 150),
-            curve: Curves.easeOutCubic,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOutCubic,
-              width: _diameter,
-              height: _diameter,
-              decoration: BoxDecoration(
-                color: active
-                    ? ForjaShellColors.brandGreen
-                    : Colors.black.withValues(alpha: 0.42),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: active
-                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
-                      : Colors.white.withValues(alpha: 0.24),
-                ),
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: active ? const Color(0xFF111827) : Colors.white,
-                size: _iconSize,
-              ),
+    final fontSize = shellScaled(context, 10).clamp(9.0, 12.0);
+    final padH = shellScaled(context, 8).clamp(6.0, 10.0);
+    final padV = shellScaled(context, 3).clamp(2.0, 4.0);
+    final radius = shellScaled(context, 6).clamp(4.0, 8.0);
+    final inset = shellScaled(context, top).clamp(6.0, 10.0);
+    final bg = color ?? (live ? Colors.red.shade700 : Colors.black54);
+
+    return Positioned(
+      top: inset,
+      left: left,
+      right: right,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.4,
             ),
           ),
         ),
@@ -1685,7 +2024,8 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 16,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       onUpEdge: widget.onUpEdge,
@@ -1698,7 +2038,7 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           color: active
               ? Colors.white.withValues(alpha: 0.1)
               : Colors.white.withValues(alpha: 0.06),
@@ -1719,11 +2059,11 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
               : null,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(13),
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1731,21 +2071,21 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                     if (c.image.isNotEmpty)
                       CachedNetworkImage(
                         imageUrl: c.image,
-                        height: 60,
+                        height: 46,
                         fit: BoxFit.contain,
                         errorWidget: (_, _, _) => const Icon(
                           Icons.tv_rounded,
                           color: Colors.white38,
-                          size: 48,
+                          size: 38,
                         ),
                       )
                     else
                       const Icon(
                         Icons.tv_rounded,
                         color: Colors.white38,
-                        size: 48,
+                        size: 38,
                       ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       c.name,
                       maxLines: 2,
@@ -1753,46 +2093,29 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (c.viewers > 0) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         '${c.viewers} viewers',
                         style: const TextStyle(
                           color: Colors.white54,
-                          fontSize: 10,
+                          fontSize: 9,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade700,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    '● LIVE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+              ShellCardPlayOverlay(active: active, visible: active),
+              _LiveMatchCornerBadge(
+                label: '● LIVE',
+                live: true,
+                color: Colors.green.shade700,
               ),
-              _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),
@@ -1837,7 +2160,8 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 16,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       onUpEdge: widget.onUpEdge,
@@ -1850,7 +2174,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           color: active
               ? Colors.white.withValues(alpha: 0.1)
               : Colors.white.withValues(alpha: 0.06),
@@ -1871,11 +2195,11 @@ class _CdnSportCardState extends State<_CdnSportCard> {
               : null,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(13),
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1888,23 +2212,23 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                             if (e.homeTeamIMG.isNotEmpty)
                               CachedNetworkImage(
                                 imageUrl: e.homeTeamIMG,
-                                width: 40,
-                                height: 40,
+                                width: 32,
+                                height: 32,
                                 errorWidget: (_, _, _) => const Icon(
                                   Icons.sports_rounded,
                                   color: Colors.white38,
-                                  size: 32,
+                                  size: 26,
                                 ),
                               )
                             else
                               const Icon(
                                 Icons.sports_rounded,
                                 color: Colors.white38,
-                                size: 32,
+                                size: 26,
                               ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             SizedBox(
-                              width: 60,
+                              width: 50,
                               child: Text(
                                 e.homeTeam,
                                 maxLines: 1,
@@ -1912,19 +2236,19 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 10,
+                                  fontSize: 8.5,
                                 ),
                               ),
                             ),
                           ],
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
                             'VS',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -1934,23 +2258,23 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                             if (e.awayTeamIMG.isNotEmpty)
                               CachedNetworkImage(
                                 imageUrl: e.awayTeamIMG,
-                                width: 40,
-                                height: 40,
+                                width: 32,
+                                height: 32,
                                 errorWidget: (_, _, _) => const Icon(
                                   Icons.sports_rounded,
                                   color: Colors.white38,
-                                  size: 32,
+                                  size: 26,
                                 ),
                               )
                             else
                               const Icon(
                                 Icons.sports_rounded,
                                 color: Colors.white38,
-                                size: 32,
+                                size: 26,
                               ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             SizedBox(
-                              width: 60,
+                              width: 50,
                               child: Text(
                                 e.awayTeam,
                                 maxLines: 1,
@@ -1958,7 +2282,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 10,
+                                  fontSize: 8.5,
                                 ),
                               ),
                             ),
@@ -1966,7 +2290,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       e.tournament,
                       maxLines: 1,
@@ -1974,38 +2298,21 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: e.status == 'live'
-                        ? Colors.red.shade700
-                        : Colors.orange.shade700,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    e.status == 'live' ? '● LIVE' : e.status.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+              ShellCardPlayOverlay(active: active, visible: active),
+              _LiveMatchCornerBadge(
+                label: e.status == 'live' ? '● LIVE' : e.status.toUpperCase(),
+                live: e.status == 'live',
+                color: e.status == 'live'
+                    ? Colors.red.shade700
+                    : Colors.orange.shade700,
               ),
-              _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),
@@ -2500,7 +2807,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 16,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       onUpEdge: widget.onUpEdge,
@@ -2513,7 +2821,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           color: active
               ? Colors.white.withValues(alpha: 0.1)
               : Colors.white.withValues(alpha: 0.06),
@@ -2534,7 +2842,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
               : null,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(13),
           child: Stack(
             children: [
               if (m.poster.isNotEmpty)
@@ -2560,7 +2868,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2574,14 +2882,14 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                             name: m.homeTeam!,
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Text(
                               'VS',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 13,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
+                                letterSpacing: 1.5,
                               ),
                             ),
                           ),
@@ -2591,7 +2899,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                     ],
                     Text(
                       m.title,
@@ -2600,70 +2908,35 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-              if (m.timeLabel.isNotEmpty)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: m.timeLabel.contains('Live')
-                          ? Colors.red.shade700
-                          : Colors.black54,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      m.timeLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    m.categoryLabel.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 9,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
+              if (hasSources) ShellCardPlayOverlay(active: active, visible: active),
+              _LiveMatchCornerBadge(
+                label: m.categoryLabel.toUpperCase(),
+                live: false,
+                right: null,
+                left: 8,
               ),
+              if (m.timeLabel.isNotEmpty)
+                _LiveMatchCornerBadge(
+                  label: _liveMatchBadgeDisplay(m.timeLabel),
+                  live: _isLiveMatchBadgeLabel(m.timeLabel),
+                ),
               if (!hasSources)
                 Positioned(
-                  bottom: 8,
+                  bottom: 6,
                   left: 0,
                   right: 0,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                        horizontal: 7,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.8),
@@ -2673,14 +2946,13 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                         'Not yet available',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
                 ),
-              if (hasSources) _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),
@@ -2728,7 +3000,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 16,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       onUpEdge: widget.onUpEdge,
@@ -2741,7 +3014,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           color: active
               ? Colors.white.withValues(alpha: 0.1)
               : Colors.white.withValues(alpha: 0.06),
@@ -2762,7 +3035,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
               : null,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(13),
           child: Stack(
             children: [
               // poster background
@@ -2791,7 +3064,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
               ),
               // content
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2802,21 +3075,21 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                         children: [
                           _TeamBadge(badge: s.homeBadge, name: s.homeTeam!),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Text(
                               'VS',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 13,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
+                                letterSpacing: 1.5,
                               ),
                             ),
                           ),
                           _TeamBadge(badge: s.awayBadge, name: s.awayTeam!),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                     ],
                     Text(
                       s.name,
@@ -2825,12 +3098,12 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (s.league.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         s.league,
                         maxLines: 1,
@@ -2838,73 +3111,36 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white54,
-                          fontSize: 10.5,
+                          fontSize: 9.5,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              // time label top-right
-              if (s.timeLabel.isNotEmpty)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: s.timeLabel.contains('Live')
-                          ? Colors.red.shade700
-                          : Colors.black54,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      s.timeLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              // category top-left
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    s.categoryName.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 9,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
+              if (hasIframe) ShellCardPlayOverlay(active: active, visible: active),
+              _LiveMatchCornerBadge(
+                label: s.categoryName.toUpperCase(),
+                live: false,
+                right: null,
+                left: 8,
               ),
+              if (s.timeLabel.isNotEmpty)
+                _LiveMatchCornerBadge(
+                  label: _liveMatchBadgeDisplay(s.timeLabel),
+                  live: _isLiveMatchBadgeLabel(s.timeLabel),
+                ),
               // no iframe warning bottom
               if (!hasIframe)
                 Positioned(
-                  bottom: 8,
+                  bottom: 6,
                   left: 0,
                   right: 0,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                        horizontal: 7,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.8),
@@ -2914,15 +3150,13 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                         'Not yet available',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
                 ),
-              if (hasIframe)
-                _LiveMatchCardPlayOverlay(active: active),
             ],
           ),
         ),

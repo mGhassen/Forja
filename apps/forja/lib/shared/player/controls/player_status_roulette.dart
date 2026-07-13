@@ -113,6 +113,7 @@ List<StatusRouletteEntry> statusEntriesFromProbes(List<StreamProviderProbe> prob
             StreamProviderProbeStatus.trying => StatusRouletteKind.loading,
             StreamProviderProbeStatus.failed => StatusRouletteKind.failed,
             StreamProviderProbeStatus.success => StatusRouletteKind.success,
+            StreamProviderProbeStatus.skippedOnTv => StatusRouletteKind.info,
             StreamProviderProbeStatus.pending => StatusRouletteKind.info,
           },
           highlight: probe.isPreferred,

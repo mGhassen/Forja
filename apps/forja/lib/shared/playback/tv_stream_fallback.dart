@@ -5,7 +5,22 @@ import 'package:rust/rust.dart';
 
 /// Resolves streams on Android TV without headless WebView sniffers.
 abstract final class TvStreamFallback {
-  static const _rustKeys = ['webstreamr', 'vidsrc', 'service111477'];
+  static const rustProviderKeys = ['webstreamr', 'vidsrc', 'service111477'];
+
+  /// WebView / WASM extractors that must not run on Android TV.
+  static bool isSkippedOnTv(String key, Map<String, dynamic> providers) {
+    if (!PlatformInfo.isAndroidTv) return false;
+    if (SettingsService.allowAndroidTvHeadlessWebViewExtractors) return false;
+    if (rustProviderKeys.contains(key)) return false;
+    if (key == 'videasy') return true;
+    final provider = providers[key];
+    if (provider is Map &&
+        provider['movie'] != null &&
+        provider['tv'] != null) {
+      return true;
+    }
+    return false;
+  }
 
   /// Reorders providers using the shared Source Engine effective-order contract.
   static Map<String, dynamic> prioritizeProviders(
@@ -39,7 +54,7 @@ abstract final class TvStreamFallback {
       candidateIds: catalog.keys,
       settingsOrder: settingsOrder,
     );
-    final keys = ordered.where(_rustKeys.contains).toList(growable: false);
+    final keys = ordered.where(rustProviderKeys.contains).toList(growable: false);
     for (final key in keys) {
       if (isCancelled?.call() ?? false) return null;
       try {

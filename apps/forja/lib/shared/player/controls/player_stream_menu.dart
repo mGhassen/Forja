@@ -725,6 +725,7 @@ class PlayerStreamMenu {
         StreamProviderProbeStatus.trying => PlayerSourceStatus.checking,
         StreamProviderProbeStatus.failed => PlayerSourceStatus.failed,
         StreamProviderProbeStatus.success => PlayerSourceStatus.ready,
+        StreamProviderProbeStatus.skippedOnTv => PlayerSourceStatus.ready,
       };
     }
     return PlayerSourceStatus.ready;

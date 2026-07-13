@@ -517,6 +517,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       'success' => StreamProviderProbeStatus.success,
       'failed' => StreamProviderProbeStatus.failed,
       'trying' => StreamProviderProbeStatus.trying,
+      'skipped' => StreamProviderProbeStatus.skippedOnTv,
       _ => StreamProviderProbeStatus.pending,
     };
   }
