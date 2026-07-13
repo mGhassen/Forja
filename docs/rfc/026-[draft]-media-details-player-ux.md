@@ -2,14 +2,14 @@
 
 **Status:** partial  
 **Depends on:** [RFC-019](019-[draft]-god-file-decomposition.md) (details + player splits), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (flat shell tokens)  
-**Area:** `features/media/`, `features/home/details_screen.dart` → move, `shared/player/`
+**Area:** `features/media/`, `shared/player/`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **10 / 18** components · **7 / 15** acceptance (1.0.1 UX slice) · **2 / 18** components in progress (details screen thin-wrap) |
-| **Current slice** | Shared hero + details scroll shell + sources panel extraction (torrent + streaming); webstreaming extract cache shipped |
+| **Progress** | **12 / 18** components · **7 / 15** acceptance (1.0.1 UX slice) · **2 / 18** components in progress (details screen thin-wrap) |
+| **Current slice** | `features/media/` module shipped (R26-C03); details UX + player chrome in progress |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -19,9 +19,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R26-C01 | God-file split — details (`features/media/details/` per RFC-019) | ⬜ |
+| 1 | R26-C01 | God-file split — details (`features/media/details/` per RFC-019) | ✅ |
 | 2 | R26-C02 | God-file split — player `controls/` extract (RFC-019 R19-A05) | ⬜ |
-| 3 | R26-C03 | `features/media/` module — move screens; `AppRouter` imports only (absorbs RFC-020) | ⬜ |
+| 3 | R26-C03 | `features/media/` module — move screens; `AppRouter` imports only (absorbs RFC-020) | ✅ |
 | 4 | R26-C04 | Torrent details UX — full-viewport hero, unified scroll, Sources panel | 🔄 |
 | 5 | R26-C05 | Streaming details UX — same hero + section order as torrent | 🔄 |
 | 6 | R26-C06 | Player chrome — flat `ForjaShellColors` / `ShellTokens`, no glass | ⬜ |

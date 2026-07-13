@@ -33,15 +33,16 @@
 | Feature | Files | LOC | Largest file |
 |---------|------:|----:|--------------|
 | **iptv** | 40 | ~17,900 | `iptv_controller_portal.dart` (532) + `iptv_catalog_portal_form.dart` (942) |
-| **home** | 18+ | ~9,600 | `details_screen.dart` (1,144) + `details_screen_*.dart` |
-| **anime** | 14 | ~7,100 | `catalog/anime_service.dart` (1,648) |
+| **home** | 11 | ~3,800 | `home_screen_feed.dart` (854) + `home_hero.dart` |
+| **media** | 12 | ~5,800 | `details_screen.dart` (545) + `details_screen_*.dart` mixins |
+| **anime** | 17 | ~7,100 | `catalog/anime_service.dart` (1,648) + `widgets/` |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
 | **live_matches** | 6 | ~3,563 | `live_matches_widgets.dart` (1,457) + `live_matches_screen.dart` (94) |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
 | **anime_arabic** | 6 | ~3,900 | `anime_arabic_screen.dart` (1,313) |
 | **search** | 6 | ~2,007 | `search_widgets.dart` (609) + `search_screen.dart` (109) |
-| **asian_drama** | 7 | ~3,500 | `asian_drama_screen.dart` (781) |
+| **asian_drama** | 10 | ~3,500 | `asian_drama_screen.dart` (474) + `widgets/` |
 | *(others)* | 32 | ~15,400 | see inventory |
 
 ---
@@ -59,17 +60,17 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | [`iptv/iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
 | [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Orchestrator | In | models/widgets parts + data/build/playback mixins |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
-| [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + widgets part |
+| [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
 | [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 477 | Orchestrator | In | fields/init/dispose; portal/browser/live/channels/nav mixins |
 
 ---
 
-## Tier 1c — home/details orchestrators — done
+## Tier 1c — media/details orchestrators — done
 
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
-| [`home/details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | 545 | Details orchestrator | In | 8 `details_screen_*.dart` mixins |
+| [`media/details/details_screen.dart`](../../apps/forja/lib/features/media/details/details_screen.dart) | 545 | Details orchestrator | In | 8 `details_screen_*.dart` mixins; moved from `home/` (RFC-020) |
 | [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | `sections/` + `widgets/` |
 
 ---
@@ -107,22 +108,22 @@ Paths relative to `apps/forja/lib/features/`.
 
 | Lines | Feature | File | Role | TV scope |
 |------:|---------|------|------|----------|
-| 545 | home | `home/details_screen.dart` | Details orchestrator | In |
+| 545 | media | `media/details/details_screen.dart` | Details orchestrator | In |
 | 218 | home | `home/home_screen.dart` | Orchestrator | In |
 | 853 | home | `home/home_screen_feed.dart` | Home feed mixin | In |
 | 313 | home | `home/home_screen_build.dart` | Home build mixin | In |
 | 999 | home | `home/home_hero.dart` | Hero | In |
 | 748 | settings | `settings/settings_screen.dart` | Orchestrator | In |
-| 596 | home | `home/details_screen_webstreaming.dart` | Details webstreaming mixin | In |
+| 596 | media | `media/details/details_screen_webstreaming.dart` | Details webstreaming mixin | In |
 | 576 | home | `home/widgets/home_mood_section.dart` | Section | In |
-| 562 | home | `home/details_screen_stremio.dart` | Details Stremio/Nuvio mixin | In |
-| 542 | home | `home/details_screen_play.dart` | Details play mixin | In |
-| 499 | home | `home/details_screen_panel.dart` | Details panel mixin | In |
+| 562 | media | `media/details/details_screen_stremio.dart` | Details Stremio/Nuvio mixin | In |
+| 542 | media | `media/details/details_screen_play.dart` | Details play mixin | In |
+| 499 | media | `media/details/details_screen_panel.dart` | Details panel mixin | In |
 | 491 | home | `home/widgets/continue_watching_section.dart` | Section | In |
-| 391 | home | `home/details_screen_torrent.dart` | Details torrent mixin | In |
-| 376 | home | `home/details_screen_build.dart` | Details build mixin | In |
-| 240 | home | `home/details_screen_fetch.dart` | Details fetch mixin | In |
-| 231 | home | `home/details_screen_episodes.dart` | Details episodes mixin | In |
+| 391 | media | `media/details/details_screen_torrent.dart` | Details torrent mixin | In |
+| 376 | media | `media/details/details_screen_build.dart` | Details build mixin | In |
+| 240 | media | `media/details/details_screen_fetch.dart` | Details fetch mixin | In |
+| 231 | media | `media/details/details_screen_episodes.dart` | Details episodes mixin | In |
 | 942 | iptv | `iptv/iptv/screens/iptv_catalog_portal_form.dart` | Portal add/edit dialog | In |
 | 921 | iptv | `iptv/iptv/screens/iptv_pt_player_ui.dart` | Player UI mixin | In |
 | 809 | iptv | `iptv/iptv/screens/iptv_pt_browser_streams.dart` | Stream cards + EPG widgets | In |
@@ -167,7 +168,7 @@ Paths relative to `apps/forja/lib/features/`.
 | 1536 | downloader | `downloader/media_downloader_screen.dart` | Orchestrator | Out |
 | 1313 | anime_arabic | `anime_arabic/anime_arabic_screen.dart` | Orchestrator | Out |
 | 1301 | jellyfin | `jellyfin/jellyfin_details_screen.dart` | Details | Out |
-| 1292 | home | `home/stremio_catalog_screen.dart` | Sub-hub | In |
+| 1292 | media | `media/stremio_catalog_screen.dart` | Stremio catalog route | In |
 | 1285 | anime | `anime/anime_player_screen.dart` | Player | In |
 | 1271 | jellyfin | `jellyfin/catalog/jellyfin_service.dart` | Data/Service | Out |
 | 1196 | iptv | `iptv/iptv/data/iptv_network.dart` | Data/Service | In |
@@ -299,39 +300,38 @@ features/<feature>/
   controller/                 # state machines (IPTV pattern)
 ```
 
-### Home target ([RFC-019 R19-A03](../rfc/019-[draft]-god-file-decomposition.md))
+### Home target ([RFC-019 R19-A03](../rfc/019-[draft]-god-file-decomposition.md)) — browse only
 
 ```
 features/home/
   home_screen.dart              # <800 lines
   home_hero.dart
-  home_rails.dart
-  home_stremio_section.dart
+  home_screen_feed.dart
+  home_screen_build.dart
   widgets/
     continue_watching_section.dart
     mood_section.dart
     because_you_watched_section.dart
+    stremio_catalog_section.dart   # section widget; full route in features/media/
 ```
 
-| Inline class (today) | Move to |
-|----------------------|---------|
-| `_HomeScreenState` hero block | `home_hero.dart` |
-| `_MovieSection`, `_StaticMovieSection` | `home_rails.dart` or thin `HomeMovieRow` wrapper |
-| `_ContinueWatchingSection`, `_HistoryCard` | `widgets/continue_watching_section.dart` |
-| `_StremioCatalogSection`, `_StremioCatalogCard` | `home_stremio_section.dart` |
-| `_MoodSection`, mood circles | `widgets/mood_section.dart` |
-| `_BecauseYouWatchedSection` | `widgets/because_you_watched_section.dart` |
-| `_HeroTitleSlot` | Delete — use `shared/widgets/hero/hero_title.dart` |
-
-### Details target ([RFC-019](../rfc/019-[draft]-god-file-decomposition.md) + [RFC-026](../rfc/026-[draft]-media-details-player-ux.md))
+### Media target ([RFC-020](../rfc/020-[draft]-media-details-routing.md) — shipped)
 
 ```
-features/home/details/          # later → features/media/details/ (R26-C03)
-  details_screen.dart           # <800 lines — compose only
-  details_torrents.dart
-  details_stremio.dart
-  details_episodes.dart
-  details_webstreaming.dart
+features/media/
+  stremio_catalog_screen.dart
+  details/
+    details_screen.dart           # <800 lines — compose only
+    details_screen_torrent.dart
+    details_screen_stremio.dart
+    details_screen_episodes.dart
+    details_screen_webstreaming.dart
+    details_screen_play.dart
+    details_screen_panel.dart
+    details_screen_fetch.dart
+    details_screen_build.dart
+    widgets/
+      details_collection_section.dart
 ```
 
 **Built and wired** in `details_screen.dart` (Phase A, 2026-07):
@@ -495,7 +495,7 @@ Map and targets only. No Dart changes.
 | D6 | Play + auto-play → `details_screen_play.dart` | Done |
 | D7 | Panel filters + sources UI → `details_screen_panel.dart` | Done |
 | D8 | Fetch + build → `details_screen_fetch.dart`, `details_screen_build.dart` | Done |
-| D9 | RFC-026 R26-C03 → `features/media/details/` | ⬜ |
+| D9 | RFC-026 R26-C03 → `features/media/details/` | ✅ |
 
 `details_screen.dart`: 4,061 → **545** lines (orchestrator &lt;800 ✅).
 

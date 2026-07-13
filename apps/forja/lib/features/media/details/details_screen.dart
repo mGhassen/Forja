@@ -18,7 +18,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
-import 'stremio_catalog_screen.dart';
+import 'package:forja/features/media/stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
@@ -40,7 +40,7 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/features/home/widgets/details_collection_section.dart';
+import 'package:forja/features/media/details/widgets/details_collection_section.dart';
 
 part 'details_screen_torrent.dart';
 part 'details_screen_stremio.dart';

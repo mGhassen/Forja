@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "apps" / "forja" / "lib"
 
 REL_TO_PACKAGE = {
-    "details_screen.dart": "package:forja/features/home/details_screen.dart",
+    "details_screen.dart": "package:forja/features/media/details/details_screen.dart",
     "streaming_details_screen.dart": "package:forja/features/home/streaming_details_screen.dart",
     "home_screen.dart": "package:forja/features/home/home_screen.dart",
     "search_screen.dart": "package:forja/features/search/search_screen.dart",

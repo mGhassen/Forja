@@ -1,7 +1,7 @@
 // Anime hub — cinematic hero + poster rows (same shell as Home).
 
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
@@ -9,6 +9,7 @@ import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/anime/widgets/anime_continue_watching_section.dart';
 import 'anime_details_screen.dart';
 import 'anime_player_screen.dart';
 import 'anime_search_screen.dart';
@@ -18,14 +19,12 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
-import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 part 'anime_screen_feed.dart';
 part 'anime_screen_build.dart';
-part 'anime_widgets.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});

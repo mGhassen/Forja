@@ -14,7 +14,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/features/home/home_hero.dart';
-import 'package:forja/features/home/stremio_catalog_screen.dart';
+import 'package:forja/features/media/stremio_catalog_screen.dart';
 import 'package:forja/features/home/widgets/because_you_watched_section.dart';
 import 'package:forja/features/home/widgets/continue_watching_section.dart';
 import 'package:forja/features/home/widgets/home_mood_section.dart';

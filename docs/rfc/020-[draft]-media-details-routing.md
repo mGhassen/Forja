@@ -1,14 +1,14 @@
 # RFC-020: Media details routing
 
 **Status:** draft  
-**Area:** `features/home/details_screen.dart` → `features/media/`
+**Area:** `features/media/details/` (moved from `features/home/`)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **0 / 4** acceptance |
-| **Current slice** | Move details to `features/media/` — absorbed by RFC-026 R26-C03; kept as reference |
+| **Progress** | **3 / 4** acceptance |
+| **Current slice** | Structural move shipped — manual cross-tab smoke (R20-A03) remains |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -18,10 +18,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R20-A01 | No details screens under `features/home/` | ⬜ |
-| 2 | R20-A02 | `AppRouter` sole importer of media screens from outside `features/media/` | ⬜ |
+| 1 | R20-A01 | No details screens under `features/home/` | ✅ |
+| 2 | R20-A02 | `AppRouter` sole importer of media screens from outside `features/media/` | ✅ |
 | 3 | R20-A03 | Discover, Search, My List, Similar open details correctly | ⬜ |
-| 4 | R20-A04 | Torrent + Stremio + streaming paths unchanged functionally | ⬜ |
+| 4 | R20-A04 | Torrent + Stremio + streaming paths unchanged functionally | ✅ |
 
 ---
 

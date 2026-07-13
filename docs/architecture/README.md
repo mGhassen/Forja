@@ -7,6 +7,7 @@ Cross-cutting architecture docs for the Forja Flutter app. **Code is source of t
 | Doc | Purpose |
 |-----|---------|
 | [Feature file map](feature-file-map.md) | Full `features/` inventory, tier classification, target folder trees, phased extraction roadmap (Phases A–E) |
+| [Services map](services-map.md) | Service/API inventory — engine vs host vs hub catalog placement |
 | [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) | Rust FFI / isolate boundary |
 | [Features (user guide)](../features/README.md) | How the app works for users — not progress tracking |
 
@@ -25,7 +26,8 @@ Cross-cutting architecture docs for the Forja Flutter app. **Code is source of t
 |-------|----------|----------------|
 | **Shell / profile** | `shared/design/`, `shell/adapters/`, `shared/tv/` | `ShellScope.metricsOf`, `ShellScope.inputPolicyOf` — never `ShellTokens.isTvLayout` |
 | **Shared presentation** | `shared/widgets/` — `hero/`, `media_details/`, `hub/` | Reusable UI; screen passes data + callbacks |
-| **Feature modules** | `features/<name>/` | Orchestrator screens (&lt;800 lines target), `widgets/`, `catalog/`, `controller/` |
+| **Tab browse** | `features/<name>/` | Orchestrator screens (&lt;800 lines target), `widgets/`, `catalog/`, `controller/` |
+| **Media routes** | `features/media/` | TMDB-global details + Stremio catalog screens — entry via `AppRouter` |
 
 ## Cursor rules
 

@@ -246,109 +246,14 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
   }
 
   // ─── Continue watching ─────────────────────────────────────────
-  void _cwScrollLeft() {
-    if (_s._cwScrollController.hasClients) {
-      _s._cwScrollController.animateTo(
-        (_s._cwScrollController.offset - 400).clamp(0.0, _s._cwScrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _cwScrollRight() {
-    if (_s._cwScrollController.hasClients) {
-      _s._cwScrollController.animateTo(
-        (_s._cwScrollController.offset + 400).clamp(0.0, _s._cwScrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  Widget _cwArrowButton(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.6), size: 14),
-    );
-  }
-
   Widget _buildContinueWatching() {
-    final w = MediaQuery.of(context).size.width;
-    final hPad = w < 380 ? 14.0 : 24.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ShellSectionTitle(
-          title: 'Continue Watching',
-          padding: EdgeInsets.fromLTRB(
-            24,
-            homeUsesShellLayout(context)
-                ? ShellTokens.homeSectionTitleTopCompactDesktop
-                : ShellTokens.homeSectionTitleTopCompactMobile,
-            24,
-            16,
-          ),
-          trailing: [
-            GestureDetector(
-              onTap: _cwScrollLeft,
-              child: _cwArrowButton(Icons.arrow_back_ios_new_rounded),
-            ),
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: _cwScrollRight,
-              child: _cwArrowButton(Icons.arrow_forward_ios_rounded),
-            ),
-          ],
-        ),
-        SizedBox(
-          height: _AnimeContinueWatchingCard.cardHeight(context),
-          child: Builder(
-            builder: (context) {
-              shellTvRegisterRow(
-                tabId: 'anime',
-                rowId: 'continue-watching',
-                sortOrder: 0,
-                itemCount: _s._continueWatching.length,
-                onFocusUp: () =>
-                    ShellTvFocusCoordinator.focusHero(tabId: 'anime'),
-              );
-              return FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: ListView.separated(
-            controller: _s._cwScrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            clipBehavior: Clip.none,
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            itemCount: _s._continueWatching.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (_, i) {
-              final entry = _s._continueWatching[i];
-              final anime = AnimeCard.fromJson(
-                (entry['anime'] as Map).cast<String, dynamic>(),
-              );
-              final resumeId = entry['animeId'] as int?;
-              return _AnimeContinueWatchingCard(
-                listIndex: i,
-                entry: entry,
-                isLoading: resumeId != null && _s._resumingAnimeId == resumeId,
-                onTap: () => _s._resumeWatch(entry),
-                onRemove: () => _s._removeFromHistory(entry),
-                onInfo: () => _s._openDetails(anime),
-              );
-            },
-          ),
-              );
-            },
-          ),
-        ),
-      ],
+    return AnimeContinueWatchingSection(
+      entries: _s._continueWatching,
+      scrollController: _s._cwScrollController,
+      resumingAnimeId: _s._resumingAnimeId,
+      onResume: _s._resumeWatch,
+      onRemove: _s._removeFromHistory,
+      onOpenDetails: _s._openDetails,
     );
   }
 
