@@ -14,7 +14,7 @@ The hero overlay is split into two columns on wide screens:
 - **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then green **Play** / **Resume** with play icon (webstreaming best extractor when enabled), white **Play** / **Resume** with link icon (opens the **Sources** panel for torrent / Stremio), a trash icon next to Resume when you have watch progress (clears that title/episode from history), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
-Hero text sits in the **upper** area of the hero (not pinned to the bottom). Cast, trailers, and recommendations scroll on the flat shell background (`#141414`).
+Hero text sits in the **upper** area of the hero (not pinned to the bottom). Cast, trailers, and recommendations scroll on the flat shell background (`#141414`), with equal vertical spacing between the episode rail and each body section.
 
 Scroll below the hero for:
 

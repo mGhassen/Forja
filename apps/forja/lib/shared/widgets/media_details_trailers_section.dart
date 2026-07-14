@@ -75,11 +75,16 @@ class _MediaDetailsTrailersSectionState
         if (useHomeInsets)
           ShellSectionTitle(
             title: 'Trailers',
-            padding: EdgeInsets.fromLTRB(homePad, 0, homePad, 12),
+            padding: EdgeInsets.fromLTRB(
+              homePad,
+              0,
+              homePad,
+              ShellTokens.detailsSectionTitleGap,
+            ),
           )
         else ...[
           Text('Trailers', style: ShellSectionTitle.titleStyle),
-          const SizedBox(height: 12),
+          const SizedBox(height: ShellTokens.detailsSectionTitleGap),
         ],
         FocusTraversalGroup(
           child: HorizontalScroller(

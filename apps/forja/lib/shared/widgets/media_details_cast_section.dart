@@ -31,7 +31,7 @@ class MediaDetailsCastSection extends StatefulWidget {
   static const double _avatarSize = 88;
   static const double _itemWidth = 112;
   static const double _horizontalGap = 32;
-  static const double _titleGap = 16;
+  static const double _titleGap = ShellTokens.detailsSectionTitleGap;
   static const double _avatarNameGap = 8;
   static const double _nameCharacterGap = 3;
 
@@ -80,7 +80,12 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
         if (useHomeInsets)
           ShellSectionTitle(
             title: widget.title,
-            padding: EdgeInsets.fromLTRB(homePad, 0, homePad, 16),
+            padding: EdgeInsets.fromLTRB(
+              homePad,
+              0,
+              homePad,
+              ShellTokens.detailsSectionTitleGap,
+            ),
           )
         else ...[
           Text(widget.title, style: ShellSectionTitle.titleStyle),

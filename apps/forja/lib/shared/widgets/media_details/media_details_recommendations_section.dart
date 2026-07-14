@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:rust/rust.dart';
 
@@ -31,6 +32,12 @@ class MediaDetailsRecommendationsSection extends StatelessWidget {
       title: title,
       movies: movies,
       onMovieTap: onMovieTap,
+      embedded: true,
+      titlePadding: const EdgeInsets.only(
+        bottom: ShellTokens.detailsSectionTitleGap,
+      ),
+      titleGap: 0,
+      listPadding: EdgeInsets.zero,
       tvTabId: tvTabId,
       tvRowId: tvRowId ?? 'recommendations',
       tvRowOrder: tvRowOrder,

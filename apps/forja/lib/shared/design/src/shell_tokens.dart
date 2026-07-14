@@ -221,8 +221,11 @@ abstract final class ShellTokens {
   static const double detailsHeroContentTopInset = 88;
   static const double detailsHeroDescriptionWidthFraction = 0.40;
   static const double detailsBodyTopSpacing = 36;
-  static const double detailsBodyTopSpacingWithEpisodes = 12;
+  /// Shared gap between details body sections (and episode rail → first section).
   static const double detailsSectionSpacing = 48;
+  static const double detailsBodyTopSpacingWithEpisodes = detailsSectionSpacing;
+  /// Title → row gap inside cast / trailers / recommendations on details.
+  static const double detailsSectionTitleGap = 16;
   static const double detailsBodyBottomSpacing = 80;
 
   /// Right-side sliding panels — player overlays vs media-details Sources.
