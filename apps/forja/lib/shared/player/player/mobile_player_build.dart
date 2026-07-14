@@ -155,10 +155,11 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                     child: AnimatedOpacity(
                       opacity: _s._showControls ? 1.0 : 0.0,
                       duration: const Duration(milliseconds: 200),
-                      child: _GlassIconButton(
+                      child: PlayerFlatIconButton(
                         icon: Icons.lock_rounded,
                         onPressed: _s._toggleLock,
-                        iconColor: Colors.amber,
+                        active: true,
+                        tooltip: 'Unlock',
                       ),
                     ),
                   ),

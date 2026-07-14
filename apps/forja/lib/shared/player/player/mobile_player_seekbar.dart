@@ -154,8 +154,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                     Positioned(
                       left: (playPx - 36).clamp(0.0, _trackWidth - 72),
                       top: -34,
-                      child: _BlurGlass(
-                        // ← blur OK, only while dragging
+                      child: _PlayerChromeSurface(
                         radius: 8,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -203,8 +202,7 @@ class _SideIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _BlurGlass(
-      // ← blur OK, shown 1 at a time
+    return _PlayerChromeSurface(
       radius: 20,
       child: SizedBox(
         width: 44,

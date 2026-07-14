@@ -847,9 +847,15 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        GlassPillButton(
-                          text: _s._hwDecMode.label,
-                          accent: _s._hwDecMode.accent,
+                        ForjaShellChip(
+                          label: _s._hwDecMode.label,
+                          selected: true,
+                          radius: 8,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          fontSize: 12,
                           onTap: () {
                             _s._cycleHwDec();
                             setPanelState(() {});

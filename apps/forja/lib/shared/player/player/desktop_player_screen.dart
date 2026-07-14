@@ -68,7 +68,6 @@ part 'desktop_player_sources.dart';
 part 'desktop_player_episodes.dart';
 part 'desktop_player_ui.dart';
 part 'desktop_player_build.dart';
-part 'desktop_player_seekbar.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DESKTOP PLAYER SCREEN

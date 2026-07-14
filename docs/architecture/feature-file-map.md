@@ -422,7 +422,7 @@ features/iptv/iptv/
 | `desktop_player_tracks.dart` | 364 | HW decode/subtitles/audio (uses `controls/` menus) |
 | `desktop_player_glass.dart` | 350 | Glass primitives |
 | `desktop_player_ui.dart` | 161 | Auto-hide/fullscreen/keyboard |
-| `desktop_player_seekbar.dart` | 263 | Seekbar widgets |
+| `desktop_player_glass.dart` | ~50 | `_HwDecMode` only (glass primitives removed) |
 
 **Controls** (`shared/player/controls/`):
 
