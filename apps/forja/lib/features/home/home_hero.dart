@@ -70,11 +70,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   static const double _heroGradientFadeMid1Alpha = 0.82;
   static const double _heroGradientFadeMid2Alpha = 0.2;
 
-  /// Dark scrim at the carousel seam while swiping (shell bg only — no sampled colors).
-  static const double _heroSeamScrimWidth = 104;
+  /// Soft black softener at the carousel seam while swiping.
+  static const double _heroSeamScrimWidth = 120;
   static const double _heroSeamTransitionEpsilon = 0.015;
-  /// Per-slide horizontal vignette at join edges (leading + trailing).
-  static const double _heroSlideEdgeGradientFraction = 0.14;
+  /// Per-slide edge fade (full black → 0) at join edges — keep soft/invisible.
+  static const double _heroSlideEdgeGradientFraction = 0.10;
 
   final TmdbApi _api = TmdbApi();
   final PageController _heroController =
@@ -366,7 +366,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  Widget _buildHeroSlideEdgeGradients(Color shellBg) {
+  Widget _buildHeroSlideEdgeGradients() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final edgeWidth =
@@ -381,13 +381,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               gradient: LinearGradient(
                 begin: begin,
                 end: end,
+                // Full black at the join → 0; soft stops so the seam stays nearly invisible.
                 colors: [
-                  shellBg,
-                  shellBg.withValues(alpha: 0.92),
-                  shellBg.withValues(alpha: 0.62),
-                  shellBg.withValues(alpha: 0.0),
+                  Colors.black,
+                  Colors.black.withValues(alpha: 0.42),
+                  Colors.black.withValues(alpha: 0.12),
+                  Colors.black.withValues(alpha: 0.0),
                 ],
-                stops: const [0.0, 0.22, 0.58, 1.0],
+                stops: const [0.0, 0.32, 0.68, 1.0],
               ),
             ),
           );
@@ -426,7 +427,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  Widget _buildHeroSeamScrim(Color shellBg) {
+  Widget _buildHeroSeamScrim() {
     if (!_heroController.hasClients) return const SizedBox.shrink();
 
     final page = _heroController.page ?? _heroLoopStart.toDouble();
@@ -457,14 +458,15 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                   gradient: LinearGradient(
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
+                    // Soft full-black peak → 0 on both sides (no hard dark bar).
                     colors: [
-                      shellBg.withValues(alpha: 0.0),
-                      shellBg.withValues(alpha: 0.88),
-                      shellBg,
-                      shellBg.withValues(alpha: 0.88),
-                      shellBg.withValues(alpha: 0.0),
+                      Colors.black.withValues(alpha: 0.0),
+                      Colors.black.withValues(alpha: 0.35),
+                      Colors.black,
+                      Colors.black.withValues(alpha: 0.35),
+                      Colors.black.withValues(alpha: 0.0),
                     ],
-                    stops: const [0.0, 0.18, 0.5, 0.82, 1.0],
+                    stops: const [0.0, 0.28, 0.5, 0.72, 1.0],
                   ),
                 ),
               ),
@@ -594,7 +596,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               child: AnimatedBuilder(
                 animation: _heroController,
                 builder: (context, _) =>
-                    _buildHeroSeamScrim(shellBg),
+                    _buildHeroSeamScrim(),
               ),
             ),
           ),
@@ -962,7 +964,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           placeholder: (c, u) => ColoredBox(color: shellBg),
           errorWidget: (c, u, e) => ColoredBox(color: shellBg),
         ),
-        _buildHeroSlideEdgeGradients(shellBg),
+        _buildHeroSlideEdgeGradients(),
       ],
     );
   }

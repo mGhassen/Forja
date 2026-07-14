@@ -128,8 +128,8 @@ abstract final class ShellTokens {
   static const double heroTitleSlotHeightCompact = 80;
   static const double heroImageStartFractionCompact = 0.08;
 
-  static const double heroImageStartFraction = 0.20;
-  static const double heroImageWidthFraction = 0.80;
+  static const double heroImageStartFraction = 0.12;
+  static const double heroImageWidthFraction = 0.88;
   static const double heroTextWidthFraction = heroImageStartFraction;
 
   /// Opaque overlay band after the image starts (fraction of image-strip width).
@@ -138,7 +138,7 @@ abstract final class ShellTokens {
   static const double heroImageGradientSolidEndFraction = 0.0;
 
   /// Horizontal fade on the image strip: solidEnd → this fraction of image width
-  /// (shell bg → transparent). Was 0.58; ~46% of total hero width at 20% start.
+  /// (shell bg → transparent). Was 0.58; ~63% of total hero width at 12% start.
   static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
 
