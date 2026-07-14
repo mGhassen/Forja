@@ -41,7 +41,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   Future<void> _recordStreamCheckFailure(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    await ProviderScoreMemory.recordStreamFail(scope, providerId);
+    // Only −2 when every known stream is dead — not on the first failed row.
     await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
       scope: scope,
       providerId: providerId,
@@ -62,7 +62,13 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   Future<void> _recordStreamPlayFailure(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    await ProviderScoreMemory.recordStreamFail(scope, providerId);
+    // 111477 play uses a local seek proxy; open failures are not the same as
+    // the catalog soft-check used by the stream menu (those stay aligned).
+    if (providerId == 'service111477') {
+      _notifySourceMenuChanged();
+      return;
+    }
+    // Only −2 when every known stream failed open — not on the first miss.
     await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
       scope: scope,
       providerId: providerId,
@@ -133,7 +139,6 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
             _s._failedSourceIndices.clear();
             _s._checkingSourceIndices.clear();
             _s._urlCheckStatuses.clear();
-            _s._streamProbedProviders.clear();
           });
           _notifySourceMenuChanged();
         }
@@ -189,79 +194,6 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         merged.length > prevLen &&
         _s._currentFallbackSourceIndex < merged.length) {
       unawaited(_s._initPlayback(sourceStartIndex: _s._currentFallbackSourceIndex));
-    }
-  }
-
-  /// Verifies cached provider streams once playback is up (one working stream
-  /// per provider is enough). Per provider: any stream OK → stream verdict
-  /// **+2**; every stream dead → **−2**. Netted with the server verdict, an up
-  /// server whose streams are all dead shows **0**.
-  Future<void> _probeCachedProviderStreamsInBackground() async {
-    if (_s._disposed || !mounted || _scoreScope == null) return;
-    final cache = Map<String, List<StreamSource>>.from(
-      _liveProviderSourcesCache.value,
-    );
-    if (cache.isEmpty) return;
-
-    final current = _s._currentProvider;
-    final playingUrl = _s._currentPlayingCatalogUrl ?? _s._currentUrl;
-
-    for (final entry in cache.entries) {
-      if (_s._disposed || !mounted) return;
-      final providerId = entry.key;
-      final sources = entry.value;
-      if (sources.isEmpty) continue;
-      if (_s._streamProbedProviders.contains(providerId)) continue;
-      _s._streamProbedProviders.add(providerId);
-
-      var anyOk = false;
-      var probedAny = false;
-
-      for (final source in sources) {
-        if (_s._disposed || !mounted) return;
-        final url = source.url.trim();
-        if (url.isEmpty) continue;
-
-        final isActiveStream = providerId == current &&
-            _s._playbackConfirmed &&
-            (url == playingUrl || url == _s._currentUrl);
-        if (isActiveStream) {
-          _setUrlCheckStatus(url, PlayerSourceStatus.active);
-          anyOk = true;
-          break;
-        }
-        if (_s._urlCheckStatuses[url] == PlayerSourceStatus.ready ||
-            _s._urlCheckStatuses[url] == PlayerSourceStatus.active) {
-          anyOk = true;
-          break;
-        }
-
-        _setUrlCheckStatus(url, PlayerSourceStatus.checking);
-        final validated = await _resolveValidatedStream(
-          source,
-          providerId: providerId,
-        );
-        if (_s._disposed || !mounted) return;
-        probedAny = true;
-
-        if (validated != null) {
-          _setUrlCheckStatus(url, PlayerSourceStatus.ready);
-          anyOk = true;
-          break;
-        } else {
-          _setUrlCheckStatus(url, PlayerSourceStatus.failed);
-        }
-      }
-
-      final scope = _scoreScope;
-      if (scope != null) {
-        if (anyOk) {
-          await ProviderScoreMemory.recordStreamUp(scope, providerId);
-        } else if (probedAny) {
-          await ProviderScoreMemory.recordStreamFail(scope, providerId);
-        }
-      }
-      _notifySourceMenuChanged();
     }
   }
 
@@ -396,7 +328,6 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       ),
     );
     _onProbeScoringChanged();
-    unawaited(_probeCachedProviderStreamsInBackground());
     _notifySourceMenuChanged();
   }
 

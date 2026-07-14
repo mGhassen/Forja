@@ -68,7 +68,10 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
   @override
   Widget build(BuildContext context) {
     final failed = widget.status == PlayerSourceStatus.failed;
-    final canPlay = widget.onPlay != null && !widget.isPlaying && !failed;
+    final isUp = widget.status == PlayerSourceStatus.ready ||
+        widget.status == PlayerSourceStatus.active;
+    // Play arrow only when status is up — not while unchecked, checking, or failed.
+    final canPlay = widget.onPlay != null && !widget.isPlaying && isUp;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final showPlayArrow = canPlay && (_hovered || (tvFocus && _focused));
     final showTransport = widget.onTogglePlayPause != null && widget.isPlaying;
@@ -94,7 +97,6 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                   child: Center(
                     child: PlayerStreamMenu._streamStatusGlyph(
                       status: widget.status,
-                      isPlaying: widget.isPlaying,
                     ),
                   ),
                 ),

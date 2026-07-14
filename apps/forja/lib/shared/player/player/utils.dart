@@ -6,7 +6,6 @@ import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
-import 'package:rust/rust.dart' as site111477_proxy;
 
 /// mpv must see Referer / User-Agent before `open`, not after.
 Future<void> applyMediaHttpHeaders(
@@ -450,7 +449,11 @@ Future<bool> probeStreamSourceUrl(
   }
 }
 
-/// Menu pre-check — 111477 catalog URLs skip slow CDN HEAD/GET; proxy validates at play.
+/// Menu / auto-probe pre-check.
+///
+/// **111477:** catalog URLs only get a shape check (CDN HEAD is slow/flaky);
+/// the local seek proxy is validated at play. Never treat a dead localhost
+/// proxy URL as the catalog stream — those are session-local play endpoints.
 Future<bool> validateStreamSourceForCheck({
   required String? providerId,
   required StreamSource source,
@@ -459,9 +462,7 @@ Future<bool> validateStreamSourceForCheck({
   if (providerId == 'service111477') {
     final url = source.url.trim();
     if (url.isEmpty || isUnplayableCachedStreamUrl(url)) return false;
-    if (site111477_proxy.is111477LocalProxyUrl(url)) {
-      return probeStreamSourceUrl(url, headers);
-    }
+    // Catalog hosts only — loopback is rejected by [isUnplayableCachedStreamUrl].
     return url.contains('://');
   }
   return probeStreamSourceUrl(source.url, headers);

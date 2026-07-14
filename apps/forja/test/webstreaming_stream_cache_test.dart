@@ -85,6 +85,24 @@ void main() {
       );
     });
 
+    test('rejects loopback seek-proxy URLs', () {
+      expect(
+        WebstreamingStreamCache.isValidHit(
+          WebstreamingCacheHit(
+            providerId: 'service111477',
+            sources: [
+              StreamSource(
+                url: 'http://127.0.0.1:51736/',
+                title: 'proxy',
+                type: 'mp4',
+              ),
+            ],
+          ),
+        ),
+        isFalse,
+      );
+    });
+
     test('accepts direct hls URLs', () {
       expect(
         WebstreamingStreamCache.isValidHit(

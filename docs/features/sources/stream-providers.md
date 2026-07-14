@@ -26,9 +26,9 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidLin
 
 ## What you can do
 
-- **Auto** — Resolver Engine tries providers in effective order and opens the first working hit. Other servers resolve when you pick them in the player menu.
+- **Auto** — Resolver Engine tries providers in effective order and opens the first working hit (server up, then stream validated). Other servers resolve when you pick them in the player menu; there is no post-play background probe of every cached server.
 - **Manual** — pick a server; Forja stays on it (strict — no silent cross-provider fallback)
-- Source links are **not** pre-checked on open — tap a stream to probe it (status on the left). Use the hover **play** arrow to switch. The current stream keeps playing until a play succeeds
+- Source links are **not** pre-checked on open — tap a stream to probe it (status on the left). Use the hover **play** arrow to switch. The current stream keeps playing until a play succeeds. A successful manual check does not restart automatic checking of other servers.
 - The **score badge** uses a **settings base of 0** per server **for this film, TV episode, or anime episode**. Server and stream outcomes **add**: server **±2**, stream **±2** (both ok → **+4**), all streams down **−2**. Asian drama is not scored. A **+/− prefix** shows the last change.
 - Reorder providers in Settings (baseline per domain; effective order preview in table)
 - On decoder failure, try the next compatible source, then software decode once

@@ -259,7 +259,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final Set<int> _failedSourceIndices = {};
   final Set<int> _checkingSourceIndices = {};
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
-  final Set<String> _streamProbedProviders = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -628,11 +629,11 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
   Widget build(BuildContext context) {
     final showEpisodeRail = widget.pageBottomChild != null;
     final h = widget.height ??
-        ShellTokens.detailsHeroHeight(
+        DetailsTokens.heroHeight(
           context,
           showEpisodeRail: showEpisodeRail,
         );
-    final bleed = showEpisodeRail ? ShellTokens.detailsEpisodeBackdropBleed : 0.0;
+    final bleed = showEpisodeRail ? DetailsTokens.episodeBackdropBleed : 0.0;
     final totalH = h + bleed;
     final shellBg = _shellBg(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
@@ -640,10 +641,10 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cinematicDesktop = viewportWidth >= 900;
     final contentInset =
-        ShellTokens.detailsContentHorizontalPadding(viewportWidth);
-    final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
+        DetailsTokens.contentHorizontalPadding(viewportWidth);
+    final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
     final bodyOverlap =
-        widget.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
+        widget.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final pageBleed = bleed > 0;
 
     return VisibilityDetector(
@@ -845,9 +846,9 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         0,
-                        ShellTokens.detailsEpisodeSectionTopPadding,
+                        DetailsTokens.episodeSectionTopPadding,
                         0,
-                        ShellTokens.detailsEpisodeSectionBottomPadding,
+                        DetailsTokens.episodeSectionBottomPadding,
                       ),
                       child: widget.pageBottomChild!,
                     ),
@@ -1042,7 +1043,7 @@ class _HeroLayout extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 900;
     final leftColumnWidth =
-        width * ShellTokens.detailsHeroDescriptionWidthFraction;
+        width * DetailsTokens.heroDescriptionWidthFraction;
     final mainColumn = _HeroMainColumn(
       movie: movie,
       logoUrl: logoUrl,

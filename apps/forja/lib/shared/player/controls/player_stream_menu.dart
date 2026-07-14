@@ -214,13 +214,17 @@ class PlayerStreamMenu {
               if (urlStatuses.containsKey(url)) {
                 status = urlStatuses[url];
               } else if (isPlaying) {
-                status = PlayerSourceStatus.active;
+                // Playing implies the stream is up; green pause arrow marks "playing".
+                status = PlayerSourceStatus.ready;
               } else if (useIndexedStatuses && entry.key < statuses.length) {
                 final s = statuses[entry.key];
+                // Indexed `ready` is not a URL check — leave null (gray) until verified.
                 if (s == PlayerSourceStatus.checking ||
                     s == PlayerSourceStatus.failed ||
                     s == PlayerSourceStatus.active) {
-                  status = s;
+                  status = s == PlayerSourceStatus.active
+                      ? PlayerSourceStatus.ready
+                      : s;
                 }
               }
               return _FlatMenuRow(
@@ -605,13 +609,6 @@ class PlayerStreamMenu {
             source.url == catalogUrl);
   }
 
-  static List<String>? _contentLanguage(dynamic provider) {
-    if (provider is! Map) return null;
-    final raw = provider['contentLanguage'];
-    if (raw is! List) return null;
-    return raw.map((e) => e.toString()).toList();
-  }
-
   static PlayerSourceStatus _resolveProviderStatus(
     String providerId, {
     required List<StreamProviderProbe> probes,
@@ -702,102 +699,112 @@ class PlayerStreamMenu {
     };
   }
 
+  // ── Status glyphs ─────────────────────────────────────────────────────
+  // Server = solid filled dots (provider load / probe).
+  // Stream = hollow ring / check (URL verified). Same meaning, different shape
+  // so the two layers are not visually redundant.
+  // Playing is the green play/pause arrow — never encoded in these glyphs.
+
+  /// Server: solid green = up · solid gray = not checked · red X · spinner.
   static Widget _statusGlyph({
     required PlayerSourceStatus status,
-    required bool isPlaying,
     required bool isLoaded,
   }) {
-    // Playing state is shown on the active stream row — server keeps a dot.
-    if (isPlaying) {
-      return _statusGlyphFor(PlayerSourceStatus.active, dotOnly: true);
-    }
     if (status == PlayerSourceStatus.checking) {
-      return _statusGlyphFor(PlayerSourceStatus.checking);
-    }
-    if (isLoaded) {
-      return _statusGlyphFor(PlayerSourceStatus.active, dotOnly: true);
+      return _checkingSpinner();
     }
     if (status == PlayerSourceStatus.failed) {
-      return _statusGlyphFor(PlayerSourceStatus.failed);
+      return _failedIcon();
     }
-    return const SizedBox(
+    final up = isLoaded ||
+        status == PlayerSourceStatus.ready ||
+        status == PlayerSourceStatus.active;
+    return _serverSolidDot(
+      up ? playerSourceStatusColor(PlayerSourceStatus.ready) : _uncheckedGray,
+    );
+  }
+
+  /// Stream: check = up · hollow ring = not checked · red X · spinner.
+  static Widget _streamStatusGlyph({
+    required PlayerSourceStatus? status,
+  }) {
+    if (status == null) return _streamHollowRing(_uncheckedGray);
+    if (status == PlayerSourceStatus.checking) return _checkingSpinner();
+    if (status == PlayerSourceStatus.failed) return _failedIcon();
+    return _streamUpCheck();
+  }
+
+  static const Color _uncheckedGray = Color(0x3DFFFFFF); // white24
+
+  static Widget _serverSolidDot(Color color) {
+    return SizedBox(
       width: _statusSlot,
       height: _statusSlot,
       child: Center(
-        child: Text(
-          '...',
-          style: TextStyle(
-            color: Colors.white38,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-            height: 1,
+        child: Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+      ),
+    );
+  }
+
+  static Widget _streamHollowRing(Color color) {
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(
+        child: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 1.5),
           ),
         ),
       ),
     );
   }
 
-  static Widget _streamStatusGlyph({
-    required PlayerSourceStatus? status,
-    required bool isPlaying,
-  }) {
-    if (isPlaying) {
-      return _statusGlyphFor(PlayerSourceStatus.active, dotOnly: true);
-    }
-    if (status == null) {
-      return const SizedBox(
-        width: _statusSlot,
-        height: _statusSlot,
-      );
-    }
-    if (status == PlayerSourceStatus.checking ||
-        status == PlayerSourceStatus.failed) {
-      return _statusGlyphFor(status);
-    }
-    // Verified-ok after a panel check.
-    return _statusGlyphFor(PlayerSourceStatus.ready, dotOnly: true);
-  }
-
-  static Widget _statusGlyphFor(
-    PlayerSourceStatus status, {
-    bool dotOnly = false,
-  }) {
-    final color = playerSourceStatusColor(status);
-    final Widget glyph = switch (status) {
-      PlayerSourceStatus.active when !dotOnly => Icon(
-          Icons.play_circle_filled_rounded,
-          color: color,
-          size: _statusSlot,
-        ),
-      PlayerSourceStatus.active => Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-      PlayerSourceStatus.failed => Icon(
-          Icons.cancel_rounded,
-          color: color,
-          size: _statusSlot,
-        ),
-      PlayerSourceStatus.checking => SizedBox(
-          width: 14,
-          height: 14,
-          child: CircularProgressIndicator(strokeWidth: 2, color: color),
-        ),
-      PlayerSourceStatus.ready => Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-    };
+  static Widget _streamUpCheck() {
     return SizedBox(
       width: _statusSlot,
       height: _statusSlot,
-      child: Center(child: glyph),
+      child: Icon(
+        Icons.check_rounded,
+        size: 14,
+        color: playerSourceStatusColor(PlayerSourceStatus.ready),
+      ),
+    );
+  }
+
+  static Widget _failedIcon() {
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Icon(
+        Icons.cancel_rounded,
+        size: _statusSlot,
+        color: playerSourceStatusColor(PlayerSourceStatus.failed),
+      ),
+    );
+  }
+
+  static Widget _checkingSpinner() {
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(
+        child: SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: playerSourceStatusColor(PlayerSourceStatus.checking),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -262,7 +262,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                     children: [
                       PlayerStreamMenu._statusGlyph(
                         status: status,
-                        isPlaying: isPlaying,
                         isLoaded: isLoaded,
                       ),
                       const SizedBox(width: 10),

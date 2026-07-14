@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-/// Layout constants for the app shell nav chrome.
+/// Layout constants for shell chrome, Home hero, and catalog surfaces.
+///
+/// Media-details layout lives in `DetailsTokens` (`details_tokens.dart`).
 abstract final class ShellTokens {
   static const double bottomNavHeight = 80;
   static const double bottomNavItemWidth = 100;
@@ -211,89 +213,10 @@ abstract final class ShellTokens {
   /// Horizontal inset for home catalog rows ([ShellSectionTitle], poster lists).
   static const double homeSectionHorizontalPadding = 24;
 
-  /// Extra pull-up for movie details body (cast/trailers) — not used for TV episodes.
-  static const double detailsHeroBodyOverlap = 120;
-
-  /// Backdrop extends this far below the hero chrome so seasons sit on the image.
-  static const double detailsEpisodeBackdropBleed = 260;
-  static const double detailsEpisodeSectionTopPadding = 8;
-  static const double detailsEpisodeSectionBottomPadding = 12;
-  static const double detailsHeroContentTopInset = 88;
-  static const double detailsHeroDescriptionWidthFraction = 0.40;
-  static const double detailsBodyTopSpacing = 36;
-  /// Shared gap between details body sections (and episode rail → first section).
-  static const double detailsSectionSpacing = 48;
-  static const double detailsBodyTopSpacingWithEpisodes = detailsSectionSpacing;
-  /// Title → row gap inside cast / trailers / recommendations on details.
-  static const double detailsSectionTitleGap = 16;
-  static const double detailsBodyBottomSpacing = 80;
-
-  /// Right-side sliding panels — player overlays vs media-details Sources.
+  /// Right-side sliding panels over the player (Episodes, torrent files).
+  /// Media-details Sources uses `DetailsTokens.sourcesPanelPadding`.
   static const EdgeInsets playerSidePanelPadding =
       EdgeInsets.fromLTRB(12, 4, 8, 8);
-  static const EdgeInsets mediaDetailsSourcesPanelPadding =
-      EdgeInsets.fromLTRB(16, 8, 12, 12);
-  static const double detailsContentPaddingDesktop =
-      homeSectionHorizontalPadding;
-  static const double detailsContentPaddingCompact =
-      homeSectionHorizontalPadding;
-
-  static double detailsContentHorizontalPadding(double viewportWidth) {
-    if (viewportWidth >= shellNavCompactMaxWidth) {
-      return detailsContentPaddingDesktop;
-    }
-    return detailsContentPaddingCompact;
-  }
-
-  static double detailsContentLeftInset(double viewportWidth) {
-    final padding = detailsContentHorizontalPadding(viewportWidth);
-    final columnWidth = viewportWidth < bodyMaxWidthDesktop
-        ? viewportWidth
-        : bodyMaxWidthDesktop;
-    final sideGutter = (viewportWidth - columnWidth) / 2;
-    return sideGutter + padding;
-  }
-
-  /// Back chevron on details overlays — matches hero title / body [padContent] inset.
-  static double detailsBackButtonLeftInset(BuildContext context) {
-    return detailsContentLeftInset(MediaQuery.sizeOf(context).width);
-  }
-
-  /// Cinematic hero band (~82% viewport) — see media-details feature doc.
-  static const double detailsHeroViewportFraction = 0.82;
-
-  /// TV uses the same hero chrome height; [detailsEpisodeBackdropBleed] carries the image lower.
-  static const double detailsHeroWithEpisodesFraction = 0.82;
-
-  /// Full on-screen backdrop band (~82% viewport) — title/actions + optional TV bleed.
-  static double detailsHeroBackdropBand(
-    BuildContext context, {
-    double? viewportHeight,
-    bool showEpisodeRail = false,
-  }) {
-    final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
-    final resolved = height.isFinite && height > 0
-        ? height
-        : MediaQuery.sizeOf(context).height;
-    final fraction = showEpisodeRail
-        ? detailsHeroWithEpisodesFraction
-        : detailsHeroViewportFraction;
-    return resolved * fraction;
-  }
-
-  /// Hero chrome height for media details — prefer [viewportHeight] from a [LayoutBuilder].
-  /// TV episode rails add [detailsEpisodeBackdropBleed] below this in the hero stack.
-  static double detailsHeroHeight(
-    BuildContext context, {
-    double? viewportHeight,
-    bool showEpisodeRail = false,
-  }) {
-    return detailsHeroBackdropBand(
-      context,
-      viewportHeight: viewportHeight,
-      showEpisodeRail: showEpisodeRail,
-    );
-  }
 
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;

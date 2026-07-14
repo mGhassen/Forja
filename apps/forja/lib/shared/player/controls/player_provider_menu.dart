@@ -30,17 +30,10 @@ class PlayerProviderMenu {
           final provider = entry.value;
           final isCurrent = key == currentProviderId;
           final fallbackName = provider['name']?.toString();
-          final contentLanguage = _contentLanguage(provider);
-          final flags = StreamProviderDisplay.countryFlags(
-            key,
-            contentLanguage: contentLanguage,
-          );
           return PlayerPopupListTile(
-            badge: flags.isEmpty ? null : flags,
             label: StreamProviderDisplay.playerLabel(
               key,
               fallbackName: fallbackName,
-              contentLanguage: contentLanguage,
             ),
             selected: isCurrent,
             onTap: () async {
@@ -61,18 +54,9 @@ class PlayerProviderMenu {
       final Map<String, dynamic> map => map['name']?.toString(),
       _ => null,
     };
-    return StreamProviderDisplay.playerListLabel(
+    return StreamProviderDisplay.playerLabel(
       providerId,
       fallbackName: fallbackName,
-      contentLanguage: provider is Map<String, dynamic>
-          ? _contentLanguage(provider)
-          : null,
     );
-  }
-
-  static List<String>? _contentLanguage(Map<String, dynamic> provider) {
-    final raw = provider['contentLanguage'];
-    if (raw is! List) return null;
-    return raw.map((e) => e.toString()).toList();
   }
 }

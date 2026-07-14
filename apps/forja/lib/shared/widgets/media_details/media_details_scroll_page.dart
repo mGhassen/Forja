@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 
@@ -43,7 +43,7 @@ class MediaDetailsScrollPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (var i = 0; i < sections.length; i++) ...[
-                  if (i > 0) const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                  if (i > 0) const SizedBox(height: DetailsTokens.sectionSpacing),
                   sections[i],
                 ],
               ],

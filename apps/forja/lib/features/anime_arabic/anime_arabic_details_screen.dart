@@ -291,7 +291,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                     ),
                   ),
                 if (d.related.isNotEmpty) ...[
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                  const SizedBox(height: DetailsTokens.sectionSpacing),
                   _buildRelated(
                     d,
                     tvRowOrder: relatedOrder,

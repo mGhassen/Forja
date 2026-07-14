@@ -277,7 +277,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final hasProgress = _progress != null;
     final resumeEp =
         hasProgress ? (_progress!['episodeNumber'] as num?)?.toInt() : null;
-    final heroHeight = ShellTokens.detailsHeroHeight(context, showEpisodeRail: true);
+    final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
     final posMs = (_progress?['positionMs'] as num?)?.toInt();
     final durMs = (_progress?['durationMs'] as num?)?.toInt();
     final policy = ShellScope.inputPolicyOf(context);

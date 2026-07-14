@@ -13,18 +13,28 @@ alwaysApply: false
 - **Flat cinematic shell** — no `BackdropFilter`, frosted glass, or ambient glows on shell nav, home chrome, or player control bars.
 - **Exception — sliding side panels:** media-details Sources uses `ForjaFrostedPanel` with `BackdropFilter`. Player overlays (Episodes, torrent files) pass a video screenshot as `frozenFrame` and blur that with `ImageFiltered` — do **not** put `BackdropFilter` over live video (freezes macOS). Do not scatter ad-hoc blur elsewhere.
 - **Hero overlays** use `ForjaShellColors.cinematic` (fixed light-on-imagery), not `AppTheme.primaryColor`.
-- **Spacing and breakpoints** come from `ShellTokens` — do not hardcode magic numbers that already exist there.
+- **Spacing and breakpoints** come from `ShellTokens` / `DetailsTokens` — do not hardcode magic numbers that already exist there.
 
-## Tokens (`ShellTokens`)
+## Tokens
+
+### `ShellTokens` — shell chrome, Home, catalog
 
 | Area | Use |
 |------|-----|
 | Nav / top bar | `navRailWidth`, `homeTopBarHeight`, `shellNavCompactMaxWidth` |
 | Home hero | `heroDesktopMinBodyWidth`, `heroTextColumnWidthDesktop`, `heroOverviewSlotHeightDesktop`, `homeSectionHorizontalPadding` |
-| Media details | `detailsHeroHeight`, `detailsSectionSpacing`, `detailsHeroBodyOverlap`, `detailsContentHorizontalPadding` |
 | Catalog rows | `homeSectionTitleTop`, `bodyMaxWidthDesktop` |
 
-When adding a new surface, **extend `ShellTokens`** if the constant will be reused; one-off padding inside a single widget is fine.
+### `DetailsTokens` — media details
+
+| Area | Use |
+|------|-----|
+| Hero / body | `heroHeight`, `sectionSpacing`, `heroBodyOverlap`, `contentHorizontalPadding` |
+| Sources panel | `sourcesPanelPadding` (player overlays keep `ShellTokens.playerSidePanelPadding`) |
+
+Details gutters deliberately alias `ShellTokens.homeSectionHorizontalPadding` / `bodyMaxWidthDesktop` so details stay aligned with catalog rows.
+
+When adding a reused constant: **shell/catalog → `ShellTokens`**, **details surfaces → `DetailsTokens`**. One-off padding inside a single widget is fine.
 
 ## Colors (`ForjaShellColors`)
 

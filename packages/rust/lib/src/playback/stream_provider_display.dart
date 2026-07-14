@@ -1,35 +1,36 @@
 /// Player-facing labels for built-in web stream providers.
 ///
 /// Settings, extraction, and the in-player Servers menu all use real provider
-/// names. Region flags still come from profiles / contentLanguage.
+/// names. [flagForCountry] remains for torrent language filters only.
 class StreamProviderDisplay {
   const StreamProviderDisplay._();
 
-  static const _profiles = <String, ({String label, List<String> countries})>{
-    'videasy': (label: 'Videasy', countries: ['multi']),
-    'vidsrc': (label: 'Vidsrc', countries: ['multi']),
-    'vidnest': (label: 'Vidnest', countries: ['multi']),
-    'vidlink': (label: 'VidLink', countries: ['multi']),
-    'vixsrc': (label: 'VixSrc', countries: ['multi']),
-    'vidzee': (label: 'Vidzee', countries: ['multi']),
-    'vidrock': (label: 'VidRock', countries: ['multi']),
-    'vidfast': (label: 'VidFast', countries: ['multi']),
-    '2embed': (label: '2Embed', countries: ['multi']),
-    'superembed': (label: 'SuperEmbed', countries: ['multi']),
-    'autoembed': (label: 'AutoEmbed', countries: ['multi']),
-    '111movies': (label: '111Movies', countries: ['multi']),
-    'moviesapi': (label: 'MoviesAPI', countries: ['multi']),
-    'smashystream': (label: 'SmashyStream', countries: ['multi']),
-    'primewire': (label: 'PrimeWire', countries: ['multi']),
-    'service111477': (label: '111477', countries: ['en']),
-    'webstreamr': (label: 'WebStreamr', countries: ['multi']),
-    'stremio_direct': (label: 'Stremio Direct', countries: ['multi']),
-    'amri': (label: 'Amri', countries: ['multi']),
-    'arabic': (label: 'Arabic', countries: ['ar']),
-    'kisskh': (label: 'KissKH', countries: ['ko']),
-    'torrent': (label: 'Torrent', countries: ['multi']),
+  static const _labels = <String, String>{
+    'videasy': 'Videasy',
+    'vidsrc': 'Vidsrc',
+    'vidnest': 'Vidnest',
+    'vidlink': 'VidLink',
+    'vixsrc': 'VixSrc',
+    'vidzee': 'Vidzee',
+    'vidrock': 'VidRock',
+    'vidfast': 'VidFast',
+    '2embed': '2Embed',
+    'superembed': 'SuperEmbed',
+    'autoembed': 'AutoEmbed',
+    '111movies': '111Movies',
+    'moviesapi': 'MoviesAPI',
+    'smashystream': 'SmashyStream',
+    'primewire': 'PrimeWire',
+    'service111477': '111477',
+    'webstreamr': 'WebStreamr',
+    'stremio_direct': 'Stremio Direct',
+    'amri': 'Amri',
+    'arabic': 'Arabic',
+    'kisskh': 'KissKH',
+    'torrent': 'Torrent',
   };
 
+  /// Language/country flags for torrent release metadata — not server labels.
   static const _flags = <String, String>{
     'multi': '🌐',
     'al': '🇦🇱',
@@ -49,44 +50,6 @@ class StreamProviderDisplay {
     'zh': '🇨🇳',
   };
 
-  static const _languageToCountry = <String, String>{
-    'multi': 'multi',
-    'en': 'en',
-    'english': 'en',
-    'es': 'es',
-    'spanish': 'es',
-    'fr': 'fr',
-    'french': 'fr',
-    'de': 'de',
-    'german': 'de',
-    'it': 'it',
-    'ita': 'it',
-    'italian': 'it',
-    'ja': 'ja',
-    'japanese': 'ja',
-    'ko': 'ko',
-    'korean': 'ko',
-    'zh': 'zh',
-    'ch': 'zh',
-    'chinese': 'zh',
-    'hi': 'hi',
-    'hindi': 'hi',
-    'ta': 'hi',
-    'te': 'hi',
-    'ml': 'hi',
-    'pa': 'hi',
-    'gu': 'hi',
-    'ba': 'hi',
-    'ar': 'ar',
-    'arabic': 'ar',
-    'pt': 'pt',
-    'portuguese': 'pt',
-    'ru': 'ru',
-    'russian': 'ru',
-    'th': 'th',
-    'thai': 'th',
-  };
-
   static String canonicalId(String providerId) {
     if (providerId.startsWith('nuvio:')) {
       return providerId.substring(6);
@@ -95,7 +58,7 @@ class StreamProviderDisplay {
   }
 
   static bool hasProfile(String providerId) =>
-      _profiles.containsKey(canonicalId(providerId));
+      _labels.containsKey(canonicalId(providerId));
 
   static String playerLabel(
     String providerId, {
@@ -103,32 +66,10 @@ class StreamProviderDisplay {
     List<String>? contentLanguage,
   }) {
     final canonical = canonicalId(providerId);
-    final profile = _profiles[canonical];
-    if (profile != null) return profile.label;
+    final label = _labels[canonical];
+    if (label != null) return label;
     if (fallbackName != null && fallbackName.isNotEmpty) return fallbackName;
     return _titleCaseId(canonical);
-  }
-
-  static List<String> countryCodes(
-    String providerId, {
-    List<String>? contentLanguage,
-  }) {
-    final canonical = canonicalId(providerId);
-    final profile = _profiles[canonical];
-    if (profile != null) return profile.countries;
-    final fromLang = _countriesFromLanguages(contentLanguage);
-    if (fromLang.isNotEmpty) return fromLang;
-    return const ['multi'];
-  }
-
-  static String countryFlags(
-    String providerId, {
-    List<String>? contentLanguage,
-  }) {
-    return countryCodes(providerId, contentLanguage: contentLanguage)
-        .map(flagForCountry)
-        .where((f) => f.isNotEmpty)
-        .join(' ');
   }
 
   static String flagForCountry(String code) => _flags[code] ?? '';
@@ -138,26 +79,11 @@ class StreamProviderDisplay {
     String? fallbackName,
     List<String>? contentLanguage,
   }) {
-    final flags = countryFlags(providerId, contentLanguage: contentLanguage);
-    final label = playerLabel(
+    return playerLabel(
       providerId,
       fallbackName: fallbackName,
       contentLanguage: contentLanguage,
     );
-    if (flags.isEmpty) return label;
-    return '$flags $label';
-  }
-
-  static List<String> _countriesFromLanguages(List<String>? languages) {
-    if (languages == null || languages.isEmpty) return const [];
-    final out = <String>[];
-    for (final raw in languages) {
-      final cc = _languageToCountry[raw.toLowerCase()];
-      if (cc == null || out.contains(cc)) continue;
-      out.add(cc);
-      if (out.length >= 3) break;
-    }
-    return out;
   }
 
   static String _titleCaseId(String id) {

@@ -284,7 +284,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   Widget _buildScrollLayout() {
     final det = _details!;
     final hasResume = _progress != null;
-    final heroHeight = ShellTokens.detailsHeroHeight(context, showEpisodeRail: true);
+    final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
     final posMs = (_progress?['positionMs'] as num?)?.toInt();
     final durMs = (_progress?['durationMs'] as num?)?.toInt();
     final lookup = _episodeLookup(det);

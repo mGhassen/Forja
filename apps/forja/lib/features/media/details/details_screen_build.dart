@@ -222,7 +222,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
 
   Widget _buildScrollLayout() {
     final showEpisodeRail = _s._movie.mediaType == 'tv' && !_s._isCollection;
-    final heroHeight = ShellTokens.detailsHeroHeight(
+    final heroHeight = DetailsTokens.heroHeight(
       context,
       showEpisodeRail: showEpisodeRail,
     );
@@ -291,7 +291,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       tvHeroPlayFocus: _s._detailsHeroPlayFocus,
       bodyOverlap: showEpisodeRail ? 0 : null,
       topSpacing: showEpisodeRail
-          ? ShellTokens.detailsBodyTopSpacingWithEpisodes
+          ? DetailsTokens.bodyTopSpacingWithEpisodes
           : null,
       hero: _buildDetailsHero(
         heroHeight: heroHeight,

@@ -530,16 +530,9 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
   String _webstreamingProviderLabel(String key) {
     final provider = _s._webstreamingProviders[key];
     final fallbackName = provider is Map ? provider['name']?.toString() : null;
-    List<String>? contentLanguage;
-    if (provider is Map && provider['contentLanguage'] is List) {
-      contentLanguage = (provider['contentLanguage'] as List)
-          .map((e) => e.toString())
-          .toList();
-    }
     return StreamProviderDisplay.playerLabel(
       key,
       fallbackName: fallbackName,
-      contentLanguage: contentLanguage,
     );
   }
 

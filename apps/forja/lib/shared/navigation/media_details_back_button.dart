@@ -22,7 +22,7 @@ class MediaDetailsBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned(
       top: topInset(context),
-      left: ShellTokens.detailsBackButtonLeftInset(context),
+      left: DetailsTokens.backButtonLeftInset(context),
       child: ShellBackIconButton(
         icon: Icons.chevron_left_rounded,
         size: 28,

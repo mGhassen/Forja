@@ -27,32 +27,18 @@ void main() {
     );
   });
 
-  test('nuvio flags come from contentLanguage', () {
-    expect(
-      StreamProviderDisplay.countryFlags(
-        'nuvio:anime-sama',
-        contentLanguage: ['fr'],
-      ),
-      '🇫🇷',
-    );
-    expect(
-      StreamProviderDisplay.countryFlags(
-        'nuvio:onlykdrama',
-        contentLanguage: ['ko'],
-      ),
-      '🇰🇷',
-    );
-  });
-
   test('unknown providers fall back to real name', () {
     expect(StreamProviderDisplay.playerLabel('custom', fallbackName: 'Demo'), 'Demo');
     expect(StreamProviderDisplay.hasProfile('custom'), isFalse);
   });
 
-  test('player list label combines flag and real name', () {
-    expect(
-      StreamProviderDisplay.playerListLabel('vidlink'),
-      '🌐 VidLink',
-    );
+  test('player list label is name only — no server region flags', () {
+    expect(StreamProviderDisplay.playerListLabel('vidlink'), 'VidLink');
+    expect(StreamProviderDisplay.playerListLabel('service111477'), '111477');
+  });
+
+  test('flagForCountry remains for torrent language filters', () {
+    expect(StreamProviderDisplay.flagForCountry('en'), '🇺🇸');
+    expect(StreamProviderDisplay.flagForCountry('fr'), '🇫🇷');
   });
 }

@@ -29,13 +29,13 @@ Color playerSourceBadgeColor(String? badge) {
 Color playerSourceStatusColor(PlayerSourceStatus status) {
   switch (status) {
     case PlayerSourceStatus.active:
+    case PlayerSourceStatus.ready:
+      // Green = up (verified / playable). Playing is shown by the arrow, not the dot.
       return const Color(0xFF22C55E);
     case PlayerSourceStatus.failed:
       return const Color(0xFFEF4444);
     case PlayerSourceStatus.checking:
       return const Color(0xFF38BDF8);
-    case PlayerSourceStatus.ready:
-      return Colors.white24;
   }
 }
 

@@ -46,22 +46,22 @@ class HubDetailsHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final showEpisodeRail = pageBottomChild != null;
     final h = height ??
-        ShellTokens.detailsHeroHeight(
+        DetailsTokens.heroHeight(
           context,
           showEpisodeRail: showEpisodeRail,
         );
     final bleed =
-        showEpisodeRail ? ShellTokens.detailsEpisodeBackdropBleed : 0.0;
+        showEpisodeRail ? DetailsTokens.episodeBackdropBleed : 0.0;
     final totalH = h + bleed;
     final shellBg = AppTheme.bgDark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cinematicDesktop = viewportWidth >= 900;
-    final contentInset = ShellTokens.detailsContentHorizontalPadding(viewportWidth);
-    final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
+    final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
+    final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
     final bodyOverlap =
-        this.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
+        this.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final pageBleed = bleed > 0;
 
     return SizedBox(
@@ -151,9 +151,9 @@ class HubDetailsHero extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         0,
-                        ShellTokens.detailsEpisodeSectionTopPadding,
+                        DetailsTokens.episodeSectionTopPadding,
                         0,
-                        ShellTokens.detailsEpisodeSectionBottomPadding,
+                        DetailsTokens.episodeSectionBottomPadding,
                       ),
                       child: pageBottomChild!,
                     ),
@@ -200,7 +200,7 @@ class _HubHeroLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 900;
-    final leftColumnWidth = width * ShellTokens.detailsHeroDescriptionWidthFraction;
+    final leftColumnWidth = width * DetailsTokens.heroDescriptionWidthFraction;
     final mainColumn = _HubHeroMainColumn(
       title: title,
       subtitle: subtitle,

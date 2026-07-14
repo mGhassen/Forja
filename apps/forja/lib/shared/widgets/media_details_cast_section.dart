@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -31,7 +32,7 @@ class MediaDetailsCastSection extends StatefulWidget {
   static const double _avatarSize = 88;
   static const double _itemWidth = 112;
   static const double _horizontalGap = 32;
-  static const double _titleGap = ShellTokens.detailsSectionTitleGap;
+  static const double _titleGap = DetailsTokens.sectionTitleGap;
   static const double _avatarNameGap = 8;
   static const double _nameCharacterGap = 3;
 
@@ -84,7 +85,7 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
               homePad,
               0,
               homePad,
-              ShellTokens.detailsSectionTitleGap,
+              DetailsTokens.sectionTitleGap,
             ),
           )
         else ...[

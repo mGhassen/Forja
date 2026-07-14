@@ -22,7 +22,7 @@ class MediaDetailsBody extends StatelessWidget {
   /// Standard horizontal inset for synopsis blocks, episode headers, etc.
   static EdgeInsets contentPadding(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final inset = ShellTokens.detailsContentHorizontalPadding(width);
+    final inset = DetailsTokens.contentHorizontalPadding(width);
     return EdgeInsets.symmetric(horizontal: inset);
   }
 
@@ -40,8 +40,8 @@ class MediaDetailsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shellBg = _shellBg(context);
-    final overlap = bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
-    final top = topSpacing ?? ShellTokens.detailsBodyTopSpacing;
+    final overlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
+    final top = topSpacing ?? DetailsTokens.bodyTopSpacing;
 
     return Transform.translate(
       offset: Offset(0, -overlap),
@@ -63,7 +63,7 @@ class MediaDetailsBody extends StatelessWidget {
                     0,
                     top,
                     0,
-                    ShellTokens.detailsBodyBottomSpacing,
+                    DetailsTokens.bodyBottomSpacing,
                   ),
                   child: child,
                 ),

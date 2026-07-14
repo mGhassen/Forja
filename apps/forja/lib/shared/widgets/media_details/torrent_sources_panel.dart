@@ -39,7 +39,7 @@ class TorrentSourcesPanel extends StatelessWidget {
   static EdgeInsets defaultContentPadding({required bool playerOverlay}) {
     return playerOverlay
         ? ShellTokens.playerSidePanelPadding
-        : ShellTokens.mediaDetailsSourcesPanelPadding;
+        : DetailsTokens.sourcesPanelPadding;
   }
 
   @override

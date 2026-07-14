@@ -5,6 +5,7 @@ export 'src/poster_card.dart';
 export 'src/server_grid.dart';
 export 'src/player_overlay.dart';
 export 'src/shell_tokens.dart';
+export 'src/details_tokens.dart';
 export 'src/shell_profile.dart';
 export 'src/shell_metrics.dart';
 export 'src/shell_input_policy.dart';

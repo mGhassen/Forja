@@ -56,7 +56,7 @@ MediaDetailsScrollPage(
 )
 ```
 
-- Section spacing: `ShellTokens.detailsSectionSpacing` — applied inside scroll page, not per screen.
+- Section spacing: `DetailsTokens.sectionSpacing` — applied inside scroll page, not per screen.
 - Recommendations: `MediaDetailsRecommendationsSection` + screen-specific `onMovieTap`.
 - Torrent sources overlay: `TorrentSourcesPanel` + filters/tiles; screen wires chip `onChipTap` to existing handlers.
 
@@ -69,7 +69,7 @@ MediaDetailsScrollPage(
 
 1. Pick `hero/` or `media_details/` (or top-level `shared/widgets/` if used outside those flows).
 2. Export from barrel if in `media_details/`.
-3. Use `ShellTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
+3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
 
 ## Do not

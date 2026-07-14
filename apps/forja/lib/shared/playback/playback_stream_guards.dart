@@ -18,5 +18,10 @@ bool isUnplayableCachedStreamUrl(String url) {
   if (lower.contains('demo-video')) return true;
   if (u.startsWith('/') && !u.startsWith('//')) return true;
   if (!u.contains('://')) return true;
+  // Loopback play URLs (111477 seek proxy, torrent localhost, …) are session-
+  // local — caching or scoring them as catalog streams marks "stream down"
+  // when the port dies, while a manual catalog-URL check still passes.
+  final host = Uri.tryParse(u)?.host.toLowerCase() ?? '';
+  if (host == '127.0.0.1' || host == 'localhost') return true;
   return false;
 }

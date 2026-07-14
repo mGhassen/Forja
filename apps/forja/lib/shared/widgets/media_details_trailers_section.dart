@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -79,12 +80,12 @@ class _MediaDetailsTrailersSectionState
               homePad,
               0,
               homePad,
-              ShellTokens.detailsSectionTitleGap,
+              DetailsTokens.sectionTitleGap,
             ),
           )
         else ...[
           Text('Trailers', style: ShellSectionTitle.titleStyle),
-          const SizedBox(height: ShellTokens.detailsSectionTitleGap),
+          const SizedBox(height: DetailsTokens.sectionTitleGap),
         ],
         FocusTraversalGroup(
           child: HorizontalScroller(
