@@ -77,6 +77,18 @@ impl ProviderHealthStore {
         g.loaded = true;
     }
 
+    /// Clear all reliability memory and persist empty maps (Settings cleaner).
+    pub fn clear_all(&self) {
+        {
+            let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            g.server.clear();
+            g.stream.clear();
+            g.last_delta.clear();
+            g.loaded = true;
+        }
+        self.persist();
+    }
+
     pub fn normalize_provider_id(provider_id: &str) -> String {
         let id = provider_id.trim();
         if id.is_empty() {
@@ -128,6 +140,22 @@ impl ProviderHealthStore {
         self.ensure_loaded();
         let g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         g.last_delta.get(memory_key).copied()
+    }
+
+    /// Sum of per-title totals for one provider across all films / episodes.
+    pub fn global_score_for(&self, provider_id: &str) -> i32 {
+        let norm = Self::normalize_provider_id(provider_id);
+        if norm.is_empty() {
+            return 0;
+        }
+        *self.all_provider_totals().get(&norm).unwrap_or(&0)
+    }
+
+    /// Provider id → sum of that provider's title scores (floored totals).
+    pub fn all_provider_totals(&self) -> HashMap<String, i32> {
+        self.ensure_loaded();
+        let g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        aggregate_provider_totals(&g)
     }
 
     pub fn record_server_up(&self, memory_key: &str) -> i32 {
@@ -207,6 +235,37 @@ fn total_for(g: &HealthState, key: &str) -> i32 {
         .max(0)) as i32
 }
 
+/// Extract provider id from a memory key (`movie:550:vixsrc`, `tv:1:s1e2:nuvio:x`, …).
+pub fn provider_from_memory_key(key: &str) -> Option<String> {
+    let parts: Vec<&str> = key.split(':').collect();
+    match parts.first().copied()? {
+        "movie" if parts.len() >= 3 => Some(parts[2..].join(":")),
+        "tv" if parts.len() >= 4 => Some(parts[3..].join(":")),
+        "anime" if parts.len() >= 4 => Some(parts[3..].join(":")),
+        _ if parts.len() >= 3 => Some(parts[2..].join(":")),
+        _ => None,
+    }
+    .filter(|s| !s.is_empty())
+}
+
+fn aggregate_provider_totals(g: &HealthState) -> HashMap<String, i32> {
+    let mut keys = std::collections::HashSet::new();
+    keys.extend(g.server.keys().cloned());
+    keys.extend(g.stream.keys().cloned());
+    let mut out: HashMap<String, i32> = HashMap::new();
+    for key in keys {
+        let Some(provider) = provider_from_memory_key(&key) else {
+            continue;
+        };
+        let t = total_for(g, &key);
+        if t == 0 {
+            continue;
+        }
+        *out.entry(provider).or_default() += t;
+    }
+    out
+}
+
 fn read_verdict_map(raw: Option<&serde_json::Value>, into: &mut HashMap<String, i32>) {
     let Some(obj) = raw.and_then(|v| v.as_object()) else {
         return;
@@ -247,6 +306,8 @@ struct HealthActionRequest {
     action: String,
     #[serde(default)]
     memory_key: String,
+    #[serde(default)]
+    provider_id: String,
     #[serde(default = "default_stream_wins")]
     stream_wins: bool,
 }
@@ -272,6 +333,10 @@ pub fn handle_health_json(payload: &str) -> String {
     match req.action.as_str() {
         "resetForTest" => {
             store.reset_for_test();
+            r#"{"ok":true}"#.into()
+        }
+        "clearAll" => {
+            store.clear_all();
             r#"{"ok":true}"#.into()
         }
         "recordServerUp" => {
@@ -322,6 +387,14 @@ pub fn handle_health_json(payload: &str) -> String {
             last_delta: store.last_delta_for(&req.memory_key),
         })
         .unwrap_or_else(|e| serde_json::json!({ "error": e.to_string() }).to_string()),
+        "queryGlobal" => {
+            let score = store.global_score_for(&req.provider_id);
+            serde_json::json!({ "score": score, "providerId": ProviderHealthStore::normalize_provider_id(&req.provider_id) }).to_string()
+        }
+        "queryGlobalAll" => {
+            let totals = store.all_provider_totals();
+            serde_json::json!({ "totals": totals }).to_string()
+        }
         other => serde_json::json!({ "error": format!("unknown action {other}") }).to_string(),
     }
 }
@@ -353,5 +426,37 @@ mod tests {
         store.record_stream_up(key);
         store.record_stream_fail(key);
         assert_eq!(store.score_for(key), 2);
+    }
+
+    #[test]
+    fn global_score_sums_across_titles() {
+        let store = ProviderHealthStore::new();
+        store.reset_for_test();
+        store.record_server_up("movie:1:vixsrc");
+        store.record_stream_up("movie:1:vixsrc");
+        store.record_server_up("movie:2:vixsrc");
+        store.record_stream_up("movie:2:vixsrc");
+        store.record_server_up("movie:2:vidlink");
+        assert_eq!(store.score_for("movie:1:vixsrc"), 4);
+        assert_eq!(store.score_for("movie:2:vixsrc"), 4);
+        assert_eq!(store.global_score_for("vixsrc"), 8);
+        assert_eq!(store.global_score_for("vidlink"), 2);
+        assert_eq!(store.global_score_for("videasy"), 0);
+    }
+
+    #[test]
+    fn provider_from_memory_key_handles_nested_ids() {
+        assert_eq!(
+            provider_from_memory_key("movie:10:nuvio:torrentio").as_deref(),
+            Some("nuvio:torrentio")
+        );
+        assert_eq!(
+            provider_from_memory_key("tv:1399:s1e3:vidlink").as_deref(),
+            Some("vidlink")
+        );
+        assert_eq!(
+            provider_from_memory_key("anime:21:e12:miruro:bee").as_deref(),
+            Some("miruro:bee")
+        );
     }
 }

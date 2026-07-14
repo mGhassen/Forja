@@ -126,6 +126,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 
 - [Appearance](settings/appearance.md)
 - [Playback settings](settings/playback-settings.md)
+- [Cache & data](settings/cache-data.md)
 - [Torrent settings](settings/torrent-settings.md)
 - [Backup & restore](settings/backup-restore.md)
 - [Navigation bar](settings/navigation-bar.md)
@@ -150,4 +151,5 @@ How Forja finds torrents, streams, and subtitles from the web.
 | Watch live sports | [Live Matches](live/live-matches.md) |
 | Connect my home server | [Jellyfin](jellyfin/jellyfin.md) |
 | Resume where I left off | [Watch history](movies-tv/watch-history.md) |
+| Clear cache or watch history | [Cache & data](settings/cache-data.md) |
 | Customize the app | [Settings](settings/appearance.md) · [Navigation bar](settings/navigation-bar.md) |

@@ -62,6 +62,82 @@ abstract final class ProviderScoreMemory {
     return _totalFor(key);
   }
 
+  /// Sum of per-title totals for [providerId] across all films / episodes.
+  static int globalScoreFor(String providerId) {
+    final norm = normalizeProviderId(providerId);
+    if (norm.isEmpty) return 0;
+    if (_rustReady) {
+      try {
+        final raw = RustLib.instance.providerHealthJson(
+          jsonEncode({'action': 'queryGlobal', 'providerId': norm}),
+        );
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          return (decoded['score'] as num?)?.toInt() ?? 0;
+        }
+      } catch (e) {
+        debugPrint('[ProviderScoreMemory] rust global query failed: $e');
+      }
+      return 0;
+    }
+    return _localGlobalTotals()[norm] ?? 0;
+  }
+
+  /// Provider id → sum of title scores.
+  static Map<String, int> allGlobalScores() {
+    if (_rustReady) {
+      try {
+        final raw = RustLib.instance.providerHealthJson(
+          jsonEncode({'action': 'queryGlobalAll'}),
+        );
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          final totals = decoded['totals'];
+          if (totals is Map) {
+            return {
+              for (final e in totals.entries)
+                e.key.toString(): (e.value as num?)?.toInt() ?? 0,
+            };
+          }
+        }
+      } catch (e) {
+        debugPrint('[ProviderScoreMemory] rust global all failed: $e');
+      }
+      return const {};
+    }
+    return _localGlobalTotals();
+  }
+
+  static Map<String, int> _localGlobalTotals() {
+    final keys = {..._server.keys, ..._stream.keys};
+    final out = <String, int>{};
+    for (final key in keys) {
+      final provider = _providerFromMemoryKey(key);
+      if (provider == null || provider.isEmpty) continue;
+      final t = _totalFor(key);
+      if (t == 0) continue;
+      out[provider] = (out[provider] ?? 0) + t;
+    }
+    return out;
+  }
+
+  static String? _providerFromMemoryKey(String key) {
+    final parts = key.split(':');
+    if (parts.isEmpty) return null;
+    switch (parts.first) {
+      case 'movie':
+        if (parts.length < 3) return null;
+        return parts.sublist(2).join(':');
+      case 'tv':
+      case 'anime':
+        if (parts.length < 4) return null;
+        return parts.sublist(3).join(':');
+      default:
+        if (parts.length < 3) return null;
+        return parts.sublist(2).join(':');
+    }
+  }
+
   static int? lastDeltaFor(ProviderScoreScope scope, String providerId) {
     final key = _memoryKey(scope, providerId);
     if (_rustReady) {
@@ -150,6 +226,24 @@ abstract final class ProviderScoreMemory {
     }
     await recordStreamFail(scope, providerId);
     return true;
+  }
+
+  /// Wipe all provider reliability scores (Settings Cache & data).
+  static Future<void> clearAll() async {
+    await ensureLoaded();
+    if (_rustReady) {
+      try {
+        RustLib.instance.providerHealthJson(
+          jsonEncode({'action': 'clearAll'}),
+        );
+      } catch (e) {
+        debugPrint('[ProviderScoreMemory] rust clearAll failed: $e');
+      }
+    }
+    _server.clear();
+    _stream.clear();
+    _lastDelta.clear();
+    revision.value++;
   }
 
   @visibleForTesting

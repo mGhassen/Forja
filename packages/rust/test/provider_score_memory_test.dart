@@ -34,6 +34,18 @@ void main() {
       expect(ProviderScoreMemory.scoreFor(other, 'vixsrc'), 0);
     });
 
+    test('global score sums title totals for the same provider', () async {
+      final other = ProviderScoreScope.movie(tmdbId: 999);
+      await ProviderScoreMemory.recordServerUp(movie, 'vixsrc');
+      await ProviderScoreMemory.recordStreamUp(movie, 'vixsrc');
+      await ProviderScoreMemory.recordServerUp(other, 'vixsrc');
+      await ProviderScoreMemory.recordStreamUp(other, 'vixsrc');
+      expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 4);
+      expect(ProviderScoreMemory.scoreFor(other, 'vixsrc'), 4);
+      expect(ProviderScoreMemory.globalScoreFor('vixsrc'), 8);
+      expect(ProviderScoreMemory.globalScoreFor('vidlink'), 0);
+    });
+
     test('tv scores are per season and episode', () async {
       final otherEp = ProviderScoreScope.tv(
         tmdbId: 1399,

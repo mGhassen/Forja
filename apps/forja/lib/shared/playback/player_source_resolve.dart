@@ -66,6 +66,7 @@ abstract final class PlayerSourceResolve {
     List<String> settingsOrder = const [],
     bool Function()? isCancelled,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
+    void Function(String providerId, String status)? onProgress,
   }) =>
       PlaybackService.resolveDomain(
         domain: domain,
@@ -77,6 +78,7 @@ abstract final class PlayerSourceResolve {
         settingsOrder: settingsOrder,
         isCancelled: isCancelled,
         onHitsUpdated: onHitsUpdated,
+        onProgress: onProgress,
       );
 
   static Future<List<String>> _movieSettingsOrder(Movie movie) async {
@@ -142,6 +144,7 @@ abstract final class PlayerSourceResolve {
     required int episode,
     bool Function()? isCancelled,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
+    void Function(String providerId, String status)? onProgress,
   }) async {
     final order = await _movieSettingsOrder(movie);
     return resolveAuto(
@@ -153,6 +156,7 @@ abstract final class PlayerSourceResolve {
       settingsOrder: order,
       isCancelled: isCancelled,
       onHitsUpdated: onHitsUpdated,
+      onProgress: onProgress,
     );
   }
 

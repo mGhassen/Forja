@@ -495,6 +495,12 @@ class AnimeArabicService {
     await p.setStringList(_historyKey, list);
     watchHistoryRevision.value++;
   }
+
+  Future<void> clearWatchHistory() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_historyKey);
+    watchHistoryRevision.value++;
+  }
 }
 
 class _CacheEntry {

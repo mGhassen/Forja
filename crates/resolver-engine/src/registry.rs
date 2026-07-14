@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use stream_core::{order_providers, OrderProvidersRequest, SourceDomain};
 
+use crate::health_store::ProviderHealthStore;
 use crate::plugins;
 use crate::provider::{Provider, ProviderKind};
 
@@ -32,6 +33,7 @@ impl ProviderRegistry {
             candidate_ids: candidate_ids.to_vec(),
             settings_order: settings_order.to_vec(),
             preferred: preferred.to_string(),
+            reliability: ProviderHealthStore::global().all_provider_totals(),
         });
         response.ordered_ids
     }

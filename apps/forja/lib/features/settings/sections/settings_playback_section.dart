@@ -6,14 +6,10 @@ import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_expandable_section.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
-import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/playback/playback_cache_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-/// Playback sources, scoring, audio prefs, and cache reset.
+/// Playback sources, scoring, and audio prefs.
 class SettingsPlaybackSection extends StatefulWidget {
   const SettingsPlaybackSection({super.key});
 
@@ -34,7 +30,6 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   String _maxPlaybackHeightLabel = 'Auto';
   List<String> _streamProviderOrder = [];
   List<String> _animeProviderOrder = [];
-  bool _isClearingPlaybackCache = false;
 
   @override
   void initState() {
@@ -180,21 +175,6 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                       setState(() => _maxPlaybackHeightLabel = val);
                     },
                   ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'CACHE',
-                      style: TextStyle(
-                        color: AppTheme.current.primaryColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  _buildResetPlaybackCacheTile(),
       ],
     );
   }
@@ -214,166 +194,34 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       animeCatalog.keys,
     );
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Source scoring',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Drag to set baseline order. Domain scores may adjust each provider '
-            'by up to ±2 positions before checking. Stream quality is scored '
-            'after resolve.',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
-          ),
-          const SizedBox(height: 16),
-          ProviderPriorityTable(
-            domain: SourceDomain.movies,
-            title: 'Films',
-            subtitle: 'Webstreaming providers for movies.',
-            catalog: streamCatalog,
-            order: streamOrder,
-            onOrderChanged: (next) async {
-              setState(() => _streamProviderOrder = next);
-              await _settings.setStreamProviderOrder(next);
-            },
-            onReset: () async {
-              final defaults = List<String>.from(
-                SettingsService.defaultStreamProviderOrder,
-              );
-              await _settings.setStreamProviderOrder(defaults);
-              setState(() => _streamProviderOrder = defaults);
-            },
-          ),
-          const SizedBox(height: 20),
-          ProviderPriorityTable(
-            domain: SourceDomain.series,
-            title: 'Series',
-            subtitle:
-                'Same baseline list as films; series domain scores differ.',
-            catalog: streamCatalog,
-            order: streamOrder,
-            onOrderChanged: (next) async {
-              setState(() => _streamProviderOrder = next);
-              await _settings.setStreamProviderOrder(next);
-            },
-            onReset: () async {
-              final defaults = List<String>.from(
-                SettingsService.defaultStreamProviderOrder,
-              );
-              await _settings.setStreamProviderOrder(defaults);
-              setState(() => _streamProviderOrder = defaults);
-            },
-          ),
-          const SizedBox(height: 20),
-          ProviderPriorityTable(
-            domain: SourceDomain.anime,
-            title: 'Anime',
-            subtitle: 'Anime player source baseline and effective order.',
-            catalog: animeCatalog,
-            order: animeOrder,
-            onOrderChanged: (next) async {
-              setState(() => _animeProviderOrder = next);
-              await _settings.setAnimeProviderOrder(next);
-            },
-            onReset: () async {
-              final defaults = List<String>.from(
-                SettingsService.defaultAnimeProviderOrder,
-              );
-              await _settings.setAnimeProviderOrder(defaults);
-              setState(() => _animeProviderOrder = defaults);
-            },
-          ),
-          const SizedBox(height: 20),
-          ProviderPriorityTable(
-            domain: SourceDomain.asianDrama,
-            title: 'Asian Drama',
-            subtitle:
-                'Single KissKH source today — same pipeline as other types.',
-            catalog: const {'kisskh': 'KissKH'},
-            order: const ['kisskh'],
-            onOrderChanged: (_) {},
-            onReset: () {},
-          ),
-        ],
-      ),
+    return ProviderScoringPanel(
+      streamCatalog: streamCatalog,
+      streamOrder: streamOrder,
+      onStreamOrderChanged: (next) async {
+        setState(() => _streamProviderOrder = next);
+        await _settings.setStreamProviderOrder(next);
+      },
+      onStreamOrderReset: () async {
+        final defaults = List<String>.from(
+          SettingsService.defaultStreamProviderOrder,
+        );
+        await _settings.setStreamProviderOrder(defaults);
+        setState(() => _streamProviderOrder = defaults);
+      },
+      animeCatalog: animeCatalog,
+      animeOrder: animeOrder,
+      onAnimeOrderChanged: (next) async {
+        setState(() => _animeProviderOrder = next);
+        await _settings.setAnimeProviderOrder(next);
+      },
+      onAnimeOrderReset: () async {
+        final defaults = List<String>.from(
+          SettingsService.defaultAnimeProviderOrder,
+        );
+        await _settings.setAnimeProviderOrder(defaults);
+        setState(() => _animeProviderOrder = defaults);
+      },
     );
   }
 
-  Widget _buildResetPlaybackCacheTile() {
-    return shellFocusableTap(
-      context: context,
-      onTap: _isClearingPlaybackCache ? null : _resetPlaybackCache,
-      scaleOnFocus: 1.0,
-      navLeftAlways: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      child: Card(
-        child: ListTile(
-          leading: const Icon(Icons.cached_rounded, color: Colors.orangeAccent),
-          title: const Text('Reset playback cache'),
-          subtitle: const Text(
-            'Clears saved webstreaming extracts and torrent stream data. Watch history is kept.',
-          ),
-          trailing: _isClearingPlaybackCache
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.delete_outline, color: Colors.redAccent),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _resetPlaybackCache() async {
-    if (_isClearingPlaybackCache) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2C),
-        title: const Text(
-          'Reset playback cache',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Clears saved webstreaming stream URLs and torrent download cache on this device. '
-          'Your watch history and settings are not affected.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Reset',
-              style: TextStyle(color: Colors.redAccent),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-    setState(() => _isClearingPlaybackCache = true);
-    try {
-      await PlaybackCacheService.clearAll();
-      if (mounted) {
-        ForjaToast.success('Playback cache cleared');
-      }
-    } catch (e) {
-      if (mounted) {
-        ForjaToast.error('Failed to clear cache: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _isClearingPlaybackCache = false);
-    }
-  }
 }

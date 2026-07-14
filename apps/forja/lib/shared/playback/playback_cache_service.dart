@@ -1,16 +1,6 @@
-import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/playback/settings_data_cleaner.dart';
 
-/// User-triggered playback cache reset (settings).
+/// User-triggered playback cache reset (settings / recovery).
 abstract final class PlaybackCacheService {
-  static Future<void> clearAll() async {
-    await WebstreamingStreamCache.clearAll();
-    if (PlatformPlayback.capabilities.localTorrentEngine) {
-      try {
-        await TorrentStreamService().clearCacheDirectory();
-      } catch (_) {
-        // Torrent engine may be idle; disk clear is best-effort.
-      }
-    }
-  }
+  static Future<void> clearAll() => SettingsDataCleaner.clearStreamCaches();
 }

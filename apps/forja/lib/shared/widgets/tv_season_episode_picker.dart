@@ -66,7 +66,6 @@ class TvSeasonEpisodePicker extends StatefulWidget {
 }
 
 class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
-  bool _oldestFirst = true;
   int _episodeChunk = 0;
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _seasonScrollController = ScrollController();
@@ -186,7 +185,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     episodes.sort((a, b) {
       final aNum = (a['episode_number'] ?? a['episode']) as int;
       final bNum = (b['episode_number'] ?? b['episode']) as int;
-      return _oldestFirst ? aNum.compareTo(bNum) : bNum.compareTo(aNum);
+      return aNum.compareTo(bNum);
     });
     return episodes;
   }

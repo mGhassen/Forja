@@ -12,11 +12,14 @@ class ProviderOrderRow {
     required this.effectiveRank,
     required this.maxDisplacement,
     required this.supported,
+    this.reliabilityScore = 0,
   });
 
   final String id;
   final int settingsRank;
   final int domainScore;
+  /// Sum of per-title reliability totals for this provider (across titles).
+  final int reliabilityScore;
   final int effectiveRank;
   final int maxDisplacement;
   final bool supported;
@@ -25,6 +28,7 @@ class ProviderOrderRow {
         id: json['id']?.toString() ?? '',
         settingsRank: (json['settings_rank'] as num?)?.toInt() ?? 0,
         domainScore: (json['domain_score'] as num?)?.toInt() ?? 0,
+        reliabilityScore: (json['reliability_score'] as num?)?.toInt() ?? 0,
         effectiveRank: (json['effective_rank'] as num?)?.toInt() ?? 0,
         maxDisplacement: (json['max_displacement'] as num?)?.toInt() ?? 2,
         supported: json['supported'] == true,

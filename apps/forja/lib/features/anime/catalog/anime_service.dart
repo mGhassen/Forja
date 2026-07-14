@@ -1045,6 +1045,21 @@ class AnimeService {
     await p.setStringList(_historyKey, list);
     watchHistoryRevision.value++;
   }
+
+  /// Clear anime continue watching.
+  Future<void> clearWatchHistory() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_historyKey);
+    await p.remove('anime_watch_history');
+    watchHistoryRevision.value++;
+  }
+
+  /// Clear resolved-stream disk cache and sticky source pins.
+  Future<void> clearStreamCaches() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_streamCacheKey);
+    await p.remove(_sourcePrefKey);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════

@@ -119,6 +119,9 @@ abstract final class ProviderScoreProbeSync {
         activeProvider: activeProvider,
       );
 
+  /// Reset in-session probe→score mapping (after user clears reliability).
+  static void clearSession() => _lastStatus.clear();
+
   @visibleForTesting
   static void resetForTest() => _lastStatus.clear();
 }

@@ -411,6 +411,7 @@ class PlayerStreamMenu {
               id: entry.key,
               settingsRank: 999,
               domainScore: 0,
+              reliabilityScore: 0,
               effectiveRank: 999,
               maxDisplacement: 2,
               supported: true,
@@ -445,7 +446,8 @@ class PlayerStreamMenu {
     if (scoreScope == null) {
       return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
     }
-    final score = ProviderScoreMemory.scoreFor(scoreScope, providerId);
+    // Badge = live sum across all titles; ± prefixes = this title only.
+    final score = ProviderScoreMemory.globalScoreFor(providerId);
     final serverDelta =
         ProviderScoreMemory.serverVerdictFor(scoreScope, providerId);
     final streamDelta =

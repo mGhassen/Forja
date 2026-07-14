@@ -4,6 +4,9 @@ use std::collections::HashMap;
 /// Maximum positions a provider may move from its settings baseline rank.
 pub const MAX_PROVIDER_DISPLACEMENT: i32 = 2;
 
+/// Cap how much live reliability can shift the domain sort input.
+pub const RELIABILITY_ORDER_CLAMP: i32 = 20;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SourceDomain {
@@ -33,7 +36,11 @@ impl SourceDomain {
 pub struct ProviderOrderRow {
     pub id: String,
     pub settings_rank: u32,
+    /// Configured domain profile score (static).
     pub domain_score: u32,
+    /// Sum of per-title reliability totals for this provider (across titles).
+    #[serde(default)]
+    pub reliability_score: i32,
     pub effective_rank: u32,
     pub max_displacement: i32,
     pub supported: bool,
@@ -47,6 +54,9 @@ pub struct OrderProvidersRequest {
     pub settings_order: Vec<String>,
     #[serde(default = "default_auto")]
     pub preferred: String,
+    /// Live reliability totals keyed by provider id (optional; injected by FFI).
+    #[serde(default)]
+    pub reliability: HashMap<String, i32>,
 }
 
 fn default_auto() -> String {
@@ -132,6 +142,20 @@ fn fallback_score(id: &str, domain: SourceDomain) -> u32 {
 
 fn supports_domain(id: &str, domain: SourceDomain) -> bool {
     domain_score(id, domain) > 0
+}
+
+fn ranking_score(
+    id: &str,
+    domain: SourceDomain,
+    reliability: &HashMap<String, i32>,
+) -> u32 {
+    let base = domain_score(id, domain) as i32;
+    let live = reliability
+        .get(id)
+        .copied()
+        .unwrap_or(0)
+        .clamp(-RELIABILITY_ORDER_CLAMP, RELIABILITY_ORDER_CLAMP);
+    (base + live).clamp(0, 200) as u32
 }
 
 fn known_profile(id: &str, domain: SourceDomain) -> bool {
@@ -273,12 +297,14 @@ pub fn order_providers(request: OrderProvidersRequest) -> OrderProvidersResponse
             };
         }
         let score = domain_score(pin, request.domain);
+        let reliability_score = request.reliability.get(pin).copied().unwrap_or(0);
         return OrderProvidersResponse {
             ordered_ids: vec![pin.to_string()],
             rows: vec![ProviderOrderRow {
                 id: pin.to_string(),
                 settings_rank: settings_rank(pin, &request.settings_order, 0),
                 domain_score: score,
+                reliability_score,
                 effective_rank: 0,
                 max_displacement: MAX_PROVIDER_DISPLACEMENT,
                 supported: true,
@@ -317,7 +343,12 @@ pub fn order_providers(request: OrderProvidersRequest) -> OrderProvidersResponse
     let mut score_rank: HashMap<String, u32> = HashMap::new();
     let mut by_score: Vec<(String, u32)> = supported
         .iter()
-        .map(|id| (id.clone(), domain_score(id, request.domain)))
+        .map(|id| {
+            (
+                id.clone(),
+                ranking_score(id, request.domain, &request.reliability),
+            )
+        })
         .collect();
     by_score.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     for (i, (id, _)) in by_score.iter().enumerate() {
@@ -336,6 +367,7 @@ pub fn order_providers(request: OrderProvidersRequest) -> OrderProvidersResponse
                 id: id.clone(),
                 settings_rank: settings,
                 domain_score: domain_score(id, request.domain),
+                reliability_score: request.reliability.get(id).copied().unwrap_or(0),
                 effective_rank: effective,
                 max_displacement: MAX_PROVIDER_DISPLACEMENT,
                 supported: true,
@@ -368,6 +400,7 @@ pub fn next_provider_ids(
         candidate_ids: candidate_ids.to_vec(),
         settings_order: settings_order.to_vec(),
         preferred: "auto".into(),
+        reliability: HashMap::new(),
     });
     let cur = current_id.trim();
     if cur.is_empty() {
@@ -403,6 +436,7 @@ mod tests {
             candidate_ids: vec!["vidsrc".into(), "vixsrc".into()],
             settings_order: vec!["vidsrc".into(), "vixsrc".into()],
             preferred: "auto".into(),
+            reliability: HashMap::new(),
         });
         assert_eq!(response.ordered_ids.len(), 2);
         let vidsrc = response.rows.iter().find(|r| r.id == "vidsrc").unwrap();
@@ -420,6 +454,7 @@ mod tests {
             candidate_ids: vec!["kisskh".into()],
             settings_order: vec![],
             preferred: "kisskh".into(),
+            reliability: HashMap::new(),
         });
         assert_eq!(response.ordered_ids, vec!["kisskh"]);
         assert_eq!(response.rows.len(), 1);
@@ -432,6 +467,7 @@ mod tests {
             candidate_ids: vec!["videasy".into(), "miruro:bee".into()],
             settings_order: vec![],
             preferred: "auto".into(),
+            reliability: HashMap::new(),
         });
         assert_eq!(response.ordered_ids, vec!["miruro:bee"]);
     }
@@ -459,7 +495,29 @@ mod tests {
             candidate_ids: vec!["nuvio:foo".into()],
             settings_order: vec!["nuvio:foo".into()],
             preferred: "auto".into(),
+            reliability: HashMap::new(),
         });
         assert_eq!(response.ordered_ids, vec!["nuvio:foo"]);
+    }
+
+    #[test]
+    fn reliability_nudge_affects_score_rank_within_cap() {
+        // Same settings order; smashystream domain (46) below webstreamr (50).
+        // Heavy live reliability on smashystream should promote it in score sort.
+        let response = order_providers(OrderProvidersRequest {
+            domain: SourceDomain::Movies,
+            candidate_ids: vec!["webstreamr".into(), "smashystream".into()],
+            settings_order: vec!["webstreamr".into(), "smashystream".into()],
+            preferred: "auto".into(),
+            reliability: HashMap::from([("smashystream".into(), 20)]),
+        });
+        let smash = response
+            .rows
+            .iter()
+            .find(|r| r.id == "smashystream")
+            .unwrap();
+        assert_eq!(smash.reliability_score, 20);
+        // With +20 live, smash ranking_score 66 > webstreamr 50 → can move up within ±2.
+        assert!(smash.effective_rank <= 1);
     }
 }

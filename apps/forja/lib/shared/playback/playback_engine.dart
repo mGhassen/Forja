@@ -69,56 +69,79 @@ abstract final class PlaybackEngine {
         return null;
       }
 
-      final phase = response['phase']?.toString() ?? '';
-      if (phase == 'awaiting_host') {
+      // Host providers continue one-by-one in score order: Rust pauses for a
+      // single host, we fulfill it, continue may pause again for the next.
+      while ((response['phase']?.toString() ?? '') == 'awaiting_host') {
         final sessionId = response['sessionId']?.toString() ?? '';
         final hostRequests = response['hostRequests'] as List<dynamic>? ?? [];
+        if (sessionId.isEmpty || hostRequests.isEmpty) break;
+
+        final orderedHosts = hostRequests.whereType<Map>().map((raw) {
+          return Map<String, dynamic>.from(raw);
+        }).toList()
+          ..sort((a, b) {
+            final idA =
+                a['providerId']?.toString() ?? a['provider_id']?.toString() ?? '';
+            final idB =
+                b['providerId']?.toString() ?? b['provider_id']?.toString() ?? '';
+            final rankA = effectiveRanks?[idA] ?? 1 << 20;
+            final rankB = effectiveRanks?[idB] ?? 1 << 20;
+            return rankA.compareTo(rankB);
+          });
+
         final hostResults = <Map<String, dynamic>>[];
 
-        await Future.wait(
-          hostRequests.map((raw) async {
-            if (raw is! Map) return;
-            final req = Map<String, dynamic>.from(raw);
-            final providerId =
-                req['providerId']?.toString() ?? req['provider_id']?.toString();
-            if (providerId == null || providerId.isEmpty) return;
-            if (TvStreamFallback.isSkippedOnTv(providerId, providers)) {
-              onProgress?.call(providerId, 'skipped');
-              hostResults.add({
-                'providerId': providerId,
-                'sourcesJson': '[]',
-                'error': 'skipped_on_tv',
-              });
-              return;
-            }
-            onProgress?.call(providerId, 'trying');
-            final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
-              providerId: providerId,
-              payloadJson: req['payloadJson']?.toString() ?? '{}',
-              movie: movie,
-              providers: providers,
-              season: season,
-              episode: episode,
-              isCancelled: cancelled,
-            );
-            if (sourcesJson == null || sourcesJson == '[]') {
-              onProgress?.call(providerId, 'failed');
-              hostResults.add({
-                'providerId': providerId,
-                'sourcesJson': '[]',
-                'error': 'no_streams',
-              });
-            } else {
-              onProgress?.call(providerId, 'success');
-              hostResults.add({
-                'providerId': providerId,
-                'sourcesJson': sourcesJson,
-              });
-            }
-          }),
-        );
+        for (final req in orderedHosts) {
+          if (cancelled()) {
+            HostProviderAdapter.cancelAllPending();
+            return null;
+          }
+          final providerId =
+              req['providerId']?.toString() ?? req['provider_id']?.toString();
+          if (providerId == null || providerId.isEmpty) continue;
+
+          if (TvStreamFallback.isSkippedOnTv(providerId, providers)) {
+            onProgress?.call(providerId, 'skipped');
+            hostResults.add({
+              'providerId': providerId,
+              'sourcesJson': '[]',
+              'error': 'skipped_on_tv',
+            });
+            continue;
+          }
+
+          onProgress?.call(providerId, 'trying');
+          final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
+            providerId: providerId,
+            payloadJson: req['payloadJson']?.toString() ?? '{}',
+            movie: movie,
+            providers: providers,
+            season: season,
+            episode: episode,
+            isCancelled: cancelled,
+          );
+          if (sourcesJson == null || sourcesJson == '[]') {
+            onProgress?.call(providerId, 'failed');
+            hostResults.add({
+              'providerId': providerId,
+              'sourcesJson': '[]',
+              'error': 'no_streams',
+            });
+            // Score order: report this miss; Rust continue resumes next provider.
+            if (!fillBackgroundHits) break;
+          } else {
+            onProgress?.call(providerId, 'success');
+            hostResults.add({
+              'providerId': providerId,
+              'sourcesJson': sourcesJson,
+            });
+            if (!fillBackgroundHits) break;
+          }
+        }
 
         if (cancelled()) return null;
+        if (hostResults.isEmpty) break;
+
         response = await ResolverEngineClient.continueWithHost(
           sessionId: sessionId,
           hostResults: hostResults,

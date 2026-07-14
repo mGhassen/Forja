@@ -127,7 +127,19 @@ fn playback_normalize_legacy_json(payload_json: String) -> String {
 }
 
 fn playback_order_providers_json(payload_json: String) -> String {
-    stream_core::order_providers_json(&payload_json)
+    use stream_core::{order_providers, OrderProvidersRequest};
+
+    let mut request: OrderProvidersRequest = match serde_json::from_str(&payload_json) {
+        Ok(r) => r,
+        Err(e) => return serde_json::json!({ "error": e.to_string() }).to_string(),
+    };
+    if request.reliability.is_empty() {
+        request.reliability = resolver_engine::ProviderHealthStore::global().all_provider_totals();
+    }
+    let response = order_providers(request);
+    serde_json::to_string(&response).unwrap_or_else(|e| {
+        serde_json::json!({ "error": e.to_string() }).to_string()
+    })
 }
 
 fn parse_m3u_json(content: String) -> String {

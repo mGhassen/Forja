@@ -154,6 +154,20 @@ class WatchHistoryService {
     }
   }
 
+  /// Clear all movies/TV continue-watching entries and dismissed suppressions.
+  Future<void> clearAll() async {
+    try {
+      await kvSetJsonList(_key, []);
+      await kvSetJsonStringList(_dismissedKey, []);
+      _current = [];
+      _controller.add(_current);
+      debugPrint('[WatchHistory] Cleared all history');
+    } catch (e) {
+      debugPrint('[WatchHistory] Error clearing history: $e');
+      rethrow;
+    }
+  }
+
   Future<bool> isDismissed(String uniqueId) async {
     try {
       final dismissed = await kvGetJsonStringList(_dismissedKey);

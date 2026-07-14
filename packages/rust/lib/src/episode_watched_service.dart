@@ -146,4 +146,14 @@ class EpisodeWatchedService {
   void _syncEpisodeState(int tmdbId, int season, int episode, bool watched) {
     syncHandler?.call(tmdbId, season, episode, watched);
   }
+
+  /// Clear local watched checkmarks and timestamps (does not touch Trakt/Simkl).
+  Future<void> clearAll() async {
+    _cache = {};
+    _timestampCache = {};
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+    await prefs.remove(_timestampKey);
+    debugPrint('[EpisodeWatched] Cleared all local watched flags');
+  }
 }

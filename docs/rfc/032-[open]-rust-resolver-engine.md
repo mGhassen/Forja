@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **6 / 6** acceptance (slice 1) · **4 / 7** acceptance (slice 2) |
-| **Current slice** | Hardening — all template embed HostRequired plugins registered; videasy/template native ports open |
+| **Progress** | **8 / 8** components · **6 / 6** acceptance (slice 1) · **5 / 8** acceptance (slice 2) |
+| **Current slice** | Hardening — host continue is one-by-one in score order; videasy/template native ports open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -54,6 +54,7 @@
 | 11 | R32-A11 | Issue 018 manual parity re-run on new path | ⬜ |
 | 12 | R32-A12 | Dart + Rust integration tests for host continue flow | ✅ |
 | 13 | R32-A13 | Every `stream-core` template ID registered as `HostRequired` plugin (issue 039) | ✅ |
+| 14 | R32-A14 | Host pause/resume one-by-one in score order (no parallel host sprint) | ✅ |
 
 ---
 

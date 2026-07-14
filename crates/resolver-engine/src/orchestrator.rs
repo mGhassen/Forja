@@ -21,6 +21,8 @@ struct ResolveSession {
     request: StreamRequest,
     ordered_ids: Vec<String>,
     effective_ranks: HashMap<String, u32>,
+    /// Next provider index in [ordered_ids] after the current host pause.
+    next_idx: usize,
     collected: Vec<PlayableSource>,
     progress: Vec<ResolveProgressEvent>,
     started: Instant,
@@ -187,53 +189,90 @@ fn resolve_inner(request_json: &str) -> Result<ResolveResponse, String> {
     }
 
     let effective_ranks = effective_ranks_map(&registry, &request, &ordered);
-    let max_in_flight = request.settings.max_in_flight.max(1) as usize;
-    let mut collected = Vec::new();
-    let mut pending_host = Vec::new();
-    let mut progress = Vec::new();
-    let mut idx = 0usize;
+    race_from(ResolveSession {
+        request,
+        ordered_ids: ordered,
+        effective_ranks,
+        next_idx: 0,
+        collected: Vec::new(),
+        progress: Vec::new(),
+        started,
+    })
+}
 
-    while idx < ordered.len() && collected.is_empty() {
+/// Walk providers in score order. HostRequired pauses for a **single** host
+/// (Flutter continues one-by-one). Consecutive natives may race up to maxInFlight.
+fn race_from(mut session: ResolveSession) -> Result<ResolveResponse, String> {
+    let registry = Arc::new(ProviderRegistry::built_in());
+    let ctx = ResolverContext::new();
+    let max_in_flight = session.request.settings.max_in_flight.max(1) as usize;
+    let ordered = session.ordered_ids.clone();
+    let mut idx = session.next_idx;
+
+    while idx < ordered.len() && session.collected.is_empty() {
         if ctx.is_cancelled() {
             return Err("cancelled".into());
         }
 
-        let mut batch_native = Vec::new();
-        while idx < ordered.len() && batch_native.len() < max_in_flight {
-            let id = ordered[idx].clone();
+        let id = ordered[idx].clone();
+
+        if session.request.settings.skip_host_on_tv && registry.is_host_required(&id) {
+            session.progress.push(ResolveProgressEvent {
+                provider_id: id,
+                status: "skipped_on_tv".into(),
+                message: None,
+            });
             idx += 1;
-
-            if request.settings.skip_host_on_tv && registry.is_host_required(&id) {
-                progress.push(ResolveProgressEvent {
-                    provider_id: id.clone(),
-                    status: "skipped_on_tv".into(),
-                    message: None,
-                });
-                continue;
-            }
-
-            if registry.is_host_required(&id) {
-                push_host_attempt(
-                    &registry,
-                    &ctx,
-                    &request,
-                    &id,
-                    &effective_ranks,
-                    &mut progress,
-                    &mut pending_host,
-                    &mut collected,
-                )?;
-                if !collected.is_empty() {
-                    break;
-                }
-                continue;
-            }
-
-            batch_native.push(id);
+            continue;
         }
 
-        if !collected.is_empty() {
-            break;
+        if registry.is_host_required(&id) {
+            let mut pending_host = Vec::new();
+            push_host_attempt(
+                &registry,
+                &ctx,
+                &session.request,
+                &id,
+                &session.effective_ranks,
+                &mut session.progress,
+                &mut pending_host,
+                &mut session.collected,
+            )?;
+            if !session.collected.is_empty() {
+                break;
+            }
+            // Pause for this host only — Flutter tries it, then continue resumes
+            // at idx+1 so lower-ranked providers wait their turn.
+            let session_id = next_session_id();
+            session.next_idx = idx + 1;
+            let progress = session.progress.clone();
+            let race_ms = session.started.elapsed().as_millis() as u32;
+            SESSIONS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(session_id.clone(), session);
+            return Ok(ResolveResponse {
+                phase: ResolvePhase::AwaitingHost,
+                session_id,
+                winner: None,
+                sources: vec![],
+                winner_provider_id: None,
+                host_requests: pending_host,
+                progress,
+                race_ms,
+                error: None,
+            });
+        }
+
+        // Batch only consecutive natives — never skip over a host of higher score.
+        let mut batch_native = Vec::new();
+        while idx < ordered.len() && batch_native.len() < max_in_flight {
+            let nid = ordered[idx].clone();
+            if registry.is_host_required(&nid) {
+                break;
+            }
+            batch_native.push(nid);
+            idx += 1;
         }
 
         if batch_native.is_empty() {
@@ -241,7 +280,7 @@ fn resolve_inner(request_json: &str) -> Result<ResolveResponse, String> {
         }
 
         for id in &batch_native {
-            progress.push(ResolveProgressEvent {
+            session.progress.push(ResolveProgressEvent {
                 provider_id: id.clone(),
                 status: "trying".into(),
                 message: None,
@@ -251,30 +290,30 @@ fn resolve_inner(request_json: &str) -> Result<ResolveResponse, String> {
         if let Some((winner_id, sources)) = parallel_try_native(
             &registry,
             &ctx,
-            &request,
+            &session.request,
             &batch_native,
-            &effective_ranks,
+            &session.effective_ranks,
         ) {
-            progress.push(ResolveProgressEvent {
+            session.progress.push(ResolveProgressEvent {
                 provider_id: winner_id.clone(),
                 status: "success".into(),
                 message: None,
             });
             for id in &batch_native {
                 if id != &winner_id {
-                    progress.push(ResolveProgressEvent {
+                    session.progress.push(ResolveProgressEvent {
                         provider_id: id.clone(),
                         status: "failed".into(),
                         message: Some("lost race".into()),
                     });
                 }
             }
-            collected = sources;
+            session.collected = sources;
             break;
         }
 
         for id in &batch_native {
-            progress.push(ResolveProgressEvent {
+            session.progress.push(ResolveProgressEvent {
                 provider_id: id.clone(),
                 status: "failed".into(),
                 message: None,
@@ -282,51 +321,19 @@ fn resolve_inner(request_json: &str) -> Result<ResolveResponse, String> {
         }
     }
 
-    if collected.is_empty() && !pending_host.is_empty() {
-        let session_id = next_session_id();
-        let session = ResolveSession {
-            request: request.clone(),
-            ordered_ids: ordered.clone(),
-            effective_ranks: effective_ranks.clone(),
-            collected,
-            progress: progress.clone(),
-            started,
-        };
-        SESSIONS
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(session_id.clone(), session);
-        return Ok(ResolveResponse {
-            phase: ResolvePhase::AwaitingHost,
-            session_id,
-            winner: None,
-            sources: vec![],
-            winner_provider_id: None,
-            host_requests: pending_host,
-            progress,
-            race_ms: started.elapsed().as_millis() as u32,
-            error: None,
-        });
-    }
+    session.next_idx = idx;
 
-    if collected.is_empty() {
+    if session.collected.is_empty() {
         return Ok(ResolveResponse {
             phase: ResolvePhase::Failed,
-            progress,
-            race_ms: started.elapsed().as_millis() as u32,
+            progress: session.progress,
+            race_ms: session.started.elapsed().as_millis() as u32,
             error: Some("no streams".into()),
             ..Default::default()
         });
     }
 
-    Ok(finalize_response(ResolveSession {
-        request,
-        ordered_ids: ordered,
-        effective_ranks,
-        collected,
-        progress,
-        started,
-    }))
+    Ok(finalize_response(session))
 }
 
 fn push_host_attempt(
@@ -461,6 +468,7 @@ fn resolve_single(
                 request: request.clone(),
                 ordered_ids: vec![id.to_string()],
                 effective_ranks: HashMap::new(),
+                next_idx: 1,
                 collected: sources,
                 progress,
                 started,
@@ -472,6 +480,7 @@ fn resolve_single(
                 request: request.clone(),
                 ordered_ids: vec![id.to_string()],
                 effective_ranks: HashMap::new(),
+                next_idx: 1,
                 collected: vec![],
                 progress: progress.clone(),
                 started,
@@ -583,14 +592,13 @@ fn continue_inner(payload_json: &str) -> Result<ResolveResponse, String> {
         .remove(&req.session_id)
         .ok_or_else(|| "session not found".to_string())?;
 
-    let mut collected = session.collected;
     for host in req.host_results {
         if let Some(err) = host.error {
-            session
-                .request
-                .settings
-                .blocklist_urls
-                .push(err);
+            session.progress.push(ResolveProgressEvent {
+                provider_id: host.provider_id.clone(),
+                status: "failed".into(),
+                message: Some(err),
+            });
             continue;
         }
         let rank = *session
@@ -598,19 +606,28 @@ fn continue_inner(payload_json: &str) -> Result<ResolveResponse, String> {
             .get(&host.provider_id)
             .unwrap_or(&0);
         let sources = ingest_host_sources(&host.provider_id, &host.sources_json, rank);
-        if !sources.is_empty() {
-            collected.extend(sources);
+        if sources.is_empty() {
+            session.progress.push(ResolveProgressEvent {
+                provider_id: host.provider_id.clone(),
+                status: "failed".into(),
+                message: Some("no_streams".into()),
+            });
+            continue;
         }
+        session.progress.push(ResolveProgressEvent {
+            provider_id: host.provider_id.clone(),
+            status: "success".into(),
+            message: None,
+        });
+        session.collected.extend(sources);
     }
 
-    Ok(finalize_response(ResolveSession {
-        request: session.request,
-        ordered_ids: session.ordered_ids,
-        effective_ranks: session.effective_ranks,
-        collected,
-        progress: session.progress,
-        started: session.started,
-    }))
+    if !session.collected.is_empty() {
+        return Ok(finalize_response(session));
+    }
+
+    // Host miss — keep walking score order (next native or next host pause).
+    race_from(session)
 }
 
 #[cfg(test)]
@@ -667,6 +684,44 @@ mod tests {
             done["winner"]["url"].as_str().unwrap(),
             "https://example.com/stream.m3u8"
         );
+    }
+
+    #[test]
+    fn hosts_pause_one_by_one_in_score_order() {
+        // settings_order forces videasy before vidlink — first pause is videasy only.
+        let payload = serde_json::json!({
+            "domain": "movies",
+            "tmdbId": 1,
+            "mediaType": "movie",
+            "settings": {
+                "enabledProviderIds": ["videasy", "vidlink"],
+                "settingsOrder": ["videasy", "vidlink"],
+                "preferred": "auto",
+                "maxInFlight": 2
+            }
+        });
+        let raw = resolve(&payload.to_string());
+        let first: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(first["phase"], "awaiting_host");
+        let hosts = first["hostRequests"].as_array().unwrap();
+        assert_eq!(hosts.len(), 1);
+        assert_eq!(hosts[0]["providerId"], "videasy");
+
+        let session_id = first["sessionId"].as_str().unwrap();
+        let miss = serde_json::json!({
+            "sessionId": session_id,
+            "hostResults": [{
+                "providerId": "videasy",
+                "sourcesJson": "[]",
+                "error": "no_streams"
+            }]
+        });
+        let second_raw = continue_with_host(&miss.to_string());
+        let second: serde_json::Value = serde_json::from_str(&second_raw).unwrap();
+        assert_eq!(second["phase"], "awaiting_host");
+        let hosts2 = second["hostRequests"].as_array().unwrap();
+        assert_eq!(hosts2.len(), 1);
+        assert_eq!(hosts2[0]["providerId"], "vidlink");
     }
 
     #[test]

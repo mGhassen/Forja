@@ -12,52 +12,41 @@ void main() {
     await initRustForAppTests();
   });
 
-  group('ProviderPriorityTable', () {
-    testWidgets('renders films domain scores and baseline rank', (tester) async {
+  group('ProviderScoringPanel', () {
+    testWidgets('shows tabbed panel with score and tries labels', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ProviderPriorityTable(
-              domain: SourceDomain.movies,
-              title: 'Films',
-              subtitle: 'Test',
-              catalog: const {
-                'videasy': 'Videasy',
-                'vidlink': 'VidLink',
-              },
-              order: const ['videasy', 'vidlink'],
-              onOrderChanged: (_) {},
-              onReset: () {},
+            body: SingleChildScrollView(
+              child: ProviderScoringPanel(
+                streamCatalog: const {
+                  'videasy': 'Videasy',
+                  'vidlink': 'VidLink',
+                },
+                streamOrder: const ['videasy', 'vidlink'],
+                onStreamOrderChanged: (_) {},
+                onStreamOrderReset: () {},
+                animeCatalog: const {'miruro:bee': 'Miruro'},
+                animeOrder: const ['miruro:bee'],
+                onAnimeOrderChanged: (_) {},
+                onAnimeOrderReset: () {},
+              ),
             ),
           ),
         ),
       );
 
-      expect(find.text('Films'), findsOneWidget);
-      expect(find.text('Videasy'), findsOneWidget);
+      expect(find.text('Server reliability'), findsOneWidget);
+      expect(find.text('Movies'), findsOneWidget);
+      expect(find.text('Series'), findsOneWidget);
+      expect(find.text('Anime'), findsOneWidget);
       expect(find.text('Score'), findsOneWidget);
-      expect(find.text('Eff.'), findsOneWidget);
-    });
+      expect(find.text('Tries'), findsOneWidget);
+      expect(find.text('Videasy'), findsOneWidget);
 
-    testWidgets('asian drama shows single kisskh row', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ProviderPriorityTable(
-              domain: SourceDomain.asianDrama,
-              title: 'Asian Drama',
-              subtitle: 'Test',
-              catalog: const {'kisskh': 'KissKH'},
-              order: const ['kisskh'],
-              onOrderChanged: (_) {},
-              onReset: () {},
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('KissKH'), findsOneWidget);
-      expect(find.text('kisskh'), findsOneWidget);
+      await tester.tap(find.text('Anime'));
+      await tester.pumpAndSettle();
+      expect(find.text('Miruro'), findsOneWidget);
     });
   });
 }

@@ -47,9 +47,10 @@ class PlaybackRecovery {
   void handlePlayerError(String err, {required String? currentUrl}) {
     if (isVideoDecoderError(err)) {
       if (currentUrl != null) PlaybackSelection.recordFailedUrl(currentUrl);
+      // One-shot software decode on the same stream — never hop providers/sources.
       if (!hwFallbackAttempted && onForceSoftwareDecode != null) {
         hwFallbackAttempted = true;
-        unawaited(_forceSoftwareDecode().then((_) => onRetryNextSource()));
+        unawaited(_forceSoftwareDecode());
         return;
       }
       onRetryNextSource();
@@ -61,6 +62,7 @@ class PlaybackRecovery {
     }
     if (currentUrl != null && isFatalPlayerOpenError(err)) {
       PlaybackSelection.recordFailedUrl(currentUrl);
+      onRetryNextSource();
     }
   }
 

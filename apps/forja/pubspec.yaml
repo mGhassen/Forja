@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   http: ^1.6.0
   cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
   carousel_slider: ^5.1.2
   google_fonts: ^8.0.2
   flutter_svg: ^2.2.0

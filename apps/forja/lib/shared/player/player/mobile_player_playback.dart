@@ -352,14 +352,26 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
 
-        // Manual server pin (or Auto server Off): stop.
-        // Auto server: walk the next providers in order.
+        // Dead sources (often a stale disk cache): siblings already tried.
+        // Drop cache, then either re-extract the pinned server or run a full
+        // Auto race like green Play (score order from the top).
+        await _invalidateWebstreamingCacheForCurrent();
+
         if (_s._providerPinned) {
           await _failPlaybackNoFailover(
             message: 'Playback failed. Pick another server from Sources.',
           );
         } else {
-          await _autoFallbackToNextProvider();
+          final recovered = await _reresolveLikeFirstPlay(
+            chainGen: initGen,
+            seekAfterOpen: widget.startPosition,
+          );
+          if (!recovered && !_fallbackAborted(initGen)) {
+            await _failPlaybackNoFailover(
+              message:
+                  'Could not find any working stream from any provider.',
+            );
+          }
         }
       } else {
         // No sources list — primary mediaPath (torrent localhost or direct URL).
@@ -454,6 +466,99 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     }
     debugPrint('[Player] dropped stale webstreaming cache $key');
     _s._notifySourceMenuChanged();
+  }
+
+  /// After sibling streams fail: full Auto resolve (same as first Play).
+  Future<bool> _reresolveLikeFirstPlay({
+    required int chainGen,
+    Duration? seekAfterOpen,
+  }) async {
+    final movie = widget.movie;
+    final providers = widget.providers;
+    if (movie == null || providers == null || providers.isEmpty) {
+      return false;
+    }
+
+    debugPrint(
+      '[Player] Dead sources — full Auto re-resolve like first Play',
+    );
+    PlaybackEngine.cancelAllPending();
+    _s._statusController.upsert(
+      'reresolve',
+      'Finding servers…',
+      kind: StatusRouletteKind.loading,
+    );
+
+    final hit = await PlayerSourceResolve.resolveAutoForMovie(
+      movie: movie,
+      providers: providers,
+      season: widget.selectedSeason ?? 1,
+      episode: widget.selectedEpisode ?? 1,
+      isCancelled: () => _fallbackAborted(chainGen),
+      onProgress: (providerId, status) {
+        if (_fallbackAborted(chainGen)) return;
+        final label = PlayerProviderMenu.snackbarLabel(
+          providerId,
+          providers[providerId],
+        );
+        final kind = switch (status) {
+          'success' => StatusRouletteKind.success,
+          'failed' || 'skipped' => StatusRouletteKind.failed,
+          _ => StatusRouletteKind.loading,
+        };
+        _s._statusController.upsert('provider-$providerId', label, kind: kind);
+        _s._syncProbeStatus(
+          providerId,
+          switch (status) {
+            'success' => StreamProviderProbeStatus.success,
+            'failed' => StreamProviderProbeStatus.failed,
+            'skipped' => StreamProviderProbeStatus.skippedOnTv,
+            'trying' => StreamProviderProbeStatus.trying,
+            _ => StreamProviderProbeStatus.pending,
+          },
+        );
+      },
+      onHitsUpdated: (hits) {
+        if (_fallbackAborted(chainGen)) return;
+        _s._liveProviderSourcesCache.value = {
+          ..._s._liveProviderSourcesCache.value,
+          ...PlaybackEngine.hitsToProviderCache(hits),
+        };
+      },
+    );
+
+    if (_fallbackAborted(chainGen)) return false;
+    if (hit == null || hit.streamSources.isEmpty) {
+      _s._statusController.complete();
+      return false;
+    }
+
+    final fresh = dedupeStreamSources(hit.streamSources)
+        .where((s) => !isUnplayableCachedStreamUrl(s.url))
+        .toList();
+    if (fresh.isEmpty) {
+      _s._statusController.complete();
+      return false;
+    }
+
+    _s._cacheProviderSources(hit.providerId, fresh);
+    _s._markProviderLoadSucceeded(hit.providerId);
+    setState(() {
+      _s._currentProvider = hit.providerId;
+      _s._currentSources = fresh;
+      _s._currentUrl = hit.streamUrl;
+      _s._currentPlayingCatalogUrl = fresh.first.url;
+      _s._currentFallbackSourceIndex = 0;
+      _s._failedSourceIndices.clear();
+      _s._checkingSourceIndices.clear();
+      _s._hasError = false;
+      _s._errorMessage = '';
+    });
+    return _trySourcesFromIndex(
+      0,
+      chainGen: chainGen,
+      seekAfterOpen: seekAfterOpen,
+    );
   }
 
   /// Stop on failure — no silent hop to the next provider.

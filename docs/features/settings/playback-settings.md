@@ -17,14 +17,15 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
-- Reorder **Source scoring** tables for Films, Series, Anime, and Asian Drama (drag baseline rank; see domain score, ±2 adjustment cap, and effective pre-check order)
+- Reorder **Server reliability** (Movies / Series / Anime tabs): drag preference; **Score** is live reliability; **Tries** is Auto check order
 - Set **Max stream quality** to cap automatic selection (Auto, 4K, 1080p, 720p, …)
-- **Reset playback cache** — clears saved webstreaming stream URLs and torrent download cache on this device (watch history and settings are kept)
+
+Cache reset moved to **Settings → [Cache & data](cache-data.md)** (stream URLs, images, scores, continue watching).
 
 ## Tips
 
 - Play source toggles: green **Play** (play icon) uses **Webstreaming** extractors only; white link **Play** / **Sources** use **Direct torrent** (Forja + **Nuvio** tab) and **Stremio** (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel uses **All / Torrents / Stremio / Nuvio** when Direct torrent and Nuvio scrapers are available.
-- **Source scoring** tables: drag sets your **baseline** order per type. **Domain score** may move a provider at most **±2** positions before checking. **Effective** shows the pre-check order the engine uses. In the player Source panel, the **badge number** is a separate live score on a **settings base of 0**, stored **per film / TV episode / anime episode** — server **±2**, stream **±2** (ok together → **+4**), all streams down **−2** (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve — not shown in settings.
+- **Server reliability**: tabs for Movies / Series / Anime (one list at a time). Drag to prefer a server. **Score** rises when that server works across titles you play. **Tries** (1st, 2nd, …) is the order Auto tries them. In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
 - **Max stream quality** caps what the playback engine picks automatically (device probe still applies under Auto)
 - Anime uses the same resolve + Rust scoring pipeline as movies; saved source pin still wins when set
 - External player is chosen per stream from the in-player **Player** menu — playback always starts in the built-in player
@@ -35,6 +36,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - [Media details](../movies-tv/media-details.md)
 - [Webstreaming](../movies-tv/direct-streaming-mode.md)
 - [Stream providers](../sources/stream-providers.md)
+- [Cache & data](cache-data.md)
 - [Anime](../hubs/anime.md)
 - [External players](../playback/external-players.md)
 - [Audio tracks](../playback/audio-tracks.md)

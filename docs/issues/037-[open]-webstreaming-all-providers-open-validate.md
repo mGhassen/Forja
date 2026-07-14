@@ -62,9 +62,11 @@ Green **Play** treated “extractor returned a URL” as enough for some paths (
 - **Manual pin** — `_failPlaybackNoFailover` when user picks a server/stream (or Auto server Off)
 - **Auto** — `_autoFallbackToNextProvider` on open/check fail (I37-T08); green Play no longer force-pins
 - Junk extracts filtered (`isUnplayableCachedStreamUrl`); server glyph green only after play/check
+- **Dead cache (later):** full Auto re-resolve like first Play — [043](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md)
 
 ### Related
 
 - [Webstreaming](../features/movies-tv/direct-streaming-mode.md)
 - [Stream providers](../features/sources/stream-providers.md)
 - [RFC-031](../rfc/031-[open]-source-engine-middleware.md) Auto failover vs manual pin
+- [043](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) — dead cache → invalidate → first-Play resolve

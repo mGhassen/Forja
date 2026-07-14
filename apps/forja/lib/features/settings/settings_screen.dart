@@ -13,6 +13,7 @@ import 'splash_preview_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
+import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
@@ -128,6 +129,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
               const SettingsPlaybackSection(),
+
+              const SettingsCacheDataSection(),
 
               const SettingsSearchTorrentsSection(),
 

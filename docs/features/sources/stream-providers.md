@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja resolves streams through the **Rust Resolver Engine** (`crates/resolver-engine`). Movie/TV scrapers never compete with anime or Asian Drama scrapers. Each domain has provider **profiles** (configured domain scores). Your **settings order** is the baseline; domain scores may adjust each provider by at most **±2** ranks before checking. The engine scores resolved URLs against your device (codec, resolution, latency) and returns a **playable URL + headers** — the player does not know which scraper produced it.
+Forja resolves streams through the **Rust Resolver Engine** (`crates/resolver-engine`). Movie/TV scrapers never compete with anime or Asian Drama scrapers. Each domain has provider **profiles** (configured domain scores). Your **settings order** is the baseline; domain scores plus a **live reliability Σ** (sum of per-title check scores for that provider, clamped ±20 when ranking) may adjust each provider by at most **±2** ranks before checking. The engine scores resolved URLs against your device (codec, resolution, latency) and returns a **playable URL + headers** — the player does not know which scraper produced it.
 
 Green **Play** calls `PlaybackService.resolve()` → Resolver Engine job. Host-only providers (WebView embed sniff, Videasy WASM, Nuvio) are fulfilled by a host adapter after the engine requests them.
 
@@ -20,16 +20,16 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidLin
 
 ## How to open it
 
-**Settings → Playback → Source scoring** — per-type tables with baseline rank, domain score, ±2 cap, and effective pre-check order.
+**Settings → Playback → Server reliability** — Movies / Series / Anime tabs with live **Score** and Auto **Tries** order.
 
 **In player → Servers** — pick **Auto** (default) or pin a specific server. Stream rows show a language flag when the title encodes a region/language. Header **Embed** (next to reload) controls WebView sniff mode: checked loads the embed inside an iframe; unchecked loads the embed URL directly.
 
 ## What you can do
 
-- **Auto** — Resolver Engine (details **Play**) and in-player Auto try providers in effective order until one **works**: extract → HTTP reachability probe → mpv open/decode. If that open/check fails while Auto server is On, Forja walks the next servers in order.
+- **Auto** — Resolver Engine (details **Play**) and in-player Auto try providers in **effective score order**, one step at a time until one **works**: extract → HTTP reachability probe → mpv open/decode. Host providers (VidLink, Videasy, …) are not raced in parallel — Rust pauses for the next host, Flutter fulfills it, then the race resumes at the next provider. If a **cached** list goes dead after siblings fail, Forja drops the cache and runs that full score-order resolve again (same as first Play). Mid-play open/check fail with Auto On can still continue with the next server in the chain.
 - **Manual** — pick a server or stream (or turn Auto server Off); Forja stays on it — **no** silent cross-provider/stream hop on fail
 - Source links are **HTTP-probed before open** on play (same check as menu tap-to-probe). Dead playlist/CDN links fail that probe without waiting for a full mpv timeout.
-- The **score badge** uses a **settings base of 0** per server **for this film, TV episode, or anime episode**. Server and stream outcomes **add**: server **±2**, stream **±2** (both ok → **+4**), all streams down **−2**. Asian drama is not scored. A **+/− prefix** shows the last change.
+- The **score badge number** is the provider’s **global Σ** (sum of title totals for that server). The **+/− prefixes** are outcomes **for this film / TV episode / anime episode** only: server **±2**, stream **±2** (both ok → **+4** on this title), all streams down **−2**. Asian drama is not scored. Those per-title totals feed Σ and nudge Auto order over time.
 - Reorder providers in Settings (baseline per domain; effective order preview in table)
 - On decoder failure, try software decode once — do not auto-switch providers
 
