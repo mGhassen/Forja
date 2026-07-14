@@ -102,36 +102,36 @@ BoxDecoration iptvFocusButtonDecoration({
   );
 }
 
-/// Outline border colors for IPTV dialog text fields (share code, URL, etc.).
+/// Border colors for IPTV share-code cells (boxed OTP style).
 Color iptvDialogFieldBorderColor({required bool focused}) =>
     Colors.white.withValues(alpha: focused ? 0.35 : 0.12);
 
+/// Underline field chrome for portal URL / username / password (not card outlines).
 InputDecoration iptvDialogFieldDecoration({
   required bool focused,
   String? hintText,
   TextStyle? hintStyle,
   Widget? suffixIcon,
 }) {
-  const radius = 8.0;
-  final borderRadius = BorderRadius.circular(radius);
-  final idle = BorderSide(color: iptvDialogFieldBorderColor(focused: false));
+  final idle = BorderSide(
+    color: Colors.white.withValues(alpha: 0.16),
+  );
   final active = BorderSide(
-    color: iptvDialogFieldBorderColor(focused: true),
-    width: 1.5,
+    color: focused ? ForjaShellColors.brandGreen : Colors.white.withValues(alpha: 0.4),
+    width: focused ? 1.5 : 1,
   );
   return InputDecoration(
     hintText: hintText,
     hintStyle: hintStyle,
     isDense: true,
-    filled: true,
-    fillColor: Colors.white.withValues(alpha: focused ? 0.08 : 0.04),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    filled: false,
+    contentPadding: const EdgeInsets.fromLTRB(0, 6, 0, 10),
     suffixIcon: suffixIcon,
-    suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-    border: OutlineInputBorder(borderRadius: borderRadius, borderSide: idle),
-    enabledBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: idle),
-    focusedBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: active),
-    disabledBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: idle),
+    suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 32),
+    border: UnderlineInputBorder(borderSide: idle),
+    enabledBorder: UnderlineInputBorder(borderSide: idle),
+    focusedBorder: UnderlineInputBorder(borderSide: active),
+    disabledBorder: UnderlineInputBorder(borderSide: idle),
   );
 }
 

@@ -872,6 +872,18 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
                   }
                 },
               ),
+              PlayerPopupListTile(
+                label: 'Auto skip intro',
+                subtitle: SettingsService.autoSkipIntroNotifier.value
+                    ? 'On'
+                    : 'Off',
+                selected: SettingsService.autoSkipIntroNotifier.value,
+                onTap: () async {
+                  final next = !SettingsService.autoSkipIntroNotifier.value;
+                  await SettingsService().setAutoSkipIntro(next);
+                  setPanelState(() {});
+                },
+              ),
               const Divider(height: 1, color: Color(0xFF2A2A2A)),
               const SizedBox(height: 4),
               Padding(
@@ -959,6 +971,12 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
               ),
               PlayerPopupListTile(
                 label: 'Subtitle style',
+                subtitle: 'Font, size, color',
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white24,
+                  size: 18,
+                ),
                 onTap: () {
                   PlayerPopupPanel.dismiss();
                   _s._showSubtitleSettings();

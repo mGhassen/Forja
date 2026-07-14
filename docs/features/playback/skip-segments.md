@@ -6,11 +6,11 @@
 
 Forja integrates IntroDB to detect common TV segments — opening intros, "previously on" recaps, and end credits. When data exists for your show, skip buttons appear at the right moments.
 
-With **Auto skip intro** on (**Settings → Playback**, off by default), intro and recap segments seek forward automatically. Credits and preview still use the manual Skip button.
+With **Auto skip intro** on (off by default), intro and recap segments seek forward automatically. Credits and preview still use the manual Skip button. Toggle it in **Settings → Playback** or the in-player **Settings** gear (same preference).
 
 ## How to open it
 
-Automatic during playback for supported series — look for skip prompts on the player overlay. Enable **Auto skip intro** in Settings when you want intros/recaps skipped without tapping.
+Automatic during playback for supported series — look for skip prompts on the player overlay. Enable **Auto skip intro** in Settings → Playback or the player Settings menu when you want intros/recaps skipped without tapping.
 
 ## What you can do
 

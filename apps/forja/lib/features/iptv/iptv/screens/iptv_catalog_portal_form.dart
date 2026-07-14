@@ -113,6 +113,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   String? _shareCodeError;
   String? _lastImportedCode;
   bool _expandFocused = false;
+  bool _expandHovered = false;
   bool _pasteEditing = false;
 
   bool get _editing => widget.existing != null;
@@ -430,6 +431,41 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     return icon;
   }
 
+  Widget _portalDialogActionIcon({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+    required FocusNode focusNode,
+    required int tvItemIndex,
+  }) {
+    final tv = iptvUseTvFocus(context);
+    final child = Tooltip(
+      message: tooltip,
+      child: Icon(icon, color: color, size: _tv ? 22 : 24),
+    );
+    return iptvTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 8,
+      focusNode: focusNode,
+      tvRowId: 'iptv-portal-dialog',
+      tvItemIndex: tvItemIndex,
+      onUpEdge: () => _focusDialogItem(tvItemIndex - 1),
+      onDownEdge: () => _focusDialogItem(tvItemIndex + 1),
+      onLeftEdge: tv && tvItemIndex == _dialogCancelIndex
+          ? () => _focusDialogItem(_dialogOkIndex)
+          : null,
+      onRightEdge: tv && tvItemIndex == _dialogOkIndex
+          ? () => _focusDialogItem(_dialogCancelIndex)
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
@@ -447,19 +483,22 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     final urlIndex = _editing ? 0 : (_showManualForm ? 2 : -1);
     final userIndex = _editing ? 1 : (_showManualForm ? 3 : -1);
     final passIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
+    final shareOnlyCollapsed = !_editing && !_showManualForm;
     final gapAfterTitle = _tv ? 8.0 : (_compact ? 14.0 : 22.0);
     final gapBetweenFields = _tv ? 8.0 : (_compact ? 10.0 : 18.0);
     final gapBeforeManual = _tv ? 8.0 : (_compact ? 12.0 : 20.0);
     final gapBeforeActions = _tv ? 10.0 : (_compact ? 12.0 : 20.0);
+    // Collapsed: room to vertically center "Share code" + code boxes as one block.
+    final collapsedBodyHeight = _tv ? 152.0 : (_compact ? 172.0 : 196.0);
     final surfacePadding = _tv
         ? const EdgeInsets.fromLTRB(14, 12, 10, 14)
         : _compact
             ? const EdgeInsets.fromLTRB(16, 16, 12, 16)
             : EdgeInsets.fromLTRB(
                 24,
-                20,
+                shareOnlyCollapsed ? 12 : 20,
                 16,
-                _editing || _showManualForm ? 24 : 32,
+                _editing || _showManualForm ? 24 : 20,
               );
     final screenH = MediaQuery.sizeOf(context).height;
     final maxHeight = _tv
@@ -468,6 +507,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             MediaQuery.viewInsetsOf(context).bottom -
             (_compact ? 32.0 : 64.0);
     final dialogMaxWidth = _tv ? 360.0 : 440.0;
+    final titleLabel = _editing ? 'Edit Portal' : 'Add Portal';
+    final expandBtnSize = _tv ? 34.0 : 38.0;
+    final expandOverlap = expandBtnSize / 2;
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, _) => Dialog(
@@ -478,13 +520,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: dialogMaxWidth, maxHeight: maxHeight),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 13),
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.bottomCenter,
-              children: [
-                DecoratedBox(
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: !_editing ? expandOverlap : 0),
+                child: DecoratedBox(
                   decoration: IptvShellStyle.dialogSurface(),
                   child: Padding(
                     padding: surfacePadding,
@@ -492,127 +534,158 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _editing ? 'Edit Portal' : 'Add Portal',
-                                style: IptvShellStyle.overlayTitle.copyWith(
-                                  fontSize: _tv ? 17 : 19,
-                                ),
-                              ),
-                            ),
-                            _portalDialogCloseButton(
-                              onTap: ctrl.isAdding ? null : _cancel,
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: gapAfterTitle),
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                        if (shareOnlyCollapsed) ...[
+                          SizedBox(
+                            height: collapsedBodyHeight,
+                            child: Stack(
                               children: [
-                                if (!_editing) _shareCodeSection(),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
-                                  alignment: Alignment.topCenter,
-                                  clipBehavior: Clip.hardEdge,
-                                  child: _editing || _showManualForm
-                                      ? Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            if (!_editing)
-                                              SizedBox(height: gapBeforeManual),
-                                            _portalField(
-                                              _urlCtrl,
-                                              'URL',
-                                              hint:
-                                                  'http://portal.example.com:8080',
-                                              focusNode: _urlFocus,
-                                              dialogIndex: urlIndex,
-                                            ),
-                                            SizedBox(height: gapBetweenFields),
-                                            _portalField(
-                                              _userCtrl,
-                                              'Username',
-                                              hint: 'username',
-                                              focusNode: _userFocus,
-                                              dialogIndex: userIndex,
-                                            ),
-                                            SizedBox(height: gapBetweenFields),
-                                            _portalField(
-                                              _passCtrl,
-                                              'Password',
-                                              hint: 'password',
-                                              obscure: _obscurePassword,
-                                              focusNode: _passFocus,
-                                              dialogIndex: passIndex,
-                                              suffix: ForjaPlainIcon(
-                                                icon: _obscurePassword
-                                                    ? Icons.visibility_outlined
-                                                    : Icons
-                                                        .visibility_off_outlined,
-                                                tooltip: _obscurePassword
-                                                    ? 'Show password'
-                                                    : 'Hide password',
-                                                color: IptvShellStyle.iconMuted,
-                                                size: 20,
-                                                onTap: () => setState(
-                                                  () => _obscurePassword =
-                                                      !_obscurePassword,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : const SizedBox(width: double.infinity),
-                                ),
-                                if (ctrl.addError != null) ...[
-                                  SizedBox(height: _tv ? 6 : (_compact ? 8 : 12)),
-                                  Text(
-                                    ctrl.addError!,
-                                    style: GoogleFonts.poppins(
-                                      color: IptvShellStyle.liveBadge,
-                                      fontSize: 12,
-                                    ),
+                                Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Share code',
+                                        style: IptvShellStyle.overlayTitle
+                                            .copyWith(
+                                          fontSize: _tv ? 17 : 19,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: _tv
+                                            ? 12
+                                            : (_compact ? 14 : 18),
+                                      ),
+                                      _shareCodeSection(),
+                                    ],
                                   ),
-                                ],
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: _portalDialogCloseButton(
+                                    onTap: ctrl.isAdding ? null : _cancel,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        ),
-                        if (!ctrl.isAdding && (_editing || _showManualForm)) ...[
-                          SizedBox(height: gapBeforeActions),
+                        ] else ...[
                           Row(
                             children: [
                               Expanded(
-                                child: IptvPrimaryButton(
-                                  icon: Icons.check_rounded,
-                                  label: _editing ? 'Save' : 'Add',
-                                  dense: _dense,
-                                  focusNode: _submitFocus,
-                                  tvRowId: 'iptv-portal-dialog',
-                                  tvItemIndex: _dialogOkIndex,
-                                  onPressed: _submit,
+                                child: Text(
+                                  titleLabel,
+                                  style: IptvShellStyle.overlayTitle.copyWith(
+                                    fontSize: _tv ? 17 : 19,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: IptvPrimaryButton(
-                                  icon: Icons.close_rounded,
-                                  label: 'Cancel',
-                                  subtle: true,
-                                  dense: _dense,
-                                  focusNode: _cancelFocus,
-                                  tvRowId: 'iptv-portal-dialog',
-                                  tvItemIndex: _dialogCancelIndex,
-                                  onPressed: _cancel,
-                                ),
+                              _portalDialogCloseButton(
+                                onTap: ctrl.isAdding ? null : _cancel,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: gapAfterTitle),
+                          Flexible(
+                            fit: FlexFit.loose,
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (!_editing) _shareCodeSection(),
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutCubic,
+                                    alignment: Alignment.topCenter,
+                                    clipBehavior: Clip.hardEdge,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        if (!_editing)
+                                          SizedBox(height: gapBeforeManual),
+                                        _portalField(
+                                          _urlCtrl,
+                                          'URL',
+                                          hint:
+                                              'http://portal.example.com:8080',
+                                          focusNode: _urlFocus,
+                                          dialogIndex: urlIndex,
+                                        ),
+                                        SizedBox(height: gapBetweenFields),
+                                        _portalField(
+                                          _userCtrl,
+                                          'Username',
+                                          hint: 'username',
+                                          focusNode: _userFocus,
+                                          dialogIndex: userIndex,
+                                        ),
+                                        SizedBox(height: gapBetweenFields),
+                                        _portalField(
+                                          _passCtrl,
+                                          'Password',
+                                          hint: 'password',
+                                          obscure: _obscurePassword,
+                                          focusNode: _passFocus,
+                                          dialogIndex: passIndex,
+                                          suffix: ForjaPlainIcon(
+                                            icon: _obscurePassword
+                                                ? Icons.visibility_outlined
+                                                : Icons
+                                                    .visibility_off_outlined,
+                                            tooltip: _obscurePassword
+                                                ? 'Show password'
+                                                : 'Hide password',
+                                            color: IptvShellStyle.iconMuted,
+                                            size: 20,
+                                            onTap: () => setState(
+                                              () => _obscurePassword =
+                                                  !_obscurePassword,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (ctrl.addError != null) ...[
+                                    SizedBox(
+                                      height: _tv ? 6 : (_compact ? 8 : 12),
+                                    ),
+                                    Text(
+                                      ctrl.addError!,
+                                      style: GoogleFonts.poppins(
+                                        color: IptvShellStyle.liveBadge,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (!ctrl.isAdding && (_editing || _showManualForm)) ...[
+                          SizedBox(height: gapBeforeActions),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              _portalDialogActionIcon(
+                                icon: Icons.check_rounded,
+                                color: ForjaShellColors.brandGreen,
+                                tooltip: _editing ? 'Save' : 'Add',
+                                focusNode: _submitFocus,
+                                tvItemIndex: _dialogOkIndex,
+                                onTap: _submit,
+                              ),
+                              const SizedBox(width: 4),
+                              _portalDialogActionIcon(
+                                icon: Icons.close_rounded,
+                                color: IptvShellStyle.textSecondary,
+                                tooltip: 'Cancel',
+                                focusNode: _cancelFocus,
+                                tvItemIndex: _dialogCancelIndex,
+                                onTap: _cancel,
                               ),
                             ],
                           ),
@@ -645,40 +718,51 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                     ),
                   ),
                 ),
-                if (!_editing)
-                  Positioned(bottom: -13, child: _manualFormToggle()),
-              ],
-            ),
+              ),
+              if (!_editing)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _manualFormToggle(size: expandBtnSize),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _manualFormToggle() {
-    const size = 26.0;
-    final tvFocused =
-        iptvUseTvFocus(context) && _expandFocused;
-    final active = iptvUseTvFocus(context) &&
-        iptvFocusActive(context, hovered: false, focused: _expandFocused);
+  Widget _manualFormToggle({required double size}) {
+    final tv = iptvUseTvFocus(context);
+    final tvFocused = tv && _expandFocused;
+    final active = iptvFocusActive(
+      context,
+      hovered: _expandHovered,
+      focused: _expandFocused,
+    );
+    final radius = size * 0.28;
+    final iconSize = size * 0.55;
     final child = Tooltip(
       message: _showManualForm ? 'Hide manual entry' : 'Enter URL manually',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: size,
         height: size,
-        decoration: active
+        decoration: active || tvFocused
             ? iptvFocusButtonDecoration(
                 active: true,
                 tvFocused: tvFocused,
-                borderRadius: 7,
+                borderRadius: radius,
                 idleBg: IptvShellStyle.surface,
                 idleBorder: IptvShellStyle.border,
                 subtle: true,
               )
             : BoxDecoration(
                 color: IptvShellStyle.surface,
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(radius),
                 border: Border.all(color: IptvShellStyle.border),
                 boxShadow: [
                   BoxShadow(
@@ -697,49 +781,37 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             active: active,
             tvFocused: tvFocused,
           ),
-          size: 16,
+          size: iconSize,
         ),
       ),
     );
-    if (iptvUseTvFocus(context)) {
-      return iptvTap(
-        context: context,
-        onTap: _importingShareCode ? null : _toggleManualForm,
-        borderRadius: 7,
-        focusNode: _expandFocus,
-        tvRowId: 'iptv-portal-dialog',
-        tvItemIndex: 1,
-        onUpEdge: () => _focusDialogItem(0),
-        onDownEdge: () =>
-            _focusDialogItem(_showManualForm ? 2 : 1),
-        onFocusChange: (focused) => setState(() => _expandFocused = focused),
-        child: child,
-      );
-    }
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _importingShareCode ? null : _toggleManualForm,
-        borderRadius: BorderRadius.circular(7),
-        child: child,
-      ),
+    return iptvTap(
+      context: context,
+      onTap: _importingShareCode ? null : _toggleManualForm,
+      borderRadius: radius,
+      focusNode: tv ? _expandFocus : null,
+      tvRowId: tv ? 'iptv-portal-dialog' : null,
+      tvItemIndex: tv ? 1 : null,
+      onUpEdge: tv ? () => _focusDialogItem(0) : null,
+      onDownEdge: tv
+          ? () => _focusDialogItem(_showManualForm ? 2 : 1)
+          : null,
+      onFocusChange: tv
+          ? (focused) => setState(() => _expandFocused = focused)
+          : null,
+      onHoverChange: (hovered) {
+        if (_expandHovered == hovered) return;
+        setState(() => _expandHovered = hovered);
+      },
+      child: child,
     );
   }
 
   Widget _shareCodeSection() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'SHARE CODE',
-          style: GoogleFonts.poppins(
-            color: IptvShellStyle.textSecondary,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.8,
-          ),
-        ),
-        SizedBox(height: _tv ? 6 : (_compact ? 8 : 14)),
         SizedBox(
           height: _codeBoxHeight,
           child: Stack(
@@ -929,11 +1001,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
               hintText: hint,
               hintStyle: hintStyle,
               suffixIcon: suffix,
-            ).copyWith(
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: _tv ? 7 : (compact ? 8 : 10),
-              ),
             ),
           ),
       ],

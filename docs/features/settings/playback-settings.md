@@ -17,7 +17,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as **Auto next** in the player Episodes panel header
-- Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip
+- Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip; also available in the in-player **Settings** menu
 - Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Reorder **Server reliability** (Movies / Series / Anime tabs): drag preference; **Score** is live reliability; **Tries** is Auto check order
 - Set **Max stream quality** to cap automatic selection (Auto, 4K, 1080p, 720p, …)

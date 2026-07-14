@@ -341,6 +341,8 @@ mixin _HomeScreenFeed on State<HomeScreen> {
     if (!mounted) return;
     setState(() => _resetHomeCategoryFeeds());
     await _loadStremioCatalogs();
+    // Re-roll "Because you watched" on every Home refresh.
+    _pickBecauseSeed(WatchHistoryService().current);
   }
 
   void _onWatchProviderChanged() {
@@ -422,12 +424,23 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   }
 
   /// Returns true if a seed was successfully picked. Filters to in-progress
-  /// items (between 2% and 90% watched) and picks one at random per session.
+  /// items (between 2% and 90% watched) and picks one at random.
+  /// When the pool has more than one title, avoids repeating the current seed.
   bool _pickBecauseSeed(List<Map<String, dynamic>> history) {
     if (!mounted || history.isEmpty) return false;
     final pool = _inProgressPool(history);
     if (pool.isEmpty) return false;
-    final seed = pool[math.Random().nextInt(pool.length)];
+
+    var candidates = pool;
+    final currentKey = _becauseSeedKey(_s._becauseSeed);
+    if (currentKey != null && pool.length > 1) {
+      final others = pool
+          .where((s) => _becauseSeedKey(s) != currentKey)
+          .toList();
+      if (others.isNotEmpty) candidates = others;
+    }
+
+    final seed = candidates[math.Random().nextInt(candidates.length)];
     final secondary = _pickOppositeSeed(pool, seed);
     setState(() {
       _s._becauseSeed = seed;
@@ -435,6 +448,11 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       _s._becauseFuture = _loadBecauseRecsMixed(seed, secondary);
     });
     return true;
+  }
+
+  Object? _becauseSeedKey(Map<String, dynamic>? seed) {
+    if (seed == null) return null;
+    return seed['uniqueId'] ?? seed['tmdbId'];
   }
 
   Future<List<Movie>> _loadBecauseRecsMixed(

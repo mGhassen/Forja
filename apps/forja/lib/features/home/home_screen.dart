@@ -66,8 +66,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _traktShowsLoading = false;
   bool _traktMoviesLoading = false;
 
-  // "Because you watched ___" — randomized seed pulled from continue-watching
-  // once per session, then BestSimilar.com recommendations (mapped to TMDB).
+  // "Because you watched ___" — seed from continue-watching; re-rolls on
+  // Home refresh / shuffle, then BestSimilar.com recommendations (mapped to TMDB).
   Map<String, dynamic>? _becauseSeed; // raw history item
   Future<List<Movie>>? _becauseFuture;
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button

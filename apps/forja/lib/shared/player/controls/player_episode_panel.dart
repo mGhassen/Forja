@@ -445,8 +445,9 @@ class _SeasonDropdown extends StatelessWidget {
           ForjaShellColors.cinematic.menuSurface,
         ),
         padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          EdgeInsets.symmetric(vertical: 4, horizontal: 6),
         ),
+        minimumSize: const WidgetStatePropertyAll(Size(148, 0)),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -456,7 +457,10 @@ class _SeasonDropdown extends StatelessWidget {
         final isSelected = n == selectedSeason;
         return MenuItemButton(
           onPressed: () => onSelected(n),
-          style: shellMenuItemStyle().merge(ButtonStyle(
+          style: shellMenuItemStyle(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          ).merge(ButtonStyle(
+            minimumSize: const WidgetStatePropertyAll(Size(136, 0)),
             foregroundColor: WidgetStatePropertyAll(
               isSelected
                   ? ForjaShellColors.cinematic.textPrimary

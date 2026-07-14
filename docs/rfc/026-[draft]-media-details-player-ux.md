@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** components · **12 / 17** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
-| **Current slice** | Details UX + player chrome/controls + auto next/skip prefs shipped; next: play-flow handoff + issue 018 gate |
+| **Progress** | **17 / 18** components · **13 / 18** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
+| **Current slice** | Details UX + player chrome/controls + auto next/skip (app + in-player Settings) shipped; next: play-flow handoff + issue 018 gate |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -68,6 +68,7 @@
 | 8 | R26-A15 | Webstreaming green Play reuses session/disk extract cache on reopen (probe; stale → re-race) | ✅ |
 | 9 | R26-A16 | Player Episodes panel header — Auto next checkbox (settings-synced) | ✅ |
 | 10 | R26-A17 | Settings → Playback — Auto next episode + Auto skip intro; wire complete + IntroDB skip | ✅ |
+| 11 | R26-A18 | In-player Settings menu — Auto skip intro toggle (synced with Settings → Playback) | ✅ |
 
 ---
 
