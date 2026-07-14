@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** fix · **0 / 1** device smoke · **6 / 6** acceptance |
+| **Progress** | **8 / 9** fix · **0 / 1** device smoke · **7 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 6 | I37-T06 | Disable in-player auto provider/source failover — fail with error; user picks Sources | ✅ |
 | 7 | I37-T07 | Server dots gray until play/check; reject junk extracts (`demo-video`, relative paths) | ✅ |
 | 8 | I37-T08 | Restore Auto open/check failover; keep no-hop only for manual server/stream pin | ✅ |
+| 9 | I37-T09 | Correct server dots: green = up (loaded/extract), not playing; playing stays subtitle/arrow | ✅ |
 
 ---
 
@@ -40,6 +41,7 @@
 | 4 | I37-A04 | In-player dead stream stops (no silent hop); Sources stays open for manual pick | ✅ |
 | 5 | I37-A05 | Extract-only / unchecked servers stay gray — green only when playing or URL-checked | ✅ |
 | 6 | I37-A06 | Auto mode (Auto server On, not user-pinned): open/check fail walks next providers; manual pin stops | ✅ |
+| 7 | I37-A07 | Server solid green when up (streams listed / extract success); gray unchecked; red failed; playing never the dot | ✅ |
 
 ---
 
@@ -63,6 +65,10 @@ Green **Play** treated “extractor returned a URL” as enough for some paths (
 - **Auto** — `_autoFallbackToNextProvider` on open/check fail (I37-T08); green Play no longer force-pins
 - Junk extracts filtered (`isUnplayableCachedStreamUrl`); server glyph green only after play/check
 - **Dead cache (later):** full Auto re-resolve like first Play — [043](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md)
+
+### Glyph correction (I37-T09 / I37-A07)
+
+I37-T07/A05 tied server **green** to play/URL-check. Product rule is: **green = up** (streams listed / extract succeeded), **gray = unchecked**, **red = failed**. Playing is **Playing now** / stream pause — never the solid server dot. Junk-extract rejection from T07 stays.
 
 ### Related
 

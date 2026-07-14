@@ -462,6 +462,74 @@ const _dblclickFullscreenJs = r'''
 })();
 ''';
 
+/// Wrap the third-party embed in an iframe under [baseUrl] so `document.referrer`
+/// matches the website (streamed.pk / ppv.is). Direct top-level loads of
+/// embed.st stall behind parser-blocking ad scripts and leave a white WebView.
+String _buildLiveEmbedWrapperHtml(String embedUrl) {
+  final safe = embedUrl
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;');
+  return '''<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<meta name="referrer" content="unsafe-url">
+<title>player</title>
+<style>
+html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
+iframe{border:0;width:100%;height:100%;display:block}
+</style>
+</head><body>
+<iframe id="p" src="$safe" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="unsafe-url"></iframe>
+</body></html>''';
+}
+
+/// Ad / tracker hosts that inject parser-blocking scripts on embed.st and keep
+/// `onLoadStop` from firing (unlimited spinner + blank player).
+List<ContentBlocker> _liveEmbedContentBlockers() {
+  const hosts = <String>[
+    r'.*therocketlanguages\.com.*',
+    r'.*optimserve\.agency.*',
+    r'.*doubleclick\.net.*',
+    r'.*googlesyndication\.com.*',
+    r'.*googleadservices\.com.*',
+    r'.*adnxs\.com.*',
+    r'.*adservice\.google\..*',
+  ];
+  return [
+    for (final filter in hosts)
+      ContentBlocker(
+        trigger: ContentBlockerTrigger(urlFilter: filter),
+        action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
+      ),
+  ];
+}
+
+bool _liveEmbedAllowsNavigation({
+  required String url,
+  required String embedUrl,
+  required String referer,
+  required String origin,
+}) {
+  if (url.isEmpty ||
+      url.startsWith('about:') ||
+      url.startsWith('data:') ||
+      url.startsWith('blob:')) {
+    return true;
+  }
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return true;
+  final allowed = <String>{
+    Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '',
+    Uri.tryParse(referer)?.host.toLowerCase() ?? '',
+    Uri.tryParse(origin)?.host.toLowerCase() ?? '',
+  }.where((h) => h.isNotEmpty);
+  for (final h in allowed) {
+    if (host == h || host.endsWith('.$h')) return true;
+  }
+  return false;
+}
+
 const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';

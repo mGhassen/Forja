@@ -22,6 +22,7 @@ Tap **Live Matches** in the navigation bar.
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region
+- Streamed / PPV embeds play inside a WebView iframe that mirrors the website parent page (`streamed.pk` / `ppv.is`); ad scripts that block the player page are filtered so the stream can load
 - WebView playback may behave differently per platform; some embeds still require a tap if the site blocks unmuted autoplay
 
 ## Related

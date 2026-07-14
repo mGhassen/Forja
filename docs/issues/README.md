@@ -58,7 +58,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [034-[open]-…](034-[open]-windows-release-missing-libmpv.md) | Windows release missing libmpv | P1 | High | open | 3/4 · A 0/1 | — |
 | [035-[fixed]-…](fixed/035-[fixed]-nuvio-torrent-scraper-in-direct-streaming.md) | Nuvio torrent scraper (Torrentio) in Direct Streaming | P1 | High | fixed | Complete · 7/7 | — |
 | [036-[fixed]-…](fixed/036-[fixed]-vidsrc-cloudnestra-cdn-host-stale.md) | Vidsrc CDN host cloudnestra → dynamic | P1 | High | fixed | 2/2 · 2/2 | — |
-| [037-[open]-…](037-[open]-webstreaming-all-providers-open-validate.md) | Webstreaming open-validate all providers | P1 | High | open | 7/8 · A 6/6 · smoke ⬜ | [1.0.1](../backlog/1.0.1-[open].md) |
+| [037-[open]-…](037-[open]-webstreaming-all-providers-open-validate.md) | Webstreaming open-validate all providers | P1 | High | open | 8/9 · A 7/7 · smoke ⬜ | [1.0.1](../backlog/1.0.1-[open].md) |
 | [038-[fixed]-…](fixed/038-[fixed]-webstreamr-resolver-drops-country-config.md) | WebStreamr Resolver drops country config | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [039-[fixed]-…](fixed/039-[fixed]-resolver-missing-template-embed-plugins.md) | Resolver missing template embed plugins (WebView sniff) | P1 | High | fixed | Complete · 2/2 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [040-[fixed]-…](fixed/040-[fixed]-mpv-open-rejects-working-cdn-urls.md) | mpv open rejects working CDN mp4/HLS URLs | P1 | High | fixed | Complete · 5/5 · 4/4 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -67,6 +67,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [043-[fixed]-…](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) | Dead cache → full Auto re-resolve like first Play | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[fixed]-…](fixed/044-[fixed]-settings-cache-data-cleaner.md) | Settings cache / data cleaner | P2 | Medium | fixed | — | — |
 | [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 4/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [046-[open]-…](046-[open]-streamed-live-embed-white-screen.md) | Streamed live embed white screen / unlimited loading | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

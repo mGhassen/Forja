@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** components · **18 / 23** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
-| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent; next: play-flow handoff + issue 018 gate |
+| **Progress** | **17 / 18** components · **19 / 24** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
+| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + auto stream probe after server check; next: play-flow handoff + issue 018 gate |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -74,6 +74,7 @@
 | 14 | R26-A21 | Loading overlay — layers icon next to Cancel opens live provider list; tap server to check manually | ✅ |
 | 15 | R26-A22 | Floating player menus restyle — brand-green selected chips, tighter chrome, modern radii; Settings drill-in unchanged; TV focus preserved | ✅ |
 | 16 | R26-A23 | Stream/source side panel — brand-green selected/playing accent + density aligned to `PlayerPopupTokens` | ✅ |
+| 17 | R26-A24 | Source panel — after a manual server check succeeds, auto-probe that server’s streams (no playback interrupt) | ✅ |
 
 ---
 

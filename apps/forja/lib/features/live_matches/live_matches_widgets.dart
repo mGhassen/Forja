@@ -686,6 +686,7 @@ class _LiveMatchesEmbedPlayerScreenState
     extends State<_LiveMatchesEmbedPlayerScreen> {
   bool _loading = true;
   bool _isFullscreen = false;
+  Timer? _loadingWatchdog;
 
   final FocusNode _backFocusNode = FocusNode(
     debugLabel: 'live-embed-back',
@@ -701,9 +702,17 @@ class _LiveMatchesEmbedPlayerScreenState
     if (_backFocusNode.canRequestFocus) _backFocusNode.requestFocus();
   }
 
+  void _clearLoading() {
+    if (!mounted || !_loading) return;
+    setState(() => _loading = false);
+  }
+
   @override
   void initState() {
     super.initState();
+    // Wrapper + iframe usually finishes quickly; if an ad CDN still hangs the
+    // document, don't leave the spinner forever.
+    _loadingWatchdog = Timer(const Duration(seconds: 12), _clearLoading);
     WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
   }
 
@@ -766,6 +775,7 @@ class _LiveMatchesEmbedPlayerScreenState
 
   @override
   void dispose() {
+    _loadingWatchdog?.cancel();
     _backFocusNode.dispose();
     if (DesktopWindowChrome.isDesktop) {
       Future.microtask(() async {
@@ -858,20 +868,37 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   Widget build(BuildContext context) {
     final embedUrl = widget.embedUrl;
+    final wrapperBase = widget.referer.endsWith('/')
+        ? widget.referer
+        : '${widget.referer}/';
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
           ForjaInAppWebView(
-            initialUrlRequest: URLRequest(
-              url: WebUri(embedUrl),
-              headers: {
-                'User-Agent': _ua['User-Agent']!,
-                'Referer': widget.referer,
-                'Origin': widget.origin,
-              },
+            // Match streamed.pk / ppv.is: embed lives in an iframe under the
+            // catalog origin so document.referrer is set and ad scripts that
+            // block top-level document parse are easier to isolate.
+            initialData: InAppWebViewInitialData(
+              data: _buildLiveEmbedWrapperHtml(embedUrl),
+              baseUrl: WebUri(wrapperBase),
+              historyUrl: WebUri(wrapperBase),
+              mimeType: 'text/html',
+              encoding: 'utf-8',
             ),
+            initialUserScripts: UnmodifiableListView([
+              UserScript(
+                source: _autoplayJs,
+                injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+                forMainFrameOnly: false,
+              ),
+              UserScript(
+                source: _dblclickFullscreenJs,
+                injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+                forMainFrameOnly: false,
+              ),
+            ]),
             initialSettings: InAppWebViewSettings(
               userAgent: _ua['User-Agent'],
               domStorageEnabled: true,
@@ -882,6 +909,11 @@ class _LiveMatchesEmbedPlayerScreenState
               supportMultipleWindows: false,
               allowsAirPlayForMediaPlayback: true,
               allowsPictureInPictureMediaPlayback: true,
+              iframeAllow: 'autoplay; fullscreen; encrypted-media',
+              iframeAllowFullscreen: true,
+              useShouldOverrideUrlLoading: true,
+              javaScriptCanOpenWindowsAutomatically: false,
+              contentBlockers: _liveEmbedContentBlockers(),
             ),
             onWebViewCreated: (controller) {
               controller.addJavaScriptHandler(
@@ -891,9 +923,13 @@ class _LiveMatchesEmbedPlayerScreenState
                 },
               );
             },
-            onLoadStart: (_, _) => setState(() => _loading = true),
+            onLoadStart: (_, _) {
+              if (!mounted) return;
+              setState(() => _loading = true);
+            },
             onLoadStop: (ctrl, _) async {
-              setState(() => _loading = false);
+              _loadingWatchdog?.cancel();
+              _clearLoading();
               try {
                 await ctrl.evaluateJavascript(source: _autoplayJs);
                 await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
@@ -903,24 +939,22 @@ class _LiveMatchesEmbedPlayerScreenState
             onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
             onExitFullscreen: (_) => unawaited(_exitFullscreen()),
             shouldOverrideUrlLoading: (ctrl, action) async {
-              final url = action.request.url?.toString() ?? '';
-              final embedHost = Uri.tryParse(embedUrl)?.host ?? '';
-              if (embedHost.isNotEmpty && !url.contains(embedHost)) {
-                http
-                    .get(
-                      Uri.parse(url),
-                      headers: {
-                        'User-Agent':
-                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                            'AppleWebKit/537.36 (KHTML, like Gecko) '
-                            'Chrome/122.0.0.0 Safari/537.36',
-                        'Referer': embedUrl,
-                      },
-                    )
-                    .catchError((_) => http.Response('', 200));
-                return NavigationActionPolicy.CANCEL;
+              // Player CDNs and nested iframes leave embed.st — never cancel
+              // subframe navigations (that caused blank/white players).
+              if (action.isForMainFrame != true) {
+                return NavigationActionPolicy.ALLOW;
               }
-              return NavigationActionPolicy.ALLOW;
+              final url = action.request.url?.toString() ?? '';
+              if (_liveEmbedAllowsNavigation(
+                url: url,
+                embedUrl: embedUrl,
+                referer: widget.referer,
+                origin: widget.origin,
+              )) {
+                return NavigationActionPolicy.ALLOW;
+              }
+              debugPrint('[LiveMatches] blocked main-frame nav: $url');
+              return NavigationActionPolicy.CANCEL;
             },
           ),
           if (_loading)

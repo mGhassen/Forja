@@ -191,6 +191,14 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     if (clearCache) {
       final cache = widget.providerSourcesCache;
       if (cache is ValueNotifier<Map<String, List<StreamSource>>>) {
+        final previous = cache.value[providerId];
+        if (previous != null && previous.isNotEmpty) {
+          setState(() {
+            for (final source in previous) {
+              _urlStatuses.remove(source.url);
+            }
+          });
+        }
         final next = Map<String, List<StreamSource>>.from(cache.value)
           ..remove(providerId);
         cache.value = next;
@@ -198,12 +206,60 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     }
 
     try {
-      await widget.onLoadProvider(providerId);
+      final sources = await widget.onLoadProvider(providerId);
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
+      // Server extract OK → auto-probe each stream (same as tapping them).
+      if (sources != null && sources.isNotEmpty) {
+        unawaited(
+          _checkProviderStreams(
+            providerId,
+            sources,
+            gen: gen,
+            force: clearCache,
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
+    }
+  }
+
+  /// After a server resolves streams, verify each URL without interrupting play.
+  Future<void> _checkProviderStreams(
+    String providerId,
+    List<StreamSource> sources, {
+    required int gen,
+    bool force = false,
+  }) async {
+    final ordered = PlayerStreamMenu.orderedSourceEntriesForPanel(sources);
+    final known = {
+      ...?widget.readUrlCheckStatuses?.call(),
+      ..._urlStatuses,
+    };
+
+    for (final entry in ordered) {
+      if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+      final url = entry.value.url;
+      if (!force) {
+        final status = known[url];
+        if (status == PlayerSourceStatus.ready ||
+            status == PlayerSourceStatus.active) {
+          continue;
+        }
+      }
+      _setUrlStatus(url, PlayerSourceStatus.checking);
+      final ok = await widget.onCheckSource(
+        entry.value,
+        entry.key,
+        providerId,
+      );
+      if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+      _setUrlStatus(
+        url,
+        ok ? PlayerSourceStatus.ready : PlayerSourceStatus.failed,
+      );
     }
   }
 
