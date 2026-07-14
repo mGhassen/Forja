@@ -3,9 +3,16 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/src/playback/resolver_engine_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  test('buildRequest passes maxInFlight through settings', () async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  test('buildRequest passes maxInFlight and webstreamr settings', () async {
     final request = await ResolverEngineClient.buildRequest(
       domain: SourceDomain.movies,
       movie: Movie(
@@ -25,6 +32,12 @@ void main() {
     );
     final settings = request['settings'] as Map<String, dynamic>;
     expect(settings['maxInFlight'], 3);
+    final wsConfig = Map<String, String>.from(
+      settings['webstreamrConfig'] as Map,
+    );
+    expect(wsConfig['multi'], 'on');
+    expect(wsConfig['de'], 'on');
+    expect(settings.containsKey('webstreamrTmdbAccessToken'), isTrue);
   });
 
   test('continueWithHost payload shape', () {

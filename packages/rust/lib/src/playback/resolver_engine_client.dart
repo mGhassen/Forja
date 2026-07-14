@@ -60,6 +60,8 @@ abstract final class ResolverEngineClient {
     final year = movie.releaseDate.length >= 4
         ? int.tryParse(movie.releaseDate.substring(0, 4))
         : null;
+    final webstreamrConfig = await WebStreamrSettings.buildResolveConfig();
+    final webstreamrToken = await WebStreamrSettings.getTmdbAccessToken();
     return {
       'domain': domain.id,
       'tmdbId': movie.id,
@@ -78,6 +80,8 @@ abstract final class ResolverEngineClient {
         'maxInFlight': maxInFlight,
         'skipHostOnTv': skipHostOnTv,
         'blocklistUrls': blocklistUrls,
+        'webstreamrConfig': webstreamrConfig,
+        'webstreamrTmdbAccessToken': webstreamrToken ?? '',
       },
     };
   }

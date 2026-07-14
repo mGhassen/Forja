@@ -133,25 +133,7 @@ class WebStreamrService {
     String? title,
     int? year,
   }) async {
-    final config = <String, String>{};
-    for (final cc in await WebStreamrSettings.getEnabledCountryCodes()) {
-      config[cc] = 'on';
-    }
-    config['multi'] = 'on';
-
-    final mfpUrl = await WebStreamrSettings.getMediaFlowProxyUrl();
-    final mfpPwd = await WebStreamrSettings.getMediaFlowProxyPassword();
-    if (mfpUrl != null && mfpUrl.isNotEmpty) {
-      config['mediaFlowProxyUrl'] = mfpUrl;
-      if (mfpPwd != null) config['mediaFlowProxyPassword'] = mfpPwd;
-    }
-
-    for (final exId in await WebStreamrSettings.getDisabledExtractors()) {
-      config['disableExtractor_$exId'] = 'on';
-    }
-    for (final res in await WebStreamrSettings.getExcludedResolutions()) {
-      config['excludeResolution_$res'] = 'on';
-    }
+    final config = await WebStreamrSettings.buildResolveConfig();
 
     final base = imdbId.split(':').first;
     String? imdb;

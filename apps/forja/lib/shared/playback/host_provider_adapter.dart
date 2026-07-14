@@ -180,8 +180,14 @@ abstract final class HostProviderAdapter {
     Map<String, String>? headers,
   }) {
     if (sources != null && sources.isNotEmpty) {
+      final playable = sources
+          .where((s) => !isUnplayableCachedStreamUrl(s.url))
+          .toList();
+      if (playable.isEmpty) {
+        return '[]';
+      }
       return jsonEncode(
-        sources
+        playable
             .map(
               (s) => {
                 'url': s.url,
@@ -192,6 +198,9 @@ abstract final class HostProviderAdapter {
             )
             .toList(),
       );
+    }
+    if (isUnplayableCachedStreamUrl(url)) {
+      return '[]';
     }
     return jsonEncode([
       {
@@ -212,6 +221,8 @@ abstract final class HostProviderAdapter {
   }
 
   static Duration _embedSniffTimeout(String providerId) {
+    // Every embed/sniff host — same budget. Dead pages fail open/probe and
+    // Auto walks the rest of the settings order; do not special-case a few IDs.
     switch (providerId) {
       case 'smashystream':
       case 'superembed':
@@ -219,6 +230,15 @@ abstract final class HostProviderAdapter {
       case 'vidnest':
       case 'vidlink':
       case 'videasy':
+      case 'vidzee':
+      case 'vidrock':
+      case 'vidfast':
+      case '2embed':
+      case 'autoembed':
+      case '111movies':
+      case 'moviesapi':
+      case 'primewire':
+      case 'vidsrc':
         return const Duration(seconds: 60);
       default:
         return const Duration(seconds: 45);

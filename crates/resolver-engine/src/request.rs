@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use stream_core::{DevicePlaybackCapabilities, SourceDomain};
 
@@ -16,6 +18,13 @@ pub struct ResolveSettings {
     pub skip_host_on_tv: bool,
     #[serde(default)]
     pub blocklist_urls: Vec<String>,
+    /// WebStreamr country / MFP / extractor flags (`cc` → `"on"`, etc.).
+    /// Empty → crate [webstreamr::config::default_config].
+    #[serde(default)]
+    pub webstreamr_config: HashMap<String, String>,
+    /// Optional TMDB v4 bearer for WebStreamr title matching.
+    #[serde(default)]
+    pub webstreamr_tmdb_access_token: String,
 }
 
 fn default_auto() -> String {
@@ -35,6 +44,8 @@ impl Default for ResolveSettings {
             max_in_flight: default_max_in_flight(),
             skip_host_on_tv: false,
             blocklist_urls: vec![],
+            webstreamr_config: HashMap::new(),
+            webstreamr_tmdb_access_token: String::new(),
         }
     }
 }

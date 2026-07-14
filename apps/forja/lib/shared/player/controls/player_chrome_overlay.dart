@@ -337,7 +337,7 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
   }
 }
 
-/// Floating skip / next-episode chip with TV D-pad focus.
+/// Floating skip / next-episode chip — flat shell chrome (mouse + TV D-pad).
 class PlayerFloatingChip extends StatefulWidget {
   const PlayerFloatingChip({
     super.key,
@@ -346,6 +346,7 @@ class PlayerFloatingChip extends StatefulWidget {
     this.loading = false,
     this.trailingIcon = Icons.skip_next_rounded,
     this.focusNode,
+    this.tvFocusable = false,
   });
 
   final String label;
@@ -353,6 +354,7 @@ class PlayerFloatingChip extends StatefulWidget {
   final bool loading;
   final IconData trailingIcon;
   final FocusNode? focusNode;
+  final bool tvFocusable;
 
   @override
   State<PlayerFloatingChip> createState() => _PlayerFloatingChipState();
@@ -360,67 +362,93 @@ class PlayerFloatingChip extends StatefulWidget {
 
 class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
   bool _focused = false;
+  bool _hovered = false;
 
-  bool get _tvFocused =>
-      playerChromeTvFocused(tvFocusable: true, focused: _focused);
+  bool get _tvFocused => playerChromeTvFocused(
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
+
+  bool get _highlight => playerChromeFocusActive(
+        context,
+        tvFocusable: widget.tvFocusable,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        _tvFocused ? ForjaShellColors.brandGreen : Colors.white24;
+    final borderColor = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.borderSubtle;
     final fill = _tvFocused
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-        : Colors.white.withValues(alpha: 0.15);
+        : Colors.white.withValues(alpha: _highlight ? 0.22 : 0.15);
     final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
 
-    final body = Material(
-      color: Colors.transparent,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: fill,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor, width: _tvFocused ? 1.5 : 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.loading)
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: fg,
-                  ),
-                )
-              else
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: fg,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+    final body = DecoratedBox(
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor, width: _tvFocused ? 1.5 : 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.loading)
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: fg,
                 ),
-              if (!widget.loading) ...[
-                const SizedBox(width: 6),
-                Icon(widget.trailingIcon, color: fg, size: 18),
-              ],
+              )
+            else
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            if (!widget.loading) ...[
+              const SizedBox(width: 6),
+              Icon(widget.trailingIcon, color: fg, size: 18),
             ],
-          ),
+          ],
         ),
       ),
     );
 
-    return FocusableControl(
-      focusNode: widget.focusNode,
-      onTap: widget.onPressed,
-      borderRadius: 8,
-      scaleOnFocus: 1.04,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      child: body,
+    if (widget.tvFocusable) {
+      return FocusableControl(
+        focusNode: widget.focusNode,
+        onTap: widget.onPressed,
+        borderRadius: 8,
+        scaleOnFocus: 1.04,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: body,
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onPressed,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: ForjaShellColors.inkHover,
+          splashColor: ForjaShellColors.inkSplash,
+          child: body,
+        ),
+      ),
     );
   }
 }

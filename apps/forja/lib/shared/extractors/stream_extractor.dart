@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
 class StreamExtractor {
@@ -381,7 +382,12 @@ class StreamExtractor {
 
   /// Whether a sniffed URL is a real media stream (not PWA manifest, SW, etc.).
   static bool isPlayableStreamUrl(String url) {
-    final lower = url.toLowerCase();
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return false;
+    // Placeholders / relative ATTR_SRC (e.g. vidrock `/demo-video.mp4`).
+    if (isUnplayableCachedStreamUrl(trimmed)) return false;
+
+    final lower = trimmed.toLowerCase();
     if (lower.contains('google')) return false;
     if (lower.contains('.webmanifest')) return false;
     if (lower.endsWith('/manifest.webmanifest')) return false;
@@ -399,7 +405,7 @@ class StreamExtractor {
     }
     if (lower.contains('master')) return true;
 
-    final path = Uri.tryParse(url)?.path.toLowerCase() ?? lower;
+    final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
     if (path.contains('manifest.m3u8') || path.contains('manifest.mpd')) {
       return true;
     }

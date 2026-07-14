@@ -199,42 +199,9 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                   Positioned(
                     bottom: _s._showNextEpButton ? 170 : 120,
                     right: 16,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _s._performSkip,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white24),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _s._activeSkipLabel!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.skip_next_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    child: PlayerFloatingChip(
+                      label: _s._activeSkipLabel!,
+                      onPressed: _s._performSkip,
                     ),
                   ),
 
@@ -243,52 +210,11 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                   Positioned(
                     bottom: 120,
                     right: 16,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _s._isLoadingNextEp ? null : _s._nextEpisode,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white24),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (_s._isLoadingNextEp)
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              else
-                                const Text(
-                                  'Next Episode',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    child: PlayerFloatingChip(
+                      label: 'Next Episode',
+                      loading: _s._isLoadingNextEp,
+                      trailingIcon: Icons.arrow_forward_rounded,
+                      onPressed: _s._isLoadingNextEp ? null : _s._nextEpisode,
                     ),
                   ),
 
@@ -733,6 +659,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             child: PlayerFloatingChip(
               label: _s._activeSkipLabel!,
               onPressed: _s._performSkip,
+              tvFocusable: true,
             ),
           ),
         ),
@@ -750,6 +677,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
               loading: _s._isLoadingNextEp,
               trailingIcon: Icons.arrow_forward_rounded,
               onPressed: _s._isLoadingNextEp ? null : _s._nextEpisode,
+              tvFocusable: true,
             ),
           ),
         ),

@@ -21,6 +21,14 @@ void main() {
       );
     });
 
+    test('rejects relative demo placeholders', () {
+      expect(StreamExtractor.isPlayableStreamUrl('/demo-video.mp4'), isFalse);
+      expect(
+        StreamExtractor.isPlayableStreamUrl('https://cdn.example/demo-video.mp4'),
+        isFalse,
+      );
+    });
+
     test('accepts vixsrc-style playlist endpoint', () {
       expect(
         StreamExtractor.isPlayableStreamUrl(

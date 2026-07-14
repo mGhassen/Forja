@@ -626,25 +626,31 @@ class PlayerStreamMenu {
     if (failedProviders.contains(providerId)) {
       return PlayerSourceStatus.failed;
     }
-    if (hasLoadedSources) return PlayerSourceStatus.ready;
 
     final fromController = _providerStatusFromController(
       providerId,
       statusController,
     );
-    if (fromController != null) return fromController;
-
+    if (fromController == PlayerSourceStatus.checking ||
+        fromController == PlayerSourceStatus.failed) {
+      return fromController!;
+    }
+    // Extract / race "success" is not green — only confirmed play (active) or
+    // an explicit stream check (ready via URL statuses) means up.
     for (final probe in probes) {
       if (probe.id != providerId) continue;
       return switch (probe.status) {
-        StreamProviderProbeStatus.pending => PlayerSourceStatus.ready,
         StreamProviderProbeStatus.trying => PlayerSourceStatus.checking,
         StreamProviderProbeStatus.failed => PlayerSourceStatus.failed,
-        StreamProviderProbeStatus.success => PlayerSourceStatus.ready,
-        StreamProviderProbeStatus.skippedOnTv => PlayerSourceStatus.ready,
+        StreamProviderProbeStatus.pending ||
+        StreamProviderProbeStatus.success ||
+        StreamProviderProbeStatus.skippedOnTv =>
+          PlayerSourceStatus.unchecked,
       };
     }
-    return PlayerSourceStatus.ready;
+    // Listed streams without a play/check verdict stay gray (not green).
+    if (hasLoadedSources) return PlayerSourceStatus.unchecked;
+    return PlayerSourceStatus.unchecked;
   }
 
   static PlayerSourceStatus? _providerStatusFromController(
@@ -704,19 +710,19 @@ class PlayerStreamMenu {
   // Stream = trailing control (check / ring / ✕ / spinner / play / pause).
   // Playing encoding: green play arrow · blue pause — never a status shape.
 
-  /// Server: solid green = up · solid gray = not checked · solid red = failed.
+  /// Server: solid green = playing/verified · solid gray = not verified · solid red = failed.
   static Widget _statusGlyph({
     required PlayerSourceStatus status,
     required bool isLoaded,
   }) {
+    // isLoaded = streams listed; green only after play/check (ready/active).
     if (status == PlayerSourceStatus.checking) {
       return _checkingSpinner();
     }
     if (status == PlayerSourceStatus.failed) {
       return _serverSolidDot(playerSourceStatusColor(PlayerSourceStatus.failed));
     }
-    final up = isLoaded ||
-        status == PlayerSourceStatus.ready ||
+    final up = status == PlayerSourceStatus.ready ||
         status == PlayerSourceStatus.active;
     return _serverSolidDot(
       up ? playerSourceStatusColor(PlayerSourceStatus.ready) : _uncheckedGray,
@@ -753,6 +759,9 @@ class PlayerStreamMenu {
         size: 16,
         color: playerSourceStatusColor(PlayerSourceStatus.failed),
       );
+    }
+    if (status == PlayerSourceStatus.unchecked) {
+      return _streamHollowRing(_uncheckedGray);
     }
     return _streamUpCheck();
   }

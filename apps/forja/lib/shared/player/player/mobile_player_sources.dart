@@ -213,7 +213,8 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       }
       if (isCurrent && _s._playbackConfirmed) return PlayerSourceStatus.active;
       if (_s._failedSourceIndices.contains(i)) return PlayerSourceStatus.failed;
-      return PlayerSourceStatus.ready;
+      // Not URL-checked yet — gray until probe or play confirms.
+      return PlayerSourceStatus.unchecked;
     });
   }
 
@@ -298,12 +299,9 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     if (notifier == null || notifier.value.isEmpty) return;
     final current = _s._currentProvider;
     final failed = _s._providerLoadFailures.value;
-    final cache = _liveProviderSourcesCache.value;
     notifier.value = [
       for (final p in notifier.value)
         if (_s._playbackConfirmed && current != null && p.id == current)
-          p.copyWith(status: StreamProviderProbeStatus.success)
-        else if ((cache[p.id] ?? const []).isNotEmpty)
           p.copyWith(status: StreamProviderProbeStatus.success)
         else if (failed.contains(p.id))
           p.copyWith(status: StreamProviderProbeStatus.failed)

@@ -234,6 +234,8 @@ class SettingsService {
     'vidsrc',
     'vixsrc',
     'vidnest',
+    'vidzee',
+    'vidrock',
     'vidfast',
     '2embed',
     'superembed',

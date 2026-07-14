@@ -12,11 +12,11 @@ WebStreamr runs locally inside Forja's Rust engine. This settings screen control
 
 ## What you can do
 
-- Toggle **enabled countries** for regional sources
+- Toggle **enabled countries** for regional sources — these apply on **Play** via the Resolver Engine (not just this screen)
 - **Disable extractors** that cause problems
 - **Exclude resolutions** from results
 - Set **MediaFlow Proxy** URL and password (for MFP-backed extractors)
-- Set **FlareSolverr** URL (Cloudflare bypass)
+- Set **FlareSolverr** URL (stored for future use — Rust extractors do not call FlareSolverr yet)
 - Set **TMDB access token** (improves metadata matching for sources)
 
 ## Setup (optional)
@@ -25,12 +25,13 @@ WebStreamr runs locally inside Forja's Rust engine. This settings screen control
 |-------|------------------|
 | TMDB token | Better title/year matching for obscure titles |
 | MFP URL + password | FileMoon, DoodStream, Mixdrop, and similar hosts |
-| FlareSolverr | Sites behind Cloudflare challenges |
+| FlareSolverr | Prefs only — not used by the Rust resolve path yet |
 
 ## Tips
 
+- Enabled countries control which regional sources run on **Play** (via Resolver Engine) as well as in WebStreamr Settings previews — keep `de` / `hi` / etc. on if you want KinoGer, MegaKino, HDHub4u-style results
 - Start with only your country codes enabled — fewer sources = faster searches
-- After changing TMDB token or FlareSolverr URL, settings re-initialize WebStreamr automatically
+- After changing countries / extractors / MFP / TMDB token, the next Play resolve picks them up (no app restart needed for prefs)
 
 ## Related
 

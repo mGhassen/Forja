@@ -257,6 +257,11 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         height: 8,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
+      PlayerSourceStatus.unchecked => Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     };
     return SizedBox(
       width: _statusSlot,

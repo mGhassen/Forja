@@ -118,6 +118,30 @@ class WebStreamrSettings {
     await p.setStringList(_kExcludedResolutions, res);
   }
 
+  /// Config map for [get_streams_json] / ResolverEngine (countries, MFP, filters).
+  static Future<Map<String, String>> buildResolveConfig() async {
+    final config = <String, String>{};
+    for (final cc in await getEnabledCountryCodes()) {
+      config[cc] = 'on';
+    }
+    config['multi'] = 'on';
+
+    final mfpUrl = await getMediaFlowProxyUrl();
+    final mfpPwd = await getMediaFlowProxyPassword();
+    if (mfpUrl != null && mfpUrl.isNotEmpty) {
+      config['mediaFlowProxyUrl'] = mfpUrl;
+      if (mfpPwd != null) config['mediaFlowProxyPassword'] = mfpPwd;
+    }
+
+    for (final exId in await getDisabledExtractors()) {
+      config['disableExtractor_$exId'] = 'on';
+    }
+    for (final res in await getExcludedResolutions()) {
+      config['excludeResolution_$res'] = 'on';
+    }
+    return config;
+  }
+
   static Future<String?> getTmdbAccessToken() async {
     final p = await SharedPreferences.getInstance();
     return p.getString(_kTmdbToken);

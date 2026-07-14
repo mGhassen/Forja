@@ -19,7 +19,9 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 - Let green **Play** / **Resume** auto-extract the best working link in provider order
 - Fall through extractors in the order you set in Settings
 - While a stream is starting, a right-side roulette cycles through each server as it is checked — ✓ when one works, ✗ when it fails, spinner on the active one (★ on your top-priority server)
-- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last working extract (session/disk cache) instead of re-racing providers. If that link is dead, it drops the cache and runs the roulette again.
+- Before mpv opens a link, Forja HTTP-probes it (every built-in provider) — dead CDNs fail fast and Auto continues to the next server
+- A server only counts as streaming when video actually opens (not when extract alone returns a URL)
+- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last **confirmed** extract (session/disk cache) instead of re-racing providers. If that link is dead, it drops the cache and runs the roulette again
 - In the player **Servers** menu, tapping a server reuses cache only when that provider already has a cached extract for this title/episode; otherwise it runs a fresh resolve for that server.
 
 ## Setup (if needed)

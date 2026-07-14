@@ -4,8 +4,23 @@ pub type Config = HashMap<String, String>;
 
 pub const APP_NAME: &str = "WebStreamr";
 
+/// Default when no plugin config is supplied.
+///
+/// Matches Dart [WebStreamrSettings.defaultCountryCodes]: enable every
+/// supported country code so regional sources (KinoGer/DE, MegaKino, …)
+/// participate out of the box. Callers that need a narrow set must pass an
+/// explicit config map.
 pub fn default_config() -> Config {
-    HashMap::from([("multi".into(), "on".into()), ("en".into(), "on".into())])
+    const COUNTRY_CODES: &[&str] = &[
+        "multi", "al", "ar", "bg", "bl", "cs", "de", "el", "en", "es", "et", "fa", "fr",
+        "gu", "he", "hi", "hr", "hu", "id", "it", "ja", "kn", "ko", "lt", "lv", "ml", "mr",
+        "mx", "nl", "no", "pa", "pl", "pt", "ro", "ru", "sk", "sl", "sr", "ta", "te", "th",
+        "tr", "uk", "vi", "zh",
+    ];
+    COUNTRY_CODES
+        .iter()
+        .map(|cc| ((*cc).into(), "on".into()))
+        .collect()
 }
 
 pub fn show_errors(config: &Config) -> bool {
@@ -61,5 +76,15 @@ mod tests {
         assert!(supports_media_flow_proxy(&c));
         assert!(is_extractor_disabled(&c, "mixdrop"));
         assert!(!is_extractor_disabled(&c, "voe"));
+    }
+
+    #[test]
+    fn default_config_enables_regional_countries() {
+        let c = default_config();
+        assert!(country_enabled(&c, "multi"));
+        assert!(country_enabled(&c, "en"));
+        assert!(country_enabled(&c, "de"));
+        assert!(country_enabled(&c, "hi"));
+        assert!(country_enabled(&c, "fr"));
     }
 }

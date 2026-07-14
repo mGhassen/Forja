@@ -8,7 +8,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-enum PlayerSourceStatus { ready, active, failed, checking }
+enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 
 Color playerSourceBadgeColor(String? badge) {
   switch (badge?.toUpperCase()) {
@@ -36,6 +36,8 @@ Color playerSourceStatusColor(PlayerSourceStatus status) {
       return const Color(0xFFEF4444);
     case PlayerSourceStatus.checking:
       return const Color(0xFF38BDF8);
+    case PlayerSourceStatus.unchecked:
+      return const Color(0x3DFFFFFF);
   }
 }
 
@@ -475,6 +477,14 @@ class PlayerPopupListTile extends StatelessWidget {
             shape: BoxShape.circle,
           ),
         ),
+      PlayerSourceStatus.unchecked => Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
     };
     return SizedBox(
       width: _statusSlot,
@@ -568,7 +578,9 @@ class PlayerPopupListTile extends StatelessWidget {
                           fontSize: 11,
                         ),
                       ),
-                    if (status != null && status != PlayerSourceStatus.ready)
+                    if (status != null &&
+                        status != PlayerSourceStatus.ready &&
+                        status != PlayerSourceStatus.unchecked)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
@@ -576,7 +588,9 @@ class PlayerPopupListTile extends StatelessWidget {
                             PlayerSourceStatus.active => 'Playing',
                             PlayerSourceStatus.failed => 'Unavailable',
                             PlayerSourceStatus.checking => 'Checking…',
-                            PlayerSourceStatus.ready => '',
+                            PlayerSourceStatus.ready ||
+                            PlayerSourceStatus.unchecked =>
+                              '',
                           },
                           style: TextStyle(
                             color: playerSourceStatusColor(status!),

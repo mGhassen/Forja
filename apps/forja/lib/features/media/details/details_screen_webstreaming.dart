@@ -433,9 +433,8 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
             _s._webstreamingStreams = sources;
             _s._webstreamingActiveProviderId = key;
           });
-          unawaited(
-            _persistWebstreamingCache(providerId: key, sources: sources),
-          );
+          // Do not disk-cache until mpv confirms playback — dead resolves must
+          // not poison the next Play for any provider.
 
           final isTv = _s._movie.mediaType == 'tv';
           final title = isTv
@@ -551,10 +550,8 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
       {providerId: resolvedSources},
     );
-    await _persistWebstreamingCache(
-      providerId: providerId,
-      sources: resolvedSources,
-    );
+    // Persist only after playbackConfirmed (player lifecycle) so unreachable
+    // extracts from any provider are not reused on the next green Play.
     if (mounted && _s._sourcesPanelOpen) setState(() => _s._sourcesPanelOpen = false);
     try {
       await AppRouter.openPlayer(

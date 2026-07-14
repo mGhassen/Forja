@@ -29,9 +29,10 @@ impl Provider for WebstreamrProvider {
             return Err(ProviderError::Cancelled);
         }
         let is_tv = request.media_type == "tv" || request.media_type == "series";
+        let config = webstreamr_config_value(&request.settings);
         let mut req = json!({
             "media_type": if is_tv { "series" } else { "movie" },
-            "config": {},
+            "config": config,
             "enabled_sources": [],
         });
         if !request.imdb_id.trim().is_empty() {
@@ -54,6 +55,10 @@ impl Provider for WebstreamrProvider {
             } else {
                 request.episode
             });
+        }
+        let token = request.settings.webstreamr_tmdb_access_token.trim();
+        if !token.is_empty() {
+            req["tmdb_access_token"] = Value::String(token.to_string());
         }
 
         let started = Instant::now();
@@ -117,6 +122,26 @@ impl Provider for WebstreamrProvider {
     }
 }
 
+fn webstreamr_config_value(settings: &crate::request::ResolveSettings) -> Value {
+    if settings.webstreamr_config.is_empty() {
+        // Empty request → crate default (all countries). Mirrors Dart
+        // WebStreamrSettings when prefs are unset.
+        return Value::Object(
+            webstreamr::config::default_config()
+                .into_iter()
+                .map(|(k, v)| (k, Value::String(v)))
+                .collect(),
+        );
+    }
+    Value::Object(
+        settings
+            .webstreamr_config
+            .iter()
+            .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+            .collect(),
+    )
+}
+
 /// Match [WebStreamrService.resolveStreamUrl]: direct, external, or YouTube.
 fn playable_url(item: &Value) -> String {
     if let Some(url) = item
@@ -146,8 +171,8 @@ fn playable_url(item: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::playable_url;
-    use serde_json::json;
+    use super::{playable_url, webstreamr_config_value};
+    use serde_json::{json, Value};
 
     #[test]
     fn request_shape_matches_streams_request() {
@@ -159,11 +184,42 @@ mod tests {
             "episode": 1,
             "title": "House of the Dragon",
             "year": 2022,
-            "config": {},
+            "config": { "multi": "on", "de": "on", "en": "on" },
             "enabled_sources": [],
         });
         let _: webstreamr::resolver::StreamsRequest =
             serde_json::from_value(req).expect("StreamsRequest parse");
+    }
+
+    #[test]
+    fn webstreamr_config_value_empty_uses_default_countries() {
+        let settings = crate::request::ResolveSettings::default();
+        let v = webstreamr_config_value(&settings);
+        let obj = v.as_object().expect("object");
+        assert_eq!(
+            obj.get("de").and_then(|x: &Value| x.as_str()),
+            Some("on")
+        );
+        assert_eq!(
+            obj.get("multi").and_then(|x: &Value| x.as_str()),
+            Some("on")
+        );
+    }
+
+    #[test]
+    fn webstreamr_config_value_respects_explicit_map() {
+        let mut settings = crate::request::ResolveSettings::default();
+        settings
+            .webstreamr_config
+            .insert("de".into(), "on".into());
+        let v = webstreamr_config_value(&settings);
+        let obj = v.as_object().expect("object");
+        assert_eq!(obj.len(), 1);
+        assert_eq!(
+            obj.get("de").and_then(|x: &Value| x.as_str()),
+            Some("on")
+        );
+        assert!(obj.get("en").is_none());
     }
 
     #[test]
