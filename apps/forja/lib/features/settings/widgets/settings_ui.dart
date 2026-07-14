@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
@@ -22,38 +23,29 @@ class SettingsCategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = selected
-        ? ForjaShellColors.chipSelectedBg
-        : Colors.transparent;
-    final border = selected
-        ? ForjaShellColors.chipSelectedBorder
-        : Colors.transparent;
     final iconColor =
         selected ? ForjaShellColors.brandGreen : ForjaShellColors.iconMuted;
     final titleColor =
         selected ? ForjaShellColors.textPrimary : ForjaShellColors.textSecondary;
 
     final child = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      duration: const Duration(milliseconds: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(SettingsTokens.categoryTileRadius),
-        border: Border.all(color: border),
+        color: selected
+            ? ForjaShellColors.inkHover
+            : Colors.transparent,
+        border: Border(
+          left: BorderSide(
+            color: selected ? ForjaShellColors.brandGreen : Colors.transparent,
+            width: 2.5,
+          ),
+        ),
       ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: ForjaShellColors.sectionIconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 20, color: iconColor),
-          ),
-          const SizedBox(width: 12),
+          Icon(icon, size: 22, color: iconColor),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +55,7 @@ class SettingsCategoryTile extends StatelessWidget {
                   style: TextStyle(
                     color: titleColor,
                     fontSize: SettingsTokens.categoryTitleSize,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
                 if (subtitle != null) ...[
@@ -103,7 +95,7 @@ class SettingsCategoryTile extends StatelessWidget {
   }
 }
 
-/// Labeled block of settings rows.
+/// Flat labeled section of settings rows — no card box, hairline row dividers.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({
     super.key,
@@ -123,39 +115,47 @@ class SettingsGroup extends StatelessWidget {
         children: [
           if (label != null) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Text(
-                label!.toUpperCase(),
-                style: const TextStyle(
-                  color: ForjaShellColors.brandGreen,
-                  fontSize: SettingsTokens.groupLabelSize,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
-                ),
+              padding: const EdgeInsets.only(left: 2, bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 2,
+                    color: ForjaShellColors.brandGreen,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    label!.toUpperCase(),
+                    style: const TextStyle(
+                      color: ForjaShellColors.brandGreen,
+                      fontSize: SettingsTokens.groupLabelSize,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.6,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-          Container(
-            decoration: BoxDecoration(
-              color: ForjaShellColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(SettingsTokens.groupRadius),
-              border: Border.all(color: ForjaShellColors.borderSubtle),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < children.length; i++) ...[
-                  if (i > 0)
-                    const Divider(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Divider(
                       height: 1,
                       thickness: 1,
-                      color: ForjaShellColors.borderSubtle,
+                      color: ForjaShellColors.borderSubtle.withValues(
+                        alpha: 0.6,
+                      ),
                     ),
-                  children[i],
-                ],
+                  ),
+                children[i],
               ],
-            ),
+            ],
           ),
         ],
       ),
@@ -171,12 +171,16 @@ class SettingsPageScaffold extends StatefulWidget {
     required this.child,
     this.showBack = false,
     this.onBack,
+    this.scrollable = true,
   });
 
   final String title;
   final Widget child;
   final bool showBack;
   final VoidCallback? onBack;
+
+  /// When false, [child] fills the remaining height (no outer scroll).
+  final bool scrollable;
 
   @override
   State<SettingsPageScaffold> createState() => _SettingsPageScaffoldState();
@@ -231,29 +235,53 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
             ),
           ),
           Expanded(
-            child: Scrollbar(
-              controller: _scrollController,
-              thumbVisibility: true,
-              interactive: true,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(
-                  SettingsTokens.pagePadding,
-                  8,
-                  SettingsTokens.pagePadding,
-                  48,
-                ),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: SettingsTokens.detailMaxWidth,
+            child: widget.scrollable
+                ? Scrollbar(
+                    controller: _scrollController,
+                    thumbVisibility: true,
+                    interactive: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(
+                        SettingsTokens.pagePadding,
+                        8,
+                        SettingsTokens.pagePadding,
+                        48,
+                      ),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: SettingsTokens.detailMaxWidth,
+                          ),
+                          child: widget.child,
+                        ),
+                      ),
                     ),
-                    child: widget.child,
+                  )
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      SettingsTokens.pagePadding,
+                      8,
+                      SettingsTokens.pagePadding,
+                      16,
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth
+                            .clamp(0.0, SettingsTokens.detailMaxWidth)
+                            .toDouble();
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: SizedBox(
+                            width: width,
+                            height: constraints.maxHeight,
+                            child: widget.child,
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ),
-            ),
           ),
         ],
       ),
@@ -279,7 +307,7 @@ class SettingsToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
       child: Row(
         children: [
           Expanded(
@@ -348,7 +376,7 @@ class SettingsSelectRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
       child: Row(
         children: [
           Expanded(
@@ -453,7 +481,7 @@ class SettingsActionRow extends StatelessWidget {
         : ForjaShellColors.textPrimary;
 
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
       child: Row(
         children: [
           if (leading != null) ...[
@@ -517,7 +545,13 @@ class SettingsActionRow extends StatelessWidget {
   }
 }
 
-/// Primary / secondary text button styled for settings.
+/// Settings action button — thin wrapper over the shared [ForjaButton].
+///
+/// Hugs its label and left-aligns by default (never full-width in a stretch
+/// column). Pass `expand: true` only when a caller explicitly wants a
+/// width-filling button (e.g. inside a `Row`/`Expanded`).
+///
+/// `secondary: true` uses the neutral tone; otherwise the brand-green primary.
 class SettingsFilledButton extends StatelessWidget {
   const SettingsFilledButton({
     super.key,
@@ -526,6 +560,7 @@ class SettingsFilledButton extends StatelessWidget {
     this.icon,
     this.busy = false,
     this.secondary = false,
+    this.expand = false,
   });
 
   final String label;
@@ -533,53 +568,223 @@ class SettingsFilledButton extends StatelessWidget {
   final IconData? icon;
   final bool busy;
   final bool secondary;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
-    final bg = secondary
-        ? ForjaShellColors.sectionIconBg
-        : ForjaShellColors.brandGreen;
-    final fg = secondary
-        ? ForjaShellColors.textPrimary
-        : const Color(0xFF0A0A0A);
+    final button = ForjaButton(
+      label: label,
+      onPressed: onPressed,
+      icon: icon,
+      busy: busy,
+      expand: expand,
+      variant: secondary
+          ? ForjaButtonVariant.neutral
+          : ForjaButtonVariant.primary,
+    );
+    if (expand) return button;
+    return Align(alignment: Alignment.centerLeft, child: button);
+  }
+}
 
-    return SizedBox(
-      height: 48,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: busy ? null : onPressed,
-          borderRadius: BorderRadius.circular(10),
-          child: Center(
-            child: busy
-                ? SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: fg,
+/// Flat underline text field — no filled box.
+class SettingsTextField extends StatelessWidget {
+  const SettingsTextField({
+    super.key,
+    required this.controller,
+    this.label,
+    this.hint,
+    this.obscureText = false,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String? label;
+  final String? hint;
+  final bool obscureText;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      onSubmitted: onSubmitted,
+      style: const TextStyle(
+        color: ForjaShellColors.textPrimary,
+        fontSize: 14,
+      ),
+      cursorColor: ForjaShellColors.brandGreen,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        isDense: true,
+        floatingLabelStyle: const TextStyle(color: ForjaShellColors.brandGreen),
+        labelStyle: const TextStyle(color: ForjaShellColors.textSecondary),
+        hintStyle: TextStyle(
+          color: ForjaShellColors.textSecondary.withValues(alpha: 0.5),
+        ),
+        contentPadding: const EdgeInsets.only(top: 18, bottom: 10),
+        enabledBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: ForjaShellColors.brandGreen, width: 2),
+        ),
+      ),
+    );
+  }
+}
+
+/// Flat connected/status line — icon + title + subtitle, no box.
+class SettingsStatusRow extends StatelessWidget {
+  const SettingsStatusRow({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.icon = Icons.check_circle_rounded,
+    this.iconColor = ForjaShellColors.brandGreen,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 12,
                     ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (icon != null) ...[
-                        Icon(icon, size: 18, color: fg),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: fg,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Credits + version pinned to the bottom of the wide-settings sidebar.
+class SettingsSidebarFooter extends StatelessWidget {
+  const SettingsSidebarFooter({super.key});
+
+  static const Color _loveAccent = Color(0xFFF472B6);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: ForjaShellColors.borderSubtle.withValues(alpha: 0.65),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _loveAccent.withValues(alpha: 0.45),
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _loveAccent.withValues(alpha: 0.22),
+                      ForjaShellColors.brandGreen.withValues(alpha: 0.14),
                     ],
                   ),
+                ),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  size: 17,
+                  color: _loveAccent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          height: 1.45,
+                          color: ForjaShellColors.textSecondary,
+                        ),
+                        children: const [
+                          TextSpan(text: 'Made with '),
+                          TextSpan(
+                            text: 'Love',
+                            style: TextStyle(
+                              color: _loveAccent,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          TextSpan(text: ' by '),
+                          TextSpan(
+                            text: 'Schmenka',
+                            style: TextStyle(
+                              color: ForjaShellColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    AppVersionLabel(
+                      prefix: 'v',
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary.withValues(
+                          alpha: 0.85,
+                        ),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }

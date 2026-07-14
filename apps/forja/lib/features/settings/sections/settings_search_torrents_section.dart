@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/settings/webstreamr_settings_screen.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 
-/// Torrent engine, sort order, and WebStreamr local settings.
+/// Torrent engine and sort order settings.
 class SettingsSearchTorrentsSection extends StatefulWidget {
   const SettingsSearchTorrentsSection({super.key});
 
@@ -95,7 +94,7 @@ class _SettingsSearchTorrentsSectionState
               ),
               if (_torrentCacheType == 'ram')
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -124,7 +123,7 @@ class _SettingsSearchTorrentsSectionState
                   ),
                 ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -165,24 +164,6 @@ class _SettingsSearchTorrentsSectionState
             ],
           ),
         ],
-        SettingsGroup(
-          label: 'WebStreamr',
-          children: [
-            SettingsActionRow(
-              leading: const Icon(
-                Icons.language_rounded,
-                color: ForjaShellColors.iconActive,
-              ),
-              title: 'WebStreamr Settings',
-              subtitle: 'Country toggles, MFP, FlareSolverr, TMDB token',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const WebStreamrSettingsScreen(),
-                ),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }

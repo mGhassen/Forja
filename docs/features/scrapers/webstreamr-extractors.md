@@ -14,17 +14,17 @@ StreamEmbed · SaveFiles · Dropload · SuperVideo · Vidora · FSST · VixSrc �
 
 ## How to open it
 
-Automatic during WebStreamr resolution. Disable specific extractors in **Settings → WebStreamr Settings**.
+Automatic during WebStreamr resolution. Disable specific extractors in **Settings → WebStreamr**.
 
 ## What you can do
 
 - Turn off extractors that fail often for you
-- Exclude resolutions (e.g. skip 4K) in WebStreamr Settings
+- Exclude resolutions (e.g. skip 4K) in **Settings → WebStreamr**
 - Rely on MFP-backed extractors when you run a MediaFlow Proxy
 
 ## Tips
 
-- If many hosts fail, set up MFP URL and password in WebStreamr Settings
+- If many hosts fail, set up MFP URL and password in **Settings → WebStreamr**
 - FlareSolverr helps with Cloudflare-protected pages — optional URL in settings
 
 ## Related

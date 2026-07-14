@@ -66,7 +66,8 @@ class PlayerSubtitleMenu {
         : null;
     final embedded = player.state.tracks.subtitle.where((t) {
       final isExternal = t.id.startsWith('http');
-      final isKnownExternal = excludeKnownExternalEmbedded &&
+      final isKnownExternal =
+          excludeKnownExternalEmbedded &&
           externalSubtitles.any(
             (s) => s['display'] == t.title && s['language'] == t.language,
           );
@@ -101,20 +102,21 @@ class PlayerSubtitleMenu {
         },
       ),
       child: ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         shrinkWrap: true,
         children: [
           if (isFetchingSubs)
             const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: 10),
               child: LinearProgressIndicator(
                 color: Colors.white54,
                 backgroundColor: Colors.white10,
               ),
             ),
-          PlayerPopupListTile(
+          PlayerPopupOptionChip(
             label: 'Off',
             selected: current.id == 'no' && selectedExternalSubUrl == null,
+            expanded: true,
             onTap: () {
               onSubtitleSelected?.call();
               player.setSubtitleTrack(SubtitleTrack.no());
@@ -123,8 +125,31 @@ class PlayerSubtitleMenu {
               PlayerPopupPanel.dismiss();
             },
           ),
-          PlayerPopupListTile(
-            label: 'Load from file',
+          for (final t in embedded) ...[
+            const SizedBox(height: 8),
+            PlayerPopupOptionChip(
+              label: formatPlayerTrackLabel(
+                id: t.id,
+                title: t.title,
+                language: t.language,
+              ),
+              selected:
+                  selectedExternalSubUrl == null && t.id == selectedSubtitleId,
+              expanded: true,
+              onTap: () {
+                onSubtitleSelected?.call();
+                player.setSubtitleTrack(t);
+                updateSubVisibility(t);
+                onExternalUrlChanged(null);
+                PlayerPopupPanel.dismiss();
+              },
+            ),
+          ],
+          const SizedBox(height: 10),
+          PlayerPopupNavRow(
+            icon: Icons.upload_file_rounded,
+            title: 'Load from file',
+            subtitle: 'SRT · ASS · SSA · VTT',
             onTap: () async {
               final result = await FilePicker.platform.pickFiles(
                 type: FileType.custom,
@@ -135,88 +160,76 @@ class PlayerSubtitleMenu {
                 final file = File(result.files.single.path!);
                 final content = await file.readAsString();
                 final name = result.files.single.name;
-                final subTrack = SubtitleTrack.data(content, title: name, language: 'und');
+                final subTrack = SubtitleTrack.data(
+                  content,
+                  title: name,
+                  language: 'und',
+                );
                 player.setSubtitleTrack(subTrack);
-                final isAssFile = name.toLowerCase().endsWith('.ass') ||
+                final isAssFile =
+                    name.toLowerCase().endsWith('.ass') ||
                     name.toLowerCase().endsWith('.ssa');
                 onExternalUrlChanged(null);
                 onNativeSubtitleChanged(isAssFile);
                 if (player.platform is NativePlayer) {
-                  (player.platform as NativePlayer)
-                      .setProperty('sub-visibility', isAssFile ? 'yes' : 'no');
+                  (player.platform as NativePlayer).setProperty(
+                    'sub-visibility',
+                    isAssFile ? 'yes' : 'no',
+                  );
                 }
                 if (context.mounted) PlayerPopupPanel.dismiss();
               }
             },
           ),
-          ...embedded.map((t) {
-            final sel =
-                selectedExternalSubUrl == null && t.id == selectedSubtitleId;
-            return PlayerPopupListTile(
-              label: formatPlayerTrackLabel(
-                id: t.id,
-                title: t.title,
-                language: t.language,
-              ),
-              subtitle: 'Embedded',
-              selected: sel,
-              onTap: () {
-                onSubtitleSelected?.call();
-                player.setSubtitleTrack(t);
-                updateSubVisibility(t);
-                onExternalUrlChanged(null);
-                PlayerPopupPanel.dismiss();
-              },
-            );
-          }),
-          ...folderKeys.map((key) {
-            final list = byLang[key]!;
-            final hasSelected =
-                list.any((s) => s['url'] == selectedExternalSubUrl);
-            return PlayerPopupListTile(
-              label: languageDisplayName(key),
-              badge: '${list.length}',
-              selected: hasSelected,
-              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
-              onTap: () async {
-            PlayerPopupPanel.dismiss();
-                await _openLanguage(
-                  context,
-                  langKey: key,
-                  subs: list,
-                  selectedExternalSubUrl: selectedExternalSubUrl,
-                  loadOnlineSubtitle: loadOnlineSubtitle,
-                  onExternalUrlChanged: onExternalUrlChanged,
-                  onSubtitleSelected: onSubtitleSelected,
-                  onRoot: () => _openRoot(
-                    context,
-                    player: player,
-                    externalSubtitles: externalSubtitles,
-                    selectedExternalSubUrl: selectedExternalSubUrl,
-                    isFetchingSubs: isFetchingSubs,
-                    updateSubVisibility: updateSubVisibility,
-                    onExternalUrlChanged: onExternalUrlChanged,
-                    onNativeSubtitleChanged: onNativeSubtitleChanged,
-                    loadOnlineSubtitle: loadOnlineSubtitle,
-                    onSubtitleSettings: onSubtitleSettings,
-                    onSubtitleSelected: onSubtitleSelected,
-                    excludeKnownExternalEmbedded: excludeKnownExternalEmbedded,
-                    margin: margin,
-                    anchorContext: anchorContext,
-                  ),
-                  margin: margin,
-                  anchorContext: anchorContext,
+          for (final key in folderKeys) ...[
+            const SizedBox(height: 8),
+            Builder(
+              builder: (_) {
+                final list = byLang[key]!;
+                final hasSelected = list.any(
+                  (s) => s['url'] == selectedExternalSubUrl,
+                );
+                return PlayerPopupNavRow(
+                  icon: hasSelected
+                      ? Icons.check_circle_rounded
+                      : Icons.translate_rounded,
+                  title: languageDisplayName(key),
+                  value: '${list.length}',
+                  onTap: () async {
+                    PlayerPopupPanel.dismiss();
+                    await _openLanguage(
+                      context,
+                      langKey: key,
+                      subs: list,
+                      selectedExternalSubUrl: selectedExternalSubUrl,
+                      loadOnlineSubtitle: loadOnlineSubtitle,
+                      onExternalUrlChanged: onExternalUrlChanged,
+                      onSubtitleSelected: onSubtitleSelected,
+                      onRoot: () => _openRoot(
+                        context,
+                        player: player,
+                        externalSubtitles: externalSubtitles,
+                        selectedExternalSubUrl: selectedExternalSubUrl,
+                        isFetchingSubs: isFetchingSubs,
+                        updateSubVisibility: updateSubVisibility,
+                        onExternalUrlChanged: onExternalUrlChanged,
+                        onNativeSubtitleChanged: onNativeSubtitleChanged,
+                        loadOnlineSubtitle: loadOnlineSubtitle,
+                        onSubtitleSettings: onSubtitleSettings,
+                        onSubtitleSelected: onSubtitleSelected,
+                        excludeKnownExternalEmbedded:
+                            excludeKnownExternalEmbedded,
+                        margin: margin,
+                        anchorContext: anchorContext,
+                      ),
+                      margin: margin,
+                      anchorContext: anchorContext,
+                    );
+                  },
                 );
               },
-            );
-          }),
-          if (embedded.isEmpty && folderKeys.isEmpty && !isFetchingSubs)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Text('No subtitles found', style: TextStyle(color: Colors.white38)),
-              ),
             ),
+          ],
         ],
       ),
     );
@@ -246,11 +259,12 @@ class PlayerSubtitleMenu {
         onRoot();
       },
       child: ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         shrinkWrap: true,
         children: subs.map((s) {
           final sel = s['url'] == selectedExternalSubUrl;
-          final source = (s['translated'] == true ? 'Translated · ' : '') +
+          final source =
+              (s['translated'] == true ? 'Translated · ' : '') +
               (s['sourceName']?.toString() ?? 'opensubtitles');
           return PlayerPopupListTile(
             label: s['display']?.toString() ?? languageDisplayName(langKey),

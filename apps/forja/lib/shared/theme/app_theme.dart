@@ -65,7 +65,15 @@ class AppTheme {
 
   static ThemeData get themeData {
     const preset = _forjaPreset;
-    const buttonRadius = BorderRadius.all(Radius.circular(6));
+    // Shared Forja button language: rectangle, small radius, hairline border,
+    // lightly tinted (not saturated) fill. Mirrors [ForjaButton].
+    const buttonRadius = BorderRadius.all(Radius.circular(8));
+    const buttonShape = RoundedRectangleBorder(borderRadius: buttonRadius);
+    const buttonBorder = BorderSide(color: ForjaShellColors.ghostBorder);
+    const buttonFill = Color(0x0AFFFFFF); // ~4% white — barely-there tint
+    const buttonFg = Color(0xFFF5F5F7);
+    const buttonPadding = EdgeInsets.symmetric(horizontal: 18);
+    const buttonMinSize = Size(0, 44);
 
     return ThemeData(
       useMaterial3: true,
@@ -88,20 +96,34 @@ class AppTheme {
       iconTheme: const IconThemeData(color: Color(0xFF9CA3AF)),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
-          backgroundColor: preset.bgCard,
-          foregroundColor: const Color(0xFFF5F5F7),
+          minimumSize: buttonMinSize,
+          padding: buttonPadding,
+          shape: buttonShape,
+          side: buttonBorder,
+          backgroundColor: buttonFill,
+          foregroundColor: buttonFg,
+          elevation: 0,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          minimumSize: buttonMinSize,
+          padding: buttonPadding,
+          shape: buttonShape,
+          side: buttonBorder,
+          backgroundColor: buttonFill,
+          foregroundColor: buttonFg,
+          elevation: 0,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
-          side: const BorderSide(color: Color(0xFF4B5563)),
-          foregroundColor: const Color(0xFFF5F5F7),
+          minimumSize: buttonMinSize,
+          padding: buttonPadding,
+          shape: buttonShape,
+          side: buttonBorder,
+          backgroundColor: buttonFill,
+          foregroundColor: buttonFg,
         ),
       ),
       iconButtonTheme: IconButtonThemeData(

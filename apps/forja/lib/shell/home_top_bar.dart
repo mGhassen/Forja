@@ -230,11 +230,11 @@ class _HomeTopBarState extends State<HomeTopBar> {
         onTap: _openSearch,
         borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
         scaleOnFocus: ShellTokens.focusActiveScale,
-        listIndex: 0,
+        listIndex: 3,
         tvTabId: 'home',
         tvRowId: 'top-bar',
         tvZone: ShellTvZone.topBar,
-        tvItemIndex: 0,
+        tvItemIndex: 3,
         focusNode: _searchFocus,
         onDownEdge: () => ShellTvFocus.focusHomeHeroGallery(),
         child: SizedBox(
@@ -273,9 +273,9 @@ class _HomeTopBarState extends State<HomeTopBar> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSearchAction(tvFocus: tvFocus),
-        SizedBox(width: tabGap),
         Expanded(child: menu),
+        SizedBox(width: tabGap),
+        _buildSearchAction(tvFocus: tvFocus),
       ],
     );
   }
@@ -359,7 +359,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             onTap: () =>
                                 _toggleMediaFilter(ShellHomeCategory.films),
                             tvFocus: tvFocus,
-                            listIndex: 1,
+                            listIndex: 0,
                             focusNode: tvFocus ? _menuFocus : null,
                             onDownEdge: tvFocus
                                 ? () => ShellTvFocus.focusHomeHeroGallery()
@@ -372,7 +372,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             onTap: () =>
                                 _toggleMediaFilter(ShellHomeCategory.tvShows),
                             tvFocus: tvFocus,
-                            listIndex: 2,
+                            listIndex: 1,
                             onDownEdge: tvFocus
                                 ? () => ShellTvFocus.focusHomeHeroGallery()
                                 : null,
@@ -385,7 +385,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             showChevron: true,
                             onTap: _openCategoriesMenu,
                             tvFocus: tvFocus,
-                            listIndex: 3,
+                            listIndex: 2,
                             focusNode: tvFocus ? _categoriesTabFocus : null,
                             onDownEdge: tvFocus
                                 ? () => ShellTvFocus.focusHomeHeroGallery()

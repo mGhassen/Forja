@@ -15,9 +15,11 @@ Settings is organized as a **category hub** (not a long accordion). On desktop/w
 | Category | What it covers |
 |----------|----------------|
 | [Playback](playback-settings.md) | Play sources, server reliability, audio, auto next/skip, quality |
-| [Sources](torrent-settings.md) | Torrents (when available), WebStreamr, Stremio / Nuvio / Jackett / Prowlarr |
+| [Sources](torrent-settings.md) | Torrents (when available), Stremio / Nuvio / Jackett / Prowlarr |
+| [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link |
-| Accounts | Trakt, Simkl, MDBlist, manage lists |
+| Accounts | Trakt, Simkl, MDBlist |
+| [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu |
 | [About](app-updates.md) | Check for updates, version, developer |

@@ -94,10 +94,22 @@ class PlayerPopupPanel {
     VoidCallback? onBack,
     bool centered = false,
   }) {
-    dismiss();
+    if (!context.mounted) return Future.value();
 
-    final tv = ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
-        false;
+    // Read overlay ancestors before [dismiss] — [context] may live inside the
+    // panel we are about to remove (drill-in / back navigation).
+    final shellScope = ShellScope.maybeOf(context);
+    final ShellProfile capturedProfile;
+    final ShellPlatformConfig capturedConfig;
+    if (shellScope != null) {
+      capturedProfile = shellScope.profile;
+      capturedConfig = shellScope.config;
+    } else {
+      capturedProfile = resolveShellProfile(context);
+      capturedConfig = shellPlatformConfigFor(capturedProfile);
+    }
+
+    final tv = capturedConfig.inputPolicy.useFocusableMoodChips;
     if (tv) {
       centered = true;
       anchorContext = null;
@@ -109,6 +121,8 @@ class PlayerPopupPanel {
     }
 
     final overlay = Overlay.of(context);
+    dismiss();
+
     _completer = Completer<void>();
 
     void close() {
@@ -117,9 +131,10 @@ class PlayerPopupPanel {
 
     _entry = OverlayEntry(
       builder: (overlayContext) {
-        return ShellScope.rehost(
-          context,
-          Builder(
+        return ShellScope(
+          profile: capturedProfile,
+          config: capturedConfig,
+          child: Builder(
             builder: (scopedContext) {
               if (anchorContext != null && !anchorContext.mounted) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -129,104 +144,108 @@ class PlayerPopupPanel {
               }
 
               final overlaySize = MediaQuery.sizeOf(scopedContext);
-        final rawAnchorRect = anchorContext != null
-            ? _anchorRectInOverlay(anchorContext, overlayContext)
-            : null;
-        // Mis-anchored to a full-screen context places the panel off-screen.
-        final anchorRect = rawAnchorRect != null &&
-                rawAnchorRect.height < overlaySize.height * 0.25
-            ? rawAnchorRect
-            : null;
-        final reserveAbove = anchorRect == null
-            ? 0.0
-            : _progressBarReserveAbove(
-                overlaySize: overlaySize,
-                anchorRect: anchorRect,
-                screenPadding: screenPadding,
-              );
-
-        final panel = Material(
-          type: MaterialType.transparency,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: width,
-              maxHeight: anchorRect == null
-                  ? maxHeight
-                  : _anchoredMaxHeight(
+              final rawAnchorRect = anchorContext != null
+                  ? _anchorRectInOverlay(anchorContext, overlayContext)
+                  : null;
+              // Mis-anchored to a full-screen context places the panel off-screen.
+              final anchorRect =
+                  rawAnchorRect != null &&
+                      rawAnchorRect.height < overlaySize.height * 0.25
+                  ? rawAnchorRect
+                  : null;
+              final reserveAbove = anchorRect == null
+                  ? 0.0
+                  : _progressBarReserveAbove(
                       overlaySize: overlaySize,
                       anchorRect: anchorRect,
-                      anchorGap: anchorGap,
                       screenPadding: screenPadding,
-                      maxHeight: maxHeight,
-                      reserveAbove: reserveAbove,
-                    ),
-            ),
-            child: _PanelShell(
-              title: title,
-              leadingIcon: leadingIcon,
-              trailing: trailing,
-              onBack: onBack == null
-                  ? null
-                  : () {
-                      close();
-                      onBack();
-                    },
-              onClose: close,
-              child: child,
-            ),
-          ),
-        );
+                    );
 
-        final Widget panelLayer;
-        if (anchorRect != null) {
-          final left = (anchorRect.center.dx - width / 2).clamp(
-            screenPadding.left,
-            overlaySize.width - width - screenPadding.right,
-          );
+              final panel = Material(
+                type: MaterialType.transparency,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: width,
+                    maxHeight: anchorRect == null
+                        ? maxHeight
+                        : _anchoredMaxHeight(
+                            overlaySize: overlaySize,
+                            anchorRect: anchorRect,
+                            anchorGap: anchorGap,
+                            screenPadding: screenPadding,
+                            maxHeight: maxHeight,
+                            reserveAbove: reserveAbove,
+                          ),
+                  ),
+                  child: _PanelShell(
+                    title: title,
+                    leadingIcon: leadingIcon,
+                    trailing: trailing,
+                    onBack: onBack == null
+                        ? null
+                        : () {
+                            // Dismiss first, then reopen on the next frame.
+                            // Calling [onBack] synchronously after [close] inserts
+                            // a new barrier under the same pointer-up, which
+                            // immediately dismisses the parent page again.
+                            final reopen = onBack;
+                            close();
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              reopen();
+                            });
+                          },
+                    onClose: close,
+                    child: child,
+                  ),
+                ),
+              );
 
-          final spaceAbove = anchorRect.top -
-              screenPadding.top -
-              anchorGap -
-              reserveAbove;
-          final spaceBelow = overlaySize.height -
-              anchorRect.bottom -
-              screenPadding.bottom -
-              anchorGap;
-          final showAbove =
-              spaceAbove >= spaceBelow && spaceAbove > 0;
-
-          panelLayer = showAbove
-              ? Positioned(
-                  left: left,
-                  bottom: overlaySize.height -
-                      anchorRect.top +
-                      anchorGap +
-                      reserveAbove,
-                  width: width,
-                  child: panel,
-                )
-              : Positioned(
-                  left: left,
-                  top: anchorRect.bottom + anchorGap,
-                  width: width,
-                  child: panel,
+              final Widget panelLayer;
+              if (anchorRect != null) {
+                final left = (anchorRect.center.dx - width / 2).clamp(
+                  screenPadding.left,
+                  overlaySize.width - width - screenPadding.right,
                 );
-        } else if (centered) {
-          panelLayer = Center(
-            child: Padding(
-              padding: screenPadding,
-              child: panel,
-            ),
-          );
-        } else {
-          panelLayer = Align(
-            alignment: alignment,
-            child: Padding(
-              padding: margin,
-              child: panel,
-            ),
-          );
-        }
+
+                final spaceAbove =
+                    anchorRect.top -
+                    screenPadding.top -
+                    anchorGap -
+                    reserveAbove;
+                final spaceBelow =
+                    overlaySize.height -
+                    anchorRect.bottom -
+                    screenPadding.bottom -
+                    anchorGap;
+                final showAbove = spaceAbove >= spaceBelow && spaceAbove > 0;
+
+                panelLayer = showAbove
+                    ? Positioned(
+                        left: left,
+                        bottom:
+                            overlaySize.height -
+                            anchorRect.top +
+                            anchorGap +
+                            reserveAbove,
+                        width: width,
+                        child: panel,
+                      )
+                    : Positioned(
+                        left: left,
+                        top: anchorRect.bottom + anchorGap,
+                        width: width,
+                        child: panel,
+                      );
+              } else if (centered) {
+                panelLayer = Center(
+                  child: Padding(padding: screenPadding, child: panel),
+                );
+              } else {
+                panelLayer = Align(
+                  alignment: alignment,
+                  child: Padding(padding: margin, child: panel),
+                );
+              }
 
               return tvFocusableOverlay(
                 overlayContext: scopedContext,
@@ -281,7 +300,8 @@ class PlayerPopupPanel {
   }) {
     final spaceAbove =
         anchorRect.top - screenPadding.top - anchorGap - reserveAbove;
-    final spaceBelow = overlaySize.height -
+    final spaceBelow =
+        overlaySize.height -
         anchorRect.bottom -
         screenPadding.bottom -
         anchorGap;
@@ -294,7 +314,8 @@ class PlayerPopupPanel {
     required VoidCallback onDismiss,
     required Widget child,
   }) {
-    final tv = ShellScope.maybeOf(overlayContext)?.inputPolicy.useFocusableMoodChips ??
+    final tv =
+        ShellScope.maybeOf(overlayContext)?.inputPolicy.useFocusableMoodChips ??
         false;
     if (!tv) return child;
     return Focus(
@@ -327,8 +348,7 @@ class _TvPopupListFocusScope extends StatefulWidget {
   }
 
   @override
-  State<_TvPopupListFocusScope> createState() =>
-      _TvPopupListFocusScopeState();
+  State<_TvPopupListFocusScope> createState() => _TvPopupListFocusScopeState();
 }
 
 class _TvPopupListFocusScopeState extends State<_TvPopupListFocusScope> {
@@ -377,8 +397,7 @@ class _PanelShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tvFocus =
-        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final shell = DecoratedBox(
       decoration: BoxDecoration(
         color: PlayerPopupTokens.shellBg,
@@ -421,10 +440,7 @@ class _PanelShell extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (trailing != null) ...[
-                  trailing!,
-                  const SizedBox(width: 4),
-                ],
+                if (trailing != null) ...[trailing!, const SizedBox(width: 4)],
                 _PopupChromeButton(
                   icon: Icons.close_rounded,
                   tooltip: 'Close',
@@ -437,9 +453,7 @@ class _PanelShell extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Divider(height: 1, color: PlayerPopupTokens.border),
           ),
-          Flexible(
-            child: _TvPopupListFocusScope(child: child),
-          ),
+          Flexible(child: _TvPopupListFocusScope(child: child)),
         ],
       ),
     );
@@ -483,77 +497,6 @@ class _PopupChromeButton extends StatelessWidget {
     );
     if (tooltip == null) return button;
     return Tooltip(message: tooltip!, child: button);
-  }
-}
-
-/// Bordered section card used inside floating menus.
-class PlayerPopupSectionCard extends StatelessWidget {
-  const PlayerPopupSectionCard({
-    super.key,
-    required this.title,
-    this.icon,
-    this.subtitle,
-    this.valueBadge,
-    required this.child,
-  });
-
-  final IconData? icon;
-  final String title;
-  final String? subtitle;
-  final String? valueBadge;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        color: PlayerPopupTokens.cardBg,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-        border: Border.all(color: PlayerPopupTokens.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                PlayerPopupIconBox(icon: icon!),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle!,
-                        style: const TextStyle(
-                          color: PlayerPopupTokens.muted,
-                          fontSize: 11,
-                          height: 1.25,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (valueBadge != null) PlayerPopupValueBadge(valueBadge!),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
   }
 }
 
@@ -714,8 +657,7 @@ class PlayerPopupOptionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tvFocus =
-        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final chip = Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
@@ -794,39 +736,30 @@ class PlayerPopupListTile extends StatelessWidget {
     final color = playerSourceStatusColor(status!);
     final Widget glyph = switch (status!) {
       PlayerSourceStatus.active => Icon(
-          Icons.play_circle_filled_rounded,
-          color: color,
-          size: _statusSlot,
-        ),
+        Icons.play_circle_filled_rounded,
+        color: color,
+        size: _statusSlot,
+      ),
       PlayerSourceStatus.failed => Icon(
-          Icons.cancel_rounded,
-          color: color,
-          size: _statusSlot,
-        ),
+        Icons.cancel_rounded,
+        color: color,
+        size: _statusSlot,
+      ),
       PlayerSourceStatus.checking => SizedBox(
-          width: 14,
-          height: 14,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: color,
-          ),
-        ),
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      ),
       PlayerSourceStatus.ready => Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
       PlayerSourceStatus.unchecked => Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     };
     return SizedBox(
       width: _statusSlot,
@@ -843,21 +776,20 @@ class PlayerPopupListTile extends StatelessWidget {
     final rowColor = selected
         ? PlayerPopupTokens.selectedFill
         : failed
-            ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-            : active
-                ? const Color(0xFF22C55E).withValues(alpha: 0.07)
-                : Colors.transparent;
+        ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+        : active
+        ? const Color(0xFF22C55E).withValues(alpha: 0.07)
+        : Colors.transparent;
     final fg = selected
         ? PlayerPopupTokens.selectedFg
         : failed
-            ? Colors.white.withValues(alpha: 0.45)
-            : Colors.white;
+        ? Colors.white.withValues(alpha: 0.45)
+        : Colors.white;
     final subFg = selected
         ? PlayerPopupTokens.selectedFg.withValues(alpha: 0.62)
         : PlayerPopupTokens.muted;
 
-    final tvFocus =
-        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final tile = Material(
       color: rowColor,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
@@ -878,8 +810,8 @@ class PlayerPopupListTile extends StatelessWidget {
               color: selected
                   ? PlayerPopupTokens.selectedFill
                   : active
-                      ? const Color(0xFF22C55E).withValues(alpha: 0.35)
-                      : PlayerPopupTokens.border,
+                  ? const Color(0xFF22C55E).withValues(alpha: 0.35)
+                  : PlayerPopupTokens.border,
             ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -887,8 +819,10 @@ class PlayerPopupListTile extends StatelessWidget {
             children: [
               if (badge != null) ...[
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: selected
                         ? Colors.black.withValues(alpha: 0.08)
@@ -904,9 +838,9 @@ class PlayerPopupListTile extends StatelessWidget {
                       color: selected
                           ? PlayerPopupTokens.selectedFg
                           : badgeColor != null &&
-                                  badgeColor != const Color(0xFF2A2A2A)
-                              ? Colors.white.withValues(alpha: 0.92)
-                              : PlayerPopupTokens.muted,
+                                badgeColor != const Color(0xFF2A2A2A)
+                          ? Colors.white.withValues(alpha: 0.92)
+                          : PlayerPopupTokens.muted,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.4,
@@ -926,8 +860,9 @@ class PlayerPopupListTile extends StatelessWidget {
                       style: TextStyle(
                         color: fg,
                         fontSize: 14,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         decoration: failed ? TextDecoration.lineThrough : null,
                         decorationColor: Colors.white38,
                       ),
@@ -935,10 +870,7 @@ class PlayerPopupListTile extends StatelessWidget {
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: TextStyle(
-                          color: subFg,
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: subFg, fontSize: 11),
                       ),
                     if (status != null &&
                         status != PlayerSourceStatus.ready &&
@@ -951,8 +883,7 @@ class PlayerPopupListTile extends StatelessWidget {
                             PlayerSourceStatus.failed => 'Unavailable',
                             PlayerSourceStatus.checking => 'Checking…',
                             PlayerSourceStatus.ready ||
-                            PlayerSourceStatus.unchecked =>
-                              '',
+                            PlayerSourceStatus.unchecked => '',
                           },
                           style: TextStyle(
                             color: selected
@@ -987,10 +918,7 @@ class PlayerPopupListTile extends StatelessWidget {
     );
 
     if (!tvFocus || onTap == null) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: tile,
-      );
+      return Padding(padding: const EdgeInsets.only(bottom: 6), child: tile);
     }
 
     return Padding(

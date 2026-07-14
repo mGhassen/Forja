@@ -48,5 +48,33 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Miruro'), findsOneWidget);
     });
+
+    testWidgets('tries badge uses auto-try position not effective rank', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ProviderScoringPanel(
+                streamCatalog: const {
+                  'videasy': 'Videasy',
+                  'vidlink': 'VidLink',
+                },
+                streamOrder: const ['videasy', 'vidlink'],
+                onStreamOrderChanged: (_) {},
+                onStreamOrderReset: () {},
+                animeCatalog: const {},
+                animeOrder: const [],
+                onAnimeOrderChanged: (_) {},
+                onAnimeOrderReset: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('1st'), findsOneWidget);
+      expect(find.text('2nd'), findsOneWidget);
+      expect(find.text('3rd'), findsNothing);
+    });
   });
 }

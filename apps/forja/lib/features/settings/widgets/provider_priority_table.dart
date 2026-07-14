@@ -86,88 +86,82 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
       settingsOrder: order,
     );
     final rowById = preview.rowById;
+    final tryPositionById = {
+      for (var i = 0; i < preview.orderedIds.length; i++)
+        preview.orderedIds[i]: i + 1,
+    };
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.55),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: ForjaShellColors.borderSubtle),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Server reliability',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Score rises when a server works across the titles you play. '
-                'Auto tries servers in the Tries order — drag to prefer one.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: ForjaShellColors.textSecondary,
-                      height: 1.35,
-                    ),
-              ),
-              const SizedBox(height: 14),
-              _TabStrip(
-                tab: _tab,
-                onChanged: (t) => setState(() => _tab = t),
-              ),
-              const SizedBox(height: 12),
-              _ColumnLegend(),
-              const SizedBox(height: 4),
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: false,
-                itemCount: order.length,
-                onReorderItem: (oldIndex, newIndex) {
-                  final next = List<String>.from(order);
-                  final item = next.removeAt(oldIndex);
-                  next.insert(newIndex, item);
-                  if (_isAnime) {
-                    widget.onAnimeOrderChanged(next);
-                  } else {
-                    widget.onStreamOrderChanged(next);
-                  }
-                },
-                itemBuilder: (context, index) {
-                  final id = order[index];
-                  final row = rowById[id];
-                  final score = row?.reliabilityScore ??
-                      ProviderScoreMemory.globalScoreFor(id);
-                  final tries = row?.supported == true && row?.effectiveRank != null
-                      ? row!.effectiveRank! + 1
-                      : null;
-                  return _ServerRow(
-                    key: ValueKey('${_tab.name}-$id'),
-                    index: index,
-                    name: _catalog[id] ?? id,
-                    id: id,
-                    score: score,
-                    tries: tries,
-                  );
-                },
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: _isAnime
-                      ? widget.onAnimeOrderReset
-                      : widget.onStreamOrderReset,
-                  child: const Text('Reset order'),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Server reliability',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
-              ),
-            ],
           ),
-        ),
+          const SizedBox(height: 6),
+          Text(
+            'Score rises when a server works across the titles you play. '
+            'Auto tries servers in the Tries order — drag to prefer one.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: ForjaShellColors.textSecondary,
+                  height: 1.35,
+                ),
+          ),
+          const SizedBox(height: 14),
+          _TabStrip(
+            tab: _tab,
+            onChanged: (t) => setState(() => _tab = t),
+          ),
+          const SizedBox(height: 12),
+          _ColumnLegend(),
+          const SizedBox(height: 4),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: order.length,
+            onReorderItem: (oldIndex, newIndex) {
+              final next = List<String>.from(order);
+              final item = next.removeAt(oldIndex);
+              next.insert(newIndex, item);
+              if (_isAnime) {
+                widget.onAnimeOrderChanged(next);
+              } else {
+                widget.onStreamOrderChanged(next);
+              }
+            },
+            itemBuilder: (context, index) {
+              final id = order[index];
+              final row = rowById[id];
+              final score = row?.reliabilityScore ??
+                  ProviderScoreMemory.globalScoreFor(id);
+              final tries = row?.supported == true
+                  ? tryPositionById[id]
+                  : null;
+              return _ServerRow(
+                key: ValueKey('${_tab.name}-$id'),
+                index: index,
+                name: _catalog[id] ?? id,
+                id: id,
+                score: score,
+                tries: tries,
+              );
+            },
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _isAnime
+                  ? widget.onAnimeOrderReset
+                  : widget.onStreamOrderReset,
+              child: const Text('Reset order'),
+            ),
+          ),
+        ],
       ),
     );
   }

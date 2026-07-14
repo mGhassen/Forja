@@ -293,6 +293,30 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
+        final fullHero = hubIsFullCinematicHero(context);
+        final usesShell = hubUsesShellLayout(context);
+        final latestOnHero = usesShell &&
+            fullHero &&
+            (_feed?.latest ?? const []).isNotEmpty;
+        final latestSection = latestOnHero
+            ? HubCatalogSection<KdramaCard>(
+                title: 'Latest Update',
+                items: _feed!.latest,
+                compactTop: true,
+                tvTabId: 'asian_drama',
+                tvRowId: 'latest',
+                tvRowOrder: _catalogRowBase + 0,
+                tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                  tabId: 'asian_drama',
+                ),
+                cardBuilder: (context, card, index) => _dramaPosterCard(
+                  card,
+                  listIndex: index,
+                  tvRowId: 'latest',
+                ),
+              )
+            : null;
+
         return _error != null && !_loading
               ? _buildError()
               : RefreshIndicator(
@@ -319,14 +343,16 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     slides: _heroSlides(_spotlight),
                                     onSearch: _openSearch,
                                     tvTabId: 'asian_drama',
+                                    pageBottomChild: latestSection,
                                   ),
                                 ),
                                 if (_continueWatching.isNotEmpty)
                                   hubRowSliver(context,
                                     _buildContinueWatching(),
-                                    isFirstAfterHero: true,
+                                    isFirstAfterHero: latestSection == null,
                                   ),
-                                if ((_feed?.latest ?? const []).isNotEmpty)
+                                if ((_feed?.latest ?? const []).isNotEmpty &&
+                                    latestSection == null)
                                   hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Latest Update',

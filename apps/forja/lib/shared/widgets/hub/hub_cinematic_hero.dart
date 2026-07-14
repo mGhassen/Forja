@@ -13,6 +13,14 @@ import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 
+bool hubIsFullCinematicHero(BuildContext context) {
+  if (ShellScope.metricsOf(context).usesTvDensity) return true;
+  return MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
+}
+
+bool hubUsesShellLayout(BuildContext context) =>
+    ShellScope.profileOf(context) != ShellProfile.mobile;
+
 class HubHeroSlide {
   const HubHeroSlide({
     required this.id,
@@ -46,12 +54,16 @@ class HubCinematicHero extends StatefulWidget {
     this.firstRowHeight,
     this.onSearch,
     this.tvTabId,
+    this.pageBottomChild,
   });
 
   final List<HubHeroSlide> slides;
   final double? firstRowHeight;
   final VoidCallback? onSearch;
   final String? tvTabId;
+
+  /// First catalog row rendered on the extended page backdrop (desktop/TV).
+  final Widget? pageBottomChild;
 
   @override
   State<HubCinematicHero> createState() => _HubCinematicHeroState();
@@ -163,17 +175,11 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     return (value * dpr).round() / dpr;
   }
 
-  double _heroBodyHeight() {
-    if (_compact) {
-      final screenH = MediaQuery.sizeOf(context).height;
-      final target = screenH * ShellTokens.heroHeightFractionCompact;
-      return _snapToDevicePixels(
-        math.max(ShellTokens.heroMinHeightCompact, target),
-      );
-    }
+  double _desktopTopBarBleed() => MediaQuery.paddingOf(context).top;
 
+  double _cinematicHeroHeight() {
     final screenH = MediaQuery.sizeOf(context).height;
-    final topBar = MediaQuery.paddingOf(context).top;
+    final topBar = _desktopTopBarBleed();
     final firstRowHeight = widget.firstRowHeight ??
         HubCatalogSection.sectionHeight(context, compactTop: true);
     final nextRowPeek =
@@ -187,6 +193,38 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     return _snapToDevicePixels(
       math.min(target, math.max(shellHeroMinHeight(context), maxHero)),
     );
+  }
+
+  double _hubBackdropHeight() {
+    final topBarBleed = _desktopTopBarBleed();
+    final pageBleed = widget.pageBottomChild != null && !_compact;
+    if (pageBleed) {
+      return _snapToDevicePixels(
+        MediaQuery.sizeOf(context).height *
+                ShellTokens.homeBackdropViewportFraction +
+            topBarBleed +
+            ShellTokens.homePageBottomSectionDownOffset,
+      );
+    }
+    if (_compact) {
+      final screenH = MediaQuery.sizeOf(context).height;
+      final target = screenH * ShellTokens.heroHeightFractionCompact;
+      return _snapToDevicePixels(
+        math.max(ShellTokens.heroMinHeightCompact, target) + topBarBleed,
+      );
+    }
+    return _snapToDevicePixels(_cinematicHeroHeight() + topBarBleed);
+  }
+
+  double _hubHeroTextBottomInset({
+    required double defaultBottom,
+  }) {
+    if (widget.pageBottomChild == null || _compact) return defaultBottom;
+    return (widget.firstRowHeight ??
+            HubCatalogSection.sectionHeight(context, compactTop: true)) +
+        ShellTokens.homePageBottomSectionTopPadding +
+        ShellTokens.homePageBottomSectionDownOffset +
+        defaultBottom;
   }
 
   @override
@@ -208,11 +246,14 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     }
 
     final heroSlide = slides[_index];
-    final backdropHeight = _heroBodyHeight();
-    final topBarBleed = MediaQuery.paddingOf(context).top;
-    final imageHeight = _snapToDevicePixels(backdropHeight + topBarBleed);
+    final pageBleed = widget.pageBottomChild != null && !_compact;
+    final imageHeight = _hubBackdropHeight();
+    final topBarBleed = _desktopTopBarBleed();
     final textTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
+    final textBottom = shellScaled(context, 16).clamp(8.0, 16.0);
+    final textBottomInset = _hubHeroTextBottomInset(defaultBottom: textBottom);
     final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final shellBg = Theme.of(context).scaffoldBackgroundColor;
 
     return SizedBox(
       height: imageHeight,
@@ -220,12 +261,13 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          ColoredBox(color: shellBg),
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             height: imageHeight,
-            child: _buildBackdrop(slides),
+            child: _buildBackdrop(slides, softBottomFade: pageBleed),
           ),
           if (widget.onSearch != null)
             Positioned(
@@ -258,6 +300,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                       color: Colors.white,
                       size: shellScaled(context, 30).clamp(20.0, 30.0),
                       hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
+                      hoverScale: ShellTokens.focusActiveScale,
                       onTap: widget.onSearch,
                     ),
             ),
@@ -267,7 +310,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             right: _compact
                 ? shellScaled(context, 20).clamp(12.0, 20.0)
                 : shellScaled(context, 48).clamp(24.0, 48.0),
-            bottom: shellScaled(context, 16).clamp(8.0, 16.0),
+            bottom: textBottomInset,
             child: _compact
                 ? LayoutBuilder(
                     builder: (context, constraints) {
@@ -318,12 +361,22 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                     child: _buildStepIndicators(slides),
                   ),
           ),
+          if (pageBleed)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: widget.pageBottomChild!,
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBackdrop(List<HubHeroSlide> slides) {
+  Widget _buildBackdrop(
+    List<HubHeroSlide> slides, {
+    bool softBottomFade = false,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final shellBg = Theme.of(context).scaffoldBackgroundColor;
@@ -366,6 +419,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                 imageStartFraction: _compact
                     ? ShellTokens.heroImageStartFractionCompact
                     : ShellTokens.heroImageStartFraction,
+                softBottomFade: softBottomFade,
               ),
             ],
           ),
@@ -377,6 +431,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   Widget _buildImageGradients(
     Color shellBg, {
     required double imageStartFraction,
+    bool softBottomFade = false,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -428,21 +483,31 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
               left: 0,
               right: 0,
               bottom: 0,
-              height: height * 0.55,
+              height: height * (softBottomFade ? 0.42 : 0.55),
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        shellBg.withValues(alpha: 0.45),
-                        shellBg.withValues(alpha: 0.82),
-                        shellBg,
-                        shellBg,
-                      ],
-                      stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
+                      colors: softBottomFade
+                          ? [
+                              Colors.transparent,
+                              shellBg.withValues(alpha: 0.18),
+                              shellBg.withValues(alpha: 0.48),
+                              shellBg.withValues(alpha: 0.78),
+                              shellBg,
+                            ]
+                          : [
+                              Colors.transparent,
+                              shellBg.withValues(alpha: 0.45),
+                              shellBg.withValues(alpha: 0.82),
+                              shellBg,
+                              shellBg,
+                            ],
+                      stops: softBottomFade
+                          ? const [0.0, 0.42, 0.68, 0.9, 1.0]
+                          : const [0.0, 0.35, 0.68, 0.92, 1.0],
                     ),
                   ),
                 ),

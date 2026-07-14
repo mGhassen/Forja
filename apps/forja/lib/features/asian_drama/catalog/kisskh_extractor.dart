@@ -19,6 +19,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -68,7 +69,7 @@ class KissKhExtractor {
     required int episodeId,
     required double episodeNumber,
     void Function(String phase, String detail)? onProgress,
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 40),
     bool Function()? isCancelled,
   }) async {
     _cancelled = false;
@@ -85,14 +86,20 @@ class KissKhExtractor {
     _apiCompleter = Completer<Map<String, dynamic>>();
     _subsBuffer.clear();
     final pageLoaded = Completer<void>();
+    var softReloaded = false;
+    Timer? softReloadTimer;
 
     try {
+      // Real viewport required — Angular player often never mounts (and never
+      // fires Episode/*.png) in a -1×-1 headless WebView. Same size as StreamExtractor.
       _web = ForjaHeadlessInAppWebView(
         initialUrlRequest: URLRequest(url: WebUri(pageUrl)),
+        initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
           UserScript(
             source: _interceptScript(episodeId),
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+            forMainFrameOnly: false,
           ),
         ]),
         initialSettings: InAppWebViewSettings(
@@ -101,6 +108,8 @@ class KissKhExtractor {
           userAgent: _userAgent,
           mediaPlaybackRequiresUserGesture: false,
           allowsInlineMediaPlayback: true,
+          cacheEnabled: true,
+          clearCache: false,
         ),
         onWebViewCreated: (controller) => _controller = controller,
         onLoadStop: (controller, loadedUrl) async {
@@ -133,6 +142,10 @@ class KissKhExtractor {
               final raw = jsonDecode(s.substring('KKH_VIDEO:'.length));
               if (raw is! Map) return;
               final data = Map<String, dynamic>.from(raw);
+              if (kDebugMode) {
+                final keys = data.keys.take(8).join(',');
+                debugPrint('[KissKhExtractor] video payload keys=[$keys]');
+              }
               if (_apiCompleter != null && !_apiCompleter!.isCompleted) {
                 _apiCompleter!.complete(data);
               }
@@ -184,6 +197,20 @@ class KissKhExtractor {
         },
       );
       if (cancelled()) return null;
+
+      // SPA / CF sometimes paints HTML but never hits Episode/*.png until a
+      // refresh. One soft reload mid-wait recovers the common cold-start miss.
+      softReloadTimer = Timer(const Duration(seconds: 8), () {
+        if (cancelled()) return;
+        if (_apiCompleter == null || _apiCompleter!.isCompleted) return;
+        if (softReloaded) return;
+        softReloaded = true;
+        final c = _controller;
+        if (c == null) return;
+        debugPrint('[KissKhExtractor] no stream API yet — soft reload once');
+        onProgress?.call('retry', 'Refreshing kisskh page…');
+        unawaited(c.reload());
+      });
 
       final api = await _apiCompleter!.future.timeout(
         timeout,
@@ -278,6 +305,7 @@ class KissKhExtractor {
       onProgress?.call('error', '$e');
       return null;
     } finally {
+      softReloadTimer?.cancel();
       await _cleanup();
       _apiCompleter = null;
     }
@@ -411,19 +439,22 @@ class KissKhExtractor {
   function stopMedia(el) {
     try { el.muted = true; el.pause(); } catch (e) {}
   }
-  document.addEventListener('play', function (e) {
-    var t = e.target;
-    if (t && (t.tagName === 'VIDEO' || t.tagName === 'AUDIO')) stopMedia(t);
-  }, true);
-  new MutationObserver(function (mutations) {
-    mutations.forEach(function (m) {
-      m.addedNodes.forEach(function (node) {
-        if (!node || node.nodeType !== 1) return;
-        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') stopMedia(node);
-        node.querySelectorAll && node.querySelectorAll('video,audio').forEach(stopMedia);
+  if (!window.__kkhMediaGuard) {
+    window.__kkhMediaGuard = true;
+    document.addEventListener('play', function (e) {
+      var t = e.target;
+      if (t && (t.tagName === 'VIDEO' || t.tagName === 'AUDIO')) stopMedia(t);
+    }, true);
+    new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (!node || node.nodeType !== 1) return;
+          if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') stopMedia(node);
+          node.querySelectorAll && node.querySelectorAll('video,audio').forEach(stopMedia);
+        });
       });
-    });
-  }).observe(document.documentElement, { childList: true, subtree: true });
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 
   function tryHandle(url, json) {
     try {
@@ -436,16 +467,16 @@ class KissKhExtractor {
     } catch (e) { log('handle err: ' + e); }
   }
 
-  function installHooks() {
-    var origFetch = window.fetch;
-    window.fetch = function () {
+  function wrapFetch(orig) {
+    if (!orig || orig.__kkh) return orig;
+    var wrapped = function () {
       var req = arguments[0];
       var url = (typeof req === 'string') ? req : (req && req.url) || '';
       if (url.indexOf('/api/DramaList/Episode/') !== -1 ||
           url.indexOf('/api/Sub/') !== -1) {
         log('fetch hit: ' + url);
       }
-      return origFetch.apply(this, arguments).then(function (res) {
+      return orig.apply(this, arguments).then(function (res) {
         try {
           if (url.indexOf('/api/DramaList/Episode/') !== -1 ||
               url.indexOf('/api/Sub/') !== -1) {
@@ -456,8 +487,12 @@ class KissKhExtractor {
         return res;
       });
     };
+    wrapped.__kkh = true;
+    return wrapped;
+  }
 
-    var OrigXhr = window.XMLHttpRequest;
+  function wrapXhr(OrigXhr) {
+    if (!OrigXhr || OrigXhr.__kkh) return OrigXhr;
     function HookedXhr() {
       var x = new OrigXhr();
       var _url = '';
@@ -480,11 +515,62 @@ class KissKhExtractor {
       return x;
     }
     HookedXhr.prototype = OrigXhr.prototype;
-    window.XMLHttpRequest = HookedXhr;
+    HookedXhr.__kkh = true;
+    HookedXhr.__kkhBase = OrigXhr;
+    return HookedXhr;
+  }
+
+  function installHooks() {
+    // Trap assignments so Angular/polyfills cannot silently unhook us.
+    try {
+      var fetchDesc = Object.getOwnPropertyDescriptor(window, 'fetch');
+      var curFetch = (fetchDesc && fetchDesc.get) ? fetchDesc.get.call(window) : window.fetch;
+      if (!curFetch || !curFetch.__kkh) {
+        var liveFetch = wrapFetch(curFetch);
+        Object.defineProperty(window, 'fetch', {
+          configurable: true,
+          enumerable: true,
+          get: function () { return liveFetch; },
+          set: function (v) {
+            liveFetch = wrapFetch(typeof v === 'function' ? v : curFetch);
+          }
+        });
+      }
+    } catch (e) {
+      try { window.fetch = wrapFetch(window.fetch); } catch (e2) {}
+    }
+
+    try {
+      var xhrDesc = Object.getOwnPropertyDescriptor(window, 'XMLHttpRequest');
+      var curXhr = (xhrDesc && xhrDesc.get) ? xhrDesc.get.call(window) : window.XMLHttpRequest;
+      if (!curXhr || !curXhr.__kkh) {
+        var liveXhr = wrapXhr(curXhr);
+        Object.defineProperty(window, 'XMLHttpRequest', {
+          configurable: true,
+          enumerable: true,
+          get: function () { return liveXhr; },
+          set: function (v) {
+            liveXhr = wrapXhr(v || curXhr);
+          }
+        });
+      }
+    } catch (e) {
+      try { window.XMLHttpRequest = wrapXhr(window.XMLHttpRequest); } catch (e2) {}
+    }
   }
 
   window.__kkhInstallHooks = installHooks;
   installHooks();
+  if (!window.__kkhHookInterval) {
+    var n = 0;
+    window.__kkhHookInterval = setInterval(function () {
+      installHooks();
+      if (++n > 40) {
+        clearInterval(window.__kkhHookInterval);
+        window.__kkhHookInterval = null;
+      }
+    }, 500);
+  }
   log('intercept ready for ep $epId');
 })();
 ''';

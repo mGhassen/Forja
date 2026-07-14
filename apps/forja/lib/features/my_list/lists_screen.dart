@@ -8,7 +8,10 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 class ListsScreen extends StatefulWidget {
-  const ListsScreen({super.key});
+  const ListsScreen({super.key, this.embedded = false});
+
+  /// When true, render as a Settings hub body (no Scaffold / AppBar).
+  final bool embedded;
 
   @override
   State<ListsScreen> createState() => _ListsScreenState();
@@ -199,99 +202,116 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final useTvTabs = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     const tabLabels = ['Trakt', 'MDBlist', 'Top Lists'];
+    final tvTabId = widget.embedded ? 'settings' : 'mylist';
+    final tvZone =
+        widget.embedded ? ShellTvZone.settings : ShellTvZone.chipStrip;
+
+    final tabs = useTvTabs
+        ? SizedBox(
+            height: 46,
+            child: Row(
+              children: [
+                for (var i = 0; i < tabLabels.length; i++)
+                  Expanded(
+                    child: AnimatedBuilder(
+                      animation: _tabController,
+                      builder: (context, _) {
+                        final selected = _tabController.index == i;
+                        return shellFocusableTap(
+                          context: context,
+                          onTap: () => _tabController.animateTo(i),
+                          borderRadius: 0,
+                          listIndex: i,
+                          tvTabId: tvTabId,
+                          tvZone: tvZone,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                tabLabels[i],
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: selected
+                                      ? ForjaShellColors.textPrimary
+                                      : ForjaShellColors.textSecondary,
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const Spacer(),
+                              Container(
+                                height: 2,
+                                color: selected
+                                    ? ForjaShellColors.brandGreen
+                                    : Colors.transparent,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          )
+        : TabBar(
+            controller: _tabController,
+            indicatorColor: ForjaShellColors.brandGreen,
+            labelColor: ForjaShellColors.textPrimary,
+            unselectedLabelColor: ForjaShellColors.textSecondary,
+            tabs: const [
+              Tab(text: 'Trakt'),
+              Tab(text: 'MDBlist'),
+              Tab(text: 'Top Lists'),
+            ],
+          );
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        tabs,
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildTraktTab(),
+              _buildMdblistTab(),
+              _buildTopListsTab(),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (widget.embedded) return body;
 
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(
         backgroundColor: AppTheme.bgDark,
-        title: const Text('Lists', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        title: const Text(
+          'Lists',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
-        bottom: useTvTabs
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(48),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          for (var i = 0; i < tabLabels.length; i++)
-                            Expanded(
-                              child: AnimatedBuilder(
-                                animation: _tabController,
-                                builder: (context, _) {
-                                  final selected = _tabController.index == i;
-                                  return shellFocusableTap(
-                                    context: context,
-                                    onTap: () => _tabController.animateTo(i),
-                                    borderRadius: 0,
-                                    listIndex: i,
-                                    tvTabId: 'mylist',
-                                    tvZone: ShellTvZone.chipStrip,
-                                    child: SizedBox(
-                                      height: 46,
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            tabLabels[i],
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: selected
-                                                  ? Colors.white
-                                                  : Colors.white54,
-                                              fontWeight: selected
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w500,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Container(
-                                            height: 2,
-                                            color: selected
-                                                ? AppTheme.primaryColor
-                                                : Colors.transparent,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : TabBar(
-                controller: _tabController,
-                indicatorColor: AppTheme.primaryColor,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
-                tabs: const [
-                  Tab(text: 'Trakt'),
-                  Tab(text: 'MDBlist'),
-                  Tab(text: 'Top Lists'),
-                ],
-              ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildTraktTab(),
-          _buildMdblistTab(),
-          _buildTopListsTab(),
-        ],
-      ),
+      body: body,
     );
   }
 
   Widget _buildTraktTab() {
     if (!_isTraktLoggedIn) {
       return const Center(
-        child: Text('Login to Trakt in Settings', style: TextStyle(color: Colors.white54, fontSize: 16)),
+        child: Text(
+          'Login to Trakt in Settings → Accounts',
+          style: TextStyle(color: Colors.white54, fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
       );
     }
     if (_loadingTrakt) {
@@ -300,19 +320,13 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ForjaButton.primary(
+              label: 'Create New List',
+              icon: Icons.add_rounded,
               onPressed: _createTraktList,
-              icon: const Icon(Icons.add),
-              label: const Text('Create New List'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                minimumSize: const Size(double.infinity, 48),
-              ),
             ),
           ),
         ),
@@ -320,9 +334,12 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
           child: _traktLists.isEmpty
             ? const Center(child: Text('No lists yet', style: TextStyle(color: Colors.white38)))
             : ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.zero,
                 itemCount: _traktLists.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+                ),
                 itemBuilder: (context, index) {
                   final list = _traktLists[index];
                   final name = list['name']?.toString() ?? 'Unnamed';
@@ -348,7 +365,11 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
   Widget _buildMdblistTab() {
     if (!_isMdblistConfigured) {
       return const Center(
-        child: Text('Configure MDBlist in Settings', style: TextStyle(color: Colors.white54, fontSize: 16)),
+        child: Text(
+          'Configure MDBlist in Settings → Accounts',
+          style: TextStyle(color: Colors.white54, fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
       );
     }
     if (_loadingMdblist) {
@@ -357,9 +378,12 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     return _mdblistLists.isEmpty
       ? const Center(child: Text('No lists yet', style: TextStyle(color: Colors.white38)))
       : ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.zero,
           itemCount: _mdblistLists.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => Divider(
+            height: 1,
+            color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+          ),
           itemBuilder: (context, index) {
             final list = _mdblistLists[index];
             final name = list['name']?.toString() ?? 'Unnamed';
@@ -379,16 +403,23 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
   Widget _buildTopListsTab() {
     if (!_isMdblistConfigured) {
       return const Center(
-        child: Text('Configure MDBlist in Settings', style: TextStyle(color: Colors.white54, fontSize: 16)),
+        child: Text(
+          'Configure MDBlist in Settings → Accounts',
+          style: TextStyle(color: Colors.white54, fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
       );
     }
     if (_mdblistTopLists.isEmpty) {
       return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       itemCount: _mdblistTopLists.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => Divider(
+        height: 1,
+        color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+      ),
       itemBuilder: (context, index) {
         final list = _mdblistTopLists[index];
         final name = list['name']?.toString() ?? 'Unnamed';
@@ -414,47 +445,61 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     required Color color,
     required VoidCallback onTap,
   }) {
+    final tvTabId = widget.embedded ? 'settings' : 'mylist';
     return shellFocusableTap(
       context: context,
       onTap: onTap,
-      borderRadius: 14,
+      borderRadius: 0,
       navLeftAlways: true,
-      tvTabId: 'mylist',
-      tvZone: ShellTvZone.row,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-        ),
+      tvTabId: tvTabId,
+      tvZone: widget.embedded ? ShellTvZone.settings : ShellTvZone.row,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
+            Icon(icon, color: color, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11)),
+                    Text(
+                      description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary.withValues(
+                          alpha: 0.7,
+                        ),
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3)),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: ForjaShellColors.iconMuted,
+            ),
           ],
         ),
       ),

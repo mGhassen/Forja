@@ -7,20 +7,22 @@ import 'package:forja/shared/services/external_player_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
-typedef PlayerSwitchHandler = Future<void> Function(
-  Duration resumePosition, {
-  BuiltInPlayerEngine? builtInEngine,
-  String? externalPlayer,
-  String? streamUrl,
-  Map<String, String>? headers,
-  String? activeProvider,
-  List<StreamSource>? sources,
-});
+typedef PlayerSwitchHandler =
+    Future<void> Function(
+      Duration resumePosition, {
+      BuiltInPlayerEngine? builtInEngine,
+      String? externalPlayer,
+      String? streamUrl,
+      Map<String, String>? headers,
+      String? activeProvider,
+      List<StreamSource>? sources,
+    });
 
-typedef PlayerMenuSelectHandler = Future<void> Function({
-  BuiltInPlayerEngine? builtInEngine,
-  String? externalPlayer,
-});
+typedef PlayerMenuSelectHandler =
+    Future<void> Function({
+      BuiltInPlayerEngine? builtInEngine,
+      String? externalPlayer,
+    });
 
 /// In-player picker: built-in engine (Android) + external apps.
 class PlayerAppMenu {
@@ -58,39 +60,43 @@ class PlayerAppMenu {
     ScrollPhysics? physics,
   }) {
     return ListView(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
       shrinkWrap: true,
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
-        if (Platform.isAndroid) ...[
-          const _SectionLabel('Built-in engine'),
-          ...builtInPlayerEngineOptions.map(
-            (engine) => PlayerPopupListTile(
-              label: engine.displayName,
-              selected: usingBuiltIn && engine == builtInEngine,
+        const _SectionLabel('Built-in'),
+        if (Platform.isAndroid)
+          for (var i = 0; i < builtInPlayerEngineOptions.length; i++) ...[
+            if (i != 0) const SizedBox(height: 8),
+            PlayerPopupOptionChip(
+              label: builtInPlayerEngineOptions[i].displayName,
+              selected:
+                  usingBuiltIn &&
+                  builtInPlayerEngineOptions[i] == builtInEngine,
+              expanded: true,
               onTap: () async {
                 onDismiss?.call();
-                if (usingBuiltIn && engine == builtInEngine) return;
-                await onSelect(builtInEngine: engine);
+                if (usingBuiltIn &&
+                    builtInPlayerEngineOptions[i] == builtInEngine) {
+                  return;
+                }
+                await onSelect(builtInEngine: builtInPlayerEngineOptions[i]);
               },
             ),
-          ),
-          const SizedBox(height: 8),
-          const _SectionLabel('External app'),
-        ] else ...[
-          const _SectionLabel('Built-in'),
-          PlayerPopupListTile(
+          ]
+        else
+          PlayerPopupOptionChip(
             label: 'Built-in Player',
             selected: usingBuiltIn,
+            expanded: true,
             onTap: () async {
               onDismiss?.call();
               if (usingBuiltIn) return;
               await onSelect(builtInEngine: builtInEngine);
             },
           ),
-          const SizedBox(height: 8),
-          const _SectionLabel('External app'),
-        ],
+        const SizedBox(height: 16),
+        const _SectionLabel('External app'),
         _InstalledExternalPlayers(
           usingBuiltIn: usingBuiltIn,
           externalPlayerName: externalPlayerName,
@@ -155,23 +161,26 @@ class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
           );
         }
         return Column(
-          children: players
-              .map(
-                (player) => PlayerPopupListTile(
-                  label: player.displayName,
-                  selected: !widget.usingBuiltIn &&
-                      widget.externalPlayerName == player.displayName,
-                  onTap: () async {
-                    widget.onDismiss?.call();
-                    if (!widget.usingBuiltIn &&
-                        widget.externalPlayerName == player.displayName) {
-                      return;
-                    }
-                    await widget.onSelect(externalPlayer: player.displayName);
-                  },
-                ),
-              )
-              .toList(growable: false),
+          children: [
+            for (var i = 0; i < players.length; i++) ...[
+              if (i != 0) const SizedBox(height: 8),
+              PlayerPopupOptionChip(
+                label: players[i].displayName,
+                selected:
+                    !widget.usingBuiltIn &&
+                    widget.externalPlayerName == players[i].displayName,
+                expanded: true,
+                onTap: () async {
+                  widget.onDismiss?.call();
+                  if (!widget.usingBuiltIn &&
+                      widget.externalPlayerName == players[i].displayName) {
+                    return;
+                  }
+                  await widget.onSelect(externalPlayer: players[i].displayName);
+                },
+              ),
+            ],
+          ],
         );
       },
     );
@@ -186,14 +195,14 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      padding: const EdgeInsets.only(left: 2, bottom: 8),
       child: Text(
-        text,
+        text.toUpperCase(),
         style: GoogleFonts.inter(
           color: ForjaShellColors.textSecondary,
           fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.4,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
         ),
       ),
     );

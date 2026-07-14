@@ -17,6 +17,7 @@ import 'package:forja/features/settings/sections/settings_providers_section.dart
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
 import 'package:forja/features/settings/sections/settings_trakt_panel.dart';
+import 'package:forja/features/settings/sections/settings_webstreamr_section.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/splash_preview_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -37,10 +38,14 @@ Widget buildSettingsCategoryBody(String categoryId) {
           SettingsProvidersSection(),
         ],
       );
+    case SettingsCategoryId.webstreamr:
+      return const SettingsWebstreamrSection();
     case SettingsCategoryId.debrid:
       return const SettingsDebridSection();
     case SettingsCategoryId.accounts:
       return const SettingsAccountsPageBody();
+    case SettingsCategoryId.lists:
+      return const ListsScreen(embedded: true);
     case SettingsCategoryId.data:
       return const SettingsDataPageBody();
     case SettingsCategoryId.navigation:
@@ -66,6 +71,7 @@ class SettingsCategoryPage extends StatelessWidget {
       body: SettingsPageScaffold(
         title: meta?.title ?? 'Settings',
         showBack: true,
+        scrollable: !(meta?.fillViewport ?? false),
         child: buildSettingsCategoryBody(categoryId),
       ),
     );
@@ -91,23 +97,6 @@ class SettingsAccountsPageBody extends StatelessWidget {
         SettingsGroup(
           label: 'MDBlist',
           children: const [SettingsMdblistPanel()],
-        ),
-        SettingsGroup(
-          label: 'Lists',
-          children: [
-            SettingsActionRow(
-              leading: const Icon(
-                Icons.list_alt_rounded,
-                color: ForjaShellColors.iconActive,
-              ),
-              title: 'Manage lists',
-              subtitle: 'Browse Trakt and MDBlist custom lists',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const ListsScreen()),
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -219,37 +208,39 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
           label: 'Backup',
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: Text(
-                'Export or import all your settings, addons, API keys, and preferences as a JSON file.',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: SettingsFilledButton(
-                      label: 'Export',
-                      icon: Icons.upload_rounded,
-                      busy: _isExporting,
-                      onPressed: _exportSettings,
+                  Text(
+                    'Export or import all your settings, addons, API keys, and preferences as a JSON file.',
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary.withValues(
+                        alpha: 0.9,
+                      ),
+                      fontSize: 13,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SettingsFilledButton(
-                      label: 'Import',
-                      icon: Icons.download_rounded,
-                      secondary: true,
-                      busy: _isImporting,
-                      onPressed: _importSettings,
-                    ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SettingsFilledButton(
+                        label: 'Export',
+                        icon: Icons.upload_rounded,
+                        busy: _isExporting,
+                        onPressed: _exportSettings,
+                      ),
+                      const SizedBox(width: 12),
+                      SettingsFilledButton(
+                        label: 'Import',
+                        icon: Icons.download_rounded,
+                        secondary: true,
+                        busy: _isImporting,
+                        onPressed: _importSettings,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -412,8 +403,9 @@ class _SettingsNavigationPageBodyState
 
                 return Container(
                   key: ValueKey(id),
-                  color: ForjaShellColors.surfaceElevated,
+                  color: Colors.transparent,
                   child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 2),
                     leading: NavDestinationIcon(
                       destination: dest,
                       selected: isVisible,
@@ -468,6 +460,7 @@ class _SettingsNavigationPageBodyState
               },
             ),
             ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 2),
               leading: const Icon(
                 Icons.settings,
                 color: ForjaShellColors.brandGreen,
@@ -538,7 +531,7 @@ class SettingsAboutPageBody extends StatelessWidget {
           label: 'Developer',
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              padding: const EdgeInsets.fromLTRB(2, 16, 2, 16),
               child: Row(
                 children: [
                   Icon(Icons.memory_rounded, size: 18, color: statusColor),

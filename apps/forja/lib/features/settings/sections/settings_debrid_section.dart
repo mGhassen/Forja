@@ -3,7 +3,6 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Debrid service selection and API key configuration.
@@ -144,366 +143,130 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
       ForjaToast.success('Logged out of Real-Debrid');
     }
   }
-  Widget _buildRDLogin() {
+  Widget _apiKeyConfig({
+    required TextEditingController controller,
+    required String hint,
+    required Future<void> Function() onSave,
+    bool busy = false,
+    String? linkLabel,
+    String? linkUrl,
+  }) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_isRDLoggedIn)
-            ElevatedButton.icon(
-              onPressed: _logoutRD,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout from Real-Debrid'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                foregroundColor: Colors.redAccent,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            )
-          else ...[
-            const Text(
-              'API Key',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _rdController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      hintText: 'Enter Real-Debrid API Key',
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _isVerifyingRD ? null : _saveRDApiKey,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isVerifyingRD
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Save',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () async {
-                final url = Uri.parse('https://real-debrid.com/apitoken');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                }
-              },
-              child: const Text(
-                'Get your API key at real-debrid.com/apitoken',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
+          SettingsTextField(
+            controller: controller,
+            label: 'API Key',
+            hint: hint,
+            obscureText: true,
+            onSubmitted: (_) => onSave(),
+          ),
+          const SizedBox(height: 14),
+          SettingsFilledButton(
+            label: 'Save',
+            icon: Icons.save,
+            busy: busy,
+            onPressed: onSave,
+          ),
+          if (linkLabel != null && linkUrl != null) ...[
+            const SizedBox(height: 10),
+            _apiKeyLink(linkLabel, linkUrl),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildTorBoxConfig() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'API Key',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _torboxController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Enter TorBox API Key',
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () async {
-                  await _debrid.saveTorBoxKey(_torboxController.text);
-                  if (mounted) {
-                    ForjaToast.success('TorBox API Key Saved!');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ],
+  Widget _apiKeyLink(String label, String url) {
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: ForjaShellColors.brandGreen,
+          fontSize: 12,
+          decoration: TextDecoration.underline,
+        ),
       ),
+    );
+  }
+
+  Widget _buildRDLogin() {
+    if (_isRDLoggedIn) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+        child: SettingsFilledButton(
+          label: 'Logout from Real-Debrid',
+          icon: Icons.logout,
+          secondary: true,
+          onPressed: _logoutRD,
+        ),
+      );
+    }
+    return _apiKeyConfig(
+      controller: _rdController,
+      hint: 'Enter Real-Debrid API Key',
+      busy: _isVerifyingRD,
+      onSave: _saveRDApiKey,
+      linkLabel: 'Get your API key at real-debrid.com/apitoken',
+      linkUrl: 'https://real-debrid.com/apitoken',
+    );
+  }
+
+  Widget _buildTorBoxConfig() {
+    return _apiKeyConfig(
+      controller: _torboxController,
+      hint: 'Enter TorBox API Key',
+      onSave: () async {
+        await _debrid.saveTorBoxKey(_torboxController.text);
+        if (mounted) ForjaToast.success('TorBox API Key Saved!');
+      },
     );
   }
 
   Widget _buildAllDebridConfig() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'API Key',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _alldebridController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Enter AllDebrid API Key',
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () async {
-                  await _debrid.saveAllDebridKey(_alldebridController.text);
-                  if (mounted) {
-                    ForjaToast.success('AllDebrid API Key Saved!');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () async {
-              final url = Uri.parse('https://alldebrid.com/apikeys');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: const Text(
-              'Get your API key at alldebrid.com/apikeys',
-              style: TextStyle(
-                color: AppTheme.primaryColor,
-                fontSize: 12,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return _apiKeyConfig(
+      controller: _alldebridController,
+      hint: 'Enter AllDebrid API Key',
+      onSave: () async {
+        await _debrid.saveAllDebridKey(_alldebridController.text);
+        if (mounted) ForjaToast.success('AllDebrid API Key Saved!');
+      },
+      linkLabel: 'Get your API key at alldebrid.com/apikeys',
+      linkUrl: 'https://alldebrid.com/apikeys',
     );
   }
 
   Widget _buildPremiumizeConfig() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'API Key',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _premiumizeController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Enter Premiumize API Key',
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () async {
-                  await _debrid.savePremiumizeKey(_premiumizeController.text);
-                  if (mounted) {
-                    ForjaToast.success('Premiumize API Key Saved!');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () async {
-              final url = Uri.parse('https://www.premiumize.me/account');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: const Text(
-              'Get your API key at premiumize.me/account',
-              style: TextStyle(
-                color: AppTheme.primaryColor,
-                fontSize: 12,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return _apiKeyConfig(
+      controller: _premiumizeController,
+      hint: 'Enter Premiumize API Key',
+      onSave: () async {
+        await _debrid.savePremiumizeKey(_premiumizeController.text);
+        if (mounted) ForjaToast.success('Premiumize API Key Saved!');
+      },
+      linkLabel: 'Get your API key at premiumize.me/account',
+      linkUrl: 'https://www.premiumize.me/account',
     );
   }
 
   Widget _buildDebridLinkConfig() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'API Key',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _debridlinkController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Enter Debrid-Link API Key',
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () async {
-                  await _debrid.saveDebridLinkKey(_debridlinkController.text);
-                  if (mounted) {
-                    ForjaToast.success('Debrid-Link API Key Saved!');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () async {
-              final url = Uri.parse('https://debrid-link.com/webapp/apikey');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: const Text(
-              'Get your API key at debrid-link.com/webapp/apikey',
-              style: TextStyle(
-                color: AppTheme.primaryColor,
-                fontSize: 12,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return _apiKeyConfig(
+      controller: _debridlinkController,
+      hint: 'Enter Debrid-Link API Key',
+      onSave: () async {
+        await _debrid.saveDebridLinkKey(_debridlinkController.text);
+        if (mounted) ForjaToast.success('Debrid-Link API Key Saved!');
+      },
+      linkLabel: 'Get your API key at debrid-link.com/webapp/apikey',
+      linkUrl: 'https://debrid-link.com/webapp/apikey',
     );
   }
 }

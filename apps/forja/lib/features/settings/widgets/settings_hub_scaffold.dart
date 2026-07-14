@@ -40,6 +40,8 @@ class SettingsHubScaffold extends StatelessWidget {
             Expanded(
               child: SettingsPageScaffold(
                 title: settingsCategoryById(selectedId)?.title ?? 'Settings',
+                scrollable:
+                    !(settingsCategoryById(selectedId)?.fillViewport ?? false),
                 child: buildSettingsCategoryBody(selectedId),
               ),
             ),
@@ -116,7 +118,7 @@ class _CategorySidebar extends StatelessWidget {
         ),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 24),
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final c = categories[index];
@@ -130,6 +132,7 @@ class _CategorySidebar extends StatelessWidget {
             },
           ),
         ),
+        const SettingsSidebarFooter(),
       ],
     );
   }

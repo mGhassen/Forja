@@ -16,33 +16,25 @@ void showSpeedMenu(
     anchorContext: anchorContext,
     width: 300,
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-      child: PlayerPopupSectionCard(
-        icon: Icons.speed_rounded,
-        title: 'Speed',
-        subtitle: 'Playback rate',
-        valueBadge: _speedBadge(currentSpeed),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _kPlaybackSpeeds.map((speed) {
-            final selected = speed == currentSpeed;
-            return PlayerPopupOptionChip(
-              label: speed == 1.0 ? 'Normal' : '${speed}x',
-              selected: selected,
-              onTap: () {
-                onSpeedChanged(speed);
-                PlayerPopupPanel.dismiss();
-              },
-            );
-          }).toList(),
-        ),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _kPlaybackSpeeds.map((speed) {
+          final selected = speed == currentSpeed;
+          return PlayerPopupOptionChip(
+            label: speed == 1.0 ? 'Normal' : '${speed}x',
+            selected: selected,
+            onTap: () {
+              onSpeedChanged(speed);
+              PlayerPopupPanel.dismiss();
+            },
+          );
+        }).toList(),
       ),
     ),
   );
 }
-
-String _speedBadge(double speed) => speed == 1.0 ? 'Normal' : '${speed}x';
 
 void showTracksMenu(
   BuildContext context,
@@ -161,7 +153,7 @@ void showPlayerSettingsMenu({
       shrinkWrap: true,
       itemCount: entries.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
+      itemBuilder: (_, i) {
         final entry = entries[i];
         return PlayerPopupNavRow(
           icon: entry.icon,
@@ -202,9 +194,11 @@ void _openPlayerSettingsPage({
       title: rootTitle,
       buildEntries: buildEntries,
     ),
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-      child: entry.pageBuilder(context),
+    child: Builder(
+      builder: (panelContext) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: entry.pageBuilder(panelContext),
+      ),
     ),
   );
 }

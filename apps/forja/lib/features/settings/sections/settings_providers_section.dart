@@ -3,7 +3,6 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
 class SettingsProvidersSection extends StatefulWidget {
@@ -145,122 +144,49 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
   }
   Widget _buildAddonInput() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Install Stremio Addon',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          SettingsTextField(
+            controller: _addonController,
+            label: 'Install Stremio Addon',
+            hint: 'stremio://... or https://...',
+            onSubmitted: (_) => _installAddon(),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _addonController,
-                  decoration: InputDecoration(
-                    hintText: 'stremio://... or https://...',
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: _isInstalling ? null : _installAddon,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isInstalling
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Install',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-              ),
-            ],
+          const SizedBox(height: 14),
+          SettingsFilledButton(
+            label: 'Install',
+            icon: Icons.add_rounded,
+            busy: _isInstalling,
+            onPressed: _installAddon,
           ),
           if (_installedAddons.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'INSTALLED ADDONS',
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
+            const _MiniLabel('Installed addons'),
+            const SizedBox(height: 4),
             ..._installedAddons.map(
-              (addon) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: ListTile(
-                  leading: addon['icon'].toString().isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Image.network(
-                            addon['icon'],
-                            width: 32,
-                            height: 32,
-                            errorBuilder: (c, e, s) =>
-                                const Icon(Icons.extension),
+              (addon) => _FlatListRow(
+                leading: addon['icon'].toString().isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          addon['icon'],
+                          width: 28,
+                          height: 28,
+                          errorBuilder: (c, e, s) => const Icon(
+                            Icons.extension,
+                            color: ForjaShellColors.iconActive,
                           ),
-                        )
-                      : const Icon(
-                          Icons.extension,
-                          color: AppTheme.primaryColor,
                         ),
-                  title: Text(
-                    addon['name'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  subtitle: Text(
-                    addon['baseUrl'],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11, color: Colors.white38),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.redAccent,
-                    ),
-                    onPressed: () => _removeAddon(addon['baseUrl']),
-                  ),
-                ),
+                      )
+                    : const Icon(
+                        Icons.extension,
+                        color: ForjaShellColors.iconActive,
+                      ),
+                title: addon['name'].toString(),
+                subtitle: addon['baseUrl'].toString(),
+                onRemove: () => _removeAddon(addon['baseUrl']),
               ),
             ),
           ],
@@ -271,165 +197,98 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
 
   Widget _buildNuvioAddonSection() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Install Nuvio Addon',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          SettingsTextField(
+            controller: _nuvioController,
+            label: 'Install Nuvio Addon',
+            hint: 'https://.../manifest.json',
+            onSubmitted: (_) => _installNuvioAddon(),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Paste a Nuvio manifest URL (raw .../manifest.json)',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _nuvioController,
-                  decoration: InputDecoration(
-                    hintText: 'https://.../manifest.json',
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: _nuvioInstalling ? null : _installNuvioAddon,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _nuvioInstalling
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Install',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-              ),
-            ],
+          const SizedBox(height: 14),
+          SettingsFilledButton(
+            label: 'Install',
+            icon: Icons.add_rounded,
+            busy: _nuvioInstalling,
+            onPressed: _installNuvioAddon,
           ),
           if (_nuvioAddons.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'INSTALLED NUVIO ADDONS',
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
+            const _MiniLabel('Installed Nuvio addons'),
+            const SizedBox(height: 4),
             ..._nuvioAddons.map(
-              (addon) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Theme(
-                  data: Theme.of(
-                    context,
-                  ).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    tilePadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                    leading: const Icon(
-                      Icons.code_rounded,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      addon.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white38,
-                      ),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
-                        size: 20,
-                      ),
-                      onPressed: () => _removeNuvioAddon(addon.manifestUrl),
-                      tooltip: 'Remove addon',
-                    ),
-                    children: addon.scrapers.map((s) {
-                      return SwitchListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                        dense: true,
-                        activeThumbColor: AppTheme.primaryColor,
-                        value: s.enabled,
-                        onChanged: (val) async {
-                          await NuvioService.instance.setScraperEnabled(
-                            manifestUrl: addon.manifestUrl,
-                            scraperId: s.id,
-                            enabled: val,
-                          );
-                        },
-                        title: Text(
-                          s.name,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          [
-                            if (s.description != null &&
-                                s.description!.isNotEmpty)
-                              s.description!,
-                            if (s.supportedTypes.isNotEmpty)
-                              s.supportedTypes.join(', '),
-                          ].join(' \u00b7 '),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white54,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+              (addon) => Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                  leading: const Icon(
+                    Icons.code_rounded,
+                    color: ForjaShellColors.iconActive,
                   ),
+                  title: Text(
+                    addon.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: ForjaShellColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: ForjaShellColors.textSecondary,
+                    ),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Color(0xFFF87171),
+                      size: 20,
+                    ),
+                    onPressed: () => _removeNuvioAddon(addon.manifestUrl),
+                    tooltip: 'Remove addon',
+                  ),
+                  children: addon.scrapers.map((s) {
+                    return SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      dense: true,
+                      activeThumbColor: ForjaShellColors.brandGreen,
+                      value: s.enabled,
+                      onChanged: (val) async {
+                        await NuvioService.instance.setScraperEnabled(
+                          manifestUrl: addon.manifestUrl,
+                          scraperId: s.id,
+                          enabled: val,
+                        );
+                      },
+                      title: Text(
+                        s.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: ForjaShellColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        [
+                          if (s.description != null && s.description!.isNotEmpty)
+                            s.description!,
+                          if (s.supportedTypes.isNotEmpty)
+                            s.supportedTypes.join(', '),
+                        ].join(' \u00b7 '),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: ForjaShellColors.textSecondary,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
@@ -467,131 +326,43 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
   }
   Widget _buildJackettConfig() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Base URL',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          TextField(
+          SettingsTextField(
             controller: _jackettUrlController,
-            decoration: InputDecoration(
-              hintText: 'http://localhost:9117',
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-            onChanged: (_) => setState(() => _jackettTestResult = null),
+            label: 'Base URL',
+            hint: 'http://localhost:9117',
+            onSubmitted: (_) => setState(() => _jackettTestResult = null),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'API Key',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          TextField(
+          SettingsTextField(
             controller: _jackettApiKeyController,
+            label: 'API Key',
+            hint: 'Enter Jackett API Key',
             obscureText: true,
-            decoration: InputDecoration(
-              hintText: 'Enter Jackett API Key',
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-            onChanged: (_) => setState(() => _jackettTestResult = null),
+            onSubmitted: (_) => setState(() => _jackettTestResult = null),
           ),
           const SizedBox(height: 16),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isTestingJackett ? null : _testJackettConnection,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isTestingJackett
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Test Connection',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                ),
+              SettingsFilledButton(
+                label: 'Test Connection',
+                secondary: true,
+                busy: _isTestingJackett,
+                onPressed: _testJackettConnection,
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _saveJackettSettings,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
+              SettingsFilledButton(
+                label: 'Save',
+                onPressed: _saveJackettSettings,
               ),
             ],
           ),
-          if (_jackettTestResult != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _jackettTestResult!.startsWith('✅')
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _jackettTestResult!.startsWith('✅')
-                      ? Colors.green.withValues(alpha: 0.3)
-                      : Colors.red.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Text(
-                _jackettTestResult!,
-                style: TextStyle(
-                  color: _jackettTestResult!.startsWith('✅')
-                      ? Colors.green
-                      : Colors.red,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
+          if (_jackettTestResult != null)
+            _TestResult(message: _jackettTestResult!),
         ],
       ),
     );
@@ -599,70 +370,35 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
 
   Widget _buildProwlarrConfig() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Base URL',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          TextField(
+          SettingsTextField(
             controller: _prowlarrUrlController,
-            decoration: InputDecoration(
-              hintText: 'http://localhost:9696',
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-            onChanged: (_) => setState(() {
+            label: 'Base URL',
+            hint: 'http://localhost:9696',
+            onSubmitted: (_) => setState(() {
               _prowlarrTestResult = null;
               _prowlarrTagsLoaded = false;
               _prowlarrAvailableTags = [];
             }),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'API Key',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          TextField(
+          SettingsTextField(
             controller: _prowlarrApiKeyController,
+            label: 'API Key',
+            hint: 'Enter Prowlarr API Key',
             obscureText: true,
-            decoration: InputDecoration(
-              hintText: 'Enter Prowlarr API Key',
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-            onChanged: (_) => setState(() {
+            onSubmitted: (_) => setState(() {
               _prowlarrTestResult = null;
               _prowlarrTagsLoaded = false;
               _prowlarrAvailableTags = [];
             }),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Filter by Tag',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
+          const _MiniLabel('Filter by tag'),
+          const SizedBox(height: 8),
           if (!_prowlarrTagsLoaded) ...[
             Text(
               'Use the Test Connection button to load available tags.',
@@ -705,19 +441,23 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
                       }
                     });
                   },
-                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.25),
-                  checkmarkColor: AppTheme.primaryColor,
-                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  selectedColor: ForjaShellColors.brandGreen.withValues(
+                    alpha: 0.22,
+                  ),
+                  checkmarkColor: ForjaShellColors.brandGreen,
+                  backgroundColor: Colors.transparent,
                   labelStyle: TextStyle(
-                    color: isSelected ? AppTheme.primaryColor : Colors.white70,
+                    color: isSelected
+                        ? ForjaShellColors.brandGreen
+                        : ForjaShellColors.textSecondary,
                     fontWeight: isSelected
                         ? FontWeight.bold
                         : FontWeight.normal,
                   ),
                   side: BorderSide(
                     color: isSelected
-                        ? AppTheme.primaryColor
-                        : Colors.white.withValues(alpha: 0.2),
+                        ? ForjaShellColors.brandGreen
+                        : ForjaShellColors.borderSubtle,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -739,81 +479,23 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
           ],
           const SizedBox(height: 16),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isTestingProwlarr
-                      ? null
-                      : _testProwlarrConnection,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isTestingProwlarr
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Test Connection',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                ),
+              SettingsFilledButton(
+                label: 'Test Connection',
+                secondary: true,
+                busy: _isTestingProwlarr,
+                onPressed: _testProwlarrConnection,
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _saveProwlarrSettings,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
+              SettingsFilledButton(
+                label: 'Save',
+                onPressed: _saveProwlarrSettings,
               ),
             ],
           ),
-          if (_prowlarrTestResult != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _prowlarrTestResult!.startsWith('✅')
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _prowlarrTestResult!.startsWith('✅')
-                      ? Colors.green.withValues(alpha: 0.3)
-                      : Colors.red.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Text(
-                _prowlarrTestResult!,
-                style: TextStyle(
-                  color: _prowlarrTestResult!.startsWith('✅')
-                      ? Colors.green
-                      : Colors.red,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
+          if (_prowlarrTestResult != null)
+            _TestResult(message: _prowlarrTestResult!),
         ],
       ),
     );
@@ -931,5 +613,117 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
     } catch (_) {
       // Non-fatal — tags section simply not shown until explicit test
     }
+  }
+}
+
+/// Small muted uppercase label used for inline sub-sections.
+class _MiniLabel extends StatelessWidget {
+  const _MiniLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+/// Flat installed-item row with a leading widget and a remove button.
+class _FlatListRow extends StatelessWidget {
+  const _FlatListRow({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    required this.onRemove,
+  });
+
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+      child: Row(
+        children: [
+          leading,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: ForjaShellColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: ForjaShellColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFF87171)),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Flat connection test-result line (success / failure), no boxed card.
+class _TestResult extends StatelessWidget {
+  const _TestResult({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final ok = message.startsWith('\u2705');
+    final color = ok ? ForjaShellColors.brandGreen : const Color(0xFFF87171);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, left: 2),
+      child: Row(
+        children: [
+          Icon(
+            ok ? Icons.check_circle_rounded : Icons.error_rounded,
+            color: color,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: color, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

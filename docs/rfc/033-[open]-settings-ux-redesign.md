@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **8 / 8** acceptance |
-| **Current slice** | Category hub shipped — sidebar wide / list→detail narrow+TV |
+| **Progress** | **7 / 7** components · **10 / 10** acceptance |
+| **Current slice** | Category hub + WebStreamr + Lists categories |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,8 @@
 | 3 | R33-C03 | Category pages (playback, sources, debrid, accounts, data, navigation, about) | ✅ |
 | 4 | R33-C04 | Retire accordion; restyle to `ForjaShellColors` | ✅ |
 | 5 | R33-C05 | TV / D-pad focus on category tiles and rows | ✅ |
+| 6 | R33-C06 | WebStreamr as hub category (`SettingsWebstreamrSection`) | ✅ |
+| 7 | R33-C07 | Lists as hub category (`ListsScreen(embedded: true)`) | ✅ |
 
 ---
 
@@ -39,6 +41,8 @@
 | 6 | R33-A06 | Category tiles + settings rows D-pad focusable on TV | ✅ |
 | 7 | R33-A07 | Feature docs match hub paths | ✅ |
 | 8 | R33-A08 | `flutter analyze` clean on touched settings/design files | ✅ |
+| 9 | R33-A09 | WebStreamr openable as **Settings → WebStreamr** (not nested push only) | ✅ |
+| 10 | R33-A10 | Lists openable as **Settings → Lists** (not nested push only) | ✅ |
 
 ---
 

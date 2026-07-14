@@ -56,6 +56,28 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
+        final fullHero = hubIsFullCinematicHero(context);
+        final usesShell = hubUsesShellLayout(context);
+        final trendingOnHero = usesShell && fullHero;
+        final trendingSection = trendingOnHero
+            ? HubCatalogSection<AnimeCard>(
+                title: 'Trending Now',
+                future: _s._trendingFuture,
+                compactTop: true,
+                tvTabId: 'anime',
+                tvRowId: 'trending',
+                tvRowOrder: _catalogRowBase + 0,
+                tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                  tabId: 'anime',
+                ),
+                cardBuilder: (context, anime, index) => _animePosterCard(
+                  anime,
+                  listIndex: index,
+                  tvRowId: 'trending',
+                ),
+              )
+            : null;
+
         return _s._error != null && _s._catalogResolved
               ? _buildError()
               : RefreshIndicator(
@@ -86,6 +108,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                       ),
                                       onSearch: _s._openSearch,
                                       tvTabId: 'anime',
+                                      pageBottomChild: trendingSection,
                                     );
                                   },
                                 ),
@@ -93,33 +116,34 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                               if (_s._continueWatching.isNotEmpty)
                                 hubRowSliver(context,
                                   _buildContinueWatching(),
-                                  isFirstAfterHero: true,
+                                  isFirstAfterHero: trendingSection == null,
                                 )
                               else if (!_s._historyResolved)
                                 hubRowSliver(context,
                                   homeContinueWatchingSkeleton(context),
-                                  isFirstAfterHero: true,
+                                  isFirstAfterHero: trendingSection == null,
                                 ),
                               hubRowSliver(context,_buildMoodChips(), isFirstAfterHero: false),
-                              hubRowSliver(context,
-                                HubCatalogSection<AnimeCard>(
-                                  title: 'Trending Now',
-                                  future: _s._trendingFuture,
-                                  tvTabId: 'anime',
-                                  tvRowId: 'trending',
-                                  tvRowOrder: _catalogRowBase + 0,
-                                  tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
-                                    tabId: 'anime',
-                                  ),
-                                  cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(
-                                    anime,
-                                    listIndex: index,
+                              if (trendingSection == null)
+                                hubRowSliver(context,
+                                  HubCatalogSection<AnimeCard>(
+                                    title: 'Trending Now',
+                                    future: _s._trendingFuture,
+                                    tvTabId: 'anime',
                                     tvRowId: 'trending',
+                                    tvRowOrder: _catalogRowBase + 0,
+                                    tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                                      tabId: 'anime',
+                                    ),
+                                    cardBuilder: (context, anime, index) =>
+                                        _animePosterCard(
+                                      anime,
+                                      listIndex: index,
+                                      tvRowId: 'trending',
+                                    ),
                                   ),
+                                  isFirstAfterHero: false,
                                 ),
-                                isFirstAfterHero: false,
-                              ),
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Airing',

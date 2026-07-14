@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Trakt login, sync, and stats — settings Accounts slice.
@@ -195,32 +195,30 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
     Widget stat(IconData icon, String label, String value) {
       return Column(
         children: [
-          Icon(icon, color: AppTheme.primaryColor, size: 20),
+          Icon(icon, color: ForjaShellColors.brandGreen, size: 20),
           const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
-              color: Colors.white,
+              color: ForjaShellColors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
+            style: const TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 11,
+            ),
           ),
         ],
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -235,119 +233,48 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Sync your watchlist and watch history with Trakt.tv',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
+            style: TextStyle(
+              fontSize: 13,
+              color: ForjaShellColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           if (_isLoggedIn) ...[
-            // ── Logged in ──
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connected${_username != null ? " as $_username" : ""}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Text(
-                          'Trakt.tv',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.sync,
-                    color: AppTheme.primaryColor,
-                    size: 18,
-                  ),
-                ],
-              ),
+            SettingsStatusRow(
+              title: 'Connected${_username != null ? " as $_username" : ""}',
+              subtitle: 'Trakt.tv',
             ),
+            if (_stats != null) _buildStatsWidget(),
             const SizedBox(height: 12),
-
-            // Stats
-            if (_stats != null) ...[
-              _buildStatsWidget(),
-              const SizedBox(height: 12),
-            ],
-
-            // Sync button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSyncing ? null : _sync,
-                icon: _isSyncing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.sync),
-                label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+            SettingsFilledButton(
+              label: _isSyncing ? 'Syncing...' : 'Sync Now',
+              icon: Icons.sync,
+              busy: _isSyncing,
+              onPressed: _isSyncing ? null : _sync,
             ),
-            const SizedBox(height: 8),
-
-            // Logout button
-            ElevatedButton.icon(
+            const SizedBox(height: 10),
+            SettingsFilledButton(
+              label: 'Logout from Trakt',
+              icon: Icons.logout,
+              secondary: true,
               onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout from Trakt'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                foregroundColor: Colors.redAccent,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ] else if (_userCode != null) ...[
-            // ── Polling — show code ──
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(12),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 children: [
                   const Text(
                     'Go to the URL below and enter this code:',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: ForjaShellColors.textSecondary),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -355,43 +282,41 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
                     style: const TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
+                      color: ForjaShellColors.brandGreen,
                       letterSpacing: 6,
                     ),
                   ),
                   const SizedBox(height: 8),
                   SelectableText(
                     _verifyUrl ?? 'https://trakt.tv/activate',
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 13,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   const LinearProgressIndicator(
-                    color: AppTheme.primaryColor,
-                    backgroundColor: Colors.white10,
+                    color: ForjaShellColors.brandGreen,
+                    backgroundColor: ForjaShellColors.borderSubtle,
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'Waiting for authorization...',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
             ),
           ] else ...[
-            // ── Not logged in ──
-            ElevatedButton.icon(
+            SettingsFilledButton(
+              label: 'Login with Trakt',
+              icon: Icons.login,
+              secondary: true,
               onPressed: _startLogin,
-              icon: const Icon(Icons.login),
-              label: const Text('Login with Trakt'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white10,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ],
         ],

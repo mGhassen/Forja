@@ -26,36 +26,24 @@ class PlayerQualityMenu {
         alignment: alignment,
         margin: margin,
         anchorContext: anchorContext,
-        child: playbackQualityLabel != null
-            ? ListView(
-                padding: const EdgeInsets.all(8),
-                shrinkWrap: true,
-                children: [
-                  PlayerPopupListTile(
-                    label: playbackQualityLabel,
-                    subtitle: playbackQualityDetail,
-                    selected: true,
-                  ),
-                ],
-              )
-            : const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+          child: playbackQualityLabel != null
+              ? PlayerPopupOptionChip(
+                  label: playbackQualityLabel,
+                  selected: true,
+                  expanded: true,
+                )
+              : const Text(
                   'Quality not available yet',
-                  style: TextStyle(color: Colors.white38),
+                  style: TextStyle(color: PlayerPopupTokens.muted),
                 ),
-              ),
+        ),
       );
       return;
     }
 
     final qualityAuto = isHlsQualityAuto(currentQualityUrl, masterUrl);
-    final activeLabel = qualityAuto
-        ? activeHlsQualityLabel(playerState, qualities)
-        : null;
-    final activeDetail = qualityAuto
-        ? (playbackQualityDetail ?? matchActiveHlsVariant(qualities, playerState)?.label)
-        : null;
 
     PlayerPopupPanel.show(
       context: context,
@@ -64,37 +52,25 @@ class PlayerQualityMenu {
       alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
-      child: ListView(
-        padding: const EdgeInsets.all(8),
-        shrinkWrap: true,
-        children: qualities.map((q) {
-          if (q.isAuto) {
-            return PlayerPopupListTile(
-              badge: 'AUTO',
-              label: q.label,
-              subtitle: qualityAuto ? activeLabel : null,
-              selected: qualityAuto,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: qualities.map((q) {
+            final selected = q.isAuto
+                ? qualityAuto
+                : (!qualityAuto && q.url == currentQualityUrl);
+            return PlayerPopupOptionChip(
+              label: q.isAuto ? 'Auto' : q.label,
+              selected: selected,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
-                if (!qualityAuto) await onSelect(q);
+                if (!selected) await onSelect(q);
               },
             );
-          }
-
-          final isCurrent = !qualityAuto && q.url == currentQualityUrl;
-          final subtitle = q.bandwidth != null
-              ? '${(q.bandwidth! / 1000).round()} kbps'
-              : (qualityAuto && q.label == activeLabel ? activeDetail : null);
-          return PlayerPopupListTile(
-            label: q.label,
-            subtitle: subtitle,
-            selected: isCurrent,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              if (!isCurrent) await onSelect(q);
-            },
-          );
-        }).toList(),
+          }).toList(),
+        ),
       ),
     );
   }

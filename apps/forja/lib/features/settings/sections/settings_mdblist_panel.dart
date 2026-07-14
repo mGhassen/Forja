@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 
 class SettingsMdblistPanel extends StatefulWidget {
@@ -94,94 +94,44 @@ class _SettingsMdblistPanelState extends State<SettingsMdblistPanel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Aggregated ratings from IMDb, TMDB, Trakt, Letterboxd, RT, and more',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
+            style: TextStyle(
+              fontSize: 13,
+              color: ForjaShellColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           if (_isConfigured) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connected${_username != null ? " as $_username" : ""}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Text(
-                          'MDBlist',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            SettingsStatusRow(
+              title: 'Connected${_username != null ? " as $_username" : ""}',
+              subtitle: 'MDBlist',
             ),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
+            SettingsFilledButton(
+              label: 'Remove API Key',
+              icon: Icons.logout,
+              secondary: true,
               onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Remove API Key'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                foregroundColor: Colors.redAccent,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ] else ...[
-            TextField(
+            SettingsTextField(
               controller: _apiKeyController,
-              decoration: InputDecoration(
-                labelText: 'MDBlist API Key',
-                hintText: 'Paste your API key from mdblist.com',
-                labelStyle: const TextStyle(color: Colors.white54),
-                hintStyle: const TextStyle(color: Colors.white24),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              style: const TextStyle(color: Colors.white),
+              label: 'MDBlist API Key',
+              hint: 'Paste your API key from mdblist.com',
               obscureText: true,
+              onSubmitted: (_) => _saveApiKey(),
             ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
+            const SizedBox(height: 14),
+            SettingsFilledButton(
+              label: 'Save API Key',
+              icon: Icons.save,
               onPressed: _saveApiKey,
-              icon: const Icon(Icons.save),
-              label: const Text('Save API Key'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ],
         ],

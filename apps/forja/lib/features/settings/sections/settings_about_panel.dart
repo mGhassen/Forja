@@ -20,7 +20,7 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

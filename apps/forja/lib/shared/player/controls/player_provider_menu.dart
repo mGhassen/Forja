@@ -15,6 +15,8 @@ class PlayerProviderMenu {
   }) {
     if (providers.isEmpty) return;
 
+    final entries = providers.entries.toList();
+
     PlayerPopupPanel.show(
       context: context,
       title: 'Servers',
@@ -22,26 +24,34 @@ class PlayerProviderMenu {
       alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
-      child: ListView(
-        padding: const EdgeInsets.all(8),
-        shrinkWrap: true,
-        children: providers.entries.map((entry) {
-          final key = entry.key;
-          final provider = entry.value;
-          final isCurrent = key == currentProviderId;
-          final fallbackName = provider['name']?.toString();
-          return PlayerPopupListTile(
-            label: StreamProviderDisplay.playerLabel(
-              key,
-              fallbackName: fallbackName,
-            ),
-            selected: isCurrent,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              if (!isCurrent) await onSelect(key);
-            },
-          );
-        }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: Column(
+          children: [
+            for (var i = 0; i < entries.length; i++) ...[
+              if (i != 0) const SizedBox(height: 8),
+              Builder(
+                builder: (_) {
+                  final key = entries[i].key;
+                  final fallbackName = entries[i].value['name']?.toString();
+                  final isCurrent = key == currentProviderId;
+                  return PlayerPopupOptionChip(
+                    label: StreamProviderDisplay.playerLabel(
+                      key,
+                      fallbackName: fallbackName,
+                    ),
+                    selected: isCurrent,
+                    expanded: true,
+                    onTap: () async {
+                      PlayerPopupPanel.dismiss();
+                      if (!isCurrent) await onSelect(key);
+                    },
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

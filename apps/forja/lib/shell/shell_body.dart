@@ -24,11 +24,15 @@ class ShellBody extends StatelessWidget {
           excluding: overlayOpen,
           child: IndexedStack(
             index: selectedIndex,
+            // Stable keys so reordering / show-hide of nav tabs does not
+            // dispose and recreate other tab States (e.g. Settings category).
             children: visibleIds.map((id) {
-              if (!mountedTabIds.contains(id)) {
-                return const SizedBox.shrink();
-              }
-              return tabFor(id);
+              return KeyedSubtree(
+                key: ValueKey<String>('shell-tab-$id'),
+                child: mountedTabIds.contains(id)
+                    ? tabFor(id)
+                    : const SizedBox.shrink(),
+              );
             }).toList(),
           ),
         );

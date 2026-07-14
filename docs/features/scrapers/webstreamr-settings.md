@@ -8,7 +8,7 @@ WebStreamr runs locally inside Forja's Rust engine. This settings screen control
 
 ## How to open it
 
-**Settings → Sources → WebStreamr Settings**
+**Settings → WebStreamr**
 
 ## What you can do
 
