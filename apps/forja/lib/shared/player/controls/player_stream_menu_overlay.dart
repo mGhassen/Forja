@@ -69,9 +69,12 @@ class _StreamMenuOverlay extends StatefulWidget {
 class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   bool _open = false;
   final Set<String> _loadingProviders = {};
+  /// Providers whose stream branch is collapsed (loaded but hidden).
+  final Set<String> _collapsedProviders = {};
   final Map<String, int> _loadGens = {};
   final Map<String, PlayerSourceStatus> _urlStatuses = {};
   _StreamAudioFilter? _audioFilter;
+  bool _useEmbed = false;
 
   Set<String> get _failedProviders =>
       widget.providerLoadFailures?.value ?? const {};
@@ -85,8 +88,10 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
 
   Future<void> _bootstrap() async {
     await ProviderScoreMemory.ensureLoaded();
+    final useEmbed = await SettingsService().getPlayerWebViewUseEmbed();
     if (!mounted) return;
     setState(() {
+      _useEmbed = useEmbed;
       _initAudioFilterDefault();
       _open = true;
     });
@@ -159,23 +164,38 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     );
   }
 
-  Future<void> _tapServer({
-    required String providerId,
-    required PlayerStreamMenuState state,
-    required Map<String, List<StreamSource>> cache,
+  void _toggleServerExpanded(String providerId) {
+    setState(() {
+      if (_collapsedProviders.contains(providerId)) {
+        _collapsedProviders.remove(providerId);
+      } else {
+        _collapsedProviders.add(providerId);
+      }
+    });
+  }
+
+  Future<void> _loadServer(
+    String providerId, {
+    bool clearCache = false,
   }) async {
     if (!widget.providersEnabled) return;
-
-    final sources = _sectionSources(
-      providerId: providerId,
-      state: state,
-      cache: cache,
-    );
-    if (sources.isNotEmpty || _loadingProviders.contains(providerId)) return;
+    if (_loadingProviders.contains(providerId)) return;
 
     final gen = (_loadGens[providerId] ?? 0) + 1;
     _loadGens[providerId] = gen;
-    setState(() => _loadingProviders.add(providerId));
+    setState(() {
+      _loadingProviders.add(providerId);
+      _collapsedProviders.remove(providerId);
+    });
+
+    if (clearCache) {
+      final cache = widget.providerSourcesCache;
+      if (cache is ValueNotifier<Map<String, List<StreamSource>>>) {
+        final next = Map<String, List<StreamSource>>.from(cache.value)
+          ..remove(providerId);
+        cache.value = next;
+      }
+    }
 
     try {
       await widget.onLoadProvider(providerId);
@@ -185,6 +205,23 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
     }
+  }
+
+  Future<void> _reloadServer(String providerId) async {
+    await _loadServer(providerId, clearCache: true);
+  }
+
+  void _onServerRowTap({
+    required String providerId,
+    required bool isLoaded,
+  }) {
+    if (!widget.providersEnabled) return;
+    if (_loadingProviders.contains(providerId)) return;
+    if (isLoaded) {
+      _toggleServerExpanded(providerId);
+      return;
+    }
+    unawaited(_loadServer(providerId));
   }
 
   Widget _buildServerGroup({
@@ -202,6 +239,8 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       cache: cache,
     );
     final isLoaded = sectionSources.isNotEmpty;
+    final isExpanded = isLoaded && !_collapsedProviders.contains(providerId);
+    final isReloading = _loadingProviders.contains(providerId);
     final status = PlayerStreamMenu._resolveProviderStatus(
       providerId,
       probes: probes,
@@ -220,9 +259,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       sourceCount: sectionSources.length,
       isPlaying: isPlaying,
     );
-    final canLoad = widget.providersEnabled &&
-        !isLoaded &&
-        status != PlayerSourceStatus.checking;
+    final canInteract = widget.providersEnabled && !isReloading;
     final scoreScope = PlayerStreamMenu.scoreScope(
       movie: widget.movie,
       providers: widget.providers,
@@ -243,94 +280,37 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
           color: Colors.transparent,
           child: Builder(
             builder: (context) {
-              final header = InkWell(
-                onTap: canLoad
-                    ? () => unawaited(
-                          _tapServer(
-                            providerId: providerId,
-                            state: state,
-                            cache: cache,
-                          ),
+              final tvFocus =
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+              final header = _ServerMenuHeader(
+                label: presentation.label,
+                subtitle: subtitle,
+                status: status,
+                isLoaded: isLoaded,
+                isPlaying: isPlaying,
+                isReloading: isReloading,
+                showReload:
+                    (isLoaded || isReloading) && widget.providersEnabled,
+                categoryBadge: presentation.categoryBadge,
+                scoreScope: scoreScope,
+                providerId: providerId,
+                hideCategoryBadge: hideCategoryBadge,
+                onTap: canInteract
+                    ? () => _onServerRowTap(
+                          providerId: providerId,
+                          isLoaded: isLoaded,
                         )
                     : null,
-                hoverColor: ForjaShellColors.inkHover,
-                splashColor: ForjaShellColors.inkSplash,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      PlayerStreamMenu._statusGlyph(
-                        status: status,
-                        isLoaded: isLoaded,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              presentation.label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isPlaying
-                                    ? Colors.white
-                                    : status == PlayerSourceStatus.failed
-                                        ? Colors.white.withValues(alpha: 0.42)
-                                        : isLoaded
-                                            ? Colors.white.withValues(alpha: 0.92)
-                                            : Colors.white.withValues(alpha: 0.62),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                height: 1.25,
-                                decoration: status == PlayerSourceStatus.failed
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                decorationColor: Colors.white38,
-                              ),
-                            ),
-                            if (subtitle != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  subtitle,
-                                  style: TextStyle(
-                                    color: isPlaying
-                                        ? playerSourceStatusColor(
-                                            PlayerSourceStatus.active,
-                                          )
-                                        : Colors.white.withValues(alpha: 0.42),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      PlayerStreamMenu._serverTrailingBadges(
-                        categoryBadge: presentation.categoryBadge,
-                        scoreScope: scoreScope,
-                        providerId: providerId,
-                        hideCategoryBadge: hideCategoryBadge,
-                      ),
-                    ],
-                  ),
-                ),
+                onReload: widget.providersEnabled && isLoaded && !isReloading
+                    ? () => unawaited(_reloadServer(providerId))
+                    : null,
               );
-              if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips ||
-                  !canLoad) {
-                return header;
-              }
+              if (!tvFocus || !canInteract) return header;
               return shellFocusableTap(
                 context: context,
-                onTap: () => unawaited(
-                  _tapServer(
-                    providerId: providerId,
-                    state: state,
-                    cache: cache,
-                  ),
+                onTap: () => _onServerRowTap(
+                  providerId: providerId,
+                  isLoaded: isLoaded,
                 ),
                 borderRadius: 8,
                 showFocusBorder: true,
@@ -340,7 +320,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             },
           ),
         ),
-        if (isLoaded)
+        if (isExpanded)
           _ServerStreamBranch(
             child: PlayerStreamMenu._sourcesList(
               sources: sectionSources,
@@ -468,6 +448,75 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     );
   }
 
+  Future<void> _setUseEmbed(bool value) async {
+    setState(() => _useEmbed = value);
+    await SettingsService().setPlayerWebViewUseEmbed(value);
+  }
+
+  Widget? _buildUseEmbedHeaderControl() {
+    if (!_hasProviders || isAndroidTvHeadlessWebViewBlocked) return null;
+    return InkWell(
+      onTap: () => unawaited(_setUseEmbed(!_useEmbed)),
+      borderRadius: BorderRadius.circular(6),
+      hoverColor: ForjaShellColors.inkHover,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: Checkbox(
+                value: _useEmbed,
+                onChanged: (v) {
+                  if (v == null) return;
+                  unawaited(_setUseEmbed(v));
+                },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return ForjaShellColors.cinematic.textPrimary;
+                  }
+                  return Colors.transparent;
+                }),
+                checkColor: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Embed',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderTrailing() {
+    final embed = _buildUseEmbedHeaderControl();
+    final reload = PlayerStreamMenu.reloadTrailing(
+      onReload: widget.onReload,
+      isReloading: widget.isReloading,
+    );
+    if (embed == null && reload == null) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ?embed,
+        if (embed != null && reload != null) const SizedBox(width: 4),
+        ?reload,
+      ],
+    );
+  }
+
   Widget _buildBody() {
     final list = widget.refreshListenable == null
         ? _buildList()
@@ -487,15 +536,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             color: ForjaShellColors.cinematic.textSecondary,
             size: 18,
           ),
-          trailing: Builder(
-            builder: (context) {
-              final trailing = PlayerStreamMenu.reloadTrailing(
-                onReload: widget.onReload,
-                isReloading: widget.isReloading,
-              );
-              return trailing ?? const SizedBox.shrink();
-            },
-          ),
+          trailing: _buildHeaderTrailing(),
         ),
         if (PlayerStreamMenu.hasSubDubProviders(widget.providers))
           Padding(

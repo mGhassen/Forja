@@ -115,6 +115,8 @@ void main() {
     expect(m['format'], 'mp4');
     expect(m['title'], 'Fsst Movie');
     expect(m['height'], 1080);
+    expect((m['request_headers'] as Map)['Referer'], 'https://fsst.example/');
+    expect((m['request_headers'] as Map)['Origin'], 'https://fsst.example');
   });
 
   test('vixsrc embed golden via FFI', () {

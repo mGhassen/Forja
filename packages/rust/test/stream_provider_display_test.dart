@@ -32,7 +32,7 @@ void main() {
     expect(StreamProviderDisplay.hasProfile('custom'), isFalse);
   });
 
-  test('player list label is name only — no server region flags', () {
+  test('server list label is name only — no region flags', () {
     expect(StreamProviderDisplay.playerListLabel('vidlink'), 'VidLink');
     expect(StreamProviderDisplay.playerListLabel('service111477'), '111477');
   });
@@ -40,5 +40,23 @@ void main() {
   test('flagForCountry remains for torrent language filters', () {
     expect(StreamProviderDisplay.flagForCountry('en'), '🇺🇸');
     expect(StreamProviderDisplay.flagForCountry('fr'), '🇫🇷');
+  });
+
+  test('flagsForText prefers emoji already in the stream title', () {
+    expect(
+      StreamProviderDisplay.flagsForText('WebStreamr 🇩🇪\n🔗 KinoGer'),
+      '🇩🇪',
+    );
+  });
+
+  test('flagsForText detects language tokens when no emoji present', () {
+    expect(
+      StreamProviderDisplay.flagsForText('GERMAN DL 1080p HEVC'),
+      '🇩🇪',
+    );
+    expect(
+      StreamProviderDisplay.flagsForText('French VOSTFR stream'),
+      '🇫🇷',
+    );
   });
 }

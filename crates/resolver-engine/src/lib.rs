@@ -20,7 +20,7 @@ pub use headers::HeaderManager;
 pub use health::{provider_health_json, HealthChecker};
 pub use health_store::ProviderHealthStore;
 pub use http::{HttpClient, HttpResponse};
-pub use orchestrator::{continue_with_host, resolve};
+pub use orchestrator::{continue_with_host, list_builtin_provider_ids, resolve};
 pub use provider::{Provider, ProviderError, ProviderKind};
 pub use registry::ProviderRegistry;
 pub use request::{ContinueRequest, HostResolveResult, ResolveSettings, StreamRequest};

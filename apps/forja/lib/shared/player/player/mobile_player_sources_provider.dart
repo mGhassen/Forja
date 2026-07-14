@@ -118,12 +118,11 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
         _s._positionNotifier.value = Duration.zero;
         _s._bufferedNotifier.value = Duration.zero;
         await resetPlayerForOpen(_s._player);
-        if (_s._player.platform is NativePlayer) {
-          final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
-          await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
-        }
-        await applyMediaHttpHeaders(_s._player, headers);
-        await _s._player.open(Media(streamUrl, httpHeaders: headers));
+        streamUrl = await openPlayerStream(
+          _s._player,
+          url: streamUrl,
+          headers: headers,
+        );
         if (_s._fallbackAborted(gen)) return null;
 
         if (currentPos.inSeconds > 0) {

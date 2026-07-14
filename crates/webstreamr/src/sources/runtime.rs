@@ -2,7 +2,10 @@ use super::{
     parse_source_html, resolve_source, series_title, SourceEmbed, SourceRequest,
 };
 use crate::config::{self, Config};
-use crate::fetcher::{fetch_json, fetch_text, fetch_text_post, final_redirect_url, FetchConfig};
+use crate::fetcher::{
+    fetch_head, fetch_json, fetch_text, fetch_text_post, final_redirect_url, FetchConfig,
+};
+use crate::utils::resolve_redirect_url;
 use crate::tmdb::{get_tmdb_name_and_year, resolve_ids, MediaIds};
 use crate::types::MediaType;
 use regex::Regex;
@@ -362,6 +365,14 @@ fn run_megakino(ids: &MediaIds, base_url: &str) -> Option<Vec<SourceEmbed>> {
     let imdb = ids.imdb_id.as_deref()?;
     let base = final_redirect_url(base_url, &FetchConfig::default()).unwrap_or_else(|_| base_url.into());
     let origin = url_origin(&base);
+    // PlayTorrio MegaKino: HEAD ?yg=token so the cookie jar stores the
+    // challenge cookie before search POST.
+    let token_url = format!(
+        "{}{}yg=token",
+        base,
+        if base.contains('?') { "&" } else { "?" }
+    );
+    let _ = fetch_head(&token_url, &FetchConfig::default());
     let form = format!(
         "do=search&subaction=search&story={}",
         urlencoding_encode(imdb)
@@ -794,14 +805,33 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
         }
         let mut ccs = vec!["multi".to_string()];
         ccs.extend(crate::language::find_country_codes(&lang_text));
-        out.extend(parse_source_html(
-            "hdhub4u",
-            &html,
-            &parse_opts_json(serde_json::json!({
-                "referer": page_url,
-                "country_codes": ccs,
-            })),
-        ));
+        let opts = parse_opts_json(serde_json::json!({
+            "referer": page_url,
+            "country_codes": ccs,
+        }));
+        // Direct hubdrive anchors on the page (older posts).
+        out.extend(parse_source_html("hdhub4u", &html, &opts));
+        // PlayTorrio path: most posts only expose gadgetsweb redirects —
+        // decode → hub-links page → hubdrive embeds.
+        for a in doc_html.select(&Selector::parse(r#"a[href*="gadgetsweb"]"#).unwrap()) {
+            let Some(href) = a.value().attr("href") else {
+                continue;
+            };
+            let Ok(hub_links_url) = resolve_redirect_url(href, Some(&page_url)) else {
+                continue;
+            };
+            let Ok(links_html) = fetch_text(&hub_links_url, &fetch_cfg(Some(&page_url))) else {
+                continue;
+            };
+            out.extend(parse_source_html(
+                "hdhub4u",
+                &links_html,
+                &parse_opts_json(serde_json::json!({
+                    "referer": hub_links_url,
+                    "country_codes": ccs,
+                })),
+            ));
+        }
     }
     Some(out)
 }

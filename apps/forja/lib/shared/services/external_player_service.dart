@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/services/android_player_launcher.dart';
 import 'package:forja/shared/services/macos_external_player_launcher.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,9 +302,15 @@ class ExternalPlayerService {
       _logHeaderMap('IINA handoff input', headers);
     }
 
+    final normalizedUrl = normalizePlaybackStreamUrl(url);
+    final resolvedHeaders = resolvePlaybackHttpHeaders(
+      headers,
+      streamUrl: normalizedUrl,
+    );
+
     final target = await _resolveLaunchTarget(
-      url: url,
-      headers: headers,
+      url: normalizedUrl,
+      headers: resolvedHeaders,
       desktop: Platform.isWindows || Platform.isMacOS || Platform.isLinux,
     );
 

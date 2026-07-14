@@ -60,6 +60,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [036-[fixed]-…](fixed/036-[fixed]-vidsrc-cloudnestra-cdn-host-stale.md) | Vidsrc CDN host cloudnestra → dynamic | P1 | High | fixed | 2/2 · 2/2 | — |
 | [037-[open]-…](037-[open]-webstreaming-all-providers-open-validate.md) | Webstreaming open-validate all providers | P1 | High | open | 6/7 · A 5/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [038-[fixed]-…](fixed/038-[fixed]-webstreamr-resolver-drops-country-config.md) | WebStreamr Resolver drops country config | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [039-[fixed]-…](fixed/039-[fixed]-resolver-missing-template-embed-plugins.md) | Resolver missing template embed plugins (WebView sniff) | P1 | High | fixed | Complete · 2/2 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [040-[fixed]-…](fixed/040-[fixed]-mpv-open-rejects-working-cdn-urls.md) | mpv open rejects working CDN mp4/HLS URLs | P1 | High | fixed | Complete · 5/5 · 4/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -77,6 +77,8 @@ flutter pub get
 flutter run -d macos             # or windows / linux / android / ios
 ```
 
+**Debug badge:** In debug (`flutter run`), a small runtime **DEV** chip sits under the nav-rail wordmark (`kDebugMode`). macOS also sets a dock badge via `windowManager.setBadgeLabel('DEV')`. No alternate logo assets required.
+
 Boot log must show `[Engine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`:
 
 - Re-run `./scripts/build_rust.sh`

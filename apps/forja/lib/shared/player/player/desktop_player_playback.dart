@@ -139,8 +139,11 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
 
         final srcHeaders = source.headers ?? widget.headers;
         await resetPlayerForOpen(_s._player);
-        await applyMediaHttpHeaders(_s._player, srcHeaders);
-        await _s._player.open(Media(openUrl, httpHeaders: srcHeaders));
+        openUrl = await openPlayerStream(
+          _s._player,
+          url: openUrl,
+          headers: srcHeaders,
+        );
         if (_fallbackAborted(runGen)) return false;
         _s._player.setVolume(_s._volumeNotifier.value);
         final opened = await waitForMediaOpen(
@@ -148,7 +151,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
           streamUrl: openUrl,
           timeout: isLocalTorrentStreamUrl(openUrl)
               ? const Duration(seconds: 45)
-              : const Duration(seconds: 12),
+              : const Duration(seconds: 25),
         );
         if (_fallbackAborted(runGen)) return false;
         if (!opened) {
@@ -244,8 +247,9 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
 
   Future<void> _initPlayback({int sourceStartIndex = 0}) async {
     if (_s._disposed) return;
-    if (_s._isInitPlaybackRunning)
+    if (_s._isInitPlaybackRunning) {
       return; // Prevent re-entrant calls during async extraction
+    }
     _s._isInitPlaybackRunning = true;
     final initGen = _s._fallbackGen;
     _s._playbackConfirmed = false;
@@ -325,6 +329,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
                   seekAfterOpen: widget.startPosition,
                 );
                 if (retryPlayed) return;
+                if (_fallbackAborted(initGen)) return;
                 _s._markProviderLoadFailed(pid);
               }
             }
@@ -347,22 +352,25 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
             _subscribeToStreams();
             await _configureMpvProperties();
             await resetPlayerForOpen(_s._player);
-            await applyMediaHttpHeaders(_s._player, widget.headers);
-            await _s._player.open(Media(openUrl, httpHeaders: widget.headers));
+            final openedUrl = await openPlayerStream(
+              _s._player,
+              url: openUrl,
+              headers: widget.headers,
+            );
             if (_fallbackAborted(initGen)) return;
             _s._player.setVolume(_s._volumeNotifier.value);
             final opened = await waitForMediaOpen(
               _s._player,
-              streamUrl: openUrl,
+              streamUrl: openedUrl,
               timeout: isTorrent
                   ? const Duration(seconds: 45)
-                  : const Duration(seconds: 12),
+                  : const Duration(seconds: 25),
             );
             if (_fallbackAborted(initGen)) return;
             if (!opened) {
               throw Exception('Failed to open media');
             }
-            _s._detectHlsQualities(openUrl, widget.headers);
+            _s._detectHlsQualities(openedUrl, widget.headers);
             _s._playbackConfirmed = true;
             _s._syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
@@ -409,6 +417,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       episode: widget.selectedEpisode,
     );
     await WebstreamingStreamCache.drop(key);
+    if (_s._disposed) return;
     final pid = _s._currentProvider ?? widget.activeProvider;
     if (pid != null && pid.isNotEmpty) {
       final next = Map<String, List<StreamSource>>.from(
@@ -809,13 +818,17 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
     }
 
     // ── HTTP Headers ──────────────────────────────────────────────────────
-    if (widget.headers != null) {
-      final referer = widget.headers!['Referer'] ?? widget.headers!['referer'];
-      if (referer != null) await safeSet('referrer', referer);
-
-      final ua = widget.headers!['User-Agent'] ?? widget.headers!['user-agent'];
-      if (ua != null) await safeSet('user-agent', ua);
-    }
+    // Always apply a browser UA before open; full header list goes on Media.
+    final hdrs = resolvePlaybackHttpHeaders(
+      widget.headers,
+      streamUrl: widget.mediaPath,
+    );
+    await applyMediaHttpHeaders(
+      _s._player,
+      hdrs,
+      streamUrl: widget.mediaPath,
+      alreadyResolved: true,
+    );
 
     // ── Resume Position ──────────────────────────────────────────────────
     // Set mpv's native 'start' property so it begins playback at the saved

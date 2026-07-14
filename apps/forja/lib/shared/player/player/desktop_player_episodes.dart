@@ -406,7 +406,7 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
       Navigator.of(context, rootNavigator: true).pushReplacement(
         AppRouter.slideRoute(
           (_) => PlayerScreen(
-            streamUrl: resolved!.streamUrl,
+            streamUrl: resolved.streamUrl,
             title: nextTitle,
             headers: resolved.headers,
             movie: widget.movie,
@@ -437,8 +437,9 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
   }
 
   Future<void> _goToEpisode(int season, int episode) async {
-    if (season == widget.selectedSeason && episode == widget.selectedEpisode)
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode) {
       return;
+    }
     await _switchToEpisode(season, episode);
   }
 
@@ -523,17 +524,19 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
 
     await _s._configureMpvProperties();
     await resetPlayerForOpen(_s._player);
-    await _s._player.open(
-      Media(resolved.streamUrl, httpHeaders: resolved.headers),
+    final openedUrl = await openPlayerStream(
+      _s._player,
+      url: resolved.streamUrl,
+      headers: resolved.headers,
     );
     _s._player.setVolume(_s._volumeNotifier.value);
 
     final opened = await waitForMediaOpen(
       _s._player,
-      streamUrl: resolved.streamUrl,
-      timeout: isLocalTorrentStreamUrl(resolved.streamUrl)
+      streamUrl: openedUrl,
+      timeout: isLocalTorrentStreamUrl(openedUrl)
           ? const Duration(seconds: 45)
-          : const Duration(seconds: 12),
+          : const Duration(seconds: 25),
     );
     if (!mounted) return;
     if (!opened) {
@@ -656,7 +659,7 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
     final handler = widget.onSwitchPlayer;
     if (handler == null) return;
     await _persistProgressForSwitch();
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     PlayerAppMenu.show(
       context,
       anchorContext: anchorContext,
@@ -1055,12 +1058,11 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
         _s._positionNotifier.value = Duration.zero;
         _s._bufferedNotifier.value = Duration.zero;
         await resetPlayerForOpen(_s._player);
-        if (_s._player.platform is NativePlayer) {
-          final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
-          await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
-        }
-        await applyMediaHttpHeaders(_s._player, headers);
-        await _s._player.open(Media(streamUrl, httpHeaders: headers));
+        streamUrl = await openPlayerStream(
+          _s._player,
+          url: streamUrl,
+          headers: headers,
+        );
         if (_s._fallbackAborted(gen)) return null;
 
         if (currentPos.inSeconds > 0) {

@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "resolve-engine"
+path = "src/bin/resolve_engine.rs"
+
 [dependencies]
 stream-core = { path = "../stream-core" }
 webstreamr = { path = "../webstreamr" }

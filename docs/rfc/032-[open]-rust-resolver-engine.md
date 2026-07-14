@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **6 / 6** acceptance (slice 1) · **3 / 6** acceptance (slice 2) |
-| **Current slice** | Hardening — parallel race + Rust health store shipped; videasy/template native ports open |
+| **Progress** | **8 / 8** components · **6 / 6** acceptance (slice 1) · **4 / 7** acceptance (slice 2) |
+| **Current slice** | Hardening — all template embed HostRequired plugins registered; videasy/template native ports open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,6 +53,7 @@
 | 10 | R32-A10 | Template embed providers Rust-native (shrink host surface) | ⬜ |
 | 11 | R32-A11 | Issue 018 manual parity re-run on new path | ⬜ |
 | 12 | R32-A12 | Dart + Rust integration tests for host continue flow | ✅ |
+| 13 | R32-A13 | Every `stream-core` template ID registered as `HostRequired` plugin (issue 039) | ✅ |
 
 ---
 

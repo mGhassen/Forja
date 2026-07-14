@@ -1,34 +1,143 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
-/// mpv must see Referer / User-Agent before `open`, not after.
+/// Browser-like UA so CDNs that reject bare `libmpv` still serve the file.
+const kDefaultStreamUserAgent =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
+
+final _trailingMediaSlash = RegExp(
+  r'\.(mp4|mkv|webm|avi|mov|m4v|ts|mpd|m3u8)/+$',
+  caseSensitive: false,
+);
+
+/// Strip CDN junk like `…/file.mp4/` that browsers forgive and demuxers reject.
+String normalizePlaybackStreamUrl(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return trimmed;
+  if (_trailingMediaSlash.hasMatch(trimmed)) {
+    return trimmed.replaceFirst(RegExp(r'/+$'), '');
+  }
+  return trimmed;
+}
+
+/// Headers for every network open: extractor headers + guaranteed browser UA.
+///
+/// Do **not** comma-join into mpv `http-header-fields` — UA values contain
+/// commas (`KHTML, like Gecko`) and that corrupts the list. Pass the map to
+/// [Media.httpHeaders] so media_kit sets a proper NODE_ARRAY on load.
+Map<String, String> resolvePlaybackHttpHeaders(
+  Map<String, String>? headers, {
+  String? streamUrl,
+}) {
+  final out = <String, String>{};
+  if (headers != null) {
+    for (final e in headers.entries) {
+      final k = e.key.trim();
+      final v = e.value.trim();
+      if (k.isEmpty || v.isEmpty) continue;
+      out[k] = v;
+    }
+  }
+
+  String? take(String a, String b) => out[a] ?? out[b];
+  void putCanonical(String canonical, String alt, String value) {
+    out.remove(alt);
+    out[canonical] = value;
+  }
+
+  final ua = take('User-Agent', 'user-agent');
+  putCanonical(
+    'User-Agent',
+    'user-agent',
+    (ua != null && ua.isNotEmpty) ? ua : kDefaultStreamUserAgent,
+  );
+
+  final referer = take('Referer', 'referer');
+  if (referer != null && referer.isNotEmpty) {
+    putCanonical('Referer', 'referer', referer);
+  } else if (streamUrl != null &&
+      streamUrl.isNotEmpty &&
+      !isLocalTorrentStreamUrl(streamUrl)) {
+    final uri = Uri.tryParse(streamUrl);
+    if (uri != null &&
+        (uri.isScheme('http') || uri.isScheme('https')) &&
+        uri.host.isNotEmpty) {
+      putCanonical('Referer', 'referer', '${uri.origin}/');
+    }
+  }
+
+  final origin = take('Origin', 'origin');
+  if (origin != null && origin.isNotEmpty) {
+    putCanonical('Origin', 'origin', origin);
+  } else {
+    final ref = out['Referer'];
+    if (ref != null) {
+      final refUri = Uri.tryParse(ref);
+      if (refUri != null && refUri.hasScheme && refUri.host.isNotEmpty) {
+        putCanonical('Origin', 'origin', refUri.origin);
+      }
+    }
+  }
+
+  return out;
+}
+
+/// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on
+/// [Media.httpHeaders] — never via comma-joined `http-header-fields`.
+///
+/// Pass [alreadyResolved]: true when [headers] came from
+/// [resolvePlaybackHttpHeaders] (avoids dropping URL-derived Referer).
+/// Clears stale `referrer` when the next source has none.
 Future<void> applyMediaHttpHeaders(
   Player player,
-  Map<String, String>? headers,
-) async {
-  if (headers == null || headers.isEmpty) return;
+  Map<String, String>? headers, {
+  String? streamUrl,
+  bool alreadyResolved = false,
+}) async {
+  final resolved = alreadyResolved
+      ? Map<String, String>.from(headers ?? const {})
+      : resolvePlaybackHttpHeaders(headers, streamUrl: streamUrl);
   if (player.platform is! NativePlayer) return;
   final native = player.platform as NativePlayer;
-  final referer = headers['Referer'] ?? headers['referer'];
-  if (referer != null) await native.setProperty('referrer', referer);
-  final ua = headers['User-Agent'] ?? headers['user-agent'];
-  if (ua != null) await native.setProperty('user-agent', ua);
 
-  // HLS segment requests need the same Referer/Origin as the master playlist.
-  final headerFields = <String>[];
-  if (referer != null) headerFields.add('Referer: $referer');
-  final origin = headers['Origin'] ?? headers['origin'];
-  if (origin != null) headerFields.add('Origin: $origin');
-  if (ua != null) headerFields.add('User-Agent: $ua');
-  if (headerFields.isNotEmpty) {
-    await native.setProperty('http-header-fields', headerFields.join(','));
-  }
+  final referer = resolved['Referer'] ?? resolved['referer'];
+  // Empty string clears a previous source's referrer — do not leave it sticky.
+  await native.setProperty('referrer', referer ?? '');
+
+  final ua = resolved['User-Agent'] ?? resolved['user-agent'];
+  await native.setProperty(
+    'user-agent',
+    (ua != null && ua.isNotEmpty) ? ua : kDefaultStreamUserAgent,
+  );
+}
+
+/// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
+Future<String> openPlayerStream(
+  Player player, {
+  required String url,
+  Map<String, String>? headers,
+}) async {
+  final openUrl = normalizePlaybackStreamUrl(url);
+  final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: openUrl);
+  await applyMediaHttpHeaders(
+    player,
+    hdrs,
+    streamUrl: openUrl,
+    alreadyResolved: true,
+  );
+  final isRemoteHttp = (openUrl.startsWith('http://') ||
+          openUrl.startsWith('https://')) &&
+      !isLocalTorrentStreamUrl(openUrl);
+  await player.open(
+    Media(openUrl, httpHeaders: isRemoteHttp ? hdrs : null),
+  );
+  return openUrl;
 }
 
 /// Avoid opening mpv while a route fade is still covering the player surface.
@@ -109,6 +218,17 @@ bool isIgnorablePlayerError(String err) {
 bool isFatalPlayerOpenError(String err) =>
     !isIgnorablePlayerError(err) &&
     (err.contains('Failed') || err.contains('No such file'));
+
+/// HTTP/CDN rejects during the open probe — fatal for fallback, ignore mid-play.
+bool isOpenHttpFailure(String err) {
+  if (err.isEmpty) return false;
+  final lower = err.toLowerCase();
+  return lower.contains('http error') ||
+      lower.contains('403') ||
+      lower.contains('404') ||
+      lower.contains('502') ||
+      lower.contains('failed to open');
+}
 
 /// Local librqbit HTTP URLs — mpv may emit "Failed to recognize file format"
 /// while the first pieces are still arriving; that is not a hard fail yet.
@@ -235,7 +355,7 @@ Future<void> resetPlayerForOpen(Player player) async {
 /// are ignored until the timeout — pieces may still be filling.
 Future<bool> waitForMediaOpen(
   Player player, {
-  Duration timeout = const Duration(seconds: 12),
+  Duration timeout = const Duration(seconds: 25),
   String? streamUrl,
 }) async {
   final completer = Completer<bool>();
@@ -259,7 +379,8 @@ Future<bool> waitForMediaOpen(
 
   subs.addAll([
     player.stream.error.listen((err) {
-      if (!isFatalPlayerOpenError(err)) return;
+      final fatal = isFatalPlayerOpenError(err) || isOpenHttpFailure(err);
+      if (!fatal) return;
       if (tolerateProbe && isTransientTorrentProbeError(err)) {
         debugPrint('[Player] Transient torrent probe error (waiting): $err');
         return;
@@ -415,13 +536,14 @@ Future<bool> probeStreamSourceUrl(
   String url,
   Map<String, String>? headers,
 ) async {
-  if (url.isEmpty) return false;
-  final hdrs = headers ?? const <String, String>{};
+  final normalized = normalizePlaybackStreamUrl(url);
+  if (normalized.isEmpty) return false;
+  final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: normalized);
   try {
-    if (url.contains('.m3u8')) {
+    if (normalized.contains('.m3u8')) {
       final res = await animeHttp(
         'GET',
-        url,
+        normalized,
         headers: hdrs,
         maxRetries: 0,
         timeoutSecs: 8,
@@ -430,7 +552,7 @@ Future<bool> probeStreamSourceUrl(
     }
     var res = await animeHttp(
       'HEAD',
-      url,
+      normalized,
       headers: hdrs,
       maxRetries: 0,
       timeoutSecs: 8,
@@ -438,7 +560,7 @@ Future<bool> probeStreamSourceUrl(
     if (res.status >= 200 && res.status < 400) return true;
     res = await animeHttp(
       'GET',
-      url,
+      normalized,
       headers: {...hdrs, 'Range': 'bytes=0-0'},
       maxRetries: 0,
       timeoutSecs: 8,

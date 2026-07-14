@@ -90,25 +90,6 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
     if (!_s._isLocked) _startHideTimer();
   }
 
-  void _toggleRotation() async {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    if (isLandscape) {
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
-    } else {
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-      ]);
-    }
-    // Wait for the rotation to settle before triggering a rebuild.
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    // Force a rebuild so controls adjust to the new orientation.
-    setState(() {});
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   //  GESTURE HANDLERS
   // ─────────────────────────────────────────────────────────────────────────

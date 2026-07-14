@@ -4,6 +4,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   void _notifySourceMenuChanged() {
+    if (_s._disposed) return;
     _s._sourceMenuRevision.value++;
   }
 
@@ -190,7 +191,6 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     _notifySourceMenuChanged();
     if (!_s._playbackConfirmed &&
         !_s._isInitPlaybackRunning &&
-        !_s._allSourcesExhaustedNotified &&
         merged.length > prevLen &&
         _s._currentFallbackSourceIndex < merged.length) {
       unawaited(_s._initPlayback(sourceStartIndex: _s._currentFallbackSourceIndex));
@@ -250,6 +250,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   void _markProviderLoadFailed(String providerId) {
+    if (_s._disposed) return;
     if (_s._providerLoadFailures.value.contains(providerId)) return;
     _s._providerLoadFailures.value = {
       ..._s._providerLoadFailures.value,
@@ -262,6 +263,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   void _markProviderLoadSucceeded(String providerId) {
+    if (_s._disposed) return;
     if (_s._providerLoadFailures.value.contains(providerId)) {
       final next = {..._s._providerLoadFailures.value}..remove(providerId);
       _s._providerLoadFailures.value = next;
@@ -277,7 +279,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   void _cacheProviderSources(String providerId, List<StreamSource> sources) {
-    if (providerId.isEmpty || sources.isEmpty) return;
+    if (_s._disposed || providerId.isEmpty || sources.isEmpty) return;
     _s._liveProviderSourcesCache.value = {
       ..._s._liveProviderSourcesCache.value,
       providerId: dedupeStreamSources(sources),
@@ -285,6 +287,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   void _syncProbeStatus(String providerId, StreamProviderProbeStatus status) {
+    if (_s._disposed) return;
     final notifier = widget.providerProbesNotifier;
     if (notifier == null || notifier.value.isEmpty) return;
     final existing = notifier.value;
@@ -295,6 +298,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   void _finalizeProbeStatusesAfterPlayback() {
+    if (_s._disposed) return;
     final notifier = widget.providerProbesNotifier;
     if (notifier == null || notifier.value.isEmpty) return;
     final current = _s._currentProvider;
@@ -658,12 +662,11 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       _s._positionNotifier.value = Duration.zero;
       _s._bufferedNotifier.value = Duration.zero;
       await resetPlayerForOpen(_s._player);
-      if (_s._player.platform is NativePlayer) {
-        final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
-        await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
-      }
-      await applyMediaHttpHeaders(_s._player, headers);
-      await _s._player.open(Media(openUrl, httpHeaders: headers));
+      openUrl = await openPlayerStream(
+        _s._player,
+        url: openUrl,
+        headers: headers,
+      );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
       if (_s._currentProvider == 'service111477') {

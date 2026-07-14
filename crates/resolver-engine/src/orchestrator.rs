@@ -51,6 +51,11 @@ fn candidate_ids(request: &StreamRequest) -> Vec<String> {
             return map.keys().cloned().collect();
         }
     }
+    list_builtin_provider_ids()
+}
+
+/// Built-in provider ids (race candidates) — used by the `resolve-engine` CLI.
+pub fn list_builtin_provider_ids() -> Vec<String> {
     ProviderRegistry::built_in().list_builtin_ids()
 }
 

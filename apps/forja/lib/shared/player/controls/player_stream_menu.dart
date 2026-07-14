@@ -15,6 +15,7 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
 part 'player_stream_menu_overlay.dart';
@@ -67,24 +68,13 @@ class PlayerStreamMenu {
   }) {
     if (onReload == null) return null;
     Widget buildButton(bool loading) {
-      if (loading) {
-        return const Padding(
-          padding: EdgeInsets.only(right: 4),
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white38,
-            ),
-          ),
-        );
-      }
+      // Status roulette / server glyphs already show loading — keep the
+      // icon; only disable the tap while a reload is in flight.
       return ForjaPlainIcon(
         icon: Icons.refresh_rounded,
         size: 20,
-        color: Colors.white54,
-        onTap: () => unawaited(onReload()),
+        color: loading ? Colors.white24 : Colors.white54,
+        onTap: loading ? null : () => unawaited(onReload()),
       );
     }
 
@@ -562,6 +552,7 @@ class PlayerStreamMenu {
   }
 
   /// Strip server name and SUB/DUB from stream titles — shown on the server row.
+  /// Appends language flags at the end when found in the stream title.
   static String _streamRowLabel(StreamSource source, {String? serverLabel}) {
     var title = source.title.trim();
     if (serverLabel != null && serverLabel.isNotEmpty) {
@@ -584,7 +575,36 @@ class PlayerStreamMenu {
       }
       if (title.toUpperCase() == cat) title = '';
     }
-    return title;
+
+    final flags = StreamProviderDisplay.flagsForText(title);
+    final flagEmojis = StreamProviderDisplay.extractFlagEmojis(title);
+    var body = title;
+    if (flagEmojis.isNotEmpty) {
+      body = body
+          .replaceAll(
+            RegExp(
+              r'(?:🌐|[\u{1F1E6}-\u{1F1FF}]{2})\s*',
+              unicode: true,
+            ),
+            '',
+          )
+          .trim();
+    }
+    // Prefer the 🔗 detail line (WebStreamr) when present; else last non-empty.
+    final lines = body
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.isNotEmpty) {
+      body = lines.firstWhere(
+        (l) => l.startsWith('🔗'),
+        orElse: () => lines.last,
+      );
+    }
+    if (flags.isEmpty) return body;
+    if (body.isEmpty) return flags;
+    return '$body $flags';
   }
 
   /// Stable panel order — preserves resolver/extraction list order.

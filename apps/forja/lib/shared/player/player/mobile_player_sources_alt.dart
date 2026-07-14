@@ -53,17 +53,19 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
 
     await _s._configureMpvProperties();
     await resetPlayerForOpen(_s._player);
-    await _s._player.open(
-      Media(resolved.streamUrl, httpHeaders: resolved.headers),
+    final openedUrl = await openPlayerStream(
+      _s._player,
+      url: resolved.streamUrl,
+      headers: resolved.headers,
     );
     _s._player.setVolume(_s._volume);
 
     final opened = await waitForMediaOpen(
       _s._player,
-      streamUrl: resolved.streamUrl,
-      timeout: isLocalTorrentStreamUrl(resolved.streamUrl)
+      streamUrl: openedUrl,
+      timeout: isLocalTorrentStreamUrl(openedUrl)
           ? const Duration(seconds: 45)
-          : const Duration(seconds: 12),
+          : const Duration(seconds: 25),
     );
     if (!mounted) return;
     if (!opened) {
@@ -186,7 +188,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
     final handler = widget.onSwitchPlayer;
     if (handler == null) return;
     await _persistProgressForSwitch();
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     PlayerAppMenu.show(
       context,
       anchorContext: anchorContext,

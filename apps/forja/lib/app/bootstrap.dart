@@ -140,9 +140,16 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: Platform.isMacOS,
+      title: kDebugMode ? 'Forja Dev' : null,
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      // macOS dock: text badge only — no alternate .icns / generated logo.
+      if (kDebugMode && Platform.isMacOS) {
+        try {
+          await windowManager.setBadgeLabel('DEV');
+        } catch (_) {}
+      }
       await windowManager.show();
       await windowManager.focus();
     });

@@ -110,12 +110,13 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
     // Pre-populate with Jellyfin subtitles if provided
     final jellyfinSubs = widget.externalSubtitles ?? [];
     if (jellyfinSubs.isNotEmpty) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _s._externalSubtitles = List<Map<String, dynamic>>.from(
             jellyfinSubs,
           ),
         );
+      }
     }
 
     if (widget.movie == null || widget.movie!.id <= 0) return;
@@ -295,10 +296,11 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
 
     // New stream — clear any prior quality state immediately so the gear
     // doesn't expose stale variants while the new master loads.
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
     _s._hlsMasterUrl = url;
-    _s._hlsMasterHeaders = headers;
+    _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    fetchHlsQualities(url, headers: headers).then((qs) {
+    fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
       // Only apply if a newer URL didn't take over while we were fetching.
       if (_s._hlsMasterUrl != url) return;
@@ -329,14 +331,11 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
     final pos = _s._positionNotifier.value;
     _s._currentQualityUrl = q.url;
     if (mounted) setState(() {});
-    if (_s._hlsMasterHeaders != null && _s._player.platform is NativePlayer) {
-      final ref =
-          _s._hlsMasterHeaders!['Referer'] ?? _s._hlsMasterHeaders!['referer'];
-      if (ref != null) {
-        await (_s._player.platform as NativePlayer).setProperty('referrer', ref);
-      }
-    }
-    await _s._player.open(Media(q.url, httpHeaders: _s._hlsMasterHeaders));
+    await openPlayerStream(
+      _s._player,
+      url: q.url,
+      headers: _s._hlsMasterHeaders,
+    );
     if (pos.inSeconds > 0) await _s._player.seek(pos);
     _s._startHideTimer();
   }

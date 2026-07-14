@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -56,6 +55,7 @@ import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 
 part 'mobile_player_glass.dart';
@@ -280,7 +280,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
-  bool _allSourcesExhaustedNotified = false;
   bool _playbackConfirmed = false;
   late final Future<void> _playableSourcesReady;
   bool _isFetchingSubs = false;
@@ -314,6 +313,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onProbeScoringChanged);
+    // Mark disposed before cancelling/disposing notifiers so in-flight
+    // `_initPlayback` / mark-failed paths bail out instead of writing
+    // to a disposed ValueNotifier.
+    _disposed = true;
     _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
@@ -334,7 +337,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // errors and hundreds of dropped frames.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    _disposed = true;
     _playFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();

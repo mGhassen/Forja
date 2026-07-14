@@ -3,6 +3,7 @@ part of 'desktop_player_screen.dart';
 mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
+  @override
   Widget build(BuildContext context) {
     if (!_s._playerReady) {
       return const Scaffold(

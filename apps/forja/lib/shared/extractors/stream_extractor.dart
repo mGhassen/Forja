@@ -145,6 +145,14 @@ class StreamExtractor {
     _cancelled = false;
 
     bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
+
+    // Session / settings: wrap embed URL in an iframe so the page sees a
+    // document.referrer (defeats some hosts that block direct loads).
+    var wrapperBase = iframeWrapperBaseUrl;
+    if (wrapperBase == null &&
+        await SettingsService().getPlayerWebViewUseEmbed()) {
+      wrapperBase = _originBaseUrl(url);
+    }
     
     _completer = Completer<ExtractedMedia?>();
     _capturedVideo = null;
@@ -179,20 +187,20 @@ class StreamExtractor {
 
     _log('RAW SNIFFER START: $url'
         '${referer != null ? ' (referer=$referer)' : ''}'
-        '${iframeWrapperBaseUrl != null ? ' (wrapper=$iframeWrapperBaseUrl)' : ''}');
+        '${wrapperBase != null ? ' (wrapper=$wrapperBase)' : ''}');
 
     // Build the headless webview. There are two modes:
     //  1) Direct: load `url` itself (with optional Referer/Origin headers).
     //  2) Wrapped: load a tiny HTML page via `loadData` whose baseUrl is
-    //     `iframeWrapperBaseUrl`. We then iframe `url` inside it. The iframe
-    //     receives `document.referrer = iframeWrapperBaseUrl`, defeating
+    //     `wrapperBase`. We then iframe `url` inside it. The iframe
+    //     receives `document.referrer = wrapperBase`, defeating
     //     embed providers that block direct loads (megaplay/vidwish).
-    if (iframeWrapperBaseUrl != null) {
+    if (wrapperBase != null) {
       _headlessWebView = ForjaHeadlessInAppWebView(
         initialData: InAppWebViewInitialData(
           data: _buildIframeWrapperHtml(url),
-          baseUrl: WebUri(iframeWrapperBaseUrl),
-          historyUrl: WebUri(iframeWrapperBaseUrl),
+          baseUrl: WebUri(wrapperBase),
+          historyUrl: WebUri(wrapperBase),
           mimeType: 'text/html',
           encoding: 'utf-8',
         ),
@@ -337,6 +345,13 @@ class StreamExtractor {
 </head><body>
 <iframe id="p" src="$embedUrl" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="unsafe-url"></iframe>
 </body></html>''';
+  }
+
+  /// Origin root for iframe-wrapper baseUrl (e.g. `https://vidfast.vc/`).
+  static String? _originBaseUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+    return '${uri.scheme}://${uri.host}/';
   }
 
 

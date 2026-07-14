@@ -3,6 +3,7 @@ part of 'desktop_player_screen.dart';
 mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
+  @override
   void initState() {
     super.initState();
     _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(

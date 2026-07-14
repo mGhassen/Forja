@@ -3,6 +3,7 @@ part of 'mobile_player_screen.dart';
 mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserver {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
+  @override
   void initState() {
     super.initState();
     _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
@@ -155,6 +156,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       if (Platform.isAndroid) {
         _s._isAndroidTv = await ExoPlayerBridge.isTelevision();
       }
+      if (!mounted) return;
       await waitForRouteTransition(context);
       if (!mounted) return;
       if (!widget.tvRemoteEnabled && !_s._isAndroidTv) {

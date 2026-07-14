@@ -34,6 +34,171 @@ class _ServerStreamBranch extends StatelessWidget {
   }
 }
 
+/// Server row: tap loads (empty) or expands/collapses (loaded). Reload icon
+/// appears beside the name on hover (or TV focus).
+class _ServerMenuHeader extends StatefulWidget {
+  const _ServerMenuHeader({
+    required this.label,
+    required this.status,
+    required this.isLoaded,
+    required this.isPlaying,
+    required this.isReloading,
+    required this.showReload,
+    required this.scoreScope,
+    required this.providerId,
+    this.subtitle,
+    this.categoryBadge,
+    this.hideCategoryBadge = false,
+    this.onTap,
+    this.onReload,
+  });
+
+  final String label;
+  final String? subtitle;
+  final PlayerSourceStatus status;
+  final bool isLoaded;
+  final bool isPlaying;
+  final bool isReloading;
+  final bool showReload;
+  final String? categoryBadge;
+  final ProviderScoreScope? scoreScope;
+  final String providerId;
+  final bool hideCategoryBadge;
+  final VoidCallback? onTap;
+  final VoidCallback? onReload;
+
+  @override
+  State<_ServerMenuHeader> createState() => _ServerMenuHeaderState();
+}
+
+class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final showReloadGlyph = widget.showReload && (tvFocus || _hovered);
+
+    final row = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          hoverColor: ForjaShellColors.inkHover,
+          splashColor: ForjaShellColors.inkSplash,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                PlayerStreamMenu._statusGlyph(
+                  status: widget.status,
+                  isLoaded: widget.isLoaded,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.label,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: widget.isPlaying
+                                    ? Colors.white
+                                    : widget.status == PlayerSourceStatus.failed
+                                        ? Colors.white.withValues(alpha: 0.42)
+                                        : widget.isLoaded
+                                            ? Colors.white
+                                                .withValues(alpha: 0.92)
+                                            : Colors.white
+                                                .withValues(alpha: 0.62),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                height: 1.25,
+                                decoration:
+                                    widget.status == PlayerSourceStatus.failed
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                decorationColor: Colors.white38,
+                              ),
+                            ),
+                          ),
+                          if (widget.showReload) ...[
+                            const SizedBox(width: 4),
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: showReloadGlyph
+                                  ? Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: widget.isReloading
+                                            ? null
+                                            : widget.onReload,
+                                        borderRadius: BorderRadius.circular(4),
+                                        hoverColor: Colors.white
+                                            .withValues(alpha: 0.08),
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.refresh_rounded,
+                                            size: 16,
+                                            color: Colors.white.withValues(
+                                              alpha: widget.isReloading
+                                                  ? 0.28
+                                                  : 0.55,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (widget.subtitle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            widget.subtitle!,
+                            style: TextStyle(
+                              color: widget.isPlaying
+                                  ? playerSourceStatusColor(
+                                      PlayerSourceStatus.active,
+                                    )
+                                  : Colors.white.withValues(alpha: 0.42),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                PlayerStreamMenu._serverTrailingBadges(
+                  categoryBadge: widget.categoryBadge,
+                  scoreScope: widget.scoreScope,
+                  providerId: widget.providerId,
+                  hideCategoryBadge: widget.hideCategoryBadge,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return row;
+  }
+}
+
 class _FlatMenuRow extends StatefulWidget {
   const _FlatMenuRow({
     required this.label,

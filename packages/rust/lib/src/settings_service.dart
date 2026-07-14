@@ -64,8 +64,12 @@ class SettingsService {
   static const String _playerAutoSourceKey = 'player_auto_source';
   static const String _playerAutoAudioKey = 'player_auto_audio';
   static const String _playerAutoSubtitleKey = 'player_auto_subtitle';
-  static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
-  static const String _maxPlaybackHeightKey = 'max_playback_height';
+  static const String _playerWebViewUseEmbedKey = 'player_webview_use_embed';
+  static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';  static const String _maxPlaybackHeightKey = 'max_playback_height';
+
+  /// Headless WebView sniff: iframe-wrap embed URLs vs load them directly.
+  static final ValueNotifier<bool> playerWebViewUseEmbedNotifier =
+      ValueNotifier<bool>(false);
 
   /// User cap for stream scoring (0 = auto / no cap).
   static const Map<String, int> maxPlaybackHeightOptions = {
@@ -122,6 +126,19 @@ class SettingsService {
 
   Future<void> setPlayerAutoSubtitle(bool v) async =>
       kvSetBool(_playerAutoSubtitleKey, v);
+
+  Future<bool> getPlayerWebViewUseEmbed() async {
+    final v = await kvGetBool(_playerWebViewUseEmbedKey, fallback: false);
+    if (playerWebViewUseEmbedNotifier.value != v) {
+      playerWebViewUseEmbedNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setPlayerWebViewUseEmbed(bool v) async {
+    await kvSetBool(_playerWebViewUseEmbedKey, v);
+    playerWebViewUseEmbedNotifier.value = v;
+  }
 
   Future<bool> isIptvEpgEnabled() async =>
       kvGetBool(_iptvEpgEnabledKey, fallback: _defaults.iptvEpgEnabled);

@@ -6,7 +6,7 @@ use crate::extractors::{
     savefiles_supports, streamembed_supports, supervideo_supports, vidora_supports,
     vixsrc_supports, youtube_supports,
 };
-use crate::fetcher::{fetch_text, FetchConfig};
+use crate::fetcher::{fetch_status_body, fetch_text, FetchConfig};
 use crate::types::{ExtractResult, StreamFormat};
 use regex::Regex;
 use scraper::{Html, Selector};
@@ -579,6 +579,12 @@ fn run_vidsrc_extractor(page_url: &str, meta: &EmbedMeta, _label: &str) -> Vec<U
                     .collect::<HashMap<String, String>>()
             })
         });
+        // CloudStream masters/variants often 200 while leaf "page-N.html"
+        // segments are Cloudflare 403 — media_kit then fails after we already
+        // declared WebStreamr success and stopped the provider race.
+        if !cloudstream_hls_segments_reachable(url, request_headers.as_ref()) {
+            continue;
+        }
         let mut m = meta.clone();
         m.extractor_id = Some("vidsrc".into());
         out.push(UrlResult {
@@ -593,6 +599,69 @@ fn run_vidsrc_extractor(page_url: &str, meta: &EmbedMeta, _label: &str) -> Vec<U
         });
     }
     out
+}
+
+/// Walk master → first variant → first media URI; reject CF/HTML blockers.
+fn cloudstream_hls_segments_reachable(
+    master_url: &str,
+    headers: Option<&HashMap<String, String>>,
+) -> bool {
+    let mut cfg = FetchConfig::default();
+    if let Some(h) = headers {
+        for (k, v) in h {
+            cfg.headers.insert(k.clone(), v.clone());
+        }
+    }
+    let Ok((status, master)) = fetch_status_body(master_url, &cfg) else {
+        return false;
+    };
+    if !(200..300).contains(&status) || !master.contains("#EXTM3U") {
+        return false;
+    }
+    let base = Url::parse(master_url).ok();
+    let variant = master
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|path| resolve_against_base(base.as_ref(), path));
+    let Some(variant_url) = variant else {
+        return false;
+    };
+    let Ok((v_status, variant_body)) = fetch_status_body(&variant_url, &cfg) else {
+        return false;
+    };
+    if !(200..300).contains(&v_status) || !variant_body.contains("#EXTM3U") {
+        return false;
+    }
+    let media = variant_body
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|path| resolve_against_base(Url::parse(&variant_url).ok().as_ref(), path));
+    let Some(media_url) = media else {
+        return false;
+    };
+    let Ok((m_status, media_body)) = fetch_status_body(&media_url, &cfg) else {
+        return false;
+    };
+    if !(200..300).contains(&m_status) {
+        return false;
+    }
+    // Cloudflare challenge / HTML wrapper — not a media segment.
+    let head = media_body.chars().take(64).collect::<String>().to_lowercase();
+    if head.contains("<!doctype") || head.contains("<html") || head.contains("cloudflare") {
+        return false;
+    }
+    true
+}
+
+fn resolve_against_base(base: Option<&Url>, path: &str) -> String {
+    if path.starts_with("http://") || path.starts_with("https://") {
+        return path.to_string();
+    }
+    base.and_then(|b| b.join(path).ok())
+        .map(|u| u.to_string())
+        .unwrap_or_else(|| path.to_string())
 }
 
 #[cfg(test)]

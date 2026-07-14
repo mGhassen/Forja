@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -254,16 +255,49 @@ class _ShellNavRailState extends State<ShellNavRail> {
 class _RailLogo extends StatelessWidget {
   const _RailLogo();
 
+  static const _devGreen = Color(0xFF1CE783);
+
   @override
   Widget build(BuildContext context) {
+    final logo = Image.asset(
+      'assets/icon/logo-dark.png',
+      width: ShellTokens.navRailLogoWidth,
+      fit: BoxFit.contain,
+    );
+
+    if (!kDebugMode) {
+      return SizedBox(
+        width: ShellTokens.navRailWidth,
+        child: Center(child: logo),
+      );
+    }
+
+    // Runtime DEV chip — no alternate logo asset.
     return SizedBox(
       width: ShellTokens.navRailWidth,
-      child: Center(
-        child: Image.asset(
-          'assets/icon/logo-dark.png',
-          width: ShellTokens.navRailLogoWidth,
-          fit: BoxFit.contain,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          logo,
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: _devGreen,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              'DEV',
+              style: GoogleFonts.inter(
+                color: Colors.black,
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                height: 1.1,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

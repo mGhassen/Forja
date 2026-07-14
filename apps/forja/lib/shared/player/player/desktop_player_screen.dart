@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui';
 
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -58,6 +56,7 @@ import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 
 part 'desktop_player_glass.dart';
@@ -261,7 +260,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
-  bool _allSourcesExhaustedNotified = false;
   bool _playbackConfirmed = false;
   late final Future<void> _playableSourcesReady;
 
@@ -289,10 +287,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   bool _skipDismissed = false; // user dismissed the current segment button
 
   // ─────────────────────────────────────────────────────────────────────────
+  @override
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onProbeScoringChanged);
+    // Mark disposed before cancelling/disposing notifiers so in-flight
+    // `_initPlayback` / mark-failed paths bail out instead of writing
+    // to a disposed ValueNotifier.
+    _disposed = true;
     _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
@@ -300,7 +303,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
     _saveWatchHistory();
 
-    _disposed = true;
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);

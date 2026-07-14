@@ -18,6 +18,7 @@ tokio = { workspace = true }
 aes = { workspace = true }
 cbc = { workspace = true }
 hex = "0.4"
+base64 = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

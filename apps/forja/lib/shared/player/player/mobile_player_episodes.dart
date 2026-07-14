@@ -446,7 +446,7 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
       Navigator.of(context, rootNavigator: true).pushReplacement(
         AppRouter.slideRoute(
           (_) => PlayerScreen(
-            streamUrl: resolved!.streamUrl,
+            streamUrl: resolved.streamUrl,
             title: nextTitle,
             headers: resolved.headers,
             movie: widget.movie,
@@ -477,8 +477,9 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
   }
 
   Future<void> _goToEpisode(int season, int episode) async {
-    if (season == widget.selectedSeason && episode == widget.selectedEpisode)
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode) {
       return;
+    }
     await _switchToEpisode(season, episode);
   }
 

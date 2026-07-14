@@ -85,6 +85,14 @@ fn fsst_golden() {
     assert_eq!(r.format, StreamFormat::Mp4);
     assert_eq!(r.title.as_deref(), Some("Fsst Movie"));
     assert_eq!(r.height, Some(1080));
+    assert_eq!(
+        r.request_headers.as_ref().and_then(|h| h.get("Referer")).map(String::as_str),
+        Some("https://fsst.example/")
+    );
+    assert_eq!(
+        r.request_headers.as_ref().and_then(|h| h.get("Origin")).map(String::as_str),
+        Some("https://fsst.example")
+    );
 }
 
 #[test]
