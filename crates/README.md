@@ -70,9 +70,9 @@ cd apps/forja && flutter test test/engine_smoke_test.dart
 |-------|------|
 | `ffi` | C ABI entry point |
 | `utils` | episode matcher, torrent filter, unpacker, HLS, kisskh |
-| `stream-core` | provider URL templates (5 providers) |
-| `iptv-core` | M3U, Xtream JSON, paste.sh crypto |
-| `stremio-core` | Stremio manifest/URL/HTTP helpers |
+| `stream` | provider URL templates (5 providers) |
+| `iptv` | M3U, Xtream JSON, paste.sh crypto |
+| `stremio` | Stremio manifest/URL/HTTP helpers |
 | `webstreamr` | 23 extractors + 21 sources |
 | `scrapers` | Knaben/TPB/Uindex HTML parsers |
 | `torrent` | librqbit session (desktop FFI) |

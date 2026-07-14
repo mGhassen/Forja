@@ -65,16 +65,16 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 |------|--------|
 | Move playback Dart from `apps/forja/lib/shared/playback/` → `packages/rust/lib/src/playback/` | ✅ |
 | Move `music_service` + `youtube_audio_extractor` → `packages/rust/lib/src/catalog/` | ✅ |
-| Port jackett / prowlarr / link_resolver → `crates/indexer-core` + FFI | ✅ |
-| Port debrid (5 providers) → `crates/debrid-core` + FFI | ✅ |
+| Port jackett / prowlarr / link_resolver → `crates/indexer` + FFI | ✅ |
+| Port debrid (5 providers) → `crates/debrid` + FFI | ✅ |
 | Port site111477 index scrape → `crates/proxy/index111477` + FFI | ✅ |
 | Port mega_proxy → `crates/proxy/mega` + FFI | ✅ |
-| Port music_service → `crates/music-core` + FFI | ✅ |
-| Port lyrics + introdb → `anime-core/metadata` + FFI | ✅ |
-| Port mdblist → `anime-core/mdblist` + FFI | ✅ |
-| Port paper2audio → `anime-core/paper2audio` + FFI | ✅ |
-| Port subtitle stack (wyzie, levrx, subtitlecat, mysubs) → `anime-core/subtitle` + FFI | ✅ |
-| Port kisskh subtitle fetch+decrypt → `anime-core/subtitle/kisskh` + FFI | ✅ |
+| Port music_service → `crates/music` + FFI | ✅ |
+| Port lyrics + introdb → `anime/metadata` + FFI | ✅ |
+| Port mdblist → `anime/mdblist` + FFI | ✅ |
+| Port paper2audio → `anime/paper2audio` + FFI | ✅ |
+| Port subtitle stack (wyzie, levrx, subtitlecat, mysubs) → `anime/subtitle` + FFI | ✅ |
+| Port kisskh subtitle fetch+decrypt → `anime/subtitle/kisskh` + FFI | ✅ |
 | Document host exceptions (WebView/C3 extractors) | ✅ |
 | A2 + A4 exit checklist green | ✅ |
 
@@ -121,14 +121,14 @@ flowchart LR
 
 | Vertical | Location | Engine status |
 |----------|----------|---------------|
-| TMDB | `packages/rust` → `crates/tmdb-core` | ✅ C1 in Rust; `runTmdbGetJson` worker pool |
-| Trakt | `apps/forja` OAuth + `crates/trakt-core` | ✅ C1 in Rust; `runTraktRequestJson` worker pool |
-| Jellyfin | `apps/forja/features/jellyfin/` + `crates/jellyfin-core` | ✅ C1 in Rust; `runJellyfinRequestJson` worker pool |
-| Anime AniList | `apps/forja/features/anime/` + `crates/anilist-core` | ✅ GraphQL in Rust; WebView extractors host (C3) |
-| Manga | `apps/forja/features/manga/` + `crates/manga-core` | Fetch in Rust; parse/orchestration Dart (C2 host) |
+| TMDB | `packages/rust` → `crates/tmdb` | ✅ C1 in Rust; `runTmdbGetJson` worker pool |
+| Trakt | `apps/forja` OAuth + `crates/trakt` | ✅ C1 in Rust; `runTraktRequestJson` worker pool |
+| Jellyfin | `apps/forja/features/jellyfin/` + `crates/jellyfin` | ✅ C1 in Rust; `runJellyfinRequestJson` worker pool |
+| Anime AniList | `apps/forja/features/anime/` + `crates/anilist` | ✅ GraphQL in Rust; WebView extractors host (C3) |
+| Manga | `apps/forja/features/manga/` + `crates/manga` | Fetch in Rust; parse/orchestration Dart (C2 host) |
 | KissKh | `apps/forja/features/asian_drama/` | Metadata Rust; WebView embed host (C3) |
 | Arabic / Books / Comics / Audiobook | `apps/forja/features/*` | C2 scrape in Dart — **host, not ported** |
-| Subtitles/metadata | `packages/rust/catalog` → `anime-core` | ✅ P3-04 |
+| Subtitles/metadata | `packages/rust/catalog` → `anime` | ✅ P3-04 |
 | Debrid / indexers / music / proxy | `packages/rust/playback` + `crates/*` | ✅ P3-04 |
 | Stremio catalog service | `packages/rust/stremio_service.dart` | P2-89 deferred — parse in Rust, orchestration Dart |
 
@@ -141,16 +141,16 @@ flowchart LR
 | `packages/rust/lib/src/models/` | Shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) — moved from ~~`packages/api`~~ in P3-03 |
 | `packages/rust/lib/src/playback/` | Thin FFI wrappers (debrid, indexers, site111477, mega) |
 | `crates/proxy` | Local proxy + site111477 index/seek + mega decrypt proxy |
-| `crates/indexer-core` | Jackett + Prowlarr + link resolve (P3-04) |
-| `crates/debrid-core` | Debrid resolve — 5 providers (P3-04) |
+| `crates/indexer` | Jackett + Prowlarr + link resolve (P3-04) |
+| `crates/debrid` | Debrid resolve — 5 providers (P3-04) |
 | `packages/rust/lib/src/catalog/` | Catalog metadata + thin `music_service`, `subtitle_api` |
-| `crates/music-core` | Deezer catalog + YouTube InnerTube audio (P3-04) |
+| `crates/music` | Deezer catalog + YouTube InnerTube audio (P3-04) |
 
 ---
 
 ## Host exceptions (C3–C5) — documented, not ported
 
-Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja`** (WebView / JS / WASM hosts). HTTP fetch uses `animeHttp` → `anime-core`; parse/orchestration in Dart is host-side until ported.
+Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja`** (WebView / JS / WASM hosts). HTTP fetch uses `animeHttp` → `anime`; parse/orchestration in Dart is host-side until ported.
 
 | Area | Files | Class | Notes |
 |------|-------|-------|-------|
@@ -160,9 +160,9 @@ Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja
 | Anime Arabic | `anime_arabic/catalog/anime_arabic_extractor.dart` | C2+C3 | Mega Rust; iframe scrape Dart |
 | Nuvio | `shared/nuvio/nuvio_runtime.dart` | C4 | `flutter_js` |
 | Videasy | `packages/rust/.../videasy_extractor.dart` | C5 | WASM host |
-| Subtitle browse (SubtitleCat, MySubs, Wyzie, Levrx) | `anime-core/subtitle` + thin Dart FFI | ✅ |
-| KissKh subtitle fetch+decrypt | `anime-core/subtitle/kisskh` + thin Dart FFI (file I/O host) | ✅ |
-| MDBlist | `anime-core/mdblist` + thin Dart FFI | ✅ |
+| Subtitle browse (SubtitleCat, MySubs, Wyzie, Levrx) | `anime/subtitle` + thin Dart FFI | ✅ |
+| KissKh subtitle fetch+decrypt | `anime/subtitle/kisskh` + thin Dart FFI (file I/O host) | ✅ |
+| MDBlist | `anime/mdblist` + thin Dart FFI | ✅ |
 
 **Host (not A4 blockers):** C3 WebView extractors + C2 scrape hosts in `apps/forja` per table below. `subtitle_api.dart` orchestration + Stremio addon calls are thin Dart (C11).
 

@@ -41,9 +41,9 @@ Extract to workspace crates:
 
 | Crate | Responsibility |
 |-------|----------------|
-| `iptv-core` | Xtream protocol, M3U parse, portal crypto |
-| `stremio-core` | Addon manifest, catalog deserialize |
-| `stream-core` | Provider registry, URL templates (no libtorrent) |
+| `iptv` | Xtream protocol, M3U parse, portal crypto |
+| `stremio` | Addon manifest, catalog deserialize |
+| `stream` | Provider registry, URL templates (no libtorrent) |
 
 **Flutter:** `dart:ffi` on desktop/mobile.  
 **Web:** compile to WASM; JS interop via `wasm_bindgen`.

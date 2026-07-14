@@ -1,10 +1,10 @@
-use stream_core::{
+use stream::{
     rank_sources, PlayableSource, RankSourcesRequest, SourceDomain, MAX_PROVIDER_DISPLACEMENT,
 };
 
 pub fn rank_playable_sources(
     sources: Vec<PlayableSource>,
-    device: stream_core::DevicePlaybackCapabilities,
+    device: stream::DevicePlaybackCapabilities,
     blocklist: Vec<String>,
 ) -> Vec<PlayableSource> {
     rank_sources(RankSourcesRequest {

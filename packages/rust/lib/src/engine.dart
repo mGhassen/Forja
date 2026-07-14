@@ -405,7 +405,7 @@ class RustLib {
 
   String catalogCoreJson(String requestJson) => using((arena) {
         final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_catalog_core_json(ptr));
+        return _readString(_native.ffi_catalog_json(ptr));
       });
 
   String metadataRequestJson(String requestJson) => using((arena) {
@@ -967,9 +967,9 @@ final class _FfiNative {
               'ffi_books_catalog_json',
             )
             .asFunction(),
-        ffi_catalog_core_json = lib
+        ffi_catalog_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_catalog_core_json',
+              'ffi_catalog_json',
             )
             .asFunction(),
         ffi_metadata_request_json = lib
@@ -1310,7 +1310,7 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_books_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_catalog_core_json;
+      ffi_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

@@ -31,7 +31,7 @@ void main() {
 
   test('parseXtreamCategoriesJson golden', () {
     final json = File(
-      '${_repoRoot()}/crates/iptv-core/tests/fixtures/xtream_categories.json',
+      '${_repoRoot()}/crates/iptv/tests/fixtures/xtream_categories.json',
     ).readAsStringSync();
     final rustOut =
         jsonDecode(RustLib.instance.parseXtreamCategoriesJson(json)) as List;
@@ -41,7 +41,7 @@ void main() {
 
   test('parseXtreamStreamsJson live golden', () {
     final json = File(
-      '${_repoRoot()}/crates/iptv-core/tests/fixtures/xtream_live_streams.json',
+      '${_repoRoot()}/crates/iptv/tests/fixtures/xtream_live_streams.json',
     ).readAsStringSync();
     final rustOut =
         jsonDecode(RustLib.instance.parseXtreamStreamsJson(json, 'live'))
@@ -52,7 +52,7 @@ void main() {
 
   test('parseXtreamSeriesEpisodesJson golden', () {
     final json = File(
-      '${_repoRoot()}/crates/iptv-core/tests/fixtures/xtream_series_info.json',
+      '${_repoRoot()}/crates/iptv/tests/fixtures/xtream_series_info.json',
     ).readAsStringSync();
     final rustOut =
         jsonDecode(RustLib.instance.parseXtreamSeriesEpisodesJson(json))

@@ -58,7 +58,7 @@ Flutter UI (apps/forja)
     → host: provider race UX, player, WebView adapters
         → ForjaEngine facade (packages/rust)
             → libffi.dylib/.so/.dll
-                → utils | stream-core | iptv-core | stremio-core | webstreamr | scrapers | torrent | proxy | storage
+                → utils | stream | iptv | stremio | webstreamr | scrapers | torrent | proxy | storage
 ```
 
 Host orchestration for provider order and loading UX — see [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) R6. WebView extractors (~1,900 LOC) stay in Dart/Kotlin adapters.
@@ -69,9 +69,9 @@ Host orchestration for provider order and loading UX — see [ENGINE_BOUNDARY](.
 crates/
   ffi/           C ABI + uniffi scaffold
   utils/         episode_matcher, torrent_filter, js_unpacker, hls_parser, kisskh_subtitle
-  stream-core/   provider URL templates (vidlink, vixsrc, vidnest)
-  iptv-core/     M3U parser, Xtream JSON, paste.sh crypto
-  stremio-core/  manifest parse, resource URL builder
+  stream/   provider URL templates (vidlink, vixsrc, vidnest)
+  iptv/     M3U parser, Xtream JSON, paste.sh crypto
+  stremio/  manifest parse, resource URL builder
   webstreamr/    23 extractors + 21 sources (HTML/JSON parse in Rust)
   scrapers/      Knaben, TPB, Uindex HTML parsers
   torrent/       librqbit session (desktop + iOS/Android via libffi)
@@ -103,9 +103,9 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 |------|-------|----------------|
 | 0 | scaffold | done |
 | 1 | utils | done |
-| 2 | stream-core | done (5 providers) |
-| 3 | iptv-core | done |
-| 4 | stremio-core | done |
+| 2 | stream | done (5 providers) |
+| 3 | iptv | done |
+| 4 | stremio | done |
 | 5 | webstreamr | done — fetch+resolve in Rust (`webstreamr_get_streams_json`) |
 | 6 | scrapers | done |
 | 7 | torrent + proxy | done (librqbit desktop + mobile) |
@@ -131,7 +131,7 @@ FFI resolve/search entry points must **not block the UI thread**.
 | Area | Behavior |
 |------|----------|
 | `webstreamr` | Shared async `reqwest::Client` + tokio runtime; primary sources resolve in parallel (rayon) with early exit at 8 playable URLs |
-| `stremio-core` | Shared async HTTP client + runtime (no per-call `Runtime::new()`) |
+| `stremio` | Shared async HTTP client + runtime (no per-call `Runtime::new()`) |
 | `scrapers` | Parallel async `search_all`; FFI entry still sync via shared tokio runtime |
 | Cancel | `CancellationToken` + `tokio::select!` aborts in-flight HTTP; `engine_cancel_pending()` cancels all jobs |
 | Dart I/O | `EngineJobs` — submit/poll on Rust tokio runtime (main isolate free) |
@@ -142,7 +142,7 @@ FFI resolve/search entry points must **not block the UI thread**.
 | Layer | Location | Command |
 |-------|----------|---------|
 | Rust unit | `crates/*/src` + `tests/` | `cargo test --workspace` |
-| Golden fixtures | `crates/utils/tests/fixtures/`, `crates/iptv-core/tests/fixtures/` | `cargo test --test golden*` |
+| Golden fixtures | `crates/utils/tests/fixtures/`, `crates/iptv/tests/fixtures/` | `cargo test --test golden*` |
 | Dart ↔ Rust parity | `packages/rust/test/parity/` | `flutter test` |
 | CI | `.github/workflows/rust.yml` | on PR touching `crates/**` or `rust/**` |
 

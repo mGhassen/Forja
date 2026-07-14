@@ -9,10 +9,10 @@ name = "resolve-engine"
 path = "src/bin/resolve_engine.rs"
 
 [dependencies]
-stream-core = { path = "../stream-core" }
+stream = { path = "../stream" }
 webstreamr = { path = "../webstreamr" }
-iptv-core = { path = "../iptv-core" }
-debrid-core = { path = "../debrid-core" }
+iptv = { path = "../iptv" }
+debrid = { path = "../debrid" }
 storage = { path = "../storage" }
 utils = { path = "../utils" }
 serde = { workspace = true }

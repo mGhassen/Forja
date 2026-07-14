@@ -58,13 +58,13 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | 23 | P2-80 | High-level FFI surface — one call per user action | ✅ |
 | 24 | P2-81 | Scraper pipeline → `search_torrents_json` in `crates/scrapers` | ✅ |
 | 25 | P2-82 | Webstreamr pipeline → `crates/webstreamr`; delete `packages/webstreamr` | ✅ |
-| 26 | P2-83 | Stream resolver → `crates/stream_core`; delete `packages/streaming` | ✅ |
+| 26 | P2-83 | Stream resolver → `crates/stream`; delete `packages/streaming` | ✅ |
 | 27 | P2-84 | Torrent filter → `filter_torrents_json` | ✅ |
 | 28 | P2-85 | HLS proxy in `crates/proxy`; drop shelf engine routes | ✅ |
 | 29 | P2-86 | Delete all `*Backend` hooks + `rust_delegates.dart` | ✅ |
 | 30 | P2-87 | Delete `packages/scrapers` | ✅ |
 | 31 | P2-88 | Delete `packages/storage` → `crates/storage` + `packages/rust` | ✅ |
-| 32 | P2-89 | Stremio catalog service → `crates/stremio-core` | ⏭️ Phase 3 |
+| 32 | P2-89 | Stremio catalog service → `crates/stremio` | ⏭️ Phase 3 |
 | 33 | P2-90 | Delete `packages/core` → `api/models` + app utils | ✅ |
 | 34 | P2-91 | WebStreamr worker pool + cancel + Rust abort — [001](../issues/001-[fixed]-webstreamr-blocks-ui.md), [015](../issues/fixed/015-[fixed]-rust-blocking-http-engine-debt.md) | ✅ |
 | 35 | P2-92 | Consolidate loopback servers in `crates/proxy` (111477 index scrape stays Dart — [013](../issues/013-[fixed]-site111477-captcha-still-dart.md)) | ✅ |

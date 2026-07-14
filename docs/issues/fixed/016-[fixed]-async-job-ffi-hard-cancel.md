@@ -40,7 +40,7 @@
 | Layer | Implementation |
 |-------|----------------|
 | Cancel token | `crates/utils/src/engine_cancel.rs` — `CancellationToken`, `with_cancel()`, `attach_job_token()` for rayon/blocking threads |
-| HTTP abort | `webstreamr/fetcher`, `stremio-core/http`, `scrapers/search` |
+| HTTP abort | `webstreamr/fetcher`, `stremio/http`, `scrapers/search` |
 | Job API | `crates/ffi/src/engine_jobs.rs` — `engine_submit_job`, `engine_take_job_result`, `engine_cancel_pending` → `cancel_all()` |
 | Dart | `EngineJobs.run()` + `EngineWorkerPool` for CPU jobs in `isolate_runner.dart` |
 | Cancel UX | `cancel_all()` marks pending jobs `{"error":"cancelled"}` so poll loop never hangs |

@@ -715,10 +715,10 @@ pub unsafe extern "C" fn ffi_books_catalog_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_catalog_core_json(
+pub unsafe extern "C" fn ffi_catalog_json(
     request_json: *const c_char,
 ) -> *mut c_char {
-    to_c_string(crate::catalog_core_json(from_c_str(request_json)))
+    to_c_string(crate::catalog_json(from_c_str(request_json)))
 }
 
 #[no_mangle]

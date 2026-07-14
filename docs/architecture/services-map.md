@@ -32,10 +32,10 @@
 |-----|--------|------------------------------|
 | Home | `home` | TMDB browse, Stremio rails, BestSimilar home recs |
 | Search | `search` | `TmdbApi` |
-| Anime | `anime` | `AnimeService` → `anime-core` ✅ |
-| Asian Drama | `asian_drama` | `KissKhService` → `kisskh-core` ✅ |
-| Live Matches | `live_matches` | `live-matches-core` ✅ |
-| IPTV | `iptv` | `iptv-core` Reddit + probe ✅ |
+| Anime | `anime` | `AnimeService` → `anime` ✅ |
+| Asian Drama | `asian_drama` | `KissKhService` → `kisskh` ✅ |
+| Live Matches | `live_matches` | `live-matches` ✅ |
+| IPTV | `iptv` | `iptv` Reddit + probe ✅ |
 | Lists | `mylist` | `MyListService`, watch history (host + engine) |
 | Settings | `settings` | Host prefs / platform |
 
@@ -55,33 +55,33 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 
 | Item | Crate / FFI | Dart after |
 |------|-------------|------------|
-| KissKh catalog API | `crates/kisskh-core` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
-| Anime extractors (5) | `crates/anime-core/extractors/*` · `anime_extractor_json` | Deleted Dart extractors; `miruro_pipe_session.dart` stays host |
-| Live matches fetch | `crates/live-matches-core` · `live_matches_fetch_json` | `live_matches_models.dart` — playback/embed host only |
-| IPTV Reddit scraper | `crates/iptv-core/reddit_catalog` · `iptv_reddit_catalog_json` | `iptv_network.dart` — probe/session host |
+| KissKh catalog API | `crates/kisskh` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
+| Anime extractors (5) | `crates/anime/extractors/*` · `anime_extractor_json` | Deleted Dart extractors; `miruro_pipe_session.dart` stays host |
+| Live matches fetch | `crates/live-matches` · `live_matches_fetch_json` | `live_matches_models.dart` — playback/embed host only |
+| IPTV Reddit scraper | `crates/iptv/reddit_catalog` · `iptv_reddit_catalog_json` | `iptv_network.dart` — probe/session host |
 
-| Anime Anikoto resolve + direct embed | `crates/anime-core/resolve/*` · `anime_extractor_json` | `anime_service.dart` — orchestration + cache only |
+| Anime Anikoto resolve + direct embed | `crates/anime/resolve/*` · `anime_extractor_json` | `anime_service.dart` — orchestration + cache only |
 
 ### ✅ Correct today — do not move
 
 | Component | Location | Why |
 |-----------|----------|-----|
 | TMDB, Trakt, Jellyfin API calls | `packages/rust` + `crates/*-core` | C1 engine |
-| Webstreamr, torrent, indexers, debrid, proxy | `crates/webstreamr`, `scrapers`, `debrid-core`, `proxy` | C2/C7 engine |
-| AniList GraphQL | `runAnilistQueryJson` → `anilist-core` | C1 — `AnimeService._query` is thin |
+| Webstreamr, torrent, indexers, debrid, proxy | `crates/webstreamr`, `scrapers`, `debrid`, `proxy` | C2/C7 engine |
+| AniList GraphQL | `runAnilistQueryJson` → `anilist` | C1 — `AnimeService._query` is thin |
 | KissKh subtitle decrypt | `crates/utils/kisskh_subtitle` | Engine |
-| Subtitles, mdblist, introdb, lyrics, paper2audio | `crates/anime-core` | Engine |
+| Subtitles, mdblist, introdb, lyrics, paper2audio | `crates/anime` | Engine |
 | Vidsrc extract | `VidsrcExtractor` → Rust resolve job | C2 engine |
-| Manga HTTP fetch | `mangaFetchHtml` → `manga-core` | Fetch only — **parse still Dart** |
-| Jellyfin HTTP | `runJellyfinRequestJson` → `jellyfin-core` | API in Rust; OAuth/cache/models stay host |
-| IPTV probe | `runIptvProbeStreamJson` → `iptv-core` | Engine |
-| IPTV Reddit catalog | `runIptvRedditCatalogJson` → `iptv-core` | Engine |
-| KissKh catalog | `runKisskhCatalogJson` → `kisskh-core` | Engine |
-| Anime extractors + resolve | `runAnimeExtractorJson` → `anime-core` | Engine |
-| Live matches APIs | `runLiveMatchesFetchJson` → `live-matches-core` | Engine |
-| Manga catalog | `runMangaCatalogJson` → `manga-core` | Engine |
-| LibGen books | `runBooksCatalogJson` → `books-core` | Engine |
-| BestSimilar catalog | `runCatalogCoreJson` → `catalog-core` | Engine |
+| Manga HTTP fetch | `mangaFetchHtml` → `manga` | Fetch only — **parse still Dart** |
+| Jellyfin HTTP | `runJellyfinRequestJson` → `jellyfin` | API in Rust; OAuth/cache/models stay host |
+| IPTV probe | `runIptvProbeStreamJson` → `iptv` | Engine |
+| IPTV Reddit catalog | `runIptvRedditCatalogJson` → `iptv` | Engine |
+| KissKh catalog | `runKisskhCatalogJson` → `kisskh` | Engine |
+| Anime extractors + resolve | `runAnimeExtractorJson` → `anime` | Engine |
+| Live matches APIs | `runLiveMatchesFetchJson` → `live-matches` | Engine |
+| Manga catalog | `runMangaCatalogJson` → `manga` | Engine |
+| LibGen books | `runBooksCatalogJson` → `books` | Engine |
+| BestSimilar catalog | `runCatalogCoreJson` → `catalog` | Engine |
 
 ### ❌ Permanent host — never port to Rust
 
@@ -106,13 +106,13 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 | Dart today | LOC | Target crate | Port scope | Keep on host | Status |
 |------------|----:|--------------|------------|--------------|--------|
-| `AllAnimeExtractor` | 379 | `anime-core/extractors/allanime` | AES decrypt, clock API, GraphQL persisted query | — | ✅ |
-| `MiruroExtractor` + `miruro_pipe_session` | 576 | `anime-core/extractors/miruro` | Pipe session + stream URL parse | `miruro_pipe_session` (CF WebView) | ✅ |
-| `AnimeRealmsExtractor` | 206 | `anime-core/extractors/animerealms` | HTML/JSON parse | — | ✅ |
-| `HentainiExtractor` | 307 | `anime-core/extractors/hentaini` | HTML parse | — | ✅ |
-| `WatchHentaiExtractor` | 351 | `anime-core/extractors/watchhentai` | HTML parse | — | ✅ |
-| `AnimeService` (stream race slice) | ~280 of 1321 | `anime-core/resolve` | Anikoto resolve, megaplay/vidwish extract, stream probe | Watch-history prefs, embed build, stream race UX | ✅ |
-| `KissKhService` | 571 | `kisskh-core` | JSON API browse/details/episode list parse | `KissKhExtractor` (C3) | ✅ |
+| `AllAnimeExtractor` | 379 | `anime/extractors/allanime` | AES decrypt, clock API, GraphQL persisted query | — | ✅ |
+| `MiruroExtractor` + `miruro_pipe_session` | 576 | `anime/extractors/miruro` | Pipe session + stream URL parse | `miruro_pipe_session` (CF WebView) | ✅ |
+| `AnimeRealmsExtractor` | 206 | `anime/extractors/animerealms` | HTML/JSON parse | — | ✅ |
+| `HentainiExtractor` | 307 | `anime/extractors/hentaini` | HTML parse | — | ✅ |
+| `WatchHentaiExtractor` | 351 | `anime/extractors/watchhentai` | HTML parse | — | ✅ |
+| `AnimeService` (stream race slice) | ~280 of 1321 | `anime/resolve` | Anikoto resolve, megaplay/vidwish extract, stream probe | Watch-history prefs, embed build, stream race UX | ✅ |
+| `KissKhService` | 571 | `kisskh` | JSON API browse/details/episode list parse | `KissKhExtractor` (C3) | ✅ |
 
 **After P0:** `AnimeService` shrinks to orchestration (history, SUB/DUB prefs, calling engine jobs). `resolver-engine` already has `kisskh` host-required plugin — metadata port unblocks cleaner split.
 
@@ -122,21 +122,21 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 | Item | Crate / FFI | Dart after |
 |------|-------------|------------|
-| Manga weebcentral parse | `manga-core` · `manga_catalog_json` | `manga_service.dart` — likes + thin wrapper |
-| LibGen books scrape | `books-core` · `books_catalog_json` | `books_service.dart` — thin wrapper |
-| BestSimilar autocomplete + details | `catalog-core` · `catalog_core_json` | `bestsimilar_scraper.dart` — cache + models |
+| Manga weebcentral parse | `manga` · `manga_catalog_json` | `manga_service.dart` — likes + thin wrapper |
+| LibGen books scrape | `books` · `books_catalog_json` | `books_service.dart` — thin wrapper |
+| BestSimilar autocomplete + details | `catalog` · `catalog_json` | `bestsimilar_scraper.dart` — cache + models |
 
 ### P1 — Large vertical scrapers
 
 | Dart today | LOC | Target crate | Notes | Status |
 |------------|----:|--------------|-------|--------|
-| `MangaService` | 453 → ~250 | `manga-core` | Parse weebcentral HTML (fetch+parse in Rust) | ✅ |
-| `BooksService` | 245 → ~90 | `books-core` | Libgen-style HTML scrape | ✅ |
-| `BestSimilarScraper` | 454 → ~230 | `catalog-core` | Autocomplete JSON + detail HTML parse | ✅ |
-| `ArabicService` | 1365 | `arabic-core` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter | ⏭️ |
-| `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic-core` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⏭️ |
-| `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook-core` (new) | Multi-platform HTML/API scrape | ⏭️ |
-| `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics-core` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⏭️ |
+| `MangaService` | 453 → ~250 | `manga` | Parse weebcentral HTML (fetch+parse in Rust) | ✅ |
+| `BooksService` | 245 → ~90 | `books` | Libgen-style HTML scrape | ✅ |
+| `BestSimilarScraper` | 454 → ~230 | `catalog` | Autocomplete JSON + detail HTML parse | ✅ |
+| `ArabicService` | 1365 | `arabic` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter | ⏭️ |
+| `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⏭️ |
+| `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook` (new) | Multi-platform HTML/API scrape | ⏭️ |
+| `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⏭️ |
 
 ---
 
@@ -144,8 +144,8 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 | Dart today | LOC | Target | Notes | Status |
 |------------|----:|--------|-------|--------|
-| `IptvScraper` (in `iptv_network.dart`) | ~650 | `iptv-core` | Reddit OAuth + paste/M3U link scrape | ✅ |
-| `live_matches_models.dart` fetch fns | ~200 | `live-matches-core` | Streamed.pk + CDN APIs | ✅ |
+| `IptvScraper` (in `iptv_network.dart`) | ~650 | `iptv` | Reddit OAuth + paste/M3U link scrape | ✅ |
+| `live_matches_models.dart` fetch fns | ~200 | `live-matches` | Streamed.pk + CDN APIs | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
 ---
@@ -168,12 +168,12 @@ Keep in host — refactor only:
 
 In-scope hubs are **done** for the current arc. If a deferred tab reopens:
 
-1. **Comics** → `comics-core` (RCO decode; WebView extractor stays host)
-2. **Arabic PACKER paths** → `arabic-core` (split WebView adapter)
-3. **Anime Arabic** → `anime-arabic-core`
-4. **Audiobook** → `audiobook-core`
+1. **Comics** → `comics` (RCO decode; WebView extractor stays host)
+2. **Arabic PACKER paths** → `arabic` (split WebView adapter)
+3. **Anime Arabic** → `anime-arabic`
+4. **Audiobook** → `audiobook`
 
-Already shipped (low priority tabs): manga, books, BestSimilar (`catalog-core`).
+Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 
 **Per-port checklist:** implement in `crates/*` → FFI → parity tests → **delete Dart slice** → hub `catalog/` becomes thin orchestration only.
 
@@ -254,12 +254,12 @@ Each hub owns **vertical browse + stream orchestration** for its tab. Metadata f
 | Service | Feature | Engine parts | Host parts | Action |
 |---------|---------|--------------|------------|--------|
 | `AnimeService` | `anime/catalog/` | AniList GraphQL + extractors + Anikoto resolve (Rust) | `miruro_pipe_session`, history prefs, stream race UX | ✅ |
-| `KissKhService` | `asian_drama/catalog/` | `kisskh-core` catalog API | `KissKhExtractor` (WebView C3), watch history | ✅ |
-| `MangaService` | `manga/catalog/` | `manga-core` fetch+parse | Likes (`SharedPreferences`) | ✅ |
-| `BooksService` | `books/catalog/` | `books-core` | — | ✅ |
-| `BestSimilarScraper` | `shared/catalog/` | `catalog-core` | TMDB poster enrichment in home/similar screens | ✅ |
+| `KissKhService` | `asian_drama/catalog/` | `kisskh` catalog API | `KissKhExtractor` (WebView C3), watch history | ✅ |
+| `MangaService` | `manga/catalog/` | `manga` fetch+parse | Likes (`SharedPreferences`) | ✅ |
+| `BooksService` | `books/catalog/` | `books` | — | ✅ |
+| `BestSimilarScraper` | `shared/catalog/` | `catalog` | TMDB poster enrichment in home/similar screens | ✅ |
 | `AnimeArabicService` | `anime_arabic/catalog/` | Mega proxy (Rust) | `AnimeArabicExtractor` (iframe scrape) | Port parse → engine where possible |
-| `ArabicService` | `shared/extractors/` (used by `arabic/`) | — | Multi-site C2 + WebView fallback | ⬜ `arabic-core` |
+| `ArabicService` | `shared/extractors/` (used by `arabic/`) | — | Multi-site C2 + WebView fallback | ⬜ `arabic` |
 | `ComicsService` + `ReadComicsOnlineScraper` | `comics/catalog/` | — | C2 scrape | Port → engine |
 | `BooksService` | `books/catalog/` | — | C2 scrape | Port → engine |
 | `AudiobookService` | `audiobooks/catalog/` | Platform APIs partial Rust | Scrape orchestration | Port → engine |

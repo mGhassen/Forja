@@ -556,7 +556,8 @@ Future<bool> probeStreamSourceUrl(
   if (normalized.isEmpty) return false;
   final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: normalized);
   try {
-    if (normalized.contains('.m3u8')) {
+    if (normalized.contains('.m3u8') ||
+        normalized.toLowerCase().contains('/api/proxy')) {
       final res = await animeHttp(
         'GET',
         normalized,

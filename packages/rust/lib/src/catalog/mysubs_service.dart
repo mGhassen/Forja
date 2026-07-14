@@ -1,6 +1,6 @@
 import '../subtitle_http.dart';
 
-/// my-subs.co scraper via `anime-core/mysubs`.
+/// my-subs.co scraper via `anime/mysubs`.
 class MysubsService {
   MysubsService._();
   static final MysubsService instance = MysubsService._();

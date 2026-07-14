@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use stremio_core::fetch_get_with_headers;
+use stremio::fetch_get_with_headers;
 
 pub const BASE_URL: &str = "https://bestsimilar.com";
 

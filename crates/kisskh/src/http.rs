@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use anime_core::request_json;
+use anime::request_json;
 use serde_json::json;
 
 const BASE_URL: &str = "https://kisskh.co";

@@ -19,7 +19,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I39-T01 | Register all `stream-core` template IDs as `HostRequired` plugins (`vidfast` … `primewire`) | ✅ |
+| 1 | I39-T01 | Register all `stream` template IDs as `HostRequired` plugins (`vidfast` … `primewire`) | ✅ |
 | 2 | I39-T02 | Unit test: every template in `list_providers()` has a matching host plugin + embed payload | ✅ |
 
 ---
@@ -35,7 +35,7 @@
 
 ## Summary
 
-`stream-core` and Flutter settings listed 13 template embed hosts, but Resolver Engine `built_in()` only registered five (`vidlink`, `vixsrc`, `vidnest`, `vidzee`, `vidrock`). The other IDs were treated as host-required (`is_host_required` defaults true) yet `try_provider` returned `unknown provider` — so they never produced `HostRequired` with an embed URL, and WebView sniff never ran.
+`stream` and Flutter settings listed 13 template embed hosts, but Resolver Engine `built_in()` only registered five (`vidlink`, `vixsrc`, `vidnest`, `vidzee`, `vidrock`). The other IDs were treated as host-required (`is_host_required` defaults true) yet `try_provider` returned `unknown provider` — so they never produced `HostRequired` with an embed URL, and WebView sniff never ran.
 
 ### Root fix
 

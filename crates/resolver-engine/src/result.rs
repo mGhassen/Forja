@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use stream_core::PlayableSource;
+use stream::PlayableSource;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

@@ -10,7 +10,7 @@ pub struct JellyfinHttpResponse {
 }
 
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("jellyfin-core tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("jellyfin tokio runtime"));
 
 fn client(timeout: Duration) -> Result<reqwest::Client, String> {
     reqwest::Client::builder()

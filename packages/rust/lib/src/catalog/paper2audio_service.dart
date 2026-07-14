@@ -85,7 +85,7 @@ class GeneratedAudiobookJob {
       (error != null && error!.isNotEmpty);
 }
 
-/// Paper2Audio HTTP in Rust (`anime-core/paper2audio`); job list persisted in host.
+/// Paper2Audio HTTP in Rust (`anime/paper2audio`); job list persisted in host.
 class Paper2AudioService {
   Paper2AudioService._();
   static final Paper2AudioService instance = Paper2AudioService._();

@@ -1,5 +1,5 @@
 [package]
-name = "trakt-core"
+name = "trakt"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -56,10 +56,10 @@ flowchart BT
 | `torrent` | 635 | BitTorrent + local axum | librqbit session, magnet → localhost stream URL |
 | `proxy` | 515 | On client request | axum: `/proxy`, `/hls-proxy`, `/proxy/{token}` |
 | `scrapers` | 300 | **Yes** — async reqwest | Knaben / TPB / Uindex search |
-| `stremio-core` | 212 | **Yes** — `fetch_get` | Parse + optional GET (FFI exposes both) |
-| `iptv-core` | 540 | No | M3U / Xtream parse, paste decrypt |
+| `stremio` | 212 | **Yes** — `fetch_get` | Parse + optional GET (FFI exposes both) |
+| `iptv` | 540 | No | M3U / Xtream parse, paste decrypt |
 | `utils` | 880 | No | Episode match, torrent filter, HLS parse, crypto |
-| `stream-core` | 146 | No | Provider URL templates |
+| `stream` | 146 | No | Provider URL templates |
 | `storage` | 103 | No | JSON file KV |
 | `ffi` | 1,100 | Delegates | UDL + C ABI, 63 functions |
 
@@ -125,7 +125,7 @@ Grouped by **technology used**, not package role.
 | `local_server_service.dart` | Thin FFI | Rust axum shelf routes (toky, comic, jellyfin, subtitlecat) |
 | `videasy_extractor.dart` | Hybrid | Dart HTTP + WebView WASM + Rust AES |
 | `stream_extractor.dart` | WebView sniffer | Used by player flows |
-| `provider_registry.dart` | Provider orchestration | Rust `stream-core` templates |
+| `provider_registry.dart` | Provider orchestration | Rust `stream` templates |
 
 Nuvio JS host lives in **`apps/forja/lib/shared/nuvio/`** (`nuvio_runtime.dart`, `nuvio_service.dart`).
 
@@ -191,7 +191,7 @@ Nuvio JS host lives in **`apps/forja/lib/shared/nuvio/`** (`nuvio_runtime.dart`,
 | Torrent search | `search_torrents_json` | Jackett / Prowlarr separate in api | Two indexer systems |
 | HLS qualities | `parse_hls_master_json` | Dart fetches master playlist first | Split fetch / parse |
 | Stream embed sniff | — | WebView in **api** `stream_extractor` | Host WebView |
-| Provider templates | `stream-core` | `provider_registry` wraps FFI | Aligned |
+| Provider templates | `stream` | `provider_registry` wraps FFI | Aligned |
 | KV storage | `crates/storage` | `kv.dart` + SharedPreferences fallback | Dual path |
 | Local proxy | Rust axum only | — | shelf deleted |
 

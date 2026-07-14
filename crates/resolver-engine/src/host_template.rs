@@ -1,4 +1,4 @@
-//! Shared HostRequired resolve for `stream-core` template embed URLs.
+//! Shared HostRequired resolve for `stream` template embed URLs.
 //!
 //! Each template provider under [`crate::plugins`] is a standalone file that
 //! calls [`resolve_host_template`]. This module is not a provider.
@@ -18,14 +18,14 @@ pub fn resolve_host_template(
 ) -> Result<StreamResult, ProviderError> {
     let is_tv = request.media_type == "tv";
     let embed_url = if is_tv {
-        stream_core::build_tv_url(
+        stream::build_tv_url(
             provider_id,
             request.tmdb_id,
             request.season,
             request.episode,
         )
     } else {
-        stream_core::build_movie_url(provider_id, request.tmdb_id)
+        stream::build_movie_url(provider_id, request.tmdb_id)
     };
     let embed_url = embed_url.ok_or(ProviderError::NoStreams)?;
     let headers = ctx.headers.for_embed(provider_id, &embed_url);
@@ -45,10 +45,10 @@ pub fn resolve_host_template(
 mod tests {
     use super::*;
     use crate::provider::{Provider, ProviderKind};
-    use stream_core::list_providers;
+    use stream::list_providers;
 
     #[test]
-    fn every_stream_core_template_has_host_plugin() {
+    fn every_stream_template_has_host_plugin() {
         let plugins: Vec<Box<dyn Provider>> = vec![
             Box::new(crate::plugins::vidlink::VidlinkProvider),
             Box::new(crate::plugins::vixsrc::VixsrcProvider),
@@ -85,7 +85,7 @@ mod tests {
     fn vidfast_movie_returns_host_required_with_embed() {
         let ctx = ResolverContext::default();
         let request = StreamRequest {
-            domain: stream_core::SourceDomain::Movies,
+            domain: stream::SourceDomain::Movies,
             tmdb_id: 550,
             imdb_id: String::new(),
             title: String::new(),
@@ -93,7 +93,7 @@ mod tests {
             season: 0,
             episode: 0,
             media_type: "movie".into(),
-            device: stream_core::DevicePlaybackCapabilities::default(),
+            device: stream::DevicePlaybackCapabilities::default(),
             settings: Default::default(),
             providers_json: String::new(),
         };

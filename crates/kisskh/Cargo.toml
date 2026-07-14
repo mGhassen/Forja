@@ -1,5 +1,5 @@
 [package]
-name = "kisskh-core"
+name = "kisskh"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,4 +9,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
 urlencoding = "2"
-anime-core = { path = "../anime-core" }
+anime = { path = "../anime" }

@@ -21,27 +21,27 @@ cli = ["uniffi/cli"]
 
 [dependencies]
 utils = { path = "../utils" }
-stream-core = { path = "../stream-core" }
-iptv-core = { path = "../iptv-core" }
-stremio-core = { path = "../stremio-core" }
+stream = { path = "../stream" }
+iptv = { path = "../iptv" }
+stremio = { path = "../stremio" }
 webstreamr = { path = "../webstreamr" }
 scrapers = { path = "../scrapers" }
 torrent = { path = "../torrent", optional = true }
 proxy = { path = "../proxy", optional = true }
 storage = { path = "../storage" }
-tmdb-core = { path = "../tmdb-core" }
-trakt-core = { path = "../trakt-core" }
-jellyfin-core = { path = "../jellyfin-core" }
-anilist-core = { path = "../anilist-core" }
-manga-core = { path = "../manga-core" }
-anime-core = { path = "../anime-core" }
-indexer-core = { path = "../indexer-core" }
-debrid-core = { path = "../debrid-core" }
-music-core = { path = "../music-core" }
-kisskh-core = { path = "../kisskh-core" }
-books-core = { path = "../books-core" }
-catalog-core = { path = "../catalog-core" }
-live-matches-core = { path = "../live-matches-core" }
+tmdb = { path = "../tmdb" }
+trakt = { path = "../trakt" }
+jellyfin = { path = "../jellyfin" }
+anilist = { path = "../anilist" }
+manga = { path = "../manga" }
+anime = { path = "../anime" }
+indexer = { path = "../indexer" }
+debrid = { path = "../debrid" }
+music = { path = "../music" }
+kisskh = { path = "../kisskh" }
+books = { path = "../books" }
+catalog = { path = "../catalog" }
+live-matches = { path = "../live-matches" }
 resolver-engine = { path = "../resolver-engine" }
 uniffi = { workspace = true }
 serde = { workspace = true }

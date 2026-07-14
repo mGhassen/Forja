@@ -53,7 +53,7 @@
 | 10 | R32-A10 | Template embed providers Rust-native (shrink host surface) | ⬜ |
 | 11 | R32-A11 | Issue 018 manual parity re-run on new path | ⬜ |
 | 12 | R32-A12 | Dart + Rust integration tests for host continue flow | ✅ |
-| 13 | R32-A13 | Every `stream-core` template ID registered as `HostRequired` plugin (issue 039) | ✅ |
+| 13 | R32-A13 | Every `stream` template ID registered as `HostRequired` plugin (issue 039) | ✅ |
 | 14 | R32-A14 | Host pause/resume one-by-one in score order (no parallel host sprint) | ✅ |
 | 15 | R32-A15 | Template embed providers are one standalone plugin file each (issue 050); shared helper in `host_template.rs` (not under `plugins/`) | ✅ |
 
@@ -61,7 +61,7 @@
 
 ## Summary
 
-Introduce **`crates/resolver-engine`** as a core Rust module (peer to `torrent-engine` and `iptv-core`). Flutter calls `PlaybackService.resolve()`; the engine owns provider ordering, race, scoring, cache, cookies, and headers. Each built-in provider is a **standalone plugin file** implementing `Provider::resolve`. Host-only extractors (WebView, WASM, Nuvio) use `HostProviderAdapter`.
+Introduce **`crates/resolver-engine`** as a core Rust module (peer to `torrent-engine` and `iptv`). Flutter calls `PlaybackService.resolve()`; the engine owns provider ordering, race, scoring, cache, cookies, and headers. Each built-in provider is a **standalone plugin file** implementing `Provider::resolve`. Host-only extractors (WebView, WASM, Nuvio) use `HostProviderAdapter`.
 
 ## Non-goals
 

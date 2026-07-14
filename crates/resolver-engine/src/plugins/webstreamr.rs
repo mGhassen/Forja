@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use serde_json::{json, Value};
-use stream_core::from_legacy;
+use stream::from_legacy;
 
 use crate::context::ResolverContext;
 use crate::provider::{Provider, ProviderError, ProviderKind};

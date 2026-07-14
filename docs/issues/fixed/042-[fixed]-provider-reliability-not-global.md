@@ -3,7 +3,7 @@
 **Status:** fixed  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `crates/resolver-engine/src/health_store.rs`, `crates/stream-core/src/source_order.rs`, Settings Source scoring, player badge
+**Area:** `crates/resolver-engine/src/health_store.rs`, `crates/stream/src/source_order.rs`, Settings Source scoring, player badge
 
 ## Status at a glance
 

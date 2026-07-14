@@ -1,4 +1,4 @@
-use stremio_core::fetch_get;
+use stremio::fetch_get;
 
 pub const BASE_URL: &str = "https://api.themoviedb.org/3";
 pub const API_KEY: &str = "c3515fdc674ea2bd7b514f4bc3616a4a";

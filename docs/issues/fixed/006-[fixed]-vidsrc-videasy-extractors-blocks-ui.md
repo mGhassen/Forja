@@ -4,7 +4,7 @@
 **Severity:** High  
 **Status:** fixed (2026-07-06) — `EngineWorkerPool` + async vidsrc in `webstreamr` ([015](015-[fixed]-rust-blocking-http-engine-debt.md))  
 **Root fix:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)  
-**Area:** `packages/api/lib/playback/vidsrc_extractor.dart`, `videasy_extractor.dart`, `crates/stream-core`  
+**Area:** `packages/api/lib/playback/vidsrc_extractor.dart`, `videasy_extractor.dart`, `crates/stream`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
 ## Status at a glance
@@ -30,7 +30,7 @@ RustLib.instance.opensslAesDecryptJson(...)       // videasy — AES in Rust
 
 ## Workaround (shipped — 2026-07-06)
 
-Isolate offload — stops UI freeze but **does not fix** multi-page blocking resolve in `crates/stream-core`. Root fix: [015](015-[fixed]-rust-blocking-http-engine-debt.md).
+Isolate offload — stops UI freeze but **does not fix** multi-page blocking resolve in `crates/stream`. Root fix: [015](015-[fixed]-rust-blocking-http-engine-debt.md).
 
 1. `runResolveVidsrcEmbedJson`, `runOpensslAesDecryptJson` in `isolate_runner.dart`.
 2. `vidsrc_extractor.dart:54` → `await runResolveVidsrcEmbedJson(req).timeout(timeout)`.
@@ -40,7 +40,7 @@ Isolate offload — stops UI freeze but **does not fix** multi-page blocking res
 
 ## Root fix (open)
 
-Track in [015](015-[fixed]-rust-blocking-http-engine-debt.md): async resolve chain in `crates/stream-core`; cancel token.
+Track in [015](015-[fixed]-rust-blocking-http-engine-debt.md): async resolve chain in `crates/stream`; cancel token.
 
 ## If this file is deleted
 

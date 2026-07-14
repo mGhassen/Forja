@@ -18,13 +18,13 @@ const CDN_SPORTS_URL: &str =
 const CDN_SPORT_KEYS: &[&str] = &["Soccer", "NFL", "NBA", "NHL"];
 
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("live-matches-core tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("live-matches tokio runtime"));
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()
-        .expect("live-matches-core http client")
+        .expect("live-matches http client")
 });
 
 fn ppv_headers() -> HashMap<String, String> {

@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use stream_core::SourceDomain;
+use stream::SourceDomain;
 
 const STORAGE_KEY: &str = "provider_score_reliability_v5";
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use stream_core::{DevicePlaybackCapabilities, SourceDomain};
+use stream::{DevicePlaybackCapabilities, SourceDomain};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

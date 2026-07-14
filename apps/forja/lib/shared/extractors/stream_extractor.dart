@@ -13,14 +13,17 @@ class StreamExtractor {
   Completer<ExtractedMedia?>? _completer;
   Timer? _timeoutTimer;
   bool _cancelled = false;
-  
+  bool _completing = false;
+
   String? _capturedVideo;
   String? _capturedAudio;
   Map<String, String>? _capturedHeaders;
-  
+  /// Canonical embed URL passed to [extract] — preferred Referer for CDN opens.
+  String? _originalEmbedUrl;
+
   // Track all detected video URLs to select best quality
   final List<String> _detectedVideoUrls = [];
-  
+
   // Amri integration
   AmriExtractor? _amriExtractor;
   final TmdbService _tmdbService = TmdbService();
@@ -117,6 +120,7 @@ class StreamExtractor {
   /// Stop an in-flight sniff and dispose the headless WebView.
   Future<void> cancel() async {
     _cancelled = true;
+    _completing = false;
     await _cleanup();
     _activeProviderId = null;
     if (_completer != null && !_completer!.isCompleted) {
@@ -160,9 +164,11 @@ class StreamExtractor {
     _capturedVideo = null;
     _capturedAudio = null;
     _capturedHeaders = null;
+    _originalEmbedUrl = url;
+    _completing = false;
     _detectedVideoUrls.clear();
-    
-    _timeoutTimer = Timer(timeout, () { 
+
+    _timeoutTimer = Timer(timeout, () {
       if (_completer != null && !_completer!.isCompleted) {
         if (cancelled()) {
           _cleanup();
@@ -174,11 +180,11 @@ class StreamExtractor {
             .where(StreamExtractor.isPlayableStreamUrl)
             .toList();
         if (playable.isNotEmpty) {
-           _capturedVideo = _selectBestQuality(playable);
-           _completeWithCaptured(url);
+          _capturedVideo = _selectBestQuality(playable);
+          _completeWithCaptured(url);
         } else if (_capturedVideo != null &&
             StreamExtractor.isPlayableStreamUrl(_capturedVideo!)) {
-           _completeWithCaptured(url);
+          _completeWithCaptured(url);
         } else {
           _log('Sniffing session timeout for: $url');
           _cleanup();
@@ -320,15 +326,28 @@ class StreamExtractor {
               .replaceFirst('[FETCH]', '')
               .replaceFirst('[FETCH_BODY]', '')
               .replaceFirst('[XHR]', '')
+              .replaceFirst('[XHR_BODY]', '')
               .replaceFirst('[POSTMESSAGE]', '')
               .replaceFirst('[ATTR_SRC]', '')
               .replaceFirst('[MUTATION_SRC]', '')
+              .replaceFirst('[MUTATION_ATTR]', '')
               .replaceFirst('[ATTR_DATA-SRC]', '')
               .replaceFirst('[VIDEO_SRC]', '')
               .replaceFirst('[SOURCE_SRC]', '')
               .replaceFirst('[MEDIA_PLAY]', '')
+              .replaceFirst('[BLOB_URL]', '')
+              .replaceFirst('[WORKER]', '')
+              .replaceFirst('[SERVER_CLICK]', '')
               .trim();
-          _processUrl(streamUrl, frameUrl ?? fallbackReferer);
+          // Server-chip click logs are diagnostic only.
+          if (fullMsg.contains('[SERVER_CLICK]')) return;
+          final fromBody = fullMsg.contains('[FETCH_BODY]') ||
+              fullMsg.contains('[XHR_BODY]');
+          _processUrl(
+            streamUrl,
+            frameUrl ?? fallbackReferer,
+            confirmedPlaylistBody: fromBody,
+          );
         }
       };
 
@@ -357,44 +376,81 @@ class StreamExtractor {
   }
 
 
-  void _processUrl(String rUrl, String referer) {
-    if (!isPlayableStreamUrl(rUrl)) return;
+  void _processUrl(
+    String rUrl,
+    String referer, {
+    bool confirmedPlaylistBody = false,
+  }) {
+    final proxyPlaylist = confirmedPlaylistBody && _isEmbedProxyPlaylistUrl(rUrl);
+    if (!isPlayableStreamUrl(rUrl) && !proxyPlaylist) {
+      final lower = rUrl.toLowerCase();
+      if (lower.contains('/api/proxy') ||
+          lower.contains('/api/sources') ||
+          lower.startsWith('blob:') ||
+          lower.contains('m3u8')) {
+        _log('Rejected candidate (not playable URL): $rUrl');
+      }
+      return;
+    }
 
-       // Check audio only in the URL path (not query params)
-       final pathOnly = Uri.tryParse(rUrl)?.path ?? rUrl;
-       if (pathOnly.contains('/audio/') || pathOnly.contains('audio_')) {
-          _log('AUDIO DETECTED: $rUrl');
-          _capturedAudio = rUrl;
-          // ✅ FIX: was `headers` (undefined getter) — now builds the map correctly
-          _capturedHeaders ??= _buildHeaders(referer);
-       } else {
-          _log('VIDEO/STREAM DETECTED: $rUrl');
-          
-          // Add to detected URLs list for quality selection
-          if (!_detectedVideoUrls.contains(rUrl)) {
-            _detectedVideoUrls.add(rUrl);
-          }
-          
-          // Update captured video with best quality so far
-          _capturedVideo = _selectBestQuality(_detectedVideoUrls);
-          // ✅ FIX: was `headers` (undefined getter) — now builds the map correctly
-          _capturedHeaders ??= _buildHeaders(referer);
-       }
+    final playbackReferer = _playbackReferer(referer);
 
-       if (_capturedVideo == null) return;
+    // Check audio only in the URL path (not query params)
+    final pathOnly = Uri.tryParse(rUrl)?.path ?? rUrl;
+    if (pathOnly.contains('/audio/') || pathOnly.contains('audio_')) {
+      _log('AUDIO DETECTED: $rUrl');
+      _capturedAudio = rUrl;
+      _capturedHeaders ??= _buildHeaders(playbackReferer);
+    } else {
+      _log('VIDEO/STREAM DETECTED: $rUrl');
 
-       // SPA embeds (AnyEmbed/SmashyStream, Anitaro) load streams after boot —
-       // do not complete on weak hits like PWA manifest links.
-       if (_shouldDeferEarlyComplete(referer)) {
-         if (isStrongStreamUrl(_capturedVideo!)) {
-           _completeWithCaptured(referer);
-         }
-         return;
-       }
+      if (!_detectedVideoUrls.contains(rUrl)) {
+        _detectedVideoUrls.add(rUrl);
+      }
 
-       if (_capturedAudio != null || !referer.contains('anitaro')) {
-          _completeWithCaptured(referer);
-       }
+      _capturedVideo = _selectBestQuality(_detectedVideoUrls);
+      _capturedHeaders ??= _buildHeaders(playbackReferer);
+    }
+
+    if (_capturedVideo == null) return;
+
+    // SPA / multi-server embeds load streams after boot or chip switch —
+    // do not complete on weak hits like PWA manifest links.
+    if (_shouldDeferEarlyComplete(referer) ||
+        _shouldDeferEarlyComplete(_originalEmbedUrl ?? '')) {
+      if (isStrongStreamUrl(_capturedVideo!) ||
+          _isEmbedProxyPlaylistUrl(_capturedVideo!)) {
+        _completeWithCaptured(playbackReferer);
+      }
+      return;
+    }
+
+    if (_capturedAudio != null || !referer.contains('anitaro')) {
+      _completeWithCaptured(playbackReferer);
+    }
+  }
+
+  /// `/api/proxy` URLs whose response body was `#EXTM3U` (1embed / VidSrc.sbs).
+  static bool _isEmbedProxyPlaylistUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('/api/proxy') &&
+        (lower.contains('sig=') || lower.contains('1embed'));
+  }
+
+  /// Prefer the canonical embed page as Referer when FRAME is the stream CDN.
+  String _playbackReferer(String frameOrFallback) {
+    final embed = _originalEmbedUrl;
+    if (embed == null || embed.isEmpty) return frameOrFallback;
+    final frameHost = Uri.tryParse(frameOrFallback)?.host.toLowerCase() ?? '';
+    final streamHost =
+        Uri.tryParse(_capturedVideo ?? '')?.host.toLowerCase() ?? '';
+    if (streamHost.isNotEmpty && frameHost == streamHost) return embed;
+    if (frameHost.contains('hydrastreaming') ||
+        frameHost.contains('goodstream') ||
+        frameHost.contains('cinezo')) {
+      return embed;
+    }
+    return frameOrFallback.isNotEmpty ? frameOrFallback : embed;
   }
 
   /// Whether a sniffed URL is a real media stream (not PWA manifest, SW, etc.).
@@ -460,7 +516,10 @@ class StreamExtractor {
         r.contains('anyembed.xyz') ||
         r.contains('smashystream.com') ||
         r.contains('player.videasy.to') ||
-        r.contains('vidlink.pro');
+        r.contains('vidlink.pro') ||
+        r.contains('player.vidlove.cc') ||
+        r.contains('vidsrc.sbs') ||
+        r.contains('1embed.cc');
   }
 
   String _selectBestQuality(List<String> urls) {
@@ -470,7 +529,7 @@ class StreamExtractor {
 
     // Quality priority: 4K > 2160p > 1440p > 1080p > 720p > 480p > 360p
     final qualityOrder = ['4K', '2160p', '1440p', '1080p', '720p', '480p', '360p'];
-    
+
     for (final quality in qualityOrder) {
       final match = playable.firstWhere(
         (url) => url.toLowerCase().contains('quality=$quality'.toLowerCase()),
@@ -481,7 +540,7 @@ class StreamExtractor {
         return match;
       }
     }
-    
+
     // Prefer HLS/DASH over progressive when multiple hits exist.
     final hls = playable.where((u) => u.toLowerCase().contains('.m3u8'));
     if (hls.isNotEmpty) return hls.first;
@@ -490,16 +549,85 @@ class StreamExtractor {
   }
 
   void _completeWithCaptured(String referer) {
-    if (_cancelled) return;
+    if (_cancelled || _completing) return;
+    if (_completer == null || _completer!.isCompleted) return;
+    _completing = true;
+    unawaited(_finishWithCookies(referer));
+  }
+
+  Future<void> _finishWithCookies(String referer) async {
+    if (_cancelled) {
+      _completing = false;
+      return;
+    }
+    if (_completer == null || _completer!.isCompleted) {
+      _completing = false;
+      return;
+    }
+    final video = _capturedVideo;
+    if (video == null || video.isEmpty) {
+      _completing = false;
+      return;
+    }
+
+    final headers = Map<String, String>.from(
+      _capturedHeaders ?? _buildHeaders(referer),
+    );
+    final cookie = await _collectCookieHeader(
+      embedUrl: _originalEmbedUrl ?? referer,
+      streamUrl: video,
+    );
+    if (cookie != null && cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
+      _log('Attached Cookie header (${cookie.length} chars)');
+    }
+    _capturedHeaders = headers;
+
     if (_completer != null && !_completer!.isCompleted) {
-      final headers = _capturedHeaders ?? _buildHeaders(referer);
       _completer!.complete(ExtractedMedia(
-        url: _capturedVideo!,
+        url: video,
         audioUrl: _capturedAudio,
         headers: headers,
         sources: _buildCapturedSources(headers),
       ));
-      _cleanup();
+    }
+    await _cleanup();
+    _completing = false;
+  }
+
+  /// Pull cookies for embed + stream hosts so CDN probe/open matches the browser.
+  Future<String?> _collectCookieHeader({
+    required String embedUrl,
+    required String streamUrl,
+  }) async {
+    try {
+      final manager = CookieManager.instance();
+      final urls = <String>{embedUrl, streamUrl};
+      final embedUri = Uri.tryParse(embedUrl);
+      final streamUri = Uri.tryParse(streamUrl);
+      if (embedUri != null && embedUri.hasScheme && embedUri.host.isNotEmpty) {
+        urls.add(embedUri.origin);
+      }
+      if (streamUri != null && streamUri.hasScheme && streamUri.host.isNotEmpty) {
+        urls.add(streamUri.origin);
+      }
+      final parts = <String>[];
+      final seen = <String>{};
+      for (final u in urls) {
+        if (u.isEmpty) continue;
+        final cookies = await manager.getCookies(url: WebUri(u));
+        for (final c in cookies) {
+          final key = '${c.name}=';
+          if (seen.add(key)) {
+            parts.add('${c.name}=${c.value}');
+          }
+        }
+      }
+      if (parts.isEmpty) return null;
+      return parts.join('; ');
+    } catch (e) {
+      _log('Cookie harvest failed: $e');
+      return null;
     }
   }
 
@@ -509,7 +637,7 @@ class StreamExtractor {
         : (_capturedVideo != null ? [_capturedVideo!] : const <String>[]);
     return urls.map((url) {
       final lower = url.toLowerCase();
-      final type = lower.contains('.m3u8')
+      final type = lower.contains('.m3u8') || _isEmbedProxyPlaylistUrl(url)
           ? 'hls'
           : lower.contains('.mpd')
               ? 'dash'
@@ -547,28 +675,62 @@ class StreamExtractor {
       window.open = function() { return null; };
       window.alert = function() { return true; };
 
-      // 2. Sniff Fetch (log m3u8 URLs inside AnyEmbed stream API JSON)
+      // 2. Sniff Fetch — also pull .m3u8 out of JSON/proxy response bodies
+      //    (VidSrc.sbs / 1embed serve playlists via /api/proxy without .m3u8 in the URL).
       const originalFetch = window.fetch;
       window.fetch = async function(...args) {
         const url = args[0] instanceof Request ? args[0].url : String(args[0]);
         log('FETCH', url);
         const res = await originalFetch.apply(this, args);
-        if (typeof url === 'string' && (url.includes('/api/v1/stream') || url.includes('/api/proxy'))) {
+        if (typeof url === 'string') {
           try {
             const clone = res.clone();
             const text = await clone.text();
-            const m = text.match(/https?:\\/\\/[^"'\\s]+\\.m3u8[^"'\\s]*/i);
-            if (m) log('FETCH_BODY', m[0]);
+            const lowerUrl = url.toLowerCase();
+            const looksProxy = lowerUrl.includes('/api/proxy') ||
+              lowerUrl.includes('/api/sources') ||
+              lowerUrl.includes('/api/v1/stream') ||
+              lowerUrl.includes('proxy');
+            if (looksProxy || text.includes('.m3u8') || text.trim().startsWith('#EXTM3U')) {
+              if (text.trim().startsWith('#EXTM3U') && url.startsWith('http')) {
+                log('FETCH_BODY', url);
+              }
+              const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
+              if (matches) matches.forEach((u) => log('FETCH_BODY', u));
+            }
           } catch (e) {}
         }
         return res;
       };
 
-      // 3. Sniff XHR
+      // 3. Sniff XHR + response bodies
       const originalXHROpen = XMLHttpRequest.prototype.open;
+      const originalXHRSend = XMLHttpRequest.prototype.send;
       XMLHttpRequest.prototype.open = function(method, url) {
+        this._pt_url = url;
         log('XHR', url);
         return originalXHROpen.apply(this, arguments);
+      };
+      XMLHttpRequest.prototype.send = function() {
+        this.addEventListener('load', function() {
+          try {
+            const reqUrl = String(this._pt_url || '');
+            const text = this.responseText || '';
+            const lowerUrl = reqUrl.toLowerCase();
+            const looksProxy = lowerUrl.includes('/api/proxy') ||
+              lowerUrl.includes('/api/sources') ||
+              lowerUrl.includes('/api/v1/stream') ||
+              lowerUrl.includes('proxy');
+            if (looksProxy || text.includes('.m3u8') || text.trim().startsWith('#EXTM3U')) {
+              if (text.trim().startsWith('#EXTM3U') && reqUrl.startsWith('http')) {
+                log('XHR_BODY', reqUrl);
+              }
+              const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
+              if (matches) matches.forEach((u) => log('XHR_BODY', u));
+            }
+          } catch (e) {}
+        });
+        return originalXHRSend.apply(this, arguments);
       };
 
       // 4. Sniff Worker
@@ -626,12 +788,49 @@ class StreamExtractor {
         return originalPlay.apply(this, arguments);
       };
 
-      // 10. Auto-interact to trigger playback
+      // 10. Auto-interact: play overlays + multi-server chips (VidLove Neta/Gogo/…)
+      let serverChipIndex = 0;
+      let lastServerClickAt = 0;
+      const clickServerChips = () => {
+        const nodes = Array.from(document.querySelectorAll(
+          'button, [role="button"], a, div, span, li'
+        ));
+        const chips = [];
+        const chipRe = /^(neta|gogo|mafia|fabric|server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i;
+        nodes.forEach((el) => {
+          const text = (el.innerText || el.textContent || '').trim();
+          if (!text || text.length > 28) return;
+          const rect = el.getBoundingClientRect();
+          if (rect.width < 24 || rect.height < 18 || rect.width > 280) return;
+          const cls = (el.className || '').toString().toLowerCase();
+          const looksChip = chipRe.test(text) ||
+            cls.includes('server') ||
+            cls.includes('source-btn') ||
+            cls.includes('provider');
+          if (looksChip) chips.push(el);
+        });
+        if (chips.length === 0) return;
+        const now = Date.now();
+        // Rotate chips every ~2.5s so a stuck LOADMAXING server is abandoned.
+        if (now - lastServerClickAt < 2500) return;
+        lastServerClickAt = now;
+        const el = chips[serverChipIndex % chips.length];
+        serverChipIndex++;
+        const label = (el.innerText || el.textContent || '').trim();
+        console.log('PT_EXTRACT: [SERVER_CLICK] ' + label + ' | FRAME: ' + window.location.href);
+        try { el.click(); } catch (e) {}
+        try {
+          el.dispatchEvent(new MouseEvent('click', {
+            view: window, bubbles: true, cancelable: true
+          }));
+        } catch (e) {}
+      };
+
       const interact = () => {
         // Click center of screen (Spam click 3 times)
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
-        
+
         for(let i=0; i<3; i++) {
           const el = document.elementFromPoint(centerX, centerY);
           if (el) {
@@ -641,13 +840,13 @@ class StreamExtractor {
         }
 
         const selectors = [
-          '.play-icon-main', '.jw-icon-display', '.jw-display-icon-container', '.jw-icon-playback', 
+          '.play-icon-main', '.jw-icon-display', '.jw-display-icon-container', '.jw-icon-playback',
           '.jw-button-color', '#play-button', '.play-button', '.v-play-button',
           '.vjs-big-play-button', '[class*="play" i]', '[id*="play" i]',
           '.play-icon', '.play_icon', '.play-btn', '.play_btn',
           '.click_to_play', '.overlay', '#player_overlay', 'button', 'a'
         ];
-        
+
         selectors.forEach(selector => {
           document.querySelectorAll(selector).forEach(btn => {
              const rect = btn.getBoundingClientRect();
@@ -655,7 +854,7 @@ class StreamExtractor {
                 const text = (btn.innerText || btn.textContent || '').toLowerCase();
                 const id = (btn.id || '').toLowerCase();
                 const cls = (btn.className || '').toString().toLowerCase();
-                
+
                 if (text.includes('play') || id.includes('play') || cls.includes('play') || cls.includes('overlay')) {
                    btn.click();
                 }
@@ -663,12 +862,14 @@ class StreamExtractor {
           });
         });
 
+        clickServerChips();
+
         document.querySelectorAll('video').forEach(v => {
           if (v.paused) v.play().catch(() => v.click());
           if (v.src) log('VIDEO_SRC', v.src);
         });
       };
-      
+
       setTimeout(() => {
         interact();
         setInterval(interact, 800);

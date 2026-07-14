@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use serde_json::json;
-use stream_core::from_legacy;
+use stream::from_legacy;
 
 use crate::context::ResolverContext;
 use crate::provider::{Provider, ProviderError, ProviderKind};
@@ -29,7 +29,7 @@ impl Provider for VidsrcProvider {
         }
         let is_tv = request.media_type == "tv";
         // Native extractor builds vsembed.su URLs itself — do not use
-        // stream_core::build_*_url (template-only; returns None for "vidsrc").
+        // stream::build_*_url (template-only; returns None for "vidsrc").
         let req = json!({
             "tmdb_id": request.tmdb_id,
             "is_movie": !is_tv,

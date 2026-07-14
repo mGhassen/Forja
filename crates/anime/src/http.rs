@@ -15,7 +15,7 @@ pub struct AnimeHttpResponse {
 }
 
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("anime-core tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("anime tokio runtime"));
 
 fn client(timeout: Duration) -> Result<reqwest::Client, String> {
     reqwest::Client::builder()

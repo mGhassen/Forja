@@ -48,4 +48,4 @@ cd apps/forja && dart analyze
 | Layer | State |
 |-------|--------|
 | **Symptom (this issue)** | Legacy `packages/api` package removed; imports rewired |
-| **Root (still open)** | Dart engine HTTP in `forja` (debrid, site111477, jackett, …) and blocking `reqwest` in `anime-core` — port to `crates/*` per [ENGINE_BOUNDARY.md](../../ENGINE_BOUNDARY.md); async HTTP per [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+| **Root (still open)** | Dart engine HTTP in `forja` (debrid, site111477, jackett, …) and blocking `reqwest` in `anime` — port to `crates/*` per [ENGINE_BOUNDARY.md](../../ENGINE_BOUNDARY.md); async HTTP per [015](015-[fixed]-rust-blocking-http-engine-debt.md) |

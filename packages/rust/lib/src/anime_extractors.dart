@@ -281,7 +281,7 @@ Future<AnimeExtractorStreamResult?> watchHentaiExtract({
   return AnimeExtractorStreamResult.fromJson(result.cast<String, dynamic>());
 }
 
-// ─── Anikoto catalog + direct embed resolve (Rust `anime-core/resolve`) ───
+// ─── Anikoto catalog + direct embed resolve (Rust `anime/resolve`) ───
 
 class AnikotoEpisodeData {
   final int id;

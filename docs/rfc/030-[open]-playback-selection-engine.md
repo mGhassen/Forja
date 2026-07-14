@@ -3,7 +3,7 @@
 **Status:** open  
 **Version:** v1.0.2  
 **Depends on:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md), [RFC-004](004-[partial]-provider-registry.md), [RFC-009](fixed/009-[fixed]-rust-ffi.md)  
-**Area:** `crates/stream-core/`, `packages/rust/lib/src/playback/`, `apps/forja/lib/shared/playback/`
+**Area:** `crates/stream/`, `packages/rust/lib/src/playback/`, `apps/forja/lib/shared/playback/`
 
 ## Status at a glance
 
@@ -22,7 +22,7 @@
 |--:|----|-------------|--------|
 | 1 | R30-C01 | `PlayableSource` canonical model (Rust + Dart) | ✅ |
 | 2 | R30-C02 | `DevicePlaybackCapabilities` host probe + profile JSON | ✅ |
-| 3 | R30-C03 | Rust stream scorer + ranker (`stream-core::select`) | ✅ |
+| 3 | R30-C03 | Rust stream scorer + ranker (`stream::select`) | ✅ |
 | 4 | R30-C04 | `PlaybackEngine` orchestrator (normalize, rank, parallel resolve) | ✅ |
 
 ---
@@ -108,7 +108,7 @@ Unify all stream providers behind a canonical `PlayableSource` model. Device cap
 
 | Contract | Location |
 |----------|----------|
-| `PlayableSource` schema | `crates/stream-core/src/playable.rs` |
+| `PlayableSource` schema | `crates/stream/src/playable.rs` |
 | Rank API | `playback_rank_sources_json` FFI |
 | Orchestrator | `packages/rust/lib/src/playback/playback_engine.dart` |
 | Recovery | `apps/forja/lib/shared/player/player/playback_recovery.dart` |

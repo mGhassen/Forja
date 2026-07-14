@@ -15,7 +15,7 @@ jobs:
           cd crates
           cargo test --workspace
           cargo test -p utils --test golden
-          cargo test -p iptv-core --test golden_m3u
+          cargo test -p iptv --test golden_m3u
           cargo clippy --workspace
       - name: build release dylib
         run: ./scripts/build_rust.sh

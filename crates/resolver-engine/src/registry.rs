@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use stream_core::{order_providers, OrderProvidersRequest, SourceDomain};
+use stream::{order_providers, OrderProvidersRequest, SourceDomain};
 
 use crate::health_store::ProviderHealthStore;
 use crate::plugins;

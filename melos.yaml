@@ -18,7 +18,7 @@ scripts:
     description: Build ffi for iOS/Android (full features; parser-only with RUST_MOBILE_PARSER_ONLY=1)
   rust:test:
     run: |
-      cd ../../crates && cargo test --workspace && cargo test -p utils --test golden && cargo test -p iptv-core --test golden_m3u
+      cd ../../crates && cargo test --workspace && cargo test -p utils --test golden && cargo test -p iptv --test golden_m3u
       cd ../../packages/rust && flutter test
     description: Rust unit + golden + Dart parity tests
   rust:integration:

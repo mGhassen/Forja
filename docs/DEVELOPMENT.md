@@ -22,7 +22,7 @@ Forja is a **melos monorepo**:
 ```
 apps/forja (Flutter host)
     └── packages/rust (FFI bridge)
-            └── crates/ffi → utils, webstreamr, iptv-core, torrent, proxy, catalog, …
+            └── crates/ffi → utils, webstreamr, iptv, torrent, proxy, catalog, …
 ```
 
 End-state: Flutter + Rust engine. See [migration/README.md](migration/README.md).

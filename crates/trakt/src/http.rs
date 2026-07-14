@@ -12,13 +12,13 @@ pub struct TraktHttpResponse {
 }
 
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("trakt-core tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("trakt tokio runtime"));
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()
-        .expect("trakt-core http client")
+        .expect("trakt http client")
 });
 
 fn trakt_headers(client_id: &str, access_token: Option<&str>) -> HashMap<String, String> {

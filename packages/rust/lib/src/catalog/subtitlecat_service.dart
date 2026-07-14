@@ -1,6 +1,6 @@
 import '../subtitle_http.dart';
 
-/// SubtitleCat search/detail via `anime-core/subtitlecat`.
+/// SubtitleCat search/detail via `anime/subtitlecat`.
 /// On-demand translation URLs point at the local proxy (`/subtitlecat-translate`).
 class SubtitleCatService {
   SubtitleCatService._();

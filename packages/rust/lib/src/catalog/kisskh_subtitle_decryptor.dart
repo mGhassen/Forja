@@ -6,7 +6,7 @@ import 'package:rust/rust.dart';
 
 import '../subtitle_http.dart';
 
-/// KissKh encrypted subtitle fetch + decrypt via `anime-core/subtitle/kisskh`.
+/// KissKh encrypted subtitle fetch + decrypt via `anime/subtitle/kisskh`.
 /// Temp file write stays in host (path_provider).
 class KissKhSubtitleDecryptor {
   static Future<String> decryptBody(String body, {String? sourceUrl}) =>

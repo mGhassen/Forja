@@ -5,7 +5,7 @@ use std::sync::{
 };
 use std::time::Instant;
 
-use stream_core::PlayableSource;
+use stream::PlayableSource;
 
 use crate::context::ResolverContext;
 use crate::provider::ProviderError;
@@ -79,7 +79,7 @@ fn ingest_host_sources(
     let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(sources_json) else {
         if let Ok(one) = serde_json::from_str::<serde_json::Value>(sources_json) {
             if let Some(url) = one.get("url").and_then(|v| v.as_str()) {
-                let mut s = stream_core::from_legacy(
+                let mut s = stream::from_legacy(
                     url,
                     one.get("title")
                         .and_then(|v| v.as_str())
@@ -116,7 +116,7 @@ fn ingest_host_sources(
                     }
                 }
             }
-            let mut s = stream_core::from_legacy(
+            let mut s = stream::from_legacy(
                 url,
                 title,
                 item.get("container")
@@ -621,8 +621,8 @@ fn continue_inner(payload_json: &str) -> Result<ResolveResponse, String> {
 mod tests {
     use super::*;
     use crate::request::ResolveSettings;
-    use stream_core::DevicePlaybackCapabilities;
-    use stream_core::SourceDomain;
+    use stream::DevicePlaybackCapabilities;
+    use stream::SourceDomain;
 
     #[test]
     fn resolve_orders_providers() {

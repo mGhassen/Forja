@@ -38,7 +38,7 @@
 
 Standalone **Vidsrc** failed in Forja while the website player worked. Two stacked bugs:
 
-1. **Resolver plugin never called the extractor correctly** — `VidsrcProvider` used `stream_core::build_tv_url("vidsrc", …)` (template-only → `None`) and sent `{"embedUrl": …}` while Rust expects `tmdb_id` / `is_movie` / season / episode. Resolve finished in ~0 ms with no streams.
+1. **Resolver plugin never called the extractor correctly** — `VidsrcProvider` used `stream::build_tv_url("vidsrc", …)` (template-only → `None`) and sent `{"embedUrl": …}` while Rust expects `tmdb_id` / `is_movie` / season / episode. Resolve finished in ~0 ms with no streams.
 2. **Stale embed domain / shape** — site announced `vsembed.ru` → **`vsembed.su`** and documents query embeds (`/embed/tv?tmdb=&season=&episode=`). Forja still used `vsembed.ru` path-style and WebStreamr’s `vidsrc-embed.ru`.
 
 ## Verify

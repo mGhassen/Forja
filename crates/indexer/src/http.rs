@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::runtime::Runtime;
 
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("indexer-core tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("indexer tokio runtime"));
 
 pub fn client(timeout: Duration) -> Result<reqwest::Client, String> {
     reqwest::Client::builder()

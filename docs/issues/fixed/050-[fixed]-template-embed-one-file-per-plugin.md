@@ -19,7 +19,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I50-T01 | Split all `stream-core` template embeds out of the macro bag into one standalone plugin file each | ✅ |
+| 1 | I50-T01 | Split all `stream` template embeds out of the macro bag into one standalone plugin file each | ✅ |
 | 2 | I50-T02 | Keep shared `resolve_host_template` in crate-root `host_template.rs` + coverage test that every template ID still has a `HostRequired` plugin | ✅ |
 
 ---

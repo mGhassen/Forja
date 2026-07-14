@@ -1,11 +1,11 @@
 [package]
-name = "books-core"
+name = "books"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-stremio-core = { path = "../stremio-core" }
+stremio = { path = "../stremio" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 scraper = { workspace = true }

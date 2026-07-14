@@ -44,7 +44,7 @@ void main() {
 
 String _fixture(String name) {
   return File(
-    '${_repoRoot()}/crates/iptv-core/tests/fixtures/$name',
+    '${_repoRoot()}/crates/iptv/tests/fixtures/$name',
   ).readAsStringSync();
 }
 

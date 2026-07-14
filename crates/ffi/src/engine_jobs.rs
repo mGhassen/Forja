@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 use scrapers::search_all;
-use stremio_core::{fetch_get, fetch_get_with_headers, fetch_post_with_headers};
+use stremio::{fetch_get, fetch_get_with_headers, fetch_post_with_headers};
 use utils::engine_cancel::CancellationToken;
 
 use crate::RUNTIME;
@@ -180,7 +180,7 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             let token = utils::engine_cancel::cancellation_token();
             tokio::task::spawn_blocking(move || {
                 utils::engine_cancel::attach_job_token(token);
-                Ok(iptv_core::stream_probe::probe_stream_alive_json(
+                Ok(iptv::stream_probe::probe_stream_alive_json(
                     &req.url,
                     req.timeout_secs,
                 ))
@@ -250,7 +250,7 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             let token = utils::engine_cancel::cancellation_token();
             tokio::task::spawn_blocking(move || {
                 utils::engine_cancel::attach_job_token(token);
-                Ok(live_matches_core::fetch_json(&request_json))
+                Ok(live_matches::fetch_json(&request_json))
             })
             .await
             .map_err(|e| e.to_string())?
@@ -262,7 +262,7 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             let token = utils::engine_cancel::cancellation_token();
             tokio::task::spawn_blocking(move || {
                 utils::engine_cancel::attach_job_token(token);
-                Ok(iptv_core::reddit_catalog::catalog_json(&request_json))
+                Ok(iptv::reddit_catalog::catalog_json(&request_json))
             })
             .await
             .map_err(|e| e.to_string())?

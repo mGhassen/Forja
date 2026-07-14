@@ -352,7 +352,7 @@ Wire-up: `Engine.init()` + `installRustAppDelegates()` — Rust required; `RUST_
 
 ---
 
-## Step 2 — `forja-stream-core`
+## Step 2 — `forja-stream`
 
 **Rust:** ✅ · **App:** ✅
 
@@ -365,7 +365,7 @@ Wire-up: `Engine.init()` + `installRustAppDelegates()` — Rust required; `RUST_
 | vidrock | ✅ | ✅ |
 
 ```bash
-cd crates && cargo test -p forja-stream-core
+cd crates && cargo test -p forja-stream
 cd packages/rust && flutter test test/parity/stream_providers_test.dart
 ```
 
@@ -375,7 +375,7 @@ Wire-up: `packages/streaming/lib/src/provider_registry.dart` → `Engine.buildMo
 
 ---
 
-## Step 3 — `forja-iptv-core`
+## Step 3 — `forja-iptv`
 
 **Rust:** ✅ · **App:** ✅
 
@@ -387,14 +387,14 @@ Wire-up: `packages/streaming/lib/src/provider_registry.dart` → `Engine.buildMo
 | Xtream JSON (categories/streams/series) | ✅ | ✅ |
 
 ```bash
-cd crates && cargo test -p forja-iptv-core
-cd crates && cargo test -p forja-iptv-core --test golden_m3u
-cd crates && cargo test -p forja-iptv-core --test golden_xtream
+cd crates && cargo test -p forja-iptv
+cd crates && cargo test -p forja-iptv --test golden_m3u
+cd crates && cargo test -p forja-iptv --test golden_xtream
 cd packages/rust && flutter test test/parity/m3u_test.dart
 cd packages/rust && flutter test test/parity/iptv_test.dart
 ```
 
-Fixtures: `crates/forja-iptv-core/tests/fixtures/`
+Fixtures: `crates/forja-iptv/tests/fixtures/`
 
 Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles · Xtream portal categories/streams/series episodes.
 
@@ -406,7 +406,7 @@ Wire-up:
 
 ---
 
-## Step 4 — `forja-stremio-core`
+## Step 4 — `forja-stremio`
 
 **Rust:** ✅ · **App:** ✅
 
@@ -421,7 +421,7 @@ Wire-up:
 | HTTP GET (catalog/meta/stream/manifest) | ✅ | ✅ |
 
 ```bash
-cd crates && cargo test -p forja-stremio-core
+cd crates && cargo test -p forja-stremio
 cd packages/rust && flutter test test/parity/stremio_test.dart
 ```
 

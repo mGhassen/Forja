@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use stream_core::PlayableSource;
+use stream::PlayableSource;
 
 #[derive(Clone)]
 struct CacheEntry {

@@ -1,4 +1,4 @@
-use iptv_core::m3u;
+use iptv::m3u;
 use std::fs;
 use std::path::PathBuf;
 

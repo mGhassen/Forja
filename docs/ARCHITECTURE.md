@@ -35,7 +35,7 @@ flowchart TB
   end
   subgraph engine [Engine crates/*]
     FFICrate["crates/ffi libffi"]
-    Domain["utils stream-core iptv-core stremio-core webstreamr scrapers torrent proxy storage catalog"]
+    Domain["utils stream iptv stremio webstreamr scrapers torrent proxy storage catalog"]
     FFICrate --> Domain
   end
   Flutter --> DartFFI --> FFICrate
@@ -109,9 +109,9 @@ Workspace members (`crates/Cargo.toml`):
 |-------|-------------------------|---------------|--------------|
 | **`ffi`** | UDL + `c_api.rs` + `engine_proxy` + `engine_torrent` | mixed | all public API |
 | **`utils`** | `episode_matcher`, `torrent_filter`, `js_unpacker`, `hls_parser`, `kisskh_subtitle`, `openssl_crypt` | sync | `*_json`, primitives |
-| **`stream-core`** | Provider URL templates (VidLink, VixSrc, Vidnest, …) | sync | template builders |
-| **`iptv-core`** | M3U parse, Xtream JSON, paste.sh decrypt | sync | parse fns |
-| **`stremio-core`** | Manifest/catalog/meta/streams parse + HTTP GET | blocking reqwest | `stremio_*_json` |
+| **`stream`** | Provider URL templates (VidLink, VixSrc, Vidnest, …) | sync | template builders |
+| **`iptv`** | M3U parse, Xtream JSON, paste.sh decrypt | sync | parse fns |
+| **`stremio`** | Manifest/catalog/meta/streams parse + HTTP GET | blocking reqwest | `stremio_*_json` |
 | **`webstreamr`** | 23 extractors + 21 sources | sync parsers | granular + `get_streams_json` |
 | **`scrapers`** | Knaben / TPB / Uindex HTML → torrent results | async `search_all` | `search_torrents_json` |
 | **`torrent`** | librqbit session + localhost axum stream server | tokio | `torrent_*` |
@@ -138,9 +138,9 @@ flowchart TB
 
   subgraph domain [Domain crates]
     U[utils]
-    SC[stream-core]
-    IPTV[iptv-core]
-    STR[stremio-core]
+    SC[stream]
+    IPTV[iptv]
+    STR[stremio]
     WS[webstreamr]
     SCR[scrapers]
     TOR[torrent]
@@ -162,11 +162,11 @@ mod engine_torrent;
 #[cfg(feature = "local-proxy")]
 mod engine_proxy;
 
-use iptv_core::m3u;
-use iptv_core::pastesh;
+use iptv::m3u;
+use iptv::pastesh;
 use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_all};
-use stream_core::list_providers;
-use stremio_core::{
+use stream::list_providers;
+use stremio::{
     build_resource_url, fetch_get, parse_catalog, parse_manifest, parse_meta, parse_streams,
     parse_subtitles,
 };
@@ -332,7 +332,7 @@ From [RFC-004](rfc/004-[partial]-provider-registry.md). Registry: [`packages/rus
 flowchart TD
   Settings[SettingsService\nprovider order + enabled]
   Resolver[StreamResolver.resolve]
-  Template[Template providers\nstream-core via FFI]
+  Template[Template providers\nstream via FFI]
   Extractor[Extractor providers\nwebstreamr / vidsrc chain]
   Stremio[Stremio addon streams\nseparate path]
   Result[ResolvedStream]

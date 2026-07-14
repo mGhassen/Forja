@@ -1,5 +1,5 @@
 [package]
-name = "debrid-core"
+name = "debrid"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

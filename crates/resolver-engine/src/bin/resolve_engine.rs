@@ -18,7 +18,7 @@ use std::env;
 use std::process::ExitCode;
 
 use resolver_engine::{list_builtin_provider_ids, resolve};
-use stream_core::SourceDomain;
+use stream::SourceDomain;
 
 fn usage() -> ! {
     eprintln!(

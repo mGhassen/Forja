@@ -68,7 +68,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 
 All non-platform logic:
 
-- **Playback (wave 1):** `webstreamr`, `torrent`, `proxy` (incl. `seek111477`), `scrapers`, `stream-core`, `stremio-core` (P2-93), `storage`, `utils`, `iptv-core` (P2-94), consolidated local HTTP (P2-92)
+- **Playback (wave 1):** `webstreamr`, `torrent`, `proxy` (incl. `seek111477`), `scrapers`, `stream`, `stremio` (P2-93), `storage`, `utils`, `iptv` (P2-94), consolidated local HTTP (P2-92)
 - **Catalog (wave 2):** TMDB, Trakt, Jellyfin, anime, manga, music, Arabic verticals — port from `packages/api` to `crates/*` (Phase 3)
 
 **No new engine logic in Dart** — port to `crates/*` when touching.

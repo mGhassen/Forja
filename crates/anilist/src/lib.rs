@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use stremio_core::fetch_post_with_headers_unchecked;
+use stremio::fetch_post_with_headers_unchecked;
 
 const GQL_URL: &str = "https://graphql.anilist.co";
 

@@ -39,7 +39,7 @@ namespace forja {
     string manga_catalog_json(string request_json);
     string kisskh_catalog_json(string request_json);
     string books_catalog_json(string request_json);
-    string catalog_core_json(string request_json);
+    string catalog_json(string request_json);
     string anime_request_json(string request_json);
     string anime_extractor_json(string request_json);
     string indexer_request_json(string request_json);

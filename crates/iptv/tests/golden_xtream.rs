@@ -1,4 +1,4 @@
-use iptv_core::xtream;
+use iptv::xtream;
 use std::fs;
 use std::path::PathBuf;
 

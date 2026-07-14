@@ -133,8 +133,11 @@ abstract final class HostProviderAdapter {
         embedUrl,
         timeout: _embedSniffTimeout(providerId),
         // VidSrc.sbs rejects iframe-wrapped embeds with "Playback Restricted".
-        // Its page must be the WebView's top-level document.
-        forceDirect: providerId == 'vidsrcsbs',
+        // VidLove multi-server chips are easier to click as top-level document.
+        forceDirect: providerId == 'vidsrcsbs' ||
+            providerId == 'vidlove' ||
+            providerId == '111movies',
+        referer: embedUrl,
         isCancelled: cancelled,
         providerId: providerId,
       );

@@ -9,11 +9,11 @@ mod engine_seek111477;
 #[cfg(feature = "local-proxy")]
 mod engine_mega;
 
-use iptv_core::m3u;
-use iptv_core::pastesh;
+use iptv::m3u;
+use iptv::pastesh;
 use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_all};
-use stream_core::list_providers;
-use stremio_core::{
+use stream::list_providers;
+use stremio::{
     build_resource_url, fetch_get, fetch_get_with_headers, fetch_post_with_headers, parse_catalog,
     parse_manifest, parse_meta, parse_streams, parse_subtitles,
 };
@@ -107,11 +107,11 @@ fn decrypt_kisskh_body(body: String, source_url: Option<String>) -> String {
 }
 
 fn build_movie_url(provider_id: String, tmdb_id: i64) -> String {
-    stream_core::build_movie_url(&provider_id, tmdb_id).unwrap_or_default()
+    stream::build_movie_url(&provider_id, tmdb_id).unwrap_or_default()
 }
 
 fn build_tv_url(provider_id: String, tmdb_id: i64, season: i32, episode: i32) -> String {
-    stream_core::build_tv_url(&provider_id, tmdb_id, season, episode).unwrap_or_default()
+    stream::build_tv_url(&provider_id, tmdb_id, season, episode).unwrap_or_default()
 }
 
 fn list_providers_json() -> String {
@@ -119,15 +119,15 @@ fn list_providers_json() -> String {
 }
 
 fn playback_rank_sources_json(payload_json: String) -> String {
-    stream_core::rank_sources_json(&payload_json)
+    stream::rank_sources_json(&payload_json)
 }
 
 fn playback_normalize_legacy_json(payload_json: String) -> String {
-    stream_core::normalize_legacy_json(&payload_json)
+    stream::normalize_legacy_json(&payload_json)
 }
 
 fn playback_order_providers_json(payload_json: String) -> String {
-    use stream_core::{order_providers, OrderProvidersRequest};
+    use stream::{order_providers, OrderProvidersRequest};
 
     let mut request: OrderProvidersRequest = match serde_json::from_str(&payload_json) {
         Ok(r) => r,
@@ -158,19 +158,19 @@ fn openssl_aes_decrypt_json(b64: String, passphrase: String) -> String {
 }
 
 fn decode_xtream_text(text: String) -> String {
-    iptv_core::xtream::decode_xtream_text(&text)
+    iptv::xtream::decode_xtream_text(&text)
 }
 
 fn parse_xtream_categories_json(json: String) -> String {
-    iptv_core::xtream::parse_categories_json(&json)
+    iptv::xtream::parse_categories_json(&json)
 }
 
 fn parse_xtream_streams_json(json: String, section: String) -> String {
-    iptv_core::xtream::parse_streams_json(&json, &section)
+    iptv::xtream::parse_streams_json(&json, &section)
 }
 
 fn parse_xtream_series_episodes_json(json: String) -> String {
-    iptv_core::xtream::parse_series_episodes_json(&json)
+    iptv::xtream::parse_series_episodes_json(&json)
 }
 
 fn parse_stremio_manifest_json(json: String) -> String {
@@ -243,96 +243,96 @@ fn http_post_json(
 
 fn iptv_probe_stream_json(url: String, timeout_secs: u64) -> String {
     utils::engine_cancel::enter_job();
-    iptv_core::stream_probe::probe_stream_alive_json(&url, timeout_secs)
+    iptv::stream_probe::probe_stream_alive_json(&url, timeout_secs)
 }
 
 fn live_matches_fetch_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    live_matches_core::fetch_json(&request_json)
+    live_matches::fetch_json(&request_json)
 }
 
 fn iptv_reddit_catalog_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    iptv_core::reddit_catalog::catalog_json(&request_json)
+    iptv::reddit_catalog::catalog_json(&request_json)
 }
 
 fn tmdb_get_json(resource_path: String, timeout_secs: u64) -> String {
     utils::engine_cancel::enter_job();
-    tmdb_core::get_json(&resource_path, timeout_secs)
+    tmdb::get_json(&resource_path, timeout_secs)
 }
 
 fn trakt_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    trakt_core::request_json(&request_json)
+    trakt::request_json(&request_json)
 }
 
 fn jellyfin_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    jellyfin_core::request_json(&request_json)
+    jellyfin::request_json(&request_json)
 }
 
 fn anilist_query_json(query: String, variables_json: String) -> String {
-    anilist_core::query_json(&query, &variables_json)
+    anilist::query_json(&query, &variables_json)
 }
 
 fn manga_fetch_html(url: String, headers_json: String, timeout_secs: u64) -> String {
     utils::engine_cancel::enter_job();
-    manga_core::fetch_html(&url, &headers_json, timeout_secs)
+    manga::fetch_html(&url, &headers_json, timeout_secs)
 }
 
 fn manga_catalog_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    manga_core::catalog_json(&request_json)
+    manga::catalog_json(&request_json)
 }
 
 fn books_catalog_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    books_core::books_catalog_json(&request_json)
+    books::books_catalog_json(&request_json)
 }
 
-fn catalog_core_json(request_json: String) -> String {
+fn catalog_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    catalog_core::catalog_json(&request_json)
+    catalog::catalog_json(&request_json)
 }
 
 fn anime_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime_core::request_json(&request_json)
+    anime::request_json(&request_json)
 }
 
 fn anime_extractor_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime_core::anime_extractor_json(&request_json)
+    anime::anime_extractor_json(&request_json)
 }
 
 fn indexer_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    indexer_core::request_json(&request_json)
+    indexer::request_json(&request_json)
 }
 
 fn debrid_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    debrid_core::request_json(&request_json)
+    debrid::request_json(&request_json)
 }
 
 fn music_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    music_core::request_json(&request_json)
+    music::request_json(&request_json)
 }
 
 fn kisskh_catalog_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    kisskh_core::catalog_json(&request_json)
+    kisskh::catalog_json(&request_json)
 }
 
 fn metadata_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime_core::metadata_request_json(&request_json)
+    anime::metadata_request_json(&request_json)
 }
 
 fn subtitle_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime_core::subtitle_request_json(&request_json)
+    anime::subtitle_request_json(&request_json)
 }
 
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
@@ -340,11 +340,11 @@ fn build_stremio_resource_url(addon_url: String, resource_path: String) -> Strin
 }
 
 fn normalize_stremio_manifest_url(url: String) -> String {
-    stremio_core::normalize_manifest_url(&url)
+    stremio::normalize_manifest_url(&url)
 }
 
 fn split_stremio_addon_url_json(url: String) -> String {
-    let parts = stremio_core::split_addon_url(&url);
+    let parts = stremio::split_addon_url(&url);
     serde_json::to_string(&parts).unwrap_or_else(|_| "{}".into())
 }
 

@@ -3,7 +3,7 @@
 **Priority:** P2  
 **Severity:** Medium (perf, resource use, cancel waste — UI freeze workaround shipped)  
 **Status:** fixed  
-**Area:** `crates/webstreamr`, `crates/stremio-core`, `crates/scrapers`, `crates/ffi`, `crates/utils`  
+**Area:** `crates/webstreamr`, `crates/stremio`, `crates/scrapers`, `crates/ffi`, `crates/utils`  
 **Reported:** 2026-07-06  
 **Fixed:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)  
@@ -29,7 +29,7 @@ Dart `Isolate.run` remains required (R5) — it is not a substitute for async Ru
 
 ## Root fix (shipped)
 
-1. **Async HTTP** — `webstreamr`/`stremio-core`: shared `reqwest::Client` + tokio runtime; sync API wraps `block_on`.
+1. **Async HTTP** — `webstreamr`/`stremio`: shared `reqwest::Client` + tokio runtime; sync API wraps `block_on`.
 2. **Parallel resolve** — `webstreamr`: rayon parallel primary sources, early exit at 8 playable URLs.
 3. **Cancellable jobs** — `utils::engine_cancel`: generation counter + per-thread `enter_job()`; `engine_cancel_pending()` FFI; checked in fetcher, resolver, stremio HTTP. Dart `cancelPending()` calls `Engine.cancelPendingResolve()`.
 4. **Deferred (optional):** ~~async job/poll FFI~~ — shipped as Dart-side `EngineWorkerPool`.
@@ -50,7 +50,7 @@ Cancel: start WebStreamr/Vidsrc resolve, tap Cancel — Rust stops at next HTTP 
 | `crates/utils/src/engine_cancel.rs` | Generation-based cancel token |
 | `crates/webstreamr/src/fetcher.rs` | Cancel checks before async fetch |
 | `crates/webstreamr/src/resolver.rs` | Cancel checks in parallel + fallback loops |
-| `crates/stremio-core/src/http.rs` | Cancel checks in fetch |
+| `crates/stremio/src/http.rs` | Cancel checks in fetch |
 | `crates/ffi/src/lib.rs`, `c_api.rs`, `forja.udl` | `engine_cancel_pending`, `enter_job` on long FFI |
 | `packages/rust/lib/src/engine_worker.dart` | Persistent worker pool (3 isolates) |
 | `packages/rust/lib/src/isolate_runner.dart` | Typed job runners |

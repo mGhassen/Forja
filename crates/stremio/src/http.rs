@@ -12,13 +12,13 @@ pub struct HttpResponse {
 }
 
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("stremio-core tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("stremio tokio runtime"));
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()
-        .expect("stremio-core http client")
+        .expect("stremio http client")
 });
 
 pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {

@@ -2,9 +2,9 @@
 
 **Priority:** P1  
 **Severity:** High  
-**Status:** fixed (2026-07-06) — `EngineWorkerPool` + async `stremio-core` ([015](015-[fixed]-rust-blocking-http-engine-debt.md))  
+**Status:** fixed (2026-07-06) — `EngineWorkerPool` + async `stremio` ([015](015-[fixed]-rust-blocking-http-engine-debt.md))  
 **Root fix:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)  
-**Area:** `packages/api/lib/api/stremio_service.dart`, `crates/stremio-core`  
+**Area:** `packages/api/lib/api/stremio_service.dart`, `crates/stremio`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
 ## Status at a glance
@@ -31,7 +31,7 @@ Blocking HTTP in Rust. Dart `async` did not yield during the FFI call.
 
 ## Workaround (shipped — 2026-07-06)
 
-Isolate offload — stops UI freeze but **does not fix** blocking HTTP in `crates/stremio-core`. Root fix: [015](015-[fixed]-rust-blocking-http-engine-debt.md).
+Isolate offload — stops UI freeze but **does not fix** blocking HTTP in `crates/stremio`. Root fix: [015](015-[fixed]-rust-blocking-http-engine-debt.md).
 
 1. `runStremioHttpGet` in `packages/rust/lib/src/isolate_runner.dart`.
 2. `packages/api/lib/api/stremio_service.dart:111` → `await runStremioHttpGet(...)`.
@@ -42,7 +42,7 @@ JSON parse helpers (`parseStremioManifestJson`, etc.) stay on UI thread — allo
 
 ## Root fix (open)
 
-Track in [015](015-[fixed]-rust-blocking-http-engine-debt.md): async HTTP in `crates/stremio-core`.
+Track in [015](015-[fixed]-rust-blocking-http-engine-debt.md): async HTTP in `crates/stremio`.
 
 ## If this file is deleted
 
