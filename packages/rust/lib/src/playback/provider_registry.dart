@@ -128,6 +128,20 @@ class ProviderRegistry {
       tvUrl: (id, s, e) => Engine.requireTvUrl('autoembed', id, s, e),
     ),
     StreamProviderDef(
+      id: 'vidlove',
+      displayName: 'VidLove',
+      kind: ProviderKind.template,
+      movieUrl: (id) => Engine.requireMovieUrl('vidlove', id),
+      tvUrl: (id, s, e) => Engine.requireTvUrl('vidlove', id, s, e),
+    ),
+    StreamProviderDef(
+      id: 'vidsrcsbs',
+      displayName: 'VidSrc.sbs',
+      kind: ProviderKind.template,
+      movieUrl: (id) => Engine.requireMovieUrl('vidsrcsbs', id),
+      tvUrl: (id, s, e) => Engine.requireTvUrl('vidsrcsbs', id, s, e),
+    ),
+    StreamProviderDef(
       id: '111movies',
       displayName: '111Movies',
       kind: ProviderKind.template,

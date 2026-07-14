@@ -18,6 +18,8 @@ class StreamProviderDisplay {
     '2embed': '2Embed',
     'superembed': 'SuperEmbed',
     'autoembed': 'AutoEmbed',
+    'vidlove': 'VidLove',
+    'vidsrcsbs': 'VidSrc.sbs',
     '111movies': '111Movies',
     'moviesapi': 'MoviesAPI',
     'smashystream': 'SmashyStream',

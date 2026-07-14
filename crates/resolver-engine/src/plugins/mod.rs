@@ -29,6 +29,8 @@ pub fn built_in() -> Vec<Arc<dyn Provider>> {
         Arc::new(template_embed::TwoEmbedProvider),
         Arc::new(template_embed::SuperembedProvider),
         Arc::new(template_embed::AutoembedProvider),
+        Arc::new(template_embed::VidloveProvider),
+        Arc::new(template_embed::VidsrcsbsProvider),
         Arc::new(template_embed::Movies111Provider),
         Arc::new(template_embed::MoviesapiProvider),
         Arc::new(template_embed::SmashystreamProvider),

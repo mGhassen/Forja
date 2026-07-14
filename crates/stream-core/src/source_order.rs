@@ -84,6 +84,8 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "2embed" => 57,
             "superembed" => 56,
             "autoembed" => 55,
+            "vidlove" => 54,
+            "vidsrcsbs" => 52,
             "111movies" => 54,
             "moviesapi" => 53,
             "smashystream" => 46,
@@ -105,6 +107,8 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "2embed" => 57,
             "superembed" => 56,
             "autoembed" => 55,
+            "vidlove" => 54,
+            "vidsrcsbs" => 52,
             "111movies" => 54,
             "moviesapi" => 53,
             "primewire" => 48,
@@ -183,6 +187,10 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("superembed", SourceDomain::Series)
             | ("autoembed", SourceDomain::Movies)
             | ("autoembed", SourceDomain::Series)
+            | ("vidlove", SourceDomain::Movies)
+            | ("vidlove", SourceDomain::Series)
+            | ("vidsrcsbs", SourceDomain::Movies)
+            | ("vidsrcsbs", SourceDomain::Series)
             | ("111movies", SourceDomain::Movies)
             | ("111movies", SourceDomain::Series)
             | ("moviesapi", SourceDomain::Movies)

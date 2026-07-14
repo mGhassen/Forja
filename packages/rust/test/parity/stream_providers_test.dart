@@ -49,6 +49,14 @@ void main() {
       movie: 'https://autoembed.co/movie/tmdb/$tmdbId',
       tv: 'https://autoembed.co/tv/tmdb/$tvId-$season-$episode',
     ),
+    'vidlove': (
+      movie: 'https://player.vidlove.cc/embed/movie/$tmdbId',
+      tv: 'https://player.vidlove.cc/embed/tv/$tvId/$season/$episode',
+    ),
+    'vidsrcsbs': (
+      movie: 'https://vidsrc.sbs/embed/movie/$tmdbId',
+      tv: 'https://vidsrc.sbs/embed/tv/$tvId/$season/$episode',
+    ),
     '111movies': (
       movie: 'https://player.vidlove.cc/embed/movie/$tmdbId',
       tv: 'https://player.vidlove.cc/embed/tv/$tvId/$season/$episode',

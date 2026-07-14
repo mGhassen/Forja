@@ -60,6 +60,8 @@ template_provider!(VidfastProvider, "vidfast");
 template_provider!(TwoEmbedProvider, "2embed");
 template_provider!(SuperembedProvider, "superembed");
 template_provider!(AutoembedProvider, "autoembed");
+template_provider!(VidloveProvider, "vidlove");
+template_provider!(VidsrcsbsProvider, "vidsrcsbs");
 template_provider!(Movies111Provider, "111movies");
 template_provider!(MoviesapiProvider, "moviesapi");
 template_provider!(SmashystreamProvider, "smashystream");
@@ -82,6 +84,8 @@ mod tests {
             Box::new(TwoEmbedProvider),
             Box::new(SuperembedProvider),
             Box::new(AutoembedProvider),
+            Box::new(VidloveProvider),
+            Box::new(VidsrcsbsProvider),
             Box::new(Movies111Provider),
             Box::new(MoviesapiProvider),
             Box::new(SmashystreamProvider),

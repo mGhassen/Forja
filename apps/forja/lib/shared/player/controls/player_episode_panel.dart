@@ -7,7 +7,6 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
-import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
@@ -141,6 +140,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   bool _loading = true;
   int _episodeChunk = 0;
   bool _autoNextEpisode = true;
+  String _searchQuery = '';
 
   List<int> get _episodeNumbers => _episodes
       .map((ep) => ep['episode_number'] as int? ?? 0)
@@ -150,12 +150,25 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   List<EpisodeRange> get _episodeRanges =>
       buildEpisodeRangesForNumbers(_episodeNumbers);
 
-  List<Map<String, dynamic>> get _visibleEpisodes =>
+  List<Map<String, dynamic>> get _chunkEpisodes =>
       filterEpisodeChunkByNumber(
         _episodes,
         (ep) => ep['episode_number'] as int? ?? 0,
         _episodeChunk,
       );
+
+  List<Map<String, dynamic>> get _visibleEpisodes {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return _chunkEpisodes;
+    return _chunkEpisodes.where((ep) {
+      final num = ep['episode_number'] as int? ?? 0;
+      final name = (ep['name'] ?? '').toString().toLowerCase();
+      return name.contains(q) ||
+          '$num'.contains(q) ||
+          'e$num'.contains(q) ||
+          'episode $num'.contains(q);
+    }).toList();
+  }
 
   int _chunkIndexForEpisode(int episode) =>
       episodeChunkIndexForNumber(episode);
@@ -316,48 +329,39 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     await widget.onEpisodeSelected(season, episode);
   }
 
-  Widget? _headerTrailing({
-    required bool showRange,
-    required bool showSeason,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _AutoNextEpisodeCheck(
-          value: _autoNextEpisode,
-          onChanged: (v) => unawaited(_setAutoNext(v)),
-        ),
-        if (showRange || showSeason) const SizedBox(width: 8),
-        if (showRange)
-          EpisodeRangeSelector(
-            ranges: _episodeRanges,
-            selectedIndex: _episodeChunk,
-            onSelected: _selectChunk,
-          ),
-        if (showRange && showSeason) const SizedBox(width: 8),
-        if (showSeason)
-          _SeasonDropdown(
-            seasonCount: _seasonCount!,
-            selectedSeason: _selectedSeason,
-            onSelected: _selectSeason,
-          ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final showRange = !_loading && showEpisodeRangeBar(_episodeNumbers);
+    final showSeason = (_seasonCount ?? 0) > 1;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PlayerSidePanelHeader(
-          title: 'Episodes',
+        _EpisodePanelTopBar(
+          season: showSeason
+              ? _SeasonDropdown(
+                  seasonCount: _seasonCount!,
+                  selectedSeason: _selectedSeason,
+                  onSelected: _selectSeason,
+                )
+              : null,
+          searchQuery: _searchQuery,
+          onSearchChanged: (q) => setState(() => _searchQuery = q),
+          autoNext: _autoNextEpisode,
+          onAutoNextChanged: (v) => unawaited(_setAutoNext(v)),
           onClose: widget.onClose,
-          trailing: _headerTrailing(
-            showRange: !_loading && showEpisodeRangeBar(_episodeNumbers),
-            showSeason: (_seasonCount ?? 0) > 1,
-          ),
         ),
+        if (showRange) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: EpisodeRangeSelector(
+              ranges: _episodeRanges,
+              selectedIndex: _episodeChunk,
+              onSelected: _selectChunk,
+            ),
+          ),
+        ],
         Expanded(
           child: _loading
               ? Center(
@@ -369,7 +373,9 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
               : _visibleEpisodes.isEmpty
                   ? Center(
                       child: Text(
-                        'No episodes found',
+                        _searchQuery.trim().isEmpty
+                            ? 'No episodes found'
+                            : 'No matching episodes',
                         style: TextStyle(
                           color: ForjaShellColors.cinematic.textSecondary,
                         ),
@@ -489,30 +495,23 @@ class _SeasonDropdown extends StatelessWidget {
           borderRadius: borderRadius,
           clipBehavior: Clip.antiAlias,
           child: Ink(
-            decoration: shellChipDecoration(selected: true, radius: radius),
+            decoration: BoxDecoration(
+              color: ForjaShellColors.brandGreen.withValues(alpha: 0.12),
+              borderRadius: borderRadius,
+            ),
             child: InkWell(
               borderRadius: borderRadius,
               onTap: toggle,
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Season $selectedSeason',
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 20,
-                      color: ForjaShellColors.cinematic.textSecondary,
-                    ),
-                  ],
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Text(
+                  'Season $selectedSeason',
+                  style: TextStyle(
+                    color: ForjaShellColors.brandGreen,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -656,6 +655,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   final _scrollController = ScrollController();
   int _episodeChunk = 0;
   bool _autoNextEpisode = true;
+  String _searchQuery = '';
 
   List<int> get _episodeNumbers => widget.episodes
       .map((e) => e.number is int ? e.number as int : e.number.toInt())
@@ -664,12 +664,27 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   List<EpisodeRange> get _episodeRanges =>
       buildEpisodeRangesForNumbers(_episodeNumbers);
 
-  List<PlayerHubEpisode> get _visibleEpisodes =>
+  List<PlayerHubEpisode> get _chunkEpisodes =>
       filterEpisodeChunkByNumber(
         widget.episodes,
         (e) => e.number is int ? e.number as int : e.number.toInt(),
         _episodeChunk,
       );
+
+  List<PlayerHubEpisode> get _visibleEpisodes {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return _chunkEpisodes;
+    return _chunkEpisodes.where((ep) {
+      final num = ep.number is int ? ep.number as int : ep.number.toInt();
+      final title = ep.title.toLowerCase();
+      final display = ep.displayNumber.toString().toLowerCase();
+      return title.contains(q) ||
+          '$num'.contains(q) ||
+          display.contains(q) ||
+          'e$num'.contains(q) ||
+          'episode $num'.contains(q);
+    }).toList();
+  }
 
   int _chunkIndexForEpisode(num episode) =>
       episodeChunkIndexForNumber(episode);
@@ -755,30 +770,29 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
 
   @override
   Widget build(BuildContext context) {
+    final showRange = showEpisodeRangeBar(_episodeNumbers);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PlayerSidePanelHeader(
-          title: 'Episodes',
+        _EpisodePanelTopBar(
+          searchQuery: _searchQuery,
+          onSearchChanged: (q) => setState(() => _searchQuery = q),
+          autoNext: _autoNextEpisode,
+          onAutoNextChanged: (v) => unawaited(_setAutoNext(v)),
           onClose: widget.onClose,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _AutoNextEpisodeCheck(
-                value: _autoNextEpisode,
-                onChanged: (v) => unawaited(_setAutoNext(v)),
-              ),
-              if (showEpisodeRangeBar(_episodeNumbers)) ...[
-                const SizedBox(width: 8),
-                EpisodeRangeSelector(
-                  ranges: _episodeRanges,
-                  selectedIndex: _episodeChunk,
-                  onSelected: _selectChunk,
-                ),
-              ],
-            ],
-          ),
         ),
+        if (showRange) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: EpisodeRangeSelector(
+              ranges: _episodeRanges,
+              selectedIndex: _episodeChunk,
+              onSelected: _selectChunk,
+            ),
+          ),
+        ],
         Expanded(
           child: widget.episodes.isEmpty
               ? Center(
@@ -790,7 +804,16 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                   ),
                 )
               : _visibleEpisodes.isEmpty
-                  ? const SizedBox.shrink()
+                  ? Center(
+                      child: Text(
+                        _searchQuery.trim().isEmpty
+                            ? 'No episodes found'
+                            : 'No matching episodes',
+                        style: TextStyle(
+                          color: ForjaShellColors.cinematic.textSecondary,
+                        ),
+                      ),
+                    )
                   : ListView.separated(
                       controller: _scrollController,
                       padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -1118,58 +1141,212 @@ class _Badge extends StatelessWidget {
   }
 }
 
-/// Compact header checkbox — same pattern as Source panel Embed toggle.
-class _AutoNextEpisodeCheck extends StatelessWidget {
-  const _AutoNextEpisodeCheck({
-    required this.value,
-    required this.onChanged,
+/// Episode panel chrome: season pill · search + auto-next · close.
+class _EpisodePanelTopBar extends StatelessWidget {
+  const _EpisodePanelTopBar({
+    this.season,
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.autoNext,
+    required this.onAutoNextChanged,
+    required this.onClose,
   });
 
-  final bool value;
-  final ValueChanged<bool> onChanged;
+  final Widget? season;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final bool autoNext;
+  final ValueChanged<bool> onAutoNextChanged;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(6),
-      hoverColor: ForjaShellColors.inkHover,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: Checkbox(
-                value: value,
-                onChanged: (v) {
-                  if (v == null) return;
-                  onChanged(v);
-                },
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
-                fillColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return ForjaShellColors.cinematic.textPrimary;
-                  }
-                  return Colors.transparent;
-                }),
-                checkColor: Colors.black,
+    return Row(
+      children: [
+        if (season != null) ...[
+          season!,
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: _EpisodeSearchAutoNextBar(
+            searchQuery: searchQuery,
+            onSearchChanged: onSearchChanged,
+            autoNext: autoNext,
+            onAutoNextChanged: onAutoNextChanged,
+          ),
+        ),
+        const SizedBox(width: 10),
+        _EpisodePanelCloseButton(onClose: onClose),
+      ],
+    );
+  }
+}
+
+class _EpisodeSearchAutoNextBar extends StatefulWidget {
+  const _EpisodeSearchAutoNextBar({
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.autoNext,
+    required this.onAutoNextChanged,
+  });
+
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final bool autoNext;
+  final ValueChanged<bool> onAutoNextChanged;
+
+  @override
+  State<_EpisodeSearchAutoNextBar> createState() =>
+      _EpisodeSearchAutoNextBarState();
+}
+
+class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.searchQuery);
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EpisodeSearchAutoNextBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.searchQuery != _controller.text) {
+      _controller.text = widget.searchQuery;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = 22.0;
+    final secondary = ForjaShellColors.cinematic.textSecondary;
+
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: ForjaShellColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: ForjaShellColors.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.search_rounded, size: 18, color: secondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      onChanged: widget.onSearchChanged,
+                      style: TextStyle(
+                        color: ForjaShellColors.cinematic.textPrimary,
+                        fontSize: 13,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Search',
+                        hintStyle: TextStyle(
+                          color: secondary.withValues(alpha: 0.75),
+                          fontSize: 13,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  if (widget.searchQuery.isNotEmpty)
+                    ForjaCloseButton.compact(
+                      tooltip: null,
+                      color: secondary,
+                      onTap: () => widget.onSearchChanged(''),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(width: 4),
-            Text(
-              'Auto next',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.72),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+          ),
+          Container(
+            width: 1,
+            height: 22,
+            color: ForjaShellColors.borderSubtle,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 10, right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Tooltip(
+                  message: 'Auto next episode',
+                  child: Icon(
+                    Icons.skip_next_rounded,
+                    size: 20,
+                    color: secondary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                SizedBox(
+                  height: 28,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Switch(
+                      value: widget.autoNext,
+                      onChanged: widget.onAutoNextChanged,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor:
+                          ForjaShellColors.brandGreen.withValues(alpha: 0.55),
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: const Color(0xFF3A3A3A),
+                      trackOutlineColor:
+                          const WidgetStatePropertyAll(Colors.transparent),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EpisodePanelCloseButton extends StatelessWidget {
+  const _EpisodePanelCloseButton({required this.onClose});
+
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ForjaShellColors.sectionIconBg,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onClose,
+        hoverColor: ForjaShellColors.inkHover,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(
+            Icons.close_rounded,
+            size: 20,
+            color: ForjaShellColors.cinematic.textSecondary,
+          ),
         ),
       ),
     );

@@ -91,6 +91,18 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
+            id: "vidlove".into(),
+            name: "VidLove".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "vidsrcsbs".into(),
+            name: "VidSrc.sbs".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
             id: "111movies".into(),
             name: "111Movies".into(),
             has_movie_template: true,
@@ -146,6 +158,8 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
             "https://multiembed.mov/?video_id={tmdb_id}&tmdb=1"
         )),
         "autoembed" => Some(format!("https://autoembed.co/movie/tmdb/{tmdb_id}")),
+        "vidlove" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
+        "vidsrcsbs" => Some(format!("https://vidsrc.sbs/embed/movie/{tmdb_id}")),
         "111movies" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
         "moviesapi" => Some(format!("https://moviesapi.to/movie/{tmdb_id}")),
         "smashystream" => Some(format!(
@@ -186,6 +200,12 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
         )),
         "autoembed" => Some(format!(
             "https://autoembed.co/tv/tmdb/{tmdb_id}-{season}-{episode}"
+        )),
+        "vidlove" => Some(format!(
+            "https://player.vidlove.cc/embed/tv/{tmdb_id}/{season}/{episode}"
+        )),
+        "vidsrcsbs" => Some(format!(
+            "https://vidsrc.sbs/embed/tv/{tmdb_id}/{season}/{episode}"
         )),
         "111movies" => Some(format!(
             "https://player.vidlove.cc/embed/tv/{tmdb_id}/{season}/{episode}"
@@ -269,6 +289,18 @@ mod tests {
         assert_eq!(
             build_tv_url("2embed", 1399, 2, 5),
             Some("https://www.2embed.cc/embedtv/1399&s=2&e=5".into())
+        );
+    }
+
+    #[test]
+    fn vidsrcsbs_urls() {
+        assert_eq!(
+            build_movie_url("vidsrcsbs", 550),
+            Some("https://vidsrc.sbs/embed/movie/550".into())
+        );
+        assert_eq!(
+            build_tv_url("vidsrcsbs", 1399, 2, 5),
+            Some("https://vidsrc.sbs/embed/tv/1399/2/5".into())
         );
     }
 }

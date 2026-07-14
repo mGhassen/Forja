@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** acceptance (core) · **0 / 3** acceptance (expansion slice) |
-| **Current slice** | In-player switch + provider expansion — not started |
+| **Progress** | **3 / 3** acceptance (core) · **2 / 5** acceptance (expansion slice) |
+| **Current slice** | VidLove + VidSrc.sbs hosts shipped; in-player switch + remaining expansion not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -31,6 +31,8 @@
 | 1 | R04-A04 | In-player switch via ServerGrid (RFC-003) | ⬜ |
 | 2 | R04-A05 | Expanded provider list | ⬜ |
 | 3 | R04-A06 | `last_used_provider_id` remembered per title | ⬜ |
+| 4 | R04-A07 | VidLove as separate template embed (`player.vidlove.cc`) | ✅ |
+| 5 | R04-A08 | VidSrc.sbs as separate template embed (`vidsrc.sbs`) | ✅ |
 
 ---
 
@@ -88,5 +90,6 @@ UI: Settings → Streaming providers (reorder + toggles)
 | SmashyStream, VidFast | | add |
 | 2Embed, AutoEmbed, MultiEmbed | | add |
 | PrimeSrc, VidSrc.wtf | | add |
+| VidSrc.sbs | | yes (R04-A08) |
 
 Stremio addon streams are separate from built-in provider grid (torrent/debrid path).

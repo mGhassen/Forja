@@ -485,8 +485,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     final passIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
     final shareOnlyCollapsed = !_editing && !_showManualForm;
     final gapAfterTitle = _tv ? 8.0 : (_compact ? 14.0 : 22.0);
-    final gapBetweenFields = _tv ? 8.0 : (_compact ? 10.0 : 18.0);
-    final gapBeforeManual = _tv ? 8.0 : (_compact ? 12.0 : 20.0);
+    final gapBetweenFields = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
+    final gapBeforeManual = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeActions = _tv ? 10.0 : (_compact ? 12.0 : 20.0);
     // Collapsed: room to vertically center "Share code" + code boxes as one block.
     final collapsedBodyHeight = _tv ? 152.0 : (_compact ? 172.0 : 196.0);

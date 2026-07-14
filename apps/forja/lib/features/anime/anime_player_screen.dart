@@ -445,6 +445,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   bool _failedAll = false;
   bool _cancelled = false;
   bool _resolverStopped = false;
+  /// When set, the active Auto race is cancelled and re-run for this sourceKey.
+  String? _manualPreferredSourceKey;
+  bool _manualSwitchRequested = false;
   int _autoRecheckUsed = 0;
   bool _awaitingManualRecheck = false;
   bool _launchedFromSavedOrCache = false;
@@ -786,6 +789,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       _failedAll = false;
       _statusLine = '';
     });
+    _manualPreferredSourceKey = null;
+    _manualSwitchRequested = false;
     _probeNotifier.value = const [];
 
     final pair = _currentPair;
@@ -842,7 +847,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final titleToSourceKey = <String, String>{};
 
     void syncLiveHits(List<({AnimeEmbed embed, ExtractedMedia media})> all) {
-      if (_cancelled || _resolverStopped || all.isEmpty) return;
+      if (_cancelled ||
+          _resolverStopped ||
+          _manualSwitchRequested ||
+          all.isEmpty) {
+        return;
+      }
       for (final h in all) {
         urlToSourceKey[h.media.url] = h.embed.sourceKey;
         final t = h.media.sources?.first.title ?? h.embed.displayName;
@@ -871,16 +881,53 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       ));
     }
 
-    final hits = await AnimePlaybackBridge.raceEmbeds(
-      embeds: pair,
-      hubMovie: _hubMovieFromAnime(widget.anime),
-      settingsOrder: _providerOrder,
-      animeService: _service,
-      isCancelled: () => _cancelled || _resolverStopped,
-      onProgress: _animeResolveProgress(pair),
-      maxInFlight: 1,
-      onHitsUpdated: syncLiveHits,
-    );
+    List<({AnimeEmbed embed, ExtractedMedia media})> hits = const [];
+    var preferred = SourceEngine.auto;
+    while (mounted && !_cancelled && !_resolverStopped) {
+      _manualSwitchRequested = false;
+      final manualKey = _manualPreferredSourceKey;
+      preferred = manualKey ?? SourceEngine.auto;
+      if (manualKey != null) {
+        _probeNotifier.value = [
+          for (final p in _probeNotifier.value)
+            StreamProviderProbe(
+              id: p.id,
+              label: p.label,
+              status: p.status == StreamProviderProbeStatus.trying
+                  ? StreamProviderProbeStatus.pending
+                  : p.status,
+              isPreferred: pair.any(
+                (e) => e.panelKey == p.id && e.sourceKey == manualKey,
+              ),
+            ),
+        ];
+        _setPhase('Checking ${manualKey.toUpperCase()}…');
+      }
+
+      hits = await AnimePlaybackBridge.raceEmbeds(
+        embeds: pair,
+        hubMovie: _hubMovieFromAnime(widget.anime),
+        settingsOrder: _providerOrder,
+        animeService: _service,
+        preferredProvider: preferred,
+        isCancelled: () =>
+            _cancelled || _resolverStopped || _manualSwitchRequested,
+        onProgress: _animeResolveProgress(pair),
+        maxInFlight: 1,
+        onHitsUpdated: syncLiveHits,
+      );
+
+      if (_cancelled || _resolverStopped) {
+        sourcesListNotifier.dispose();
+        providerSourcesCache.dispose();
+        return;
+      }
+      if (_manualSwitchRequested && _manualPreferredSourceKey != null) {
+        continue;
+      }
+      break;
+    }
+
     if (!mounted || _cancelled) {
       sourcesListNotifier.dispose();
       providerSourcesCache.dispose();
@@ -891,6 +938,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       syncLiveHits(hits);
       await _launchPlayer(
         hits,
+        usedSavedSource: !SourceEngine.isAuto(preferred),
         sourcesListNotifier: sourcesListNotifier,
         providerSourcesCache: providerSourcesCache,
         urlToSourceKey: urlToSourceKey,
@@ -1276,7 +1324,16 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           onReload: _manualRecheck,
           onCancel: () {
             _cancelled = true;
+            _manualSwitchRequested = false;
+            _manualPreferredSourceKey = null;
             Navigator.of(context).pop();
+          },
+          onManualCheckProvider: (panelKey) {
+            final match = _currentPair.where((e) => e.panelKey == panelKey);
+            if (match.isEmpty) return;
+            _manualPreferredSourceKey = match.first.sourceKey;
+            _manualSwitchRequested = true;
+            DomainStreamProviderResolver.cancelAllPending();
           },
         );
       },

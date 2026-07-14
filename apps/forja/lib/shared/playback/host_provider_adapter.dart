@@ -235,6 +235,8 @@ abstract final class HostProviderAdapter {
       case 'vidfast':
       case '2embed':
       case 'autoembed':
+      case 'vidlove':
+      case 'vidsrcsbs':
       case '111movies':
       case 'moviesapi':
       case 'primewire':

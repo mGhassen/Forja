@@ -128,6 +128,7 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
                      url.contains('autoembed.co') ||
                      url.contains('111movies.net') ||
                      url.contains('player.vidlove.cc') ||
+                     url.contains('vidsrc.sbs') ||
                      url.contains('moviesapi.to') ||
                      url.contains('smashystream.com') ||
                      url.contains('anyembed.xyz') ||

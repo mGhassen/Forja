@@ -24,7 +24,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [001-[fixed]-…](fixed/001-[fixed]-monorepo.md) | Monorepo + feature boundaries | v1.0 | fixed | Complete · 4/4 | [0.0.1](../backlog/done/0.0.1-[done].md) |
 | [002-[fixed]-…](fixed/002-[fixed]-iptv-groups.md) | IPTV portal groups | v1.0 | fixed | Complete · 4/4 | [0.0.1](../backlog/done/0.0.1-[done].md) |
 | [003-[partial]-…](003-[partial]-player-overlay.md) | Player overlay + server grid | v1.1 | partial | 4/6 · 0/4 | [0.0.1](../backlog/done/0.0.1-[done].md) slice → [1.0.2](../backlog/1.0.2-[draft].md) |
-| [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 0/3 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.2](../backlog/1.0.2-[draft].md) |
+| [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 2/5 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.1](../backlog/1.0.1-[open].md) / [1.0.2](../backlog/1.0.2-[draft].md) |
 | [005-[partial]-…](005-[partial]-casting.md) | AirPlay + Chromecast | v1.1 | stub | 0/1 · 0/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | stub | 0/1 · 0/4 | v2 |
 | [007-[draft]-…](007-[draft]-lan-companion.md) | LAN remote API | v1.2 | draft | 0/4 | v2 |
@@ -42,7 +42,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/5 | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
 | [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 5/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.0.1 | draft | 3/4 | [RFC-026](026-[draft]-media-details-player-ux.md) |
-| [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 17/18 · 13/18 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 17/18 · 16/21 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 0/8 · 2 🔄 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [022-[draft]-…](022-[draft]-lan-server-client.md) | LAN server/client | post-v1.2 | draft | 3/7 · 0/12 | v2+ |
 | [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.x | fixed | Complete · 5/5 · 18/18 | [0.8.1](../backlog/done/0.8.1-[done].md) |

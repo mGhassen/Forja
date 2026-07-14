@@ -231,11 +231,24 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     final fadeOutNotifier = ValueNotifier(false);
     var liveNotifiersDisposed = false;
     BuildContext? loadingDialogContext;
+    var switchingManualProvider = false;
+    String? pendingManualProviderId;
+    var preferredProvider = SourceEngine.auto;
 
     void dismissLoading() {
       final ctx = loadingDialogContext;
       if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
       loadingDialogContext = null;
+    }
+
+    void requestManualProviderCheck(String providerId) {
+      if (_s._webstreamingOnlyExtractionCancelled) return;
+      if (TvStreamFallback.isSkippedOnTv(providerId, _orderedWebstreamingProviders)) {
+        return;
+      }
+      pendingManualProviderId = providerId;
+      switchingManualProvider = true;
+      PlaybackEngine.cancelAllPending();
     }
 
     showLoadingOverlayDialog(
@@ -248,9 +261,12 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
           fadeOutNotifier: fadeOutNotifier,
           onCancel: () {
             _s._webstreamingOnlyExtractionCancelled = true;
+            switchingManualProvider = false;
+            pendingManualProviderId = null;
             PlaybackEngine.cancelAllPending();
             dismissLoading();
           },
+          onManualCheckProvider: requestManualProviderCheck,
         );
       },
     );
@@ -306,7 +322,11 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
       }
 
       void syncResolvedHits(List<PlaybackResolveHit> hits) {
-        if (hits.isEmpty || _s._webstreamingOnlyExtractionCancelled) return;
+        if (hits.isEmpty ||
+            _s._webstreamingOnlyExtractionCancelled ||
+            switchingManualProvider) {
+          return;
+        }
         providerSourcesCache.value = PlaybackEngine.hitsToProviderCache(hits);
         sourcesListNotifier.value = PlaybackEngine.mergeHitSources(hits);
         final best = hits.first;
@@ -345,46 +365,22 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         );
       }
 
-      final hit = await PlaybackService.resolveWebstreaming(
-        providers: providers,
-        movie: _s._movie,
-        season: _s._selectedSeason,
-        episode: _s._selectedEpisode,
-        settingsOrder: _s._webstreamingProviderOrder,
-        isCancelled: () => _s._webstreamingOnlyExtractionCancelled,
-        onHitsUpdated: syncResolvedHits,
-        onProgress: (providerId, status) {
-          if (!mounted) return;
-          final nextStatus = probeStatusFromProgress(status);
-          final existing = probeNotifier.value;
-          final idx = existing.indexWhere((p) => p.id == providerId);
-          if (idx < 0) {
-            probeNotifier.value = [
-              ...existing,
-              StreamProviderProbe(
-                id: providerId,
-                label: _webstreamingProviderLabel(providerId),
-                status: nextStatus,
-                isPreferred: existing.isEmpty,
-              ),
-            ];
-          final hasSources =
-              (providerSourcesCache.value[providerId] ?? []).isNotEmpty;
-          unawaited(
-            ProviderScoreProbeSync.onProbeStatusChanged(
-              scope: ProviderScoreProbeSync.scopeFromPlayer(
-                movie: _s._movie,
-                providers: providers,
-                selectedSeason: _s._selectedSeason,
-                selectedEpisode: _s._selectedEpisode,
-              ),
-              providerId: providerId,
+      void applyProbeProgress(String providerId, String status) {
+        if (!mounted || switchingManualProvider) return;
+        final nextStatus = probeStatusFromProgress(status);
+        final existing = probeNotifier.value;
+        final idx = existing.indexWhere((p) => p.id == providerId);
+        if (idx < 0) {
+          probeNotifier.value = [
+            ...existing,
+            StreamProviderProbe(
+              id: providerId,
+              label: _webstreamingProviderLabel(providerId),
               status: nextStatus,
-              hasSources: hasSources,
+              isPreferred: existing.isEmpty,
             ),
-          );
-            return;
-          }
+          ];
+        } else {
           probeNotifier.value = existing
               .map(
                 (probe) => probe.id == providerId
@@ -392,23 +388,73 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
                     : probe,
               )
               .toList();
-          final hasSources =
-              (providerSourcesCache.value[providerId] ?? []).isNotEmpty;
-          unawaited(
-            ProviderScoreProbeSync.onProbeStatusChanged(
-              scope: ProviderScoreProbeSync.scopeFromPlayer(
-                movie: _s._movie,
-                providers: providers,
-                selectedSeason: _s._selectedSeason,
-                selectedEpisode: _s._selectedEpisode,
-              ),
-              providerId: providerId,
-              status: nextStatus,
-              hasSources: hasSources,
+        }
+        final hasSources =
+            (providerSourcesCache.value[providerId] ?? []).isNotEmpty;
+        unawaited(
+          ProviderScoreProbeSync.onProbeStatusChanged(
+            scope: ProviderScoreProbeSync.scopeFromPlayer(
+              movie: _s._movie,
+              providers: providers,
+              selectedSeason: _s._selectedSeason,
+              selectedEpisode: _s._selectedEpisode,
             ),
-          );
-        },
-      );
+            providerId: providerId,
+            status: nextStatus,
+            hasSources: hasSources,
+          ),
+        );
+      }
+
+      void prepareProbesForPreferred(String preferred) {
+        final isManual = !SourceEngine.isAuto(preferred);
+        probeNotifier.value = [
+          for (final p in probeNotifier.value)
+            StreamProviderProbe(
+              id: p.id,
+              label: p.label,
+              status: p.status == StreamProviderProbeStatus.trying
+                  ? StreamProviderProbeStatus.pending
+                  : p.status,
+              isPreferred: isManual
+                  ? p.id == preferred
+                  : p.isPreferred,
+            ),
+        ];
+      }
+
+      PlaybackResolveHit? hit;
+      while (mounted && !_s._webstreamingOnlyExtractionCancelled) {
+        switchingManualProvider = false;
+        final preferred = preferredProvider;
+        prepareProbesForPreferred(preferred);
+
+        hit = await PlaybackService.resolveWebstreaming(
+          providers: providers,
+          movie: _s._movie,
+          season: _s._selectedSeason,
+          episode: _s._selectedEpisode,
+          preferredProvider: preferred,
+          settingsOrder: _s._webstreamingProviderOrder,
+          isCancelled: () =>
+              _s._webstreamingOnlyExtractionCancelled || switchingManualProvider,
+          onHitsUpdated: syncResolvedHits,
+          onProgress: applyProbeProgress,
+        );
+
+        if (_s._webstreamingOnlyExtractionCancelled) {
+          hit = null;
+          break;
+        }
+        if (switchingManualProvider && pendingManualProviderId != null) {
+          preferredProvider = pendingManualProviderId!;
+          pendingManualProviderId = null;
+          continue;
+        }
+        break;
+      }
+
+      final manualPick = !SourceEngine.isAuto(preferredProvider);
 
       if (!mounted || _s._webstreamingOnlyExtractionCancelled) {
         // cancelled
@@ -461,8 +507,8 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
                 externalSubtitles: result.subtitles,
                 providerSourcesCache: providerSourcesCache,
                 providerProbesNotifier: probeNotifier,
-                // Auto race — keep Auto server/source so dead CDNs failover.
-                pinSource: false,
+                // Manual list pick pins; Auto race keeps failover on.
+                pinSource: manualPick,
                 onSourcePinned: (sourceUrl, sourceTitle) =>
                     _rememberWebstreamingSelection(
                       sourceUrl,

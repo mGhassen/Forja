@@ -6,7 +6,7 @@
 
 When you finish an episode (or near the end), Forja offers to play the next episode — for TMDB TV in the main player and for dedicated hub players (anime, Arabic, Asian drama). Reduces friction for serial watching.
 
-With **Auto next episode** on (default), the next episode starts automatically when playback ends. Turn it off in **Settings → Playback** or uncheck **Auto next** in the player **Episodes** panel header to only use the manual Next Episode button.
+With **Auto next episode** on (default), the next episode starts automatically when playback ends. Turn it off in **Settings → Playback** or with the **Auto next** switch in the player **Episodes** panel top bar to only use the manual Next Episode button.
 
 ## How to open it
 
@@ -16,7 +16,7 @@ Automatic at end of episode (when Auto next is on) or via the next-episode promp
 
 - Let Auto next start the following episode when the current one ends
 - Tap **Next Episode** near the end to jump early
-- Toggle **Auto next** in the Episodes panel or Settings → Playback
+- Toggle **Auto next** in the Episodes panel switch or Settings → Playback
 - Dismiss and stay on credits or exit
 
 ## Tips

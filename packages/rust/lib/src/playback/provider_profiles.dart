@@ -120,6 +120,20 @@ abstract final class ProviderProfiles {
         SourceDomain.series: 55,
       },
     ),
+    'vidlove': const ProviderProfile(
+      id: 'vidlove',
+      priority: {
+        SourceDomain.movies: 54,
+        SourceDomain.series: 54,
+      },
+    ),
+    'vidsrcsbs': const ProviderProfile(
+      id: 'vidsrcsbs',
+      priority: {
+        SourceDomain.movies: 52,
+        SourceDomain.series: 52,
+      },
+    ),
     '111movies': const ProviderProfile(
       id: '111movies',
       priority: {

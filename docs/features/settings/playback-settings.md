@@ -16,7 +16,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
-- Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as **Auto next** in the player Episodes panel header
+- Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as the **Auto next** switch in the player Episodes panel top bar
 - Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip; also available in the in-player **Settings** menu
 - Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Reorder **Server reliability** (Movies / Series / Anime tabs): drag preference; **Score** is live reliability; **Tries** is Auto check order
