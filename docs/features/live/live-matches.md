@@ -4,7 +4,7 @@
 
 ## What it is
 
-Live Matches pulls schedules and streams from sports APIs ([PPV](https://ppv.is) / `api.ppv.st`, and [Streamed](https://streamed.pk/docs) / `streamed.pk`). Browse by sport category, pick a match, and watch in an embedded WebView player. Some third-party embeds cannot be replayed in the native mpv player because their HLS URLs are session-bound.
+Live Matches pulls schedules and streams from sports APIs ([PPV](https://ppv.is) / `api.ppv.st`, [Streamed](https://streamed.pk/docs) / `streamed.pk`, and CDN Live). Browse by sport category, pick a match, and watch in an embedded WebView player. Some third-party embeds cannot be replayed in the native mpv player because their HLS URLs are session-bound.
 
 ## How to open it
 
@@ -12,8 +12,8 @@ Tap **Live Matches** in the navigation bar.
 
 ## What you can do
 
-- Use **PPV** or **Streamed** mood chips in the top bar (sport icon) to switch servers
-- Switch sport category tabs
+- Use **Servers** to switch between All, PPV, Streamed, or CDN Live
+- Switch sport category circles (All merges the same sport across servers — e.g. PPV “Football” and Streamed “football” share one chip)
 - Browse upcoming and live events — live matches appear first; only **live** matches are tappable and show the play control on hover/focus; upcoming cards show the start time badge only
 - Open a match and watch the stream in the embed player (PPV or Streamed badge top-right; autoplay when the embed allows it)
 - Double-click the video to enter/exit fullscreen (desktop window fullscreen for embeds; native PPV streams use the IPTV player)
@@ -22,7 +22,8 @@ Tap **Live Matches** in the navigation bar.
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region
-- Streamed / PPV embeds play inside a WebView iframe that mirrors the website parent page (`streamed.pk` / `ppv.is`); ad scripts that block the player page are filtered so the stream can load
+- Streamed / PPV embeds play inside a WebView iframe that mirrors the website parent page (`streamed.pk` / `ppv.is`); ad scripts that block the player page are filtered, and main-frame ad redirects are cancelled so they cannot take over the player
+- If an ad opens a popup, it appears as a small window in the bottom-right that you can **drag to move** or **close** — it never takes over the player
 - WebView playback may behave differently per platform; some embeds still require a tap if the site blocks unmuted autoplay
 
 ## Related

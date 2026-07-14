@@ -172,19 +172,21 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
 
       final seenCats = <String>{};
       final cats = <_Sport>[];
-      void addCat(String id, String name) {
+      void addCat(String raw) {
+        final id = _normalizeSportId(raw);
         if (id.isEmpty || !seenCats.add(id)) return;
-        cats.add(_Sport(id: id, name: name));
+        cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
       }
 
       for (final s in ppvStreams) {
-        addCat(s.categoryName, s.categoryName);
+        addCat(s.categoryName);
       }
       for (final m in streamedMatches) {
-        addCat(m.category, m.categoryLabel);
+        addCat(m.category);
       }
       for (final e in cdnSports) {
-        addCat(e.tournament, e.tournament);
+        // Unified chips are sport-level; CDN tournaments stay for CDN-only mode.
+        if (e.sport.isNotEmpty) addCat(e.sport);
       }
       cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
@@ -341,20 +343,25 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
   }
 
   List<_DamiTvStream> get _filteredDamiTv => _sortDamiTvLiveFirst(
-    _s._sportFilter == 'all'
-        ? _s._damiTvStreams
-        : _s._damiTvStreams.where((s) => s.categoryName == _s._sportFilter).toList(),
+    _s._damiTvStreams
+        .where((s) => _sportIdsMatch(s.categoryName, _s._sportFilter))
+        .toList(),
   );
 
   List<_StreamedMatch> get _filteredStreamed => _sortStreamedLiveFirst(
-    _s._sportFilter == 'all'
-        ? _s._streamedMatches
-        : _s._streamedMatches.where((m) => m.category == _s._sportFilter).toList(),
+    _s._streamedMatches
+        .where((m) => _sportIdsMatch(m.category, _s._sportFilter))
+        .toList(),
   );
 
   List<_CdnSportEvent> get _filteredCdnSports => _sortCdnSportsLiveFirst(
-    _s._sportFilter == 'all'
-        ? _s._cdnSports
-        : _s._cdnSports.where((s) => s.tournament == _s._sportFilter).toList(),
+    _s._cdnSports.where((s) {
+      if (_s._sportFilter == 'all') return true;
+      // All-servers uses sport buckets; CDN-only still filters by tournament.
+      if (_s._server == _LiveMatchesServer.all) {
+        return _sportIdsMatch(s.sport, _s._sportFilter);
+      }
+      return s.tournament == _s._sportFilter;
+    }).toList(),
   );
 }

@@ -129,6 +129,7 @@ class StreamExtractor {
     Duration timeout = const Duration(seconds: 60),
     String? referer,
     String? iframeWrapperBaseUrl,
+    bool forceDirect = false,
     bool Function()? isCancelled,
     String? providerId,
   }) async {
@@ -148,8 +149,9 @@ class StreamExtractor {
 
     // Session / settings: wrap embed URL in an iframe so the page sees a
     // document.referrer (defeats some hosts that block direct loads).
-    var wrapperBase = iframeWrapperBaseUrl;
-    if (wrapperBase == null &&
+    var wrapperBase = forceDirect ? null : iframeWrapperBaseUrl;
+    if (!forceDirect &&
+        wrapperBase == null &&
         await SettingsService().getPlayerWebViewUseEmbed()) {
       wrapperBase = _originBaseUrl(url);
     }

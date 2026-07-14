@@ -49,7 +49,11 @@ impl Provider for WebstreamrProvider {
             req["year"] = json!(year);
         }
         if is_tv {
-            req["season"] = json!(if request.season < 1 { 1 } else { request.season });
+            req["season"] = json!(if request.season < 1 {
+                1
+            } else {
+                request.season
+            });
             req["episode"] = json!(if request.episode < 1 {
                 1
             } else {
@@ -100,14 +104,7 @@ impl Provider for WebstreamrProvider {
                     }
                 }
             }
-            let mut source = from_legacy(
-                &url,
-                title,
-                "hls",
-                headers,
-                self.id(),
-                idx as u8,
-            );
+            let mut source = from_legacy(&url, title, "hls", headers, self.id(), idx as u8);
             source.headers = ctx.merge_headers(self.id(), source.headers);
             sources.push(source);
         }
@@ -196,10 +193,7 @@ mod tests {
         let settings = crate::request::ResolveSettings::default();
         let v = webstreamr_config_value(&settings);
         let obj = v.as_object().expect("object");
-        assert_eq!(
-            obj.get("de").and_then(|x: &Value| x.as_str()),
-            Some("on")
-        );
+        assert_eq!(obj.get("de").and_then(|x: &Value| x.as_str()), Some("on"));
         assert_eq!(
             obj.get("multi").and_then(|x: &Value| x.as_str()),
             Some("on")
@@ -209,16 +203,11 @@ mod tests {
     #[test]
     fn webstreamr_config_value_respects_explicit_map() {
         let mut settings = crate::request::ResolveSettings::default();
-        settings
-            .webstreamr_config
-            .insert("de".into(), "on".into());
+        settings.webstreamr_config.insert("de".into(), "on".into());
         let v = webstreamr_config_value(&settings);
         let obj = v.as_object().expect("object");
         assert_eq!(obj.len(), 1);
-        assert_eq!(
-            obj.get("de").and_then(|x: &Value| x.as_str()),
-            Some("on")
-        );
+        assert_eq!(obj.get("de").and_then(|x: &Value| x.as_str()), Some("on"));
         assert!(obj.get("en").is_none());
     }
 

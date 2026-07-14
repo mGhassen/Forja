@@ -48,7 +48,12 @@ impl HealthChecker {
         self.store.score_for(&key)
     }
 
-    pub fn adjust_domain_score(&self, request: &StreamRequest, provider_id: &str, base: u32) -> u32 {
+    pub fn adjust_domain_score(
+        &self,
+        request: &StreamRequest,
+        provider_id: &str,
+        base: u32,
+    ) -> u32 {
         let adj = self.score_for_request(request, provider_id);
         let shifted = base as i32 + adj;
         shifted.clamp(0, 100) as u32

@@ -235,7 +235,10 @@ fn main() -> ExitCode {
 
     if let Some(hosts) = v.get("hostRequests").and_then(|h| h.as_array()) {
         if !hosts.is_empty() {
-            eprintln!("\nhostRequests ({}) — need Flutter WebView/WASM continue:", hosts.len());
+            eprintln!(
+                "\nhostRequests ({}) — need Flutter WebView/WASM continue:",
+                hosts.len()
+            );
             for h in hosts {
                 let id = h
                     .get("providerId")

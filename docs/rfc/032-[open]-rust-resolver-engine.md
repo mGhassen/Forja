@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **6 / 6** acceptance (slice 1) · **5 / 8** acceptance (slice 2) |
-| **Current slice** | Hardening — host continue is one-by-one in score order; videasy/template native ports open |
+| **Progress** | **8 / 8** components · **6 / 6** acceptance (slice 1) · **6 / 9** acceptance (slice 2) |
+| **Current slice** | Hardening — template embeds are one file each; videasy/template native ports open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -55,6 +55,7 @@
 | 12 | R32-A12 | Dart + Rust integration tests for host continue flow | ✅ |
 | 13 | R32-A13 | Every `stream-core` template ID registered as `HostRequired` plugin (issue 039) | ✅ |
 | 14 | R32-A14 | Host pause/resume one-by-one in score order (no parallel host sprint) | ✅ |
+| 15 | R32-A15 | Template embed providers are one standalone plugin file each (issue 050); shared helper in `host_template.rs` (not under `plugins/`) | ✅ |
 
 ---
 

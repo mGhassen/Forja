@@ -17,7 +17,8 @@ static MASTER_URLS_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 static VHOST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{v\d+\}").unwrap());
 
-const EMBED_HOST: &str = "https://vsembed.ru";
+/// Canonical embed host (site announcement: vsembed.ru → vsembed.su).
+const EMBED_HOST: &str = "https://vsembed.su";
 /// Fallback when CDN host cannot be parsed from the rcp iframe URL (legacy fixtures).
 const LEGACY_CDN_HOST: &str = "cloudnestra.com";
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
@@ -59,10 +60,10 @@ pub fn build_embed_url(
     episode: Option<i32>,
 ) -> String {
     if is_movie {
-        format!("{EMBED_HOST}/embed/movie/{tmdb_id}")
+        format!("{EMBED_HOST}/embed/movie?tmdb={tmdb_id}")
     } else {
         format!(
-            "{EMBED_HOST}/embed/tv/{tmdb_id}/{}-{}",
+            "{EMBED_HOST}/embed/tv?tmdb={tmdb_id}&season={}&episode={}",
             season.unwrap_or(1),
             episode.unwrap_or(1)
         )
@@ -320,7 +321,7 @@ mod tests {
     fn movie_embed_url() {
         assert_eq!(
             build_embed_url(550, true, None, None),
-            "https://vsembed.ru/embed/movie/550"
+            "https://vsembed.su/embed/movie?tmdb=550"
         );
     }
 
@@ -328,7 +329,7 @@ mod tests {
     fn tv_embed_url() {
         assert_eq!(
             build_embed_url(1399, false, Some(2), Some(5)),
-            "https://vsembed.ru/embed/tv/1399/2-5"
+            "https://vsembed.su/embed/tv?tmdb=1399&season=2&episode=5"
         );
     }
 

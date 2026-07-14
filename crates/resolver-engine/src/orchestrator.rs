@@ -11,9 +11,7 @@ use crate::context::ResolverContext;
 use crate::provider::ProviderError;
 use crate::registry::ProviderRegistry;
 use crate::request::{ContinueRequest, StreamRequest};
-use crate::result::{
-    HostResolveRequest, ResolvePhase, ResolveProgressEvent, ResolveResponse,
-};
+use crate::result::{HostResolveRequest, ResolvePhase, ResolveProgressEvent, ResolveResponse};
 use crate::scoring::{domain_label, rank_playable_sources};
 
 #[derive(Clone)]
@@ -158,25 +156,20 @@ fn finalize_response(session: ResolveSession) -> ResolveResponse {
 
 pub fn resolve(request_json: &str) -> String {
     match resolve_inner(request_json) {
-        Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|e| {
-            serde_json::json!({ "error": e.to_string() }).to_string()
-        }),
+        Ok(resp) => serde_json::to_string(&resp)
+            .unwrap_or_else(|e| serde_json::json!({ "error": e.to_string() }).to_string()),
         Err(e) => serde_json::to_string(&ResolveResponse::failed(e)).unwrap(),
     }
 }
 
 fn resolve_inner(request_json: &str) -> Result<ResolveResponse, String> {
-    let request: StreamRequest =
-        serde_json::from_str(request_json).map_err(|e| e.to_string())?;
+    let request: StreamRequest = serde_json::from_str(request_json).map_err(|e| e.to_string())?;
     let started = Instant::now();
     let registry = Arc::new(ProviderRegistry::built_in());
     let ctx = ResolverContext::new();
 
     let mut candidates = candidate_ids(&request);
-    candidates = registry.filter_enabled(
-        &candidates,
-        &request.settings.enabled_provider_ids,
-    );
+    candidates = registry.filter_enabled(&candidates, &request.settings.enabled_provider_ids);
     let ordered = registry.ordered_ids(
         request.domain,
         &candidates,
@@ -407,8 +400,7 @@ fn parallel_try_native(
         };
     }
 
-    let results: Arc<Mutex<Vec<(String, Vec<PlayableSource>)>>> =
-        Arc::new(Mutex::new(Vec::new()));
+    let results: Arc<Mutex<Vec<(String, Vec<PlayableSource>)>>> = Arc::new(Mutex::new(Vec::new()));
     let done = Arc::new(AtomicBool::new(false));
 
     std::thread::scope(|s| {
@@ -576,16 +568,14 @@ fn try_provider(
 
 pub fn continue_with_host(payload_json: &str) -> String {
     match continue_inner(payload_json) {
-        Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|e| {
-            serde_json::json!({ "error": e.to_string() }).to_string()
-        }),
+        Ok(resp) => serde_json::to_string(&resp)
+            .unwrap_or_else(|e| serde_json::json!({ "error": e.to_string() }).to_string()),
         Err(e) => serde_json::to_string(&ResolveResponse::failed(e)).unwrap(),
     }
 }
 
 fn continue_inner(payload_json: &str) -> Result<ResolveResponse, String> {
-    let req: ContinueRequest =
-        serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+    let req: ContinueRequest = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
     let mut session = SESSIONS
         .lock()
         .unwrap_or_else(|e| e.into_inner())
@@ -601,10 +591,7 @@ fn continue_inner(payload_json: &str) -> Result<ResolveResponse, String> {
             });
             continue;
         }
-        let rank = *session
-            .effective_ranks
-            .get(&host.provider_id)
-            .unwrap_or(&0);
+        let rank = *session.effective_ranks.get(&host.provider_id).unwrap_or(&0);
         let sources = ingest_host_sources(&host.provider_id, &host.sources_json, rank);
         if sources.is_empty() {
             session.progress.push(ResolveProgressEvent {

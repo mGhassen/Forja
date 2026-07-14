@@ -43,6 +43,8 @@ class _CdnSportEvent {
   final String awayTeamIMG;
   final String time;
   final String tournament;
+  /// Parent CDN bucket (Soccer / NFL / NBA / NHL), injected by Rust flatten.
+  final String sport;
   final String country;
   final String countryIMG;
   final String status;
@@ -58,6 +60,7 @@ class _CdnSportEvent {
     required this.awayTeamIMG,
     required this.time,
     required this.tournament,
+    required this.sport,
     required this.country,
     required this.countryIMG,
     required this.status,
@@ -74,6 +77,7 @@ class _CdnSportEvent {
     awayTeamIMG: (j['awayTeamIMG'] ?? '').toString(),
     time: (j['time'] ?? '').toString(),
     tournament: (j['tournament'] ?? '').toString(),
+    sport: (j['sport'] ?? '').toString(),
     country: (j['country'] ?? '').toString(),
     countryIMG: (j['countryIMG'] ?? '').toString(),
     status: (j['status'] ?? '').toString(),
@@ -85,6 +89,51 @@ class _CdnSportEvent {
   );
 
   bool get isLive => status.toLowerCase() == 'live';
+}
+
+/// Canonical sport chip id across PPV / Streamed / CDN label variants.
+///
+/// PPV uses Title Case (`American Football`); Streamed uses kebab slugs
+/// (`american-football`); CDN uses bucket names (`Soccer`, `NFL`).
+String _normalizeSportId(String raw) {
+  var s = raw.trim().toLowerCase().replaceAll(RegExp(r'[/_\s]+'), '-');
+  s = s.replaceAll(RegExp(r'-+'), '-');
+  if (s.endsWith('-')) s = s.substring(0, s.length - 1);
+  const aliases = <String, String>{
+    'motorsports': 'motor-sports',
+    'motor-sport': 'motor-sports',
+    'miscellaneous': 'other',
+    'misc': 'other',
+    'soccer': 'football',
+    'afl': 'australian-football',
+    'nfl': 'american-football',
+    'nba': 'basketball',
+    'nhl': 'hockey',
+    '24-7-streams': '24-7',
+    '24-7-stream': '24-7',
+  };
+  return aliases[s] ?? s;
+}
+
+String _sportDisplayName(String raw, String normalizedId) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return normalizedId;
+  // Prefer human labels (PPV Title Case / Streamed sports API names).
+  if (trimmed.contains(RegExp(r'\s')) || trimmed != trimmed.toLowerCase()) {
+    return trimmed;
+  }
+  return normalizedId
+      .split('-')
+      .where((w) => w.isNotEmpty)
+      .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+      .join(' ');
+}
+
+bool _sportIdsMatch(String raw, String filterId) {
+  if (filterId == 'all' || filterId.isEmpty) return true;
+  final normalized = _normalizeSportId(raw);
+  if (normalized.isEmpty) return false;
+  return normalized == _normalizeSportId(filterId);
 }
 
 class _DamiTvStream {
@@ -465,6 +514,10 @@ const _dblclickFullscreenJs = r'''
 /// Wrap the third-party embed in an iframe under [baseUrl] so `document.referrer`
 /// matches the website (streamed.pk / ppv.is). Direct top-level loads of
 /// embed.st stall behind parser-blocking ad scripts and leave a white WebView.
+///
+/// Do **not** set HTML `sandbox` — embed hosts reject sandboxed parents with
+/// "SANDBOX IFRAME NOT ALLOWED". Main-frame hijacks are cancelled in
+/// `shouldOverrideUrlLoading`; ad `window.open` goes to the movable popup.
 String _buildLiveEmbedWrapperHtml(String embedUrl) {
   final safe = embedUrl
       .replaceAll('&', '&amp;')
@@ -487,6 +540,9 @@ iframe{border:0;width:100%;height:100%;display:block}
 /// Ad / tracker hosts that inject parser-blocking scripts on embed.st and keep
 /// `onLoadStop` from firing (unlimited spinner + blank player).
 List<ContentBlocker> _liveEmbedContentBlockers() {
+  // Only parser-blocking script hosts that hang the player document itself.
+  // Click / interstitial networks are NOT blocked here — their popups are
+  // contained in the movable ad popup, and the iframe sandbox stops top-nav.
   const hosts = <String>[
     r'.*therocketlanguages\.com.*',
     r'.*optimserve\.agency.*',

@@ -1,13 +1,27 @@
+pub mod autoembed;
 pub mod debrid;
 pub mod iptv;
 pub mod kisskh;
+pub mod movies111;
+pub mod moviesapi;
 pub mod nuvio;
+pub mod primewire;
 pub mod service111477;
+pub mod smashystream;
 pub mod stremio_addon;
-pub mod template_embed;
+pub mod superembed;
 pub mod torrentio;
-pub mod vidsrc;
+pub mod two_embed;
 pub mod videasy;
+pub mod vidfast;
+pub mod vidlink;
+pub mod vidlove;
+pub mod vidnest;
+pub mod vidrock;
+pub mod vidsrc;
+pub mod vidsrcsbs;
+pub mod vidzee;
+pub mod vixsrc;
 pub mod webstreamr;
 
 use std::sync::Arc;
@@ -20,21 +34,21 @@ pub fn built_in() -> Vec<Arc<dyn Provider>> {
         Arc::new(vidsrc::VidsrcProvider),
         Arc::new(videasy::VideasyProvider),
         Arc::new(service111477::Service111477Provider),
-        Arc::new(template_embed::VidlinkProvider),
-        Arc::new(template_embed::VixsrcProvider),
-        Arc::new(template_embed::VidnestProvider),
-        Arc::new(template_embed::VidzeeProvider),
-        Arc::new(template_embed::VidrockProvider),
-        Arc::new(template_embed::VidfastProvider),
-        Arc::new(template_embed::TwoEmbedProvider),
-        Arc::new(template_embed::SuperembedProvider),
-        Arc::new(template_embed::AutoembedProvider),
-        Arc::new(template_embed::VidloveProvider),
-        Arc::new(template_embed::VidsrcsbsProvider),
-        Arc::new(template_embed::Movies111Provider),
-        Arc::new(template_embed::MoviesapiProvider),
-        Arc::new(template_embed::SmashystreamProvider),
-        Arc::new(template_embed::PrimewireProvider),
+        Arc::new(vidlink::VidlinkProvider),
+        Arc::new(vixsrc::VixsrcProvider),
+        Arc::new(vidnest::VidnestProvider),
+        Arc::new(vidzee::VidzeeProvider),
+        Arc::new(vidrock::VidrockProvider),
+        Arc::new(vidfast::VidfastProvider),
+        Arc::new(two_embed::TwoEmbedProvider),
+        Arc::new(superembed::SuperembedProvider),
+        Arc::new(autoembed::AutoembedProvider),
+        Arc::new(vidlove::VidloveProvider),
+        Arc::new(vidsrcsbs::VidsrcsbsProvider),
+        Arc::new(movies111::Movies111Provider),
+        Arc::new(moviesapi::MoviesapiProvider),
+        Arc::new(smashystream::SmashystreamProvider),
+        Arc::new(primewire::PrimewireProvider),
         Arc::new(nuvio::NuvioProvider),
         Arc::new(kisskh::KisskhProvider),
         Arc::new(torrentio::TorrentioProvider),

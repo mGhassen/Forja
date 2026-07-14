@@ -28,18 +28,14 @@ impl Provider for VidsrcProvider {
             return Err(ProviderError::Cancelled);
         }
         let is_tv = request.media_type == "tv";
-        let embed = if is_tv {
-            stream_core::build_tv_url(
-                self.id(),
-                request.tmdb_id,
-                request.season,
-                request.episode,
-            )
-        } else {
-            stream_core::build_movie_url(self.id(), request.tmdb_id)
-        };
-        let embed_url = embed.ok_or(ProviderError::NoStreams)?;
-        let req = json!({ "embedUrl": embed_url });
+        // Native extractor builds vsembed.su URLs itself — do not use
+        // stream_core::build_*_url (template-only; returns None for "vidsrc").
+        let req = json!({
+            "tmdb_id": request.tmdb_id,
+            "is_movie": !is_tv,
+            "season": if is_tv { Some(request.season) } else { None::<i32> },
+            "episode": if is_tv { Some(request.episode) } else { None::<i32> },
+        });
         let started = Instant::now();
         let raw = webstreamr::resolve_vidsrc_embed_json(&req.to_string());
         if ctx.is_cancelled() {
@@ -50,10 +46,7 @@ impl Provider for VidsrcProvider {
         if parsed.get("error").is_some() {
             return Err(ProviderError::NoStreams);
         }
-        let url = parsed
-            .get("url")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let url = parsed.get("url").and_then(|v| v.as_str()).unwrap_or("");
         if url.is_empty() {
             return Err(ProviderError::NoStreams);
         }

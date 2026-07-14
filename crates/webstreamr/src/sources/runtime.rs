@@ -35,7 +35,7 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         label: "VidSrc",
         content_types: &[MediaType::Movie, MediaType::Series],
         country_codes: &["multi"],
-        base_url: "https://vidsrc-embed.ru",
+        base_url: "https://vsembed.su",
         priority: 0,
         use_only_with_max_urls_found: Some(0),
     },
@@ -1140,6 +1140,7 @@ mod tests {
         };
         let embeds = resolve_source("vidsrc", &req);
         assert_eq!(embeds.len(), 1);
-        assert!(embeds[0].url.contains("vidsrc"));
+        assert!(embeds[0].url.contains("vsembed.su"));
+        assert!(embeds[0].url.contains("tt0944947"));
     }
 }

@@ -16,7 +16,7 @@ fn vidsrc_movie_tmdb_golden() {
     };
     let rows = resolve_source("vidsrc", &req);
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].url, "https://vidsrc-embed.ru/embed/movie/550");
+    assert_eq!(rows[0].url, "https://vsembed.su/embed/movie?tmdb=550");
     assert_eq!(rows[0].country_codes, vec!["multi"]);
 }
 
@@ -32,7 +32,7 @@ fn vidsrc_series_imdb_golden() {
         year: None,
     };
     let rows = resolve_source("vidsrc", &req);
-    assert_eq!(rows[0].url, "https://vidsrc-embed.ru/embed/tv/tt0944947/1-1");
+    assert_eq!(rows[0].url, "https://vsembed.su/embed/tt0944947/1-1/");
 }
 
 #[test]

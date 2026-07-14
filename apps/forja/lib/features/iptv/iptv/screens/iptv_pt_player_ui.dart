@@ -333,9 +333,9 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         onToggleControls: _toggleControls,
         child: MouseRegion(
         onHover: (_) => _onPlayerMouseMove(),
-        cursor: _s._controlsVisible &&
-                !_s._guideVisible &&
-                !_s._searchVisible
+        cursor: (_s._controlsVisible ||
+                _s._guideVisible ||
+                _s._searchVisible)
             ? SystemMouseCursors.basic
             : SystemMouseCursors.none,
         child: GestureDetector(

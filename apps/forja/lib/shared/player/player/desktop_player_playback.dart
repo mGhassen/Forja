@@ -784,18 +784,15 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       if (_s._disposed) return;
       _s._positionNotifier.value = pos;
 
-      // Near-end detection for next episode button
-      if (_s._isNextEpisodeAvailable && !_s._nearEndOfEpisode) {
-        final dur = _s._durationNotifier.value;
-        if (dur.inSeconds > 0) {
-          final remaining = dur - pos;
-          final threshold = dur.inMinutes < 10
-              ? Duration(seconds: (dur.inSeconds * 0.05).round())
-              : const Duration(minutes: 2);
-          if (remaining <= threshold) {
-            setState(() => _s._nearEndOfEpisode = true);
-          }
+      // Near-end detection for next episode button (clears if seeked back /
+      // duration corrects after a bogus early report).
+      if (_s._isNextEpisodeAvailable) {
+        final nearEnd = isNearEndOfEpisode(pos, _s._durationNotifier.value);
+        if (nearEnd != _s._nearEndOfEpisode) {
+          setState(() => _s._nearEndOfEpisode = nearEnd);
         }
+      } else if (_s._nearEndOfEpisode) {
+        setState(() => _s._nearEndOfEpisode = false);
       }
 
       // Skip segment detection (IntroDB)

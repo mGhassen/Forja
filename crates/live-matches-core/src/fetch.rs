@@ -199,7 +199,13 @@ pub fn cdn_sports() -> String {
     for key in CDN_SPORT_KEYS {
         if let Some(events) = cdn_data.get(*key).and_then(|v| v.as_array()) {
             for e in events {
-                result.push(e.clone());
+                let mut event = e.clone();
+                // Preserve the parent sport bucket (Soccer / NFL / …) so the
+                // host can merge CDN into unified All-servers sport chips.
+                if let Some(obj) = event.as_object_mut() {
+                    obj.insert("sport".into(), Value::String((*key).to_string()));
+                }
+                result.push(event);
             }
         }
     }
@@ -242,5 +248,29 @@ mod tests {
             })
             .collect();
         assert_eq!(items.len(), 1);
+    }
+
+    #[test]
+    fn cdn_sports_injects_sport_bucket() {
+        let cdn_data = json!({
+            "Soccer": [{"gameID": "1", "tournament": "EPL"}],
+            "NBA": [{"gameID": "2", "tournament": "NBA"}]
+        });
+        let keys = ["Soccer", "NFL", "NBA", "NHL"];
+        let mut result = Vec::new();
+        for key in keys {
+            if let Some(events) = cdn_data.get(key).and_then(|v| v.as_array()) {
+                for e in events {
+                    let mut event = e.clone();
+                    if let Some(obj) = event.as_object_mut() {
+                        obj.insert("sport".into(), Value::String(key.to_string()));
+                    }
+                    result.push(event);
+                }
+            }
+        }
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0]["sport"], "Soccer");
+        assert_eq!(result[1]["sport"], "NBA");
     }
 }

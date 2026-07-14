@@ -6,7 +6,7 @@ import 'package:rust/rust.dart';
 
 import 'extracted_media.dart';
 
-/// Vidsrc / vsembed.ru — resolved via Rust (3 HTTP fetches + HTML chain).
+/// Vidsrc / vsembed.su — resolved via Rust (3 HTTP fetches + HTML chain).
 class VidsrcExtractor {
   static int _resolveGeneration = 0;
 
@@ -24,8 +24,8 @@ class VidsrcExtractor {
   }) {
     final id = int.tryParse(tmdbId);
     if (id == null) return '';
-    if (isMovie) return 'https://vsembed.ru/embed/movie/$id';
-    return 'https://vsembed.ru/embed/tv/$id/${season ?? 1}-${episode ?? 1}';
+    if (isMovie) return 'https://vsembed.su/embed/movie?tmdb=$id';
+    return 'https://vsembed.su/embed/tv?tmdb=$id&season=${season ?? 1}&episode=${episode ?? 1}';
   }
 
   Future<ExtractedMedia?> extract({

@@ -686,7 +686,17 @@ class _LiveMatchesEmbedPlayerScreenState
     extends State<_LiveMatchesEmbedPlayerScreen> {
   bool _loading = true;
   bool _isFullscreen = false;
+  bool _ready = false;
   Timer? _loadingWatchdog;
+
+  /// Native popup ([window.open]) surfaced by an ad — shown in a small movable
+  /// box instead of hijacking the player. Only one popup is kept at a time.
+  int? _adWindowId;
+  Offset? _adPopupOffset;
+
+  late final InAppWebViewInitialData _initialData;
+  late final InAppWebViewSettings _initialSettings;
+  late final UnmodifiableListView<UserScript> _initialUserScripts;
 
   final FocusNode _backFocusNode = FocusNode(
     debugLabel: 'live-embed-back',
@@ -704,12 +714,63 @@ class _LiveMatchesEmbedPlayerScreenState
 
   void _clearLoading() {
     if (!mounted || !_loading) return;
-    setState(() => _loading = false);
+    setState(() {
+      _loading = false;
+      _ready = true;
+    });
+  }
+
+  void _closeAdPopup() {
+    if (!mounted || _adWindowId == null) return;
+    setState(() {
+      _adWindowId = null;
+      _adPopupOffset = null;
+    });
   }
 
   @override
   void initState() {
     super.initState();
+    final embedUrl = widget.embedUrl;
+    final wrapperBase = widget.referer.endsWith('/')
+        ? widget.referer
+        : '${widget.referer}/';
+    _initialData = InAppWebViewInitialData(
+      data: _buildLiveEmbedWrapperHtml(embedUrl),
+      baseUrl: WebUri(wrapperBase),
+      historyUrl: WebUri(wrapperBase),
+      mimeType: 'text/html',
+      encoding: 'utf-8',
+    );
+    _initialUserScripts = UnmodifiableListView([
+      UserScript(
+        source: _autoplayJs,
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+        forMainFrameOnly: false,
+      ),
+      UserScript(
+        source: _dblclickFullscreenJs,
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+        forMainFrameOnly: false,
+      ),
+    ]);
+    _initialSettings = InAppWebViewSettings(
+      userAgent: _ua['User-Agent'],
+      domStorageEnabled: true,
+      mediaPlaybackRequiresUserGesture: false,
+      allowsInlineMediaPlayback: true,
+      javaScriptEnabled: true,
+      disableDefaultErrorPage: true,
+      allowsAirPlayForMediaPlayback: true,
+      allowsPictureInPictureMediaPlayback: true,
+      iframeAllow: 'autoplay; fullscreen; encrypted-media',
+      iframeAllowFullscreen: true,
+      useShouldOverrideUrlLoading: true,
+      // Ad window.open → onCreateWindow → contained movable popup.
+      supportMultipleWindows: true,
+      javaScriptCanOpenWindowsAutomatically: true,
+      contentBlockers: _liveEmbedContentBlockers(),
+    );
     // Wrapper + iframe usually finishes quickly; if an ad CDN still hangs the
     // document, don't leave the spinner forever.
     _loadingWatchdog = Timer(const Duration(seconds: 12), _clearLoading);
@@ -868,124 +929,188 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   Widget build(BuildContext context) {
     final embedUrl = widget.embedUrl;
-    final wrapperBase = widget.referer.endsWith('/')
-        ? widget.referer
-        : '${widget.referer}/';
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          ForjaInAppWebView(
-            // Match streamed.pk / ppv.is: embed lives in an iframe under the
-            // catalog origin so document.referrer is set and ad scripts that
-            // block top-level document parse are easier to isolate.
-            initialData: InAppWebViewInitialData(
-              data: _buildLiveEmbedWrapperHtml(embedUrl),
-              baseUrl: WebUri(wrapperBase),
-              historyUrl: WebUri(wrapperBase),
-              mimeType: 'text/html',
-              encoding: 'utf-8',
+      body: LayoutBuilder(
+        builder: (context, constraints) => Stack(
+          fit: StackFit.expand,
+          children: [
+            ForjaInAppWebView(
+              // Match streamed.pk / ppv.is: embed lives in an iframe under the
+              // catalog origin so document.referrer is set and ad scripts that
+              // block top-level document parse are easier to isolate.
+              initialData: _initialData,
+              initialUserScripts: _initialUserScripts,
+              initialSettings: _initialSettings,
+              onWebViewCreated: (controller) {
+                controller.addJavaScriptHandler(
+                  handlerName: 'toggleFullscreen',
+                  callback: (_) {
+                    unawaited(_toggleFullscreen());
+                  },
+                );
+              },
+              onLoadStart: (_, _) {
+                // Ad main-frame hijack attempts can fire load-start; do not
+                // setState after the player is ready (rebuild churn + WK crash).
+                if (!mounted || _ready || _loading) return;
+                setState(() => _loading = true);
+              },
+              onLoadStop: (ctrl, _) async {
+                _loadingWatchdog?.cancel();
+                _clearLoading();
+                try {
+                  await ctrl.evaluateJavascript(source: _autoplayJs);
+                  await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
+                } catch (_) {}
+                WidgetsBinding.instance
+                    .addPostFrameCallback((_) => _focusBack());
+              },
+              onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
+              onExitFullscreen: (_) => unawaited(_exitFullscreen()),
+              onCreateWindow: (_, action) async {
+                // Keep a single popup; ignore extra ad spawns until closed.
+                if (!mounted || _adWindowId != null) return false;
+                setState(() => _adWindowId = action.windowId);
+                return true;
+              },
+              shouldOverrideUrlLoading: (ctrl, action) async {
+                // Player CDNs and nested iframes leave embed.st — never cancel
+                // subframe navigations (that caused blank/white players).
+                if (action.isForMainFrame != true) {
+                  return NavigationActionPolicy.ALLOW;
+                }
+                final url = action.request.url?.toString() ?? '';
+                if (_liveEmbedAllowsNavigation(
+                  url: url,
+                  embedUrl: embedUrl,
+                  referer: widget.referer,
+                  origin: widget.origin,
+                )) {
+                  return NavigationActionPolicy.ALLOW;
+                }
+                debugPrint('[LiveMatches] blocked main-frame nav: $url');
+                return NavigationActionPolicy.CANCEL;
+              },
             ),
-            initialUserScripts: UnmodifiableListView([
-              UserScript(
-                source: _autoplayJs,
-                injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
-                forMainFrameOnly: false,
+            if (_loading)
+              Center(
+                child: CircularProgressIndicator(
+                  color: ForjaShellColors.sectionAccent,
+                ),
               ),
-              UserScript(
-                source: _dblclickFullscreenJs,
-                injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
-                forMainFrameOnly: false,
+            if (!_isFullscreen) ...[
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black87, Colors.transparent],
+                    ),
+                  ),
+                  child: _buildTopBar(),
+                ),
               ),
-            ]),
-            initialSettings: InAppWebViewSettings(
-              userAgent: _ua['User-Agent'],
-              domStorageEnabled: true,
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              javaScriptEnabled: true,
-              disableDefaultErrorPage: true,
-              supportMultipleWindows: false,
-              allowsAirPlayForMediaPlayback: true,
-              allowsPictureInPictureMediaPlayback: true,
-              iframeAllow: 'autoplay; fullscreen; encrypted-media',
-              iframeAllowFullscreen: true,
-              useShouldOverrideUrlLoading: true,
-              javaScriptCanOpenWindowsAutomatically: false,
-              contentBlockers: _liveEmbedContentBlockers(),
-            ),
-            onWebViewCreated: (controller) {
-              controller.addJavaScriptHandler(
-                handlerName: 'toggleFullscreen',
-                callback: (_) {
-                  unawaited(_toggleFullscreen());
+              Positioned(
+                top: _topBarTopPadding(context),
+                right: 16,
+                child: _buildSourceBadge(),
+              ),
+            ],
+            if (_adWindowId != null) _buildAdPopup(constraints),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdPopup(BoxConstraints constraints) {
+    const w = 320.0;
+    const h = 240.0;
+    final maxLeft = (constraints.maxWidth - w).clamp(0.0, double.infinity);
+    final maxTop = (constraints.maxHeight - h).clamp(0.0, double.infinity);
+    // Default anchor: bottom-right with a 16px margin.
+    final base = _adPopupOffset ??
+        Offset(
+          (maxLeft - 16).clamp(0.0, maxLeft),
+          (maxTop - 16).clamp(0.0, maxTop),
+        );
+    final left = base.dx.clamp(0.0, maxLeft);
+    final top = base.dy.clamp(0.0, maxTop);
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: w,
+      height: h,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white24),
+          boxShadow: const [
+            BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Column(
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanUpdate: (d) {
+                  setState(() {
+                    _adPopupOffset = Offset(
+                      (left + d.delta.dx).clamp(0.0, maxLeft),
+                      (top + d.delta.dy).clamp(0.0, maxTop),
+                    );
+                  });
                 },
-              );
-            },
-            onLoadStart: (_, _) {
-              if (!mounted) return;
-              setState(() => _loading = true);
-            },
-            onLoadStop: (ctrl, _) async {
-              _loadingWatchdog?.cancel();
-              _clearLoading();
-              try {
-                await ctrl.evaluateJavascript(source: _autoplayJs);
-                await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
-              } catch (_) {}
-              WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
-            },
-            onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
-            onExitFullscreen: (_) => unawaited(_exitFullscreen()),
-            shouldOverrideUrlLoading: (ctrl, action) async {
-              // Player CDNs and nested iframes leave embed.st — never cancel
-              // subframe navigations (that caused blank/white players).
-              if (action.isForMainFrame != true) {
-                return NavigationActionPolicy.ALLOW;
-              }
-              final url = action.request.url?.toString() ?? '';
-              if (_liveEmbedAllowsNavigation(
-                url: url,
-                embedUrl: embedUrl,
-                referer: widget.referer,
-                origin: widget.origin,
-              )) {
-                return NavigationActionPolicy.ALLOW;
-              }
-              debugPrint('[LiveMatches] blocked main-frame nav: $url');
-              return NavigationActionPolicy.CANCEL;
-            },
-          ),
-          if (_loading)
-            Center(
-              child: CircularProgressIndicator(
-                color: ForjaShellColors.sectionAccent,
-              ),
-            ),
-          if (!_isFullscreen) ...[
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black87, Colors.transparent],
+                child: Container(
+                  height: 30,
+                  color: const Color(0xFF1E1E1E),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.drag_indicator_rounded,
+                          size: 16, color: Colors.white38),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'Ad',
+                          style: TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: _closeAdPopup,
+                        child: const Padding(
+                          padding: EdgeInsets.all(2),
+                          child: Icon(Icons.close_rounded,
+                              size: 16, color: Colors.white70),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: _buildTopBar(),
               ),
-            ),
-            Positioned(
-              top: _topBarTopPadding(context),
-              right: 16,
-              child: _buildSourceBadge(),
-            ),
-          ],
-        ],
+              Expanded(
+                child: InAppWebView(
+                  windowId: _adWindowId,
+                  initialSettings: InAppWebViewSettings(
+                    transparentBackground: false,
+                    supportMultipleWindows: true,
+                    javaScriptCanOpenWindowsAutomatically: false,
+                  ),
+                  onCloseWindow: (_) => _closeAdPopup(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

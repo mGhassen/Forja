@@ -218,20 +218,17 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                   ),
 
                 if (_s._isLoadingNextEp)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.42),
-                      child: Center(
-                        child: PlayerEpisodeLoadingCard(
-                          episodeLabel: _s._episodeLoadingLabel.isEmpty
-                              ? 'Loading episode'
-                              : _s._episodeLoadingLabel,
-                          status: _s._episodeLoadingStatus.isEmpty
-                              ? 'Please wait…'
-                              : _s._episodeLoadingStatus,
-                          failed: _s._episodeLoadingFailed,
-                        ),
-                      ),
+                  Positioned(
+                    bottom: 120,
+                    right: 16,
+                    child: PlayerEpisodeLoadingCard(
+                      episodeLabel: _s._episodeLoadingLabel.isEmpty
+                          ? 'Loading episode'
+                          : _s._episodeLoadingLabel,
+                      status: _s._episodeLoadingStatus.isEmpty
+                          ? 'Please wait…'
+                          : _s._episodeLoadingStatus,
+                      failed: _s._episodeLoadingFailed,
                     ),
                   ),
 

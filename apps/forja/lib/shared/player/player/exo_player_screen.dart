@@ -113,6 +113,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
+  bool _nearEndOfEpisode = false;
 
   late List<_ExoSource> _sources;
   int _sourceIndex = 0;
@@ -276,10 +277,16 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
         final durMs = (event['duration'] as num?)?.toInt() ?? 0;
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
+        final pos = Duration(milliseconds: posMs);
+        final dur = durMs > 0 ? Duration(milliseconds: durMs) : _duration;
+        final nearEnd = widget.hasNextEpisode &&
+            widget.onNextEpisode != null &&
+            isNearEndOfEpisode(pos, dur);
         setState(() {
-          _position = Duration(milliseconds: posMs);
+          _position = pos;
           if (durMs > 0) _duration = Duration(milliseconds: durMs);
           _buffered = Duration(milliseconds: bufMs);
+          _nearEndOfEpisode = nearEnd;
         });
         break;
       case 'ended':
@@ -1141,6 +1148,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
               ),
               if (widget.hasNextEpisode &&
                   widget.onNextEpisode != null &&
+                  _nearEndOfEpisode &&
                   !_loadingNextEp)
                 Positioned(
                   bottom: 120,
@@ -1188,16 +1196,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                   ),
                 ),
               if (_loadingNextEp)
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.42),
-                    child: Center(
-                      child: PlayerEpisodeLoadingCard(
-                        episodeLabel: _episodeLoadingLabel,
-                        status: _episodeLoadingStatus,
-                        failed: _episodeLoadingFailed,
-                      ),
-                    ),
+                Positioned(
+                  bottom: 120,
+                  right: 16,
+                  child: PlayerEpisodeLoadingCard(
+                    episodeLabel: _episodeLoadingLabel,
+                    status: _episodeLoadingStatus,
+                    failed: _episodeLoadingFailed,
                   ),
                 ),
               if (!_loadingNextEp)

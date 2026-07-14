@@ -626,3 +626,19 @@ int? hubEpisodeIndex(List<PlayerHubEpisode> episodes, num current) {
   if (idx == null) return (hasPrev: false, hasNext: false);
   return (hasPrev: idx > 0, hasNext: idx < episodes.length - 1);
 }
+
+/// Whether the floating "Next Episode" chip should show.
+///
+/// Requires a trustworthy duration (avoids HLS briefly reporting a short
+/// length and latching the button for the whole episode). Last ~5% of short
+/// titles, or last 2 minutes of longer ones. Cleared when the user seeks back.
+bool isNearEndOfEpisode(Duration position, Duration duration) {
+  // Ignore bogus early duration reports from adaptive streams.
+  if (duration.inSeconds < 90) return false;
+  final remaining = duration - position;
+  if (remaining.isNegative) return true;
+  final threshold = duration.inMinutes < 10
+      ? Duration(seconds: (duration.inSeconds * 0.05).round().clamp(5, 30))
+      : const Duration(minutes: 2);
+  return remaining <= threshold;
+}

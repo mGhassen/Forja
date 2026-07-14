@@ -19,7 +19,7 @@ impl HeaderManager {
             "vidsrc".into(),
             HashMap::from([
                 ("User-Agent".into(), "Mozilla/5.0".into()),
-                ("Referer".into(), "https://vidsrc.net/".into()),
+                ("Referer".into(), "https://vsembed.su/".into()),
             ]),
         );
         Self { defaults }
@@ -30,11 +30,7 @@ impl HeaderManager {
         provider_id: &str,
         extra: HashMap<String, String>,
     ) -> HashMap<String, String> {
-        let mut out = self
-            .defaults
-            .get(provider_id)
-            .cloned()
-            .unwrap_or_default();
+        let mut out = self.defaults.get(provider_id).cloned().unwrap_or_default();
         for (k, v) in extra {
             if !v.is_empty() {
                 out.insert(k, v);

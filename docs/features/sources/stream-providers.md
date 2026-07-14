@@ -49,8 +49,8 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc
 - Power users: pin a server from the player menu
 - WebStreamr is powerful but slower — profile priority keeps it lower by default
 - **Videasy** resolves via `db.wingsdatabase.com` + `api.wingsdatabase.com` mirrors (same as [player.videasy.to](https://player.videasy.to) Servers: Yoru→`cdn`, Neon→`neon2`, Sage→`ym`, … — not the public embed docs on [videasy.to](https://www.videasy.to/docs)). Forja probes **Yoru/`cdn` first** (website default); hung mirrors fail fast. Successful mirrors show as named sources (Yoru, Neon, …). If all mirrors fail/CF-block, Forja sniffs `player.videasy.to`
-- **Vidsrc** uses `vsembed.ru` embeds; the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`
-- **VidSrc.sbs** (`vidsrc.sbs/embed/…`) is a separate template embed from **Vidsrc** (`vsembed.ru`) — WebView sniff on desktop/mobile
+- **Vidsrc** uses `vsembed.su` embeds (`/embed/movie?tmdb=` · `/embed/tv?tmdb=&season=&episode=`); the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`
+- **VidSrc.sbs** (`vidsrc.sbs/embed/…`) is a separate template embed from **Vidsrc** (`vsembed.su`). Its aggregator rejects iframe-wrapped playback, so Forja opens it as the headless WebView's top-level document before sniffing on desktop/mobile
 - Template embed hosts are kept on documented canonical domains: VidFast (`vidfast.vc`), VidRock (`vidrock.ru`), Vidzee (`player.vidzee.wtf/embed/…`), VidLove / 111Movies (`player.vidlove.cc/embed/…`), VidSrc.sbs (`vidsrc.sbs/embed/…`), SmashyStream (`anyembed.xyz/embed/…`). SuperEmbed still uses `multiembed.mov` per provider docs (may redirect internally)
 - **PrimeWire** (`primewire.tf`) has been unreliable in live checks — expect misses; pick another server if it fails
 - When Rust cannot resolve a VidSrc-style embed (common on older films), Forja falls back to a headless browser sniff on desktop/mobile — same idea as PlayTorrio. Configure **MediaFlow Proxy** / **FlareSolverr** in WebStreamr settings if regional hosts return 403

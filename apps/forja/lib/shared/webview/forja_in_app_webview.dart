@@ -18,6 +18,7 @@ class ForjaInAppWebView extends StatelessWidget {
     this.onEnterFullscreen,
     this.onExitFullscreen,
     this.shouldOverrideUrlLoading,
+    this.onCreateWindow,
     this.onLoadResource,
     this.onReceivedError,
     this.onReceivedHttpError,
@@ -39,6 +40,10 @@ class ForjaInAppWebView extends StatelessWidget {
     InAppWebViewController controller,
     NavigationAction navigationAction,
   )? shouldOverrideUrlLoading;
+  final Future<bool?> Function(
+    InAppWebViewController controller,
+    CreateWindowAction createWindowAction,
+  )? onCreateWindow;
   final void Function(InAppWebViewController controller, LoadedResource resource)?
       onLoadResource;
   final void Function(
@@ -58,8 +63,9 @@ class ForjaInAppWebView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Do not forward [key] onto InAppWebView — that would register the same
+    // GlobalKey on two widgets (this StatelessWidget + the child).
     return InAppWebView(
-      key: key,
       initialData: initialData,
       initialUrlRequest: initialUrlRequest,
       initialUserScripts: initialUserScripts,
@@ -72,6 +78,7 @@ class ForjaInAppWebView extends StatelessWidget {
       onEnterFullscreen: onEnterFullscreen,
       onExitFullscreen: onExitFullscreen,
       shouldOverrideUrlLoading: shouldOverrideUrlLoading,
+      onCreateWindow: onCreateWindow,
       onLoadResource: onLoadResource,
       onReceivedError: onReceivedError,
       onReceivedHttpError: onReceivedHttpError,

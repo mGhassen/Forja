@@ -231,8 +231,8 @@ impl ProviderHealthStore {
 }
 
 fn total_for(g: &HealthState, key: &str) -> i32 {
-    ((g.server.get(key).copied().unwrap_or(0) + g.stream.get(key).copied().unwrap_or(0))
-        .max(0)) as i32
+    ((g.server.get(key).copied().unwrap_or(0) + g.stream.get(key).copied().unwrap_or(0)).max(0))
+        as i32
 }
 
 /// Extract provider id from a memory key (`movie:550:vixsrc`, `tv:1:s1e2:nuvio:x`, …).
@@ -360,8 +360,7 @@ pub fn handle_health_json(payload: &str) -> String {
             .unwrap_or_else(|e| serde_json::json!({ "error": e.to_string() }).to_string())
         }
         "recordStreamUp" => {
-            let score =
-                store.record_stream_up_with_wins(&req.memory_key, req.stream_wins);
+            let score = store.record_stream_up_with_wins(&req.memory_key, req.stream_wins);
             serde_json::to_string(&HealthQueryResponse {
                 score,
                 server_verdict: store.server_verdict_for(&req.memory_key),
