@@ -73,8 +73,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   /// Soft black softener at the carousel seam while swiping.
   static const double _heroSeamScrimWidth = 120;
   static const double _heroSeamTransitionEpsilon = 0.015;
-  /// Per-slide edge fade (full black → 0) at join edges — keep soft/invisible.
+  /// Trailing (right) join fade only — never paint a leading/left edge
+  /// (that sits under the hero text fade and looks dirty).
   static const double _heroSlideEdgeGradientFraction = 0.10;
+  /// Right-edge opacity vs viewport X of that edge (0 = left, 1 = right).
+  /// Fade out while sliding left so the join softener never enters the hero fade.
+  static const double _heroRightEdgeFadeEnd = 0.14;
+  static const double _heroRightEdgeFadeStart = 0.46;
 
   final TmdbApi _api = TmdbApi();
   final PageController _heroController =
@@ -361,63 +366,55 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       onPageChanged: (i) => _onHeroPageChanged(i, movies),
       itemBuilder: (context, index) {
         final movie = movies[index % movies.length];
-        return _buildHeroSlideBackdrop(movie);
+        return _buildHeroSlideBackdrop(movie, index);
       },
     );
   }
 
-  Widget _buildHeroSlideEdgeGradients() {
+  /// Opacity of a slide's trailing (right) edge softener from where that
+  /// edge sits in the carousel viewport. Settled → 1; as the edge drifts
+  /// left (either swipe direction) → ease to 0 before the hero fade zone.
+  double _rightEdgeJoinOpacity(double rightEdgeViewportFraction) {
+    if (rightEdgeViewportFraction >= _heroRightEdgeFadeStart) return 1.0;
+    if (rightEdgeViewportFraction <= _heroRightEdgeFadeEnd) return 0.0;
+    return (rightEdgeViewportFraction - _heroRightEdgeFadeEnd) /
+        (_heroRightEdgeFadeStart - _heroRightEdgeFadeEnd);
+  }
+
+  Widget _buildHeroSlideTrailingEdge({required double opacity}) {
+    if (opacity <= 0.001) return const SizedBox.shrink();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final edgeWidth =
             constraints.maxWidth * _heroSlideEdgeGradientFraction;
-
-        DecoratedBox edgeGradient({
-          required Alignment begin,
-          required Alignment end,
-        }) {
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: begin,
-                end: end,
-                // Full black at the join → 0; soft stops so the seam stays nearly invisible.
-                colors: [
-                  Colors.black,
-                  Colors.black.withValues(alpha: 0.42),
-                  Colors.black.withValues(alpha: 0.12),
-                  Colors.black.withValues(alpha: 0.0),
-                ],
-                stops: const [0.0, 0.32, 0.68, 1.0],
-              ),
-            ),
-          );
-        }
-
         return Stack(
           fit: StackFit.expand,
           children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: edgeWidth,
-              child: IgnorePointer(
-                child: edgeGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-            ),
             Positioned(
               right: 0,
               top: 0,
               bottom: 0,
               width: edgeWidth,
               child: IgnorePointer(
-                child: edgeGradient(
-                  begin: Alignment.centerRight,
-                  end: Alignment.centerLeft,
+                child: Opacity(
+                  opacity: opacity.clamp(0.0, 1.0),
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerRight,
+                        end: Alignment.centerLeft,
+                        // Full black at the join → 0; soft so the seam stays quiet.
+                        colors: [
+                          Color(0xFF000000),
+                          Color(0x6B000000), // ~0.42
+                          Color(0x1F000000), // ~0.12
+                          Color(0x00000000),
+                        ],
+                        stops: [0.0, 0.32, 0.68, 1.0],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -443,6 +440,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         final seamLeft = (seamX - _heroSeamScrimWidth / 2)
             .clamp(0.0, math.max(0.0, width - _heroSeamScrimWidth))
             .toDouble();
+        // Match trailing-edge rule: hide the seam softener once it enters
+        // the left hero-fade zone (same fractions, viewport X of seam).
+        final seamOpacity = _rightEdgeJoinOpacity(seamX / width);
+        if (seamOpacity <= 0.001) return const SizedBox.shrink();
 
         return Stack(
           fit: StackFit.expand,
@@ -453,20 +454,22 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               width: _heroSeamScrimWidth,
               top: 0,
               bottom: 0,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    // Soft full-black peak → 0 on both sides (no hard dark bar).
-                    colors: [
-                      Colors.black.withValues(alpha: 0.0),
-                      Colors.black.withValues(alpha: 0.35),
-                      Colors.black,
-                      Colors.black.withValues(alpha: 0.35),
-                      Colors.black.withValues(alpha: 0.0),
-                    ],
-                    stops: const [0.0, 0.28, 0.5, 0.72, 1.0],
+              child: Opacity(
+                opacity: seamOpacity,
+                child: const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Color(0x00000000),
+                        Color(0x59000000), // ~0.35
+                        Color(0xFF000000),
+                        Color(0x59000000),
+                        Color(0x00000000),
+                      ],
+                      stops: [0.0, 0.28, 0.5, 0.72, 1.0],
+                    ),
                   ),
                 ),
               ),
@@ -950,7 +953,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  Widget _buildHeroSlideBackdrop(Movie movie) {
+  Widget _buildHeroSlideBackdrop(Movie movie, int index) {
     final shellBg = Theme.of(context).scaffoldBackgroundColor;
     return Stack(
       fit: StackFit.expand,
@@ -964,7 +967,22 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           placeholder: (c, u) => ColoredBox(color: shellBg),
           errorWidget: (c, u, e) => ColoredBox(color: shellBg),
         ),
-        _buildHeroSlideEdgeGradients(),
+        // Trailing join only — opacity tracks scroll so it fades out while
+        // sliding left (never parks under the hero text fade). Reverse swipe
+        // uses the same rule: previous slide's right edge ramps in as it
+        // leaves the left zone.
+        AnimatedBuilder(
+          animation: _heroController,
+          builder: (context, _) {
+            final page = _heroController.hasClients
+                ? (_heroController.page ?? index.toDouble())
+                : index.toDouble();
+            // Viewport X of this slide's right edge, in page-widths (1 = right).
+            final rightEdgeViewportFraction = index - page + 1.0;
+            final opacity = _rightEdgeJoinOpacity(rightEdgeViewportFraction);
+            return _buildHeroSlideTrailingEdge(opacity: opacity);
+          },
+        ),
       ],
     );
   }
