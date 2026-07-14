@@ -65,6 +65,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [041-[fixed]-…](fixed/041-[fixed]-videasy-hangs-before-cdn-yoru.md) | Videasy hangs on neon2 before Yoru/cdn | P1 | High | fixed | Complete · 4/4 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [042-[fixed]-…](fixed/042-[fixed]-provider-reliability-not-global.md) | Provider reliability not global across titles | P1 | High | fixed | Complete · 5/5 · A 4/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [043-[fixed]-…](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) | Dead cache → full Auto re-resolve like first Play | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [044-[fixed]-…](fixed/044-[fixed]-settings-cache-data-cleaner.md) | Settings cache / data cleaner | P2 | Medium | fixed | — | — |
+| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 4/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

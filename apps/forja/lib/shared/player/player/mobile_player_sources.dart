@@ -369,10 +369,14 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   }
 
   bool get _hasStreamPicker {
+    // Magnet control already opens torrent sources — don't show the
+    // server-style "Torrent" picker alongside it.
+    final onTorrent =
+        ((_s._activeMagnet ?? widget.magnetLink)?.isNotEmpty ?? false);
+    if (onTorrent) return false;
     final hasProviders =
         widget.providers != null &&
         widget.providers!.isNotEmpty &&
-        widget.magnetLink == null &&
         widget.activeProvider != 'stremio_direct';
     final hasSources =
         _s._effectiveCurrentSources != null && _s._effectiveCurrentSources!.isNotEmpty;
