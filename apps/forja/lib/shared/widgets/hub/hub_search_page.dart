@@ -91,6 +91,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
   @override
   void initState() {
     super.initState();
+    ShellBus.registerFindShortcutHandler(_handleFindShortcut);
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -190,6 +191,11 @@ class _HubSearchPageState extends State<HubSearchPage> {
     }
   }
 
+  bool _handleFindShortcut() {
+    _focusSearchFieldBrowse();
+    return true;
+  }
+
   void _focusSearchFieldBrowse() {
     if (!_focusNode.canRequestFocus) return;
     if (_searchFieldEditing) {
@@ -214,6 +220,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   @override
   void dispose() {
+    ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
     ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayChanged);
     _detachRouteAnimationListener();
     _focusNode.removeListener(_onSearchFieldFocusChange);

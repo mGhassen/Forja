@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
+import 'package:forja/features/anime/anime_search_screen.dart';
+import 'package:forja/features/asian_drama/asian_drama_search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/features/home/home_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
@@ -16,6 +18,9 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_find_shortcut.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -377,6 +382,33 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (idx != -1) _selectTab(idx);
   }
 
+  void _onFindShortcut() {
+    if (ShellBus.invokeFindShortcut()) return;
+    if (ShellBus.shellOverlayHasPage.value) return;
+
+    final ctx = _shellScopedContext;
+    if (ctx == null || !ctx.mounted) return;
+
+    switch (_currentTabId) {
+      case 'home':
+        AppRouter.openSearch(ctx);
+      case 'search':
+        _searchKey.currentState?.focusFromFindShortcut();
+      case 'anime':
+        pushShellRoute(
+          ctx,
+          AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
+        );
+      case 'asian_drama':
+        pushShellRoute(
+          ctx,
+          AppRouter.slideShellRoute((_) => const AsianDramaSearchScreen()),
+        );
+      default:
+        break;
+    }
+  }
+
   @override
   void dispose() {
     _metricsDebounce?.cancel();
@@ -404,15 +436,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             config.showHomeTopBar &&
             !ShellBus.shellOverlayHasPage.value;
 
-        final shell = ShellHost(
-          visibleIds: _visibleIds,
-          selectedIndex: _selectedIndex,
-          mountedTabIds: _mountedTabIds,
-          onDestinationSelected: _selectTab,
-          tabFor: _tabFor,
-          shellHeader: _shellHeader(),
-          shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
-          hideGlobalNav: ShellBus.hideGlobalNav.value,
+        final shell = ShellFindShortcutScope(
+          enabled: profile == ShellProfile.desktop,
+          onFind: _onFindShortcut,
+          child: ShellHost(
+            visibleIds: _visibleIds,
+            selectedIndex: _selectedIndex,
+            mountedTabIds: _mountedTabIds,
+            onDestinationSelected: _selectTab,
+            tabFor: _tabFor,
+            shellHeader: _shellHeader(),
+            shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
+            hideGlobalNav: ShellBus.hideGlobalNav.value,
+          ),
         );
 
         if (DesktopWindowChrome.isDesktop) {

@@ -62,4 +62,24 @@ class ShellBus {
     stremioSearchNotifier.value = null;
     stremioSearchNotifier.value = {'query': query, 'addonBaseUrl': addonBaseUrl};
   }
+
+  static final List<bool Function()> _findShortcutHandlers = [];
+
+  /// Register Cmd/Ctrl+F handling while a search surface is mounted (newest wins).
+  static void registerFindShortcutHandler(bool Function() handler) {
+    _findShortcutHandlers.remove(handler);
+    _findShortcutHandlers.add(handler);
+  }
+
+  static void unregisterFindShortcutHandler(bool Function() handler) {
+    _findShortcutHandlers.remove(handler);
+  }
+
+  /// Returns true when a registered handler consumed the shortcut.
+  static bool invokeFindShortcut() {
+    for (var i = _findShortcutHandlers.length - 1; i >= 0; i--) {
+      if (_findShortcutHandlers[i]()) return true;
+    }
+    return false;
+  }
 }

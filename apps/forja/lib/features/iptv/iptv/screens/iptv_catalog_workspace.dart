@@ -8,6 +8,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_portal_share.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';

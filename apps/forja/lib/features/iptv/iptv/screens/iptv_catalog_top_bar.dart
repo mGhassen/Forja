@@ -48,10 +48,33 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       _searchAnim.value = 1;
     }
     ctrl.addListener(_onCtrl);
+    ShellBus.registerFindShortcutHandler(_handleFindShortcut);
+  }
+
+  bool _handleFindShortcut() {
+    if (ctrl.activePortal == null) return false;
+    _focusSearchFromShortcut();
+    return true;
+  }
+
+  void _focusSearchFromShortcut() {
+    if (!mounted) return;
+    final compact = MediaQuery.sizeOf(context).width < 760;
+    if (compact) {
+      unawaited(_openSearch(context, compact: true));
+      return;
+    }
+    if (!ctrl.browserSearchOpen) {
+      ctrl.openBrowserSearch();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
   }
 
   @override
   void dispose() {
+    ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
     ctrl.removeListener(_onCtrl);
     _searchAnim.dispose();
     _searchCtrl.dispose();

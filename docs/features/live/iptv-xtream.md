@@ -17,7 +17,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Catalog is **cached in-session** per portal/section — switching chips reuses the last fetch
 - Hover (or focus) the **selected** section chip (**Live** / **Movies** / **Series**) to reveal **Reload** and force a fresh catalog fetch for that shelf
 - Browse live channels by category — channel tiles show a play control and slightly brighter border on hover (desktop) or focus (TV)
-- **Search** live, movie, and series catalogs (search icon → slide-in bar on wide layouts, dialog on compact layouts; filters groups and channels as you type; close clears search)
+- **Search** live, movie, and series catalogs (search icon → slide-in bar on wide layouts, dialog on compact layouts; filters groups and channels as you type; close clears search) — on **desktop**, **Cmd+F** / **Ctrl+F** opens the search bar and focuses the field (same as the search icon)
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
 - Favorite portals in the Portals panel (star icon) — pinned to the top with **gold** title text matching the star; below them, the most recently scraped or added portals appear first (with a **NEW** badge on session-fresh rows until you hover or focus them — styling only, position stays put)

@@ -77,6 +77,7 @@ class SearchScreenState extends State<SearchScreen>
       enterFromNavFocus: _focusSearchFieldBrowse,
       restoreFocus: _restoreSearchTvFocusIfEmpty,
     );
+    ShellBus.registerFindShortcutHandler(_handleFindShortcut);
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     _loadProviders();
@@ -91,8 +92,16 @@ class SearchScreenState extends State<SearchScreen>
   }
 
 
+  void focusFromFindShortcut() => _focusSearchFieldBrowse();
+
+  bool _handleFindShortcut() {
+    _focusSearchFieldBrowse();
+    return true;
+  }
+
   @override
   void dispose() {
+    ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
     _focusNode.removeListener(_onSearchFieldFocusChange);
     ShellTvFocusCoordinator.clearTab('search');
     ShellBus.stremioSearchNotifier.removeListener(_onExternalSearch);

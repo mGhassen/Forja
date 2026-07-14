@@ -238,6 +238,15 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     });
   }
 
+  void _onPlayerMouseMove() {
+    if (iptvUseTvFocus(context)) return;
+    if (_s._guideVisible || _s._searchVisible) return;
+    if (!_s._controlsVisible) {
+      setState(() => _s._controlsVisible = true);
+    }
+    _scheduleHideControls();
+  }
+
   void _focusPlayerChrome() {
     if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -322,6 +331,13 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           setState(() => _s._volume = (_s._volume - 5).clamp(0, 100));
         },
         onToggleControls: _toggleControls,
+        child: MouseRegion(
+        onHover: (_) => _onPlayerMouseMove(),
+        cursor: _s._controlsVisible &&
+                !_s._guideVisible &&
+                !_s._searchVisible
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.none,
         child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _toggleControls,
@@ -402,6 +418,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           ],
         ),
       ),
+        ),
       ),
     );
   }
@@ -880,7 +897,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   void _scheduleHideVolumeSlider() {
     _s._hideVolumeTimer?.cancel();
     _s._hideVolumeTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
+      if (!mounted || _s._volumeHovering) return;
       setState(() => _s._showVolumeSlider = false);
     });
   }

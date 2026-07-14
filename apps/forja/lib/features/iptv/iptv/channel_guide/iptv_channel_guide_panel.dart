@@ -10,7 +10,6 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
 enum _GuideStep { groups, channels }
@@ -888,79 +887,72 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
   Widget build(BuildContext context) {
     final active = widget.active;
     final focused = widget.focused;
-    final radius = BorderRadius.circular(10);
     final fill = active
-        ? _accent.withValues(alpha: 0.2)
+        ? _accent.withValues(alpha: 0.18)
         : focused
-            ? Colors.white.withValues(alpha: 0.1)
-            : ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.45);
-    final stroke = active
-        ? _accent.withValues(alpha: 0.55)
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.transparent;
+    final barColor = active
+        ? _accent
         : focused
-            ? Colors.white.withValues(alpha: 0.35)
+            ? Colors.white54
             : Colors.transparent;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      child: MouseRegion(
-        onEnter: (_) {
-          widget.onHover();
-          widget.onProbe();
-        },
-        onExit: (_) => widget.onCancelProbe(),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: fill,
-              borderRadius: radius,
-              border: Border.all(color: stroke, width: 1),
+    return MouseRegion(
+      onEnter: (_) {
+        widget.onHover();
+        widget.onProbe();
+      },
+      onExit: (_) => widget.onCancelProbe(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: fill,
+            border: Border(
+              left: BorderSide(color: barColor, width: 3),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              child: Row(
+          ),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _ChannelLogo(url: widget.channel.logoUrl ?? ''),
-                      if (widget.health != null)
-                        Positioned(
-                          top: -2,
-                          right: -2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: widget.health! ? _alive : _dead,
-                            ),
-                          ),
+                  _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 34),
+                  if (widget.health != null)
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.health! ? _alive : _dead,
                         ),
-                    ],
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.channel.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color:
-                            active || focused ? Colors.white : Colors.white70,
-                        fontSize: 13,
-                        fontWeight: active || focused
-                            ? FontWeight.w700
-                            : FontWeight.w500,
                       ),
                     ),
-                  ),
-                  if (active)
-                    Icon(Icons.play_arrow_rounded, color: _accent, size: 22),
                 ],
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.channel.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: active || focused ? Colors.white : Colors.white70,
+                    fontSize: 13,
+                    fontWeight:
+                        active || focused ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (active)
+                Icon(Icons.play_arrow_rounded, color: _accent, size: 22),
+            ],
           ),
         ),
       ),
