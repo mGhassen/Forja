@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use serde_json::json;
+use serde_json::{json, Value};
 use stream_core::from_legacy;
 
 use crate::context::ResolverContext;
@@ -28,32 +28,40 @@ impl Provider for WebstreamrProvider {
         if ctx.is_cancelled() {
             return Err(ProviderError::Cancelled);
         }
-        let is_tv = request.media_type == "tv";
-        let req = if is_tv {
-            json!({
-                "imdbId": request.imdb_id,
-                "tmdbId": request.tmdb_id,
-                "title": request.title,
-                "year": request.year,
-                "isMovie": false,
-                "season": request.season,
-                "episode": request.episode,
-            })
-        } else {
-            json!({
-                "imdbId": request.imdb_id,
-                "tmdbId": request.tmdb_id,
-                "title": request.title,
-                "year": request.year,
-                "isMovie": true,
-            })
-        };
+        let is_tv = request.media_type == "tv" || request.media_type == "series";
+        let mut req = json!({
+            "media_type": if is_tv { "series" } else { "movie" },
+            "config": {},
+            "enabled_sources": [],
+        });
+        if !request.imdb_id.trim().is_empty() {
+            req["imdb_id"] = Value::String(request.imdb_id.clone());
+        }
+        if request.tmdb_id > 0 {
+            req["tmdb_id"] = json!(request.tmdb_id);
+        }
+        let title = request.title.trim();
+        if !title.is_empty() {
+            req["title"] = Value::String(title.to_string());
+        }
+        if let Some(year) = request.year.filter(|y| *y > 0) {
+            req["year"] = json!(year);
+        }
+        if is_tv {
+            req["season"] = json!(if request.season < 1 { 1 } else { request.season });
+            req["episode"] = json!(if request.episode < 1 {
+                1
+            } else {
+                request.episode
+            });
+        }
+
         let started = Instant::now();
         let raw = webstreamr::get_streams_json(&req.to_string());
         if ctx.is_cancelled() {
             return Err(ProviderError::Cancelled);
         }
-        let streams: Vec<serde_json::Value> = match serde_json::from_str(&raw) {
+        let streams: Vec<Value> = match serde_json::from_str(&raw) {
             Ok(v) => v,
             Err(_) => {
                 if raw.contains("\"error\"") {
@@ -64,11 +72,7 @@ impl Provider for WebstreamrProvider {
         };
         let mut sources = Vec::new();
         for (idx, item) in streams.iter().enumerate() {
-            let url = item
-                .get("url")
-                .or_else(|| item.get("streamUrl"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let url = playable_url(item);
             if url.is_empty() {
                 continue;
             }
@@ -92,7 +96,7 @@ impl Provider for WebstreamrProvider {
                 }
             }
             let mut source = from_legacy(
-                url,
+                &url,
                 title,
                 "hls",
                 headers,
@@ -110,5 +114,72 @@ impl Provider for WebstreamrProvider {
             sources,
             latency_ms: started.elapsed().as_millis() as u32,
         })
+    }
+}
+
+/// Match [WebStreamrService.resolveStreamUrl]: direct, external, or YouTube.
+fn playable_url(item: &Value) -> String {
+    if let Some(url) = item
+        .get("url")
+        .or_else(|| item.get("streamUrl"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+    {
+        return url.to_string();
+    }
+    if let Some(external) = item
+        .get("externalUrl")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+    {
+        return external.to_string();
+    }
+    if let Some(yt) = item
+        .get("ytId")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+    {
+        return format!("https://www.youtube.com/watch?v={yt}");
+    }
+    String::new()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::playable_url;
+    use serde_json::json;
+
+    #[test]
+    fn request_shape_matches_streams_request() {
+        let req = json!({
+            "imdb_id": "tt11198330",
+            "tmdb_id": 94997,
+            "media_type": "series",
+            "season": 1,
+            "episode": 1,
+            "title": "House of the Dragon",
+            "year": 2022,
+            "config": {},
+            "enabled_sources": [],
+        });
+        let _: webstreamr::resolver::StreamsRequest =
+            serde_json::from_value(req).expect("StreamsRequest parse");
+    }
+
+    #[test]
+    fn playable_url_prefers_direct_then_external_then_youtube() {
+        assert_eq!(
+            playable_url(&json!({"url": "https://cdn.example/a.m3u8"})),
+            "https://cdn.example/a.m3u8"
+        );
+        assert_eq!(
+            playable_url(&json!({"externalUrl": "https://host.example/x"})),
+            "https://host.example/x"
+        );
+        assert_eq!(
+            playable_url(&json!({"ytId": "abc123"})),
+            "https://www.youtube.com/watch?v=abc123"
+        );
+        assert_eq!(playable_url(&json!({"name": "none"})), "");
     }
 }

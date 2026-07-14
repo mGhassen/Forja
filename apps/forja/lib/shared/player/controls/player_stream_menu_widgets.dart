@@ -70,12 +70,33 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     final failed = widget.status == PlayerSourceStatus.failed;
     final isUp = widget.status == PlayerSourceStatus.ready ||
         widget.status == PlayerSourceStatus.active;
-    // Play arrow only when status is up — not while unchecked, checking, or failed.
     final canPlay = widget.onPlay != null && !widget.isPlaying && isUp;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final showPlayArrow = canPlay && (_hovered || (tvFocus && _focused));
-    final showTransport = widget.onTogglePlayPause != null && widget.isPlaying;
-    final activeColor = playerSourceStatusColor(PlayerSourceStatus.active);
+    // Up rows: idle ✓, hover/focus → play arrow (same trailing slot).
+    final showPlayOnUp =
+        canPlay && (_hovered || (tvFocus && _focused));
+
+    VoidCallback? trailingTap;
+    if (widget.isPlaying && widget.onTogglePlayPause != null) {
+      trailingTap = widget.onTogglePlayPause;
+    } else if (showPlayOnUp) {
+      trailingTap = widget.onPlay;
+    } else if (canPlay) {
+      // Green ✓ — tap to start this stream.
+      trailingTap = widget.onPlay;
+    }
+
+    final trailingGlyph = showPlayOnUp
+        ? Icon(
+            Icons.play_arrow_rounded,
+            size: 22,
+            color: playerSourceStatusColor(PlayerSourceStatus.ready),
+          )
+        : PlayerStreamMenu._streamTrailingGlyph(
+            status: widget.status,
+            isPlaying: widget.isPlaying,
+            mediaPlaying: widget.mediaPlaying,
+          );
 
     final row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -92,15 +113,6 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 9),
             child: Row(
               children: [
-                SizedBox(
-                  width: PlayerStreamMenu._statusSlot,
-                  child: Center(
-                    child: PlayerStreamMenu._streamStatusGlyph(
-                      status: widget.status,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 if (widget.meta != null) ...[
                   SizedBox(
                     width: 34,
@@ -141,38 +153,17 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                 SizedBox(
                   width: 28,
                   height: 28,
-                  child: showTransport
+                  child: trailingTap != null
                       ? Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: widget.onTogglePlayPause,
+                            onTap: trailingTap,
                             borderRadius: BorderRadius.circular(4),
                             hoverColor: Colors.white.withValues(alpha: 0.08),
-                            child: Icon(
-                              widget.mediaPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              size: 22,
-                              color: activeColor,
-                            ),
+                            child: Center(child: trailingGlyph),
                           ),
                         )
-                      : showPlayArrow
-                          ? Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: widget.onPlay,
-                                borderRadius: BorderRadius.circular(4),
-                                hoverColor:
-                                    Colors.white.withValues(alpha: 0.08),
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 22,
-                                  color: Colors.white.withValues(alpha: 0.72),
-                                ),
-                              ),
-                            )
-                          : null,
+                      : Center(child: trailingGlyph),
                 ),
               ],
             ),
@@ -185,7 +176,9 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     return shellFocusableTap(
       context: context,
       onTap: () {
-        if (canPlay && widget.onPlay != null) {
+        if (widget.isPlaying && widget.onTogglePlayPause != null) {
+          widget.onTogglePlayPause!();
+        } else if (canPlay && widget.onPlay != null) {
           widget.onPlay!();
         } else {
           widget.onCheck?.call();

@@ -101,6 +101,8 @@ abstract final class PlayerSourceResolve {
       episode: episode,
     );
     final cached = await WebstreamingStreamCache.read(cacheKey);
+    // Only reuse cache when it is for this exact provider. A different
+    // server's extract must resolve fresh.
     if (cached != null &&
         cached.sources.isNotEmpty &&
         cached.providerId == providerId) {

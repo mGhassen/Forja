@@ -700,12 +700,11 @@ class PlayerStreamMenu {
   }
 
   // ── Status glyphs ─────────────────────────────────────────────────────
-  // Server = solid filled dots (provider load / probe).
-  // Stream = hollow ring / check (URL verified). Same meaning, different shape
-  // so the two layers are not visually redundant.
-  // Playing is the green play/pause arrow — never encoded in these glyphs.
+  // Server = solid filled dots only (green / gray / red · spinner while checking).
+  // Stream = trailing control (check / ring / ✕ / spinner / play / pause).
+  // Playing encoding: green play arrow · blue pause — never a status shape.
 
-  /// Server: solid green = up · solid gray = not checked · red X · spinner.
+  /// Server: solid green = up · solid gray = not checked · solid red = failed.
   static Widget _statusGlyph({
     required PlayerSourceStatus status,
     required bool isLoaded,
@@ -714,7 +713,7 @@ class PlayerStreamMenu {
       return _checkingSpinner();
     }
     if (status == PlayerSourceStatus.failed) {
-      return _failedIcon();
+      return _serverSolidDot(playerSourceStatusColor(PlayerSourceStatus.failed));
     }
     final up = isLoaded ||
         status == PlayerSourceStatus.ready ||
@@ -724,17 +723,42 @@ class PlayerStreamMenu {
     );
   }
 
-  /// Stream: check = up · hollow ring = not checked · red X · spinner.
-  static Widget _streamStatusGlyph({
+  /// Stream trailing glyph (merged status + transport).
+  /// up ✓ · unchecked ○ · failed ✕ · checking spinner ·
+  /// playing→ green play · media playing→ blue pause.
+  static Widget _streamTrailingGlyph({
     required PlayerSourceStatus? status,
+    required bool isPlaying,
+    required bool mediaPlaying,
   }) {
+    if (isPlaying) {
+      if (mediaPlaying) {
+        return Icon(
+          Icons.pause_rounded,
+          size: 22,
+          color: _streamPauseBlue,
+        );
+      }
+      return Icon(
+        Icons.play_arrow_rounded,
+        size: 22,
+        color: playerSourceStatusColor(PlayerSourceStatus.ready),
+      );
+    }
     if (status == null) return _streamHollowRing(_uncheckedGray);
     if (status == PlayerSourceStatus.checking) return _checkingSpinner();
-    if (status == PlayerSourceStatus.failed) return _failedIcon();
+    if (status == PlayerSourceStatus.failed) {
+      return Icon(
+        Icons.close_rounded,
+        size: 16,
+        color: playerSourceStatusColor(PlayerSourceStatus.failed),
+      );
+    }
     return _streamUpCheck();
   }
 
   static const Color _uncheckedGray = Color(0x3DFFFFFF); // white24
+  static const Color _streamPauseBlue = Color(0xFF3B82F6);
 
   static Widget _serverSolidDot(Color color) {
     return SizedBox(
@@ -768,26 +792,10 @@ class PlayerStreamMenu {
   }
 
   static Widget _streamUpCheck() {
-    return SizedBox(
-      width: _statusSlot,
-      height: _statusSlot,
-      child: Icon(
-        Icons.check_rounded,
-        size: 14,
-        color: playerSourceStatusColor(PlayerSourceStatus.ready),
-      ),
-    );
-  }
-
-  static Widget _failedIcon() {
-    return SizedBox(
-      width: _statusSlot,
-      height: _statusSlot,
-      child: Icon(
-        Icons.cancel_rounded,
-        size: _statusSlot,
-        color: playerSourceStatusColor(PlayerSourceStatus.failed),
-      ),
+    return Icon(
+      Icons.check_rounded,
+      size: 18,
+      color: playerSourceStatusColor(PlayerSourceStatus.ready),
     );
   }
 
