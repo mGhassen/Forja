@@ -44,10 +44,14 @@ class HubDetailsHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final h = height ?? ShellTokens.detailsHeroHeight(context, showEpisodeRail: true);
-    final bleed = pageBottomChild != null
-        ? ShellTokens.detailsEpisodeBackdropBleed
-        : 0.0;
+    final showEpisodeRail = pageBottomChild != null;
+    final h = height ??
+        ShellTokens.detailsHeroHeight(
+          context,
+          showEpisodeRail: showEpisodeRail,
+        );
+    final bleed =
+        showEpisodeRail ? ShellTokens.detailsEpisodeBackdropBleed : 0.0;
     final totalH = h + bleed;
     final shellBg = AppTheme.bgDark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;

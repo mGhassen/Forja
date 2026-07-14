@@ -6,7 +6,7 @@
 
 When you open a title from Home, Discover, Search, or lists, you get the **media details** screen — one screen for torrents, Stremio/Nuvio, and webstreaming. A **cinematic hero** (~82% of the viewport) shows Ken Burns backdrop animation, then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
 
-On **TV series**, the same backdrop image extends further down the page (below the title/actions) so season and episode rails sit directly on the image — not on a separate black block.
+On **TV series**, the backdrop continues below the hero chrome so season and episode rails sit on the image — not on a separate black block. The episode rail adds ~260px of backdrop bleed under the ~82% hero band.
 
 The hero overlay is split into two columns on wide screens:
 

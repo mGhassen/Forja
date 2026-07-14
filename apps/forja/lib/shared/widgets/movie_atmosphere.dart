@@ -58,6 +58,59 @@ Future<AtmosphereColors> extractAtmosphereColors(String imageUrl) async {
   }
 }
 
+/// Leading/trailing edge tones sampled from a backdrop (hero carousel seams).
+class BackdropEdgeColors {
+  final Color leading;
+  final Color trailing;
+
+  const BackdropEdgeColors({
+    required this.leading,
+    required this.trailing,
+  });
+
+  static const fallback = BackdropEdgeColors(
+    leading: Color(0xFF141414),
+    trailing: Color(0xFF141414),
+  );
+}
+
+Color? _pickBackdropEdgeTone(PaletteGenerator generator) {
+  return generator.darkMutedColor?.color ??
+      generator.mutedColor?.color ??
+      generator.dominantColor?.color;
+}
+
+/// Samples the left/right 12% of a backdrop for carousel seam blends.
+Future<BackdropEdgeColors> extractBackdropEdgeColors(String imageUrl) async {
+  try {
+    final provider = CachedNetworkImageProvider(imageUrl);
+    final atmosphere = await extractAtmosphereColors(imageUrl);
+    final leadingFallback =
+        Color.lerp(atmosphere.muted, atmosphere.dominant, 0.22)!;
+    final trailingFallback =
+        Color.lerp(atmosphere.dominant, atmosphere.muted, 0.38)!;
+
+    final leadingGen = await PaletteGenerator.fromImageProvider(
+      provider,
+      size: const Size(32, 64),
+      maximumColorCount: 4,
+      region: const Rect.fromLTWH(0, 0, 0.12, 1),
+    );
+    final trailingGen = await PaletteGenerator.fromImageProvider(
+      provider,
+      size: const Size(32, 64),
+      maximumColorCount: 4,
+      region: const Rect.fromLTWH(0.88, 0, 0.12, 1),
+    );
+    return BackdropEdgeColors(
+      leading: _pickBackdropEdgeTone(leadingGen) ?? leadingFallback,
+      trailing: _pickBackdropEdgeTone(trailingGen) ?? trailingFallback,
+    );
+  } catch (_) {
+    return BackdropEdgeColors.fallback;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  KEN BURNS BACKDROP — slow cinematic pan & zoom
 // ═══════════════════════════════════════════════════════════════════════════════

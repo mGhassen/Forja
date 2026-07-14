@@ -43,7 +43,6 @@ class HomeCinematicHero extends StatefulWidget {
     required this.controller,
     required this.onOpenDetails,
     required this.onWatchNow,
-    this.pageBottomChild,
   });
 
   final Future<List<Movie>> moviesFuture;
@@ -53,8 +52,6 @@ class HomeCinematicHero extends StatefulWidget {
   final HomeHeroController controller;
   final Future<void> Function(Movie movie) onOpenDetails;
   final Future<void> Function(Movie movie) onWatchNow;
-  /// First catalog row rendered on the extended page backdrop (desktop/TV).
-  final Widget? pageBottomChild;
 
   @override
   State<HomeCinematicHero> createState() => _HomeCinematicHeroState();
@@ -63,6 +60,17 @@ class HomeCinematicHero extends StatefulWidget {
 class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   static const int _heroLoopLength = 10000;
   static const int _heroLoopStart = 5000;
+
+  /// Home hero — stronger left vignette than hub/details (text column legibility).
+  static const double _heroGradientSolidEndFraction = 0.02;
+  static const double _heroGradientFadeMid1Alpha = 0.82;
+  static const double _heroGradientFadeMid2Alpha = 0.2;
+
+  /// Dark scrim at the carousel seam while swiping (shell bg only — no sampled colors).
+  static const double _heroSeamScrimWidth = 104;
+  static const double _heroSeamTransitionEpsilon = 0.015;
+  /// Per-slide horizontal vignette at join edges (leading + trailing).
+  static const double _heroSlideEdgeGradientFraction = 0.14;
 
   final TmdbApi _api = TmdbApi();
   final PageController _heroController =
@@ -98,7 +106,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     if (ShellTvFocus.homeHeroGallery == _tvHeroGalleryFocus) {
       ShellTvFocus.homeHeroGallery = null;
     }
-    ShellBus.homeHeroHeight.value = 0;
+    if (ShellBus.homeHeroHeight.value != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ShellBus.homeHeroHeight.value = 0;
+      });
+    }
     _heroTimer?.cancel();
     _heroController.dispose();
     _tvHeroPlayFocus.dispose();
@@ -130,32 +142,18 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   double _homeBackdropHeight(BuildContext context, {required bool compact}) {
     final topBarBleed = _desktopTopBarBleed(context);
-    final pageBleed = widget.pageBottomChild != null && !compact;
-    if (pageBleed) {
+    if (widget.usesShellHomeLayout && !compact) {
       return _snapToDevicePixels(
         context,
         MediaQuery.sizeOf(context).height *
                 ShellTokens.homeBackdropViewportFraction +
-            topBarBleed +
-            ShellTokens.homePageBottomSectionDownOffset,
+            topBarBleed,
       );
     }
     return _snapToDevicePixels(
       context,
       _cinematicHeroHeight(context, compact: compact) + topBarBleed,
     );
-  }
-
-  double _homeHeroTextBottomInset(
-    BuildContext context, {
-    required bool compact,
-    required double defaultBottom,
-  }) {
-    if (widget.pageBottomChild == null || compact) return defaultBottom;
-    return HomeMovieSection.sectionHeight(context, compactTop: true) +
-        ShellTokens.homePageBottomSectionTopPadding +
-        ShellTokens.homePageBottomSectionDownOffset +
-        defaultBottom;
   }
 
   void _publishHomeHeroHeight() {
@@ -330,6 +328,135 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       } catch (_) {}
     }
   }
+
+  String _heroBackdropUrl(Movie movie) {
+    return movie.backdropPath.isNotEmpty
+        ? TmdbApi.getBackdropUrl(movie.backdropPath)
+        : TmdbApi.getImageUrl(movie.posterPath);
+  }
+
+  Widget _buildHeroBackdropCarousel(List<Movie> movies) {
+    return PageView.builder(
+      clipBehavior: Clip.hardEdge,
+      controller: _heroController,
+      itemCount: _heroLoopLength,
+      onPageChanged: (i) => _onHeroPageChanged(i, movies),
+      itemBuilder: (context, index) {
+        final movie = movies[index % movies.length];
+        return _buildHeroSlideBackdrop(movie);
+      },
+    );
+  }
+
+  Widget _buildHeroSlideEdgeGradients(Color shellBg) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final edgeWidth =
+            constraints.maxWidth * _heroSlideEdgeGradientFraction;
+
+        DecoratedBox edgeGradient({
+          required Alignment begin,
+          required Alignment end,
+        }) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: begin,
+                end: end,
+                colors: [
+                  shellBg,
+                  shellBg.withValues(alpha: 0.92),
+                  shellBg.withValues(alpha: 0.62),
+                  shellBg.withValues(alpha: 0.0),
+                ],
+                stops: const [0.0, 0.22, 0.58, 1.0],
+              ),
+            ),
+          );
+        }
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: edgeWidth,
+              child: IgnorePointer(
+                child: edgeGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: edgeWidth,
+              child: IgnorePointer(
+                child: edgeGradient(
+                  begin: Alignment.centerRight,
+                  end: Alignment.centerLeft,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHeroSeamScrim(Color shellBg) {
+    if (!_heroController.hasClients) return const SizedBox.shrink();
+
+    final page = _heroController.page ?? _heroLoopStart.toDouble();
+    final t = page - page.floor();
+    if (t < _heroSeamTransitionEpsilon || t > 1 - _heroSeamTransitionEpsilon) {
+      return const SizedBox.shrink();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final seamX = width * (1 - t);
+        final seamLeft = (seamX - _heroSeamScrimWidth / 2)
+            .clamp(0.0, math.max(0.0, width - _heroSeamScrimWidth))
+            .toDouble();
+
+        return Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: seamLeft,
+              width: _heroSeamScrimWidth,
+              top: 0,
+              bottom: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      shellBg.withValues(alpha: 0.0),
+                      shellBg.withValues(alpha: 0.88),
+                      shellBg,
+                      shellBg.withValues(alpha: 0.88),
+                      shellBg.withValues(alpha: 0.0),
+                    ],
+                    stops: const [0.0, 0.18, 0.5, 0.82, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   double _snapToDevicePixels(BuildContext context, double value) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return (value * dpr).round() / dpr;
@@ -386,7 +513,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         }
       });
     }
-    final pageBleed = widget.pageBottomChild != null && !compact;
+    final shellBackdrop = widget.usesShellHomeLayout && !compact;
     final imageHeight = _homeBackdropHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
     final textTop = topBarBleed + homeHeroTextTopInset(context);
@@ -396,11 +523,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
         : shellScaled(context, 48).clamp(24.0, 48.0);
     final textBottom = shellScaled(context, 16).clamp(8.0, 16.0);
-    final textBottomInset = _homeHeroTextBottomInset(
-      context,
-      compact: compact,
-      defaultBottom: textBottom,
-    );
     final textLeft = shellHomeSectionHorizontalPadding(context);
     final desktopTextWidth = math.min(
       MediaQuery.sizeOf(context).width * 0.34,
@@ -424,43 +546,39 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         clipBehavior: Clip.none,
         children: [
           ColoredBox(color: shellBg),
-          Positioned.fill(
-            child: PageView.builder(
-              clipBehavior: Clip.hardEdge,
-              controller: _heroController,
-              itemCount: _heroLoopLength,
-              onPageChanged: (i) => _onHeroPageChanged(i, movies),
-              itemBuilder: (context, index) {
-                final movie = movies[index % movies.length];
-                return _buildHeroSlideBackdrop(
-                  movie,
-                  imageStartFraction: imageStartFraction,
-                );
-              },
-            ),
-          ),
           Positioned(
-            left: 0,
+            left: solidLeftWidth,
             top: 0,
+            right: 0,
             bottom: 0,
-            width: solidLeftWidth,
-            child: IgnorePointer(
-              child: ColoredBox(color: shellBg),
-            ),
+            child: _buildHeroBackdropCarousel(movies),
           ),
           Positioned.fill(
             child: IgnorePointer(
               child: _buildDesktopHeroImageGradients(
                 shellBg,
                 imageStartFraction: imageStartFraction,
-                softBottomFade: pageBleed,
+                softBottomFade: shellBackdrop,
+              ),
+            ),
+          ),
+          Positioned(
+            left: solidLeftWidth,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _heroController,
+                builder: (context, _) =>
+                    _buildHeroSeamScrim(shellBg),
               ),
             ),
           ),
           Positioned(
             left: textLeft,
             top: textTop,
-            bottom: textBottomInset,
+            bottom: textBottom,
             width: textColumnWidth,
             child: _buildHeroTextSlide(
               movie: heroTextMovie,
@@ -492,13 +610,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               right: 0,
               bottom: 0,
               child: _buildTvHeroGalleryFocus(movies),
-            ),
-          if (pageBleed)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: widget.pageBottomChild!,
             ),
         ],
       ),
@@ -649,7 +760,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       builder: (context, constraints) {
         final height = constraints.maxHeight;
         final fadeEnd = ShellTokens.heroImageGradientFadeEndFraction;
-        final solidEnd = ShellTokens.heroImageGradientSolidEndFraction;
+        final solidEnd = _heroGradientSolidEndFraction;
         final strip = 1.0 - imageStartFraction;
         final solidEndStop = imageStartFraction + strip * solidEnd;
         final fadeMid1 = imageStartFraction +
@@ -669,12 +780,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        Colors.transparent,
-                        Colors.transparent,
+                        shellBg,
+                        shellBg,
                         shellBg,
                         if (solidEnd > 0) shellBg,
-                        shellBg.withValues(alpha: 0.72),
-                        shellBg.withValues(alpha: 0.28),
+                        shellBg.withValues(alpha: _heroGradientFadeMid1Alpha),
+                        shellBg.withValues(alpha: _heroGradientFadeMid2Alpha),
                         Colors.transparent,
                       ],
                       stops: [
@@ -807,36 +918,22 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  Widget _buildHeroSlideBackdrop(
-    Movie movie, {
-    required double imageStartFraction,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final shellBg = Theme.of(context).scaffoldBackgroundColor;
-        final imageLeft = constraints.maxWidth * imageStartFraction;
-
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: constraints.maxWidth - imageLeft,
-              height: constraints.maxHeight,
-              child: CachedNetworkImage(
-                key: ValueKey(movie.id),
-                imageUrl: movie.backdropPath.isNotEmpty
-                    ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                    : TmdbApi.getImageUrl(movie.posterPath),
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                filterQuality: FilterQuality.medium,
-                placeholder: (c, u) => ColoredBox(color: shellBg),
-                errorWidget: (c, u, e) => ColoredBox(color: shellBg),
-              ),
-            ),
-          ),
-        );
-      },
+  Widget _buildHeroSlideBackdrop(Movie movie) {
+    final shellBg = Theme.of(context).scaffoldBackgroundColor;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CachedNetworkImage(
+          key: ValueKey(movie.id),
+          imageUrl: _heroBackdropUrl(movie),
+          fit: BoxFit.cover,
+          alignment: Alignment.centerRight,
+          filterQuality: FilterQuality.medium,
+          placeholder: (c, u) => ColoredBox(color: shellBg),
+          errorWidget: (c, u, e) => ColoredBox(color: shellBg),
+        ),
+        _buildHeroSlideEdgeGradients(shellBg),
+      ],
     );
   }
 

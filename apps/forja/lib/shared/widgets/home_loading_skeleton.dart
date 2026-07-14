@@ -187,8 +187,7 @@ double homeCinematicHeroBodyHeight(
   }
   if (pageBottomBleed) {
     return MediaQuery.sizeOf(context).height *
-            ShellTokens.homeBackdropViewportFraction +
-        ShellTokens.homePageBottomSectionDownOffset;
+        ShellTokens.homeBackdropViewportFraction;
   }
   return MediaQuery.sizeOf(context).height * shellHeroHeightFraction(context);
 }

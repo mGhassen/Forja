@@ -289,6 +289,10 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
     return MediaDetailsScrollPage(
       scrollController: _s._detailsScrollController,
       tvHeroPlayFocus: _s._detailsHeroPlayFocus,
+      bodyOverlap: showEpisodeRail ? 0 : null,
+      topSpacing: showEpisodeRail
+          ? ShellTokens.detailsBodyTopSpacingWithEpisodes
+          : null,
       hero: _buildDetailsHero(
         heroHeight: heroHeight,
         showEpisodeRail: showEpisodeRail,

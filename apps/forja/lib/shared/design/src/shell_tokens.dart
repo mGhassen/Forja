@@ -140,11 +140,14 @@ abstract final class ShellTokens {
   static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
 
-  /// Home desktop/TV — page backdrop height (hero chrome + first row on image).
+  /// Home desktop/TV — hero backdrop height (carousel + chrome only; rows are in scroll).
   static const double homeBackdropViewportFraction = 0.75;
-  static const double homePageBottomSectionTopPadding = 8;
-  /// Gap between hero actions and the first on-backdrop row (Featured).
-  static const double homePageBottomSectionDownOffset = 62;
+
+  /// Padding above **Featured This Month** in the scroll view (independent of hero height).
+  static const double homeFeaturedRowTopPadding = 32;
+
+  /// Pull Featured upward so the row overlaps the hero backdrop image.
+  static const double homeFeaturedRowBackdropOverlap = 220;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).
@@ -259,8 +262,8 @@ abstract final class ShellTokens {
   /// TV uses the same hero chrome height; [detailsEpisodeBackdropBleed] carries the image lower.
   static const double detailsHeroWithEpisodesFraction = 0.82;
 
-  /// Hero height for media details — prefer [viewportHeight] from a [LayoutBuilder].
-  static double detailsHeroHeight(
+  /// Full on-screen backdrop band (~82% viewport) — title/actions + optional TV bleed.
+  static double detailsHeroBackdropBand(
     BuildContext context, {
     double? viewportHeight,
     bool showEpisodeRail = false,
@@ -273,6 +276,20 @@ abstract final class ShellTokens {
         ? detailsHeroWithEpisodesFraction
         : detailsHeroViewportFraction;
     return resolved * fraction;
+  }
+
+  /// Hero chrome height for media details — prefer [viewportHeight] from a [LayoutBuilder].
+  /// TV episode rails add [detailsEpisodeBackdropBleed] below this in the hero stack.
+  static double detailsHeroHeight(
+    BuildContext context, {
+    double? viewportHeight,
+    bool showEpisodeRail = false,
+  }) {
+    return detailsHeroBackdropBand(
+      context,
+      viewportHeight: viewportHeight,
+      showEpisodeRail: showEpisodeRail,
+    );
   }
 
   static const double tabHeaderTopPadding = 16;

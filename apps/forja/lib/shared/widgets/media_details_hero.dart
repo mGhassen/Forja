@@ -626,10 +626,13 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
 
   @override
   Widget build(BuildContext context) {
-    final h = widget.height ?? MediaQuery.sizeOf(context).height;
-    final bleed = widget.pageBottomChild != null
-        ? ShellTokens.detailsEpisodeBackdropBleed
-        : 0.0;
+    final showEpisodeRail = widget.pageBottomChild != null;
+    final h = widget.height ??
+        ShellTokens.detailsHeroHeight(
+          context,
+          showEpisodeRail: showEpisodeRail,
+        );
+    final bleed = showEpisodeRail ? ShellTokens.detailsEpisodeBackdropBleed : 0.0;
     final totalH = h + bleed;
     final shellBg = _shellBg(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
