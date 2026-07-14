@@ -58,7 +58,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 
 ## Tips
 
-- Sort order for torrents is set in Settings → Search & Torrents
+- Sort order for torrents is set in Settings → Sources
 - Enable only **Webstreaming** under Play sources if you want a single green **Play** / **Resume** without torrent/Stremio **Sources**
 
 ## Related

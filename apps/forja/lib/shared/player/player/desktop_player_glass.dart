@@ -33,10 +33,4 @@ extension _HwDecModeX on _HwDecMode {
     _HwDecMode.autoCopy => 'Hardware Decoding: ON (copy-back)',
     _HwDecMode.software => 'Hardware Decoding: OFF (CPU)',
   };
-
-  _HwDecMode get next => switch (this) {
-    _HwDecMode.autoSafe => _HwDecMode.autoCopy,
-    _HwDecMode.autoCopy => _HwDecMode.software,
-    _HwDecMode.software => _HwDecMode.autoSafe,
-  };
 }

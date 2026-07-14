@@ -3,15 +3,6 @@ part of 'desktop_player_screen.dart';
 mixin _DesktopPlayerTracks on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
-  void _cycleHwDec() {
-    final next = _s._hwDecMode.next;
-    setState(() => _s._hwDecMode = next);
-
-    if (_s._player.platform is NativePlayer) {
-      (_s._player.platform as NativePlayer).setProperty('hwdec', next.mpvValue);
-    }
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   //  SUBTITLE MANAGEMENT
   // ─────────────────────────────────────────────────────────────────────────

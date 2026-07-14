@@ -8,7 +8,7 @@ Simkl is an alternative tracking service. Log in via OAuth device flow and sync 
 
 ## How to open it
 
-**Settings → Accounts & Sync → Simkl**
+**Settings → Accounts → Simkl**
 
 ## What you can do
 

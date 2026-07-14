@@ -18,7 +18,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 - Hover a continue watching card (desktop) to scale it and show a brand-green play button — click to resume from the last torrent or web source
 - Dismiss entries from continue watching
 - Mark episodes watched from details screens (clears or updates progress)
-- Clear all continue watching (and watched marks) from **Settings → [Cache & data](../settings/cache-data.md)**
+- Clear all continue watching (and watched marks) from **Settings → [Data & backup](../settings/cache-data.md)**
 
 ## Tips
 

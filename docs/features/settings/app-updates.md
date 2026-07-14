@@ -8,7 +8,7 @@ Forja can check GitHub Releases for newer builds when the app starts and lets yo
 
 ## How to open it
 
-**Settings → App Updates** — manual check. Auto-check runs after the splash screen finishes on launch.
+**Settings → About** — manual check. Auto-check runs after the splash screen finishes on launch.
 
 ## What you can do
 

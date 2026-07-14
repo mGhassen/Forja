@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/settings/widgets/settings_expandable_section.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,44 +66,49 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsExpandableSection(
-      id: 'debrid',
-      icon: Icons.cloud_download_rounded,
-      title: 'Debrid',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-                  settingsFocusableToggle(context, 
-                    'Use Debrid for Streams',
-                    'Resolve torrents using your debrid account.',
-                    _useDebrid,
-                    (val) async {
-                      await _settings.setUseDebridForStreams(val);
-                      setState(() => _useDebrid = val);
-                    },
-                  ),
-                  settingsFocusableDropdown(context, 
-                    'Debrid Service',
-                    'Select your preferred provider.',
-                    _debridService,
-                    [
-                      'None',
-                      'Real-Debrid',
-                      'TorBox',
-                      'AllDebrid',
-                      'Premiumize',
-                      'Debrid-Link',
-                    ],
-                    (val) async {
-                      if (val != null) {
-                        await _settings.setDebridService(val);
-                        setState(() => _debridService = val);
-                      }
-                    },
-                  ),
-                  if (_debridService == 'Real-Debrid') _buildRDLogin(),
-                  if (_debridService == 'TorBox') _buildTorBoxConfig(),
-                  if (_debridService == 'AllDebrid') _buildAllDebridConfig(),
-                  if (_debridService == 'Premiumize') _buildPremiumizeConfig(),
-                  if (_debridService == 'Debrid-Link') _buildDebridLinkConfig(),
+        SettingsGroup(
+          label: 'Debrid',
+          children: [
+            settingsFocusableToggle(
+              context,
+              'Use Debrid for Streams',
+              'Resolve torrents using your debrid account.',
+              _useDebrid,
+              (val) async {
+                await _settings.setUseDebridForStreams(val);
+                setState(() => _useDebrid = val);
+              },
+            ),
+            settingsFocusableDropdown(
+              context,
+              'Debrid Service',
+              'Select your preferred provider.',
+              _debridService,
+              const [
+                'None',
+                'Real-Debrid',
+                'TorBox',
+                'AllDebrid',
+                'Premiumize',
+                'Debrid-Link',
+              ],
+              (val) async {
+                if (val != null) {
+                  await _settings.setDebridService(val);
+                  setState(() => _debridService = val);
+                }
+              },
+            ),
+          ],
+        ),
+        if (_debridService == 'Real-Debrid') _buildRDLogin(),
+        if (_debridService == 'TorBox') _buildTorBoxConfig(),
+        if (_debridService == 'AllDebrid') _buildAllDebridConfig(),
+        if (_debridService == 'Premiumize') _buildPremiumizeConfig(),
+        if (_debridService == 'Debrid-Link') _buildDebridLinkConfig(),
       ],
     );
   }

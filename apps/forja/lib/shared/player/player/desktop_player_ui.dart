@@ -146,16 +146,4 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
     BoxFit.fill => 'FILL',
     _ => 'FIT',
   };
-
-  void _cycleAspectRatio() {
-    setState(() {
-      if (_s._videoFit == BoxFit.contain) {
-        _s._videoFit = BoxFit.cover;
-      } else if (_s._videoFit == BoxFit.cover) {
-        _s._videoFit = BoxFit.fill;
-      } else {
-        _s._videoFit = BoxFit.contain;
-      }
-    });
-  }
 }

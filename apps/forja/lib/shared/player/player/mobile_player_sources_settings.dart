@@ -47,153 +47,161 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
     final hasSources =
         _s._currentSources != null && _s._currentSources!.isNotEmpty;
 
-    PlayerPopupPanel.show(
-      context: context,
-      title: 'Settings',
-      leadingIcon: Icons.tune_rounded,
-      anchorContext: anchorContext,
-      width: 320,
-      maxHeight: 460,
-      child: StatefulBuilder(
-        builder: (context, setPanelState) {
-          final speed = _s._player.state.rate;
-          final autoSkip = SettingsService.autoSkipIntroNotifier.value;
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-            shrinkWrap: true,
-            children: [
-              PlayerPopupSectionCard(
-                icon: Icons.auto_awesome_rounded,
-                title: 'Auto selection',
-                subtitle: 'Pick tracks and servers for you',
-                child: Column(
-                  children: [
-                    if (hasProviders) ...[
-                      PlayerPopupToggleRow(
-                        label: 'Auto server',
-                        value: !_s._providerPinned,
-                        onChanged: (on) async {
-                          final settings = SettingsService();
-                          if (on) {
-                            await settings.setPlayerAutoServer(true);
-                            setState(() => _s._providerPinned = false);
-                            setPanelState(() {});
-                            await _s._selectAutoProvider();
-                          } else {
-                            await settings.setPlayerAutoServer(false);
-                            setState(() => _s._providerPinned = true);
-                            setPanelState(() {});
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (hasSources) ...[
-                      PlayerPopupToggleRow(
-                        label: 'Auto source',
-                        value: !_s._sourcePinned,
-                        onChanged: (on) async {
-                          final settings = SettingsService();
-                          if (on) {
-                            await settings.setPlayerAutoSource(true);
-                            setState(() => _s._sourcePinned = false);
-                            setPanelState(() {});
-                            await _s._selectAutoSource();
-                          } else {
-                            await settings.setPlayerAutoSource(false);
-                            setState(() => _s._sourcePinned = true);
-                            setPanelState(() {});
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+    List<PlayerSettingsEntry> buildEntries() {
+      final speed = _s._player.state.rate;
+      return [
+        PlayerSettingsEntry(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Auto selection',
+          subtitle: 'Servers, tracks, skip intro',
+          pageBuilder: (_) => StatefulBuilder(
+            builder: (context, setPage) => PlayerPopupSectionCard(
+              icon: Icons.auto_awesome_rounded,
+              title: 'Auto selection',
+              subtitle: 'Pick tracks and servers for you',
+              child: Column(
+                children: [
+                  if (hasProviders) ...[
                     PlayerPopupToggleRow(
-                      label: 'Auto audio',
-                      value: !_s._audioPinned,
+                      label: 'Auto server',
+                      value: !_s._providerPinned,
                       onChanged: (on) async {
                         final settings = SettingsService();
                         if (on) {
-                          await settings.setPlayerAutoAudio(true);
-                          setState(() => _s._audioPinned = false);
-                          setPanelState(() {});
-                          _s._autoTracksAppliedForSource = false;
-                          await _s._applyTrackAutoSelect();
+                          await settings.setPlayerAutoServer(true);
+                          setState(() => _s._providerPinned = false);
+                          setPage(() {});
+                          await _s._selectAutoProvider();
                         } else {
-                          await settings.setPlayerAutoAudio(false);
-                          setState(() => _s._audioPinned = true);
-                          setPanelState(() {});
+                          await settings.setPlayerAutoServer(false);
+                          setState(() => _s._providerPinned = true);
+                          setPage(() {});
                         }
                       },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+                  ],
+                  if (hasSources) ...[
                     PlayerPopupToggleRow(
-                      label: 'Auto subtitles',
-                      value: !_s._subtitlePinned,
+                      label: 'Auto source',
+                      value: !_s._sourcePinned,
                       onChanged: (on) async {
                         final settings = SettingsService();
                         if (on) {
-                          await settings.setPlayerAutoSubtitle(true);
-                          setState(() => _s._subtitlePinned = false);
-                          setPanelState(() {});
-                          await _applyAutoSubtitle();
+                          await settings.setPlayerAutoSource(true);
+                          setState(() => _s._sourcePinned = false);
+                          setPage(() {});
+                          await _s._selectAutoSource();
                         } else {
-                          await settings.setPlayerAutoSubtitle(false);
-                          setState(() => _s._subtitlePinned = true);
-                          setPanelState(() {});
+                          await settings.setPlayerAutoSource(false);
+                          setState(() => _s._sourcePinned = true);
+                          setPage(() {});
                         }
                       },
                     ),
-                    const SizedBox(height: 8),
-                    PlayerPopupToggleRow(
-                      label: 'Auto skip intro',
-                      value: autoSkip,
-                      onChanged: (on) async {
-                        await SettingsService().setAutoSkipIntro(on);
-                        setPanelState(() {});
-                      },
+                    const SizedBox(height: 12),
+                  ],
+                  PlayerPopupToggleRow(
+                    label: 'Auto audio',
+                    value: !_s._audioPinned,
+                    onChanged: (on) async {
+                      final settings = SettingsService();
+                      if (on) {
+                        await settings.setPlayerAutoAudio(true);
+                        setState(() => _s._audioPinned = false);
+                        setPage(() {});
+                        _s._autoTracksAppliedForSource = false;
+                        await _s._applyTrackAutoSelect();
+                      } else {
+                        await settings.setPlayerAutoAudio(false);
+                        setState(() => _s._audioPinned = true);
+                        setPage(() {});
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  PlayerPopupToggleRow(
+                    label: 'Auto subtitles',
+                    value: !_s._subtitlePinned,
+                    onChanged: (on) async {
+                      final settings = SettingsService();
+                      if (on) {
+                        await settings.setPlayerAutoSubtitle(true);
+                        setState(() => _s._subtitlePinned = false);
+                        setPage(() {});
+                        await _applyAutoSubtitle();
+                      } else {
+                        await settings.setPlayerAutoSubtitle(false);
+                        setState(() => _s._subtitlePinned = true);
+                        setPage(() {});
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  PlayerPopupToggleRow(
+                    label: 'Auto skip intro',
+                    value: SettingsService.autoSkipIntroNotifier.value,
+                    onChanged: (on) async {
+                      await SettingsService().setAutoSkipIntro(on);
+                      setPage(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        PlayerSettingsEntry(
+          icon: Icons.memory_rounded,
+          title: 'Video decode',
+          subtitle: _s._hwDecMode.description,
+          value: _s._hwDecMode.label,
+          pageBuilder: (_) => StatefulBuilder(
+            builder: (context, setPage) => PlayerPopupSectionCard(
+              icon: Icons.memory_rounded,
+              title: 'Video decode',
+              subtitle: _s._hwDecMode.description,
+              valueBadge: _s._hwDecMode.label,
+              child: Row(
+                children: [
+                  for (final mode in _HwDecMode.values) ...[
+                    if (mode != _HwDecMode.values.first)
+                      const SizedBox(width: 8),
+                    Expanded(
+                      child: PlayerPopupOptionChip(
+                        label: mode.label,
+                        selected: _s._hwDecMode == mode,
+                        expanded: true,
+                        onTap: () {
+                          if (_s._hwDecMode == mode) return;
+                          setState(() => _s._hwDecMode = mode);
+                          if (_s._player.platform is NativePlayer) {
+                            (_s._player.platform as NativePlayer)
+                                .setProperty('hwdec', mode.mpvValue);
+                          }
+                          setPage(() {});
+                        },
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 10),
-              PlayerPopupSectionCard(
-                icon: Icons.memory_rounded,
-                title: 'Video decode',
-                subtitle: _s._hwDecMode.description,
-                valueBadge: _s._hwDecMode.label,
-                child: Row(
-                  children: [
-                    for (final mode in _HwDecMode.values) ...[
-                      if (mode != _HwDecMode.values.first)
-                        const SizedBox(width: 8),
-                      Expanded(
-                        child: PlayerPopupOptionChip(
-                          label: mode.label,
-                          selected: _s._hwDecMode == mode,
-                          expanded: true,
-                          onTap: () {
-                            if (_s._hwDecMode == mode) return;
-                            setState(() => _s._hwDecMode = mode);
-                            if (_s._player.platform is NativePlayer) {
-                              (_s._player.platform as NativePlayer)
-                                  .setProperty('hwdec', mode.mpvValue);
-                            }
-                            setPanelState(() {});
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              PlayerPopupSectionCard(
+            ),
+          ),
+        ),
+        PlayerSettingsEntry(
+          icon: Icons.speed_rounded,
+          title: 'Playback speed',
+          subtitle: 'How fast playback runs',
+          value: speed == 1.0 ? 'Normal' : '${speed}x',
+          pageBuilder: (_) => StatefulBuilder(
+            builder: (context, setPage) {
+              final current = _s._player.state.rate;
+              return PlayerPopupSectionCard(
                 icon: Icons.speed_rounded,
                 title: 'Playback speed',
                 subtitle: 'How fast playback runs',
-                valueBadge: speed == 1.0 ? 'Normal' : '${speed}x',
+                valueBadge: current == 1.0 ? 'Normal' : '${current}x',
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -210,78 +218,102 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
                     ])
                       PlayerPopupOptionChip(
                         label: s == 1.0 ? 'Normal' : '${s}x',
-                        selected: s == speed,
+                        selected: s == current,
                         onTap: () {
                           _s._player.setRate(s);
-                          setPanelState(() {});
+                          setPage(() {});
                         },
                       ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              PlayerPopupSectionCard(
-                icon: Icons.aspect_ratio_rounded,
-                title: 'Aspect ratio',
-                subtitle: 'Fit video in the frame',
-                valueBadge: _s._videoFitLabel,
-                child: Row(
-                  children: [
-                    for (final entry in const [
-                      (BoxFit.contain, 'FIT'),
-                      (BoxFit.cover, 'CROP'),
-                      (BoxFit.fill, 'FILL'),
-                    ]) ...[
-                      if (entry.$1 != BoxFit.contain) const SizedBox(width: 8),
-                      Expanded(
-                        child: PlayerPopupOptionChip(
-                          label: entry.$2,
-                          selected: _s._videoFit == entry.$1,
-                          expanded: true,
-                          onTap: () {
-                            setState(() => _s._videoFit = entry.$1);
-                            setPanelState(() {});
-                          },
-                        ),
+              );
+            },
+          ),
+        ),
+        PlayerSettingsEntry(
+          icon: Icons.aspect_ratio_rounded,
+          title: 'Aspect ratio',
+          subtitle: 'Fit video in the frame',
+          value: _s._videoFitLabel,
+          pageBuilder: (_) => StatefulBuilder(
+            builder: (context, setPage) => PlayerPopupSectionCard(
+              icon: Icons.aspect_ratio_rounded,
+              title: 'Aspect ratio',
+              subtitle: 'Fit video in the frame',
+              valueBadge: _s._videoFitLabel,
+              child: Row(
+                children: [
+                  for (final entry in const [
+                    (BoxFit.contain, 'FIT'),
+                    (BoxFit.cover, 'CROP'),
+                    (BoxFit.fill, 'FILL'),
+                  ]) ...[
+                    if (entry.$1 != BoxFit.contain) const SizedBox(width: 8),
+                    Expanded(
+                      child: PlayerPopupOptionChip(
+                        label: entry.$2,
+                        selected: _s._videoFit == entry.$1,
+                        expanded: true,
+                        onTap: () {
+                          setState(() => _s._videoFit = entry.$1);
+                          setPage(() {});
+                        },
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 10),
-              PlayerPopupSectionCard(
-                icon: Icons.loop_rounded,
-                title: 'Loop',
-                subtitle: 'Repeat the current title',
-                valueBadge: _s._loopEnabled ? 'On' : 'Off',
-                child: playerPopupOnOffChips(
-                  value: _s._loopEnabled,
-                  onChanged: (on) {
-                    if (on == _s._loopEnabled) return;
-                    _s._toggleLoop();
-                    setPanelState(() {});
-                  },
-                ),
+            ),
+          ),
+        ),
+        PlayerSettingsEntry(
+          icon: Icons.loop_rounded,
+          title: 'Loop',
+          subtitle: 'Repeat the current title',
+          value: _s._loopEnabled ? 'On' : 'Off',
+          pageBuilder: (_) => StatefulBuilder(
+            builder: (context, setPage) => PlayerPopupSectionCard(
+              icon: Icons.loop_rounded,
+              title: 'Loop',
+              subtitle: 'Repeat the current title',
+              valueBadge: _s._loopEnabled ? 'On' : 'Off',
+              child: playerPopupOnOffChips(
+                value: _s._loopEnabled,
+                onChanged: (on) {
+                  if (on == _s._loopEnabled) return;
+                  _s._toggleLoop();
+                  setPage(() {});
+                },
               ),
-              const SizedBox(height: 10),
-              PlayerPopupSectionCard(
-                icon: Icons.subtitles_outlined,
-                title: 'Subtitle style',
-                subtitle: 'Font, size, and color',
-                child: PlayerPopupOptionChip(
-                  label: 'Customize',
-                  selected: false,
-                  expanded: true,
-                  onTap: () {
-                    PlayerPopupPanel.dismiss();
-                    _s._showSubtitleSettings();
-                  },
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+            ),
+          ),
+        ),
+        PlayerSettingsEntry(
+          icon: Icons.subtitles_outlined,
+          title: 'Subtitle style',
+          subtitle: 'Font, size, and color',
+          pageBuilder: (_) => PlayerPopupSectionCard(
+            icon: Icons.subtitles_outlined,
+            title: 'Subtitle style',
+            subtitle: 'Font, size, and color',
+            child: PlayerPopupOptionChip(
+              label: 'Open subtitle settings',
+              selected: false,
+              expanded: true,
+              onTap: () {
+                PlayerPopupPanel.dismiss();
+                _s._showSubtitleSettings();
+              },
+            ),
+          ),
+        ),
+      ];
+    }
+
+    showPlayerSettingsMenu(
+      context: context,
+      anchorContext: anchorContext,
+      buildEntries: buildEntries,
     );
   }
 }

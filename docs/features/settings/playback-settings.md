@@ -22,7 +22,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Reorder **Server reliability** (Movies / Series / Anime tabs): drag preference; **Score** is live reliability; **Tries** is Auto check order
 - Set **Max stream quality** to cap automatic selection (Auto, 4K, 1080p, 720p, …)
 
-Cache reset moved to **Settings → [Cache & data](cache-data.md)** (stream URLs, images, scores, continue watching).
+Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URLs, images, scores, continue watching).
 
 ## Tips
 

@@ -53,6 +53,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 16/16 · 0/5 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 · 4/4 · 2/10 | [1.0.2](../backlog/1.0.2-[draft].md) → [1.0.3](../backlog/1.0.3-[draft].md) |
 | [032-[open]-…](032-[open]-rust-resolver-engine.md) | Rust Resolver Engine | v1.0.3 | open | 8/8 · 11/14 | [1.0.3](../backlog/1.0.3-[draft].md) |
+| [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 5/5 · 8/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
 
 ## Related
 

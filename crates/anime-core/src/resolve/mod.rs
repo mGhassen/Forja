@@ -5,7 +5,6 @@ pub(crate) mod probe;
 use serde::Deserialize;
 use serde_json::json;
 
-pub use anikoto::{AnikotoEpisodeOut, AnikotoSeriesOut};
 pub use direct_embed::direct_embed_extract;
 pub use probe::probe_stream_url;
 

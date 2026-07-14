@@ -8,7 +8,7 @@ Move your Forja configuration between devices or keep a backup. Export includes 
 
 ## How to open it
 
-**Settings → Backup & Restore**
+**Settings → Data & backup** (Backup)
 
 ## What you can do
 

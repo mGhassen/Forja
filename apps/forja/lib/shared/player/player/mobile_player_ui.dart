@@ -3,14 +3,6 @@ part of 'mobile_player_screen.dart';
 mixin _MobilePlayerUi on State<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
-  void _cycleHwDec() {
-    final next = _s._hwDecMode.next;
-    setState(() => _s._hwDecMode = next);
-    if (_s._player.platform is NativePlayer) {
-      (_s._player.platform as NativePlayer).setProperty('hwdec', next.mpvValue);
-    }
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   //  UI HIDE TIMER
   // ─────────────────────────────────────────────────────────────────────────
@@ -170,17 +162,4 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
     BoxFit.fill => 'FILL',
     _ => 'FIT',
   };
-
-  void _cycleAspectRatio() {
-    setState(() {
-      if (_s._videoFit == BoxFit.contain) {
-        _s._videoFit = BoxFit.cover;
-      } else if (_s._videoFit == BoxFit.cover) {
-        _s._videoFit = BoxFit.fill;
-      } else {
-        _s._videoFit = BoxFit.contain;
-      }
-    });
-  }
-
 }

@@ -22,7 +22,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 
 ## Setup (if needed)
 
-**Settings → Search & Torrents → Torrent engine:**
+**Settings → Sources → Torrent engine:**
 - Cache type: RAM or disk
 - RAM cache size (MB)
 - Connection limit

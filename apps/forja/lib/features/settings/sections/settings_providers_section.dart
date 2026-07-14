@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/settings/widgets/settings_expandable_section.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -91,72 +91,27 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsExpandableSection(
-      id: 'providers',
-      icon: Icons.extension_rounded,
-      title: 'Providers & Addons',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'STREMIO ADDONS',
-                      style: TextStyle(
-                        color: AppTheme.current.primaryColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildAddonInput(),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'NUVIO ADDONS',
-                      style: TextStyle(
-                        color: AppTheme.current.primaryColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildNuvioAddonSection(),
-                  if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'JACKETT',
-                        style: TextStyle(
-                          color: AppTheme.current.primaryColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildJackettConfig(),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'PROWLARR',
-                        style: TextStyle(
-                          color: AppTheme.current.primaryColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildProwlarrConfig(),
-                  ],
+        SettingsGroup(
+          label: 'Stremio addons',
+          children: [_buildAddonInput()],
+        ),
+        SettingsGroup(
+          label: 'Nuvio addons',
+          children: [_buildNuvioAddonSection()],
+        ),
+        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
+          SettingsGroup(
+            label: 'Jackett',
+            children: [_buildJackettConfig()],
+          ),
+          SettingsGroup(
+            label: 'Prowlarr',
+            children: [_buildProwlarrConfig()],
+          ),
+        ],
       ],
     );
   }

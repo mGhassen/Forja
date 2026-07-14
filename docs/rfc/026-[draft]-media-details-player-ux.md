@@ -70,7 +70,7 @@
 | 10 | R26-A17 | Settings → Playback — Auto next episode + Auto skip intro; wire complete + IntroDB skip | ✅ |
 | 11 | R26-A18 | In-player Settings menu — Auto skip intro toggle (synced with Settings → Playback) | ✅ |
 | 12 | R26-A19 | Episodes panel top — season pill (brand green), search + Auto next switch, squared close | ✅ |
-| 13 | R26-A20 | Floating player menus — Lab chrome (section cards, white/black selected chips); side panels unchanged | ✅ |
+| 13 | R26-A20 | Floating player menus — Lab chrome (low-radius cards, white/black selected chips); Settings is drill-in (each parameter → own second page); side panels unchanged | ✅ |
 | 14 | R26-A21 | Loading overlay — layers icon next to Cancel opens live provider list; tap server to check manually | ✅ |
 
 ---

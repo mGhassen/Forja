@@ -34,7 +34,7 @@ WebStreamr searches regional streaming sites for embed pages matching your movie
 
 ## How to open it
 
-Used when [Webstreaming](../movies-tv/direct-streaming-mode.md) plays on media details. Configure countries in **Settings → WebStreamr Settings**.
+Used when [Webstreaming](../movies-tv/direct-streaming-mode.md) plays on media details. Configure countries in **Settings → Sources → WebStreamr Settings**.
 
 ## What you can do
 

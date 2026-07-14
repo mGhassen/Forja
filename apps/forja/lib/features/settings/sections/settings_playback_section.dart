@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
-import 'package:forja/features/settings/widgets/settings_expandable_section.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 /// Playback sources, scoring, and audio prefs.
 class SettingsPlaybackSection extends StatefulWidget {
@@ -42,7 +41,8 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   Future<void> _load() async {
     final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
-    final playSourceWebstreaming = await _settings.isPlaySourceWebstreamingEnabled();
+    final playSourceWebstreaming =
+        await _settings.isPlaySourceWebstreamingEnabled();
     final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final streamOrder = await _settings.getStreamProviderOrder();
     final animeOrder = await _settings.getAnimeProviderOrder();
@@ -68,139 +68,141 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _autoNextEpisode = autoNextEpisode;
       _autoSkipIntro = autoSkipIntro;
       _iptvEpgEnabled = iptvEpgEnabled;
-      _maxPlaybackHeightLabel = SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
+      _maxPlaybackHeightLabel =
+          SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SettingsExpandableSection(
-      id: 'playback',
-      icon: Icons.play_circle_outline_rounded,
-      title: 'Playback',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'PLAY SOURCES',
-                      style: TextStyle(
-                        color: AppTheme.current.primaryColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  settingsFocusableToggle(context, 
-                    'Direct torrent',
-                    'Search Forja indexers and Nuvio scrapers in Sources.',
-                    _playSourceTorrent,
-                    (val) async {
-                      await _settings.setPlaySourceTorrentEnabled(val);
-                      setState(() => _playSourceTorrent = val);
-                    },
-                  ),
-                  settingsFocusableToggle(context, 
-                    'Stremio',
-                    'Play from installed Stremio addon streams.',
-                    _playSourceStremio,
-                    (val) async {
-                      await _settings.setPlaySourceStremioEnabled(val);
-                      setState(() => _playSourceStremio = val);
-                    },
-                  ),
-                  settingsFocusableToggle(context, 
-                    'Webstreaming',
-                    'Play from web stream extractors (Videasy, WebStreamr, …).',
-                    _playSourceWebstreaming,
-                    (val) async {
-                      await _settings.setPlaySourceWebstreamingEnabled(val);
-                      setState(() => _playSourceWebstreaming = val);
-                    },
-                  ),
-                  _buildProviderScoringSection(),
-                  if (Platform.isAndroid)
-                    settingsFocusableDropdown(context, 
-                      'Built-in engine',
-                      'Decoder when Video Player is Built-in.',
-                      _builtInEngine.displayName,
-                      builtInPlayerEngineOptions
-                          .map((e) => e.displayName)
-                          .toList(),
-                      (val) async {
-                        if (val == null) return;
-                        final match = builtInPlayerEngineOptions
-                            .where((e) => e.displayName == val)
-                            .toList();
-                        if (match.isEmpty) return;
-                        await _settings.setBuiltInPlayerEngine(match.first);
-                        setState(() => _builtInEngine = match.first);
-                      },
-                    ),
-                  settingsFocusableDropdown(context, 
-                    'Preferred Audio Language',
-                    'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
-                    _preferredAudioLang,
-                    kTrackLanguageDisplayNames,
-                    (val) async {
-                      if (val != null) {
-                        await _settings.setPreferredAudioLanguage(val);
-                        setState(() => _preferredAudioLang = val);
-                      }
-                    },
-                  ),
-                  settingsFocusableToggle(context, 
-                    'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
-                    'Switch to AC-3 / E-AC-3 / AAC when the original track\'s codec or channel layout isn\'t supported.',
-                    _avoidUnsupportedAudio,
-                    (val) async {
-                      await _settings.setAvoidUnsupportedAudio(val);
-                      setState(() => _avoidUnsupportedAudio = val);
-                    },
-                  ),
-                  settingsFocusableToggle(
-                    context,
-                    'Auto next episode',
-                    'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
-                    _autoNextEpisode,
-                    (val) async {
-                      await _settings.setAutoNextEpisode(val);
-                      setState(() => _autoNextEpisode = val);
-                    },
-                  ),
-                  settingsFocusableToggle(
-                    context,
-                    'Auto skip intro',
-                    'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
-                    _autoSkipIntro,
-                    (val) async {
-                      await _settings.setAutoSkipIntro(val);
-                      setState(() => _autoSkipIntro = val);
-                    },
-                  ),
-                  settingsFocusableToggle(context, 
-                    'IPTV programme guide (EPG)',
-                    'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
-                    _iptvEpgEnabled,
-                    (val) async {
-                      await _settings.setIptvEpgEnabled(val);
-                      setState(() => _iptvEpgEnabled = val);
-                    },
-                  ),
-                  settingsFocusableDropdown(context, 
-                    'Max stream quality',
-                    'Cap automatic stream selection. Auto uses the best your device supports.',
-                    _maxPlaybackHeightLabel,
-                    SettingsService.maxPlaybackHeightOptions.keys.toList(),
-                    (val) async {
-                      if (val == null) return;
-                      final height =
-                          SettingsService.maxPlaybackHeightOptions[val] ?? 0;
-                      await _settings.setMaxPlaybackHeight(height);
-                      setState(() => _maxPlaybackHeightLabel = val);
-                    },
-                  ),
+        SettingsGroup(
+          label: 'Play sources',
+          children: [
+            settingsFocusableToggle(
+              context,
+              'Direct torrent',
+              'Search Forja indexers and Nuvio scrapers in Sources.',
+              _playSourceTorrent,
+              (val) async {
+                await _settings.setPlaySourceTorrentEnabled(val);
+                setState(() => _playSourceTorrent = val);
+              },
+            ),
+            settingsFocusableToggle(
+              context,
+              'Stremio',
+              'Play from installed Stremio addon streams.',
+              _playSourceStremio,
+              (val) async {
+                await _settings.setPlaySourceStremioEnabled(val);
+                setState(() => _playSourceStremio = val);
+              },
+            ),
+            settingsFocusableToggle(
+              context,
+              'Webstreaming',
+              'Play from web stream extractors (Videasy, WebStreamr, …).',
+              _playSourceWebstreaming,
+              (val) async {
+                await _settings.setPlaySourceWebstreamingEnabled(val);
+                setState(() => _playSourceWebstreaming = val);
+              },
+            ),
+          ],
+        ),
+        _buildProviderScoringSection(),
+        SettingsGroup(
+          label: 'Player',
+          children: [
+            if (Platform.isAndroid)
+              settingsFocusableDropdown(
+                context,
+                'Built-in engine',
+                'Decoder when Video Player is Built-in.',
+                _builtInEngine.displayName,
+                builtInPlayerEngineOptions.map((e) => e.displayName).toList(),
+                (val) async {
+                  if (val == null) return;
+                  final match = builtInPlayerEngineOptions
+                      .where((e) => e.displayName == val)
+                      .toList();
+                  if (match.isEmpty) return;
+                  await _settings.setBuiltInPlayerEngine(match.first);
+                  setState(() => _builtInEngine = match.first);
+                },
+              ),
+            settingsFocusableDropdown(
+              context,
+              'Preferred Audio Language',
+              'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
+              _preferredAudioLang,
+              kTrackLanguageDisplayNames,
+              (val) async {
+                if (val != null) {
+                  await _settings.setPreferredAudioLanguage(val);
+                  setState(() => _preferredAudioLang = val);
+                }
+              },
+            ),
+            settingsFocusableToggle(
+              context,
+              'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
+              'Switch to AC-3 / E-AC-3 / AAC when the original track\'s codec or channel layout isn\'t supported.',
+              _avoidUnsupportedAudio,
+              (val) async {
+                await _settings.setAvoidUnsupportedAudio(val);
+                setState(() => _avoidUnsupportedAudio = val);
+              },
+            ),
+            settingsFocusableToggle(
+              context,
+              'Auto next episode',
+              'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
+              _autoNextEpisode,
+              (val) async {
+                await _settings.setAutoNextEpisode(val);
+                setState(() => _autoNextEpisode = val);
+              },
+            ),
+            settingsFocusableToggle(
+              context,
+              'Auto skip intro',
+              'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
+              _autoSkipIntro,
+              (val) async {
+                await _settings.setAutoSkipIntro(val);
+                setState(() => _autoSkipIntro = val);
+              },
+            ),
+            settingsFocusableToggle(
+              context,
+              'IPTV programme guide (EPG)',
+              'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
+              _iptvEpgEnabled,
+              (val) async {
+                await _settings.setIptvEpgEnabled(val);
+                setState(() => _iptvEpgEnabled = val);
+              },
+            ),
+            settingsFocusableDropdown(
+              context,
+              'Max stream quality',
+              'Cap automatic stream selection. Auto uses the best your device supports.',
+              _maxPlaybackHeightLabel,
+              SettingsService.maxPlaybackHeightOptions.keys.toList(),
+              (val) async {
+                if (val == null) return;
+                final height =
+                    SettingsService.maxPlaybackHeightOptions[val] ?? 0;
+                await _settings.setMaxPlaybackHeight(height);
+                setState(() => _maxPlaybackHeightLabel = val);
+              },
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -220,34 +222,36 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       animeCatalog.keys,
     );
 
-    return ProviderScoringPanel(
-      streamCatalog: streamCatalog,
-      streamOrder: streamOrder,
-      onStreamOrderChanged: (next) async {
-        setState(() => _streamProviderOrder = next);
-        await _settings.setStreamProviderOrder(next);
-      },
-      onStreamOrderReset: () async {
-        final defaults = List<String>.from(
-          SettingsService.defaultStreamProviderOrder,
-        );
-        await _settings.setStreamProviderOrder(defaults);
-        setState(() => _streamProviderOrder = defaults);
-      },
-      animeCatalog: animeCatalog,
-      animeOrder: animeOrder,
-      onAnimeOrderChanged: (next) async {
-        setState(() => _animeProviderOrder = next);
-        await _settings.setAnimeProviderOrder(next);
-      },
-      onAnimeOrderReset: () async {
-        final defaults = List<String>.from(
-          SettingsService.defaultAnimeProviderOrder,
-        );
-        await _settings.setAnimeProviderOrder(defaults);
-        setState(() => _animeProviderOrder = defaults);
-      },
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: ProviderScoringPanel(
+        streamCatalog: streamCatalog,
+        streamOrder: streamOrder,
+        onStreamOrderChanged: (next) async {
+          setState(() => _streamProviderOrder = next);
+          await _settings.setStreamProviderOrder(next);
+        },
+        onStreamOrderReset: () async {
+          final defaults = List<String>.from(
+            SettingsService.defaultStreamProviderOrder,
+          );
+          await _settings.setStreamProviderOrder(defaults);
+          setState(() => _streamProviderOrder = defaults);
+        },
+        animeCatalog: animeCatalog,
+        animeOrder: animeOrder,
+        onAnimeOrderChanged: (next) async {
+          setState(() => _animeProviderOrder = next);
+          await _settings.setAnimeProviderOrder(next);
+        },
+        onAnimeOrderReset: () async {
+          final defaults = List<String>.from(
+            SettingsService.defaultAnimeProviderOrder,
+          );
+          await _settings.setAnimeProviderOrder(defaults);
+          setState(() => _animeProviderOrder = defaults);
+        },
+      ),
     );
   }
-
 }

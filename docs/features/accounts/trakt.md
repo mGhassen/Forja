@@ -8,7 +8,7 @@ Trakt connects your Forja activity to Trakt.tv — OAuth login, sync watched ite
 
 ## How to open it
 
-**Settings → Accounts & Sync → Trakt**
+**Settings → Accounts → Trakt**
 
 ## What you can do
 

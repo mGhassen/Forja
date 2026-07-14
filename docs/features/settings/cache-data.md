@@ -4,11 +4,11 @@
 
 ## What it is
 
-A Settings section to free disk and reset local learned or viewing data without wiping accounts, My List, or your provider drag order.
+A category under **Settings → Data & backup** to free disk and reset local learned or viewing data without wiping accounts, My List, or your provider drag order.
 
 ## How to open it
 
-**Settings → Cache & data**
+**Settings → Data & backup** (Cache section)
 
 ## What you can do
 

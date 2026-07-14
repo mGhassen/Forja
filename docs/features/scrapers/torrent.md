@@ -13,12 +13,12 @@ Automatic on [Media details](../movies-tv/media-details.md) when you view torren
 ## What you can do
 
 - See combined results from all three indexers
-- Sort by seeders, size, or other options (Settings → Search & Torrents)
+- Sort by seeders, size, or other options (Settings → Sources)
 - Play magnets or torrent files via [torrent playback](../playback/torrent-playback.md)
 
 ## Setup (if needed)
 
-No API keys required. Adjust **sort preference** in Settings → Search & Torrents.
+No API keys required. Adjust **sort preference** in Settings → Sources.
 
 ## Tips
 

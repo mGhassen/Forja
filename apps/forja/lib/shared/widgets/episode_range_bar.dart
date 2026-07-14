@@ -141,36 +141,30 @@ class EpisodeRangeSelector extends StatelessWidget {
           }
         }
 
-        const radius = 6.0;
-        final trigger = Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(radius),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(radius),
-            onTap: toggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    selected.label,
-                    style: TextStyle(
-                      color: cinematic.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: cinematic.textSecondary,
-                  ),
-                ],
+        const radius = 20.0;
+        final trigger = shellRoundedInkHost(
+          radius: radius,
+          onTap: toggle,
+          decoration: shellChipDecoration(selected: false, radius: radius),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                selected.label,
+                style: TextStyle(
+                  color: cinematic.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: cinematic.textPrimary,
+              ),
+            ],
           ),
         );
 

@@ -8,7 +8,7 @@ Customize which sections appear in the bottom nav (mobile) or side rail (desktop
 
 ## How to open it
 
-**Settings → Navigation Bar**
+**Settings → Navigation**
 
 ## What you can do
 

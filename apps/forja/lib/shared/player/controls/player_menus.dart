@@ -116,6 +116,99 @@ void showTracksMenu(
   );
 }
 
+/// One drill-in row in a floating Settings menu. Tapping opens a second page.
+class PlayerSettingsEntry {
+  const PlayerSettingsEntry({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.value,
+    required this.pageBuilder,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  /// Current value badge shown on the root row (e.g. "AUTO", "1.5x").
+  final String? value;
+
+  /// Builds the second-page body for this parameter. Should manage its own
+  /// [StatefulBuilder] so chip taps update live without closing the page.
+  final WidgetBuilder pageBuilder;
+}
+
+/// Root Settings menu: a list of drill-in rows. Each opens its own page.
+///
+/// [buildEntries] is re-invoked on every (re)open so value badges and selected
+/// states stay fresh when returning from a sub-page.
+void showPlayerSettingsMenu({
+  required BuildContext context,
+  BuildContext? anchorContext,
+  String title = 'Settings',
+  required List<PlayerSettingsEntry> Function() buildEntries,
+}) {
+  final entries = buildEntries();
+  PlayerPopupPanel.show(
+    context: context,
+    title: title,
+    leadingIcon: Icons.tune_rounded,
+    anchorContext: anchorContext,
+    width: 340,
+    maxHeight: 560,
+    child: ListView.separated(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      shrinkWrap: true,
+      itemCount: entries.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final entry = entries[i];
+        return PlayerPopupNavRow(
+          icon: entry.icon,
+          title: entry.title,
+          subtitle: entry.subtitle,
+          value: entry.value,
+          onTap: () => _openPlayerSettingsPage(
+            context: context,
+            anchorContext: anchorContext,
+            rootTitle: title,
+            buildEntries: buildEntries,
+            index: i,
+          ),
+        );
+      },
+    ),
+  );
+}
+
+void _openPlayerSettingsPage({
+  required BuildContext context,
+  BuildContext? anchorContext,
+  required String rootTitle,
+  required List<PlayerSettingsEntry> Function() buildEntries,
+  required int index,
+}) {
+  final entry = buildEntries()[index];
+  PlayerPopupPanel.show(
+    context: context,
+    title: entry.title,
+    leadingIcon: entry.icon,
+    anchorContext: anchorContext,
+    width: 340,
+    maxHeight: 560,
+    onBack: () => showPlayerSettingsMenu(
+      context: context,
+      anchorContext: anchorContext,
+      title: rootTitle,
+      buildEntries: buildEntries,
+    ),
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      child: entry.pageBuilder(context),
+    ),
+  );
+}
+
 /// Lab-style toggle chip row used in floating Settings menus.
 Widget playerPopupOnOffChips({
   required bool value,

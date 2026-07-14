@@ -12,7 +12,7 @@ You don't install most scrapers separately; they're built in. Exceptions: **Nuvi
 
 | Type | What you get | Configure in |
 |------|----------------|--------------|
-| [Torrent](torrent.md) | Magnet/torrent results on details | Settings → Search & Torrents |
+| [Torrent](torrent.md) | Magnet/torrent results on details | Settings → Sources |
 | [Jackett](jackett.md) / [Prowlarr](prowlarr.md) | Extra indexer results | Settings → Providers & Addons |
 | [Nuvio](nuvio.md) | JS scraper links in **Sources** (Direct torrent) | Settings → Nuvio Addons |
 | [WebStreamr sources](webstreamr-sources.md) | Country streaming sites | WebStreamr Settings |

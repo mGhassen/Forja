@@ -8,7 +8,7 @@ MDBList aggregates movie/TV lists from multiple services. Add your API key to pu
 
 ## How to open it
 
-**Settings → Accounts & Sync → MDBList** — enter API key.
+**Settings → Accounts → MDBList** — enter API key.
 
 ## What you can do
 

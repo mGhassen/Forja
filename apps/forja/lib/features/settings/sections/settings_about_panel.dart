@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 
 class SettingsAboutPanel extends StatefulWidget {
@@ -20,45 +20,24 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Check for new versions of Forja',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isChecking ? null : _checkForUpdates,
-              icon: _isChecking
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.system_update_rounded),
-              label: Text(
-                _isChecking ? 'Checking...' : 'Check for Updates',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            style: TextStyle(
+              fontSize: 13,
+              color: ForjaShellColors.textSecondary,
+              height: 1.4,
             ),
+          ),
+          const SizedBox(height: 14),
+          SettingsFilledButton(
+            label: _isChecking ? 'Checking...' : 'Check for Updates',
+            icon: Icons.system_update_rounded,
+            busy: _isChecking,
+            onPressed: _isChecking ? null : _checkForUpdates,
           ),
         ],
       ),
@@ -87,5 +66,4 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
       }
     }
   }
-
 }
