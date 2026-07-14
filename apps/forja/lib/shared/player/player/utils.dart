@@ -72,6 +72,16 @@ Map<String, String> resolvePlaybackHttpHeaders(
     }
   }
 
+  // KissKh CDN (cdnvideo*.shop, etc.) rejects self-origin Referer. Cached
+  // sources sometimes lose headers — never derive Referer from the CDN host.
+  if (streamUrl != null && _isKissKhCdnStream(streamUrl)) {
+    final ref = take('Referer', 'referer') ?? '';
+    if (ref.isEmpty || _isKissKhCdnStream(ref) || !ref.contains('kisskh')) {
+      putCanonical('Referer', 'referer', 'https://kisskh.co/');
+      putCanonical('Origin', 'origin', 'https://kisskh.co');
+    }
+  }
+
   final origin = take('Origin', 'origin');
   if (origin != null && origin.isNotEmpty) {
     putCanonical('Origin', 'origin', origin);
@@ -86,6 +96,12 @@ Map<String, String> resolvePlaybackHttpHeaders(
   }
 
   return out;
+}
+
+bool _isKissKhCdnStream(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('cdnvideo') || host.contains('kisskh');
 }
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on

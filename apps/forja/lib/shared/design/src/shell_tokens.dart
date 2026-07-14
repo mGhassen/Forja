@@ -216,7 +216,7 @@ abstract final class ShellTokens {
   /// Right-side sliding panels over the player (Episodes, torrent files).
   /// Media-details Sources uses `DetailsTokens.sourcesPanelPadding`.
   static const EdgeInsets playerSidePanelPadding =
-      EdgeInsets.fromLTRB(12, 4, 8, 8);
+      EdgeInsets.fromLTRB(12, 16, 8, 8);
 
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;

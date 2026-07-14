@@ -88,18 +88,11 @@ class _HeroPillStyle {
 _HeroPillStyle _styleForTone(HeroPillPlayTone tone) =>
     _HeroPillStyle.forTone(tone);
 
-BoxDecoration _decorationFor({
-  required _HeroPillStyle style,
-  required double morph,
-}) {
+BoxDecoration _decorationFor({required _HeroPillStyle style}) {
   if (style.tone == HeroPillPlayTone.secondary) {
     return _heroGlassDecoration();
   }
-  final glass = _heroGlassDecoration();
-  final filled = _heroFilledDecoration(color: style.expandedFill);
-  if (morph <= 0) return glass;
-  if (morph >= 1) return filled;
-  return BoxDecoration.lerp(glass, filled, morph) ?? filled;
+  return _heroFilledDecoration(color: style.expandedFill);
 }
 
 /// Primary hero CTA — pill with optional icon + label (Play, Watch Now, Resume).
@@ -185,8 +178,7 @@ class HeroPillPlayButton extends StatelessWidget {
             style: style,
             active: active,
             pressed: pressed,
-            compact: useTvCompact && !active,
-            useTvCompact: useTvCompact,
+            expanded: active,
             label: label,
             leading: leading,
           );
@@ -201,8 +193,7 @@ class _HeroPillPlaySurface extends StatefulWidget {
     required this.style,
     required this.active,
     required this.pressed,
-    required this.compact,
-    required this.useTvCompact,
+    required this.expanded,
     required this.label,
     required this.leading,
   });
@@ -210,8 +201,7 @@ class _HeroPillPlaySurface extends StatefulWidget {
   final _HeroPillStyle style;
   final bool active;
   final bool pressed;
-  final bool compact;
-  final bool useTvCompact;
+  final bool expanded;
   final String label;
   final Widget? leading;
 
@@ -221,7 +211,7 @@ class _HeroPillPlaySurface extends StatefulWidget {
 
 class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
     with SingleTickerProviderStateMixin {
-  static const _duration = Duration(milliseconds: 480);
+  static const _duration = Duration(milliseconds: 420);
 
   late final AnimationController _controller;
   late final Animation<double> _expand;
@@ -237,7 +227,7 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
     );
     _labelOpacity = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.5, 0.85, curve: Curves.easeOut),
+      curve: const Interval(0.35, 0.9, curve: Curves.easeOut),
     );
     _syncController(animate: false);
   }
@@ -245,14 +235,13 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
   @override
   void didUpdateWidget(covariant _HeroPillPlaySurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.compact != oldWidget.compact ||
-        widget.useTvCompact != oldWidget.useTvCompact) {
+    if (widget.expanded != oldWidget.expanded) {
       _syncController(animate: true);
     }
   }
 
   void _syncController({required bool animate}) {
-    final target = widget.useTvCompact && widget.compact ? 0.0 : 1.0;
+    final target = widget.expanded ? 1.0 : 0.0;
     if (!animate) {
       _controller.value = target;
       return;
@@ -270,24 +259,13 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
     super.dispose();
   }
 
-  double get _morph =>
-      widget.useTvCompact ? _expand.value : 1.0;
-
-  Color _iconColor(double morph) {
-    if (!widget.useTvCompact || morph >= 1) return widget.style.foreground;
-    return Color.lerp(widget.style.compactIconColor, widget.style.foreground, morph) ??
-        widget.style.foreground;
-  }
-
   Widget _buildShell({
-    required double morph,
-    required double labelOpacity,
     required Widget child,
   }) {
     return Container(
       height: _kHeroPillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: _decorationFor(style: widget.style, morph: morph),
+      decoration: _decorationFor(style: widget.style),
       foregroundDecoration: widget.active
           ? BoxDecoration(
               color: _heroPillHoverFill(pressed: widget.pressed),
@@ -301,14 +279,13 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
   Widget _buildPillContent({
     required double morph,
     required double labelOpacity,
-    required bool showLabel,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: widget.useTvCompact ? _kHeroPillHeight : _kHeroPillIconSize,
+          width: _kHeroPillHeight,
           height: _kHeroPillHeight,
           child: Center(
             child: widget.leading == null
@@ -316,26 +293,26 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
                 : IconTheme(
                     data: IconThemeData(
                       size: _kHeroPillIconSize,
-                      color: _iconColor(morph),
+                      color: widget.style.foreground,
                     ),
                     child: widget.leading!,
                   ),
           ),
         ),
-        if (showLabel)
+        if (widget.label.isNotEmpty)
           ClipRect(
             child: Align(
               alignment: Alignment.centerLeft,
-              widthFactor: widget.useTvCompact ? morph : 1,
+              widthFactor: morph,
               child: Opacity(
-                opacity: widget.useTvCompact ? labelOpacity : 1,
+                opacity: labelOpacity,
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    left: widget.useTvCompact ? 0 : 8,
-                    right: 18,
-                  ),
+                  padding: const EdgeInsets.only(right: 14),
                   child: Text(
                     widget.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
                     style: GoogleFonts.inter(
                       color: widget.style.foreground,
                       fontSize: 15,
@@ -354,31 +331,13 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.useTvCompact) {
-      return _buildShell(
-        morph: 1,
-        labelOpacity: 1,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: _buildPillContent(
-            morph: 1,
-            labelOpacity: 1,
-            showLabel: true,
-          ),
-        ),
-      );
-    }
-
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
         return _buildShell(
-          morph: _morph,
-          labelOpacity: _labelOpacity.value,
           child: _buildPillContent(
-            morph: _morph,
+            morph: _expand.value,
             labelOpacity: _labelOpacity.value,
-            showLabel: true,
           ),
         );
       },

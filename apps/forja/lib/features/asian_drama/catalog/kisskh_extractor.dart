@@ -3,18 +3,12 @@
 // The site signs every Episode/{epId}.png and Sub/{epId} request with a
 // `kkey` parameter generated client-side by heavily obfuscated JS. Rather
 // than reverse the cipher in Dart, we let the page's own JS sign it for us
-// by hooking `fetch` and capturing the parsed JSON response bodies.
+// by hooking `fetch`/`XHR` and capturing the parsed JSON response bodies.
 //
 // Flow:
-//   1. Open https://kisskh.co/Drama/{slug}/Episode-{n}?id={dramaId}&ep={epId}
-//      in a hidden HeadlessInAppWebView.
-//   2. Inject a fetch hook at AT_DOCUMENT_START that:
-//      - Detects calls to `/api/DramaList/Episode/{epId}.png`.
-//      - Detects calls to `/api/Sub/{epId}`.
-//      - Reads the response body and forwards both URL + JSON via
-//        `console.log('KKH_VIDEO:...')` / `KKH_SUBS:...`.
-//   3. Wait until either both arrive or a soft timeout (then ship video
-//      alone — subs are optional).
+//   1. Open the episode page in a fresh (no HTTP cache) headless WebView.
+//   2. Inject hooks at AT_DOCUMENT_START for Episode/*.png + Sub/*.
+//   3. Wait for KKH_VIDEO (soft-reload once if the SPA never requests it).
 
 import 'dart:async';
 import 'dart:collection';
@@ -49,6 +43,8 @@ class KissKhExtractor {
   Completer<Map<String, dynamic>>? _apiCompleter;
   final List<Map<String, dynamic>> _subsBuffer = [];
   bool _cancelled = false;
+  int _resolveGen = 0;
+  Future<void> _resolveChain = Future<void>.value();
 
   static const _blockedHosts = <String>[
     'tickcounter.com',
@@ -63,17 +59,59 @@ class KissKhExtractor {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
+  static Map<String, String> playbackHeaders() => {
+        'User-Agent': _userAgent,
+        'Referer': '${KissKhService.baseUrl}/',
+        'Origin': KissKhService.baseUrl,
+      };
+
   Future<KissKhStream?> resolve({
     required int dramaId,
     required String dramaTitle,
     required int episodeId,
     required double episodeNumber,
     void Function(String phase, String detail)? onProgress,
-    Duration timeout = const Duration(seconds: 40),
+    Duration timeout = const Duration(seconds: 45),
     bool Function()? isCancelled,
   }) async {
+    // Serialize resolves on this instance — overlapping WebViews cancel each
+    // other and leave the UI stuck on "Waiting for stream key…".
+    final previous = _resolveChain;
+    final gate = Completer<void>();
+    _resolveChain = gate.future;
+    await cancel();
+    await previous;
+    try {
+      return await _resolveBody(
+        dramaId: dramaId,
+        dramaTitle: dramaTitle,
+        episodeId: episodeId,
+        episodeNumber: episodeNumber,
+        onProgress: onProgress,
+        timeout: timeout,
+        isCancelled: isCancelled,
+      );
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+    }
+  }
+
+  Future<KissKhStream?> _resolveBody({
+    required int dramaId,
+    required String dramaTitle,
+    required int episodeId,
+    required double episodeNumber,
+    void Function(String phase, String detail)? onProgress,
+    required Duration timeout,
+    bool Function()? isCancelled,
+  }) async {
+    final gen = ++_resolveGen;
     _cancelled = false;
-    bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
+    bool cancelled() =>
+        _cancelled ||
+        gen != _resolveGen ||
+        (isCancelled?.call() ?? false);
+
     onProgress?.call('init', 'Opening kisskh page…');
 
     final pageUrl = KissKhService.episodePageUrl(
@@ -85,15 +123,25 @@ class KissKhExtractor {
 
     _apiCompleter = Completer<Map<String, dynamic>>();
     _subsBuffer.clear();
-    final pageLoaded = Completer<void>();
     var softReloaded = false;
     Timer? softReloadTimer;
+    Timer? nudgeTimer;
 
     try {
-      // Real viewport required — Angular player often never mounts (and never
-      // fires Episode/*.png) in a -1×-1 headless WebView. Same size as StreamExtractor.
+      // Incognito + no HTTP cache: cached SPA/XHR was replaying the same
+      // kkey and sometimes skipping a live Episode/*.png request entirely.
       _web = ForjaHeadlessInAppWebView(
-        initialUrlRequest: URLRequest(url: WebUri(pageUrl)),
+        initialUrlRequest: URLRequest(
+          url: WebUri(pageUrl),
+          headers: {
+            'User-Agent': _userAgent,
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': '${KissKhService.baseUrl}/',
+            'Upgrade-Insecure-Requests': '1',
+          },
+        ),
         initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
           UserScript(
@@ -108,12 +156,14 @@ class KissKhExtractor {
           userAgent: _userAgent,
           mediaPlaybackRequiresUserGesture: false,
           allowsInlineMediaPlayback: true,
-          cacheEnabled: true,
-          clearCache: false,
+          // Fresh network every extract — do not reuse disk-cached Episode API.
+          cacheEnabled: false,
+          clearCache: true,
+          incognito: true,
         ),
         onWebViewCreated: (controller) => _controller = controller,
         onLoadStop: (controller, loadedUrl) async {
-          if (!pageLoaded.isCompleted) pageLoaded.complete();
+          if (gen != _resolveGen) return;
           onProgress?.call('loaded', 'Waiting for stream key…');
           if (kDebugMode) {
             debugPrint('[KissKhExtractor] page loaded: $loadedUrl');
@@ -129,12 +179,14 @@ class KissKhExtractor {
           }
         },
         onReceivedError: (controller, request, error) {
+          if (gen != _resolveGen) return;
           debugPrint(
             '[KissKhExtractor] load error ${request.url}: '
             '${error.description} (${error.type})',
           );
         },
         onConsoleMessage: (_, msg) {
+          if (gen != _resolveGen) return;
           var s = msg.message.trim();
           if (s.startsWith('"') && s.endsWith('"')) {
             s = s.substring(1, s.length - 1).replaceAll(r'\"', '"');
@@ -148,9 +200,8 @@ class KissKhExtractor {
                 final keys = data.keys.take(8).join(',');
                 debugPrint('[KissKhExtractor] video payload keys=[$keys]');
               }
-              if (_apiCompleter != null && !_apiCompleter!.isCompleted) {
-                _apiCompleter!.complete(data);
-              }
+              final c = _apiCompleter;
+              if (c != null && !c.isCompleted) c.complete(data);
             } catch (e) {
               debugPrint('[KissKhExtractor] video parse failed: $e');
             }
@@ -192,48 +243,50 @@ class KissKhExtractor {
       await _web!.run();
       if (cancelled()) return null;
 
-      await pageLoaded.future.timeout(
-        const Duration(seconds: 35),
-        onTimeout: () {
-          debugPrint('[KissKhExtractor] page load timeout — waiting for API anyway');
-        },
-      );
-      if (cancelled()) return null;
-
-      // SPA sometimes paints HTML but never hits Episode/*.png (cold start /
-      // player not nudged). One soft reload mid-wait recovers that miss.
-      // Keep this late — early reload aborts an in-flight Angular mount.
-      softReloadTimer = Timer(const Duration(seconds: 20), () {
+      // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
+      // long after load-stop. Wait only for the stream API.
+      softReloadTimer = Timer(const Duration(seconds: 12), () {
         if (cancelled()) return;
-        if (_apiCompleter == null || _apiCompleter!.isCompleted) return;
+        final c = _apiCompleter;
+        if (c == null || c.isCompleted) return;
         if (softReloaded) return;
         softReloaded = true;
-        final c = _controller;
-        if (c == null) return;
+        final ctrl = _controller;
+        if (ctrl == null) return;
         debugPrint(
-          '[KissKhExtractor] Episode stream API still silent after 20s — '
-          'soft reload once (not a site outage)',
+          '[KissKhExtractor] no Episode API in 12s — soft reload once',
         );
         onProgress?.call('retry', 'Refreshing kisskh page…');
-        unawaited(c.reload());
+        unawaited(ctrl.reload());
+      });
+
+      nudgeTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+        if (cancelled()) return;
+        final c = _apiCompleter;
+        if (c == null || c.isCompleted) return;
+        final ctrl = _controller;
+        if (ctrl == null) return;
+        unawaited(
+          ctrl.evaluateJavascript(
+            source: 'window.__kkhNudgePlay && window.__kkhNudgePlay(); true;',
+          ),
+        );
       });
 
       final api = await _apiCompleter!.future.timeout(
         timeout,
         onTimeout: () =>
-            throw TimeoutException('No stream API response in ${timeout.inSeconds}s'),
+            throw TimeoutException(
+              'No stream API response in ${timeout.inSeconds}s',
+            ),
       );
-      if (cancelled()) return null;
+      // Empty map is the cancel sentinel — not a real Episode payload.
+      if (cancelled() || api.isEmpty) return null;
 
-      // Brief grace window so subtitles (which often arrive slightly after
-      // the video URL) can land in the same payload.
-      await Future.any<void>([
-        Future<void>.delayed(const Duration(milliseconds: 1200)),
-        Future<void>.delayed(const Duration(milliseconds: 0))
-            .then((_) => _subsBuffer.isEmpty
-                ? Future<void>.delayed(const Duration(milliseconds: 1200))
-                : Future<void>.value()),
-      ]);
+      // Brief grace so Sub/*.json can land after Video.
+      if (_subsBuffer.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      }
       if (cancelled()) return null;
 
       var streamUrl = _pickPlayableUrl(api);
@@ -273,10 +326,11 @@ class KissKhExtractor {
 
       onProgress?.call('done', 'Stream ready');
 
-      // ─── Decrypt subtitles ────────────────────────────────────────────
       if (_subsBuffer.isNotEmpty) {
-        onProgress?.call('subs',
-            'Decrypting ${_subsBuffer.length} subtitle track(s)…');
+        onProgress?.call(
+          'subs',
+          'Decrypting ${_subsBuffer.length} subtitle track(s)…',
+        );
         for (final s in _subsBuffer) {
           if (cancelled()) break;
           final url = (s['url'] ?? '').toString();
@@ -300,11 +354,7 @@ class KissKhExtractor {
         url: streamUrl,
         type: streamType,
         subtitles: List<Map<String, dynamic>>.from(_subsBuffer),
-        headers: const {
-          'User-Agent': _userAgent,
-          'Referer': '${KissKhService.baseUrl}/',
-          'Origin': KissKhService.baseUrl,
-        },
+        headers: playbackHeaders(),
       );
     } catch (e) {
       if (cancelled()) return null;
@@ -312,20 +362,25 @@ class KissKhExtractor {
       return null;
     } finally {
       softReloadTimer?.cancel();
-      await _cleanup();
-      _apiCompleter = null;
+      nudgeTimer?.cancel();
+      if (gen == _resolveGen) {
+        await _cleanup();
+        _apiCompleter = null;
+      }
     }
   }
 
   Future<void> cancel() async {
     _cancelled = true;
-    if (_apiCompleter != null && !_apiCompleter!.isCompleted) {
-      _apiCompleter!.completeError(
-        TimeoutException('KissKh extraction cancelled'),
-      );
+    _resolveGen++;
+    final c = _apiCompleter;
+    _apiCompleter = null;
+    // Prefer complete(empty) over completeError — avoids unhandled
+    // TimeoutException when the waiter was already torn down.
+    if (c != null && !c.isCompleted) {
+      c.complete(<String, dynamic>{});
     }
     await _cleanup();
-    _apiCompleter = null;
   }
 
   Future<void> dispose() async {
@@ -395,7 +450,14 @@ class KissKhExtractor {
   }
 
   static String? _pickPlayableUrl(Map<String, dynamic> api) {
-    for (final key in ['Video', 'video', 'ThirdParty', 'thirdParty', 'Thirdparty']) {
+    if (api.isEmpty) return null;
+    for (final key in [
+      'Video',
+      'video',
+      'ThirdParty',
+      'thirdParty',
+      'Thirdparty',
+    ]) {
       final raw = api[key]?.toString().trim() ?? '';
       if (raw.isNotEmpty && _looksLikePlayableStream(raw)) {
         return _normalizeUrl(raw);
@@ -424,7 +486,12 @@ class KissKhExtractor {
   }
 
   static String? _thirdPartyEmbedUrl(Map<String, dynamic> api) {
-    for (final key in ['ThirdParty', 'thirdParty', 'Thirdparty', 'thirdparty']) {
+    for (final key in [
+      'ThirdParty',
+      'thirdParty',
+      'Thirdparty',
+      'thirdparty',
+    ]) {
       final raw = api[key]?.toString().trim() ?? '';
       if (raw.isEmpty) continue;
       final url = _normalizeUrl(raw);
@@ -442,7 +509,6 @@ class KissKhExtractor {
   function sendVideo(data) {
     window.__kkhGotVideo = true;
     console.log('KKH_VIDEO:' + JSON.stringify(data));
-    // Stop headless playback only after we captured the signed stream JSON.
     try {
       document.querySelectorAll('video,audio').forEach(function (el) {
         try { el.muted = true; el.pause(); } catch (e) {}
@@ -451,8 +517,6 @@ class KissKhExtractor {
   }
   function sendSubs(data)  { console.log('KKH_SUBS:'  + JSON.stringify(data)); }
 
-  // Mute only until stream JSON lands. Pausing on every play/add races the
-  // Angular player and can prevent Episode/*.png from ever firing.
   function muteMedia(el) {
     try { el.muted = true; } catch (e) {}
   }
@@ -542,7 +606,6 @@ class KissKhExtractor {
   }
 
   function installHooks() {
-    // Trap assignments so Angular/polyfills cannot silently unhook us.
     try {
       var fetchDesc = Object.getOwnPropertyDescriptor(window, 'fetch');
       var curFetch = (fetchDesc && fetchDesc.get) ? fetchDesc.get.call(window) : window.fetch;
@@ -580,8 +643,6 @@ class KissKhExtractor {
     }
   }
 
-  // Some titles only request Episode/*.png after a play gesture. Nudge muted
-  // autoplay + click obvious play controls until we capture the stream JSON.
   function nudgePlay() {
     if (window.__kkhGotVideo) return;
     try {
@@ -592,12 +653,19 @@ class KissKhExtractor {
           if (p && p.catch) p.catch(function () {});
         } catch (e) {}
       });
-      var nodes = document.querySelectorAll('button, [role="button"], .vjs-big-play-button');
+      var nodes = document.querySelectorAll(
+        'button, [role="button"], .vjs-big-play-button, mat-icon'
+      );
       for (var i = 0; i < nodes.length; i++) {
         var el = nodes[i];
-        var label = ((el.getAttribute('aria-label') || '') + ' ' + (el.textContent || '')).toLowerCase();
-        if (label.indexOf('play') === -1 && label.indexOf('play_arrow') === -1) continue;
-        try { el.click(); log('nudge click play control'); } catch (e) {}
+        var label = ((el.getAttribute('aria-label') || '') + ' ' +
+          (el.textContent || '') + ' ' + (el.getAttribute('data-mat-icon-name') || '')
+        ).toLowerCase();
+        if (label.indexOf('play') === -1) continue;
+        try {
+          (el.closest && el.closest('button')) ? el.closest('button').click() : el.click();
+          log('nudge click play control');
+        } catch (e) {}
         break;
       }
     } catch (e) {}
@@ -611,11 +679,11 @@ class KissKhExtractor {
     window.__kkhHookInterval = setInterval(function () {
       installHooks();
       nudgePlay();
-      if (++n > 40) {
+      if (++n > 60) {
         clearInterval(window.__kkhHookInterval);
         window.__kkhHookInterval = null;
       }
-    }, 500);
+    }, 400);
   }
   log('intercept ready for ep $epId');
 })();
