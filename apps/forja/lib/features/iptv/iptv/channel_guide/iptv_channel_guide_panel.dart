@@ -728,77 +728,74 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 if (_wide) _focusColumn = _FocusColumn.groups;
               });
             },
-            child: AnimatedScale(
-              scale: focused ? ShellTokens.focusActiveScale : 1.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.centerLeft,
-              child: InkWell(
-            onTap: () {
-              setState(() {
-                _focusedGroupIndex = i;
-                if (_wide) _focusColumn = _FocusColumn.groups;
-              });
-              _selectGroup(g.id);
-              onPick?.call(g.id);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                color: selected
-                    ? _accent.withValues(alpha: 0.18)
-                    : focused
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.transparent,
-                border: Border(
-                  left: BorderSide(
-                    color: selected
-                        ? _accent
-                        : focused
-                            ? Colors.white54
-                            : Colors.transparent,
-                    width: 3,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() {
+                  _focusedGroupIndex = i;
+                  if (_wide) _focusColumn = _FocusColumn.groups;
+                });
+                _selectGroup(g.id);
+                onPick?.call(g.id);
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? _accent.withValues(alpha: 0.18)
+                      : focused
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.transparent,
+                  border: Border(
+                    left: BorderSide(
+                      color: selected
+                          ? _accent
+                          : focused
+                              ? Colors.white54
+                              : Colors.transparent,
+                      width: 3,
+                    ),
                   ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      g.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color: selected ? Colors.white : Colors.white60,
-                        fontSize: 12,
-                        fontWeight:
-                            selected || focused ? FontWeight.w700 : FontWeight.w400,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        g.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: selected ? Colors.white : Colors.white60,
+                          fontSize: 12,
+                          fontWeight: selected || focused
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                        ),
                       ),
                     ),
-                  ),
-                  if (hasPlaying && !selected)
-                    Container(
-                      width: 7,
-                      height: 7,
-                      margin: const EdgeInsets.only(left: 6),
-                      decoration: BoxDecoration(
-                        color: _accent,
-                        shape: BoxShape.circle,
+                    if (hasPlaying && !selected)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.only(left: 6),
+                        decoration: BoxDecoration(
+                          color: _accent,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                  if (selected)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Icon(Icons.chevron_right_rounded,
-                          color: _accent, size: 18),
-                    ),
-                ],
+                    if (selected)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Icon(Icons.chevron_right_rounded,
+                            color: _accent, size: 18),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
       },
     );
   }
@@ -891,6 +888,18 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
   Widget build(BuildContext context) {
     final active = widget.active;
     final focused = widget.focused;
+    final radius = BorderRadius.circular(10);
+    final fill = active
+        ? _accent.withValues(alpha: 0.2)
+        : focused
+            ? Colors.white.withValues(alpha: 0.1)
+            : ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.45);
+    final stroke = active
+        ? _accent.withValues(alpha: 0.55)
+        : focused
+            ? Colors.white.withValues(alpha: 0.35)
+            : Colors.transparent;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: MouseRegion(
@@ -899,38 +908,16 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
           widget.onProbe();
         },
         onExit: (_) => widget.onCancelProbe(),
-        child: AnimatedScale(
-          scale: focused ? ShellTokens.focusActiveScale : 1.0,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.centerLeft,
-          child: Material(
-          elevation: 0,
-          shadowColor: Colors.black.withValues(alpha: 0.4),
-          color: active
-              ? _accent.withValues(alpha: 0.2)
-              : focused
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(10),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: widget.onTap,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: active
-                    ? Border.all(
-                        color: _accent.withValues(alpha: 0.55),
-                        width: 1,
-                      )
-                    : focused
-                        ? Border.all(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            width: 1,
-                          )
-                        : null,
-              ),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: fill,
+              borderRadius: radius,
+              border: Border.all(color: stroke, width: 1),
+            ),
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               child: Row(
                 children: [
@@ -955,22 +942,18 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.channel.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: active || focused ? Colors.white : Colors.white70,
-                            fontSize: 13,
-                            fontWeight:
-                                active || focused ? FontWeight.w700 : FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      widget.channel.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color:
+                            active || focused ? Colors.white : Colors.white70,
+                        fontSize: 13,
+                        fontWeight: active || focused
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
                     ),
                   ),
                   if (active)
@@ -979,7 +962,6 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               ),
             ),
           ),
-        ),
         ),
       ),
     );

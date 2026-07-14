@@ -614,7 +614,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       // Show what we're doing so the user isn't staring at a frozen spinner.
       if (mounted) {
         setState(() => _s._statusBanner =
-            'Reconnecting\u2026 (attempt $_s._retryAttempt/$_IptvPtPlayerScreenState._maxRetries)');
+            'Reconnecting\u2026 (attempt ${_s._retryAttempt}/${_IptvPtPlayerScreenState._maxRetries})');
       }
 
       await Future.delayed(Duration(milliseconds: delay));
