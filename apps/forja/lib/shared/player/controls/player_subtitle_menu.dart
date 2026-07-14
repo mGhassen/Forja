@@ -71,8 +71,19 @@ class PlayerSubtitleMenu {
           externalSubtitles.any(
             (s) => s['display'] == t.title && s['language'] == t.language,
           );
-      return t.id != 'no' && !isExternal && !isKnownExternal;
+      // 'no' = Off (moved to the header); 'auto' = "Track auto" (removed).
+      return t.id != 'no' && t.id != 'auto' && !isExternal && !isKnownExternal;
     }).toList();
+
+    final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
+
+    void turnOffSubtitles() {
+      onSubtitleSelected?.call();
+      player.setSubtitleTrack(SubtitleTrack.no());
+      updateSubVisibility(SubtitleTrack.no());
+      onExternalUrlChanged(null);
+      PlayerPopupPanel.dismiss();
+    }
 
     final byLang = <String, List<Map<String, dynamic>>>{};
     for (final s in externalSubtitles) {
@@ -92,14 +103,21 @@ class PlayerSubtitleMenu {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
-      trailing: ForjaPlainIcon(
-        icon: Icons.tune_rounded,
-        size: 18,
-        color: Colors.white54,
-        onTap: () {
-          PlayerPopupPanel.dismiss();
-          onSubtitleSettings();
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SubtitleOffChip(selected: subtitlesOff, onTap: turnOffSubtitles),
+          const SizedBox(width: 6),
+          ForjaPlainIcon(
+            icon: Icons.tune_rounded,
+            size: 18,
+            color: Colors.white54,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              onSubtitleSettings();
+            },
+          ),
+        ],
       ),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
@@ -113,39 +131,28 @@ class PlayerSubtitleMenu {
                 backgroundColor: Colors.white10,
               ),
             ),
-          PlayerPopupOptionChip(
-            label: 'Off',
-            selected: current.id == 'no' && selectedExternalSubUrl == null,
-            expanded: true,
-            onTap: () {
-              onSubtitleSelected?.call();
-              player.setSubtitleTrack(SubtitleTrack.no());
-              updateSubVisibility(SubtitleTrack.no());
-              onExternalUrlChanged(null);
-              PlayerPopupPanel.dismiss();
-            },
-          ),
-          for (final t in embedded) ...[
-            const SizedBox(height: 8),
+          for (var i = 0; i < embedded.length; i++) ...[
+            if (i != 0) const SizedBox(height: 8),
             PlayerPopupOptionChip(
               label: formatPlayerTrackLabel(
-                id: t.id,
-                title: t.title,
-                language: t.language,
+                id: embedded[i].id,
+                title: embedded[i].title,
+                language: embedded[i].language,
               ),
               selected:
-                  selectedExternalSubUrl == null && t.id == selectedSubtitleId,
+                  selectedExternalSubUrl == null &&
+                  embedded[i].id == selectedSubtitleId,
               expanded: true,
               onTap: () {
                 onSubtitleSelected?.call();
-                player.setSubtitleTrack(t);
-                updateSubVisibility(t);
+                player.setSubtitleTrack(embedded[i]);
+                updateSubVisibility(embedded[i]);
                 onExternalUrlChanged(null);
                 PlayerPopupPanel.dismiss();
               },
             ),
           ],
-          const SizedBox(height: 10),
+          if (embedded.isNotEmpty) const SizedBox(height: 10),
           PlayerPopupNavRow(
             icon: Icons.upload_file_rounded,
             title: 'Load from file',
@@ -195,6 +202,7 @@ class PlayerSubtitleMenu {
                       : Icons.translate_rounded,
                   title: languageDisplayName(key),
                   value: '${list.length}',
+                  selected: hasSelected,
                   onTap: () async {
                     PlayerPopupPanel.dismiss();
                     await _openLanguage(
@@ -278,6 +286,54 @@ class PlayerSubtitleMenu {
             },
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+/// Compact "Off" toggle shown in the Subtitles menu header, beside Settings.
+/// Green (brand accent) when subtitles are currently off.
+class _SubtitleOffChip extends StatelessWidget {
+  const _SubtitleOffChip({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? PlayerPopupTokens.accent : Colors.transparent,
+      borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        hoverColor: selected
+            ? Colors.black.withValues(alpha: 0.06)
+            : ForjaShellColors.inkHover,
+        child: Container(
+          height: 28,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            border: Border.all(
+              color: selected
+                  ? PlayerPopupTokens.accent
+                  : PlayerPopupTokens.border,
+            ),
+          ),
+          child: Text(
+            'Off',
+            style: TextStyle(
+              color: selected
+                  ? PlayerPopupTokens.accentFg
+                  : PlayerPopupTokens.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }

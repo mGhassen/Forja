@@ -1000,20 +1000,6 @@ mixin _DesktopPlayerEpisodes
             ),
           ),
         ),
-        PlayerSettingsEntry(
-          icon: Icons.subtitles_outlined,
-          title: 'Subtitle style',
-          subtitle: 'Font, size, and color',
-          pageBuilder: (_) => PlayerPopupOptionChip(
-            label: 'Open subtitle settings',
-            selected: false,
-            expanded: true,
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              _s._showSubtitleSettings();
-            },
-          ),
-        ),
         if (hasTorrent)
           PlayerSettingsEntry(
             icon: Icons.graphic_eq_rounded,

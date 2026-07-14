@@ -84,13 +84,9 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
-        color: widget.isPlaying
-            ? PlayerPopupTokens.accentFill
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: Padding(
@@ -270,13 +266,9 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
-        color: widget.isPlaying || widget.selected
-            ? PlayerPopupTokens.accentFill
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        color: Colors.transparent,
         child: InkWell(
           onTap: tvFocus ? null : widget.onCheck,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: Padding(
@@ -289,9 +281,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                     child: Text(
                       widget.meta!,
                       style: TextStyle(
-                        color: widget.isPlaying || widget.selected
-                            ? PlayerPopupTokens.accent.withValues(alpha: 0.7)
-                            : Colors.white.withValues(alpha: 0.38),
+                        color: Colors.white.withValues(alpha: 0.38),
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.4,

@@ -29,10 +29,15 @@ class PlayerQualityMenu {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
           child: playbackQualityLabel != null
-              ? PlayerPopupOptionChip(
-                  label: playbackQualityLabel,
-                  selected: true,
-                  expanded: true,
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PlayerPopupOptionChip(
+                      label: playbackQualityLabel,
+                      selected: true,
+                      expanded: true,
+                    ),
+                  ],
                 )
               : const Text(
                   'Quality not available yet',

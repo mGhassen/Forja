@@ -528,9 +528,10 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
 
 /// Bordered rounded-square icon box (nav-row leading).
 class PlayerPopupIconBox extends StatelessWidget {
-  const PlayerPopupIconBox({super.key, required this.icon});
+  const PlayerPopupIconBox({super.key, required this.icon, this.accent = false});
 
   final IconData icon;
+  final bool accent;
 
   @override
   Widget build(BuildContext context) {
@@ -539,11 +540,23 @@ class PlayerPopupIconBox extends StatelessWidget {
       height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: accent
+            ? PlayerPopupTokens.accentFill
+            : Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(color: PlayerPopupTokens.border),
+        border: Border.all(
+          color: accent
+              ? PlayerPopupTokens.accentBorder
+              : PlayerPopupTokens.border,
+        ),
       ),
-      child: Icon(icon, size: 15, color: Colors.white.withValues(alpha: 0.9)),
+      child: Icon(
+        icon,
+        size: 15,
+        color: accent
+            ? PlayerPopupTokens.accent
+            : Colors.white.withValues(alpha: 0.9),
+      ),
     );
   }
 }
@@ -556,6 +569,7 @@ class PlayerPopupNavRow extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.value,
+    this.selected = false,
     this.onTap,
   });
 
@@ -563,9 +577,14 @@ class PlayerPopupNavRow extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? value;
+
+  /// When true the row uses the brand-green accent (green icon box + border) —
+  /// e.g. a language group that contains the active subtitle.
+  final bool selected;
   final VoidCallback? onTap;
 
   bool get _valueActive {
+    if (selected) return true;
     final v = value?.trim().toLowerCase();
     if (v == null || v.isEmpty) return false;
     return v == 'on' ||
@@ -578,7 +597,7 @@ class PlayerPopupNavRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final row = Material(
-      color: PlayerPopupTokens.cardBg,
+      color: selected ? PlayerPopupTokens.accentFill : PlayerPopupTokens.cardBg,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -590,11 +609,15 @@ class PlayerPopupNavRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-            border: Border.all(color: PlayerPopupTokens.border),
+            border: Border.all(
+              color: selected
+                  ? PlayerPopupTokens.accentBorder
+                  : PlayerPopupTokens.border,
+            ),
           ),
           child: Row(
             children: [
-              PlayerPopupIconBox(icon: icon),
+              PlayerPopupIconBox(icon: icon, accent: selected),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
