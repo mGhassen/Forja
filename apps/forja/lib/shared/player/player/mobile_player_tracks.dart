@@ -170,7 +170,6 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
         await SettingsService().setPlayerAutoSubtitle(false);
         setState(() => _s._subtitlePinned = true);
       },
-      excludeKnownExternalEmbedded: true,
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,

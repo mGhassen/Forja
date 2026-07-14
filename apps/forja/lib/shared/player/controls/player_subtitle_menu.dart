@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
-import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -21,7 +18,6 @@ class PlayerSubtitleMenu {
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     VoidCallback? onSubtitleSelected,
-    bool excludeKnownExternalEmbedded = false,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
@@ -37,7 +33,6 @@ class PlayerSubtitleMenu {
       loadOnlineSubtitle: loadOnlineSubtitle,
       onSubtitleSettings: onSubtitleSettings,
       onSubtitleSelected: onSubtitleSelected,
-      excludeKnownExternalEmbedded: excludeKnownExternalEmbedded,
       margin: margin,
       anchorContext: anchorContext,
     );
@@ -55,26 +50,10 @@ class PlayerSubtitleMenu {
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     VoidCallback? onSubtitleSelected,
-    required bool excludeKnownExternalEmbedded,
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
     final current = player.state.track.subtitle;
-    final active = await resolveActiveSubtitleTrack(player);
-    final selectedSubtitleId = selectedExternalSubUrl == null
-        ? (active?.id ?? current.id)
-        : null;
-    final embedded = player.state.tracks.subtitle.where((t) {
-      final isExternal = t.id.startsWith('http');
-      final isKnownExternal =
-          excludeKnownExternalEmbedded &&
-          externalSubtitles.any(
-            (s) => s['display'] == t.title && s['language'] == t.language,
-          );
-      // 'no' = Off (moved to the header); 'auto' = "Track auto" (removed).
-      return t.id != 'no' && t.id != 'auto' && !isExternal && !isKnownExternal;
-    }).toList();
-
     final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
 
     void turnOffSubtitles() {
@@ -131,60 +110,39 @@ class PlayerSubtitleMenu {
                 backgroundColor: Colors.white10,
               ),
             ),
-          for (var i = 0; i < embedded.length; i++) ...[
-            if (i != 0) const SizedBox(height: 8),
-            PlayerPopupOptionChip(
-              label: formatPlayerTrackLabel(
-                id: embedded[i].id,
-                title: embedded[i].title,
-                language: embedded[i].language,
-              ),
-              selected:
-                  selectedExternalSubUrl == null &&
-                  embedded[i].id == selectedSubtitleId,
-              expanded: true,
-              onTap: () {
-                onSubtitleSelected?.call();
-                player.setSubtitleTrack(embedded[i]);
-                updateSubVisibility(embedded[i]);
-                onExternalUrlChanged(null);
-                PlayerPopupPanel.dismiss();
-              },
-            ),
-          ],
-          if (embedded.isNotEmpty) const SizedBox(height: 10),
           PlayerPopupNavRow(
             icon: Icons.upload_file_rounded,
             title: 'Load from file',
             subtitle: 'SRT · ASS · SSA · VTT',
             onTap: () async {
+              // Dismiss before the native picker — overlays can block the
+              // dialog, and file_picker returns null when the sheet stays up.
+              PlayerPopupPanel.dismiss();
               final result = await FilePicker.platform.pickFiles(
                 type: FileType.custom,
                 allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
               );
-              if (result != null && result.files.single.path != null) {
-                onSubtitleSelected?.call();
-                final file = File(result.files.single.path!);
-                final content = await file.readAsString();
-                final name = result.files.single.name;
-                final subTrack = SubtitleTrack.data(
-                  content,
-                  title: name,
-                  language: 'und',
+              if (result == null || result.files.single.path == null) return;
+              onSubtitleSelected?.call();
+              final path = result.files.single.path!;
+              final name = result.files.single.name;
+              final subTrack = SubtitleTrack.uri(
+                Uri.file(path).toString(),
+                title: name,
+                language: 'und',
+              );
+              player.setSubtitleTrack(subTrack);
+              updateSubVisibility(subTrack);
+              final isAssFile =
+                  name.toLowerCase().endsWith('.ass') ||
+                  name.toLowerCase().endsWith('.ssa');
+              onExternalUrlChanged(null);
+              onNativeSubtitleChanged(isAssFile);
+              if (player.platform is NativePlayer) {
+                (player.platform as NativePlayer).setProperty(
+                  'sub-visibility',
+                  isAssFile ? 'yes' : 'no',
                 );
-                player.setSubtitleTrack(subTrack);
-                final isAssFile =
-                    name.toLowerCase().endsWith('.ass') ||
-                    name.toLowerCase().endsWith('.ssa');
-                onExternalUrlChanged(null);
-                onNativeSubtitleChanged(isAssFile);
-                if (player.platform is NativePlayer) {
-                  (player.platform as NativePlayer).setProperty(
-                    'sub-visibility',
-                    isAssFile ? 'yes' : 'no',
-                  );
-                }
-                if (context.mounted) PlayerPopupPanel.dismiss();
               }
             },
           ),
@@ -225,8 +183,6 @@ class PlayerSubtitleMenu {
                         loadOnlineSubtitle: loadOnlineSubtitle,
                         onSubtitleSettings: onSubtitleSettings,
                         onSubtitleSelected: onSubtitleSelected,
-                        excludeKnownExternalEmbedded:
-                            excludeKnownExternalEmbedded,
                         margin: margin,
                         anchorContext: anchorContext,
                       ),

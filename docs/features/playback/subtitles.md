@@ -12,7 +12,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: Off, load from file, embedded tracks, then languages with track counts; drill into a language for specific files
+- Floating subtitle picker: Off, load from file, then languages with track counts; drill into a language for specific files
 - Enable, disable, or switch tracks
 - Change appearance (size, color, font, opacity)
 - Adjust sync delay if dialogue is early/late
