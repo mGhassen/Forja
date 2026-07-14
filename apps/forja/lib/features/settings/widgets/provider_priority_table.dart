@@ -146,7 +146,6 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                 key: ValueKey('${_tab.name}-$id'),
                 index: index,
                 name: _catalog[id] ?? id,
-                id: id,
                 score: score,
                 tries: tries,
               );
@@ -247,22 +246,17 @@ class _ServerRow extends StatelessWidget {
     super.key,
     required this.index,
     required this.name,
-    required this.id,
     required this.score,
     required this.tries,
   });
 
   final int index;
   final String name;
-  final String id;
   final int score;
   final int? tries;
 
   @override
   Widget build(BuildContext context) {
-    final mute = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: ForjaShellColors.textSecondary,
-        );
     return Material(
       color: Colors.transparent,
       child: Padding(
@@ -282,17 +276,11 @@ class _ServerRow extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  Text(id, style: mute),
-                ],
+              child: Text(
+                name,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ),
             SizedBox(

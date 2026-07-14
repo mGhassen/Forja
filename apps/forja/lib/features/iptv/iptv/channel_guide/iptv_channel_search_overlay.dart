@@ -215,7 +215,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                               child: Text(
                                 'No channels found',
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.plusJakartaSans(
                                   color: Colors.white54,
                                   fontSize: 13,
                                 ),
@@ -324,14 +324,14 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
               onKeyEvent: _onSearchFieldKey,
               browsePlaceholder: 'Search channels or categories…',
               browseHintStyle:
-                  GoogleFonts.poppins(color: Colors.white30, fontSize: 13),
+                  GoogleFonts.plusJakartaSans(color: Colors.white30, fontSize: 13),
               caretHeight: 18,
-              style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded, color: Colors.white60),
                 hintText: 'Search channels or categories…',
                 hintStyle:
-                    GoogleFonts.poppins(color: Colors.white30, fontSize: 13),
+                    GoogleFonts.plusJakartaSans(color: Colors.white30, fontSize: 13),
                 suffixIcon: _queryCtrl.text.isEmpty
                     ? null
                     : iptvCloseButton(
@@ -447,7 +447,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                       widget.channel.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: highlighted ? Colors.white : Colors.white60,
                         fontSize: 12,
                         fontWeight:
@@ -459,7 +459,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                         widget.groupName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: Colors.white38,
                           fontSize: 10,
                         ),

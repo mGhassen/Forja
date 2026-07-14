@@ -118,7 +118,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
         alignment: Alignment.centerLeft,
         child: Text(
           message,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             color: Colors.white38,
             fontSize: 11,
           ),
@@ -212,7 +212,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
                 nowEntry.title.isEmpty ? '—' : nowEntry.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -237,7 +237,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
                   nowEntry.description,
                   maxLines: nextEntry != null ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white54,
                     fontSize: 11,
                     height: 1.35,
@@ -271,7 +271,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
                             nextEntry.title.isEmpty ? '—' : nextEntry.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.plusJakartaSans(
                               color: Colors.white70,
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -330,7 +330,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
             nowEntry.title.isEmpty ? '—' : nowEntry.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -354,7 +354,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
             HeroOverviewText(
               overview: nowEntry.description,
               maxLines: 2,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white54,
                 fontSize: 12,
                 height: 1.35,
@@ -402,7 +402,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
                 entry.title.isEmpty ? '—' : entry.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   color: Colors.white70,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -440,7 +440,7 @@ class _CompactEpgRow extends StatelessWidget {
               entry.title.isEmpty ? '—' : entry.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white54,
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
@@ -514,7 +514,7 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.poppins(
+        style: GoogleFonts.plusJakartaSans(
           color: Colors.white,
           fontSize: fontSize,
           fontWeight: FontWeight.w700,

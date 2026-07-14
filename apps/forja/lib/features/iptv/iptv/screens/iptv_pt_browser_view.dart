@@ -263,7 +263,7 @@ class _BrowserViewState extends State<_BrowserView> {
             padding: const EdgeInsets.all(16),
             child: Text(
               ctrl.error!,
-              style: GoogleFonts.poppins(color: const Color(0xFFEF4444)),
+              style: GoogleFonts.plusJakartaSans(color: const Color(0xFFEF4444)),
             ),
           ),
         Expanded(
@@ -305,7 +305,7 @@ class _BrowserViewState extends State<_BrowserView> {
             Text(
               'Select a provider to browse Live TV, Movies, and Series.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white60, fontSize: 14),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 14),
             ),
             const SizedBox(height: 28),
             IptvPrimaryButton(
@@ -539,7 +539,7 @@ class _BrowserViewState extends State<_BrowserView> {
             Text(
               ctrl.error ?? 'Failed to load channels — check connection',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white60),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white60),
             ),
             const SizedBox(height: 16),
             IptvPrimaryButton(
@@ -558,13 +558,13 @@ class _BrowserViewState extends State<_BrowserView> {
           ? 'Checking streams…'
           : 'No alive streams found';
       return Center(
-        child: Text(msg, style: GoogleFonts.poppins(color: Colors.white60)),
+        child: Text(msg, style: GoogleFonts.plusJakartaSans(color: Colors.white60)),
       );
     }
     return Center(
       child: Text(
         'No streams in this view',
-        style: GoogleFonts.poppins(color: Colors.white60),
+        style: GoogleFonts.plusJakartaSans(color: Colors.white60),
       ),
     );
   }

@@ -31,7 +31,7 @@ class ShellTabHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w600,
                 fontSize: ShellTokens.tabHeaderFontSize,
               ),

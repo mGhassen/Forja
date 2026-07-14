@@ -289,7 +289,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         Text(
           'A new version\nis ready',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.headlineSize,
             fontWeight: FontWeight.w800,
             height: 1.08,
@@ -301,7 +301,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         Text(
           'v${widget.updateInfo.latestVersion}',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.versionSize,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.2,
@@ -313,7 +313,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           'You’re on v${widget.updateInfo.currentVersion}'
           '${published != null ? '  ·  $published' : ''}',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.metaSize,
             height: 1.4,
             color: ForjaShellColors.textSecondary,
@@ -324,7 +324,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           Text(
             _platformNotice!,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: layout.metaSize,
               height: 1.45,
               color: const Color(0xFFFBBF24),
@@ -336,7 +336,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         SizedBox(height: layout.dividerAfterGap),
         Text(
           'What’s new',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.sectionSize,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.4,
@@ -347,7 +347,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         if (items.isEmpty)
           Text(
             'No release notes were published for this version.',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: layout.bodySize,
               height: 1.6,
               color: ForjaShellColors.textSecondary,
@@ -382,7 +382,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         SizedBox(height: layout.downloadGapLarge),
         Text(
           '$percent%',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.downloadPercentSize,
             fontWeight: FontWeight.w800,
             letterSpacing: -2,
@@ -392,7 +392,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         SizedBox(height: layout.downloadGapSmall),
         Text(
           'Downloading update…',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.bodySize,
             color: ForjaShellColors.textSecondary,
           ),
@@ -412,7 +412,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         SizedBox(height: layout.isTv ? 8 : 12),
         Text(
           'v${widget.updateInfo.latestVersion}',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: layout.metaSize,
             color: ForjaShellColors.iconMuted,
           ),
@@ -655,7 +655,7 @@ class _UpdatePrimaryAction extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: layout.buttonFontSize,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.1,
@@ -692,7 +692,7 @@ class _UpdateTextAction extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: layout.skipFontSize,
               fontWeight: FontWeight.w600,
               color: active
@@ -747,7 +747,7 @@ class _ReleaseNoteRow extends StatelessWidget {
           Expanded(
             child: Text(
               item.text,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: layout.bodySize,
                 height: 1.55,
                 color: ForjaShellColors.textPrimary,
@@ -798,7 +798,7 @@ class _ReleaseNoteLink extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: fontSize,
                   height: 1.45,
                   fontWeight: FontWeight.w600,
@@ -919,7 +919,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
                 const Spacer(),
                 Text(
                   'Download\ncomplete',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: layout.headlineSize,
                     fontWeight: FontWeight.w800,
                     height: 1.08,
@@ -942,7 +942,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
                       ? 'Close Forja and run the installer to finish updating.'
                       : 'Make the file executable, then run it:\n'
                           'chmod +x "$fileName"\n./$fileName',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: layout.bodySize,
                     height: 1.55,
                     color: ForjaShellColors.textSecondary,

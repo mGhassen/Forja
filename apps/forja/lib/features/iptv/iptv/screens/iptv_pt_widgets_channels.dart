@@ -48,15 +48,15 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
               focusNode: _searchFocus,
               onChanged: (v) => setState(() => _query = v),
               browsePlaceholder: 'Search channels…',
-              browseHintStyle: GoogleFonts.poppins(
+              browseHintStyle: GoogleFonts.plusJakartaSans(
                 color: Colors.white38,
                 fontSize: 14,
               ),
               caretHeight: 18,
-              style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search channels…',
-                hintStyle: GoogleFonts.poppins(
+                hintStyle: GoogleFonts.plusJakartaSans(
                   color: Colors.white38,
                   fontSize: 14,
                 ),
@@ -99,7 +99,7 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                 ? Center(
                     child: Text(
                       'No channels match “$_query”.',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Colors.white54,
                         fontSize: 14,
                       ),
@@ -186,7 +186,7 @@ class _ChannelTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -294,15 +294,15 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                 focusNode: _searchFocus,
                 onChanged: (v) => setState(() => _query = v),
                 browsePlaceholder: 'Search hits…',
-                browseHintStyle: GoogleFonts.poppins(
+                browseHintStyle: GoogleFonts.plusJakartaSans(
                   color: Colors.white38,
                   fontSize: 14,
                 ),
                 caretHeight: 18,
-                style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Search hits…',
-                  hintStyle: GoogleFonts.poppins(
+                  hintStyle: GoogleFonts.plusJakartaSans(
                     color: Colors.white38,
                     fontSize: 14,
                   ),
@@ -350,7 +350,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                     _selected.isEmpty
                         ? 'Select streams'
                         : '${_selected.length} selected',
-                    style: GoogleFonts.poppins(color: Colors.white70),
+                    style: GoogleFonts.plusJakartaSans(color: Colors.white70),
                   ),
                   const Spacer(),
                   IptvTextAction(
@@ -413,7 +413,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                 ? Center(
                     child: Text(
                       'No hits match “$_query”.',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Colors.white54,
                         fontSize: 14,
                       ),
@@ -451,7 +451,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
               widget.ctrl.channelStatus,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 12),
             ),
           ),
           IptvTextAction(
@@ -488,7 +488,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   ? 'Tap "Search Again" or "Get More" to scan saved + new portals.'
                   : ctrl.channelStatus,
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white60),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white60),
             ),
           ],
         ),
@@ -697,7 +697,7 @@ class _ChannelHitCard extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           softWrap: true,
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
                             fontSize: 12,
                             height: 1.2,
@@ -711,7 +711,7 @@ class _ChannelHitCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         softWrap: false,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: Colors.white60,
                           fontSize: 10,
                         ),
@@ -785,7 +785,7 @@ class _HitEpgNowRow extends StatelessWidget {
                 ),
                 child: Text(
                   now.isNow ? 'NOW' : 'NEXT',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
@@ -799,7 +799,7 @@ class _HitEpgNowRow extends StatelessWidget {
                   now.title.isEmpty ? '—' : now.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white70,
                     fontSize: 10,
                     fontWeight: FontWeight.w500,

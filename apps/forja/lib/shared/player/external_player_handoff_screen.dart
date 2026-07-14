@@ -37,7 +37,7 @@ class _ExternalPlayerHandoffScreenState
     extends State<ExternalPlayerHandoffScreen> {
   bool _pickingPlayer = false;
 
-  TextStyle get _titleStyle => GoogleFonts.inter(
+  TextStyle get _titleStyle => GoogleFonts.plusJakartaSans(
         color: ForjaShellColors.textPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w700,
@@ -45,7 +45,7 @@ class _ExternalPlayerHandoffScreenState
         height: 1.25,
       );
 
-  TextStyle get _captionStyle => GoogleFonts.inter(
+  TextStyle get _captionStyle => GoogleFonts.plusJakartaSans(
         color: ForjaShellColors.textSecondary,
         fontSize: 13,
         height: 1.45,
@@ -276,7 +276,7 @@ class _PlayerPickerBody extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Choose player',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -352,7 +352,7 @@ class _LiveStatusBadge extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             'Stream active',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               color: ForjaShellColors.brandGreen,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -423,7 +423,7 @@ class _HandoffActionRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,

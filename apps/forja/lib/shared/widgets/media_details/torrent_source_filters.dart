@@ -99,7 +99,7 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                   Expanded(
                     child: Text(
                       'Audio',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         color: cinematic.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -115,7 +115,7 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                       },
                       child: Text(
                         'Clear',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.plusJakartaSans(
                           color: cinematic.textSecondary,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -148,7 +148,7 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                         Expanded(
                           child: Text(
                             tag,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.plusJakartaSans(
                               color: on ? cinematic.textPrimary : cinematic.textSecondary,
                               fontSize: 13,
                               fontWeight: on ? FontWeight.w600 : FontWeight.w500,

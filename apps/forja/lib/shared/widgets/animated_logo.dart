@@ -298,7 +298,7 @@ class SplashOverlayContent extends StatelessWidget {
                                 child: Text(
                                   slogan,
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 18,
                                     letterSpacing: 4,
                                     color: logoColors.base,

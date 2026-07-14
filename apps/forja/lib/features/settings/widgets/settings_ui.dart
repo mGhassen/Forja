@@ -695,6 +695,8 @@ class SettingsStatusRow extends StatelessWidget {
 class SettingsSidebarFooter extends StatelessWidget {
   const SettingsSidebarFooter({super.key});
 
+  static const Color _loveAccent = Color(0xFFF472B6);
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -709,9 +711,10 @@ class SettingsSidebarFooter extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               RichText(
+                textAlign: TextAlign.center,
                 text: TextSpan(
                   style: const TextStyle(
                     fontSize: 12.5,
@@ -720,7 +723,14 @@ class SettingsSidebarFooter extends StatelessWidget {
                   ),
                   children: const [
                     TextSpan(text: 'Made with '),
-                    TextSpan(text: '❤️'),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        size: 15,
+                        color: _loveAccent,
+                      ),
+                    ),
                     TextSpan(text: ' by '),
                     TextSpan(
                       text: 'Schmenka',

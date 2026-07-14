@@ -209,7 +209,7 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
                     width: 108,
                     child: Text(
                       r.label,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Colors.white54,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

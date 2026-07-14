@@ -573,7 +573,7 @@ class _IptvTextActionState extends State<IptvTextAction> {
             children: [
               Icon(widget.icon, color: fg, size: 18),
               const SizedBox(width: 6),
-              Text(widget.label, style: GoogleFonts.poppins(color: fg)),
+              Text(widget.label, style: GoogleFonts.plusJakartaSans(color: fg)),
             ],
           ),
         ),
@@ -582,7 +582,7 @@ class _IptvTextActionState extends State<IptvTextAction> {
     return TextButton.icon(
       onPressed: widget.onPressed,
       icon: Icon(widget.icon, color: idle, size: 18),
-      label: Text(widget.label, style: GoogleFonts.poppins(color: idle)),
+      label: Text(widget.label, style: GoogleFonts.plusJakartaSans(color: idle)),
     );
   }
 }
@@ -680,7 +680,7 @@ class _IptvPrimaryButtonState extends State<IptvPrimaryButton> {
                 const SizedBox(width: 8),
                 Text(
                   widget.label,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: fg,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,

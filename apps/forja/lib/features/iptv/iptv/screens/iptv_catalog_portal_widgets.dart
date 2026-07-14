@@ -433,7 +433,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                 title,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: GoogleFonts.poppins(
+                                                style: GoogleFonts.plusJakartaSans(
                                                   color: isFav
                                                       ? const Color(0xFFFBBF24)
                                                       : isActive
@@ -459,7 +459,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                           v.portal.url,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.poppins(
+                                          style: GoogleFonts.plusJakartaSans(
                                             color: showNewChrome
                                                 ? Colors.white54
                                                 : Colors.white38,
@@ -582,7 +582,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           const SizedBox(width: 10),
           Text(
             'Creating share code…',
-            style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
+            style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 12),
           ),
         ],
       );
@@ -595,7 +595,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       children: [
         Text(
           'SHARE CODE · TAP ROW TO HIDE',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             color: IptvShellStyle.textSecondary,
             fontSize: 10,
             fontWeight: FontWeight.w600,
@@ -629,7 +629,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             tone.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               color: tone.color,
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -651,7 +651,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       ),
       child: Text(
         'NEW',
-        style: GoogleFonts.poppins(
+        style: GoogleFonts.plusJakartaSans(
           color: IptvShellStyle.accent,
           fontSize: 9,
           fontWeight: FontWeight.w700,

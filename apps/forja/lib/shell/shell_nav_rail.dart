@@ -288,7 +288,7 @@ class _RailLogo extends StatelessWidget {
             ),
             child: Text(
               'DEV',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.black,
                 fontSize: 8,
                 fontWeight: FontWeight.w800,
@@ -510,7 +510,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             : active
                 ? ForjaShellColors.textSecondary
                 : ForjaShellColors.iconMuted;
-    final labelStyle = GoogleFonts.inter(
+    final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,
       fontWeight: FontWeight.w500,

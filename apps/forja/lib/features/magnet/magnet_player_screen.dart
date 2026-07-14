@@ -144,7 +144,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                   const SizedBox(width: 12),
                   Text(
                     'Magnet Player',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
@@ -255,7 +255,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                 child: Row(
                   children: [
                     Text('${_files.length} files',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                             color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
                     const Spacer(),
                     Text(

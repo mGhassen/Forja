@@ -53,7 +53,7 @@ class _SourceChip extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,

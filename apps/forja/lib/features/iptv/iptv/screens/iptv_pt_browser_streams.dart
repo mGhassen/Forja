@@ -249,7 +249,7 @@ class _StreamCardState extends State<_StreamCard> {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   softWrap: true,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: health == false ? Colors.white54 : Colors.white,
                     fontSize: 12,
                     height: 1.15,
@@ -310,7 +310,7 @@ class _StreamCardState extends State<_StreamCard> {
               widget.stream.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 color: health == false ? Colors.white54 : Colors.white,
                 fontSize: titleSize,
                 height: 1.15,
@@ -490,7 +490,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                                 widget.stream.name,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.plusJakartaSans(
                                   color: health == false
                                       ? Colors.white54
                                       : Colors.white,
@@ -505,7 +505,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                                   widget.categoryName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
+                                  style: GoogleFonts.plusJakartaSans(
                                     color: Colors.white.withValues(alpha: 0.45),
                                     fontSize: 10,
                                     height: 1.1,
@@ -634,7 +634,7 @@ class _EpgNowFooter extends StatelessWidget {
                 ),
                 child: Text(
                   now.isNow ? 'NOW' : 'NEXT',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
@@ -648,7 +648,7 @@ class _EpgNowFooter extends StatelessWidget {
                   now.title.isEmpty ? '—' : now.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white70,
                     fontSize: 9,
                     fontWeight: FontWeight.w500,
@@ -689,7 +689,7 @@ class _EpgSheet extends StatelessWidget {
                 stream.name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -718,7 +718,7 @@ class _EpgSheet extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           child: Text(
                             'No EPG available for this channel.',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.plusJakartaSans(
                               color: Colors.white60,
                               fontSize: 12,
                             ),
@@ -738,7 +738,7 @@ class _EpgSheet extends StatelessWidget {
                                     width: 86,
                                     child: Text(
                                       '${_fmtTime(e.start)}–${_fmtTime(e.stop)}',
-                                      style: GoogleFonts.poppins(
+                                      style: GoogleFonts.plusJakartaSans(
                                         color: e.isNow
                                             ? const Color(0xFFEF4444)
                                             : Colors.white60,
@@ -756,7 +756,7 @@ class _EpgSheet extends StatelessWidget {
                                       children: [
                                         Text(
                                           e.title.isEmpty ? '—' : e.title,
-                                          style: GoogleFonts.poppins(
+                                          style: GoogleFonts.plusJakartaSans(
                                             color: Colors.white,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
@@ -771,7 +771,7 @@ class _EpgSheet extends StatelessWidget {
                                               e.description,
                                               maxLines: 3,
                                               overflow: TextOverflow.ellipsis,
-                                              style: GoogleFonts.poppins(
+                                              style: GoogleFonts.plusJakartaSans(
                                                 color: Colors.white60,
                                                 fontSize: 10,
                                               ),

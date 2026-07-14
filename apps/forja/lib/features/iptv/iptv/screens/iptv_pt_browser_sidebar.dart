@@ -80,7 +80,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           widget.label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             color: fg,
             fontSize: widget.compact ? 11 : 12,
             fontWeight: selected || _tvFocused

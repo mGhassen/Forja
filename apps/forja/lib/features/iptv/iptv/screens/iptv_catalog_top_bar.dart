@@ -381,12 +381,12 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
               onChanged: ctrl.setBrowserSearch,
               onEscape: _closeSearch,
               browsePlaceholder: 'Search…',
-              browseHintStyle: GoogleFonts.inter(
+              browseHintStyle: GoogleFonts.plusJakartaSans(
                 color: Colors.white38,
                 fontSize: 13,
               ),
               caretHeight: 16,
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13),
               decoration: const InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
@@ -480,7 +480,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                   _portalLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     color: iptvFocusFg(
                       Colors.white,
                       active: active,
@@ -584,15 +584,15 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
                   onChanged: widget.onChanged,
                   onEscape: widget.onClose,
                   browsePlaceholder: 'Search channels or categories…',
-                  browseHintStyle: GoogleFonts.inter(
+                  browseHintStyle: GoogleFonts.plusJakartaSans(
                     color: Colors.white38,
                     fontSize: 14,
                   ),
                   caretHeight: 18,
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Search channels or categories…',
-                    hintStyle: GoogleFonts.inter(
+                    hintStyle: GoogleFonts.plusJakartaSans(
                       color: Colors.white38,
                       fontSize: 14,
                     ),
@@ -753,7 +753,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                     const SizedBox(width: 6),
                     Text(
                       widget.spec.label,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         color: showColor ? Colors.white : Colors.white60,
                         fontSize: 12.5,
                         fontWeight: widget.selected

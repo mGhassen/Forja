@@ -313,7 +313,7 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.clip,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.plusJakartaSans(
                       color: widget.style.foreground,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -640,7 +640,7 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 segment.label,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: foreground,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -891,7 +891,7 @@ class _HeroPillGroupedSlotSurfaceState extends State<_HeroPillGroupedSlotSurface
                   padding: const EdgeInsets.only(right: 14),
                   child: Text(
                     widget.label,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,

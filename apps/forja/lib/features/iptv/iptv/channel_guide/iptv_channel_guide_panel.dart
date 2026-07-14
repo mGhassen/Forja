@@ -603,7 +603,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                       children: [
                         Text(
                           'Now playing',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.plusJakartaSans(
                             color: _accent.withValues(alpha: 0.85),
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -614,7 +614,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                           playing.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -764,7 +764,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                         g.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: selected ? Colors.white : Colors.white60,
                           fontSize: 12,
                           fontWeight: selected || focused
@@ -805,7 +805,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       return Center(
         child: Text(
           'No channels',
-          style: GoogleFonts.poppins(color: Colors.white54, fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 13),
         ),
       );
     }
@@ -942,7 +942,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                   widget.channel.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: active || focused ? Colors.white : Colors.white70,
                     fontSize: 13,
                     fontWeight:

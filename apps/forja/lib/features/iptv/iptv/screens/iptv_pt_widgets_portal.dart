@@ -66,7 +66,7 @@ class _PortalListView extends StatelessWidget {
           const Spacer(),
           Text(
             '${ctrl.selected.length} selected',
-            style: GoogleFonts.poppins(color: Colors.white70),
+            style: GoogleFonts.plusJakartaSans(color: Colors.white70),
           ),
           const SizedBox(width: 12),
           IptvIconAction(
@@ -112,7 +112,7 @@ class _PortalListView extends StatelessWidget {
                         ? 'Find live Xtream portals,\nor add one manually.'
                         : ctrl.statusText,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(color: Colors.white60),
+                    style: GoogleFonts.plusJakartaSans(color: Colors.white60),
                   ),
                   const SizedBox(height: 28),
                   IptvPrimaryButton(
@@ -282,7 +282,7 @@ class _PortalListView extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       ctrl.addError!,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: const Color(0xFFEF4444),
                         fontSize: 12,
                       ),
@@ -336,12 +336,12 @@ class _PortalListView extends StatelessWidget {
     return TextField(
       controller: c,
       obscureText: obscure,
-      style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
+      style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.poppins(color: Colors.white60, fontSize: 12),
+        labelStyle: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12),
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(color: Colors.white24, fontSize: 12),
+        hintStyle: GoogleFonts.plusJakartaSans(color: Colors.white24, fontSize: 12),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
@@ -444,7 +444,7 @@ class _PortalCard extends StatelessWidget {
                         _displayName(v),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: isFavorite
                               ? const Color(0xFFFACC15)
                               : Colors.white,
@@ -457,7 +457,7 @@ class _PortalCard extends StatelessWidget {
                         _redactUrl(v.portal.url),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: Colors.white60,
                           fontSize: 11,
                         ),
@@ -555,7 +555,7 @@ class _Pill extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               color: color,
               fontSize: 10,
               fontWeight: FontWeight.w600,

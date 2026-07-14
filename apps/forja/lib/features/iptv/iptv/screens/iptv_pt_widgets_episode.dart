@@ -25,7 +25,7 @@ class _EpisodeListView extends StatelessWidget {
                 ? Center(
                     child: Text(
                       'No episodes found',
-                      style: GoogleFonts.poppins(color: Colors.white60),
+                      style: GoogleFonts.plusJakartaSans(color: Colors.white60),
                     ),
                   )
                 : _buildList(context),
@@ -153,7 +153,7 @@ class _EpisodeTile extends StatelessWidget {
                       'Ep ${episode.episode}  ${episode.title}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -165,7 +165,7 @@ class _EpisodeTile extends StatelessWidget {
                         episode.plot,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: Colors.white60,
                           fontSize: 11,
                         ),

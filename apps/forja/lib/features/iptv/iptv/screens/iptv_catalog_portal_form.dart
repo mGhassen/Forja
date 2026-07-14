@@ -654,7 +654,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                     ),
                                     Text(
                                       ctrl.addError!,
-                                      style: GoogleFonts.poppins(
+                                      style: GoogleFonts.plusJakartaSans(
                                         color: IptvShellStyle.liveBadge,
                                         fontSize: 12,
                                       ),
@@ -706,7 +706,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               const SizedBox(width: 8),
                               Text(
                                 _editing ? 'Saving…' : 'Adding portal…',
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.plusJakartaSans(
                                   color: IptvShellStyle.textSecondary,
                                   fontSize: 12,
                                 ),
@@ -891,7 +891,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
               const SizedBox(width: 8),
               Text(
                 'Adding portal…',
-                style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
+                style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 12),
               ),
             ],
           ),
@@ -901,7 +901,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           Text(
             _shareCodeError!,
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               color: IptvShellStyle.liveBadge,
               fontSize: 12,
             ),
@@ -955,7 +955,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }) {
     final tv = iptvUseTvFocus(context);
     final compact = _dense;
-    final hintStyle = GoogleFonts.poppins(
+    final hintStyle = GoogleFonts.plusJakartaSans(
       color: Colors.white.withValues(alpha: 0.25),
       fontSize: _tv ? 12 : (compact ? 13 : 14),
     );
@@ -964,7 +964,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       children: [
         Text(
           label.toUpperCase(),
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             color: IptvShellStyle.textSecondary,
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -980,7 +980,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             hintText: hint,
             hintStyle: hintStyle,
             suffixIcon: suffix,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               color: IptvShellStyle.textPrimary,
               fontSize: _tv ? 13 : 14,
             ),
@@ -992,7 +992,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             controller: c,
             focusNode: focusNode,
             obscureText: obscure,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               color: IptvShellStyle.textPrimary,
               fontSize: _tv ? 12 : (compact ? 13 : 14),
             ),

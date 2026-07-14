@@ -532,7 +532,7 @@ class _CategoryTabState extends State<_CategoryTab> {
                   children: [
                     Text(
                       widget.label,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: tabFont,
                         fontWeight: fontWeight,
                         color: textColor,
@@ -639,7 +639,7 @@ class _FlatMenuRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Text(
         label,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           color: selected ? cinematic.textPrimary : cinematic.textSecondary,

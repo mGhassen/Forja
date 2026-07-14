@@ -61,7 +61,7 @@ abstract final class ShellTokens {
   static const double navRailIconLabelGap = 3;
   static const double navRailLabelFontSize = 11;
   static const double navRailItemSpacing = 28;
-  static const Duration navRailLabelRevealDelay = Duration(seconds: 3);
+  static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(

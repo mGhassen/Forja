@@ -268,7 +268,7 @@ class ForjaGhostButton extends StatelessWidget {
               ],
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: _color,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,

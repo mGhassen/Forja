@@ -44,7 +44,7 @@ class _PtAppBar extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white60,
                       fontSize: 12,
                     ),
@@ -107,7 +107,7 @@ class _SourceChip extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -116,7 +116,7 @@ class _SourceChip extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     tag,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       color: selected ? Colors.white : IptvShellStyle.accent,
                       fontWeight: FontWeight.w500,
                       fontSize: 11,

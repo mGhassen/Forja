@@ -147,18 +147,18 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       onChanged: (v) => setState(() => _query = v),
                       onEscape: _closeSearch,
                       browsePlaceholder: 'Search portals…',
-                      browseHintStyle: GoogleFonts.poppins(
+                      browseHintStyle: GoogleFonts.plusJakartaSans(
                         color: Colors.white38,
                         fontSize: 13,
                       ),
                       caretHeight: 18,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Colors.white,
                         fontSize: 13,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Search portals…',
-                        hintStyle: GoogleFonts.poppins(
+                        hintStyle: GoogleFonts.plusJakartaSans(
                           color: Colors.white38,
                           fontSize: 13,
                         ),
@@ -206,7 +206,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                   ctrl.statusText.isEmpty
                       ? '${list.length} portal${list.length == 1 ? '' : 's'}'
                       : ctrl.statusText,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white54,
                     fontSize: 11,
                   ),
@@ -303,7 +303,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             Text(
               'Scrape or add a portal to browse channels.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12),
             ),
           ],
         ),

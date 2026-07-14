@@ -450,7 +450,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               const SizedBox(width: 12),
               Text(
                 _s._statusBanner ?? 'Buffering…',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -563,7 +563,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                     _s._subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white70,
                       fontSize: 12,
                     ),
@@ -939,7 +939,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                       ),
                       title: Text(
                         s.label,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: Colors.white,
                           fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                         ),
@@ -948,7 +948,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                         s.url,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                           color: Colors.white54,
                           fontSize: 11,
                         ),

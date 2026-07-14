@@ -689,11 +689,11 @@ class _MusicScreenState extends State<MusicScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 child: TextField(
-                  style: GoogleFonts.inter(color: Colors.white),
+                  style: GoogleFonts.plusJakartaSans(color: Colors.white),
                   onChanged: (val) => setState(() => _downloadedSearchQuery = val),
                   decoration: InputDecoration(
                     hintText: 'Search downloads...',
-                    hintStyle: GoogleFonts.inter(color: Colors.white38),
+                    hintStyle: GoogleFonts.plusJakartaSans(color: Colors.white38),
                     prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),

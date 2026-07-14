@@ -81,7 +81,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                 if (localError != null) ...[
                   const SizedBox(height: 10),
                   Text(localError!,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                           color: const Color(0xFFEF4444), fontSize: 12)),
                 ],
               ],
@@ -246,7 +246,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             style: IptvShellStyle.pageTitle.copyWith(fontSize: 24)),
         content: Text(
           '"${p.name}" will be removed. ${p.sourceUrl == null ? "You'll need to re-upload the file to add it again." : "You can re-add it from the URL anytime."}',
-          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 13),
         ),
         actions: [
           IptvTextAction(
@@ -351,7 +351,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                   _playlists.isEmpty
                       ? 'No playlists yet'
                       : '${_playlists.length} playlist${_playlists.length == 1 ? "" : "s"}',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                       color: Colors.white60, fontSize: 12),
                 ),
               ],
@@ -385,7 +385,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
           Expanded(
             child: Text(
               _error!,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                   color: const Color(0xFFEF4444), fontSize: 12),
             ),
           ),
@@ -417,7 +417,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             Text(
               'Add an M3U / M3U8 playlist by URL,\nor upload one from your device.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: Colors.white60),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white60),
             ),
           ],
         ),
@@ -487,12 +487,12 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
   Widget _input(TextEditingController c, String hint, String label) {
     return TextField(
       controller: c,
-      style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
+      style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.poppins(color: Colors.white60, fontSize: 12),
+        labelStyle: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12),
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(color: Colors.white24, fontSize: 12),
+        hintStyle: GoogleFonts.plusJakartaSans(color: Colors.white24, fontSize: 12),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
@@ -574,7 +574,7 @@ class _PlaylistCard extends StatelessWidget {
                         p.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
                             fontSize: 15,
                             fontWeight: FontWeight.w600),
@@ -584,13 +584,13 @@ class _PlaylistCard extends StatelessWidget {
                         p.sourceUrl ?? 'Uploaded file',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                             color: Colors.white54, fontSize: 11),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${p.channels.length} channels',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                             color: IptvShellStyle.accent, fontSize: 11),
                       ),
                     ],
@@ -737,7 +737,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                     ? Center(
                         child: Text(
                           'No channels match your filter',
-                          style: GoogleFonts.poppins(color: Colors.white60),
+                          style: GoogleFonts.plusJakartaSans(color: Colors.white60),
                         ),
                       )
                     : Builder(builder: (_) {
@@ -792,7 +792,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                 ),
                 Text(
                   '${widget.playlist.channels.length} channels',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                       color: Colors.white60, fontSize: 12),
                 ),
               ],
@@ -814,15 +814,15 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
             onChanged: (v) => setState(() => _query = v),
             browsePlaceholder: 'Search channels...',
             browseHintStyle:
-                GoogleFonts.poppins(color: Colors.white38, fontSize: 13),
+                GoogleFonts.plusJakartaSans(color: Colors.white38, fontSize: 13),
             caretHeight: 18,
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
+            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13),
             decoration: InputDecoration(
               prefixIcon:
                   Icon(Icons.search, color: Colors.white54, size: 20),
               hintText: 'Search channels...',
               hintStyle:
-                  GoogleFonts.poppins(color: Colors.white38, fontSize: 13),
+                  GoogleFonts.plusJakartaSans(color: Colors.white38, fontSize: 13),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.05),
               isDense: true,
@@ -945,7 +945,7 @@ class _GroupChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
               label,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 12,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
@@ -1060,7 +1060,7 @@ class _ChannelTile extends StatelessWidget {
                         channel.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w600),
@@ -1070,7 +1070,7 @@ class _ChannelTile extends StatelessWidget {
                           channel.group,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.plusJakartaSans(
                               color: Colors.white54, fontSize: 11),
                         ),
                     ],

@@ -167,7 +167,7 @@ class ForjaShellChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: fg,
                 fontSize: fontSize,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,

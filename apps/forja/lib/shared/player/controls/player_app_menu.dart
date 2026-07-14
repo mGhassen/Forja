@@ -153,7 +153,7 @@ class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
             padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
             child: Text(
               'No external players installed',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: ForjaShellColors.textSecondary,
                 fontSize: 12,
               ),
@@ -198,7 +198,7 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(left: 2, bottom: 6),
       child: Text(
         text.toUpperCase(),
-        style: GoogleFonts.inter(
+        style: GoogleFonts.plusJakartaSans(
           color: ForjaShellColors.textSecondary,
           fontSize: 10,
           fontWeight: FontWeight.w700,
