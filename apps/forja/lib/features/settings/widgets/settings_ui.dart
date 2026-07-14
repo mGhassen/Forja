@@ -695,8 +695,6 @@ class SettingsStatusRow extends StatelessWidget {
 class SettingsSidebarFooter extends StatelessWidget {
   const SettingsSidebarFooter({super.key});
 
-  static const Color _loveAccent = Color(0xFFF472B6);
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -710,77 +708,40 @@ class SettingsSidebarFooter extends StatelessWidget {
             color: ForjaShellColors.borderSubtle.withValues(alpha: 0.65),
           ),
           const SizedBox(height: 16),
-          Row(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _loveAccent.withValues(alpha: 0.45),
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: ForjaShellColors.textSecondary,
                   ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      _loveAccent.withValues(alpha: 0.22),
-                      ForjaShellColors.brandGreen.withValues(alpha: 0.14),
-                    ],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.favorite_rounded,
-                  size: 17,
-                  color: _loveAccent,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          height: 1.45,
-                          color: ForjaShellColors.textSecondary,
-                        ),
-                        children: const [
-                          TextSpan(text: 'Made with '),
-                          TextSpan(
-                            text: 'Love',
-                            style: TextStyle(
-                              color: _loveAccent,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextSpan(text: ' by '),
-                          TextSpan(
-                            text: 'Schmenka',
-                            style: TextStyle(
-                              color: ForjaShellColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    AppVersionLabel(
-                      prefix: 'v',
+                  children: const [
+                    TextSpan(text: 'Made with '),
+                    TextSpan(text: '❤️'),
+                    TextSpan(text: ' by '),
+                    TextSpan(
+                      text: 'Schmenka',
                       style: TextStyle(
-                        color: ForjaShellColors.textSecondary.withValues(
-                          alpha: 0.85,
-                        ),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
+                        color: ForjaShellColors.textPrimary,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              AppVersionLabel(
+                prefix: 'v',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary.withValues(
+                    alpha: 0.85,
+                  ),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
                 ),
               ),
             ],

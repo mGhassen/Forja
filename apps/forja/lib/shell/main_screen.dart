@@ -20,6 +20,7 @@ import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_find_shortcut.dart';
+import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
@@ -232,6 +233,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
+    MacOsShellChannel.listen(onFind: _onFindShortcut);
 
     _loadNavbarConfig();
     _syncCurrentNavTab();
@@ -420,6 +422,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.clearHideGlobalNav();
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
+    MacOsShellChannel.dispose();
     if (_splashDismissedForUpdateListener != null) {
       ShellBus.splashDismissed.removeListener(_splashDismissedForUpdateListener!);
     }

@@ -11,6 +11,9 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     registerExternalPlayerChannel(flutterViewController)
+    if let appDelegate = NSApp.delegate as? AppDelegate {
+      appDelegate.configureShellChannel(with: flutterViewController)
+    }
 
     // Let app content extend to the window edge; traffic lights float on top.
     titlebarAppearsTransparent = true
