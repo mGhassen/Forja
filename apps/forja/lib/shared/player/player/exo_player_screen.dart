@@ -8,6 +8,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
@@ -104,6 +105,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   bool _opening = false;
   bool _startPositionApplied = false;
   bool _loadingNextEp = false;
+  String _episodeLoadingLabel = 'Next episode';
+  String _episodeLoadingStatus = 'Loading next episode…';
+  bool _episodeLoadingFailed = false;
   double _volume = 100;
 
   Duration _position = Duration.zero;
@@ -511,11 +515,33 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   Future<void> _nextEpisode() async {
     final handler = widget.onNextEpisode;
     if (handler == null || _loadingNextEp) return;
-    setState(() => _loadingNextEp = true);
+    setState(() {
+      _loadingNextEp = true;
+      _episodeLoadingLabel = 'Next episode';
+      _episodeLoadingStatus = 'Loading next episode…';
+      _episodeLoadingFailed = false;
+    });
     try {
       await handler();
-    } finally {
-      if (mounted) setState(() => _loadingNextEp = false);
+      if (mounted) {
+        setState(() {
+          _loadingNextEp = false;
+          _episodeLoadingFailed = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _episodeLoadingStatus = 'Could not load the next episode';
+        _episodeLoadingFailed = true;
+      });
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        setState(() {
+          _loadingNextEp = false;
+          _episodeLoadingFailed = false;
+        });
+      }
     }
   }
 
@@ -1113,7 +1139,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                   ),
                 ),
               ),
-              if (widget.hasNextEpisode && widget.onNextEpisode != null)
+              if (widget.hasNextEpisode &&
+                  widget.onNextEpisode != null &&
+                  !_loadingNextEp)
                 Positioned(
                   bottom: 120,
                   right: 16,
@@ -1123,7 +1151,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: _loadingNextEp ? null : () => unawaited(_nextEpisode()),
+                        onTap: () => unawaited(_nextEpisode()),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -1135,29 +1163,19 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.white24),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (_loadingNextEp)
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              else
-                                const Text(
-                                  'Next Episode',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              Text(
+                                'Next Episode',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              const SizedBox(width: 6),
-                              const Icon(
+                              ),
+                              SizedBox(width: 6),
+                              Icon(
                                 Icons.arrow_forward_rounded,
                                 color: Colors.white,
                                 size: 18,
@@ -1169,11 +1187,25 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                     ),
                   ),
                 ),
-              PlayerStatusOverlay(
-                controller: _statusController,
-                bufferingListenable: _isBufferingNotifier,
-                header: 'CHECKING SOURCES',
-              ),
+              if (_loadingNextEp)
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.42),
+                    child: Center(
+                      child: PlayerEpisodeLoadingCard(
+                        episodeLabel: _episodeLoadingLabel,
+                        status: _episodeLoadingStatus,
+                        failed: _episodeLoadingFailed,
+                      ),
+                    ),
+                  ),
+                ),
+              if (!_loadingNextEp)
+                PlayerStatusOverlay(
+                  controller: _statusController,
+                  bufferingListenable: _isBufferingNotifier,
+                  header: 'CHECKING SOURCES',
+                ),
             ],
           ),
         ),

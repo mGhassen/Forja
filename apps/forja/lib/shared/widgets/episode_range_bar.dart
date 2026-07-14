@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 const int kEpisodeRangeChunkSize = 50;
@@ -78,134 +77,114 @@ List<T> filterEpisodeChunkByNumber<T>(
       .toList();
 }
 
-/// Horizontal numbered range chips (1-50, 51-100, …) for long episode lists.
-class EpisodeRangeBar extends StatefulWidget {
-  const EpisodeRangeBar({
+/// Dropdown range picker (1-50, 51-100, …) for long episode lists.
+class EpisodeRangeSelector extends StatelessWidget {
+  const EpisodeRangeSelector({
     super.key,
     required this.ranges,
     required this.selectedIndex,
     required this.onSelected,
-    this.height = 30,
-    this.compact = false,
   });
 
   final List<EpisodeRange> ranges;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
-  final double height;
-  final bool compact;
-
-  @override
-  State<EpisodeRangeBar> createState() => _EpisodeRangeBarState();
-}
-
-class _EpisodeRangeBarState extends State<EpisodeRangeBar> {
-  final _scrollController = ScrollController();
-  final _selectedKey = GlobalKey();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
-  }
-
-  @override
-  void didUpdateWidget(covariant EpisodeRangeBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedIndex != widget.selectedIndex ||
-        oldWidget.ranges.length != widget.ranges.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
-    }
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollToSelected() {
-    final context = _selectedKey.currentContext;
-    if (context != null) {
-      Scrollable.ensureVisible(
-        context,
-        alignment: 0,
-        duration: Duration.zero,
-      );
-      return;
-    }
-    if (!_scrollController.hasClients) return;
-    _scrollController.jumpTo(0);
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.ranges.isEmpty) return const SizedBox.shrink();
+    if (ranges.isEmpty) return const SizedBox.shrink();
 
-    final height = widget.height;
-    final radius = height / 2;
-    final fontSize = widget.compact ? 11.0 : 12.0;
+    final selected = ranges.firstWhere(
+      (r) => r.index == selectedIndex,
+      orElse: () => ranges.first,
+    );
+    final cinematic = ForjaShellColors.cinematic;
 
-    return ClipRect(
-      child: SizedBox(
-        height: height,
-        child: ListView.separated(
-          controller: _scrollController,
-          scrollDirection: Axis.horizontal,
-          itemCount: widget.ranges.length,
-          separatorBuilder: (_, _) =>
-              SizedBox(width: widget.compact ? 6 : 8),
-          itemBuilder: (_, i) {
-            final range = widget.ranges[i];
-            final selected = i == widget.selectedIndex;
-            final chip = Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(radius),
-              clipBehavior: Clip.antiAlias,
-              child: Ink(
-                decoration:
-                    shellChipDecoration(selected: selected, radius: radius),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(radius),
-                  onTap: () => widget.onSelected(range.index),
-                  child: SizedBox(
-                    height: height,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: widget.compact ? 10 : 12,
-                      ),
-                      child: Center(
-                        child: Text(
-                          range.label,
-                          style: TextStyle(
-                            color: selected
-                                ? ForjaShellColors.cinematic.textPrimary
-                                : ForjaShellColors.cinematic.textSecondary,
-                            fontSize: fontSize,
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w500,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-            final wrapped = ShellScope.inputPolicyOf(context).useFocusableMoodChips
-                ? FocusableControl(
-                    onTap: () => widget.onSelected(range.index),
-                    borderRadius: radius,
-                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
-                    child: chip,
-                  )
-                : chip;
-            if (!selected) return wrapped;
-            return KeyedSubtree(key: _selectedKey, child: wrapped);
-          },
+    return MenuAnchor(
+      alignmentOffset: const Offset(0, 4),
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(cinematic.menuSurface),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
+      menuChildren: [
+        for (final range in ranges)
+          MenuItemButton(
+            onPressed: () => onSelected(range.index),
+            style: shellMenuItemStyle().merge(ButtonStyle(
+              foregroundColor: WidgetStatePropertyAll(
+                range.index == selectedIndex
+                    ? cinematic.textPrimary
+                    : cinematic.textSecondary,
+              ),
+              textStyle: WidgetStatePropertyAll(
+                TextStyle(
+                  fontWeight: range.index == selectedIndex
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                ),
+              ),
+            )),
+            child: Text(range.label),
+          ),
+      ],
+      builder: (context, controller, child) {
+        void toggle() {
+          if (controller.isOpen) {
+            controller.close();
+          } else {
+            controller.open();
+          }
+        }
+
+        const radius = 6.0;
+        final trigger = Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(radius),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(radius),
+            onTap: toggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    selected.label,
+                    style: TextStyle(
+                      color: cinematic.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: cinematic.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          return trigger;
+        }
+        return shellFocusableTap(
+          context: context,
+          onTap: toggle,
+          borderRadius: radius,
+          showFocusBorder: true,
+          child: trigger,
+        );
+      },
     );
   }
 }

@@ -102,7 +102,9 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
           widget.selectedEpisode != null);
 
   bool get _showNextEpButton =>
-      _s._isNextEpisodeAvailable && (_s._nearEndOfEpisode || _s._isLoadingNextEp);
+      _s._isNextEpisodeAvailable &&
+      _s._nearEndOfEpisode &&
+      !_s._isLoadingNextEp;
 
   /// Extra space under the torrent stats card so it sits above Skip / Next.
   double get _torrentStatsLift {
@@ -112,32 +114,66 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
     return 0;
   }
 
+  void _beginEpisodeLoading({
+    required String label,
+    String status = 'Loading episode info…',
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _s._isLoadingNextEp = true;
+      _s._episodeLoadingLabel = label;
+      _s._episodeLoadingStatus = status;
+      _s._episodeLoadingFailed = false;
+    });
+  }
+
+  void _setEpisodeLoadingStatus(String status, {bool failed = false}) {
+    if (!mounted || !_s._isLoadingNextEp) return;
+    setState(() {
+      _s._episodeLoadingStatus = status;
+      _s._episodeLoadingFailed = failed;
+    });
+  }
+
+  void _endEpisodeLoading() {
+    if (!mounted) return;
+    setState(() {
+      _s._isLoadingNextEp = false;
+      _s._episodeLoadingFailed = false;
+    });
+  }
+
+  Future<void> _failEpisodeLoading(String status) async {
+    _setEpisodeLoadingStatus(status, failed: true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    _endEpisodeLoading();
+  }
+
   Future<void> _nextEpisode() async {
     if (!_s._isNextEpisodeAvailable || _s._isLoadingNextEp) return;
 
-    setState(() => _s._isLoadingNextEp = true);
-
     if (widget.onNextEpisode != null) {
+      _beginEpisodeLoading(
+        label: 'Next episode',
+        status: 'Loading next episode…',
+      );
       try {
         _s._saveWatchHistory();
         await widget.onNextEpisode!();
+        _endEpisodeLoading();
       } catch (e) {
-        if (mounted) {
-          _s._statusController.upsert(
-            'episode',
-            'Next episode failed',
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          setState(() => _s._isLoadingNextEp = false);
-        }
+        await _failEpisodeLoading('Could not load the next episode');
       }
       return;
     }
 
+    _beginEpisodeLoading(
+      label: 'Next episode',
+      status: 'Looking up next episode…',
+    );
     final next = await _computeNextEpisode();
     if (next == null) {
-      if (mounted) setState(() => _s._isLoadingNextEp = false);
+      await _failEpisodeLoading('No next episode available');
       return;
     }
     await _switchToEpisode(next.season, next.episode);
@@ -152,28 +188,28 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
         current != null) {
       final idx = hubEpisodeIndex(widget.hubEpisodes!, current);
       if (idx == null || idx <= 0) return;
-      setState(() => _s._isLoadingNextEp = true);
+      final prev = widget.hubEpisodes![idx - 1];
+      _beginEpisodeLoading(
+        label: 'Episode ${prev.displayNumber}',
+        status: 'Loading previous episode…',
+      );
       try {
         _s._saveWatchHistory();
-        await widget.onHubEpisodeSelected!(widget.hubEpisodes![idx - 1]);
+        await widget.onHubEpisodeSelected!(prev);
+        _endEpisodeLoading();
       } catch (e) {
-        if (mounted) {
-          _s._statusController.upsert(
-            'episode',
-            'Previous episode failed',
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          setState(() => _s._isLoadingNextEp = false);
-        }
+        await _failEpisodeLoading('Could not load the previous episode');
       }
       return;
     }
 
-    setState(() => _s._isLoadingNextEp = true);
+    _beginEpisodeLoading(
+      label: 'Previous episode',
+      status: 'Looking up previous episode…',
+    );
     final prev = await _computePreviousEpisode();
     if (prev == null) {
-      if (mounted) setState(() => _s._isLoadingNextEp = false);
+      await _failEpisodeLoading('No previous episode available');
       return;
     }
     await _switchToEpisode(prev.season, prev.episode);
@@ -336,39 +372,20 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
     });
   }
 
-  String _episodeSwitchStatusLabel(
-    int season,
-    int episode, {
-    String? providerKey,
-  }) {
-    final key = providerKey ?? _s._currentProvider ?? widget.activeProvider;
-    if (key != null) {
-      return PlayerProviderMenu.snackbarLabel(key, widget.providers?[key]);
-    }
-    if (widget.magnetLink != null) return 'Torrents';
-    return 'S$season E$episode';
-  }
-
-  void _showEpisodeSwitchStatus(
-    int season,
-    int episode, {
-    String? providerKey,
-  }) {
-    _s._statusController.upsert(
-      'episode-switch',
-      _episodeSwitchStatusLabel(season, episode, providerKey: providerKey),
-      kind: StatusRouletteKind.loading,
-    );
-  }
-
   Future<void> _switchToEpisode(int season, int episode) async {
     if (widget.movie == null) return;
-    if (!_s._isLoadingNextEp && mounted) setState(() => _s._isLoadingNextEp = true);
-    _showEpisodeSwitchStatus(season, episode);
+    _beginEpisodeLoading(
+      label: 'Season $season · Episode $episode',
+      status: 'Loading episode info…',
+    );
+    // Let the loading card paint before resolve starts.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
 
     try {
       debugPrint('[EpSwitch] Playing S${season}E$episode');
       _s._saveWatchHistory();
+      _setEpisodeLoadingStatus('Checking sources…');
 
       final chain = episodeProviderChain(
         providers: widget.providers,
@@ -389,6 +406,24 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
         season: season,
         episode: episode,
         preferredProvider: chain.first,
+        onProgress: (providerId, status) {
+          if (!mounted || !_s._isLoadingNextEp) return;
+          final label = PlayerProviderMenu.snackbarLabel(
+            providerId,
+            widget.providers?[providerId],
+          );
+          switch (status) {
+            case 'trying':
+              _setEpisodeLoadingStatus('Checking $label…');
+            case 'success':
+              _setEpisodeLoadingStatus('Found a stream on $label…');
+            case 'failed':
+            case 'skipped':
+              _setEpisodeLoadingStatus('Trying another source…');
+            default:
+              _setEpisodeLoadingStatus('Checking sources…');
+          }
+        },
       );
       if (hit == null || hit.streamUrl.isEmpty) {
         throw Exception('Could not find stream for S${season}E$episode');
@@ -401,6 +436,7 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
       );
 
       if (!mounted) return;
+      _setEpisodeLoadingStatus('Opening stream…');
 
       final nextTitle = '${widget.movie!.title} - S$season E$episode';
       Navigator.of(context, rootNavigator: true).pushReplacement(
@@ -424,15 +460,7 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
       );
     } catch (e) {
       debugPrint('[EpSwitch] Error: $e');
-      if (mounted) {
-        _s._statusController.upsert(
-          'episode-switch',
-          _episodeSwitchStatusLabel(season, episode),
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        setState(() => _s._isLoadingNextEp = false);
-      }
+      await _failEpisodeLoading('Could not find a stream for this episode');
     }
   }
 
@@ -453,7 +481,18 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
         context: context,
         episodes: widget.hubEpisodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
-        onEpisodeSelected: widget.onHubEpisodeSelected!,
+        onEpisodeSelected: (ep) async {
+          _beginEpisodeLoading(
+            label: 'Episode ${ep.displayNumber}',
+            status: 'Loading episode info…',
+          );
+          try {
+            await widget.onHubEpisodeSelected!(ep);
+            _endEpisodeLoading();
+          } catch (e) {
+            await _failEpisodeLoading('Could not load this episode');
+          }
+        },
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,
       );

@@ -99,10 +99,29 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
               // ── PiP revert button (hover-only) ───────────────────────
               if (_s._isPipMode) _buildPipRevertOverlay(),
 
-              PlayerStatusOverlay(
-                controller: _s._statusController,
-                bufferingListenable: _s._isBufferingNotifier,
-              ),
+              if (_s._isLoadingNextEp)
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.42),
+                    child: Center(
+                      child: PlayerEpisodeLoadingCard(
+                        episodeLabel: _s._episodeLoadingLabel.isEmpty
+                            ? 'Loading episode'
+                            : _s._episodeLoadingLabel,
+                        status: _s._episodeLoadingStatus.isEmpty
+                            ? 'Please wait…'
+                            : _s._episodeLoadingStatus,
+                        failed: _s._episodeLoadingFailed,
+                      ),
+                    ),
+                  ),
+                ),
+
+              if (!_s._isLoadingNextEp)
+                PlayerStatusOverlay(
+                  controller: _s._statusController,
+                  bufferingListenable: _s._isBufferingNotifier,
+                ),
             ],
           ),
         ),
@@ -372,9 +391,8 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
             right: 24,
             child: PlayerFloatingChip(
               label: 'Next Episode',
-              loading: _s._isLoadingNextEp,
               trailingIcon: Icons.arrow_forward_rounded,
-              onPressed: _s._isLoadingNextEp ? null : _s._nextEpisode,
+              onPressed: _s._nextEpisode,
             ),
           ),
 

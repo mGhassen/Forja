@@ -301,6 +301,31 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     await widget.onEpisodeSelected(season, episode);
   }
 
+  Widget? _headerTrailing({
+    required bool showRange,
+    required bool showSeason,
+  }) {
+    if (!showRange && !showSeason) return null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showRange)
+          EpisodeRangeSelector(
+            ranges: _episodeRanges,
+            selectedIndex: _episodeChunk,
+            onSelected: _selectChunk,
+          ),
+        if (showRange && showSeason) const SizedBox(width: 8),
+        if (showSeason)
+          _SeasonDropdown(
+            seasonCount: _seasonCount!,
+            selectedSeason: _selectedSeason,
+            onSelected: _selectSeason,
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -309,24 +334,11 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
         PlayerSidePanelHeader(
           title: 'Episodes',
           onClose: widget.onClose,
-          trailing: (_seasonCount ?? 0) > 1
-              ? _SeasonDropdown(
-                  seasonCount: _seasonCount!,
-                  selectedSeason: _selectedSeason,
-                  onSelected: _selectSeason,
-                )
-              : null,
-        ),
-        if (!_loading && showEpisodeRangeBar(_episodeNumbers))
-          Padding(
-            padding: const EdgeInsets.only(top: 6, bottom: 6),
-            child: EpisodeRangeBar(
-              ranges: _episodeRanges,
-              selectedIndex: _episodeChunk,
-              onSelected: _selectChunk,
-              compact: true,
-            ),
+          trailing: _headerTrailing(
+            showRange: !_loading && showEpisodeRangeBar(_episodeNumbers),
+            showSeason: (_seasonCount ?? 0) > 1,
           ),
+        ),
         Expanded(
           child: _loading
               ? Center(
@@ -699,8 +711,8 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
       widget.onClose();
       return;
     }
-    await widget.onEpisodeSelected(episode);
     widget.onClose();
+    await widget.onEpisodeSelected(episode);
   }
 
   @override
@@ -711,17 +723,14 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
         PlayerSidePanelHeader(
           title: 'Episodes',
           onClose: widget.onClose,
+          trailing: showEpisodeRangeBar(_episodeNumbers)
+              ? EpisodeRangeSelector(
+                  ranges: _episodeRanges,
+                  selectedIndex: _episodeChunk,
+                  onSelected: _selectChunk,
+                )
+              : null,
         ),
-        if (showEpisodeRangeBar(_episodeNumbers))
-          Padding(
-            padding: const EdgeInsets.only(top: 6, bottom: 6),
-            child: EpisodeRangeBar(
-              ranges: _episodeRanges,
-              selectedIndex: _episodeChunk,
-              onSelected: _selectChunk,
-              compact: true,
-            ),
-          ),
         Expanded(
           child: widget.episodes.isEmpty
               ? Center(

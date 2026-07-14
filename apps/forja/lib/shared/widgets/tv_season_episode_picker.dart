@@ -396,19 +396,19 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 ),
               ),
             ],
+            if (showEpisodeRangeBar(_episodeNumbers)) ...[
+              const Spacer(),
+              EpisodeRangeSelector(
+                ranges: _episodeRanges,
+                selectedIndex: _episodeChunk,
+                onSelected: _selectChunk,
+              ),
+            ],
           ],
         ),
         if (widget.seasonCount > 1) ...[
           const SizedBox(height: 16),
           _buildSeasonRow(tabId),
-        ],
-        if (showEpisodeRangeBar(_episodeNumbers)) ...[
-          const SizedBox(height: 12),
-          EpisodeRangeBar(
-            ranges: _episodeRanges,
-            selectedIndex: _episodeChunk,
-            onSelected: _selectChunk,
-          ),
         ],
         const SizedBox(height: 20),
         if (widget.isLoadingSeason)

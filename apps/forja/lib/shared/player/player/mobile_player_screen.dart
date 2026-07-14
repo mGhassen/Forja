@@ -49,6 +49,7 @@ import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
@@ -299,6 +300,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
+  String _episodeLoadingLabel = '';
+  String _episodeLoadingStatus = '';
+  bool _episodeLoadingFailed = false;
   bool _nearEndOfEpisode = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;
