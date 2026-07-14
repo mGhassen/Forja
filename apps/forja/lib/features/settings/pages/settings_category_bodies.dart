@@ -224,21 +224,21 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
                   ),
                   const SizedBox(height: 14),
                   Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      SettingsFilledButton(
-                        label: 'Export',
-                        icon: Icons.upload_rounded,
-                        busy: _isExporting,
-                        onPressed: _exportSettings,
-                      ),
-                      const SizedBox(width: 12),
                       SettingsFilledButton(
                         label: 'Import',
                         icon: Icons.download_rounded,
                         secondary: true,
                         busy: _isImporting,
                         onPressed: _importSettings,
+                      ),
+                      const SizedBox(width: 12),
+                      SettingsFilledButton(
+                        label: 'Export',
+                        icon: Icons.upload_rounded,
+                        busy: _isExporting,
+                        onPressed: _exportSettings,
                       ),
                     ],
                   ),

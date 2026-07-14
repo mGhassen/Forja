@@ -346,7 +346,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               SettingsFilledButton(
                 label: 'Test Connection',
@@ -479,7 +479,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
           ],
           const SizedBox(height: 16),
           Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               SettingsFilledButton(
                 label: 'Test Connection',

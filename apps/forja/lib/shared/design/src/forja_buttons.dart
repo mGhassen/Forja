@@ -427,6 +427,103 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
   }
 }
 
+/// Top-bar action icon that matches the shell menu tabs (Films / TV Shows …):
+/// idles at [ForjaShellColors.textSecondary] and animates to white on
+/// hover/focus with **no** background fill — same color language as the tabs.
+class ForjaTopBarIcon extends StatefulWidget {
+  const ForjaTopBarIcon({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.tooltip,
+    this.size = 24,
+    this.hitSize,
+    this.focusNode,
+    this.onFocusChange,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+  final double size;
+  final double? hitSize;
+  final FocusNode? focusNode;
+  final ValueChanged<bool>? onFocusChange;
+
+  @override
+  State<ForjaTopBarIcon> createState() => _ForjaTopBarIconState();
+}
+
+class _ForjaTopBarIconState extends State<ForjaTopBarIcon> {
+  static const _animDuration = Duration(milliseconds: 280);
+  static const _animCurve = Curves.easeInOutCubic;
+
+  bool _hover = false;
+  bool _focused = false;
+
+  double get _resolvedHitSize => widget.hitSize ?? widget.size + 12;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hover || _focused;
+    final idle = ForjaShellColors.cinematic.textSecondary;
+
+    Widget button = MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: _resolvedHitSize,
+          height: _resolvedHitSize,
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: active ? 1 : 0),
+              duration: _animDuration,
+              curve: _animCurve,
+              builder: (context, t, _) {
+                return Icon(
+                  widget.icon,
+                  size: widget.size,
+                  color: Color.lerp(idle, Colors.white, t),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (widget.onTap != null) {
+      button = Focus(
+        focusNode: widget.focusNode,
+        debugLabel: widget.focusNode?.debugLabel ?? 'forja-top-bar-icon',
+        onFocusChange: (focused) {
+          setState(() => _focused = focused);
+          widget.onFocusChange?.call(focused);
+        },
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.select) {
+            widget.onTap!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: button,
+      );
+    }
+
+    if (widget.tooltip != null) {
+      return Tooltip(message: widget.tooltip!, child: button);
+    }
+    return button;
+  }
+}
+
 /// Borderless dismiss control — soft circular fill on hover, no outline.
 class ForjaCloseButton extends StatelessWidget {
   const ForjaCloseButton({

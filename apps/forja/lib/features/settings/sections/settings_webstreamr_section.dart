@@ -280,11 +280,12 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
         ),
         const SizedBox(height: 8),
         Align(
-          alignment: Alignment.centerLeft,
+          alignment: Alignment.centerRight,
           child: ForjaButton.primary(
             label: 'Save',
             icon: Icons.save_rounded,
             busy: _saving,
+            height: 36,
             onPressed: _save,
           ),
         ),

@@ -251,15 +251,11 @@ class _HomeTopBarState extends State<HomeTopBar> {
       );
     }
 
-    final icon = ForjaPlainIcon(
+    final icon = ForjaTopBarIcon(
       icon: Icons.search_rounded,
-      color: Colors.white,
       size: iconSize,
       hitSize: searchW,
-      hoverScale: ShellTokens.focusActiveScale,
-      focusNode: tvFocus ? _searchFocus : null,
       onTap: _openSearch,
-      onKeyEvent: null,
     );
 
     return SizedBox(height: 34, child: Center(child: icon));

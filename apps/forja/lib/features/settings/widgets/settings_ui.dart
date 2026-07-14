@@ -578,12 +578,13 @@ class SettingsFilledButton extends StatelessWidget {
       icon: icon,
       busy: busy,
       expand: expand,
+      height: 36,
       variant: secondary
           ? ForjaButtonVariant.neutral
           : ForjaButtonVariant.primary,
     );
     if (expand) return button;
-    return Align(alignment: Alignment.centerLeft, child: button);
+    return Align(alignment: Alignment.centerRight, child: button);
   }
 }
 

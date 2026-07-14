@@ -295,12 +295,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                         ),
                       ),
                     )
-                  : ForjaPlainIcon(
+                  : ForjaTopBarIcon(
                       icon: Icons.search_rounded,
-                      color: Colors.white,
                       size: shellScaled(context, 30).clamp(20.0, 30.0),
                       hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
-                      hoverScale: ShellTokens.focusActiveScale,
                       onTap: widget.onSearch,
                     ),
             ),
