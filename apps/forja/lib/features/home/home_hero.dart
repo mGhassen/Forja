@@ -43,6 +43,7 @@ class HomeCinematicHero extends StatefulWidget {
     required this.controller,
     required this.onOpenDetails,
     required this.onWatchNow,
+    this.pageBottomChild,
   });
 
   final Future<List<Movie>> moviesFuture;
@@ -52,6 +53,9 @@ class HomeCinematicHero extends StatefulWidget {
   final HomeHeroController controller;
   final Future<void> Function(Movie movie) onOpenDetails;
   final Future<void> Function(Movie movie) onWatchNow;
+
+  /// First catalog row rendered on the extended page backdrop (desktop/TV).
+  final Widget? pageBottomChild;
 
   @override
   State<HomeCinematicHero> createState() => _HomeCinematicHeroState();
@@ -142,18 +146,32 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   double _homeBackdropHeight(BuildContext context, {required bool compact}) {
     final topBarBleed = _desktopTopBarBleed(context);
-    if (widget.usesShellHomeLayout && !compact) {
+    final pageBleed = widget.pageBottomChild != null && !compact;
+    if (pageBleed) {
       return _snapToDevicePixels(
         context,
         MediaQuery.sizeOf(context).height *
                 ShellTokens.homeBackdropViewportFraction +
-            topBarBleed,
+            topBarBleed +
+            ShellTokens.homePageBottomSectionDownOffset,
       );
     }
     return _snapToDevicePixels(
       context,
       _cinematicHeroHeight(context, compact: compact) + topBarBleed,
     );
+  }
+
+  double _homeHeroTextBottomInset(
+    BuildContext context, {
+    required bool compact,
+    required double defaultBottom,
+  }) {
+    if (widget.pageBottomChild == null || compact) return defaultBottom;
+    return HomeMovieSection.sectionHeight(context, compactTop: true) +
+        ShellTokens.homePageBottomSectionTopPadding +
+        ShellTokens.homePageBottomSectionDownOffset +
+        defaultBottom;
   }
 
   void _publishHomeHeroHeight() {
@@ -513,7 +531,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         }
       });
     }
-    final shellBackdrop = widget.usesShellHomeLayout && !compact;
+    final pageBleed = widget.pageBottomChild != null && !compact;
     final imageHeight = _homeBackdropHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
     final textTop = topBarBleed + homeHeroTextTopInset(context);
@@ -523,6 +541,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
         : shellScaled(context, 48).clamp(24.0, 48.0);
     final textBottom = shellScaled(context, 16).clamp(8.0, 16.0);
+    final textBottomInset = _homeHeroTextBottomInset(
+      context,
+      compact: compact,
+      defaultBottom: textBottom,
+    );
     final textLeft = shellHomeSectionHorizontalPadding(context);
     final desktopTextWidth = math.min(
       MediaQuery.sizeOf(context).width * 0.34,
@@ -558,7 +581,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               child: _buildDesktopHeroImageGradients(
                 shellBg,
                 imageStartFraction: imageStartFraction,
-                softBottomFade: shellBackdrop,
+                softBottomFade: pageBleed,
               ),
             ),
           ),
@@ -578,7 +601,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           Positioned(
             left: textLeft,
             top: textTop,
-            bottom: textBottom,
+            bottom: textBottomInset,
             width: textColumnWidth,
             child: _buildHeroTextSlide(
               movie: heroTextMovie,
@@ -610,6 +633,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               right: 0,
               bottom: 0,
               child: _buildTvHeroGalleryFocus(movies),
+            ),
+          if (pageBleed)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: widget.pageBottomChild!,
             ),
         ],
       ),

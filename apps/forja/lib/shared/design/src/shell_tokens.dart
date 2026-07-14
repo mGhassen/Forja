@@ -140,14 +140,14 @@ abstract final class ShellTokens {
   static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
 
-  /// Home desktop/TV — hero backdrop height (carousel + chrome only; rows are in scroll).
-  static const double homeBackdropViewportFraction = 0.75;
+  /// Home desktop/TV — page backdrop height (hero chrome + first row on image).
+  static const double homeBackdropViewportFraction = 0.90;
 
-  /// Padding above **Featured This Month** in the scroll view (independent of hero height).
-  static const double homeFeaturedRowTopPadding = 32;
+  /// Padding above **Featured This Month** when stacked on the hero backdrop.
+  static const double homePageBottomSectionTopPadding = 8;
 
-  /// Pull Featured upward so the row overlaps the hero backdrop image.
-  static const double homeFeaturedRowBackdropOverlap = 220;
+  /// Extra backdrop height below the viewport band so Featured can sit on-image.
+  static const double homePageBottomSectionDownOffset = 82;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).

@@ -435,7 +435,9 @@ class StreamExtractor {
     final r = referer.toLowerCase();
     return r.contains('anitaro') ||
         r.contains('anyembed.xyz') ||
-        r.contains('smashystream.com');
+        r.contains('smashystream.com') ||
+        r.contains('player.videasy.to') ||
+        r.contains('vidlink.pro');
   }
 
   String _selectBestQuality(List<String> urls) {

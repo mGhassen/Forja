@@ -68,11 +68,31 @@ abstract final class HostProviderAdapter {
         totalSeasons: isTv ? movie.numberOfSeasons : null,
         isCancelled: cancelled,
       );
-      if (cancelled() || result == null || result.url.isEmpty) return null;
+      if (!cancelled() && result != null && result.url.isNotEmpty) {
+        return _encodeResolveResult(
+          url: result.url,
+          sources: result.sources,
+          headers: result.headers,
+        );
+      }
+      // Dart HTTP to wingsdatabase often CF-blocks/timeouts while the live
+      // player works. Fall back to sniffing player.videasy.to (same as browser).
+      if (cancelled() || isAndroidTvHeadlessWebViewBlocked) return null;
+      final embed = isTv
+          ? 'https://player.videasy.to/tv/${movie.id}/$season/$episode'
+          : 'https://player.videasy.to/movie/${movie.id}';
+      debugPrint('[videasy] API empty — sniffing $embed');
+      final sniffed = await _extractor.extract(
+        embed,
+        timeout: const Duration(seconds: 60),
+        isCancelled: cancelled,
+        providerId: 'videasy',
+      );
+      if (cancelled() || sniffed == null || sniffed.url.isEmpty) return null;
       return _encodeResolveResult(
-        url: result.url,
-        sources: result.sources,
-        headers: result.headers,
+        url: sniffed.url,
+        sources: sniffed.sources,
+        headers: sniffed.headers,
       );
     }
 
@@ -198,6 +218,7 @@ abstract final class HostProviderAdapter {
       case 'vixsrc':
       case 'vidnest':
       case 'vidlink':
+      case 'videasy':
         return const Duration(seconds: 60);
       default:
         return const Duration(seconds: 45);

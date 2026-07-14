@@ -7,35 +7,18 @@ bool _usesShellHomeLayout(BuildContext context) {
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
-  double topPadding = 0,
-  double backdropOverlap = 0,
 }) {
   return SliverToBoxAdapter(
     child: Builder(
-      builder: (context) {
-        Widget child = RepaintBoundary(child: section);
-        if (topPadding > 0) {
-          child = Padding(
-            padding: EdgeInsets.only(top: topPadding),
-            child: child,
-          );
-        }
-        if (backdropOverlap > 0) {
-          child = Transform.translate(
-            offset: Offset(0, -backdropOverlap),
-            child: child,
-          );
-        }
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!isFirstAfterHero)
-              SizedBox(height: shellHomeRowSpacing(context)),
-            child,
-          ],
-        );
-      },
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!isFirstAfterHero)
+            SizedBox(height: shellHomeRowSpacing(context)),
+          RepaintBoundary(child: section),
+        ],
+      ),
     ),
   );
 }
@@ -67,7 +50,17 @@ mixin _HomeScreenBuild on State<HomeScreen> {
 
     final usesShellHome = _usesShellHomeLayout(context);
     final fullHero = homeIsFullCinematicHero(context);
-    final shellFeaturedOnBackdrop = usesShellHome && fullHero;
+    final featuredSection = usesShellHome && fullHero
+        ? HomeMovieSection(
+            title: 'Featured This Month',
+            future: _s._featuredThisMonthFuture,
+            onMovieTap: _s._openDetails,
+            compactTop: true,
+            tvFocusUp: _s._homeHeroController.revealPlayFocus,
+            tvRowId: 'featured',
+            tvRowOrder: 0,
+          )
+        : null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _s._syncHomeScrollOffset();
@@ -94,25 +87,10 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                     controller: _s._homeHeroController,
                     onOpenDetails: _s._openDetails,
                     onWatchNow: _s._watchNow,
+                    pageBottomChild: featuredSection,
                   ),
                 ),
               ),
-
-              if (shellFeaturedOnBackdrop)
-                _homeRowSliver(
-                  HomeMovieSection(
-                    title: 'Featured This Month',
-                    future: _s._featuredThisMonthFuture,
-                    onMovieTap: _s._openDetails,
-                    compactTop: true,
-                    tvFocusUp: _s._homeHeroController.revealPlayFocus,
-                    tvRowId: 'featured',
-                    tvRowOrder: 0,
-                  ),
-                  isFirstAfterHero: true,
-                  topPadding: ShellTokens.homeFeaturedRowTopPadding,
-                  backdropOverlap: ShellTokens.homeFeaturedRowBackdropOverlap,
-                ),
 
               if (!usesShellHome)
                 _homeRowSliver(
@@ -140,7 +118,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                     tvRowId: 'popular',
                     tvRowOrder: 1,
                   ),
-                  isFirstAfterHero: !shellFeaturedOnBackdrop,
+                  isFirstAfterHero: featuredSection == null,
                 ),
 
               if (usesShellHome)

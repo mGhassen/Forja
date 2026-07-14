@@ -48,7 +48,7 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidLin
 - New users: leave **Auto** on
 - Power users: pin a server from the player menu
 - WebStreamr is powerful but slower — profile priority keeps it lower by default
-- **Videasy** resolves via the live player API (`db.wingsdatabase.com` metadata + `api.wingsdatabase.com` mirrors), not the public embed docs on [videasy.to](https://www.videasy.to/docs)
+- **Videasy** resolves via `db.wingsdatabase.com` + `api.wingsdatabase.com` mirrors (not the public embed docs on [videasy.to](https://www.videasy.to/docs)). If mirrors timeout/CF-block, Forja sniffs `player.videasy.to` like a browser
 - **Vidsrc** uses `vsembed.ru` embeds; the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`
 - Template embed hosts are kept on documented canonical domains: VidFast (`vidfast.vc`), VidRock (`vidrock.ru`), Vidzee (`player.vidzee.wtf/embed/…`), 111Movies (`player.vidlove.cc/embed/…`), SmashyStream (`anyembed.xyz/embed/…`). SuperEmbed still uses `multiembed.mov` per provider docs (may redirect internally)
 - **PrimeWire** (`primewire.tf`) has been unreliable in live checks — expect misses; pick another server if it fails

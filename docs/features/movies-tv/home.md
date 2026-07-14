@@ -4,7 +4,7 @@
 
 ## What it is
 
-Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills **75% of the viewport**; **Featured This Month** is the first scroll row below the hero, with padding and overlap so the posters can sit on the backdrop image without changing hero height. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Navigation Bar**.
+Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills about **75% of the viewport** and extends slightly so **Featured This Month** can sit on the image with its title above the posters. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Navigation Bar**.
 
 ## How to open it
 

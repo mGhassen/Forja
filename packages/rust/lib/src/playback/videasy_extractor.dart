@@ -27,7 +27,9 @@ class VideasyExtractor {
   static const _playerOrigin = 'https://player.videasy.to';
   static const _fetchTimeout = Duration(seconds: 25);
   static const _slowFetchTimeout = Duration(seconds: 60);
-  static const _defaultExtractTimeout = Duration(seconds: 120);
+  // Keep short enough that HostProviderAdapter can fall back to sniffing
+  // player.videasy.to when wings mirrors CF-block / timeout.
+  static const _defaultExtractTimeout = Duration(seconds: 55);
   static const _maxInFlight = 4;
   static const _seedTtl = Duration(seconds: 25);
 
@@ -50,7 +52,9 @@ class VideasyExtractor {
     'User-Agent': userAgent,
     'Referer': '$_playerOrigin/',
     'Origin': _playerOrigin,
-    'Accept': '*/*',
+    // Match player axios Accept (CF sometimes treats bare */* differently).
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
   };
 
   static const _playbackHeaders = <String, String>{
