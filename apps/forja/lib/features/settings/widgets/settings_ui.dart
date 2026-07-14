@@ -335,10 +335,28 @@ class SettingsToggleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: ForjaShellColors.brandGreen,
+          Transform.scale(
+            scale: 0.82,
+            child: Switch(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: ForjaShellColors.brandGreen,
+              thumbColor: const WidgetStatePropertyAll(Colors.white),
+              trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.transparent;
+                }
+                return ForjaShellColors.borderSubtle;
+              }),
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)) {
+                  return ForjaShellColors.textPrimary.withValues(alpha: 0.08);
+                }
+                return Colors.transparent;
+              }),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
         ],
       ),
