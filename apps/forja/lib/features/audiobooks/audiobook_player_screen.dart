@@ -325,9 +325,9 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
                     children: [
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: Colors.white,
+                          activeTrackColor: ForjaShellColors.brandGreen,
                           inactiveTrackColor: Colors.white10,
-                          thumbColor: Colors.white,
+                          thumbColor: ForjaShellColors.brandGreen,
                           trackHeight: 4,
                           overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
                         ),

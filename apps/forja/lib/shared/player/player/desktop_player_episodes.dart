@@ -78,6 +78,16 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
         _s._activeSkipTarget = target;
         _s._skipDismissed = false; // reset dismiss when segment changes
       });
+      final skipAuto = SettingsService.autoSkipIntroNotifier.value;
+      if (skipAuto &&
+          (label == 'Skip Intro' || label == 'Skip Recap') &&
+          target != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _s._disposed) return;
+          if (_s._activeSkipLabel != label) return;
+          _performSkip();
+        });
+      }
     }
   }
 
@@ -742,6 +752,9 @@ mixin _DesktopPlayerEpisodes on State<DesktopPlayerScreen>, WidgetsBindingObserv
     final autoSource = await settings.getPlayerAutoSource();
     final autoAudio = await settings.getPlayerAutoAudio();
     final autoSubtitle = await settings.getPlayerAutoSubtitle();
+    // Hydrate live notifiers used by skip/next episode and the Episodes panel.
+    await settings.getAutoNextEpisode();
+    await settings.getAutoSkipIntro();
     if (!mounted) return;
     // Respect Auto toggles only. Do not lock because an extract already exists
     // (green Play / cache) — that made dead CDNs hit "no auto failover".

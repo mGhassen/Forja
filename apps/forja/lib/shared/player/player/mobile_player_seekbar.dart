@@ -123,7 +123,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                     height: trackH,
                     width: playPx,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ForjaShellColors.brandGreen,
                       borderRadius: BorderRadius.circular(trackH),
                     ),
                   ),
@@ -136,12 +136,13 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                       width: thumbR * 2,
                       height: thumbR * 2,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ForjaShellColors.brandGreen,
                         shape: BoxShape.circle,
                         boxShadow: _isDragging
                             ? [
                                 BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.35),
+                                  color: ForjaShellColors.brandGreen
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 8,
                                 ),
                               ]

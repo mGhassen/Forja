@@ -938,12 +938,21 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       _s._playbackRecovery?.handleMpvLog(l.text);
     });
 
-    // Completion – natural end shows controls; abortive end does not hop sources
+    // Completion – natural end may auto-play next episode; abortive end does not hop
     _s._completedSub = _s._player.stream.completed.listen((completed) {
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
       if (isNaturalPlaybackEnd(_s._player.state)) {
         debugPrint('✅ Playback completed');
+        final autoNext = SettingsService.autoNextEpisodeNotifier.value;
+        if (autoNext &&
+            !_s._loopEnabled &&
+            _s._isNextEpisodeAvailable &&
+            !_s._isLoadingNextEp) {
+          unawaited(_s._nextEpisode());
+        } else if (mounted) {
+          setState(() => _s._showControls = true);
+        }
         return;
       }
       if (mounted) setState(() => _s._showControls = true);

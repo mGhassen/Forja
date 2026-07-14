@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 /// Touch-friendly seek bar for mobile / TV player chrome (no hover preview).
@@ -118,7 +119,7 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
                     height: trackH,
                     width: playPx,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ForjaShellColors.brandGreen,
                       borderRadius: BorderRadius.circular(trackH),
                     ),
                   ),
@@ -130,12 +131,13 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
                       width: thumbR * 2,
                       height: thumbR * 2,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ForjaShellColors.brandGreen,
                         shape: BoxShape.circle,
                         boxShadow: _isDragging
                             ? [
                                 BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.35),
+                                  color: ForjaShellColors.brandGreen
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 8,
                                 ),
                               ]

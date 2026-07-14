@@ -266,7 +266,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                     widthFactor: relativePosition,
                     child: Container(
                       height: _tvFocused ? 4.0 : 3.0,
-                      color: Colors.white,
+                      color: ForjaShellColors.brandGreen,
                     ),
                   ),
                   // Thumb
@@ -276,9 +276,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                       width: (_isDragging || _tvFocused) ? 16.0 : 12.0,
                       height: (_isDragging || _tvFocused) ? 16.0 : 12.0,
                       decoration: BoxDecoration(
-                        color: _tvFocused
-                            ? ForjaShellColors.brandGreen
-                            : Colors.white,
+                        color: ForjaShellColors.brandGreen,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(

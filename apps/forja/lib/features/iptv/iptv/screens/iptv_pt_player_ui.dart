@@ -607,6 +607,10 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           Expanded(
             child: SliderTheme(
               data: IptvShellStyle.sliderTheme(context).copyWith(
+                activeTrackColor: ForjaShellColors.brandGreen,
+                thumbColor: ForjaShellColors.brandGreen,
+                overlayColor:
+                    ForjaShellColors.brandGreen.withValues(alpha: 0.2),
                 trackHeight: 3.5,
                 thumbShape: const RoundSliderThumbShape(
                   enabledThumbRadius: 7,

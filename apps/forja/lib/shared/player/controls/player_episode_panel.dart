@@ -131,6 +131,7 @@ class _EpisodePanelBody extends StatefulWidget {
 
 class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   final _tmdb = TmdbService();
+  final _settings = SettingsService();
   final _scrollController = ScrollController();
 
   int? _seasonCount;
@@ -139,6 +140,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   Map<String, Map<String, dynamic>> _episodeProgress = {};
   bool _loading = true;
   int _episodeChunk = 0;
+  bool _autoNextEpisode = true;
 
   List<int> get _episodeNumbers => _episodes
       .map((ep) => ep['episode_number'] as int? ?? 0)
@@ -162,7 +164,20 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   void initState() {
     super.initState();
     _selectedSeason = widget.initialSeason;
+    _autoNextEpisode = SettingsService.autoNextEpisodeNotifier.value;
+    unawaited(_loadAutoNext());
     _load();
+  }
+
+  Future<void> _loadAutoNext() async {
+    final v = await _settings.getAutoNextEpisode();
+    if (!mounted) return;
+    setState(() => _autoNextEpisode = v);
+  }
+
+  Future<void> _setAutoNext(bool value) async {
+    setState(() => _autoNextEpisode = value);
+    await _settings.setAutoNextEpisode(value);
   }
 
   @override
@@ -305,10 +320,14 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     required bool showRange,
     required bool showSeason,
   }) {
-    if (!showRange && !showSeason) return null;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _AutoNextEpisodeCheck(
+          value: _autoNextEpisode,
+          onChanged: (v) => unawaited(_setAutoNext(v)),
+        ),
+        if (showRange || showSeason) const SizedBox(width: 8),
         if (showRange)
           EpisodeRangeSelector(
             ranges: _episodeRanges,
@@ -629,8 +648,10 @@ class _HubEpisodePanelBody extends StatefulWidget {
 }
 
 class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
+  final _settings = SettingsService();
   final _scrollController = ScrollController();
   int _episodeChunk = 0;
+  bool _autoNextEpisode = true;
 
   List<int> get _episodeNumbers => widget.episodes
       .map((e) => e.number is int ? e.number as int : e.number.toInt())
@@ -653,7 +674,20 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   void initState() {
     super.initState();
     _episodeChunk = _chunkIndexForEpisode(widget.currentEpisode);
+    _autoNextEpisode = SettingsService.autoNextEpisodeNotifier.value;
+    unawaited(_loadAutoNext());
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+  }
+
+  Future<void> _loadAutoNext() async {
+    final v = await _settings.getAutoNextEpisode();
+    if (!mounted) return;
+    setState(() => _autoNextEpisode = v);
+  }
+
+  Future<void> _setAutoNext(bool value) async {
+    setState(() => _autoNextEpisode = value);
+    await _settings.setAutoNextEpisode(value);
   }
 
   @override
@@ -723,13 +757,23 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
         PlayerSidePanelHeader(
           title: 'Episodes',
           onClose: widget.onClose,
-          trailing: showEpisodeRangeBar(_episodeNumbers)
-              ? EpisodeRangeSelector(
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _AutoNextEpisodeCheck(
+                value: _autoNextEpisode,
+                onChanged: (v) => unawaited(_setAutoNext(v)),
+              ),
+              if (showEpisodeRangeBar(_episodeNumbers)) ...[
+                const SizedBox(width: 8),
+                EpisodeRangeSelector(
                   ranges: _episodeRanges,
                   selectedIndex: _episodeChunk,
                   onSelected: _selectChunk,
-                )
-              : null,
+                ),
+              ],
+            ],
+          ),
         ),
         Expanded(
           child: widget.episodes.isEmpty
@@ -1064,6 +1108,64 @@ class _Badge extends StatelessWidget {
           color: Colors.white,
           fontSize: 10,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact header checkbox — same pattern as Source panel Embed toggle.
+class _AutoNextEpisodeCheck extends StatelessWidget {
+  const _AutoNextEpisodeCheck({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(6),
+      hoverColor: ForjaShellColors.inkHover,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: Checkbox(
+                value: value,
+                onChanged: (v) {
+                  if (v == null) return;
+                  onChanged(v);
+                },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return ForjaShellColors.cinematic.textPrimary;
+                  }
+                  return Colors.transparent;
+                }),
+                checkColor: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Auto next',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

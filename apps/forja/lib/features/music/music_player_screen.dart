@@ -672,9 +672,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
                     children: [
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: AppTheme.primaryColor,
+                          activeTrackColor: ForjaShellColors.brandGreen,
                           inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
-                          thumbColor: Colors.white,
+                          thumbColor: ForjaShellColors.brandGreen,
                           trackHeight: 4,
                           overlayShape: SliderComponentShape.noOverlay,
                           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),

@@ -65,6 +65,9 @@ class SettingsService {
   static const String _playerAutoAudioKey = 'player_auto_audio';
   static const String _playerAutoSubtitleKey = 'player_auto_subtitle';
   static const String _playerWebViewUseEmbedKey = 'player_webview_use_embed';
+  static const String _autoNextEpisodeKey = 'auto_next_episode';
+  static const String _legacyAutoNextKey = 'forja_auto_next';
+  static const String _autoSkipIntroKey = 'auto_skip_intro';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';  static const String _maxPlaybackHeightKey = 'max_playback_height';
 
   /// Headless WebView sniff: iframe-wrap embed URLs vs load them directly.
@@ -90,6 +93,12 @@ class SettingsService {
 
   static final ValueNotifier<bool> iptvEpgEnabledNotifier =
       ValueNotifier<bool>(true);
+
+  /// Prefetch / live-sync for player episode panel + Settings.
+  static final ValueNotifier<bool> autoNextEpisodeNotifier =
+      ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> autoSkipIntroNotifier =
+      ValueNotifier<bool>(false);
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -126,6 +135,40 @@ class SettingsService {
 
   Future<void> setPlayerAutoSubtitle(bool v) async =>
       kvSetBool(_playerAutoSubtitleKey, v);
+
+  /// When on, natural end of an episode starts the next one automatically.
+  Future<bool> getAutoNextEpisode() async {
+    final bool v;
+    if (await kvHasKey(_autoNextEpisodeKey)) {
+      v = await kvGetBool(_autoNextEpisodeKey, fallback: true);
+    } else {
+      // Legacy SharedPreferences migration key (facade.migrateSharedPrefs).
+      v = await kvGetBool(_legacyAutoNextKey, fallback: true);
+    }
+    if (autoNextEpisodeNotifier.value != v) {
+      autoNextEpisodeNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setAutoNextEpisode(bool v) async {
+    await kvSetBool(_autoNextEpisodeKey, v);
+    autoNextEpisodeNotifier.value = v;
+  }
+
+  /// When on, seek past IntroDB intro/recap segments without tapping Skip.
+  Future<bool> getAutoSkipIntro() async {
+    final v = await kvGetBool(_autoSkipIntroKey, fallback: false);
+    if (autoSkipIntroNotifier.value != v) {
+      autoSkipIntroNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setAutoSkipIntro(bool v) async {
+    await kvSetBool(_autoSkipIntroKey, v);
+    autoSkipIntroNotifier.value = v;
+  }
 
   Future<bool> getPlayerWebViewUseEmbed() async {
     final v = await kvGetBool(_playerWebViewUseEmbedKey, fallback: false);

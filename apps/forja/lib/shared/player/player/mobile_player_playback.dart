@@ -959,7 +959,15 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
       if (isNaturalPlaybackEnd(_s._player.state)) {
-        if (mounted) setState(() => _s._showControls = true);
+        final autoNext = SettingsService.autoNextEpisodeNotifier.value;
+        if (autoNext &&
+            !_s._loopEnabled &&
+            _s._isNextEpisodeAvailable &&
+            !_s._isLoadingNextEp) {
+          unawaited(_s._nextEpisode());
+        } else if (mounted) {
+          setState(() => _s._showControls = true);
+        }
         return;
       }
       // Abortive early end — stop; do not hop to the next source.

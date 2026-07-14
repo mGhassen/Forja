@@ -80,6 +80,16 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
         _s._activeSkipTarget = target;
         _s._skipDismissed = false;
       });
+      final skipAuto = SettingsService.autoSkipIntroNotifier.value;
+      if (skipAuto &&
+          (label == 'Skip Intro' || label == 'Skip Recap') &&
+          target != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _s._disposed) return;
+          if (_s._activeSkipLabel != label) return;
+          _performSkip();
+        });
+      }
     }
   }
 

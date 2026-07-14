@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 typedef SeekFrameCapture = Future<Uint8List?> Function(Duration position);
@@ -179,7 +180,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                             child: Container(
                               height: trackH,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: ForjaShellColors.brandGreen,
                                 borderRadius: BorderRadius.circular(trackH),
                               ),
                             ),
@@ -187,7 +188,11 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                           if (active)
                             Positioned(
                               left: hoverPx - 1,
-                              child: Container(width: 2, height: 16, color: Colors.white70),
+                              child: Container(
+                                width: 2,
+                                height: 16,
+                                color: ForjaShellColors.brandGreen.withValues(alpha: 0.7),
+                              ),
                             ),
                           if (thumbR > 0)
                             Positioned(
@@ -196,7 +201,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                                 width: thumbR * 2,
                                 height: thumbR * 2,
                                 decoration: const BoxDecoration(
-                                  color: Colors.white,
+                                  color: ForjaShellColors.brandGreen,
                                   shape: BoxShape.circle,
                                 ),
                               ),

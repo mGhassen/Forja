@@ -15,7 +15,7 @@ Tap **Audiobooks** in the navigation bar.
 - Search and browse catalog from multiple sources (GoldenAudiobook, Audiozaic, AppAudiobooks, Audionest, ZAudiobooks, FullLength, HDAudiobooks, BigAudiobooks, and Tokybook when available)
 - Like audiobooks
 - Resume from listening history
-- Play in the audiobook player (chapters, speed, seek)
+- Play in the audiobook player (chapters, speed, seek) — progress bar and thumb use Forja brand green
 - Download chapters for offline
 - Open downloads manager for saved chapters
 

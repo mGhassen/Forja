@@ -14,7 +14,7 @@ abstract final class IptvShellStyle {
   static Color get surfaceMuted => Colors.white.withValues(alpha: 0.04);
   static Color get chipSelectedBg => ForjaShellColors.chipSelectedBg;
   static Color get chipSelectedBorder => ForjaShellColors.chipSelectedBorder;
-  static Color get progress => ForjaShellColors.progressFill;
+  static Color get progress => ForjaShellColors.brandGreen;
   static Color get iconMuted => ForjaShellColors.cinematic.textSecondary;
   static Color get liveBadge => const Color(0xFFEF4444);
 
@@ -65,7 +65,7 @@ abstract final class IptvShellStyle {
       SliderTheme.of(context).copyWith(
         activeTrackColor: progress,
         inactiveTrackColor: Colors.white.withValues(alpha: 0.18),
-        thumbColor: Colors.white,
+        thumbColor: ForjaShellColors.brandGreen,
         overlayColor: progress.withValues(alpha: 0.2),
       );
 }

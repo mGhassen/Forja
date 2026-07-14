@@ -14,7 +14,7 @@ Tap **Music** in the navigation bar.
 
 - Search artists, albums, and tracks
 - Browse trending and editorial playlists
-- Play with full transport controls (play/pause, skip, seek)
+- Play with full transport controls (play/pause, skip, seek) — progress bar and thumb use Forja brand green
 - View synced lyrics when available
 - Like tracks and save albums
 - Open the dedicated music player with queue

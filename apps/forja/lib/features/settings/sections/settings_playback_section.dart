@@ -26,6 +26,8 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _preferredAudioLang = 'None';
   bool _avoidUnsupportedAudio = true;
+  bool _autoNextEpisode = true;
+  bool _autoSkipIntro = false;
   bool _iptvEpgEnabled = true;
   String _maxPlaybackHeightLabel = 'Auto';
   List<String> _streamProviderOrder = [];
@@ -46,6 +48,8 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     final animeOrder = await _settings.getAnimeProviderOrder();
     final preferredAudio = await _settings.getPreferredAudioLanguage();
     final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
+    final autoNextEpisode = await _settings.getAutoNextEpisode();
+    final autoSkipIntro = await _settings.getAutoSkipIntro();
     final iptvEpgEnabled = await _settings.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
     final maxPlaybackHeight = await _settings.getMaxPlaybackHeight();
@@ -61,6 +65,8 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           ? preferredAudio
           : 'None';
       _avoidUnsupportedAudio = avoidUnsupported;
+      _autoNextEpisode = autoNextEpisode;
+      _autoSkipIntro = autoSkipIntro;
       _iptvEpgEnabled = iptvEpgEnabled;
       _maxPlaybackHeightLabel = SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
     });
@@ -151,6 +157,26 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                     (val) async {
                       await _settings.setAvoidUnsupportedAudio(val);
                       setState(() => _avoidUnsupportedAudio = val);
+                    },
+                  ),
+                  settingsFocusableToggle(
+                    context,
+                    'Auto next episode',
+                    'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
+                    _autoNextEpisode,
+                    (val) async {
+                      await _settings.setAutoNextEpisode(val);
+                      setState(() => _autoNextEpisode = val);
+                    },
+                  ),
+                  settingsFocusableToggle(
+                    context,
+                    'Auto skip intro',
+                    'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
+                    _autoSkipIntro,
+                    (val) async {
+                      await _settings.setAutoSkipIntro(val);
+                      setState(() => _autoSkipIntro = val);
                     },
                   ),
                   settingsFocusableToggle(context, 

@@ -23,6 +23,9 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
     final autoSource = await settings.getPlayerAutoSource();
     final autoAudio = await settings.getPlayerAutoAudio();
     final autoSubtitle = await settings.getPlayerAutoSubtitle();
+    // Hydrate live notifiers used by skip/next episode and the Episodes panel.
+    await settings.getAutoNextEpisode();
+    await settings.getAutoSkipIntro();
     if (!mounted) return;
     // Respect Auto toggles only. Do not lock because an extract already exists
     // (green Play / cache) — that made dead CDNs hit "no auto failover".
