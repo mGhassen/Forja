@@ -120,7 +120,9 @@ class KissKhExtractor {
           }
           try {
             await controller.evaluateJavascript(
-              source: 'window.__kkhInstallHooks && window.__kkhInstallHooks(); true;',
+              source:
+                  'window.__kkhInstallHooks && window.__kkhInstallHooks();'
+                  'window.__kkhNudgePlay && window.__kkhNudgePlay(); true;',
             );
           } catch (e) {
             debugPrint('[KissKhExtractor] rehook failed: $e');
@@ -198,16 +200,20 @@ class KissKhExtractor {
       );
       if (cancelled()) return null;
 
-      // SPA / CF sometimes paints HTML but never hits Episode/*.png until a
-      // refresh. One soft reload mid-wait recovers the common cold-start miss.
-      softReloadTimer = Timer(const Duration(seconds: 8), () {
+      // SPA sometimes paints HTML but never hits Episode/*.png (cold start /
+      // player not nudged). One soft reload mid-wait recovers that miss.
+      // Keep this late — early reload aborts an in-flight Angular mount.
+      softReloadTimer = Timer(const Duration(seconds: 20), () {
         if (cancelled()) return;
         if (_apiCompleter == null || _apiCompleter!.isCompleted) return;
         if (softReloaded) return;
         softReloaded = true;
         final c = _controller;
         if (c == null) return;
-        debugPrint('[KissKhExtractor] no stream API yet — soft reload once');
+        debugPrint(
+          '[KissKhExtractor] Episode stream API still silent after 20s — '
+          'soft reload once (not a site outage)',
+        );
         onProgress?.call('retry', 'Refreshing kisskh page…');
         unawaited(c.reload());
       });
@@ -433,24 +439,39 @@ class KissKhExtractor {
     return '''
 (function () {
   function log(msg) { console.log('KKH_LOG:' + msg); }
-  function sendVideo(data) { console.log('KKH_VIDEO:' + JSON.stringify(data)); }
+  function sendVideo(data) {
+    window.__kkhGotVideo = true;
+    console.log('KKH_VIDEO:' + JSON.stringify(data));
+    // Stop headless playback only after we captured the signed stream JSON.
+    try {
+      document.querySelectorAll('video,audio').forEach(function (el) {
+        try { el.muted = true; el.pause(); } catch (e) {}
+      });
+    } catch (e) {}
+  }
   function sendSubs(data)  { console.log('KKH_SUBS:'  + JSON.stringify(data)); }
 
-  function stopMedia(el) {
-    try { el.muted = true; el.pause(); } catch (e) {}
+  // Mute only until stream JSON lands. Pausing on every play/add races the
+  // Angular player and can prevent Episode/*.png from ever firing.
+  function muteMedia(el) {
+    try { el.muted = true; } catch (e) {}
   }
   if (!window.__kkhMediaGuard) {
     window.__kkhMediaGuard = true;
     document.addEventListener('play', function (e) {
       var t = e.target;
-      if (t && (t.tagName === 'VIDEO' || t.tagName === 'AUDIO')) stopMedia(t);
+      if (!t || (t.tagName !== 'VIDEO' && t.tagName !== 'AUDIO')) return;
+      muteMedia(t);
+      if (window.__kkhGotVideo) {
+        try { t.pause(); } catch (e) {}
+      }
     }, true);
     new MutationObserver(function (mutations) {
       mutations.forEach(function (m) {
         m.addedNodes.forEach(function (node) {
           if (!node || node.nodeType !== 1) return;
-          if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') stopMedia(node);
-          node.querySelectorAll && node.querySelectorAll('video,audio').forEach(stopMedia);
+          if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') muteMedia(node);
+          node.querySelectorAll && node.querySelectorAll('video,audio').forEach(muteMedia);
         });
       });
     }).observe(document.documentElement, { childList: true, subtree: true });
@@ -559,12 +580,37 @@ class KissKhExtractor {
     }
   }
 
+  // Some titles only request Episode/*.png after a play gesture. Nudge muted
+  // autoplay + click obvious play controls until we capture the stream JSON.
+  function nudgePlay() {
+    if (window.__kkhGotVideo) return;
+    try {
+      document.querySelectorAll('video').forEach(function (v) {
+        try {
+          v.muted = true;
+          var p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      });
+      var nodes = document.querySelectorAll('button, [role="button"], .vjs-big-play-button');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        var label = ((el.getAttribute('aria-label') || '') + ' ' + (el.textContent || '')).toLowerCase();
+        if (label.indexOf('play') === -1 && label.indexOf('play_arrow') === -1) continue;
+        try { el.click(); log('nudge click play control'); } catch (e) {}
+        break;
+      }
+    } catch (e) {}
+  }
+  window.__kkhNudgePlay = nudgePlay;
+
   window.__kkhInstallHooks = installHooks;
   installHooks();
   if (!window.__kkhHookInterval) {
     var n = 0;
     window.__kkhHookInterval = setInterval(function () {
       installHooks();
+      nudgePlay();
       if (++n > 40) {
         clearInterval(window.__kkhHookInterval);
         window.__kkhHookInterval = null;
