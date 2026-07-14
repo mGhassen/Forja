@@ -225,25 +225,26 @@ class _BrowserViewState extends State<_BrowserView> {
                 icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
                 color: _searchOpen ? IptvShellStyle.accent : null,
               ),
-              if (ctrl.activeSection == IptvSection.live) ...[
+              if (ctrl.activeSection != null) ...[
                 IptvIconAction(
-                  tooltip: 'Reload channels',
+                  tooltip: 'Reload ${_sectionTitle}',
                   onPressed: ctrl.isLoading
                       ? null
-                      : () => ctrl.openSection(IptvSection.live),
+                      : () => ctrl.reloadSection(ctrl.activeSection!),
                   icon: Icons.refresh_rounded,
                 ),
-                IptvIconAction(
-                  tooltip: ctrl.isVerifyingAlive
-                      ? 'Stop alive check'
-                      : 'Re-check all streams',
-                  onPressed: ctrl.isVerifyingAlive
-                      ? ctrl.stopAliveCheck
-                      : ctrl.recheckAlive,
-                  icon: ctrl.isVerifyingAlive
-                      ? Icons.stop_circle_rounded
-                      : Icons.verified_outlined,
-                ),
+                if (ctrl.activeSection == IptvSection.live)
+                  IptvIconAction(
+                    tooltip: ctrl.isVerifyingAlive
+                        ? 'Stop alive check'
+                        : 'Re-check all streams',
+                    onPressed: ctrl.isVerifyingAlive
+                        ? ctrl.stopAliveCheck
+                        : ctrl.recheckAlive,
+                    icon: ctrl.isVerifyingAlive
+                        ? Icons.stop_circle_rounded
+                        : Icons.verified_outlined,
+                  ),
               ],
             ],
           ),
@@ -546,7 +547,7 @@ class _BrowserViewState extends State<_BrowserView> {
               label: 'Reload',
               onPressed: ctrl.activeSection == null
                   ? null
-                  : () => ctrl.openSection(ctrl.activeSection!),
+                  : () => ctrl.reloadSection(ctrl.activeSection!),
             ),
           ],
         ),

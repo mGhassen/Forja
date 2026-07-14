@@ -41,6 +41,7 @@ When adding a reused constant: **shell/catalog → `ShellTokens`**, **details su
 - Shell chrome: `textPrimary`, `textSecondary`, `iconMuted`, `borderSubtle`, `surfaceElevated`
 - Selection / resume: `chipSelectedBg`, `chipSelectedBorder`, `progressFill`
 - Menus / dropdowns: `ForjaShellColors.cinematic.menuSurface`
+- Floating player menus: `PlayerPopupTokens` in `shared/player/controls/player_popup_panel.dart` (flat dark shell + brand-green `accent` / `selectedFill` for chips; list selected uses `accentFill`)
 - **Do not** use raw `Colors.white54` for new shell UI when a semantic token exists.
 
 ## Buttons

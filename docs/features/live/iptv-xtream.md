@@ -15,15 +15,15 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Open the **Portals** panel (top bar, after a portal is active) to add, scrape, search, favorite, or switch providers — until then use **Open portal** in the empty state
 - Switch **Live**, **Movies**, and **Series** from section chips in the top bar once a portal is active — the full top bar (shelf, search, portals) is hidden until you pick a provider
 - Catalog is **cached in-session** per portal/section — switching chips reuses the last fetch
-- Hover (or focus) a section chip to reveal **Reload** and force a fresh catalog fetch
+- Hover (or focus) the **selected** section chip (**Live** / **Movies** / **Series**) to reveal **Reload** and force a fresh catalog fetch for that shelf
 - Browse live channels by category — channel tiles show a play control and slightly brighter border on hover (desktop) or focus (TV)
 - **Search** live, movie, and series catalogs (search icon → slide-in bar on wide layouts, dialog on compact layouts; filters groups and channels as you type; close clears search)
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
-- Favorite portals in the Portals panel (star icon) — pinned to the top; below them, the most recently scraped or added portals appear first (with a **NEW** badge on session-fresh rows until you hover or focus them — styling only, position stays put)
+- Favorite portals in the Portals panel (star icon) — pinned to the top with **gold** title text matching the star; below them, the most recently scraped or added portals appear first (with a **NEW** badge on session-fresh rows until you hover or focus them — styling only, position stays put)
 - Portal rows always show the subscription **end date** on the first line (green · yellow · amber · red by time left); hover/focus reveals row actions (**copy share code / edit / delete**) without moving the status icon or star off-center
 - **Copy share code** transforms the row into the 8-character code (copied automatically); click the row again to restore portal details. Normal row click still selects the portal when the code is not shown
-- Play in the IPTV player screen — on **Android TV** playback uses the native ExoPlayer engine (reliable video surface); other platforms use MediaKit (libmpv). With controls visible, D-pad **←/→** moves between chrome buttons (back, play, mute, guide, fullscreen, …); **↑** from the transport row returns to **back**; **↓** from **back** returns to **play**; **OK** activates the focused control. When controls are hidden, **←/→** seek (VOD) and **↑/↓** adjust volume
+- Play in the IPTV player screen — on **Android TV** playback uses the native ExoPlayer engine (reliable video surface); other platforms use MediaKit (libmpv). With controls visible, D-pad **←/→** moves between chrome buttons (back, play, mute, guide, fullscreen, …); **↑** from the transport row returns to **back**; **↓** from **back** returns to **play**; **OK** activates the focused control. When controls are hidden, **←/→** seek (VOD) and **↑/↓** adjust volume. On desktop, hover the volume icon to expand the volume bar (tap mutes; long-press pins the bar)
 - Change live channels from the in-player channel guide (groups + channel list overlay) — on **Android TV**, **↑/↓** move the highlight, **←/→** switch between groups and channels (wide layout) or open the channel list (narrow); **Right** on the channel list stays in the panel (does not return to the video); **OK** / **Select** picks the focused group or tunes the focused channel; **Back** returns to groups (narrow) or closes the guide
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
 - View programme guide (NOW / NEXT with progress) as a floating card at the bottom-right of the player when your portal provides EPG — tap **Read More** on the current programme description to expand it inline
@@ -40,7 +40,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 ## Tips
 
 - **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by name or URL
-- Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit the hover **Reload** control
+- Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit **Reload** on the selected shelf (or the centered **Reload** button when the catalog failed to load)
 - On **Android TV**, focusable controls (search, portals, dialogs, back/close, portal actions, group rows) use **brand green** when D-pad focused — **Live / Movies / Series** shelf chips keep their own section colors on focus (same as hover)
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
 - On **Android TV**, D-pad from **Open portal** (no provider yet) opens the **Portals** panel with focus on **Add** (+)

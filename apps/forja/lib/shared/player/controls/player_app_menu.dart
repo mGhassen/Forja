@@ -60,14 +60,14 @@ class PlayerAppMenu {
     ScrollPhysics? physics,
   }) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
         const _SectionLabel('Built-in'),
         if (Platform.isAndroid)
           for (var i = 0; i < builtInPlayerEngineOptions.length; i++) ...[
-            if (i != 0) const SizedBox(height: 8),
+            if (i != 0) const SizedBox(height: 6),
             PlayerPopupOptionChip(
               label: builtInPlayerEngineOptions[i].displayName,
               selected:
@@ -95,7 +95,7 @@ class PlayerAppMenu {
               await onSelect(builtInEngine: builtInEngine);
             },
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         const _SectionLabel('External app'),
         _InstalledExternalPlayers(
           usingBuiltIn: usingBuiltIn,
@@ -163,7 +163,7 @@ class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
         return Column(
           children: [
             for (var i = 0; i < players.length; i++) ...[
-              if (i != 0) const SizedBox(height: 8),
+              if (i != 0) const SizedBox(height: 6),
               PlayerPopupOptionChip(
                 label: players[i].displayName,
                 selected:
@@ -195,14 +195,14 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 8),
+      padding: const EdgeInsets.only(left: 2, bottom: 6),
       child: Text(
         text.toUpperCase(),
         style: GoogleFonts.inter(
           color: ForjaShellColors.textSecondary,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
+          letterSpacing: 0.55,
         ),
       ),
     );

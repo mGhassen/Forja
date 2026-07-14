@@ -445,7 +445,9 @@ class _PortalCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(
-                          color: Colors.white,
+                          color: isFavorite
+                              ? const Color(0xFFFACC15)
+                              : Colors.white,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),

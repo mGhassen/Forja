@@ -178,6 +178,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   double _volumeBeforeMute = 100.0;
   bool _muted = false;
   bool _showVolumeSlider = false;
+  bool _volumeHovering = false;
   Timer? _hideVolumeTimer;
 
   // Fullscreen state (desktop only — mobile is permanently immersive)

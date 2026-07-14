@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** components · **16 / 21** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
-| **Current slice** | Details UX + player chrome/controls + auto next/skip + Episodes panel top + Lab menus + loading server list; next: play-flow handoff + issue 018 gate |
+| **Progress** | **17 / 18** components · **18 / 23** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
+| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent; next: play-flow handoff + issue 018 gate |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -72,6 +72,8 @@
 | 12 | R26-A19 | Episodes panel top — season pill (brand green), search + Auto next switch, squared close | ✅ |
 | 13 | R26-A20 | Floating player menus — Lab chrome (low-radius cards, white/black selected chips); Settings is drill-in (each parameter → own second page); side panels unchanged | ✅ |
 | 14 | R26-A21 | Loading overlay — layers icon next to Cancel opens live provider list; tap server to check manually | ✅ |
+| 15 | R26-A22 | Floating player menus restyle — brand-green selected chips, tighter chrome, modern radii; Settings drill-in unchanged; TV focus preserved | ✅ |
+| 16 | R26-A23 | Stream/source side panel — brand-green selected/playing accent + density aligned to `PlayerPopupTokens` | ✅ |
 
 ---
 

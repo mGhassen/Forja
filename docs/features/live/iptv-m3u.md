@@ -15,7 +15,7 @@ Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from
 - Add playlist by URL
 - Import playlist from a file on your device
 - Browse channels from each playlist
-- Play a channel in the IPTV player
+- Play a channel in the IPTV player — on desktop, hover the volume icon to expand the volume bar (tap mutes; long-press pins the bar)
 - Change channels from the in-player guide (groups + channel list overlay)
 - Search channels from the in-player search overlay — dismiss the overlay with the borderless **Close** control in the header (circular hover highlight, no box border)
 - Switch audio tracks and load subtitle files when the stream supports them

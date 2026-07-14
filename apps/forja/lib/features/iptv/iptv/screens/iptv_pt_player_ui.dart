@@ -716,53 +716,81 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             },
           ),
           const SizedBox(width: 14),
-          IptvRoundIcon(
-            icon: _s._muted || _s._volume == 0
-                ? Icons.volume_off_rounded
-                : (_s._volume < 40
-                    ? Icons.volume_down_rounded
-                    : Icons.volume_up_rounded),
-            tvRowId: rowId,
-            tvItemIndex: i++,
-            onTap: _toggleMute,
-            onLongPress: () {
-              setState(() => _s._showVolumeSlider = !_s._showVolumeSlider);
-              _scheduleHideVolumeSlider();
+          MouseRegion(
+            onEnter: (_) {
+              setState(() => _s._volumeHovering = true);
+              _s._hideVolumeTimer?.cancel();
               _scheduleHideControls();
             },
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: SizedBox(
-              width: _s._showVolumeSlider ? (compact ? 110 : 160) : 0,
-              child: ClipRect(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: SliderTheme(
-                    data: IptvShellStyle.sliderTheme(context).copyWith(
-                      inactiveTrackColor: Colors.white24,
-                      trackHeight: 3,
-                      thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 7),
-                    ),
-                    child: Slider(
-                      value: _s._volume.clamp(0.0, 100.0),
-                      min: 0,
-                      max: 100,
-                      onChanged: (v) {
-                        setState(() {
-                          _s._volume = v;
-                          _s._muted = v == 0;
-                        });
-                        _s._engineSetVolume(v);
-                        _scheduleHideVolumeSlider();
-                        _scheduleHideControls();
-                      },
+            onExit: (_) {
+              setState(() => _s._volumeHovering = false);
+              _scheduleHideVolumeSlider();
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IptvRoundIcon(
+                  icon: _s._muted || _s._volume == 0
+                      ? Icons.volume_off_rounded
+                      : (_s._volume < 40
+                          ? Icons.volume_down_rounded
+                          : Icons.volume_up_rounded),
+                  tvRowId: rowId,
+                  tvItemIndex: i++,
+                  onTap: _toggleMute,
+                  onLongPress: () {
+                    setState(
+                        () => _s._showVolumeSlider = !_s._showVolumeSlider);
+                    if (_s._showVolumeSlider) {
+                      _s._hideVolumeTimer?.cancel();
+                    } else {
+                      _scheduleHideVolumeSlider();
+                    }
+                    _scheduleHideControls();
+                  },
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  child: SizedBox(
+                    width: (_s._showVolumeSlider || _s._volumeHovering)
+                        ? (compact ? 110 : 160)
+                        : 0,
+                    child: ClipRect(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: SliderTheme(
+                          data: IptvShellStyle.sliderTheme(context).copyWith(
+                            inactiveTrackColor: Colors.white24,
+                            trackHeight: 3,
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 7),
+                          ),
+                          child: Slider(
+                            value: _s._volume.clamp(0.0, 100.0),
+                            min: 0,
+                            max: 100,
+                            onChangeStart: (_) {
+                              _s._hideVolumeTimer?.cancel();
+                              _scheduleHideControls();
+                            },
+                            onChanged: (v) {
+                              setState(() {
+                                _s._volume = v;
+                                _s._muted = v == 0;
+                              });
+                              _s._engineSetVolume(v);
+                              _scheduleHideVolumeSlider();
+                              _scheduleHideControls();
+                            },
+                            onChangeEnd: (_) => _scheduleHideVolumeSlider(),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
           if (!_s._exoBackend) ...[

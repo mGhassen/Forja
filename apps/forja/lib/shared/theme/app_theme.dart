@@ -133,6 +133,10 @@ class AppTheme {
           foregroundColor: const Color(0xFFF5F5F7),
         ),
       ),
+      // Trim the extra tap-target padding so toggles are shorter/less tall.
+      switchTheme: const SwitchThemeData(
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
     );
   }
 

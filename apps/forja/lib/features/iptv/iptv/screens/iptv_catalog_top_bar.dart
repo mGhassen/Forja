@@ -645,7 +645,8 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   bool get _tv => iptvUseTvFocus(context);
 
-  bool get _revealReload => _hover || (_focused && !_tv);
+  bool get _revealReload =>
+      widget.selected && (_hover || (_focused && !_tv));
 
   BorderRadius get _radius {
     final r = Radius.circular(_kShelfTabRadius - 1);
@@ -764,7 +765,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Tooltip(
-                      message: 'Reload catalog',
+                      message: 'Reload ${widget.spec.label}',
                       child: Icon(
                         Icons.refresh_rounded,
                         size: 16,

@@ -23,7 +23,7 @@ class _ServerStreamBranch extends StatelessWidget {
               padding: const EdgeInsets.only(left: 4, right: _gapAfterLine),
               child: Container(
                 width: 1,
-                color: Colors.white.withValues(alpha: 0.16),
+                color: Colors.white.withValues(alpha: 0.14),
               ),
             ),
             Expanded(child: child),
@@ -78,18 +78,23 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final showReloadGlyph = widget.showReload && (tvFocus || _hovered);
+    final playingColor = PlayerPopupTokens.accent;
 
     final row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
-        color: Colors.transparent,
+        color: widget.isPlaying
+            ? PlayerPopupTokens.accentFill
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         child: InkWell(
           onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
+            padding: const EdgeInsets.fromLTRB(4, 5, 4, 4),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -97,7 +102,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
                   status: widget.status,
                   isLoaded: widget.isLoaded,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,9 +175,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
                             widget.subtitle!,
                             style: TextStyle(
                               color: widget.isPlaying
-                                  ? playerSourceStatusColor(
-                                      PlayerSourceStatus.active,
-                                    )
+                                  ? playingColor
                                   : Colors.white.withValues(alpha: 0.42),
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -255,7 +258,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
         ? Icon(
             Icons.play_arrow_rounded,
             size: 22,
-            color: playerSourceStatusColor(PlayerSourceStatus.ready),
+            color: PlayerPopupTokens.accent,
           )
         : PlayerStreamMenu._streamTrailingGlyph(
             status: widget.status,
@@ -267,15 +270,17 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
-        color: widget.selected && !widget.isPlaying
-            ? Colors.white.withValues(alpha: 0.1)
+        color: widget.isPlaying || widget.selected
+            ? PlayerPopupTokens.accentFill
             : Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         child: InkWell(
           onTap: tvFocus ? null : widget.onCheck,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
             child: Row(
               children: [
                 if (widget.meta != null) ...[
@@ -284,7 +289,9 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                     child: Text(
                       widget.meta!,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.38),
+                        color: widget.isPlaying || widget.selected
+                            ? PlayerPopupTokens.accent.withValues(alpha: 0.7)
+                            : Colors.white.withValues(alpha: 0.38),
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.4,

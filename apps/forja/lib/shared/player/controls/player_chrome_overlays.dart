@@ -79,14 +79,16 @@ Widget playerOverlayShell({
                 ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: ForjaShellColors.cinematic.menuSurface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: ForjaShellColors.cinematic.borderSubtle,
+                    color: PlayerPopupTokens.shellBg,
+                    borderRadius: BorderRadius.circular(
+                      PlayerPopupTokens.shellRadius,
                     ),
+                    border: Border.all(color: PlayerPopupTokens.border),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(
+                      PlayerPopupTokens.shellRadius,
+                    ),
                     child: playerSidePanelTvScope(
                       context: context,
                       onClose: onClose,

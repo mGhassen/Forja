@@ -16,10 +16,10 @@ void showSpeedMenu(
     anchorContext: anchorContext,
     width: 300,
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: 6,
+        runSpacing: 6,
         children: _kPlaybackSpeeds.map((speed) {
           final selected = speed == currentSpeed;
           return PlayerPopupOptionChip(
@@ -48,7 +48,9 @@ void showTracksMenu(
     useRootNavigator: false,
     backgroundColor: PlayerPopupTokens.shellBg,
     shape: RoundedRectangleBorder(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(PlayerPopupTokens.shellRadius),
+      ),
       side: BorderSide(color: PlayerPopupTokens.border),
     ),
     builder: (context) {
@@ -59,9 +61,9 @@ void showTracksMenu(
           children: [
             Center(
               child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 36,
+                height: 3,
+                margin: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: PlayerPopupTokens.border,
                   borderRadius: BorderRadius.circular(2),
@@ -69,34 +71,36 @@ void showTracksMenu(
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
               child: Text(
                 title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: -0.15,
                 ),
               ),
             ),
-            Divider(color: PlayerPopupTokens.border, height: 1),
+            Divider(
+              color: PlayerPopupTokens.border,
+              height: 1,
+              thickness: 0.5,
+            ),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
                 itemCount: tracks.length,
                 itemBuilder: (context, index) {
                   final isSelected = index == selectedIndex;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: PlayerPopupListTile(
-                      label: tracks[index],
-                      selected: isSelected,
-                      onTap: () {
-                        onTrackSelected(index);
-                        Navigator.pop(context);
-                      },
-                    ),
+                  return PlayerPopupListTile(
+                    label: tracks[index],
+                    selected: isSelected,
+                    onTap: () {
+                      onTrackSelected(index);
+                      Navigator.pop(context);
+                    },
                   );
                 },
               ),
@@ -149,10 +153,10 @@ void showPlayerSettingsMenu({
     width: 340,
     maxHeight: 560,
     child: ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,
       itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final entry = entries[i];
         return PlayerPopupNavRow(
@@ -196,7 +200,7 @@ void _openPlayerSettingsPage({
     ),
     child: Builder(
       builder: (panelContext) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
         child: entry.pageBuilder(panelContext),
       ),
     ),
@@ -218,7 +222,7 @@ Widget playerPopupOnOffChips({
           onTap: () => onChanged(true),
         ),
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: 6),
       Expanded(
         child: PlayerPopupOptionChip(
           label: 'Off',

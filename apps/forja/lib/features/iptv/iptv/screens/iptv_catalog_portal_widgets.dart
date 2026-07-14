@@ -434,7 +434,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: GoogleFonts.poppins(
-                                                  color: isActive
+                                                  color: isFav
+                                                      ? const Color(0xFFFBBF24)
+                                                      : isActive
                                                       ? Colors.white
                                                       : showNewChrome
                                                       ? IptvShellStyle.accent
@@ -442,8 +444,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                           alpha: 0.88,
                                                         ),
                                                   fontSize: 13,
-                                                  fontWeight:
-                                                      isActive || showNewChrome
+                                                  fontWeight: isFav ||
+                                                          isActive ||
+                                                          showNewChrome
                                                       ? FontWeight.w600
                                                       : FontWeight.w500,
                                                   height: 1.1,

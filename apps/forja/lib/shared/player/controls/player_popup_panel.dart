@@ -30,8 +30,8 @@ Color playerSourceStatusColor(PlayerSourceStatus status) {
   switch (status) {
     case PlayerSourceStatus.active:
     case PlayerSourceStatus.ready:
-      // Green = up (verified / playable). Playing is shown by the arrow, not the dot.
-      return const Color(0xFF22C55E);
+      // Brand green = up (verified / playable). Playing is shown by the arrow, not the dot.
+      return PlayerPopupTokens.accent;
     case PlayerSourceStatus.failed:
       return const Color(0xFFEF4444);
     case PlayerSourceStatus.checking:
@@ -364,17 +364,21 @@ class _TvPopupListFocusScopeState extends State<_TvPopupListFocusScope> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Floating-menu surface tokens (Lab-style chrome — not side panels).
+/// Floating-menu surface tokens — flat dark chrome + brand-green accent.
 abstract final class PlayerPopupTokens {
   static const Color shellBg = Color(0xFF0E0E0E);
   static const Color cardBg = Color(0xFF161616);
   static const Color border = Color(0xFF2A2A2A);
-  static const Color selectedFill = Colors.white;
-  static const Color selectedFg = Colors.black;
+  static const Color accent = ForjaShellColors.brandGreen;
+  static const Color accentFill = Color(0x291CE783); // green @ ~0.16
+  static const Color accentBorder = Color(0x661CE783); // green @ ~0.40
+  static const Color accentFg = Color(0xFF0A0A0A);
+  static const Color selectedFill = accent;
+  static const Color selectedFg = accentFg;
   static const Color muted = Color(0xFF9CA3AF);
-  static const double shellRadius = 10;
+  static const double shellRadius = 12;
   static const double cardRadius = 8;
-  static const double chipRadius = 5;
+  static const double chipRadius = 6;
   static const double badgeRadius = 4;
 }
 
@@ -408,35 +412,35 @@ class _PanelShell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 12, 8, 10),
+            padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
             child: Row(
               children: [
                 if (onBack != null)
                   ShellBackIconButton(
                     icon: Icons.arrow_back_rounded,
-                    size: 20,
+                    size: 18,
                     tooltip: 'Back',
                     onTap: onBack,
                   )
                 else if (leadingIcon != null)
                   Padding(
-                    padding: const EdgeInsets.only(left: 6, right: 6),
+                    padding: const EdgeInsets.only(left: 4, right: 6),
                     child: Icon(
                       leadingIcon,
                       color: PlayerPopupTokens.muted,
-                      size: 18,
+                      size: 16,
                     ),
                   )
                 else
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.15,
                     ),
                   ),
                 ),
@@ -450,8 +454,12 @@ class _PanelShell extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Divider(height: 1, color: PlayerPopupTokens.border),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Divider(
+              height: 1,
+              thickness: 0.5,
+              color: PlayerPopupTokens.border,
+            ),
           ),
           Flexible(child: _TvPopupListFocusScope(child: child)),
         ],
@@ -463,7 +471,7 @@ class _PanelShell extends StatelessWidget {
   }
 }
 
-class _PopupChromeButton extends StatelessWidget {
+class _PopupChromeButton extends StatefulWidget {
   const _PopupChromeButton({
     required this.icon,
     required this.onTap,
@@ -475,32 +483,50 @@ class _PopupChromeButton extends StatelessWidget {
   final String? tooltip;
 
   @override
+  State<_PopupChromeButton> createState() => _PopupChromeButtonState();
+}
+
+class _PopupChromeButtonState extends State<_PopupChromeButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final button = Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        hoverColor: ForjaShellColors.inkHover,
-        child: Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-            border: Border.all(color: PlayerPopupTokens.border),
+    final highlight = _hovered;
+    final borderColor = highlight
+        ? PlayerPopupTokens.accentBorder
+        : PlayerPopupTokens.border;
+    final iconColor = highlight
+        ? PlayerPopupTokens.accent
+        : PlayerPopupTokens.muted;
+    final button = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onTap,
+          hoverColor: PlayerPopupTokens.accentFill,
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+              border: Border.all(color: borderColor),
+            ),
+            child: Icon(widget.icon, size: 14, color: iconColor),
           ),
-          child: Icon(icon, size: 16, color: PlayerPopupTokens.muted),
         ),
       ),
     );
-    if (tooltip == null) return button;
-    return Tooltip(message: tooltip!, child: button);
+    if (widget.tooltip == null) return button;
+    return Tooltip(message: widget.tooltip!, child: button);
   }
 }
 
-/// Bordered rounded-square icon box (Lab card / nav-row leading).
+/// Bordered rounded-square icon box (nav-row leading).
 class PlayerPopupIconBox extends StatelessWidget {
   const PlayerPopupIconBox({super.key, required this.icon});
 
@@ -509,14 +535,15 @@ class PlayerPopupIconBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 34,
-      height: 34,
+      width: 28,
+      height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         border: Border.all(color: PlayerPopupTokens.border),
       ),
-      child: Icon(icon, size: 17, color: Colors.white),
+      child: Icon(icon, size: 15, color: Colors.white.withValues(alpha: 0.9)),
     );
   }
 }
@@ -538,6 +565,15 @@ class PlayerPopupNavRow extends StatelessWidget {
   final String? value;
   final VoidCallback? onTap;
 
+  bool get _valueActive {
+    final v = value?.trim().toLowerCase();
+    if (v == null || v.isEmpty) return false;
+    return v == 'on' ||
+        v == 'auto' ||
+        v == 'normal' ||
+        (!v.contains('off') && v != '—' && v != '-');
+  }
+
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -551,7 +587,7 @@ class PlayerPopupNavRow extends StatelessWidget {
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
             border: Border.all(color: PlayerPopupTokens.border),
@@ -559,7 +595,7 @@ class PlayerPopupNavRow extends StatelessWidget {
           child: Row(
             children: [
               PlayerPopupIconBox(icon: icon),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,8 +604,8 @@ class PlayerPopupNavRow extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (subtitle != null)
@@ -588,12 +624,12 @@ class PlayerPopupNavRow extends StatelessWidget {
                 ),
               ),
               if (value != null) ...[
-                PlayerPopupValueBadge(value!),
-                const SizedBox(width: 8),
+                PlayerPopupValueBadge(value!, accent: _valueActive),
+                const SizedBox(width: 6),
               ],
               const Icon(
                 Icons.chevron_right_rounded,
-                size: 20,
+                size: 18,
                 color: PlayerPopupTokens.muted,
               ),
             ],
@@ -615,32 +651,38 @@ class PlayerPopupNavRow extends StatelessWidget {
 }
 
 class PlayerPopupValueBadge extends StatelessWidget {
-  const PlayerPopupValueBadge(this.label, {super.key});
+  const PlayerPopupValueBadge(this.label, {super.key, this.accent = false});
 
   final String label;
+  final bool accent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
+        color: accent ? PlayerPopupTokens.accentFill : Colors.transparent,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.badgeRadius),
-        border: Border.all(color: PlayerPopupTokens.border),
+        border: Border.all(
+          color: accent
+              ? PlayerPopupTokens.accentBorder
+              : PlayerPopupTokens.border,
+        ),
       ),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
-          color: PlayerPopupTokens.muted,
+        style: TextStyle(
+          color: accent ? PlayerPopupTokens.accent : PlayerPopupTokens.muted,
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
+          letterSpacing: 0.3,
         ),
       ),
     );
   }
 }
 
-/// Segmented option chip — selected = white fill / black text.
+/// Segmented option chip — selected = brand green fill / dark text.
 class PlayerPopupOptionChip extends StatelessWidget {
   const PlayerPopupOptionChip({
     super.key,
@@ -665,11 +707,13 @@ class PlayerPopupOptionChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        hoverColor: ForjaShellColors.inkHover,
+        hoverColor: selected
+            ? Colors.black.withValues(alpha: 0.06)
+            : ForjaShellColors.inkHover,
         child: Container(
           width: expanded ? double.infinity : null,
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: selected
                 ? PlayerPopupTokens.selectedFill
@@ -773,20 +817,18 @@ class PlayerPopupListTile extends StatelessWidget {
     final failed = status == PlayerSourceStatus.failed;
     final active = status == PlayerSourceStatus.active;
     final statusGlyph = _statusGlyph();
-    final rowColor = selected
-        ? PlayerPopupTokens.selectedFill
+    final rowColor = selected || active
+        ? PlayerPopupTokens.accentFill
         : failed
         ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-        : active
-        ? const Color(0xFF22C55E).withValues(alpha: 0.07)
         : Colors.transparent;
-    final fg = selected
-        ? PlayerPopupTokens.selectedFg
-        : failed
+    final fg = failed
         ? Colors.white.withValues(alpha: 0.45)
-        : Colors.white;
-    final subFg = selected
-        ? PlayerPopupTokens.selectedFg.withValues(alpha: 0.62)
+        : selected || active
+        ? Colors.white
+        : Colors.white.withValues(alpha: 0.92);
+    final subFg = selected || active
+        ? PlayerPopupTokens.accent.withValues(alpha: 0.85)
         : PlayerPopupTokens.muted;
 
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -797,57 +839,55 @@ class PlayerPopupListTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        hoverColor: selected
-            ? Colors.black.withValues(alpha: 0.06)
-            : ForjaShellColors.inkHover,
-        splashColor: selected
-            ? Colors.black.withValues(alpha: 0.1)
-            : ForjaShellColors.inkSplash,
+        hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
             border: Border.all(
               color: selected
-                  ? PlayerPopupTokens.selectedFill
+                  ? PlayerPopupTokens.accentBorder
                   : active
-                  ? const Color(0xFF22C55E).withValues(alpha: 0.35)
+                  ? PlayerPopupTokens.accentBorder
                   : PlayerPopupTokens.border,
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
           child: Row(
             children: [
               if (badge != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 7,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? Colors.black.withValues(alpha: 0.08)
+                    color: selected || active
+                        ? PlayerPopupTokens.accent.withValues(alpha: 0.12)
                         : (badgeColor ?? PlayerPopupTokens.cardBg),
-                    borderRadius: BorderRadius.circular(6),
-                    border: selected
-                        ? null
-                        : Border.all(color: PlayerPopupTokens.border),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(
+                      color: selected || active
+                          ? PlayerPopupTokens.accentBorder
+                          : PlayerPopupTokens.border,
+                    ),
                   ),
                   child: Text(
                     badge!,
                     style: TextStyle(
-                      color: selected
-                          ? PlayerPopupTokens.selectedFg
+                      color: selected || active
+                          ? PlayerPopupTokens.accent
                           : badgeColor != null &&
                                 badgeColor != const Color(0xFF2A2A2A)
                           ? Colors.white.withValues(alpha: 0.92)
                           : PlayerPopupTokens.muted,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
               ],
               Expanded(
                 child: Column(
@@ -859,9 +899,9 @@ class PlayerPopupListTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: fg,
-                        fontSize: 14,
-                        fontWeight: selected
-                            ? FontWeight.w700
+                        fontSize: 13,
+                        fontWeight: selected || active
+                            ? FontWeight.w600
                             : FontWeight.w500,
                         decoration: failed ? TextDecoration.lineThrough : null,
                         decorationColor: Colors.white38,
@@ -903,7 +943,7 @@ class PlayerPopupListTile extends StatelessWidget {
                   height: _statusSlot,
                   child: Icon(
                     Icons.check_rounded,
-                    color: PlayerPopupTokens.selectedFg,
+                    color: PlayerPopupTokens.accent,
                     size: 18,
                   ),
                 )
@@ -918,11 +958,11 @@ class PlayerPopupListTile extends StatelessWidget {
     );
 
     if (!tvFocus || onTap == null) {
-      return Padding(padding: const EdgeInsets.only(bottom: 6), child: tile);
+      return Padding(padding: const EdgeInsets.only(bottom: 5), child: tile);
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 5),
       child: FocusableControl(
         autoFocus: _TvPopupListFocusScope.claimAutofocus(context),
         onTap: onTap,
