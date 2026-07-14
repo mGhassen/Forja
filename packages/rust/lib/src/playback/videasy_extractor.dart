@@ -25,23 +25,34 @@ class VideasyExtractor {
   static const _apiHost = 'api.wingsdatabase.com';
   static const _dbHost = 'db.wingsdatabase.com';
   static const _playerOrigin = 'https://player.videasy.to';
-  static const _fetchTimeout = Duration(seconds: 25);
-  static const _slowFetchTimeout = Duration(seconds: 60);
+  // Fail hung mirrors fast — neon2/m4uhd often stall with 0 bytes while cdn
+  // (Yoru) answers in ~100ms. A long timeout here prevents ever reaching cdn.
+  static const _fetchTimeout = Duration(seconds: 12);
+  static const _slowFetchTimeout = Duration(seconds: 18);
   // Keep short enough that HostProviderAdapter can fall back to sniffing
   // player.videasy.to when wings mirrors CF-block / timeout.
-  static const _defaultExtractTimeout = Duration(seconds: 55);
+  static const _defaultExtractTimeout = Duration(seconds: 45);
   static const _maxInFlight = 4;
   static const _seedTtl = Duration(seconds: 25);
 
-  /// Mirrors from player chunk 8351 (Neon→neon2, Sage→ym, Breach→m4uhd, …).
+  /// Servers tab from player chunk 8351 (Yoru→cdn, Neon→neon2, …).
+  /// Order matches the website default: fast working mirrors first so hung
+  /// upstreams (neon2/m4uhd) cannot eat the whole extract budget.
   static const _mirrors = <_VideasyMirror>[
-    _VideasyMirror('neon2', slow: true),
-    _VideasyMirror('ym'),
-    _VideasyMirror('m4uhd', slow: true),
-    _VideasyMirror('hdmovie', englishOnly: true),
-    _VideasyMirror('superflix'),
-    _VideasyMirror('jett'),
-    _VideasyMirror('cdn', movieOnly: true),
+    _VideasyMirror('cdn', movieOnly: true, displayName: 'Yoru'),
+    _VideasyMirror('neon2', slow: true, displayName: 'Neon'),
+    _VideasyMirror('ym', displayName: 'Sage'),
+    _VideasyMirror('jett', displayName: 'Jett'),
+    _VideasyMirror('m4uhd', slow: true, displayName: 'Breach'),
+    _VideasyMirror('hdmovie', qualityFilter: 'English', displayName: 'Vyse'),
+    _VideasyMirror(
+      'meine',
+      language: 'german',
+      displayName: 'Killjoy',
+    ),
+    _VideasyMirror('lamovie', displayName: 'Omen'),
+    _VideasyMirror('superflix', displayName: 'Raze'),
+    _VideasyMirror('hdmovie', qualityFilter: 'Hindi', displayName: 'Fade'),
   ];
 
   static const userAgent =
@@ -152,7 +163,7 @@ class VideasyExtractor {
     );
     if (jobs.isEmpty || cancelled()) return null;
 
-    return _raceProviders(
+    return _collectProviders(
       crypto: crypto,
       tmdbId: tmdbId,
       jobs: jobs,
@@ -200,11 +211,16 @@ class VideasyExtractor {
     final jobs = <_ProviderJob>[];
     for (final mirror in _mirrors) {
       if (mirror.movieOnly && !isMovie) continue;
+      final query = Map<String, String>.from(qp);
+      if (mirror.language != null) {
+        query['language'] = mirror.language!;
+      }
       jobs.add(
         _ProviderJob(
           provider: mirror.endpoint,
-          query: Map<String, String>.from(qp),
-          englishOnly: mirror.englishOnly,
+          displayName: mirror.displayName,
+          query: query,
+          qualityFilter: mirror.qualityFilter,
           slow: mirror.slow,
         ),
       );
@@ -321,19 +337,18 @@ class VideasyExtractor {
     required int? episode,
     required int? totalSeasons,
   }) {
+    // Player always sends seasonId/episodeId (defaults to 1 even for movies).
     final qp = <String, String>{
       'title': wingsTitleQueryValue(title),
       'mediaType': isMovie ? 'movie' : 'tv',
       'tmdbId': tmdbId,
+      'seasonId': '${season ?? 1}',
+      'episodeId': '${episode ?? 1}',
     };
     if (year.length >= 4) qp['year'] = year.substring(0, 4);
     if (imdbId.isNotEmpty) qp['imdbId'] = imdbId;
-    if (!isMovie) {
-      qp['seasonId'] = '${season ?? 1}';
-      qp['episodeId'] = '${episode ?? 1}';
-      if (totalSeasons != null && totalSeasons > 0) {
-        qp['totalSeasons'] = '$totalSeasons';
-      }
+    if (!isMovie && totalSeasons != null && totalSeasons > 0) {
+      qp['totalSeasons'] = '$totalSeasons';
     }
     return qp;
   }
@@ -381,62 +396,111 @@ class VideasyExtractor {
 
   static void _invalidateSeed(String tmdbId) => _seedCache.remove(tmdbId);
 
-  Future<ExtractedMedia?> _raceProviders({
+  /// Race mirrors (cdn/Yoru first). Return the first success immediately so hung
+  /// neon2/m4uhd probes cannot burn the extract timeout. Keep probing briefly
+  /// after the first hit to fill the Sources list when upstream is healthy.
+  Future<ExtractedMedia?> _collectProviders({
     required _VideasyDecryptHost crypto,
     required String tmdbId,
     required List<_ProviderJob> jobs,
     required int gen,
     required bool Function() cancelled,
   }) async {
-    final completer = Completer<ExtractedMedia?>();
-    var settled = 0;
-    var inFlight = 0;
+    final hits = <ExtractedMedia>[];
     var nextIndex = 0;
+    var inFlight = 0;
     var stopLaunching = false;
+    final done = Completer<void>();
+    Timer? grace;
 
-    void finish(ExtractedMedia? hit) {
-      if (completer.isCompleted) return;
-      if (hit != null) {
+    void finish() {
+      if (done.isCompleted) return;
+      grace?.cancel();
+      stopLaunching = true;
+      done.complete();
+    }
+
+    void onFirstHit() {
+      if (grace != null) return;
+      // Allow a short window for sibling mirrors, then stop hung probes.
+      grace = Timer(const Duration(seconds: 8), () {
         _stopInFlightRequests(gen);
-        completer.complete(hit);
+        finish();
+      });
+    }
+
+    void maybeFinish() {
+      if (done.isCompleted) return;
+      if (cancelled()) {
+        finish();
         return;
       }
-      if (settled >= jobs.length) completer.complete(null);
+      if (nextIndex >= jobs.length && inFlight == 0) finish();
     }
 
     void pump() {
       while (!cancelled() &&
           !stopLaunching &&
+          !done.isCompleted &&
           inFlight < _maxInFlight &&
           nextIndex < jobs.length) {
         final job = jobs[nextIndex++];
         inFlight++;
         _probeProvider(crypto: crypto, tmdbId: tmdbId, job: job, gen: gen)
             .then((hit) {
-          settled++;
           inFlight--;
           if (hit != null) {
-            stopLaunching = true;
-            finish(hit);
-          } else if (settled >= jobs.length) {
-            finish(null);
+            hits.add(hit);
+            onFirstHit();
           }
           pump();
+          maybeFinish();
         }).catchError((Object e, StackTrace st) {
           onLog('[Videasy] ${job.provider} probe error: $e\n$st');
-          settled++;
           inFlight--;
-          if (settled >= jobs.length) finish(null);
           pump();
+          maybeFinish();
         });
       }
-      if (nextIndex >= jobs.length && inFlight == 0 && !completer.isCompleted) {
-        finish(null);
-      }
+      maybeFinish();
     }
 
     pump();
-    return completer.future;
+    await done.future;
+
+    if (cancelled() || hits.isEmpty) {
+      if (hits.isEmpty) onLog('[Videasy] No sources from any mirror');
+      return null;
+    }
+
+    final allSources = <StreamSource>[];
+    final allSubs = <Map<String, dynamic>>[];
+    for (final hit in hits) {
+      final srcs = hit.sources ?? const <StreamSource>[];
+      allSources.addAll(srcs);
+      final subs = hit.externalSubtitles;
+      if (subs == null) continue;
+      for (final sub in subs) {
+        final url = sub['url']?.toString() ?? '';
+        if (url.isEmpty) continue;
+        if (allSubs.any((e) => e['url'] == url)) continue;
+        allSubs.add(sub);
+      }
+    }
+    if (allSources.isEmpty) return null;
+
+    allSources.sort((a, b) => _qualityRank(b.title) - _qualityRank(a.title));
+    final primary = allSources.first;
+    onLog(
+      '[Videasy] ${hits.length} mirror(s) → ${allSources.length} sources',
+    );
+    return ExtractedMedia(
+      url: primary.url,
+      headers: _playbackHeaders,
+      sources: allSources,
+      provider: hits.first.provider ?? 'videasy',
+      externalSubtitles: allSubs.isEmpty ? null : allSubs,
+    );
   }
 
   void _stopInFlightRequests(int gen) {
@@ -520,11 +584,13 @@ class VideasyExtractor {
       final parsed = _parsePayload(
         data,
         job.provider,
-        englishOnly: job.englishOnly,
+        displayName: job.displayName,
+        qualityFilter: job.qualityFilter,
       );
       if (parsed == null) return null;
 
-      onLog('[Videasy] ${job.provider} -> ${parsed.sources?.length ?? 0} sources, '
+      onLog('[Videasy] ${job.displayName} (${job.provider}) -> '
+          '${parsed.sources?.length ?? 0} sources, '
           '${parsed.externalSubtitles?.length ?? 0} subs');
       return parsed;
     }
@@ -535,13 +601,15 @@ class VideasyExtractor {
   ExtractedMedia? _parsePayload(
     Map<String, dynamic> data,
     String provider, {
-    bool englishOnly = false,
+    required String displayName,
+    String? qualityFilter,
   }) {
     final srcs = (data['sources'] as List?) ?? const [];
     final subs = (data['subtitles'] as List?) ?? const [];
     if (srcs.isEmpty) return null;
 
     final sources = <StreamSource>[];
+    final dash = <StreamSource>[];
     final nonDash = <StreamSource>[];
 
     for (final s in srcs) {
@@ -550,7 +618,7 @@ class VideasyExtractor {
       if (url.isEmpty) continue;
       final quality =
           (s['quality'] ?? s['label'] ?? s['title'] ?? 'auto').toString();
-      if (englishOnly && quality != 'English') continue;
+      if (qualityFilter != null && quality != qualityFilter) continue;
 
       final type = (s['type'] ?? (url.contains('.m3u8') ? 'hls' : 'video'))
           .toString();
@@ -558,15 +626,22 @@ class VideasyExtractor {
           url.toLowerCase().contains('.mpd');
       final source = StreamSource(
         url: url,
-        title: '$provider · $quality',
+        title: '$displayName · $quality',
         type: type,
         headers: _playbackHeaders,
       );
       sources.add(source);
-      if (!isDash) nonDash.add(source);
+      if (isDash) {
+        dash.add(source);
+      } else {
+        nonDash.add(source);
+      }
     }
 
-    final picked = provider == 'neon2' && nonDash.isNotEmpty ? nonDash : sources;
+    // Neon (neon2): player prefers DASH when present.
+    final picked = provider == 'neon2' && dash.isNotEmpty
+        ? dash
+        : sources;
     if (picked.isEmpty) return null;
 
     final allSubs = <Map<String, dynamic>>[];
@@ -582,7 +657,7 @@ class VideasyExtractor {
       allSubs.add({
         'url': url,
         'language': lang,
-        'display': '$label - videasy/$provider',
+        'display': '$label - videasy/$displayName',
       });
     }
 
@@ -682,28 +757,34 @@ class _CachedSeed {
 class _VideasyMirror {
   const _VideasyMirror(
     this.endpoint, {
+    required this.displayName,
     this.movieOnly = false,
-    this.englishOnly = false,
+    this.qualityFilter,
+    this.language,
     this.slow = false,
   });
 
   final String endpoint;
+  final String displayName;
   final bool movieOnly;
-  final bool englishOnly;
+  final String? qualityFilter;
+  final String? language;
   final bool slow;
 }
 
 class _ProviderJob {
   const _ProviderJob({
     required this.provider,
+    required this.displayName,
     required this.query,
-    this.englishOnly = false,
+    this.qualityFilter,
     this.slow = false,
   });
 
   final String provider;
+  final String displayName;
   final Map<String, String> query;
-  final bool englishOnly;
+  final String? qualityFilter;
   final bool slow;
 }
 

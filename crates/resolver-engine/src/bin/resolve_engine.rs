@@ -235,7 +235,7 @@ fn main() -> ExitCode {
 
     if let Some(hosts) = v.get("hostRequests").and_then(|h| h.as_array()) {
         if !hosts.is_empty() {
-            eprintln!("\nhostRequests ({}) — need Flutter WebView continue:", hosts.len());
+            eprintln!("\nhostRequests ({}) — need Flutter WebView/WASM continue:", hosts.len());
             for h in hosts {
                 let id = h
                     .get("providerId")
@@ -244,6 +244,12 @@ fn main() -> ExitCode {
                     .unwrap_or("?");
                 eprintln!("  - {id}");
             }
+            eprintln!(
+                "\nThis is not a stream failure. Native Rust stops here for host providers\n\
+                 (videasy, vidfast, 2embed, …). The website works in a browser because it\n\
+                 runs their JS/player; Forja finishes those via HostProviderAdapter in the app.\n\
+                 Check in Forja: Sources → pin that provider. Or use -p webstreamr / vidsrc here."
+            );
         }
     }
 

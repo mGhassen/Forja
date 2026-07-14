@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **8 / 8** acceptance (slice 1) · **4 / 4** acceptance (slice 2) · **1 / 9** acceptance (slice 3) |
-| **Current slice** | In-player no silent failover; settings-baseline scoring still open |
+| **Progress** | **3 / 3** components · **8 / 8** acceptance (slice 1) · **4 / 4** acceptance (slice 2) · **2 / 10** acceptance (slice 3) |
+| **Current slice** | Auto open/check failover vs manual pin; settings-baseline scoring still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,6 +64,7 @@
 | 19 | R31-A19 | Single-source domain test: one resolver, empty failover chain | ⬜ |
 | 20 | R31-A20 | Feature docs describe shared scoring table + unified pipeline | ⬜ |
 | 21 | R31-A21 | In-player dead stream stops — no silent provider/source hop; user picks Sources | ✅ |
+| 22 | R31-A22 | Auto (server On, unpinned): open/check fail walks next providers; manual pin / check does not hop | ✅ |
 
 ---
 

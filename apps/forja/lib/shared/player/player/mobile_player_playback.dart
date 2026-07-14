@@ -352,9 +352,15 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
 
-        await _failPlaybackNoFailover(
-          message: 'Playback failed. Pick another server from Sources.',
-        );
+        // Manual server pin (or Auto server Off): stop.
+        // Auto server: walk the next providers in order.
+        if (_s._providerPinned) {
+          await _failPlaybackNoFailover(
+            message: 'Playback failed. Pick another server from Sources.',
+          );
+        } else {
+          await _autoFallbackToNextProvider();
+        }
       } else {
         // No sources list — primary mediaPath (torrent localhost or direct URL).
         final openUrl = widget.mediaPath;
@@ -408,11 +414,15 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
                       : 'Playback failed.';
                 });
               }
-              await _failPlaybackNoFailover(
-                message: isTorrent
-                    ? 'Torrent stream failed to open.'
-                    : 'Playback failed.',
-              );
+              if (_s._providerPinned) {
+                await _failPlaybackNoFailover(
+                  message: isTorrent
+                      ? 'Torrent stream failed to open.'
+                      : 'Playback failed.',
+                );
+              } else {
+                await _autoFallbackToNextProvider();
+              }
               return;
             }
             await Future.delayed(Duration(milliseconds: 500 * retryCount));
@@ -447,8 +457,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
   }
 
   /// Stop on failure — no silent hop to the next provider.
+  /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
-    debugPrint('[Player] Playback failed — no auto failover');
+    debugPrint('[Player] Playback failed — no auto failover (pinned)');
     if (!mounted || _s._disposed) return;
     final pid = _s._currentProvider;
     if (pid != null && pid.isNotEmpty) {
@@ -462,6 +473,186 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       _s._errorMessage = message;
     });
     await _invalidateWebstreamingCacheForCurrent();
+  }
+
+  Future<void> _autoFallbackToNextProvider() async {
+    if (widget.providers == null || widget.providers!.isEmpty) {
+      notifyNoServerAvailable(_s._statusController);
+      setState(() {
+        _s._hasError = true;
+        _s._showControls = true;
+        _s._errorMessage = 'All sources and providers failed.';
+      });
+      _notifyAllSourcesExhausted();
+      return;
+    }
+
+    final chainGen = _s._fallbackGen;
+    final providerKeys = await PlayerSourceResolve.failoverChainForMovieAsync(
+      movie: widget.movie,
+      providers: widget.providers!,
+      currentProviderId: _s._currentProvider,
+    );
+
+    for (final nextKey in providerKeys) {
+      if (_fallbackAborted(chainGen)) return;
+      debugPrint('[Player] Auto-falling back to provider: $nextKey');
+
+      final success = await _silentSwitchProvider(nextKey, chainGen: chainGen);
+      if (success) return;
+    }
+
+    if (mounted && !_fallbackAborted(chainGen)) {
+      notifyNoServerAvailable(_s._statusController);
+      _s._finalizeProbeStatusesAfterPlayback();
+      setState(() {
+        _s._hasError = true;
+        _s._showControls = true;
+        _s._errorMessage =
+            'Could not find any working stream from any provider.';
+      });
+      _notifyAllSourcesExhausted();
+      await _invalidateWebstreamingCacheForCurrent();
+    }
+  }
+
+  void _notifyAllSourcesExhausted() {
+    if (widget.onAllSourcesExhausted == null ||
+        _s._allSourcesExhaustedNotified) {
+      return;
+    }
+    _s._allSourcesExhaustedNotified = true;
+    widget.onAllSourcesExhausted!();
+  }
+
+  /// Switches provider without showing full error UI on failure, returns success.
+  Future<bool> _silentSwitchProvider(
+    String newProvider, {
+    int? chainGen,
+  }) async {
+    final gen = chainGen ?? _s._fallbackGen;
+    if (_fallbackAborted(gen)) return false;
+    final provider = widget.providers![newProvider];
+    final providerLabel = PlayerProviderMenu.snackbarLabel(
+      newProvider,
+      provider,
+    );
+    _s._statusController.upsert(
+      'provider-$newProvider',
+      providerLabel,
+      kind: StatusRouletteKind.loading,
+    );
+    _s._syncProbeStatus(newProvider, StreamProviderProbeStatus.trying);
+    try {
+      String? streamUrl;
+      Map<String, String>? headers;
+      List<StreamSource>? sources;
+
+      final movie = widget.movie;
+      final providers = widget.providers;
+      if (movie != null && providers != null) {
+        if (newProvider == 'service111477' &&
+            site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
+        }
+        final hit = await PlayerSourceResolve.resolvePinnedForMovie(
+          movie: movie,
+          providers: providers,
+          providerId: newProvider,
+          season: widget.selectedSeason ?? 1,
+          episode: widget.selectedEpisode ?? 1,
+          isCancelled: () => _fallbackAborted(gen),
+        );
+        if (_fallbackAborted(gen)) return false;
+        if (hit != null) {
+          streamUrl = hit.streamUrl;
+          headers = hit.headers;
+          sources = hit.streamSources;
+        }
+      }
+
+      if (_fallbackAborted(gen)) return false;
+      if (streamUrl != null && streamUrl.isNotEmpty) {
+        final resolvedSources = sources != null && sources.isNotEmpty
+            ? dedupeStreamSources(sources)
+                .where((s) => !isUnplayableCachedStreamUrl(s.url))
+                .toList()
+            : [
+                StreamSource(
+                  url: streamUrl,
+                  title: providerLabel,
+                  type: streamUrl.toLowerCase().contains('.m3u8')
+                      ? 'hls'
+                      : streamUrl.toLowerCase().contains('.mpd')
+                      ? 'dash'
+                      : 'mp4',
+                  headers: headers,
+                ),
+              ];
+        if (resolvedSources.isEmpty) {
+          _s._markProviderLoadFailed(newProvider);
+          _s._statusController.upsert(
+            'provider-$newProvider',
+            providerLabel,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 1200),
+          );
+          return false;
+        }
+
+        _s._statusController.upsert(
+          'provider-$newProvider',
+          providerLabel,
+          kind: StatusRouletteKind.success,
+        );
+
+        _s._cacheProviderSources(newProvider, resolvedSources);
+        _s._scoreServerUp(newProvider);
+
+        setState(() {
+          _s._currentProvider = newProvider;
+          _s._currentSources = resolvedSources;
+          _s._currentFallbackSourceIndex = 0;
+          _s._failedSourceIndices.clear();
+          _s._checkingSourceIndices.clear();
+          _s._hasError = false;
+          _s._errorMessage = '';
+          if (newProvider == 'service111477' && resolvedSources.isNotEmpty) {
+            _s._current111477FileUrl = resolvedSources.first.url;
+          }
+        });
+
+        final currentPos = _s._positionNotifier.value;
+        final played = await _trySourcesFromIndex(
+          0,
+          chainGen: gen,
+          seekAfterOpen: currentPos,
+        );
+        if (played) return true;
+        if (_fallbackAborted(gen)) return false;
+
+        _s._markProviderLoadFailed(newProvider);
+        _s._statusController.upsert(
+          'provider-$newProvider',
+          providerLabel,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(milliseconds: 1200),
+        );
+        return false;
+      }
+    } catch (e) {
+      if (_fallbackAborted(gen)) return false;
+      debugPrint('[Player] Silent fallback to $newProvider failed: $e');
+    }
+    if (_fallbackAborted(gen)) return false;
+    _s._markProviderLoadFailed(newProvider);
+    _s._statusController.upsert(
+      'provider-$newProvider',
+      providerLabel,
+      kind: StatusRouletteKind.failed,
+      dismissAfter: const Duration(milliseconds: 1200),
+    );
+    return false;
   }
 
   bool _fallbackAborted(int chainGen) =>
@@ -483,9 +674,15 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     if (widget.builtInEngine == BuiltInPlayerEngine.mediaKit) {
       _s._playbackRecovery = PlaybackRecovery(
         player: _s._player,
-        onRetryNextSource: () {
-          // No auto source/provider hops — surface error; user picks manually.
-        },
+      onRetryNextSource: () {
+        if (_s._sourcePinned) return;
+        final next = _s._currentFallbackSourceIndex + 1;
+        if (_s._currentSources != null && next < _s._currentSources!.length) {
+          unawaited(_initPlayback(sourceStartIndex: next));
+        } else if (!_s._providerPinned) {
+          unawaited(_autoFallbackToNextProvider());
+        }
+      },
         onForceSoftwareDecode: () async {
           if (_s._player.platform is! NativePlayer) return;
           await (_s._player.platform as NativePlayer).setProperty('hwdec', 'no');

@@ -461,7 +461,8 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
                 externalSubtitles: result.subtitles,
                 providerSourcesCache: providerSourcesCache,
                 providerProbesNotifier: probeNotifier,
-                pinSource: true,
+                // Auto race — keep Auto server/source so dead CDNs failover.
+                pinSource: false,
                 onSourcePinned: (sourceUrl, sourceTitle) =>
                     _rememberWebstreamingSelection(
                       sourceUrl,

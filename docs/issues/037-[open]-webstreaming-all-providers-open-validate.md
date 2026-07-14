@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 7** fix · **0 / 1** device smoke |
+| **Progress** | **7 / 8** fix · **0 / 1** device smoke · **6 / 6** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I37-T05 | Manual smoke: green Play walks dead CDN → next providers until video plays | ⬜ |
 | 6 | I37-T06 | Disable in-player auto provider/source failover — fail with error; user picks Sources | ✅ |
 | 7 | I37-T07 | Server dots gray until play/check; reject junk extracts (`demo-video`, relative paths) | ✅ |
+| 8 | I37-T08 | Restore Auto open/check failover; keep no-hop only for manual server/stream pin | ✅ |
 
 ---
 
@@ -38,6 +39,7 @@
 | 3 | I37-A03 | Feature docs describe probe-before-open for all built-in providers | ✅ |
 | 4 | I37-A04 | In-player dead stream stops (no silent hop); Sources stays open for manual pick | ✅ |
 | 5 | I37-A05 | Extract-only / unchecked servers stay gray — green only when playing or URL-checked | ✅ |
+| 6 | I37-A06 | Auto mode (Auto server On, not user-pinned): open/check fail walks next providers; manual pin stops | ✅ |
 
 ---
 
@@ -57,11 +59,12 @@ Green **Play** treated “extractor returned a URL” as enough for some paths (
 - `validateStreamSourceForCheck` before mpv open for every non-torrent source
 - Details screen no longer writes webstreaming disk cache on bare resolve; player persists after confirm
 - Default provider order + episode host-adapter fallback keys cover the full embed set
-- **No in-player autofailover** — `_failPlaybackNoFailover` stops; user picks another server
+- **Manual pin** — `_failPlaybackNoFailover` when user picks a server/stream (or Auto server Off)
+- **Auto** — `_autoFallbackToNextProvider` on open/check fail (I37-T08); green Play no longer force-pins
 - Junk extracts filtered (`isUnplayableCachedStreamUrl`); server glyph green only after play/check
 
 ### Related
 
 - [Webstreaming](../features/movies-tv/direct-streaming-mode.md)
 - [Stream providers](../features/sources/stream-providers.md)
-- [RFC-031](../rfc/031-[open]-source-engine-middleware.md) Auto failover (details Play resolve only)
+- [RFC-031](../rfc/031-[open]-source-engine-middleware.md) Auto failover vs manual pin

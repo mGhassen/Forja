@@ -26,8 +26,8 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidLin
 
 ## What you can do
 
-- **Auto** — Resolver Engine (details **Play**) tries providers in effective order and opens the first **working** hit: extract → HTTP reachability probe → mpv open/decode. Once the player is open, a dead stream **stops** with an error — switch server manually from **Source** (no silent in-player failover).
-- **Manual** — pick a server; Forja stays on it (strict — no silent cross-provider fallback)
+- **Auto** — Resolver Engine (details **Play**) and in-player Auto try providers in effective order until one **works**: extract → HTTP reachability probe → mpv open/decode. If that open/check fails while Auto server is On, Forja walks the next servers in order.
+- **Manual** — pick a server or stream (or turn Auto server Off); Forja stays on it — **no** silent cross-provider/stream hop on fail
 - Source links are **HTTP-probed before open** on play (same check as menu tap-to-probe). Dead playlist/CDN links fail that probe without waiting for a full mpv timeout.
 - The **score badge** uses a **settings base of 0** per server **for this film, TV episode, or anime episode**. Server and stream outcomes **add**: server **±2**, stream **±2** (both ok → **+4**), all streams down **−2**. Asian drama is not scored. A **+/− prefix** shows the last change.
 - Reorder providers in Settings (baseline per domain; effective order preview in table)
@@ -48,7 +48,7 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidLin
 - New users: leave **Auto** on
 - Power users: pin a server from the player menu
 - WebStreamr is powerful but slower — profile priority keeps it lower by default
-- **Videasy** resolves via `db.wingsdatabase.com` + `api.wingsdatabase.com` mirrors (not the public embed docs on [videasy.to](https://www.videasy.to/docs)). If mirrors timeout/CF-block, Forja sniffs `player.videasy.to` like a browser
+- **Videasy** resolves via `db.wingsdatabase.com` + `api.wingsdatabase.com` mirrors (same as [player.videasy.to](https://player.videasy.to) Servers: Yoru→`cdn`, Neon→`neon2`, Sage→`ym`, … — not the public embed docs on [videasy.to](https://www.videasy.to/docs)). Forja probes **Yoru/`cdn` first** (website default); hung mirrors fail fast. Successful mirrors show as named sources (Yoru, Neon, …). If all mirrors fail/CF-block, Forja sniffs `player.videasy.to`
 - **Vidsrc** uses `vsembed.ru` embeds; the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`
 - Template embed hosts are kept on documented canonical domains: VidFast (`vidfast.vc`), VidRock (`vidrock.ru`), Vidzee (`player.vidzee.wtf/embed/…`), 111Movies (`player.vidlove.cc/embed/…`), SmashyStream (`anyembed.xyz/embed/…`). SuperEmbed still uses `multiembed.mov` per provider docs (may redirect internally)
 - **PrimeWire** (`primewire.tf`) has been unreliable in live checks — expect misses; pick another server if it fails

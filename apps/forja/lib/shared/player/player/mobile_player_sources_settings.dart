@@ -17,14 +17,6 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
     if (mounted) setState(() => _s._selectedExternalSubUrl = null);
   }
 
-  bool get _hasResolvedWebStream =>
-      widget.magnetLink == null &&
-      widget.stremioId == null &&
-      widget.activeProvider != null &&
-      widget.activeProvider!.isNotEmpty &&
-      widget.sources != null &&
-      widget.sources!.isNotEmpty;
-
   Future<void> _loadPlayerAutoSettings() async {
     final settings = SettingsService();
     final autoServer = await settings.getPlayerAutoServer();
@@ -32,14 +24,11 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
     final autoAudio = await settings.getPlayerAutoAudio();
     final autoSubtitle = await settings.getPlayerAutoSubtitle();
     if (!mounted) return;
-    final lockResolved = _hasResolvedWebStream || widget.pinSource;
+    // Respect Auto toggles only. Do not lock because an extract already exists
+    // (green Play / cache) — that made dead CDNs hit "no auto failover".
     setState(() {
-      _s._providerPinned = lockResolved || !autoServer;
-      if (lockResolved) {
-        _s._sourcePinned = true;
-      } else {
-        _s._sourcePinned = !autoSource;
-      }
+      _s._providerPinned = !autoServer;
+      _s._sourcePinned = !autoSource;
       _s._audioPinned = !autoAudio;
       _s._subtitlePinned = !autoSubtitle;
     });

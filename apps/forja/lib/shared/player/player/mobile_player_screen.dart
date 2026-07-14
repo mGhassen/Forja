@@ -273,6 +273,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _sourcePinned = false;
   bool _audioPinned = false;
   bool _subtitlePinned = false;
+  bool _allSourcesExhaustedNotified = false;
   final PlayerStatusController _statusController = PlayerStatusController();
   final Set<int> _failedSourceIndices = {};
   final Set<int> _checkingSourceIndices = {};

@@ -26,6 +26,30 @@ void main() {
     expect(uri.host, 'api.wingsdatabase.com');
     expect(uri.path, '/neon2/sources-with-title');
     expect(uri.query, contains('totalSeasons=2'));
+    expect(uri.query, contains('seasonId=1'));
+    expect(uri.query, contains('episodeId=1'));
+  });
+
+  test('movie sources query still sends seasonId/episodeId defaults', () {
+    final uri = Uri.https(
+      'api.wingsdatabase.com',
+      '/cdn/sources-with-title',
+      VideasyExtractor.sourcesQueryForTest(
+        title: 'Backrooms',
+        isMovie: true,
+        tmdbId: '1083381',
+        year: '2026',
+        imdbId: 'tt26657236',
+        season: 1,
+        episode: 1,
+        totalSeasons: null,
+        seed: 'test-seed',
+      ),
+    );
+    expect(uri.query, contains('tmdbId=1083381'));
+    expect(uri.query, contains('seasonId=1'));
+    expect(uri.query, contains('episodeId=1'));
+    expect(uri.query, isNot(contains('totalSeasons')));
   });
 
   test('wingsTitleQueryValue single-encodes for query map', () {
