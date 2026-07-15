@@ -17,19 +17,26 @@ class IptvPortalPanel extends StatefulWidget {
 }
 
 class _IptvPortalPanelState extends State<IptvPortalPanel> {
+  static const _portalRowHeight = 66.0;
+
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   final FocusNode _panelFocus = FocusNode();
+  final ScrollController _listScroll = ScrollController();
   String _query = '';
   bool _searchOpen = false;
   bool _didFocusHeaderOnOpen = false;
+  String? _scrolledToActiveKey;
 
   @override
   void initState() {
     super.initState();
     widget.ctrl.addListener(_onCtrlChanged);
     if (widget.ctrl.portalPanelOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusPanelHeader();
+        _scrollToActivePortal();
+      });
     }
   }
 
@@ -39,6 +46,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     _searchCtrl.dispose();
     _searchFocus.dispose();
     _panelFocus.dispose();
+    _listScroll.dispose();
     super.dispose();
   }
 
@@ -49,14 +57,38 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         _didFocusHeaderOnOpen = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
       }
+      final activeKey = widget.ctrl.activePortal?.key;
+      if (activeKey != null && activeKey != _scrolledToActiveKey) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActivePortal());
+      }
     } else {
       _didFocusHeaderOnOpen = false;
+      _scrolledToActiveKey = null;
     }
   }
 
   void _focusPanelHeader() {
     if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
     iptvFocusRowItem('iptv-portal-header', 2);
+  }
+
+  void _scrollToActivePortal() {
+    if (!mounted || !widget.ctrl.portalPanelOpen) return;
+    if (_query.trim().isNotEmpty) return;
+    final activeKey = widget.ctrl.activePortal?.key;
+    if (activeKey == null) return;
+    final index = _filtered.indexWhere((v) => v.key == activeKey);
+    if (index < 0) return;
+    if (!_listScroll.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActivePortal());
+      return;
+    }
+    final target = (index * _portalRowHeight).clamp(
+      0.0,
+      _listScroll.position.maxScrollExtent,
+    );
+    _listScroll.jumpTo(target);
+    _scrolledToActiveKey = activeKey;
   }
 
   void _openSearch() {
@@ -320,7 +352,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       orientation: ShellTvRowOrientation.vertical,
     );
     return ListView.builder(
+      controller: _listScroll,
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+      itemExtent: _portalRowHeight,
       itemCount: list.length,
       itemBuilder: (_, i) {
         final v = list[i];

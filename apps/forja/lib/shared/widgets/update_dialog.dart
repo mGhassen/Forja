@@ -14,120 +14,159 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ota_update/ota_update.dart'
     if (dart.library.html) 'package:ota_update/ota_update_stub.dart';
 
-/// Layout tokens — scaled down on Android TV (10-foot UI).
+/// Layout tokens — scaled from the **available viewport**, not fixed px.
+///
+/// Header/logo/gaps shrink on short windows so the pinned footer always fits
+/// and only the changelog scrolls.
 class _UpdateLayout {
   const _UpdateLayout._({
     required this.isTv,
     required this.contentWidth,
+    required this.logoWidth,
+    required this.logoHeight,
     required this.headlineSize,
     required this.versionSize,
     required this.metaSize,
     required this.bodySize,
     required this.sectionSize,
-    required this.logoWidthFactor,
     required this.logoTopGap,
     required this.blockGap,
+    required this.metaGap,
+    required this.noticeGap,
     required this.dividerBeforeGap,
     required this.dividerAfterGap,
     required this.sectionLabelGap,
     required this.footerGap,
+    required this.padTop,
+    required this.padBottom,
+    required this.padHorizontal,
     required this.buttonHeight,
     required this.buttonFontSize,
     required this.skipFontSize,
     required this.downloadPercentSize,
-    required this.downloadLogoFactor,
+    required this.downloadLogoWidth,
     required this.downloadGapLarge,
     required this.downloadGapSmall,
   });
 
   final bool isTv;
   final double contentWidth;
+  final double logoWidth;
+  final double logoHeight;
   final double headlineSize;
   final double versionSize;
   final double metaSize;
   final double bodySize;
   final double sectionSize;
-  final double logoWidthFactor;
   final double logoTopGap;
   final double blockGap;
+  final double metaGap;
+  final double noticeGap;
   final double dividerBeforeGap;
   final double dividerAfterGap;
   final double sectionLabelGap;
   final double footerGap;
+  final double padTop;
+  final double padBottom;
+  final double padHorizontal;
   final double buttonHeight;
   final double buttonFontSize;
   final double skipFontSize;
   final double downloadPercentSize;
-  final double downloadLogoFactor;
+  final double downloadLogoWidth;
   final double downloadGapLarge;
   final double downloadGapSmall;
 
-  factory _UpdateLayout.of(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
+  /// [width]/[height] are the SafeArea / LayoutBuilder constraints.
+  factory _UpdateLayout.of(
+    BuildContext context, {
+    required double width,
+    required double height,
+  }) {
     final isTv =
         (ShellScope.maybeOf(context)?.profile ??
             resolveShellProfile(context)) ==
         ShellProfile.tv;
-    final isWide = !isTv && size.width > 720;
+
+    // 0 = short window (~520), 1 = comfortable (~900+). Drives logo/type/gaps.
+    final scale = ((height - 520) / 380).clamp(0.0, 1.0);
+
+    double lerp(double a, double b) => a + (b - a) * scale;
 
     if (isTv) {
-      final contentWidth = (size.width * 0.44).clamp(280.0, 380.0);
+      final contentWidth = (width * 0.44).clamp(280.0, 380.0);
+      final logoHeight = (height * 0.08).clamp(36.0, 56.0);
       return _UpdateLayout._(
         isTv: true,
         contentWidth: contentWidth,
+        logoWidth: logoHeight * forjaLogoAspectRatio,
+        logoHeight: logoHeight,
         headlineSize: 26,
         versionSize: 18,
         metaSize: 12,
         bodySize: 13,
         sectionSize: 11,
-        logoWidthFactor: 0.30,
-        logoTopGap: 22,
-        blockGap: 10,
-        dividerBeforeGap: 16,
-        dividerAfterGap: 10,
+        logoTopGap: lerp(10, 22),
+        blockGap: lerp(6, 10),
+        metaGap: 6,
+        noticeGap: 8,
+        dividerBeforeGap: lerp(10, 16),
+        dividerAfterGap: lerp(6, 10),
         sectionLabelGap: 6,
         footerGap: 14,
+        padTop: 16,
+        padBottom: 16,
+        padHorizontal: ((width - contentWidth) / 2).clamp(40.0, width),
         buttonHeight: 42,
         buttonFontSize: 14,
         skipFontSize: 13,
         downloadPercentSize: 38,
-        downloadLogoFactor: 0.22,
+        downloadLogoWidth: (width.clamp(240.0, 400.0) * 0.22),
         downloadGapLarge: 28,
         downloadGapSmall: 8,
       );
     }
 
+    final isWide = width > 720;
+    final contentWidth = isWide ? 640.0 : (width - 48).clamp(280.0, width);
+    // Logo tracks viewport height (~10%), capped so it never eats the page.
+    final logoHeight = (height * 0.10).clamp(40.0, 88.0);
+    final logoWidth = (logoHeight * forjaLogoAspectRatio).clamp(
+      0.0,
+      contentWidth * 0.85,
+    );
+
     return _UpdateLayout._(
       isTv: false,
-      contentWidth: isWide ? 640 : size.width - 48,
-      headlineSize: size.width > 600 ? 40 : 34,
-      versionSize: 22,
+      contentWidth: contentWidth,
+      logoWidth: logoWidth,
+      logoHeight: logoWidth / forjaLogoAspectRatio,
+      headlineSize: lerp(24, width > 600 ? 34 : 28),
+      versionSize: lerp(17, 22),
       metaSize: 14,
       bodySize: 15,
       sectionSize: 13,
-      logoWidthFactor: 0.55,
-      logoTopGap: 40,
-      blockGap: 14,
-      dividerBeforeGap: 24,
-      dividerAfterGap: 16,
+      logoTopGap: lerp(10, 28),
+      blockGap: lerp(6, 12),
+      metaGap: lerp(4, 10),
+      noticeGap: lerp(6, 12),
+      dividerBeforeGap: lerp(10, 20),
+      dividerAfterGap: lerp(8, 14),
       sectionLabelGap: 8,
-      footerGap: 20,
+      footerGap: lerp(10, 16),
+      padTop: lerp(12, 24),
+      padBottom: lerp(12, 24),
+      padHorizontal: contentWidth >= width - 56
+          ? 28
+          : (width - contentWidth) / 2,
       buttonHeight: 54,
       buttonFontSize: 16,
       skipFontSize: 15,
-      downloadPercentSize: 56,
-      downloadLogoFactor: 0.38,
-      downloadGapLarge: 48,
+      downloadPercentSize: lerp(40, 56),
+      downloadLogoWidth: (width.clamp(240.0, 400.0) * 0.38),
+      downloadGapLarge: lerp(28, 48),
       downloadGapSmall: 8,
     );
-  }
-
-  double horizontalInset(double screenWidth) {
-    if (isTv) {
-      return ((screenWidth - contentWidth) / 2).clamp(40.0, screenWidth);
-    }
-    if (contentWidth >= screenWidth - 56) return 28;
-    return (screenWidth - contentWidth) / 2;
   }
 }
 
@@ -267,70 +306,76 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final padding = MediaQuery.paddingOf(context);
-    final layout = _UpdateLayout.of(context);
-    final horizontalPad = layout.horizontalInset(size.width);
-
     return Material(
       color: AppTheme.bgDark,
       child: SafeArea(
-        child: _isDownloading
-            ? LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPad,
-                      vertical: layout.isTv ? 24 : 36,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                        maxWidth: layout.contentWidth,
-                      ),
-                      child: Center(child: _buildDownloadingBody(size, layout)),
-                    ),
-                  );
-                },
-              )
-            : Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final layout = _UpdateLayout.of(
+              context,
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+            );
+
+            if (_isDownloading) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: layout.padHorizontal,
+                  vertical: layout.padTop,
+                ),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: layout.contentWidth),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      layout.isTv ? 16 : 24,
-                      24,
-                      padding.bottom > 0 ? 12 : 24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildOfferHeader(size, layout),
-                        Expanded(
-                          child: _ReleaseNotesScroller(
-                            layout: layout,
-                            child: _buildReleaseNotes(layout),
-                          ),
-                        ),
-                        SizedBox(height: layout.footerGap),
-                        _UpdateFooter(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - layout.padTop * 2,
+                    maxWidth: layout.contentWidth,
+                  ),
+                  child: Center(
+                    child: _buildDownloadingBody(layout),
+                  ),
+                ),
+              );
+            }
+
+            // Fill the viewport: header + footer pinned, only changelog scrolls.
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: layout.contentWidth,
+                height: constraints.maxHeight,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    layout.padTop,
+                    24,
+                    layout.padBottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildOfferHeader(layout),
+                      Expanded(
+                        child: _ReleaseNotesScroller(
                           layout: layout,
-                          onUpdate: _handleUpdate,
-                          onSkip: () => Navigator.of(context).pop(),
+                          child: _buildReleaseNotes(layout),
                         ),
-                      ],
-                    ),
+                      ),
+                      SizedBox(height: layout.footerGap),
+                      _UpdateFooter(
+                        layout: layout,
+                        onUpdate: _handleUpdate,
+                        onSkip: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
                 ),
               ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildOfferHeader(Size size, _UpdateLayout layout) {
-    final logoWidth = size.width.clamp(280.0, 520.0) * layout.logoWidthFactor;
-    final logoHeight = logoWidth / forjaLogoAspectRatio;
+  Widget _buildOfferHeader(_UpdateLayout layout) {
     final published = _formatPublishedDate(widget.updateInfo.publishedAt);
 
     return Column(
@@ -338,8 +383,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
       children: [
         Center(
           child: ForjaLogo(
-            width: logoWidth,
-            height: logoHeight,
+            width: layout.logoWidth,
+            height: layout.logoHeight,
             letterStyles: {
               for (final letter in forjaLetterOrder)
                 letter: ForjaLetterStyle(
@@ -350,8 +395,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
               color: ForjaShellColors.brandGreen,
               centerAlpha: 0.14,
               midAlpha: 0.06,
-              blurSigma: logoHeight * 0.08,
-              glowSourceSize: logoHeight * 0.7,
+              blurSigma: layout.logoHeight * 0.08,
+              glowSourceSize: layout.logoHeight * 0.7,
             ),
           ),
         ),
@@ -378,7 +423,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
             color: ForjaShellColors.brandGreen,
           ),
         ),
-        SizedBox(height: layout.isTv ? 6 : 10),
+        SizedBox(height: layout.metaGap),
         Text(
           'You’re on v${widget.updateInfo.currentVersion}'
           '${published != null ? '  ·  $published' : ''}',
@@ -390,7 +435,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
         if (_platformNotice != null) ...[
-          SizedBox(height: layout.isTv ? 8 : 12),
+          SizedBox(height: layout.noticeGap),
           Text(
             _platformNotice!,
             textAlign: TextAlign.center,
@@ -452,10 +497,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
     );
   }
 
-  Widget _buildDownloadingBody(Size size, _UpdateLayout layout) {
+  Widget _buildDownloadingBody(_UpdateLayout layout) {
     final percent = (_downloadProgress * 100).clamp(0, 100).round();
-    final logoWidth =
-        size.width.clamp(240.0, 400.0) * layout.downloadLogoFactor;
+    final logoWidth = layout.downloadLogoWidth;
     final logoHeight = logoWidth / forjaLogoAspectRatio;
 
     return Column(
@@ -1129,92 +1173,102 @@ class _DownloadCompleteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final layout = _UpdateLayout.of(context);
-    final horizontalPad = layout.horizontalInset(size.width);
-
     return Material(
       color: AppTheme.bgDark,
       child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPad,
-            layout.isTv ? 24 : 36,
-            horizontalPad,
-            layout.isTv ? 24 : 36,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: layout.contentWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Spacer(),
-                Text(
-                  'Download\ncomplete',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: layout.headlineSize,
-                    fontWeight: FontWeight.w800,
-                    height: 1.08,
-                    letterSpacing: -0.8,
-                    color: ForjaShellColors.textPrimary,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final layout = _UpdateLayout.of(
+              context,
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+            );
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: layout.contentWidth,
+                height: constraints.maxHeight,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    layout.padHorizontal > 24 ? 0 : 24,
+                    layout.padTop,
+                    layout.padHorizontal > 24 ? 0 : 24,
+                    layout.padBottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Spacer(),
+                      Text(
+                        'Download\ncomplete',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: layout.headlineSize,
+                          fontWeight: FontWeight.w800,
+                          height: 1.08,
+                          letterSpacing: -0.8,
+                          color: ForjaShellColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: layout.isTv ? 14 : 20),
+                      SelectableText(
+                        filePath,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: layout.isTv ? 10 : 12,
+                          height: 1.5,
+                          color: ForjaShellColors.brandGreen,
+                        ),
+                      ),
+                      SizedBox(height: layout.isTv ? 16 : 24),
+                      Text(
+                        Platform.isWindows
+                            ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
+                            : Platform.isMacOS
+                            ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
+                            : 'Make the file executable, then run it:\n'
+                                  'chmod +x "$fileName"\n./$fileName',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: layout.bodySize,
+                          height: 1.55,
+                          color: ForjaShellColors.textSecondary,
+                        ),
+                      ),
+                      const Spacer(flex: 2),
+                      _UpdatePrimaryAction(
+                        layout: layout,
+                        label: Platform.isMacOS || Platform.isWindows
+                            ? 'Install and close Forja'
+                            : 'Done',
+                        onTap: Platform.isMacOS || Platform.isWindows
+                            ? () => _installDesktopUpdate(context)
+                            : () => Navigator.of(context).pop(),
+                      ),
+                      SizedBox(height: layout.isTv ? 8 : 12),
+                      Center(
+                        child: _UpdateTextAction(
+                          layout: layout,
+                          label: Platform.isMacOS || Platform.isWindows
+                              ? 'Skip for now'
+                              : 'Open downloads folder',
+                          onTap: Platform.isMacOS || Platform.isWindows
+                              ? () => Navigator.of(context).pop()
+                              : () async {
+                                  if (Platform.isLinux) {
+                                    await Process.run('xdg-open', [dirPath]);
+                                  }
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop();
+                                  }
+                                },
+                        ),
+                      ),
+                      SizedBox(height: layout.isTv ? 8 : 12),
+                    ],
                   ),
                 ),
-                SizedBox(height: layout.isTv ? 14 : 20),
-                SelectableText(
-                  filePath,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: layout.isTv ? 10 : 12,
-                    height: 1.5,
-                    color: ForjaShellColors.brandGreen,
-                  ),
-                ),
-                SizedBox(height: layout.isTv ? 16 : 24),
-                Text(
-                  Platform.isWindows
-                      ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
-                      : Platform.isMacOS
-                      ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
-                      : 'Make the file executable, then run it:\n'
-                            'chmod +x "$fileName"\n./$fileName',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: layout.bodySize,
-                    height: 1.55,
-                    color: ForjaShellColors.textSecondary,
-                  ),
-                ),
-                const Spacer(flex: 2),
-                _UpdatePrimaryAction(
-                  layout: layout,
-                  label: Platform.isMacOS || Platform.isWindows
-                      ? 'Install and close Forja'
-                      : 'Done',
-                  onTap: Platform.isMacOS || Platform.isWindows
-                      ? () => _installDesktopUpdate(context)
-                      : () => Navigator.of(context).pop(),
-                ),
-                SizedBox(height: layout.isTv ? 8 : 12),
-                Center(
-                  child: _UpdateTextAction(
-                    layout: layout,
-                    label: Platform.isMacOS || Platform.isWindows
-                        ? 'Skip for now'
-                        : 'Open downloads folder',
-                    onTap: Platform.isMacOS || Platform.isWindows
-                        ? () => Navigator.of(context).pop()
-                        : () async {
-                            if (Platform.isLinux) {
-                              await Process.run('xdg-open', [dirPath]);
-                            }
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                            }
-                          },
-                  ),
-                ),
-                SizedBox(height: layout.isTv ? 8 : 12),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -329,6 +329,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     required String url,
     required String username,
     required String password,
+    bool closePanel = true,
   }) async {
     final cleanUrl = normalizeUrl(url);
     if (cleanUrl.isEmpty || username.isEmpty || password.isEmpty) {
@@ -363,7 +364,8 @@ mixin _IptvControllerPortal on ChangeNotifier {
     _c._verifiedKeys.add(v.credKey);
     await IptvStore.save(_c.verified);
     _c.showAddDialog = false;
-    await _c.selectPortal(v);
+    if (!closePanel) _c.openPortalPanel();
+    await _c.selectPortal(v, closePanel: closePanel);
   }
 
   String normalizeUrl(String raw) {

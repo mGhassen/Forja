@@ -381,7 +381,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       _passCtrl.text = portal.password;
       _lastImportedCode = code;
       setState(() => _importingShareCode = false);
-      await _submit();
+      // Keep the portals panel open and scroll to the newly added portal.
+      await _submit(closePanel: false);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -391,7 +392,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({bool closePanel = true}) async {
     final ctrl = widget.ctrl;
     if (_editing) {
       await ctrl.updatePortal(
@@ -405,6 +406,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         url: _urlCtrl.text,
         username: _userCtrl.text,
         password: _passCtrl.text,
+        closePanel: closePanel,
       );
     }
     if (ctrl.addError == null && mounted) {
