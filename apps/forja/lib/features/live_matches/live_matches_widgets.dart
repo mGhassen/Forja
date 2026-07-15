@@ -819,6 +819,7 @@ class _LiveMatchesEmbedPlayerScreenState
     // Clear the Flutter spinner early; iframe load / embedReady also clears it.
     // A long center spinner sits on top of the embed play button.
     _loadingWatchdog = Timer(const Duration(seconds: 2), _clearLoading);
+    HardwareKeyboard.instance.addHandler(_handleEmbedKeyEvent);
     WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
   }
 
@@ -879,8 +880,8 @@ class _LiveMatchesEmbedPlayerScreenState
     }
   }
 
-  /// Stop HTML5 / iframe media before the route is gone. Platform WebViews can
-  /// keep playing audio after Flutter disposes the widget chrome alone.
+  /// Stop HTML5 / iframe media. Timeouts are mandatory — WebView JS/IPC can
+  /// hang forever while HLS is playing, which blocked [Navigator.pop].
   Future<void> _stopEmbedMedia() async {
     if (_mediaStopped) return;
     _mediaStopped = true;
@@ -889,27 +890,32 @@ class _LiveMatchesEmbedPlayerScreenState
     _webViewController = null;
     if (controller == null) return;
     try {
-      await controller.evaluateJavascript(source: _stopEmbedMediaJs);
+      await controller
+          .evaluateJavascript(source: _stopEmbedMediaJs)
+          .timeout(const Duration(milliseconds: 400));
     } catch (_) {}
     try {
       await controller.stopLoading();
     } catch (_) {}
     try {
-      await controller.loadUrl(
-        urlRequest: URLRequest(url: WebUri('about:blank')),
-      );
+      await controller
+          .loadUrl(urlRequest: URLRequest(url: WebUri('about:blank')))
+          .timeout(const Duration(milliseconds: 500));
     } catch (_) {}
-    // Dispose after blanking so native media sessions die before/with pop.
-    // The platform view may already be tearing down — ignore dispose errors.
-    try {
-      controller.dispose();
-    } catch (_) {}
+    // Do not dispose the controller here — [InAppWebView] is still mounted
+    // until the route pops; disposing early can hang the platform view.
   }
 
   Future<void> _exitPlayer() async {
     if (_exiting) return;
     _exiting = true;
-    await _stopEmbedMedia();
+    if (_isFullscreen) {
+      unawaited(_exitFullscreen());
+    }
+    // Cap wait so a stuck WebView never prevents leaving the player.
+    try {
+      await _stopEmbedMedia().timeout(const Duration(milliseconds: 700));
+    } catch (_) {}
     if (!mounted) return;
     Navigator.of(context).pop();
   }
@@ -919,6 +925,7 @@ class _LiveMatchesEmbedPlayerScreenState
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
     _backFocusNode.dispose();
+    HardwareKeyboard.instance.removeHandler(_handleEmbedKeyEvent);
     // Route may dispose without going through [_exitPlayer] (e.g. pushReplacement).
     unawaited(_stopEmbedMedia());
     if (DesktopWindowChrome.isDesktop) {
@@ -937,6 +944,13 @@ class _LiveMatchesEmbedPlayerScreenState
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
     super.dispose();
+  }
+
+  bool _handleEmbedKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.escape) return false;
+    unawaited(_exitPlayer());
+    return true;
   }
 
   double _topBarTopPadding(BuildContext context) {
@@ -966,40 +980,48 @@ class _LiveMatchesEmbedPlayerScreenState
   }
 
   Widget _buildTopBar() {
-    final bar = Padding(
-      padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
-      child: Row(
-        children: [
-          iptvBackButton(
-            context,
-            onTap: () => unawaited(_exitPlayer()),
-            color: Colors.white,
-            size: 26,
-            focusNode: _backFocusNode,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: IptvShellStyle.overlayTitle,
-                ),
-                if ((widget.subtitle ?? '').isNotEmpty)
+    final bar = Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
+        child: Row(
+          children: [
+            // Opaque hit target — WKWebView/WebView2 steal taps when chrome is
+            // only painted over the platform view (macOS especially).
+            Listener(
+              behavior: HitTestBehavior.opaque,
+              child: iptvBackButton(
+                context,
+                onTap: () => unawaited(_exitPlayer()),
+                color: Colors.white,
+                size: 26,
+                focusNode: _backFocusNode,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    widget.subtitle!,
+                    widget.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: IptvShellStyle.overlayTitle,
                   ),
-              ],
+                  if ((widget.subtitle ?? '').isNotEmpty)
+                    Text(
+                      widget.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
     if (!_tvFocus()) return bar;
@@ -1012,6 +1034,24 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   Widget build(BuildContext context) {
     final embedUrl = widget.embedUrl;
+    // Keep the WebView *below* the chrome so the platform view cannot steal
+    // Back taps (overlay-on-WKWebView is unreliable on desktop).
+    final Widget? chrome = !_isFullscreen
+        ? ColoredBox(
+            color: Colors.black,
+            child: Stack(
+              children: [
+                _buildTopBar(),
+                Positioned(
+                  top: _topBarTopPadding(context),
+                  right: 16,
+                  child: _buildSourceBadge(),
+                ),
+              ],
+            ),
+          )
+        : null;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -1020,156 +1060,139 @@ class _LiveMatchesEmbedPlayerScreenState
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: LayoutBuilder(
-          builder: (context, constraints) => Stack(
-            fit: StackFit.expand,
-            children: [
-              ForjaInAppWebView(
-                // Windows: direct embed URL (worked before macOS iframe rewrite).
-                // Others: iframe under catalog origin for document.referrer + ad
-                // isolation (issues 046 / 049).
-                initialData: _initialData,
-                initialUrlRequest: _initialUrlRequest,
-                initialUserScripts: _initialUserScripts,
-                initialSettings: _initialSettings,
-                onWebViewCreated: (controller) {
-                  _webViewController = controller;
-                  controller.addJavaScriptHandler(
-                    handlerName: 'toggleFullscreen',
-                    callback: (_) {
-                      unawaited(_toggleFullscreen());
-                    },
-                  );
-                  if (!_windowsDirectEmbed) {
-                    controller.addJavaScriptHandler(
-                      handlerName: 'embedReady',
-                      callback: (_) {
-                        _loadingWatchdog?.cancel();
-                        _clearLoading();
-                      },
-                    );
-                  }
-                },
-                onLoadStart: (_, _) {
-                  // Ad main-frame hijack attempts can fire load-start; do not
-                  // setState after the player is ready (rebuild churn + WK crash).
-                  if (!mounted || _ready || _loading) return;
-                  setState(() => _loading = true);
-                },
-                onLoadStop: (ctrl, _) async {
-                  _loadingWatchdog?.cancel();
-                  _clearLoading();
-                  try {
-                    await ctrl.evaluateJavascript(source: _autoplayJs);
-                    await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
-                  } catch (_) {}
-                  WidgetsBinding.instance.addPostFrameCallback(
-                    (_) => _focusBack(),
-                  );
-                },
-                onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
-                onExitFullscreen: (_) => unawaited(_exitFullscreen()),
-                onCreateWindow: _windowsDirectEmbed
-                    ? null
-                    : (_, action) async {
-                        // Keep a single hidden child; ignore extra ad spawns.
-                        if (!mounted || _adWindowId != null) return false;
-                        setState(() => _adWindowId = action.windowId);
-                        _adWindowCloseTimer?.cancel();
-                        _adWindowCloseTimer = Timer(
-                          const Duration(seconds: 4),
-                          _dismissAdWindow,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ?chrome,
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ForjaInAppWebView(
+                    // Windows: direct embed URL (worked before macOS iframe rewrite).
+                    // Others: iframe under catalog origin for document.referrer + ad
+                    // isolation (issues 046 / 049).
+                    initialData: _initialData,
+                    initialUrlRequest: _initialUrlRequest,
+                    initialUserScripts: _initialUserScripts,
+                    initialSettings: _initialSettings,
+                    onWebViewCreated: (controller) {
+                      _webViewController = controller;
+                      controller.addJavaScriptHandler(
+                        handlerName: 'toggleFullscreen',
+                        callback: (_) {
+                          unawaited(_toggleFullscreen());
+                        },
+                      );
+                      if (!_windowsDirectEmbed) {
+                        controller.addJavaScriptHandler(
+                          handlerName: 'embedReady',
+                          callback: (_) {
+                            _loadingWatchdog?.cancel();
+                            _clearLoading();
+                          },
                         );
-                        return true;
-                      },
-                shouldOverrideUrlLoading: (ctrl, action) async {
-                  // Player CDNs and nested iframes leave embed.st — never cancel
-                  // subframe navigations (that caused blank/white players).
-                  if (action.isForMainFrame != true) {
-                    return NavigationActionPolicy.ALLOW;
-                  }
-                  final url = action.request.url?.toString() ?? '';
-                  if (_liveEmbedAllowsNavigation(
-                    url: url,
-                    embedUrl: embedUrl,
-                    referer: widget.referer,
-                    origin: widget.origin,
-                  )) {
-                    return NavigationActionPolicy.ALLOW;
-                  }
-                  debugPrint('[LiveMatches] blocked main-frame nav: $url');
-                  return NavigationActionPolicy.CANCEL;
-                },
-              ),
-              // Keep any remaining spinner off the center play button and
-              // non-blocking so the embed stays tappable.
-              if (_loading)
-                Positioned(
-                  top: _topBarTopPadding(context) + 36,
-                  right: 16,
-                  child: IgnorePointer(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: ForjaShellColors.sectionAccent,
-                      ),
-                    ),
+                      }
+                    },
+                    onLoadStart: (_, _) {
+                      // Ad main-frame hijack attempts can fire load-start; do not
+                      // setState after the player is ready (rebuild churn + WK crash).
+                      if (!mounted || _ready || _loading) return;
+                      setState(() => _loading = true);
+                    },
+                    onLoadStop: (ctrl, _) async {
+                      // Ignore about:blank teardown loads after exit started.
+                      if (_mediaStopped || _exiting) return;
+                      _loadingWatchdog?.cancel();
+                      _clearLoading();
+                      try {
+                        await ctrl.evaluateJavascript(source: _autoplayJs);
+                        await ctrl.evaluateJavascript(
+                          source: _dblclickFullscreenJs,
+                        );
+                      } catch (_) {}
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => _focusBack(),
+                      );
+                    },
+                    onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
+                    onExitFullscreen: (_) => unawaited(_exitFullscreen()),
+                    onCreateWindow: _windowsDirectEmbed
+                        ? null
+                        : (_, action) async {
+                            // Keep a single hidden child; ignore extra ad spawns.
+                            if (!mounted || _adWindowId != null) return false;
+                            setState(() => _adWindowId = action.windowId);
+                            _adWindowCloseTimer?.cancel();
+                            _adWindowCloseTimer = Timer(
+                              const Duration(seconds: 4),
+                              _dismissAdWindow,
+                            );
+                            return true;
+                          },
+                    shouldOverrideUrlLoading: (ctrl, action) async {
+                      // Player CDNs and nested iframes leave embed.st — never cancel
+                      // subframe navigations (that caused blank/white players).
+                      if (action.isForMainFrame != true) {
+                        return NavigationActionPolicy.ALLOW;
+                      }
+                      final url = action.request.url?.toString() ?? '';
+                      if (_liveEmbedAllowsNavigation(
+                        url: url,
+                        embedUrl: embedUrl,
+                        referer: widget.referer,
+                        origin: widget.origin,
+                      )) {
+                        return NavigationActionPolicy.ALLOW;
+                      }
+                      debugPrint('[LiveMatches] blocked main-frame nav: $url');
+                      return NavigationActionPolicy.CANCEL;
+                    },
                   ),
-                ),
-              if (!_isFullscreen) ...[
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.black87, Colors.transparent],
-                      ),
-                    ),
-                    child: _buildTopBar(),
-                  ),
-                ),
-                Positioned(
-                  top: _topBarTopPadding(context),
-                  right: 16,
-                  child: _buildSourceBadge(),
-                ),
-              ],
-              // Off-screen host for ad window.open — required by some Streamed
-              // embeds on macOS; never visible. Skipped on Windows direct path.
-              if (!_windowsDirectEmbed && _adWindowId != null)
-                Positioned(
-                  left: -2,
-                  top: -2,
-                  width: 1,
-                  height: 1,
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: 0,
-                      child: InAppWebView(
-                        windowId: _adWindowId,
-                        // Use forjaWebViewSettings so Windows gets the opaque
-                        // WebView2 create workaround (issue 053) if this path
-                        // is ever enabled there.
-                        initialSettings: forjaWebViewSettings(
-                          InAppWebViewSettings(
-                            transparentBackground: true,
-                            supportMultipleWindows: false,
-                            javaScriptCanOpenWindowsAutomatically: false,
+                  if (_loading)
+                    Positioned(
+                      top: 12,
+                      right: 16,
+                      child: IgnorePointer(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: ForjaShellColors.sectionAccent,
                           ),
                         ),
-                        onCloseWindow: (_) => _dismissAdWindow(),
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
+                  // Off-screen host for ad window.open — required by some Streamed
+                  // embeds on macOS; never visible. Skipped on Windows direct path.
+                  if (!_windowsDirectEmbed && _adWindowId != null)
+                    Positioned(
+                      left: -2,
+                      top: -2,
+                      width: 1,
+                      height: 1,
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: 0,
+                          child: InAppWebView(
+                            windowId: _adWindowId,
+                            initialSettings: forjaWebViewSettings(
+                              InAppWebViewSettings(
+                                transparentBackground: true,
+                                supportMultipleWindows: false,
+                                javaScriptCanOpenWindowsAutomatically: false,
+                              ),
+                            ),
+                            onCloseWindow: (_) => _dismissAdWindow(),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
