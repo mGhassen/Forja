@@ -37,19 +37,23 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
         .toList();
   }
 
-  List<Map<String, dynamic>> get _filteredPanelNuvioStreams {
-    final streams = _s._selectedSourceId == 'all_nuvio'
-        ? _s._nuvioStreams
-        : (_s._selectedSourceId.startsWith('nuvio:')
-              ? _s._nuvioStreams
-                    .where((s) => s['_addonBaseUrl'] == _s._selectedSourceId)
-                    .toList()
-              : <dynamic>[]);
-    return streams
-        .whereType<Map<String, dynamic>>()
-        .where((s) => _matchesPanelStreamFilters(s))
-        .toList();
+  bool _nuvioStreamSelected(Map<String, dynamic> s) {
+    final id = s['_nuvioScraperId'] as String?;
+    if (id != null) return _s._nuvioSelectedScraperIds.contains(id);
+    final base = s['_addonBaseUrl'] as String?;
+    if (base != null && base.startsWith('nuvio:')) {
+      return _s._nuvioSelectedScraperIds.contains(base.substring('nuvio:'.length));
+    }
+    return false;
   }
+
+  List<Map<String, dynamic>> get _selectedNuvioStreams => _s._nuvioStreams
+      .whereType<Map<String, dynamic>>()
+      .where(_nuvioStreamSelected)
+      .toList();
+
+  List<Map<String, dynamic>> get _filteredPanelNuvioStreams =>
+      _selectedNuvioStreams.where(_matchesPanelStreamFilters).toList();
 
   List<String> get _panelFilterNames {
     final names = <String>[];
@@ -67,15 +71,8 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       );
     }
     if (_panelShowsNuvio) {
-      final streams = _s._selectedSourceId == 'all_nuvio'
-          ? _s._nuvioStreams
-          : (_s._selectedSourceId.startsWith('nuvio:')
-                ? _s._nuvioStreams
-                      .where((s) => s['_addonBaseUrl'] == _s._selectedSourceId)
-                      .toList()
-                : <dynamic>[]);
       names.addAll(
-        streams.map(
+        _selectedNuvioStreams.map(
           (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
         ),
       );
@@ -111,14 +108,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       }
     }
     if (_panelShowsNuvio) {
-      final streams = _s._selectedSourceId == 'all_nuvio'
-          ? _s._nuvioStreams
-          : (_s._selectedSourceId.startsWith('nuvio:')
-                ? _s._nuvioStreams
-                      .where((s) => s['_addonBaseUrl'] == _s._selectedSourceId)
-                      .toList()
-                : <dynamic>[]);
-      for (final s in streams.whereType<Map<String, dynamic>>()) {
+      for (final s in _selectedNuvioStreams) {
         final bytes = _streamSizeBytes(s);
         if (bytes > 0) sizes.add(bytes);
       }
@@ -185,7 +175,6 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       _s._selectedSourceId == 'prowlarr';
 
   bool get _isNuvioSource =>
-      _s._selectedSourceId == 'nuvio_picker' ||
       _s._selectedSourceId == 'all_nuvio' ||
       _s._selectedSourceId.startsWith('nuvio:') ||
       _s._selectedSourceId.startsWith('nuvio://');
@@ -204,25 +193,8 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
           chips.add({'id': a['baseUrl'], 'label': a['name']});
       }
     } else if (_s._panelKindFilter == 'nuvio') {
-      if (_s._nuvioSelectedAddonUrl == null) {
-        for (final a in _s._nuvioAddons) {
-          chips.add({
-            'id': 'nuvio_addon::${a.manifestUrl}',
-            'label': '📦 ${a.name}',
-          });
-        }
-      } else {
-        chips.add({'id': 'nuvio_back', 'label': '← Addons'});
-        final addon = _s._nuvioAddons.firstWhere(
-          (a) => a.manifestUrl == _s._nuvioSelectedAddonUrl,
-          orElse: () => NuvioAddon(
-            manifestUrl: _s._nuvioSelectedAddonUrl!,
-            name: '',
-            version: '',
-            scrapers: const [],
-          ),
-        );
-        for (final s in addon.scrapers) {
+      for (final a in _s._nuvioAddons) {
+        for (final s in a.scrapers) {
           if (!s.enabled) continue;
           chips.add({'id': 'nuvio:${s.id}', 'label': s.name});
         }
@@ -263,34 +235,22 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
   }
 
   void _onSourceChipTap(String id) {
-    if (id.startsWith('nuvio_addon::')) {
-      setState(() {
-        _s._nuvioSelectedAddonUrl = id.substring('nuvio_addon::'.length);
-        _s._nuvioSelectedScraperId = null;
-        _s._selectedSourceId = 'nuvio_picker';
-        _s._nuvioStreams = [];
-        _s._errorMessage = null;
-      });
-      return;
-    }
-    if (id == 'nuvio_back') {
-      setState(() {
-        _s._nuvioSelectedAddonUrl = null;
-        _s._nuvioSelectedScraperId = null;
-        _s._selectedSourceId = 'nuvio_picker';
-        _s._nuvioStreams = [];
-        _s._errorMessage = null;
-      });
-      return;
-    }
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       setState(() {
-        _s._selectedSourceId = id;
-        _s._nuvioSelectedScraperId = scraperId;
-        _resetPanelFilters();
+        _s._selectedSourceId = 'all_nuvio';
+        if (_s._nuvioSelectedScraperIds.contains(scraperId)) {
+          _s._nuvioSelectedScraperIds = Set<String>.from(
+            _s._nuvioSelectedScraperIds,
+          )..remove(scraperId);
+        } else {
+          _s._nuvioSelectedScraperIds = {
+            ..._s._nuvioSelectedScraperIds,
+            scraperId,
+          };
+        }
+        _s._errorMessage = null;
       });
-      _s._runSingleNuvioScraper(scraperId);
       return;
     }
     setState(() {
@@ -310,7 +270,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
             ? 'No streams found from any addon'
             : null;
       });
-    } else if (id == 'all_nuvio' || id.startsWith('nuvio://')) {
+    } else if (id == 'all_nuvio') {
       setState(() => _s._errorMessage = null);
     } else {
       final chip = _sourceChips().firstWhere(
@@ -438,7 +398,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
                   ? _s._allCombinedStremioStreams.length
                   : _s._stremioStreams.length)
             : 0) +
-        (_panelShowsNuvio ? _s._nuvioStreams.length : 0);
+        (_panelShowsNuvio ? _selectedNuvioStreams.length : 0);
     final isFetching =
         (_panelShowsTorrents && _s._isSearching) ||
         (_panelShowsStremio && _s._isStremioFetching) ||
@@ -458,10 +418,12 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
           _s._activeAudioFilters.isNotEmpty &&
           _s._allTorrentResults.isNotEmpty) {
         msg = 'No results match the audio filter';
-      } else if (_panelShowsNuvio && _s._nuvioSelectedScraperId == null) {
-        msg = _s._nuvioSelectedAddonUrl == null
-            ? 'Pick an addon to see its providers'
-            : 'Pick a provider to fetch streams';
+      } else if (_panelShowsNuvio && _s._nuvioSelectedScraperIds.isEmpty) {
+        msg = 'Select at least one provider';
+      } else if (_panelShowsNuvio &&
+          _s._nuvioStreams.isNotEmpty &&
+          _selectedNuvioStreams.isEmpty) {
+        msg = 'No results match your filters';
       } else {
         msg = 'No streams found';
       }

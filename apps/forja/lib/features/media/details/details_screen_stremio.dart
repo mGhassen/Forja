@@ -133,69 +133,12 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     }
   }
 
-  /// Runs ONE Nuvio scraper on demand and replaces `_s._nuvioStreams` with its
-  /// results. Triggered when the user taps a scraper chip — keeps the
-  /// details page snappy by avoiding the parallel-everything fetch.
-  Future<void> _runSingleNuvioScraper(String scraperId) async {
-    if (_s._movie.id <= 0) return;
-    await _s._nuvioSub?.cancel();
-    _s._nuvioSub = null;
-    setState(() {
-      _s._isNuvioFetching = true;
-      _s._nuvioStreams = [];
-      _s._errorMessage = null;
-    });
-    final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
-    try {
-      final results = await NuvioService.instance.runOneScraper(
-        scraperId: scraperId,
-        tmdbId: _s._movie.id.toString(),
-        type: type,
-        season: _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
-        episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
-      );
-      if (!mounted) return;
-      // Resolve the human-readable scraper name for tagging.
-      String scraperName = scraperId;
-      for (final a in _s._nuvioAddons) {
-        for (final s in a.scrapers) {
-          if (s.id == scraperId) {
-            scraperName = s.name;
-            break;
-          }
-        }
-      }
-      setState(() {
-        _s._nuvioStreams = results
-            .map(
-              (r) => <String, dynamic>{
-                ...r.toStremioStream(sourceLabel: scraperName),
-                '_addonName': scraperName,
-                '_addonBaseUrl': 'nuvio:$scraperId',
-              },
-            )
-            .toList();
-        _s._isNuvioFetching = false;
-        _s._errorMessage = _s._nuvioStreams.isEmpty
-            ? 'No streams found from $scraperName'
-            : null;
-      });
-      _s._maybeAutoPlay();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _s._isNuvioFetching = false;
-        _s._errorMessage = 'Error: $e';
-      });
-      _s._maybeAutoPlay();
-    }
-  }
-
   /// Fetches streams from every enabled Nuvio scraper in parallel and
   /// appends results in real time as each scraper completes — so chips and
   /// streams light up the UI progressively instead of waiting for the
   /// slowest provider. Re-entrant: a fresh call cancels the previous
-  /// subscription and resets the visible list.
+  /// subscription and resets the visible list. Chip toggles only filter
+  /// this combined list; they do not re-fetch.
   Future<void> _fetchAllNuvioStreams() async {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
     // Tear down any previous in-flight stream — e.g. user switched
@@ -223,9 +166,9 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
             batch.streams.map(
               (s) => <String, dynamic>{
                 ...s,
+                '_nuvioScraperId': batch.scraperId,
                 '_addonName': s['sourceName'] ?? batch.scraperName,
-                '_addonBaseUrl':
-                    'nuvio://${s['sourceName'] ?? batch.scraperId}',
+                '_addonBaseUrl': 'nuvio:${batch.scraperId}',
               },
             ),
           );

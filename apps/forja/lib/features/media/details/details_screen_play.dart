@@ -31,8 +31,9 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
   }
 
   List<dynamic> _streamsForAutoPlay() {
-    if (_s._isNuvioSource || _s._selectedSourceId == 'all_nuvio')
-      return _s._nuvioStreams;
+    if (_s._isNuvioSource || _s._selectedSourceId == 'all_nuvio') {
+      return _s._nuvioStreams.where(_s._nuvioStreamSelected).toList();
+    }
     if (_s._selectedSourceId == 'all_stremio' || _s._isTorrentSource) {
       return _s._allCombinedStremioStreams;
     }

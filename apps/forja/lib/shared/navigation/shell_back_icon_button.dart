@@ -91,6 +91,7 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
       onTap: widget.onTap,
       borderRadius: resolvedHit / 2,
       scaleOnFocus: 1.08,
+      suppressInkHover: true,
       focusNode: widget.focusNode,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),

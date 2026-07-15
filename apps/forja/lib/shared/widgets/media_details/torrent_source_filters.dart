@@ -336,7 +336,7 @@ class TorrentSourceChips extends StatelessWidget {
     super.key,
     required this.chips,
     required this.selectedSourceId,
-    required this.nuvioSelectedAddonUrl,
+    required this.nuvioSelectedScraperIds,
     required this.scrollController,
     required this.onChipTap,
     required this.onScrollBack,
@@ -345,7 +345,7 @@ class TorrentSourceChips extends StatelessWidget {
 
   final List<Map<String, dynamic>> chips;
   final String selectedSourceId;
-  final String? nuvioSelectedAddonUrl;
+  final Set<String> nuvioSelectedScraperIds;
   final ScrollController scrollController;
   final ValueChanged<String> onChipTap;
   final VoidCallback onScrollBack;
@@ -368,10 +368,10 @@ class TorrentSourceChips extends StatelessWidget {
               children: chips.map((chip) {
                 final id = chip['id'] as String;
                 final bool selected;
-                if (id.startsWith('nuvio_addon::')) {
-                  selected = nuvioSelectedAddonUrl == id.substring('nuvio_addon::'.length);
-                } else if (id == 'nuvio_back') {
-                  selected = false;
+                if (id.startsWith('nuvio:')) {
+                  selected = nuvioSelectedScraperIds.contains(
+                    id.substring('nuvio:'.length),
+                  );
                 } else {
                   selected = selectedSourceId == id;
                 }

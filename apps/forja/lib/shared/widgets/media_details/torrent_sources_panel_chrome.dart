@@ -31,7 +31,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.episodeLabel,
     this.providerChips = const [],
     this.selectedSourceId,
-    this.nuvioSelectedAddonUrl,
+    this.nuvioSelectedScraperIds = const {},
     this.chipsScrollController,
     this.onChipTap,
     this.onScrollBack,
@@ -62,7 +62,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final String? episodeLabel;
   final List<Map<String, dynamic>> providerChips;
   final String? selectedSourceId;
-  final String? nuvioSelectedAddonUrl;
+  final Set<String> nuvioSelectedScraperIds;
   final ScrollController? chipsScrollController;
   final ValueChanged<String>? onChipTap;
   final VoidCallback? onScrollBack;
@@ -120,7 +120,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           TorrentSourceChips(
             chips: providerChips,
             selectedSourceId: selectedSourceId!,
-            nuvioSelectedAddonUrl: nuvioSelectedAddonUrl,
+            nuvioSelectedScraperIds: nuvioSelectedScraperIds,
             scrollController: chipsScrollController!,
             onChipTap: onChipTap!,
             onScrollBack: onScrollBack ?? () {},

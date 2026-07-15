@@ -135,17 +135,12 @@ class _DetailsScreenState extends State<DetailsScreen>
   StreamSubscription<NuvioScraperResult>? _nuvioSub;
 
   /// Cached list of installed Nuvio addons (refreshed when the Nuvio tab
-  /// is opened). Used to render the addon-picker chips.
+  /// is opened). Used to render the scraper filter chips.
   List<NuvioAddon> _nuvioAddons = [];
 
-  /// Manifest URL of the addon the user has drilled into. `null` means
-  /// we're showing the addon-picker chips. Once non-null, scraper chips
-  /// for that addon are rendered.
-  String? _nuvioSelectedAddonUrl;
-
-  /// Scraper id (`<scraperId>`) the user picked. Drives `_selectedSourceId`
-  /// (`'nuvio:<scraperId>'`) and the active stream list.
-  String? _nuvioSelectedScraperId;
+  /// Enabled Nuvio scraper ids currently included in the results filter.
+  /// All enabled scrapers start selected when opening the Nuvio tab.
+  Set<String> _nuvioSelectedScraperIds = {};
 
   // Direct webstreaming providers (videasy, webstreamr, …) — no global mode toggle.
   final Map<String, dynamic> _webstreamingProviders = {
@@ -438,8 +433,22 @@ class _DetailsScreenState extends State<DetailsScreen>
     _allCombinedStremioStreams = [];
     _loadedAddonBaseUrls.clear();
     _nuvioStreams = [];
-    _nuvioSelectedScraperId = null;
+    _nuvioSelectedScraperIds = {};
     _errorMessage = null;
+  }
+
+  Set<String> _allEnabledNuvioScraperIds() {
+    final ids = <String>{};
+    for (final a in _nuvioAddons) {
+      for (final s in a.scrapers) {
+        if (s.enabled) ids.add(s.id);
+      }
+    }
+    return ids;
+  }
+
+  void _selectAllEnabledNuvioScrapers() {
+    _nuvioSelectedScraperIds = _allEnabledNuvioScraperIds();
   }
 
   void _ensurePanelSourceLoaded() {
@@ -454,7 +463,19 @@ class _DetailsScreenState extends State<DetailsScreen>
       }
     }
     if (_panelKindFilter == 'nuvio' && _panelShowNuvio) {
-      _checkAndFetchNuvio();
+      unawaited(_ensureNuvioPanelLoaded());
+    }
+  }
+
+  /// Loads addon list, selects all scrapers, then fetches every scraper once.
+  Future<void> _ensureNuvioPanelLoaded() async {
+    await _checkAndFetchNuvio();
+    if (!mounted || !_panelShowNuvio || _panelKindFilter != 'nuvio') return;
+    if (_nuvioSelectedScraperIds.isEmpty) {
+      setState(_selectAllEnabledNuvioScrapers);
+    }
+    if (_nuvioStreams.isEmpty && !_isNuvioFetching) {
+      await _fetchAllNuvioStreams();
     }
   }
 
@@ -473,10 +494,8 @@ class _DetailsScreenState extends State<DetailsScreen>
                     : 'all_stremio');
           _applyStremioFilter();
         case 'nuvio':
-          _selectedSourceId = 'nuvio_picker';
-          _nuvioSelectedAddonUrl = null;
-          _nuvioSelectedScraperId = null;
-          _nuvioStreams = [];
+          _selectedSourceId = 'all_nuvio';
+          _selectAllEnabledNuvioScrapers();
         case 'all':
           if (_panelShowTorrent) {
             _selectedSourceId = 'forja';

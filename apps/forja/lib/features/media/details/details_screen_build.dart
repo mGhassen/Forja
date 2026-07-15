@@ -344,7 +344,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
           onCancelFetch: _s._cancelActiveSourceFetch,
           providerChips: providerChips,
           selectedSourceId: _s._selectedSourceId,
-          nuvioSelectedAddonUrl: _s._nuvioSelectedAddonUrl,
+          nuvioSelectedScraperIds: _s._nuvioSelectedScraperIds,
           chipsScrollController: _s._chipsScrollController,
           onChipTap: _s._onSourceChipTap,
           onScrollBack: _s._scrollChipsBack,

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and pick them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search).
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search). Opening **Nuvio** searches every enabled scraper and shows each one as a selected filter chip you can turn off or on.
 
 Nuvio is **not** part of green **Play** webstreaming. Direct links only there; torrent/magnet scrapers (e.g. Torrentio) stay in **Sources** and play through the torrent engine.
 
@@ -20,7 +20,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - See scraper count per addon
 - Toggle each scraper on/off without removing the addon
 - Remove an entire addon
-- Pick a scraper chip in **Sources → Nuvio** and play a result (magnets use the local torrent engine; HTTP links play directly)
+- In **Sources → Nuvio**, toggle scraper chips to filter results and play a result (magnets use the local torrent engine; HTTP links play directly)
 
 ## Setup
 
