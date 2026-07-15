@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:forja/shared/extractors/embed_extract_profile.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/playback/host_provider_adapter.dart';
 import 'package:forja/shared/player/episode_torrent_resolver.dart';
@@ -213,9 +214,13 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   if (provider == null || provider['tv'] == null) return null;
 
   final providerUrl = provider['tv'](movie.id.toString(), season, episode);
+  final profile = EmbedExtractProfiles.resolve(providerKey);
   final result = await StreamExtractor().extract(
     providerUrl,
+    profile: profile,
     timeout: const Duration(seconds: 20),
+    referer: providerUrl,
+    providerId: providerKey,
   );
   if (result == null || result.url.isEmpty) return null;
   return EpisodeSwitchResult(

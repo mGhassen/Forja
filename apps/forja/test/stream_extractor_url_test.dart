@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/extractors/embed_extract_profile.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 
 void main() {
@@ -56,6 +57,42 @@ void main() {
         ),
         isTrue,
       );
+    });
+  });
+
+  group('EmbedExtractProfiles', () {
+    test('every required template provider has a catalog entry', () {
+      for (final id in EmbedExtractProfiles.requiredTemplateIds) {
+        expect(
+          EmbedExtractProfiles.catalog.containsKey(id),
+          isTrue,
+          reason: 'missing EmbedExtractProfile for $id',
+        );
+      }
+    });
+
+    test('vidlove rotates chips; vidfast does not', () {
+      final love = EmbedExtractProfiles.resolve('vidlove');
+      final fast = EmbedExtractProfiles.resolve('vidfast');
+      expect(love.rotateServerChips, isTrue);
+      expect(love.serverChipLabels, contains('neta'));
+      expect(love.forceDirect, isTrue);
+      expect(fast.rotateServerChips, isFalse);
+      expect(fast.forceDirect, isFalse);
+    });
+
+    test('vidsrcsbs accepts proxy playlist bodies', () {
+      final p = EmbedExtractProfiles.resolve('vidsrcsbs');
+      expect(p.acceptProxyPlaylistBodies, isTrue);
+      expect(p.forceDirect, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
+    });
+
+    test('unknown provider falls back without borrowing vidlove policy', () {
+      final p = EmbedExtractProfiles.resolve('some-new-host');
+      expect(p.rotateServerChips, isFalse);
+      expect(p.acceptProxyPlaylistBodies, isFalse);
+      expect(p.forceDirect, isFalse);
     });
   });
 }

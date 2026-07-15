@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/extractors/embed_extract_profile.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -82,9 +83,11 @@ abstract final class HostProviderAdapter {
           ? 'https://player.videasy.to/tv/${movie.id}/$season/$episode'
           : 'https://player.videasy.to/movie/${movie.id}';
       debugPrint('[videasy] API empty — sniffing $embed');
+      final profile = EmbedExtractProfiles.resolve('videasy');
       final sniffed = await _extractor.extract(
         embed,
-        timeout: const Duration(seconds: 60),
+        profile: profile,
+        referer: embed,
         isCancelled: cancelled,
         providerId: 'videasy',
       );
@@ -129,14 +132,10 @@ abstract final class HostProviderAdapter {
     final embedUrl = payload['embedUrl']?.toString();
     if (embedUrl != null && embedUrl.isNotEmpty) {
       if (isAndroidTvHeadlessWebViewBlocked) return null;
+      final profile = EmbedExtractProfiles.resolve(providerId);
       final result = await _extractor.extract(
         embedUrl,
-        timeout: _embedSniffTimeout(providerId),
-        // VidSrc.sbs rejects iframe-wrapped embeds with "Playback Restricted".
-        // VidLove multi-server chips are easier to click as top-level document.
-        forceDirect: providerId == 'vidsrcsbs' ||
-            providerId == 'vidlove' ||
-            providerId == '111movies',
+        profile: profile,
         referer: embedUrl,
         isCancelled: cancelled,
         providerId: providerId,
@@ -157,9 +156,11 @@ abstract final class HostProviderAdapter {
     final String url = isTv
         ? provider['tv'](movie.id.toString(), season, episode)
         : provider['movie'](movie.id.toString());
+    final profile = EmbedExtractProfiles.resolve(providerId);
     final result = await _extractor.extract(
       url,
-      timeout: _embedSniffTimeout(providerId),
+      profile: profile,
+      referer: url,
       isCancelled: cancelled,
       providerId: providerId,
     );
@@ -224,32 +225,5 @@ abstract final class HostProviderAdapter {
     if (u.contains('.mpd')) return 'dash';
     if (u.contains('.mkv')) return 'mkv';
     return 'mp4';
-  }
-
-  static Duration _embedSniffTimeout(String providerId) {
-    // Every embed/sniff host — same budget. Dead pages fail open/probe and
-    // Auto walks the rest of the settings order; do not special-case a few IDs.
-    switch (providerId) {
-      case 'smashystream':
-      case 'superembed':
-      case 'vixsrc':
-      case 'vidnest':
-      case 'vidlink':
-      case 'videasy':
-      case 'vidzee':
-      case 'vidrock':
-      case 'vidfast':
-      case '2embed':
-      case 'autoembed':
-      case 'vidlove':
-      case 'vidsrcsbs':
-      case '111movies':
-      case 'moviesapi':
-      case 'primewire':
-      case 'vidsrc':
-        return const Duration(seconds: 60);
-      default:
-        return const Duration(seconds: 45);
-    }
   }
 }

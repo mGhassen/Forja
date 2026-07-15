@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/extractors/embed_extract_profile.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
@@ -20,6 +21,7 @@ class StreamExtractor {
   Map<String, String>? _capturedHeaders;
   /// Canonical embed URL passed to [extract] — preferred Referer for CDN opens.
   String? _originalEmbedUrl;
+  EmbedExtractProfile _profile = EmbedExtractProfiles.generic;
 
   // Track all detected video URLs to select best quality
   final List<String> _detectedVideoUrls = [];
@@ -130,17 +132,22 @@ class StreamExtractor {
 
   Future<ExtractedMedia?> extract(
     String url, {
-    Duration timeout = const Duration(seconds: 60),
+    EmbedExtractProfile? profile,
+    Duration? timeout,
     String? referer,
     String? iframeWrapperBaseUrl,
-    bool forceDirect = false,
     bool Function()? isCancelled,
     String? providerId,
   }) async {
-    final sessionTag =
-        providerId != null && providerId.trim().isNotEmpty ? providerId : null;
+    final resolved = profile ?? EmbedExtractProfiles.resolve(providerId);
+    final sessionTag = resolved.id != EmbedExtractProfiles.generic.id
+        ? resolved.id
+        : (providerId != null && providerId.trim().isNotEmpty
+            ? providerId
+            : null);
     // Dispose any prior WebView without dropping the new session tag.
     await _cleanup();
+    _profile = resolved;
     _activeProviderId = sessionTag;
     if (isAndroidTvHeadlessWebViewBlocked) {
       _log('Headless WebView blocked on Android TV (use WebStreamr/Vidsrc)');
@@ -151,6 +158,9 @@ class StreamExtractor {
 
     bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
 
+    final effectiveTimeout = timeout ?? resolved.timeout;
+    final forceDirect = resolved.forceDirect;
+
     // Session / settings: wrap embed URL in an iframe so the page sees a
     // document.referrer (defeats some hosts that block direct loads).
     var wrapperBase = forceDirect ? null : iframeWrapperBaseUrl;
@@ -159,7 +169,7 @@ class StreamExtractor {
         await SettingsService().getPlayerWebViewUseEmbed()) {
       wrapperBase = _originBaseUrl(url);
     }
-    
+
     _completer = Completer<ExtractedMedia?>();
     _capturedVideo = null;
     _capturedAudio = null;
@@ -168,7 +178,7 @@ class StreamExtractor {
     _completing = false;
     _detectedVideoUrls.clear();
 
-    _timeoutTimer = Timer(timeout, () {
+    _timeoutTimer = Timer(effectiveTimeout, () {
       if (_completer != null && !_completer!.isCompleted) {
         if (cancelled()) {
           _cleanup();
@@ -215,7 +225,7 @@ class StreamExtractor {
         initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
           UserScript(
-            source: _getRawSpyJs(),
+            source: _getRawSpyJs(_profile),
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
             forMainFrameOnly: false,
           ),
@@ -251,7 +261,7 @@ class StreamExtractor {
         initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
           UserScript(
-            source: _getRawSpyJs(),
+            source: _getRawSpyJs(_profile),
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
             forMainFrameOnly: false,
           ),
@@ -304,7 +314,7 @@ class StreamExtractor {
   void Function(InAppWebViewController, WebUri?) _onLoadStop() =>
       (controller, loadedUrl) async {
         _log('Page loaded: $loadedUrl');
-        await controller.evaluateJavascript(source: _getRawSpyJs());
+        await controller.evaluateJavascript(source: _getRawSpyJs(_profile));
       };
 
   void Function(InAppWebViewController, ConsoleMessage) _onConsoleMessage(String fallbackReferer) =>
@@ -381,7 +391,9 @@ class StreamExtractor {
     String referer, {
     bool confirmedPlaylistBody = false,
   }) {
-    final proxyPlaylist = confirmedPlaylistBody && _isEmbedProxyPlaylistUrl(rUrl);
+    final proxyPlaylist = confirmedPlaylistBody &&
+        _profile.acceptProxyPlaylistBodies &&
+        _isEmbedProxyPlaylistUrl(rUrl);
     if (!isPlayableStreamUrl(rUrl) && !proxyPlaylist) {
       final lower = rUrl.toLowerCase();
       if (lower.contains('/api/proxy') ||
@@ -414,23 +426,24 @@ class StreamExtractor {
 
     if (_capturedVideo == null) return;
 
-    // SPA / multi-server embeds load streams after boot or chip switch —
-    // do not complete on weak hits like PWA manifest links.
-    if (_shouldDeferEarlyComplete(referer) ||
-        _shouldDeferEarlyComplete(_originalEmbedUrl ?? '')) {
-      if (isStrongStreamUrl(_capturedVideo!) ||
-          _isEmbedProxyPlaylistUrl(_capturedVideo!)) {
+    // SPA / multi-server embeds: wait for a strong playlist URL.
+    if (_profile.deferUntilStrongStream) {
+      final strong = isStrongStreamUrl(_capturedVideo!) ||
+          (_profile.acceptProxyPlaylistBodies &&
+              _isEmbedProxyPlaylistUrl(_capturedVideo!));
+      if (strong) {
         _completeWithCaptured(playbackReferer);
       }
       return;
     }
 
-    if (_capturedAudio != null || !referer.contains('anitaro')) {
-      _completeWithCaptured(playbackReferer);
+    if (_profile.completeOnlyWithAudio && _capturedAudio == null) {
+      return;
     }
+    _completeWithCaptured(playbackReferer);
   }
 
-  /// `/api/proxy` URLs whose response body was `#EXTM3U` (1embed / VidSrc.sbs).
+  /// `/api/proxy` URLs whose response body was `#EXTM3U`.
   static bool _isEmbedProxyPlaylistUrl(String url) {
     final lower = url.toLowerCase();
     return lower.contains('/api/proxy') &&
@@ -445,10 +458,10 @@ class StreamExtractor {
     final streamHost =
         Uri.tryParse(_capturedVideo ?? '')?.host.toLowerCase() ?? '';
     if (streamHost.isNotEmpty && frameHost == streamHost) return embed;
-    if (frameHost.contains('hydrastreaming') ||
-        frameHost.contains('goodstream') ||
-        frameHost.contains('cinezo')) {
-      return embed;
+    for (final host in _profile.cdnHostsPreferEmbedReferer) {
+      if (host.isNotEmpty && frameHost.contains(host.toLowerCase())) {
+        return embed;
+      }
     }
     return frameOrFallback.isNotEmpty ? frameOrFallback : embed;
   }
@@ -510,18 +523,6 @@ class StreamExtractor {
         (lower.contains('playlist') && !lower.contains('webmanifest'));
   }
 
-  bool _shouldDeferEarlyComplete(String referer) {
-    final r = referer.toLowerCase();
-    return r.contains('anitaro') ||
-        r.contains('anyembed.xyz') ||
-        r.contains('smashystream.com') ||
-        r.contains('player.videasy.to') ||
-        r.contains('vidlink.pro') ||
-        r.contains('player.vidlove.cc') ||
-        r.contains('vidsrc.sbs') ||
-        r.contains('1embed.cc');
-  }
-
   String _selectBestQuality(List<String> urls) {
     final playable =
         urls.where(StreamExtractor.isPlayableStreamUrl).toList();
@@ -573,13 +574,15 @@ class StreamExtractor {
     final headers = Map<String, String>.from(
       _capturedHeaders ?? _buildHeaders(referer),
     );
-    final cookie = await _collectCookieHeader(
-      embedUrl: _originalEmbedUrl ?? referer,
-      streamUrl: video,
-    );
-    if (cookie != null && cookie.isNotEmpty) {
-      headers['Cookie'] = cookie;
-      _log('Attached Cookie header (${cookie.length} chars)');
+    if (_profile.harvestCookies) {
+      final cookie = await _collectCookieHeader(
+        embedUrl: _originalEmbedUrl ?? referer,
+        streamUrl: video,
+      );
+      if (cookie != null && cookie.isNotEmpty) {
+        headers['Cookie'] = cookie;
+        _log('Attached Cookie header (${cookie.length} chars)');
+      }
     }
     _capturedHeaders = headers;
 
@@ -637,7 +640,9 @@ class StreamExtractor {
         : (_capturedVideo != null ? [_capturedVideo!] : const <String>[]);
     return urls.map((url) {
       final lower = url.toLowerCase();
-      final type = lower.contains('.m3u8') || _isEmbedProxyPlaylistUrl(url)
+      final type = lower.contains('.m3u8') ||
+              (_profile.acceptProxyPlaylistBodies &&
+                  _isEmbedProxyPlaylistUrl(url))
           ? 'hls'
           : lower.contains('.mpd')
               ? 'dash'
@@ -658,25 +663,32 @@ class StreamExtractor {
     }).toList();
   }
 
-  String _getRawSpyJs() {
+  String _getRawSpyJs(EmbedExtractProfile profile) {
+    final rotate = profile.rotateServerChips;
+    final labelsJson = profile.serverChipLabels
+        .map((s) => '"${s.toLowerCase().replaceAll('"', '')}"')
+        .join(',');
+    final acceptProxyBody = profile.acceptProxyPlaylistBodies;
     return """
     (function() {
       if (window.pt_raw_injected) return;
       window.pt_raw_injected = true;
-      
+      const ROTATE_SERVER_CHIPS = $rotate;
+      const SERVER_CHIP_LABELS = [$labelsJson];
+      const ACCEPT_PROXY_BODY = $acceptProxyBody;
+
       const log = (type, url) => {
         if (!url || typeof url !== 'string' || url.startsWith('data:')) return;
         console.log('PT_EXTRACT: [' + type + '] ' + url + ' | FRAME: ' + window.location.href);
       };
 
-      console.log('PT_LOG: Sniffer Active on ' + window.location.href);
+      console.log('PT_LOG: Sniffer Active on ' + window.location.href
+        + ' rotateChips=' + ROTATE_SERVER_CHIPS
+        + ' proxyBody=' + ACCEPT_PROXY_BODY);
 
-      // 1. Popup Blocking
       window.open = function() { return null; };
       window.alert = function() { return true; };
 
-      // 2. Sniff Fetch — also pull .m3u8 out of JSON/proxy response bodies
-      //    (VidSrc.sbs / 1embed serve playlists via /api/proxy without .m3u8 in the URL).
       const originalFetch = window.fetch;
       window.fetch = async function(...args) {
         const url = args[0] instanceof Request ? args[0].url : String(args[0]);
@@ -691,7 +703,8 @@ class StreamExtractor {
               lowerUrl.includes('/api/sources') ||
               lowerUrl.includes('/api/v1/stream') ||
               lowerUrl.includes('proxy');
-            if (looksProxy || text.includes('.m3u8') || text.trim().startsWith('#EXTM3U')) {
+            if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
+                (ACCEPT_PROXY_BODY && looksProxy)) {
               if (text.trim().startsWith('#EXTM3U') && url.startsWith('http')) {
                 log('FETCH_BODY', url);
               }
@@ -703,7 +716,6 @@ class StreamExtractor {
         return res;
       };
 
-      // 3. Sniff XHR + response bodies
       const originalXHROpen = XMLHttpRequest.prototype.open;
       const originalXHRSend = XMLHttpRequest.prototype.send;
       XMLHttpRequest.prototype.open = function(method, url) {
@@ -721,7 +733,8 @@ class StreamExtractor {
               lowerUrl.includes('/api/sources') ||
               lowerUrl.includes('/api/v1/stream') ||
               lowerUrl.includes('proxy');
-            if (looksProxy || text.includes('.m3u8') || text.trim().startsWith('#EXTM3U')) {
+            if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
+                (ACCEPT_PROXY_BODY && looksProxy)) {
               if (text.trim().startsWith('#EXTM3U') && reqUrl.startsWith('http')) {
                 log('XHR_BODY', reqUrl);
               }
@@ -733,23 +746,18 @@ class StreamExtractor {
         return originalXHRSend.apply(this, arguments);
       };
 
-      // 4. Sniff Worker
       const OriginalWorker = window.Worker;
       window.Worker = function(scriptURL, options) {
         log('WORKER', scriptURL);
         return new OriginalWorker(scriptURL, options);
       };
 
-      // 5. Sniff postMessage
       const originalPostMessage = window.postMessage;
       window.postMessage = function(message, targetOrigin, transfer) {
-        if (typeof message === 'string') {
-           log('POSTMESSAGE', message);
-        }
+        if (typeof message === 'string') log('POSTMESSAGE', message);
         return originalPostMessage.apply(this, arguments);
       };
 
-      // 6. Sniff URL.createObjectURL
       const originalCreateObjectURL = URL.createObjectURL;
       URL.createObjectURL = function(obj) {
         const url = originalCreateObjectURL.apply(this, arguments);
@@ -757,7 +765,6 @@ class StreamExtractor {
         return url;
       };
 
-      // 7. Hook setAttribute
       const originalSetAttribute = Element.prototype.setAttribute;
       Element.prototype.setAttribute = function(name, value) {
         if (name === 'src' || name === 'data-src') {
@@ -766,7 +773,6 @@ class StreamExtractor {
         return originalSetAttribute.apply(this, arguments);
       };
 
-      // 8. MutationObserver for dynamic elements
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           mutation.addedNodes.forEach((node) => {
@@ -781,37 +787,35 @@ class StreamExtractor {
       });
       observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
 
-      // 9. Hook Media Element Methods
       const originalPlay = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function() {
         if (this.src) log('MEDIA_PLAY', this.src);
         return originalPlay.apply(this, arguments);
       };
 
-      // 10. Auto-interact: play overlays + multi-server chips (VidLove Neta/Gogo/…)
       let serverChipIndex = 0;
       let lastServerClickAt = 0;
       const clickServerChips = () => {
+        if (!ROTATE_SERVER_CHIPS) return;
         const nodes = Array.from(document.querySelectorAll(
           'button, [role="button"], a, div, span, li'
         ));
         const chips = [];
-        const chipRe = /^(neta|gogo|mafia|fabric|server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i;
+        const labelSet = new Set(SERVER_CHIP_LABELS.map((s) => String(s).toLowerCase()));
         nodes.forEach((el) => {
           const text = (el.innerText || el.textContent || '').trim();
           if (!text || text.length > 28) return;
           const rect = el.getBoundingClientRect();
           if (rect.width < 24 || rect.height < 18 || rect.width > 280) return;
+          const lower = text.toLowerCase();
           const cls = (el.className || '').toString().toLowerCase();
-          const looksChip = chipRe.test(text) ||
-            cls.includes('server') ||
-            cls.includes('source-btn') ||
-            cls.includes('provider');
-          if (looksChip) chips.push(el);
+          const labeled = labelSet.size > 0 && labelSet.has(lower);
+          const generic = /^(server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i.test(text);
+          const classHit = cls.includes('server') || cls.includes('source-btn');
+          if (labeled || (labelSet.size === 0 && (generic || classHit))) chips.push(el);
         });
         if (chips.length === 0) return;
         const now = Date.now();
-        // Rotate chips every ~2.5s so a stuck LOADMAXING server is abandoned.
         if (now - lastServerClickAt < 2500) return;
         lastServerClickAt = now;
         const el = chips[serverChipIndex % chips.length];
@@ -827,44 +831,39 @@ class StreamExtractor {
       };
 
       const interact = () => {
-        // Click center of screen (Spam click 3 times)
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
-
-        for(let i=0; i<3; i++) {
+        for (let i = 0; i < 3; i++) {
           const el = document.elementFromPoint(centerX, centerY);
           if (el) {
             el.click();
-            el.dispatchEvent(new MouseEvent('click', { view: window, bubbles: true, cancelable: true, clientX: centerX, clientY: centerY }));
+            el.dispatchEvent(new MouseEvent('click', {
+              view: window, bubbles: true, cancelable: true,
+              clientX: centerX, clientY: centerY
+            }));
           }
         }
-
         const selectors = [
           '.play-icon-main', '.jw-icon-display', '.jw-display-icon-container', '.jw-icon-playback',
           '.jw-button-color', '#play-button', '.play-button', '.v-play-button',
           '.vjs-big-play-button', '[class*="play" i]', '[id*="play" i]',
           '.play-icon', '.play_icon', '.play-btn', '.play_btn',
-          '.click_to_play', '.overlay', '#player_overlay', 'button', 'a'
+          '.click_to_play', '.overlay', '#player_overlay'
         ];
-
-        selectors.forEach(selector => {
-          document.querySelectorAll(selector).forEach(btn => {
-             const rect = btn.getBoundingClientRect();
-             if (rect.width > 0 && rect.height > 0) {
-                const text = (btn.innerText || btn.textContent || '').toLowerCase();
-                const id = (btn.id || '').toLowerCase();
-                const cls = (btn.className || '').toString().toLowerCase();
-
-                if (text.includes('play') || id.includes('play') || cls.includes('play') || cls.includes('overlay')) {
-                   btn.click();
-                }
-             }
+        selectors.forEach((selector) => {
+          document.querySelectorAll(selector).forEach((btn) => {
+            const rect = btn.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            const text = (btn.innerText || btn.textContent || '').toLowerCase();
+            const id = (btn.id || '').toLowerCase();
+            const cls = (btn.className || '').toString().toLowerCase();
+            if (text.includes('play') || id.includes('play') || cls.includes('play') || cls.includes('overlay')) {
+              btn.click();
+            }
           });
         });
-
         clickServerChips();
-
-        document.querySelectorAll('video').forEach(v => {
+        document.querySelectorAll('video').forEach((v) => {
           if (v.paused) v.play().catch(() => v.click());
           if (v.src) log('VIDEO_SRC', v.src);
         });
