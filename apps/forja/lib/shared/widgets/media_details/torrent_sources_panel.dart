@@ -193,6 +193,10 @@ class PlayerSidePanelHeader extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (titleTrailing != null) ...[
+                    const SizedBox(width: 12),
+                    titleTrailing!,
+                  ],
                 ],
               ),
             ),

@@ -611,6 +611,37 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     );
   }
 
+  Widget? _buildAudioFilterGroup() {
+    if (!PlayerStreamMenu.hasSubDubProviders(widget.providers)) return null;
+    Widget segment(String label, _StreamAudioFilter value) {
+      return ForjaShellChip(
+        label: label,
+        selected: _audioFilter == value,
+        onTap: () => setState(() => _audioFilter = value),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        radius: 6,
+        fontSize: 11,
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          segment('SUB', _StreamAudioFilter.sub),
+          const SizedBox(width: 3),
+          segment('DUB', _StreamAudioFilter.dub),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
     final list = widget.refreshListenable == null
         ? _buildList()
@@ -630,43 +661,9 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             color: ForjaShellColors.cinematic.textSecondary,
             size: 18,
           ),
+          titleTrailing: _buildAudioFilterGroup(),
           trailing: _buildHeaderTrailing(),
         ),
-        if (PlayerStreamMenu.hasSubDubProviders(widget.providers))
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              children: [
-                ForjaShellChip(
-                  label: 'SUB',
-                  selected: _audioFilter == _StreamAudioFilter.sub,
-                  onTap: () => setState(
-                    () => _audioFilter = _StreamAudioFilter.sub,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 7,
-                  ),
-                  radius: 8,
-                  fontSize: 12,
-                ),
-                const SizedBox(width: 8),
-                ForjaShellChip(
-                  label: 'DUB',
-                  selected: _audioFilter == _StreamAudioFilter.dub,
-                  onTap: () => setState(
-                    () => _audioFilter = _StreamAudioFilter.dub,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 7,
-                  ),
-                  radius: 8,
-                  fontSize: 12,
-                ),
-              ],
-            ),
-          ),
         Expanded(child: list),
       ],
     );

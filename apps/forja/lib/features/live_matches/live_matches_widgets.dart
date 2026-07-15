@@ -368,12 +368,16 @@ class _CdnSportCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final bool forceActive;
+  final ValueChanged<bool>? onHoverChanged;
   const _CdnSportCard({
     required this.event,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.forceActive = false,
+    this.onHoverChanged,
   });
 
   @override
@@ -389,13 +393,13 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final e = widget.event;
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active =
-        canPlay &&
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        );
+    final active = widget.forceActive ||
+        (canPlay &&
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+            ));
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
@@ -557,7 +561,10 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       tvZone: ShellTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      onHoverChange: (hovered) {
+        setState(() => _hovered = hovered);
+        widget.onHoverChanged?.call(hovered);
+      },
       child: card,
     );
   }
@@ -1979,7 +1986,10 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       tvZone: ShellTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      onHoverChange: (hovered) {
+        setState(() => _hovered = hovered);
+        widget.onHoverChanged?.call(hovered);
+      },
       child: card,
     );
   }
