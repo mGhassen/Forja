@@ -86,7 +86,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       PageController(initialPage: _heroLoopStart);
   final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hero-play');
   final FocusNode _tvHeroGalleryFocus = FocusNode(debugLabel: 'hero-gallery');
-  bool _tvHeroInitialFocusDone = false;
 
   Timer? _heroTimer;
   int _heroIndex = 0;
@@ -527,15 +526,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   Widget _buildCinematicHeroBlock(List<Movie> movies, {required bool compact}) {
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
-    if (policy.heroPlayAutoFocus && !_tvHeroInitialFocusDone) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _tvHeroInitialFocusDone) return;
-        if (_tvHeroPlayFocus.canRequestFocus) {
-          _tvHeroPlayFocus.requestFocus();
-          _tvHeroInitialFocusDone = true;
-        }
-      });
-    }
     final pageBleed = widget.pageBottomChild != null && !compact;
     final imageHeight = _homeBackdropHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);

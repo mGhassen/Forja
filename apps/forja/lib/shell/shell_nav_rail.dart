@@ -110,6 +110,8 @@ class ShellNavRail extends StatefulWidget {
 class _ShellNavRailState extends State<ShellNavRail> {
   bool _mouseInRail = false;
   bool _focusInRail = false;
+  bool _coldStartNavFocusDone = false;
+  bool _coldStartNavFocusScheduled = false;
 
   bool get _railEngaged => _mouseInRail || _focusInRail;
 
@@ -148,8 +150,37 @@ class _ShellNavRailState extends State<ShellNavRail> {
     ShellTvFocusCoordinator.setNavOrder(order);
   }
 
+  /// First open on TV: land D-pad focus on the active nav item (Home by default).
+  void _scheduleColdStartNavFocus(BuildContext context) {
+    if (_coldStartNavFocusDone || _coldStartNavFocusScheduled) return;
+    final policy = ShellScope.maybeOf(context)?.inputPolicy;
+    if (policy == null) return;
+    if (!policy.useFocusableMoodChips) {
+      _coldStartNavFocusDone = true;
+      return;
+    }
+    _coldStartNavFocusScheduled = true;
+    var attempts = 0;
+    void attempt() {
+      if (!mounted || _coldStartNavFocusDone) return;
+      if (ShellTvFocus.focusCurrentNavTab()) {
+        _coldStartNavFocusDone = true;
+        return;
+      }
+      attempts += 1;
+      if (attempts >= 5) {
+        _coldStartNavFocusDone = true;
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
   @override
   Widget build(BuildContext context) {
+    _scheduleColdStartNavFocus(context);
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
 
