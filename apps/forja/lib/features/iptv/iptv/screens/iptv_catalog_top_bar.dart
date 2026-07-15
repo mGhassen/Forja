@@ -692,7 +692,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
@@ -768,7 +768,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
             ),
             ClipRect(
               child: AnimatedAlign(
-                duration: const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.centerLeft,
                 widthFactor: _revealReload ? 1 : 0,
