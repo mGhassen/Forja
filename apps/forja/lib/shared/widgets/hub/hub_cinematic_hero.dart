@@ -589,30 +589,18 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     );
     const titleGap = 20.0;
     const actionGap = 16.0;
-    const minTitleHeight = 72.0;
-
-    final baseWithoutOverview = titleGap +
-        ShellTokens.heroMetaSlotHeightDesktop +
-        actionGap +
-        ShellTokens.shellButtonHeight;
-    final overviewBlock = ShellTokens.heroMetaOverviewGapDesktop +
-        ShellTokens.heroOverviewSlotHeightDesktop;
-
-    var titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
-    final showOverview = slide.overview.isNotEmpty &&
-        titleHeight + baseWithoutOverview + overviewBlock <= maxHeight;
-
-    if (!showOverview && titleHeight + baseWithoutOverview > maxHeight) {
-      titleHeight = (maxHeight - baseWithoutOverview)
-          .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
-    }
+    final layout = shellHeroDesktopTextLayout(
+      maxHeight: maxHeight,
+      hasOverview: slide.overview.isNotEmpty,
+      minTitleHeight: ShellScope.metricsOf(context).heroMinTitleHeight,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: titleHeight,
+          height: layout.titleHeight,
           child: Align(
             alignment: Alignment.bottomLeft,
             child: _buildTitle(slide),
@@ -626,16 +614,16 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             child: _buildMetaRow(slide),
           ),
         ),
-        if (showOverview) ...[
+        if (layout.showOverview) ...[
           SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
           SizedBox(
-            height: ShellTokens.heroOverviewSlotHeightDesktop,
+            height: layout.overviewSlotHeight,
             child: Align(
               alignment: Alignment.topLeft,
               child: HeroOverviewText(
                 overview: slide.overview,
                 style: overviewStyle,
-                maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                maxLines: layout.overviewMaxLines,
                 shrinkWrap: false,
                 onReadMore: slide.onDetails,
               ),

@@ -890,30 +890,18 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
     const titleGap = 20.0;
     const actionGap = 16.0;
-    final minTitleHeight = ShellScope.metricsOf(context).heroMinTitleHeight;
-
-    final baseWithoutOverview = titleGap +
-        ShellTokens.heroMetaSlotHeightDesktop +
-        actionGap +
-        ShellTokens.shellButtonHeight;
-    final overviewBlock = ShellTokens.heroMetaOverviewGapDesktop +
-        ShellTokens.heroOverviewSlotHeightDesktop;
-
-    var titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
-    final showOverview = heroMovie.overview.isNotEmpty &&
-        titleHeight + baseWithoutOverview + overviewBlock <= maxHeight;
-
-    if (!showOverview && titleHeight + baseWithoutOverview > maxHeight) {
-      titleHeight = (maxHeight - baseWithoutOverview)
-          .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
-    }
+    final layout = shellHeroDesktopTextLayout(
+      maxHeight: maxHeight,
+      hasOverview: heroMovie.overview.isNotEmpty,
+      minTitleHeight: ShellScope.metricsOf(context).heroMinTitleHeight,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: titleHeight,
+          height: layout.titleHeight,
           child: Align(
             alignment: Alignment.bottomLeft,
             child: _buildHeroTitleBlock(
@@ -931,16 +919,16 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             child: _buildHeroMetaRow(heroMovie, singleLine: true),
           ),
         ),
-        if (showOverview) ...[
+        if (layout.showOverview) ...[
           SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
           SizedBox(
-            height: ShellTokens.heroOverviewSlotHeightDesktop,
+            height: layout.overviewSlotHeight,
             child: Align(
               alignment: Alignment.topLeft,
               child: HeroOverviewText(
                 overview: heroMovie.overview,
                 style: overviewStyle,
-                maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                maxLines: layout.overviewMaxLines,
                 shrinkWrap: false,
                 onReadMore: () => widget.onOpenDetails(heroMovie),
               ),

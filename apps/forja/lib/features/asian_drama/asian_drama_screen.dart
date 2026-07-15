@@ -277,6 +277,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             id: '${a.id}',
             title: a.title,
             imageUrl: a.cover,
+            overview: a.description,
             year: a.year,
             badge: a.heroMediaBadge,
             onPlay: () => _openDetails(a),

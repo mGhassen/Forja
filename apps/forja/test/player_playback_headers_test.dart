@@ -134,13 +134,47 @@ void main() {
       expect(h['Origin'], 'https://kisskh.co');
     });
 
-    test('rewrites CDN self-Referer to kisskh.co for streamingcdn', () {
-      const url = 'https://hls08.streamingcdn4.site/master.m3u8';
+    test('forces megaplay Referer for mewstream anime CDN when missing', () {
+      const url =
+          'https://cdn.mewstream.buzz/anime/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('rewrites mewstream self-Referer to megaplay', () {
+      const url = 'https://cdn.mewstream.buzz/anime/abc/master.m3u8';
       final h = resolvePlaybackHttpHeaders({
-        'Referer': 'https://hls08.streamingcdn4.site/',
+        'Referer': 'https://cdn.mewstream.buzz/',
       }, streamUrl: url);
-      expect(h['Referer'], 'https://kisskh.co/');
-      expect(h['Origin'], 'https://kisskh.co');
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('keeps megaplay Referer for mewstream', () {
+      const url = 'https://cdn.mewstream.buzz/anime/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://megaplay.buzz/',
+      }, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+    });
+
+    test('forces allmanga Referer for AllAnime Yt-mp4 CDN', () {
+      const url =
+          'https://tools.fast4speed.rsvp/media9/videos/x/sub/1?Authorization=1';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['Referer'], 'https://allmanga.to/');
+      expect(h['Origin'], 'https://allmanga.to');
+    });
+
+    test('forces vidwish Referer for watching.onl anime CDN', () {
+      const url =
+          'https://fxpy7.watching.onl/anime/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://vidnest.fun/',
+      }, streamUrl: url);
+      expect(h['Referer'], 'https://vidwish.live/');
+      expect(h['Origin'], 'https://vidwish.live');
     });
   });
 }

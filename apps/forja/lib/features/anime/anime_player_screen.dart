@@ -13,6 +13,7 @@ import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -167,10 +168,18 @@ String _animeStreamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
 List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
   final sources = <StreamSource>[];
   for (final h in hits) {
-    final headers = Map<String, String>.from(h.media.headers);
+    // Prefer extractor headers; resolvePlaybackHttpHeaders fixes anime CDNs
+    // (mewstream → megaplay, etc.) and never falls back to vidnest.fun for HLS.
+    final headers = resolvePlaybackHttpHeaders(
+      h.media.headers.isEmpty ? null : Map<String, String>.from(h.media.headers),
+      streamUrl: h.media.url,
+    );
     if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
-      headers['Referer'] = '${h.embed.refererOrigin}/';
-      headers.putIfAbsent('Origin', () => h.embed.refererOrigin);
+      final origin = h.embed.refererOrigin;
+      if (origin.isNotEmpty) {
+        headers['Referer'] = '$origin/';
+        headers.putIfAbsent('Origin', () => origin);
+      }
     }
     final rawTitle = h.media.sources?.first.title?.trim();
     final sourceTitle =
@@ -287,7 +296,7 @@ Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
       overview: anime.cleanDescription,
       genres: anime.genres,
       runtime: anime.duration ?? 0,
-      mediaType: 'tv',
+      mediaType: 'anime',
       numberOfEpisodes: anime.episodes ?? 0,
     );
 

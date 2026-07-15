@@ -17,6 +17,9 @@ pub struct KdramaCard {
     pub year: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
+    /// Synopsis from `/Drama/{id}` — list endpoints omit this.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -149,6 +152,7 @@ pub fn parse_card_list(body: &str) -> Vec<KdramaCard> {
             } else {
                 Some(type_raw)
             },
+            description: String::new(),
         });
     }
     out
@@ -392,7 +396,49 @@ pub fn get_details(id: i32) -> Result<KdramaDetails, String> {
     })
 }
 
+fn merge_card_details(card: &KdramaCard, det: &KdramaDetails) -> KdramaCard {
+    let description = if !card.description.is_empty() {
+        card.description.clone()
+    } else {
+        det.description.clone()
+    };
+    KdramaCard {
+        id: card.id,
+        title: card.title.clone(),
+        cover: card.cover.clone(),
+        label: card.label.clone().or(det.label.clone()),
+        episodes_count: if card.episodes_count > 0 {
+            card.episodes_count
+        } else {
+            det.episodes_count
+        },
+        year: card
+            .year
+            .clone()
+            .or(year_from_release(&det.release_date)),
+        r#type: card.r#type.clone().or(if det.r#type.is_empty() {
+            None
+        } else {
+            Some(det.r#type.clone())
+        }),
+        description,
+    }
+}
+
+/// Fill year/type (and description when details are fetched).
 pub fn enrich_cards(cards: Vec<KdramaCard>) -> Vec<KdramaCard> {
+    enrich_cards_where(cards, |c| c.year.is_none() || c.r#type.is_none())
+}
+
+/// Fill missing synopsis from `/Drama/{id}` (hero spotlight — small lists only).
+pub fn enrich_card_descriptions(cards: Vec<KdramaCard>) -> Vec<KdramaCard> {
+    enrich_cards_where(cards, |c| c.description.is_empty())
+}
+
+fn enrich_cards_where(
+    cards: Vec<KdramaCard>,
+    needs_fetch: impl Fn(&KdramaCard) -> bool,
+) -> Vec<KdramaCard> {
     if cards.is_empty() {
         return cards;
     }
@@ -409,7 +455,7 @@ pub fn enrich_cards(cards: Vec<KdramaCard>) -> Vec<KdramaCard> {
                 .iter()
                 .filter_map(|&j| {
                     let c = &out[j];
-                    if c.year.is_some() && c.r#type.is_some() {
+                    if !needs_fetch(c) {
                         return None;
                     }
                     Some((j, scope.spawn(|| get_details(c.id))))
@@ -418,27 +464,7 @@ pub fn enrich_cards(cards: Vec<KdramaCard>) -> Vec<KdramaCard> {
 
             for (j, handle) in handles {
                 if let Ok(Ok(det)) = handle.join() {
-                    let c = &out[j];
-                    updates.push((
-                        j,
-                        KdramaCard {
-                            id: c.id,
-                            title: c.title.clone(),
-                            cover: c.cover.clone(),
-                            label: c.label.clone().or(det.label.clone()),
-                            episodes_count: if c.episodes_count > 0 {
-                                c.episodes_count
-                            } else {
-                                det.episodes_count
-                            },
-                            year: c.year.clone().or(year_from_release(&det.release_date)),
-                            r#type: c.r#type.clone().or(if det.r#type.is_empty() {
-                                None
-                            } else {
-                                Some(det.r#type.clone())
-                            }),
-                        },
-                    ));
+                    updates.push((j, merge_card_details(&out[j], &det)));
                 }
             }
         });
@@ -480,11 +506,29 @@ pub fn enrich_home_feed(feed: KdramaHomeFeed) -> KdramaHomeFeed {
             .collect()
     };
 
+    // Spotlight is the cinematic hero — ensure synopsis even when list already
+    // had year/type (meta enrich would have skipped those cards). When spotlight
+    // is empty the Flutter hub falls back to latest, then trending.
+    let mut spotlight = map_list(&feed.spotlight);
+    let mut latest = map_list(&feed.latest);
+    let mut trending = map_list(&feed.trending);
+    if !spotlight.is_empty() {
+        spotlight = enrich_card_descriptions(spotlight);
+    } else if !latest.is_empty() {
+        let n = latest.len().min(8);
+        let head = enrich_card_descriptions(latest[..n].to_vec());
+        latest = head.into_iter().chain(latest.into_iter().skip(n)).collect();
+    } else if !trending.is_empty() {
+        let n = trending.len().min(8);
+        let head = enrich_card_descriptions(trending[..n].to_vec());
+        trending = head.into_iter().chain(trending.into_iter().skip(n)).collect();
+    }
+
     KdramaHomeFeed {
-        spotlight: map_list(&feed.spotlight),
-        latest: map_list(&feed.latest),
+        spotlight,
+        latest,
         most_viewed: map_list(&feed.most_viewed),
-        trending: map_list(&feed.trending),
+        trending,
         top_rated: map_list(&feed.top_rated),
         upcoming: map_list(&feed.upcoming),
         anime: map_list(&feed.anime),

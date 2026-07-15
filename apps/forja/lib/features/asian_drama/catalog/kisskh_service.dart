@@ -291,6 +291,8 @@ class KdramaCard {
   final String? year;
   /// Raw kisskh type: `TVSeries`, `Movie`, `Anime`, `Hollywood`.
   final String? type;
+  /// Synopsis from details enrich — list endpoints omit this.
+  final String description;
 
   const KdramaCard({
     required this.id,
@@ -300,6 +302,7 @@ class KdramaCard {
     this.episodesCount = 0,
     this.year,
     this.type,
+    this.description = '',
   });
 
   factory KdramaCard.fromEngineJson(Map<String, dynamic> json) {
@@ -313,6 +316,7 @@ class KdramaCard {
       episodesCount: (json['episodes_count'] as num?)?.toInt() ?? 0,
       year: json['year'] as String?,
       type: typeRaw == null || typeRaw.isEmpty ? null : typeRaw,
+      description: (json['description'] as String? ?? '').trim(),
     );
   }
 
@@ -324,6 +328,7 @@ class KdramaCard {
         'episodes_count': episodesCount,
         if (year != null) 'year': year,
         if (type != null) 'type': type,
+        if (description.isNotEmpty) 'description': description,
       };
 
   KdramaCard copyWith({
@@ -334,6 +339,7 @@ class KdramaCard {
     int? episodesCount,
     String? year,
     String? type,
+    String? description,
   }) {
     return KdramaCard(
       id: id ?? this.id,
@@ -343,6 +349,7 @@ class KdramaCard {
       episodesCount: episodesCount ?? this.episodesCount,
       year: year ?? this.year,
       type: type ?? this.type,
+      description: description ?? this.description,
     );
   }
 
@@ -485,6 +492,7 @@ class KdramaDetails {
         episodesCount: episodesCount,
         year: year,
         type: type.isEmpty ? null : type,
+        description: description,
       );
 
   /// Match a watch-history entry to a live episode row (number first — stable

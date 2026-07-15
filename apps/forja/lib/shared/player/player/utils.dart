@@ -103,6 +103,33 @@ Map<String, String> resolvePlaybackHttpHeaders(
     out.remove('origin');
   }
 
+  // Anime Megaplay / Vidwish / VidNest-HiAnime CDNs reject self-origin Referer
+  // (403 Cloudflare). Require the embed host Referer — never derive from the CDN.
+  if (streamUrl != null && _isAnimeMewstreamCdn(streamUrl)) {
+    final ref = take('Referer', 'referer') ?? '';
+    if (ref.isEmpty || _isAnimeMewstreamCdn(ref) || !_looksLikeMegaplayFamily(ref)) {
+      putCanonical('Referer', 'referer', 'https://megaplay.buzz/');
+      putCanonical('Origin', 'origin', 'https://megaplay.buzz');
+    }
+  }
+  if (streamUrl != null && _isAnimeVidwishCdn(streamUrl)) {
+    final ref = take('Referer', 'referer') ?? '';
+    if (ref.isEmpty || _isAnimeVidwishCdn(ref) || !_looksLikeVidwishFamily(ref)) {
+      putCanonical('Referer', 'referer', 'https://vidwish.live/');
+      putCanonical('Origin', 'origin', 'https://vidwish.live');
+    }
+  }
+  // AllAnime Yt-mp4 (tools.fast4speed.rsvp) requires allmanga.to Referer.
+  if (streamUrl != null && _isAllAnimeYtCdn(streamUrl)) {
+    final ref = take('Referer', 'referer') ?? '';
+    if (ref.isEmpty ||
+        _isAllAnimeYtCdn(ref) ||
+        !ref.toLowerCase().contains('allmanga')) {
+      putCanonical('Referer', 'referer', 'https://allmanga.to/');
+      putCanonical('Origin', 'origin', 'https://allmanga.to');
+    }
+  }
+
   final origin = take('Origin', 'origin');
   if (origin != null && origin.isNotEmpty) {
     putCanonical('Origin', 'origin', origin);
@@ -143,6 +170,39 @@ bool _isVidnestMovieBoxCdn(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
   return host.contains('hakunaymatata.com');
+}
+
+/// Megaplay / VidNest-HiAnime HLS CDN (needs megaplay.buzz Referer).
+bool _isAnimeMewstreamCdn(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('mewstream.buzz') ||
+      host.contains('lostproject.club') ||
+      host.contains('megaplay');
+}
+
+bool _looksLikeMegaplayFamily(String referer) {
+  final h = Uri.tryParse(referer)?.host.toLowerCase() ?? referer.toLowerCase();
+  return h.contains('megaplay') || h.contains('enma.lol');
+}
+
+/// Vidwish HLS CDN (needs vidwish.live Referer).
+bool _isAnimeVidwishCdn(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('watching.onl') || host.contains('vidwish');
+}
+
+bool _looksLikeVidwishFamily(String referer) {
+  final h = Uri.tryParse(referer)?.host.toLowerCase() ?? referer.toLowerCase();
+  return h.contains('vidwish') || h.contains('enma.lol');
+}
+
+/// AllAnime direct MP4 host used by Yt-mp4.
+bool _isAllAnimeYtCdn(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('fast4speed.rsvp') || host.contains('fast4speed');
 }
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on

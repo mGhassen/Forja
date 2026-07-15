@@ -5,6 +5,7 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 /// Domain-neutral playback resolve — shared by movies, anime, and Asian drama.
@@ -107,7 +108,6 @@ abstract final class DomainPlaybackResolve {
         onProgress?.call(key, 'failed');
         continue;
       }
-      onProgress?.call(key, 'success');
       final rank = effectiveRanks[key] ?? 0;
       final legacy = result.sources != null && result.sources!.isNotEmpty
           ? result.sources!
@@ -130,7 +130,11 @@ abstract final class DomainPlaybackResolve {
               providerId: key,
               providerRank: rank,
             );
-      if (ranked.isEmpty) continue;
+      if (ranked.isEmpty) {
+        onProgress?.call(key, 'failed');
+        continue;
+      }
+      onProgress?.call(key, 'success');
       return PlaybackResolveHit(
         providerId: key,
         providerRank: rank,
@@ -221,13 +225,11 @@ class DomainStreamProviderResolver {
       final subtitles = <Map<String, dynamic>>[];
       for (final direct in candidates) {
         if (direct.url.isEmpty) continue;
-        final headers = <String, String>{
-          'Referer': direct.referer,
-          'Origin': direct.origin,
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        };
+        final headers = _animePlaybackHeaders(
+          url: direct.url,
+          referer: direct.referer,
+          origin: direct.origin,
+        );
         final title = (direct.streamLabel?.isNotEmpty == true)
             ? direct.streamLabel!
             : 'Stream';
@@ -244,8 +246,8 @@ class DomainStreamProviderResolver {
             'url': track.url,
             'display': track.label,
             'language': track.label,
-            'referer': direct.referer,
-            'origin': direct.origin,
+            'referer': headers['Referer'] ?? direct.referer,
+            'origin': headers['Origin'] ?? direct.origin,
           });
         }
       }
@@ -297,4 +299,23 @@ class DomainStreamProviderResolver {
     PlaybackEngine.cancelAllPending();
     MiruroPipeSession.instance.cancelPending();
   }
+}
+
+/// Build anime stream headers — omit empty Referer/Origin, then apply CDN rules
+/// via [resolvePlaybackHttpHeaders] (mewstream → megaplay, etc.).
+Map<String, String> _animePlaybackHeaders({
+  required String url,
+  required String referer,
+  required String origin,
+}) {
+  final raw = <String, String>{
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  };
+  final r = referer.trim();
+  final o = origin.trim();
+  if (r.isNotEmpty) raw['Referer'] = r;
+  if (o.isNotEmpty) raw['Origin'] = o;
+  return resolvePlaybackHttpHeaders(raw, streamUrl: url);
 }

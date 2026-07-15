@@ -189,19 +189,24 @@ abstract final class ShellTokens {
   static const double heroTextColumnVerticalAlign = -0.82;
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
-  static const double heroMetaOverviewGapDesktop = 32;
+  static const double heroMetaOverviewGapDesktop = 16;
   static const int heroOverviewMaxLinesDesktop = 3;
   static const double heroOverviewFontSizeDesktop = 17;
   static const double heroOverviewLineHeightDesktop = 1.55;
   static const double heroOverviewReadMoreGap = 8;
 
+  /// Overview text lines only (no Read More row).
+  static double heroOverviewTextHeightDesktop(int maxLines) =>
+      heroOverviewFontSizeDesktop * heroOverviewLineHeightDesktop * maxLines;
+
   /// Fixed overview block — keeps action row stable across hero slides.
-  static double get heroOverviewSlotHeightDesktop =>
-      heroOverviewFontSizeDesktop *
-          heroOverviewLineHeightDesktop *
-          heroOverviewMaxLinesDesktop +
+  static double heroOverviewSlotHeightForLines(int maxLines) =>
+      heroOverviewTextHeightDesktop(maxLines) +
       heroOverviewReadMoreGap +
       heroOverviewFontSizeDesktop * heroOverviewLineHeightDesktop;
+
+  static double get heroOverviewSlotHeightDesktop =>
+      heroOverviewSlotHeightForLines(heroOverviewMaxLinesDesktop);
   static const double heroLogoMaxHeightDesktop = 180;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).

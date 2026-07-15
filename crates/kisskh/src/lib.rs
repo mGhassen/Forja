@@ -5,7 +5,8 @@ use serde::Deserialize;
 use serde_json::json;
 
 pub use catalog::{
-    enrich_cards, enrich_home_feed, episode_page_url, explore, get_details, get_home, match_resume_episode,
+    enrich_card_descriptions, enrich_cards, enrich_home_feed, episode_page_url, explore,
+    get_details, get_home, match_resume_episode,
     parse_card_list, search, slugify, year_from_release, KdramaCard, KdramaDetails, KdramaEpisode,
     KdramaExplorePage, KdramaHomeFeed,
 };
@@ -159,6 +160,7 @@ mod tests {
             episodes_count: 0,
             year: None,
             r#type: None,
+            description: String::new(),
         }];
         let req = json!({
             "action": "enrich_cards",

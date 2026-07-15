@@ -40,9 +40,10 @@ enum SourceDomain {
     }
   }
 
-  /// TMDB-style media type → movie/series domain.
+  /// TMDB-style media type → movie/series domain (anime hub uses `anime`).
   static SourceDomain fromMediaType(String? mediaType) {
     final t = (mediaType ?? '').toLowerCase();
+    if (t == 'anime') return SourceDomain.anime;
     if (t == 'tv' || t == 'series' || t == 'show') {
       return SourceDomain.series;
     }

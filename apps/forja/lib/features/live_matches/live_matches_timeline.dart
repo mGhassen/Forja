@@ -549,7 +549,7 @@ class _TimelineNowLineState extends State<_TimelineNowLine> {
               children: [
                 Positioned(
                   left: widget.leftInset,
-                  right: 0,
+                  right: 10,
                   top: y - 1,
                   height: 2,
                   child: DecoratedBox(
