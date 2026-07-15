@@ -9,13 +9,6 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart';
 
-bool isWebStreamProviderId(String sourceId) {
-  if (sourceId.isEmpty) return false;
-  if (sourceId.startsWith('nuvio:')) return false;
-  if (StreamProviderDisplay.hasProfile(sourceId)) return true;
-  return StreamProviders.providers.containsKey(sourceId);
-}
-
 Movie movieFromWatchHistory(Map<String, dynamic> item) {
   final season = item['season'] as int?;
   final mediaType =
@@ -138,19 +131,21 @@ Future<bool> _resumeWebStreamProvider(
       !isTorrentStreamUrl(savedStreamUrl)) {
     if (!context.mounted) return false;
     debugPrint('[Resume] watch-history streamUrl hit $cacheKey');
-    await WebstreamingStreamCache.write(
-      cacheKey,
-      WebstreamingCacheHit(
-        providerId: providerId.isNotEmpty ? providerId : 'stream',
-        sources: [
-          StreamSource(
-            url: savedStreamUrl,
-            title: providerId.isNotEmpty ? providerId : 'stream',
-            type: savedStreamUrl.contains('.m3u8') ? 'hls' : 'video',
-          ),
-        ],
-      ),
-    );
+    if (isWebStreamProviderId(providerId)) {
+      await WebstreamingStreamCache.write(
+        cacheKey,
+        WebstreamingCacheHit(
+          providerId: providerId,
+          sources: [
+            StreamSource(
+              url: savedStreamUrl,
+              title: providerId,
+              type: savedStreamUrl.contains('.m3u8') ? 'hls' : 'video',
+            ),
+          ],
+        ),
+      );
+    }
     await AppRouter.openPlayer(
       context,
       streamUrl: savedStreamUrl,

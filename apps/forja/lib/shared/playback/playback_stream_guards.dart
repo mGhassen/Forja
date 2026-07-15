@@ -1,5 +1,22 @@
-/// URL guards for direct-stream playback and disk cache.
+/// URL / provider guards for direct-stream playback and disk cache.
 library;
+
+import 'package:rust/rust.dart';
+
+/// True for built-in webstreaming extractors (Videasy, VidSrc, …).
+///
+/// [StreamProviderDisplay] labels also cover playback *modes* (`stremio_direct`,
+/// `amri`, `torrent`) — those must stay out of the green-Play cache.
+bool isWebStreamProviderId(String sourceId) {
+  if (sourceId.isEmpty) return false;
+  if (sourceId.startsWith('nuvio:')) return false;
+  const nonWebModes = {'stremio_direct', 'amri', 'torrent'};
+  final id = StreamProviderDisplay.canonicalId(sourceId);
+  if (nonWebModes.contains(id)) return false;
+  if (StreamProviders.providers.containsKey(id)) return true;
+  // Display-profile aliases that are still web extractors (e.g. kisskh).
+  return StreamProviderDisplay.hasProfile(id);
+}
 
 /// A magnet / torrent link — NOT a direct HTTP(S) stream.
 bool isTorrentStreamUrl(String url) {

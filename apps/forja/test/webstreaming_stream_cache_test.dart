@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,21 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  group('isWebStreamProviderId', () {
+    test('accepts catalog web extractors', () {
+      expect(isWebStreamProviderId('videasy'), isTrue);
+      expect(isWebStreamProviderId('vidsrc'), isTrue);
+    });
+
+    test('rejects playback modes and nuvio scrapers', () {
+      expect(isWebStreamProviderId('stremio_direct'), isFalse);
+      expect(isWebStreamProviderId('amri'), isFalse);
+      expect(isWebStreamProviderId('torrent'), isFalse);
+      expect(isWebStreamProviderId('nuvio:torrentio'), isFalse);
+      expect(isWebStreamProviderId(''), isFalse);
+    });
   });
 
   group('WebstreamingStreamCache.cacheKey', () {
@@ -101,6 +117,74 @@ void main() {
         ),
         isFalse,
       );
+    });
+
+    test('rejects stremio_direct provider ids', () {
+      expect(
+        WebstreamingStreamCache.isValidHit(
+          WebstreamingCacheHit(
+            providerId: 'stremio_direct',
+            sources: [
+              StreamSource(
+                url: 'https://cdn.example/stremio.m3u8',
+                title: 'stremio',
+                type: 'hls',
+              ),
+            ],
+          ),
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects amri and torrent mode ids', () {
+      expect(
+        WebstreamingStreamCache.isValidHit(
+          WebstreamingCacheHit(
+            providerId: 'amri',
+            sources: [
+              StreamSource(
+                url: 'https://cdn.example/amri.m3u8',
+                title: 'amri',
+                type: 'hls',
+              ),
+            ],
+          ),
+        ),
+        isFalse,
+      );
+      expect(
+        WebstreamingStreamCache.isValidHit(
+          WebstreamingCacheHit(
+            providerId: 'torrent',
+            sources: [
+              StreamSource(
+                url: 'https://cdn.example/file.mp4',
+                title: 'torrent',
+                type: 'mp4',
+              ),
+            ],
+          ),
+        ),
+        isFalse,
+      );
+    });
+
+    test('readSession drops stremio_direct poisoned entries', () {
+      WebstreamingStreamCache.writeSession(
+        'tv:94997:S1:E1',
+        WebstreamingCacheHit(
+          providerId: 'stremio_direct',
+          sources: [
+            StreamSource(
+              url: 'https://cdn.example/hotd.m3u8',
+              title: 'stremio_direct',
+              type: 'hls',
+            ),
+          ],
+        ),
+      );
+      expect(WebstreamingStreamCache.readSession('tv:94997:S1:E1'), isNull);
     });
 
     test('accepts direct hls URLs', () {

@@ -21,7 +21,7 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 - While servers are checking, the loading screen shows `N / M CHECKED · K UP` progress. Next to **Cancel**, tap the layers icon to open the **server list** — live Waiting / Checking / Up / Down status for each provider. Tap a waiting or down server to **check it manually** (stops Auto order and resolves that provider only)
 - Before mpv opens a link, Forja HTTP-probes it (every built-in provider) — dead CDNs fail fast and Auto continues to the next server
 - A server only counts as streaming when video actually opens (not when extract alone returns a URL)
-- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last **confirmed** extract (session/disk cache) instead of re-racing providers. If that link is dead, it drops the cache and runs the check again
+- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last **confirmed** webstreaming extract (session/disk cache) instead of re-racing providers. Stremio Direct / torrent / Amri sessions are not stored in that cache. If the cached link is dead, it drops the cache and runs the check again
 - In the player **Servers** menu, tapping a server reuses cache only when that provider already has a cached extract for this title/episode; otherwise it runs a fresh resolve for that server.
 
 ## Setup (if needed)

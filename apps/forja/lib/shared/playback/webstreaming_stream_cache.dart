@@ -60,7 +60,7 @@ class WebstreamingStreamCache {
       );
 
   static bool isValidHit(WebstreamingCacheHit hit) {
-    if (hit.providerId.trim().isEmpty) return false;
+    if (!isWebStreamProviderId(hit.providerId)) return false;
     if (hit.sources.isEmpty) return false;
     return hit.sources.every(
       (s) =>

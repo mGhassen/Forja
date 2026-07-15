@@ -33,7 +33,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
 - Green **Play** / **Resume** (play icon) auto-extracts the best direct webstreaming link when that play source is enabled
-- Returning to the same title/episode reuses a cached webstreaming extract when still reachable (see [Webstreaming](direct-streaming-mode.md))
+- Returning to the same title/episode reuses a cached **webstreaming** extract when still reachable (see [Webstreaming](direct-streaming-mode.md)) — not Stremio Direct or torrent
 - White **Play** / **Resume** (link icon) opens **Sources** so you pick a torrent/Stremio stream
 - **Download** or an episode tap opens **Sources** to pick a torrent/Stremio stream manually
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer

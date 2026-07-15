@@ -272,10 +272,11 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     final movie = widget.movie;
     if (movie == null || widget.magnetLink != null) return;
     final pid = _s._currentProvider ?? widget.activeProvider;
+    if (pid == null || !isWebStreamProviderId(pid)) return;
     final sources = _s._effectiveCurrentSources
         ?.where((s) => !isUnplayableCachedStreamUrl(s.url))
         .toList();
-    if (pid == null || pid.isEmpty || sources == null || sources.isEmpty) {
+    if (sources == null || sources.isEmpty) {
       return;
     }
     final key = WebstreamingStreamCache.cacheKeyFromProgress(
