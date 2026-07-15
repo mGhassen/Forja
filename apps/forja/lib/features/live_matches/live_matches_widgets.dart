@@ -388,7 +388,8 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final e = widget.event;
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active = canPlay &&
+    final active =
+        canPlay &&
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hovered,
@@ -532,9 +533,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
             _LiveMatchCornerBadge(
               label: e.isLive ? '● LIVE' : e.status.toUpperCase(),
               live: e.isLive,
-              color: e.isLive
-                  ? Colors.red.shade700
-                  : Colors.orange.shade700,
+              color: e.isLive ? Colors.red.shade700 : Colors.orange.shade700,
             ),
           ],
         ),
@@ -698,9 +697,7 @@ class _LiveMatchesEmbedPlayerScreenState
   late final InAppWebViewSettings _initialSettings;
   late final UnmodifiableListView<UserScript> _initialUserScripts;
 
-  final FocusNode _backFocusNode = FocusNode(
-    debugLabel: 'live-embed-back',
-  );
+  final FocusNode _backFocusNode = FocusNode(debugLabel: 'live-embed-back');
 
   bool _tvFocus() =>
       ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
@@ -964,8 +961,9 @@ class _LiveMatchesEmbedPlayerScreenState
                   await ctrl.evaluateJavascript(source: _autoplayJs);
                   await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
                 } catch (_) {}
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => _focusBack());
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _focusBack(),
+                );
               },
               onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
               onExitFullscreen: (_) => unawaited(_exitFullscreen()),
@@ -1070,10 +1068,36 @@ class _StreamedStreamSheet extends StatelessWidget {
     required this.onStreamSelected,
   });
 
+  static String _sourceLabel(String source) {
+    if (source.isEmpty) return 'Stream';
+    return source[0].toUpperCase() + source.substring(1);
+  }
+
+  /// Group streams by source, sort streams within each group by viewers (a
+  /// rough reliability hint — dead feeds trend low), and order sources by
+  /// their most-watched stream so the busiest source shows first.
+  List<MapEntry<String, List<_StreamedStream>>> _groupedBySource() {
+    final groups = <String, List<_StreamedStream>>{};
+    for (final s in streams) {
+      groups.putIfAbsent(s.source, () => []).add(s);
+    }
+    for (final list in groups.values) {
+      list.sort((a, b) => b.viewers.compareTo(a.viewers));
+    }
+    int peak(List<_StreamedStream> list) =>
+        list.fold(0, (p, s) => s.viewers > p ? s.viewers : p);
+    final entries = groups.entries.toList()
+      ..sort((a, b) => peak(b.value).compareTo(peak(a.value)));
+    return entries;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final groups = _groupedBySource();
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1088,49 +1112,224 @@ class _StreamedStreamSheet extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Text(
             match.title,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+              color: ForjaShellColors.textPrimary,
+              fontSize: 17,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Choose a stream:',
-            style: TextStyle(color: Colors.white54, fontSize: 13),
+          const SizedBox(height: 4),
+          Text(
+            '${groups.length} ${groups.length == 1 ? 'source' : 'sources'} · '
+            '${streams.length} ${streams.length == 1 ? 'stream' : 'streams'}',
+            style: const TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 13,
+            ),
           ),
-          const SizedBox(height: 16),
-          ...streams.map(
-            (stream) => shellFocusableTap(
-              context: context,
-              onTap: () => onStreamSelected(stream),
-              borderRadius: 12,
-              navLeftAlways: true,
-              tvTabId: 'live_matches',
-              tvZone: ShellTvZone.row,
-              child: ListTile(
-                leading: Icon(
-                  stream.hd ? Icons.hd_rounded : Icons.play_circle_outline,
-                  color: ForjaShellColors.sectionAccent,
-                ),
-                title: Text(
-                  stream.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                  color: Colors.white38,
+          const SizedBox(height: 8),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final entry in groups)
+                      _StreamedSourceGroup(
+                        sourceName: _sourceLabel(entry.key),
+                        streams: entry.value,
+                        onStreamSelected: onStreamSelected,
+                      ),
+                  ],
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StreamedSourceGroup extends StatelessWidget {
+  final String sourceName;
+  final List<_StreamedStream> streams;
+  final void Function(_StreamedStream) onStreamSelected;
+
+  const _StreamedSourceGroup({
+    required this.sourceName,
+    required this.streams,
+    required this.onStreamSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 8),
+            child: Row(
+              children: [
+                Text(
+                  sourceName,
+                  style: const TextStyle(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: ForjaShellColors.sectionAccent.withValues(
+                      alpha: 0.16,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${streams.length} '
+                    '${streams.length == 1 ? 'stream' : 'streams'}',
+                    style: TextStyle(
+                      color: ForjaShellColors.sectionAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          for (var i = 0; i < streams.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 14,
+                endIndent: 14,
+                color: ForjaShellColors.cinematic.borderSubtle,
+              ),
+            _StreamedStreamRow(
+              stream: streams[i],
+              onTap: () => onStreamSelected(streams[i]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StreamedStreamRow extends StatelessWidget {
+  final _StreamedStream stream;
+  final VoidCallback onTap;
+
+  const _StreamedStreamRow({required this.stream, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 10,
+      navLeftAlways: true,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.row,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            if (stream.hd)
+              _QualityChip(label: 'HD')
+            else
+              const Icon(
+                Icons.play_circle_outline,
+                size: 20,
+                color: ForjaShellColors.textSecondary,
+              ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Stream ${stream.streamNo > 0 ? stream.streamNo : 1}',
+                    style: const TextStyle(
+                      color: ForjaShellColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (stream.language.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      stream.language,
+                      style: const TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (stream.viewers > 0) ...[
+              const Icon(
+                Icons.visibility_outlined,
+                size: 14,
+                color: Colors.white38,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${stream.viewers}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              const SizedBox(width: 10),
+            ],
+            const Icon(Icons.chevron_right, size: 18, color: Colors.white38),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QualityChip extends StatelessWidget {
+  final String label;
+
+  const _QualityChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: ForjaShellColors.sectionAccent.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: ForjaShellColors.sectionAccent,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -1168,7 +1367,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active = canPlay &&
+    final active =
+        canPlay &&
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hovered,
@@ -1280,15 +1480,9 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
               left: 8,
             ),
             if (m.isLive)
-              const _LiveMatchCornerBadge(
-                label: '● LIVE',
-                live: true,
-              )
+              const _LiveMatchCornerBadge(label: '● LIVE', live: true)
             else if (m.timeLabel.isNotEmpty)
-              _LiveMatchCornerBadge(
-                label: m.timeLabel,
-                live: false,
-              ),
+              _LiveMatchCornerBadge(label: m.timeLabel, live: false),
             if (!hasSources)
               Positioned(
                 bottom: 6,
@@ -1372,7 +1566,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
     final canPlay = hasIframe && s.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active = canPlay &&
+    final active =
+        canPlay &&
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hovered,
@@ -1494,15 +1689,9 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
               left: 8,
             ),
             if (s.isLive)
-              const _LiveMatchCornerBadge(
-                label: '● LIVE',
-                live: true,
-              )
+              const _LiveMatchCornerBadge(label: '● LIVE', live: true)
             else if (s.timeLabel.isNotEmpty)
-              _LiveMatchCornerBadge(
-                label: s.timeLabel,
-                live: false,
-              ),
+              _LiveMatchCornerBadge(label: s.timeLabel, live: false),
             // no iframe warning bottom
             if (!hasIframe)
               Positioned(

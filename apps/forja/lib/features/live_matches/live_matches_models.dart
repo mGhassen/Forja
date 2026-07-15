@@ -43,6 +43,7 @@ class _CdnSportEvent {
   final String awayTeamIMG;
   final String time;
   final String tournament;
+
   /// Parent CDN bucket (Soccer / NFL / NBA / NHL), injected by Rust flatten.
   final String sport;
   final String country;
@@ -356,15 +357,6 @@ class _StreamedStream {
     source: (j['source'] ?? '').toString(),
     viewers: (j['viewers'] as num?)?.toInt() ?? 0,
   );
-
-  String get label {
-    final parts = <String>['Stream ${streamNo > 0 ? streamNo : 1}'];
-    if (language.isNotEmpty) parts.add(language);
-    if (hd) parts.add('HD');
-    if (source.isNotEmpty) parts.add(source);
-    if (viewers > 0) parts.add('$viewers viewers');
-    return parts.join(' · ');
-  }
 }
 
 int _liveFirstCompare({
@@ -777,6 +769,7 @@ Future<List<_CdnSportEvent>> _fetchCdnSports() async {
     return [];
   }
 }
+
 enum _LiveMatchesServer { all, ppv, streamed, cdnLive }
 
 sealed class _LiveMatchGridEntry {
