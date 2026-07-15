@@ -94,7 +94,9 @@ abstract final class HostProviderAdapter {
         isCancelled: cancelled,
         providerId: 'videasy',
       );
-      if (cancelled() || sniffed == null || sniffed.url.isEmpty) return null;
+      // Keep a successful sniff even if cancel raced the completer (manual
+      // provider switch / race teardown). cancel() now completes with capture.
+      if (sniffed == null || sniffed.url.isEmpty) return null;
       return _encodeResolveResult(
         url: sniffed.url,
         sources: sniffed.sources,
@@ -134,7 +136,7 @@ abstract final class HostProviderAdapter {
         isCancelled: cancelled,
         providerId: 'vidnest',
       );
-      if (cancelled() || sniffed == null || sniffed.url.isEmpty) return null;
+      if (sniffed == null || sniffed.url.isEmpty) return null;
       return _encodeResolveResult(
         url: sniffed.url,
         sources: sniffed.sources,
@@ -182,7 +184,7 @@ abstract final class HostProviderAdapter {
         isCancelled: cancelled,
         providerId: providerId,
       );
-      if (cancelled() || result == null || result.url.isEmpty) return null;
+      if (result == null || result.url.isEmpty) return null;
       return _encodeResolveResult(
         url: result.url,
         sources: result.sources,
@@ -208,7 +210,7 @@ abstract final class HostProviderAdapter {
       isCancelled: cancelled,
       providerId: providerId,
     );
-    if (cancelled() || result == null || result.url.isEmpty) return null;
+    if (result == null || result.url.isEmpty) return null;
     return _encodeResolveResult(
       url: result.url,
       sources: result.sources,

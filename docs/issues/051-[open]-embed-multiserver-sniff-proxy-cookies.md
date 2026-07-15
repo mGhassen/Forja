@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix tasks · **0 / 4** acceptance |
+| **Progress** | **9 / 9** fix tasks · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,8 @@
 | 5 | I51-T05 | Per-provider `EmbedExtractProfile` registry — `StreamExtractor` stays generic; VidLove/VidSrc.sbs policy does not apply to other hosts | ✅ |
 | 6 | I51-T06 | Headless WebView native popup window cancellation (`onCreateWindow`) | ✅ |
 | 7 | I51-T07 | Generic headless navigation guard: block ad/tracker navigations and cancel main-frame hijacks away from the embed/player site | ✅ |
+| 8 | I51-T08 | Cancel mid-sniff keeps a captured playable URL (complete + cookies) instead of discarding as `null` | ✅ |
+| 9 | I51-T09 | Deferred-strong sniff ignores audio-only CDN clips (`tran-audio`) and waits for HLS/DASH before early-complete | ✅ |
 
 ---
 
@@ -37,6 +39,7 @@
 | 2 | I51-A02 | VidSrc.sbs HOTD S1E1: `VIDEO/STREAM DETECTED` (not only proxy/blob) then opens | ⬜ |
 | 3 | I51-A03 | Multi-server chips: sniffer logs server-chip clicks; default LOADMAXING does not strand forever | ⬜ |
 | 4 | I51-A04 | Template embed with popup/ad redirect: headless sniff blocks popup/main-frame hijack and still captures a playable stream | ⬜ |
+| 5 | I51-A05 | Manual switch to another provider after a stream was detected: previous provider still returns that hit (not hard-null discard) | ⬜ |
 
 ---
 
@@ -65,6 +68,15 @@ Rust already has one plugin file per HostRequired provider. Host sniff now mirro
 - **`HostProviderAdapter`** — `EmbedExtractProfiles.resolve(providerId)` then extract
 
 VidLove chip labels / VidSrc.sbs proxy acceptance are **not** global if-ladders anymore.
+
+### Cancel + audio-clip hardening (I51-T08–T09)
+
+Manual provider switch and race teardown call `cancelAllPending()` → shared `StreamExtractor.cancel()`. That used to dispose the WebView and complete `null` even after `VIDEO/STREAM DETECTED`, and cookie harvest aborted when `_cancelled` was set. Cancel now:
+
+- finishes an in-flight cookie harvest, or
+- completes with the best non-audio playable URL already captured.
+
+Deferred-strong profiles (VidLove, 111movies, VidSrc.sbs, …) no longer early-complete on progressive `tran-audio` mp4 clips — they wait for HLS/DASH (`isDeferredStrongStreamUrl`).
 
 ---
 

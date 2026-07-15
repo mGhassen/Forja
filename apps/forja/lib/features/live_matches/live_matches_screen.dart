@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
@@ -23,7 +24,6 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:rust/rust.dart';
-
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  MAIN SCREEN
@@ -64,13 +64,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   String _sportFilter = 'all';
 
   // Body layout: card grid or vertical timeline.
+  static const _viewPreferenceKey = 'live_matches_timeline_view';
   _LiveMatchesView _view = _LiveMatchesView.grid;
+  bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
-  // Bucket row currently hovered — lifted above neighbours so its scaled card
-  // is drawn on top.
-  int? _timelineHoverBucket;
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
@@ -91,7 +90,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     debugLabel: 'live-matches-view-toggle',
   );
 
-
   @override
   void initState() {
     super.initState();
@@ -99,6 +97,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       _tabId,
       restoreFocus: _restoreLiveMatchesTvFocus,
     );
+    unawaited(_restoreViewPreference());
     _load();
   }
 
@@ -112,15 +111,32 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     super.dispose();
   }
 
+  Future<void> _restoreViewPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final showTimeline = prefs.getBool(_viewPreferenceKey);
+    if (!mounted || _viewWasToggled || showTimeline == null) return;
+
+    final savedView = showTimeline
+        ? _LiveMatchesView.timeline
+        : _LiveMatchesView.grid;
+    if (_view != savedView) {
+      setState(() => _view = savedView);
+    }
+  }
+
   void _toggleView() {
+    _viewWasToggled = true;
     setState(() {
       _view = _view == _LiveMatchesView.grid
           ? _LiveMatchesView.timeline
           : _LiveMatchesView.grid;
       _timelineAutoScrolled = false;
     });
+    unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));
   }
 
+  Future<void> _persistViewPreference(bool showTimeline) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_viewPreferenceKey, showTimeline);
+  }
 }
-
-

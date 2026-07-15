@@ -487,6 +487,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     int i,
     int crossCount,
     VoidCallback? upEdge, {
+    bool forceActive = false,
     Color? activeBorderColor,
   }) {
     return switch (entry) {
@@ -495,6 +496,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        forceActive: forceActive,
         activeBorderColor: activeBorderColor,
         onTap: () => _s._openDamiTvStream(stream),
       ),
@@ -503,6 +505,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        forceActive: forceActive,
         activeBorderColor: activeBorderColor,
         onTap: () => _s._openStreamedMatch(match),
       ),
@@ -511,6 +514,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        forceActive: forceActive,
         activeBorderColor: activeBorderColor,
         onTap: () => _s._openCdnSportEvent(event),
       ),

@@ -121,7 +121,36 @@ class StreamExtractor {
   }
 
   /// Stop an in-flight sniff and dispose the headless WebView.
+  ///
+  /// Manual provider switches call this while another sniff may already have
+  /// a playable URL (or be mid cookie-harvest). Prefer returning that hit over
+  /// discarding it as `null` — the next extract still starts cleanly after.
   Future<void> cancel() async {
+    final referer = _playbackReferer(_originalEmbedUrl ?? '');
+    final playable = _bestPlayableCaptured();
+
+    // Cookie harvest already running — let it finish (do not null the completer).
+    if (_completing && _completer != null && !_completer!.isCompleted) {
+      _log('Cancel during complete — keeping in-flight result');
+      try {
+        await _completer!.future.timeout(const Duration(seconds: 8));
+      } catch (_) {}
+      await _cleanup();
+      _activeProviderId = null;
+      return;
+    }
+
+    // Stream already sniffed — complete with it instead of discarding.
+    if (playable != null && _completer != null && !_completer!.isCompleted) {
+      _log('Cancel with captured stream — completing instead of discard');
+      _capturedVideo = playable;
+      _cancelled = false;
+      _completing = true;
+      await _finishWithCookies(referer);
+      _activeProviderId = null;
+      return;
+    }
+
     _cancelled = true;
     _completing = false;
     await _cleanup();
@@ -129,6 +158,24 @@ class StreamExtractor {
     if (_completer != null && !_completer!.isCompleted) {
       _completer!.complete(null);
     }
+  }
+
+  /// Best playable URL among detected candidates (excludes audio-only clips).
+  String? _bestPlayableCaptured() {
+    final fromList = _detectedVideoUrls
+        .where(StreamExtractor.isPlayableStreamUrl)
+        .where((u) => !StreamExtractor.isAudioOnlyStreamUrl(u))
+        .toList();
+    if (fromList.isNotEmpty) {
+      return _selectBestQuality(fromList);
+    }
+    final single = _capturedVideo;
+    if (single != null &&
+        StreamExtractor.isPlayableStreamUrl(single) &&
+        !StreamExtractor.isAudioOnlyStreamUrl(single)) {
+      return single;
+    }
+    return null;
   }
 
   Future<ExtractedMedia?> extract(
@@ -181,26 +228,21 @@ class StreamExtractor {
 
     _timeoutTimer = Timer(effectiveTimeout, () {
       if (_completer != null && !_completer!.isCompleted) {
+        final best = _bestPlayableCaptured();
+        if (best != null) {
+          // Timeout (or cancel flagged mid-sniff): still return what we have.
+          _capturedVideo = best;
+          _completeWithCaptured(url);
+          return;
+        }
         if (cancelled()) {
           _cleanup();
           _completer?.complete(null);
           return;
         }
-        // Select best quality from detected URLs before completing
-        final playable = _detectedVideoUrls
-            .where(StreamExtractor.isPlayableStreamUrl)
-            .toList();
-        if (playable.isNotEmpty) {
-          _capturedVideo = _selectBestQuality(playable);
-          _completeWithCaptured(url);
-        } else if (_capturedVideo != null &&
-            StreamExtractor.isPlayableStreamUrl(_capturedVideo!)) {
-          _completeWithCaptured(url);
-        } else {
-          _log('Sniffing session timeout for: $url');
-          _cleanup();
-          _completer?.complete(null);
-        }
+        _log('Sniffing session timeout for: $url');
+        _cleanup();
+        _completer?.complete(null);
       }
     });
 
@@ -560,29 +602,30 @@ class StreamExtractor {
 
     final playbackReferer = _playbackReferer(referer);
 
-    // Check audio only in the URL path (not query params)
-    final pathOnly = Uri.tryParse(rUrl)?.path ?? rUrl;
-    if (pathOnly.contains('/audio/') || pathOnly.contains('audio_')) {
+    // Audio-only CDN paths (e.g. VidLove/111movies `tran-audio`) — never
+    // treat as the primary video when deferring for a strong stream.
+    if (isAudioOnlyStreamUrl(rUrl)) {
       _log('AUDIO DETECTED: $rUrl');
       _capturedAudio = rUrl;
       _capturedHeaders ??= _buildHeaders(playbackReferer);
-    } else {
-      _log('VIDEO/STREAM DETECTED: $rUrl');
-
-      if (!_detectedVideoUrls.contains(rUrl)) {
-        _detectedVideoUrls.add(rUrl);
-      }
-
-      _capturedVideo = _selectBestQuality(_detectedVideoUrls);
-      _capturedHeaders ??= _buildHeaders(playbackReferer);
+      return;
     }
+
+    _log('VIDEO/STREAM DETECTED: $rUrl');
+
+    if (!_detectedVideoUrls.contains(rUrl)) {
+      _detectedVideoUrls.add(rUrl);
+    }
+
+    _capturedVideo = _selectBestQuality(_detectedVideoUrls);
+    _capturedHeaders ??= _buildHeaders(playbackReferer);
 
     if (_capturedVideo == null) return;
 
-    // SPA / multi-server embeds: wait for a strong playlist URL.
+    // SPA / multi-server embeds: wait for HLS/DASH (not progressive mp4).
     if (_profile.deferUntilStrongStream) {
       final strong =
-          isStrongStreamUrl(_capturedVideo!) ||
+          isDeferredStrongStreamUrl(_capturedVideo!) ||
           (_profile.acceptProxyPlaylistBodies &&
               _isEmbedProxyPlaylistUrl(_capturedVideo!));
       if (strong) {
@@ -669,17 +712,54 @@ class StreamExtractor {
     return false;
   }
 
+  /// Audio-only / secondary tracks that look like `.mp4` but are not the film.
+  static bool isAudioOnlyStreamUrl(String url) {
+    final path = Uri.tryParse(url.trim())?.path.toLowerCase() ??
+        url.trim().toLowerCase();
+    return path.contains('/tran-audio/') ||
+        path.contains('/audio/') ||
+        path.contains('audio_') ||
+        path.contains('/tran-audio') ||
+        path.contains('tran-audio/');
+  }
+
   static bool isStrongStreamUrl(String url) {
+    if (isAudioOnlyStreamUrl(url)) return false;
+    final lower = url.toLowerCase();
+    // Progressive mp4 can be a stale signed clip; prefer playlist formats when
+    // [EmbedExtractProfile.deferUntilStrongStream] is waiting for a real open.
+    if (lower.contains('.m3u8')) return true;
+    if (lower.contains('.mpd')) return true;
+    if (lower.contains('playlist') && !lower.contains('webmanifest')) {
+      return true;
+    }
+    // Non-deferred callers still treat clean mp4 as strong via playable +
+    // immediate complete; deferred profiles wait for HLS/DASH above.
+    if (lower.contains('.mp4') && !lower.contains('googlevideo.com')) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Strong enough to end a [EmbedExtractProfile.deferUntilStrongStream] sniff.
+  /// Excludes progressive mp4 so multi-server embeds can rotate past audio clips.
+  static bool isDeferredStrongStreamUrl(String url) {
+    if (isAudioOnlyStreamUrl(url)) return false;
     final lower = url.toLowerCase();
     return lower.contains('.m3u8') ||
         lower.contains('.mpd') ||
-        (lower.contains('.mp4') && !lower.contains('googlevideo.com')) ||
         (lower.contains('playlist') && !lower.contains('webmanifest'));
   }
 
   String _selectBestQuality(List<String> urls) {
-    final playable = urls.where(StreamExtractor.isPlayableStreamUrl).toList();
-    if (playable.isEmpty) return urls.isNotEmpty ? urls.first : '';
+    final playable = urls
+        .where(StreamExtractor.isPlayableStreamUrl)
+        .where((u) => !StreamExtractor.isAudioOnlyStreamUrl(u))
+        .toList();
+    if (playable.isEmpty) {
+      final any = urls.where(StreamExtractor.isPlayableStreamUrl).toList();
+      return any.isNotEmpty ? any.first : (urls.isNotEmpty ? urls.first : '');
+    }
 
     // Quality priority: 4K > 2160p > 1440p > 1080p > 720p > 480p > 360p
     final qualityOrder = [
@@ -706,31 +786,33 @@ class StreamExtractor {
     // Prefer HLS/DASH over progressive when multiple hits exist.
     final hls = playable.where((u) => u.toLowerCase().contains('.m3u8'));
     if (hls.isNotEmpty) return hls.first;
+    final dash = playable.where((u) => u.toLowerCase().contains('.mpd'));
+    if (dash.isNotEmpty) return dash.first;
 
     return playable.first;
   }
 
   void _completeWithCaptured(String referer) {
-    if (_cancelled || _completing) return;
+    if (_completing) return;
     if (_completer == null || _completer!.isCompleted) return;
     _completing = true;
     unawaited(_finishWithCookies(referer));
   }
 
   Future<void> _finishWithCookies(String referer) async {
-    if (_cancelled) {
-      _completing = false;
-      return;
-    }
     if (_completer == null || _completer!.isCompleted) {
       _completing = false;
       return;
     }
-    final video = _capturedVideo;
+    // Prefer a non-audio playable URL if we have one (cancel / late refine).
+    final video = _bestPlayableCaptured() ?? _capturedVideo;
     if (video == null || video.isEmpty) {
       _completing = false;
       return;
     }
+    _capturedVideo = video;
+    // Once we have a playable URL, finish even if cancel was requested —
+    // switching providers must not throw away an already-found stream.
 
     final headers = Map<String, String>.from(
       _capturedHeaders ?? _buildHeaders(referer),

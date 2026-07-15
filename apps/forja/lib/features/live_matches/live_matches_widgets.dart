@@ -368,6 +368,7 @@ class _CdnSportCard extends StatefulWidget {
   final int? gridColumns;
   final VoidCallback? onUpEdge;
   final Color? activeBorderColor;
+  final bool forceActive;
   const _CdnSportCard({
     required this.event,
     required this.onTap,
@@ -375,6 +376,7 @@ class _CdnSportCard extends StatefulWidget {
     this.gridColumns,
     this.onUpEdge,
     this.activeBorderColor,
+    this.forceActive = false,
   });
 
   @override
@@ -391,12 +393,13 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active =
-        canPlay &&
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        );
+        widget.forceActive ||
+        (canPlay &&
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+            ));
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
@@ -1378,6 +1381,7 @@ class _StreamedMatchCard extends StatefulWidget {
   final int? gridColumns;
   final VoidCallback? onUpEdge;
   final Color? activeBorderColor;
+  final bool forceActive;
 
   const _StreamedMatchCard({
     required this.match,
@@ -1386,6 +1390,7 @@ class _StreamedMatchCard extends StatefulWidget {
     this.gridColumns,
     this.onUpEdge,
     this.activeBorderColor,
+    this.forceActive = false,
   });
 
   @override
@@ -1404,12 +1409,13 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active =
-        canPlay &&
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        );
+        widget.forceActive ||
+        (canPlay &&
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+            ));
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -1580,6 +1586,7 @@ class _DamiTvMatchCard extends StatefulWidget {
   final int? gridColumns;
   final VoidCallback? onUpEdge;
   final Color? activeBorderColor;
+  final bool forceActive;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
@@ -1587,6 +1594,7 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.gridColumns,
     this.onUpEdge,
     this.activeBorderColor,
+    this.forceActive = false,
   });
 
   @override
@@ -1605,12 +1613,13 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final canPlay = hasIframe && s.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active =
-        canPlay &&
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        );
+        widget.forceActive ||
+        (canPlay &&
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+            ));
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),

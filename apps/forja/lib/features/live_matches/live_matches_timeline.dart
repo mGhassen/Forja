@@ -3,7 +3,7 @@ part of 'live_matches_screen.dart';
 // ═════════════════════════════════════════════════════════════════════════════
 //  VERTICAL TIMELINE VIEW
 //
-//  Continuous time canvas: each 30-minute bucket is positioned at its real
+//  Continuous time canvas: each 1-hour bucket is positioned at its real
 //  clock Y (empty hours take space) so a card sticks to its time — not the
 //  top of the list. Same-time streams share one horizontal line; overflow
 //  scrolls sideways without moving time. Vertical scroll moves the clock;
@@ -15,7 +15,10 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
 
   static const double _timelineRulerWidth = 112;
   static const double _timelinePlayheadFraction = 0.38;
-  static const int _bucketMinutes = 30;
+  static const int _bucketMinutes = 60;
+
+  /// Opaque card base so overlapping timeline rows don't bleed through.
+  static const Color _timelineCardBase = Color(0xFF1C1C1C);
 
   /// Normalize an epoch (seconds or milliseconds) into a local [DateTime].
   static DateTime? _epochToDate(int value) {
@@ -25,11 +28,12 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     return DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
-  /// Floor an epoch-ms to the start of its 30-minute bucket.
+  /// Floor an epoch-ms to the start of its bucket window.
   static int _bucketFloorMs(int ms) {
     final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-    final minute = dt.minute < _bucketMinutes ? 0 : _bucketMinutes;
-    return DateTime(dt.year, dt.month, dt.day, dt.hour, minute)
+    final total = dt.hour * 60 + dt.minute;
+    final floored = total - (total % _bucketMinutes);
+    return DateTime(dt.year, dt.month, dt.day, floored ~/ 60, floored % 60)
         .millisecondsSinceEpoch;
   }
 
@@ -46,7 +50,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     return t?.millisecondsSinceEpoch ?? nowMs;
   }
 
-  /// Chronological 30-minute buckets. Same-time streams share one row.
+  /// Chronological 1-hour buckets. Same-hour streams share one row.
   List<_TimelineBucket> get _timelineBuckets {
     final entries = <_LiveMatchGridEntry>[];
     switch (_s._server) {
@@ -183,8 +187,8 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     );
   }
 
-  /// Positioned bucket rows, with the hovered row moved last so its scaled
-  /// card paints above its neighbours.
+  /// Positioned bucket rows on the continuous time canvas. Hover lift is
+  /// per-card (an overlay clone), so rows never reorder here.
   Widget _buildTimelineCanvas({
     required List<_TimelineBucket> buckets,
     required double contentStartMs,
@@ -193,23 +197,21 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     required double cardHeight,
     required double gap,
   }) {
-    final rows = <Widget>[
-      for (var b = 0; b < buckets.length; b++)
-        _buildTimedBucketRow(
-          bucket: buckets[b],
-          bucketIndex: b,
-          buckets: buckets,
-          top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
-          cardWidth: cardWidth,
-          cardHeight: cardHeight,
-          gap: gap,
-        ),
-    ];
-    final hovered = _s._timelineHoverBucket;
-    if (hovered != null && hovered >= 0 && hovered < rows.length) {
-      rows.add(rows.removeAt(hovered));
-    }
-    return Stack(clipBehavior: Clip.none, children: rows);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        for (var b = 0; b < buckets.length; b++)
+          _buildTimedBucketRow(
+            bucket: buckets[b],
+            bucketIndex: b,
+            buckets: buckets,
+            top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
+            cardWidth: cardWidth,
+            cardHeight: cardHeight,
+            gap: gap,
+          ),
+      ],
+    );
   }
 
   Widget _buildTimedBucketRow({
@@ -226,7 +228,6 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         .fold<int>(0, (n, b) => n + b.entries.length);
 
     return Positioned(
-      // Stable key so reordering for z-lift keeps each row's scroll/hover state.
       key: ValueKey(bucket.bucketMs),
       left: _timelineRulerWidth + 6,
       right: 0,
@@ -242,31 +243,33 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         separatorBuilder: (_, _) => SizedBox(width: gap),
         itemBuilder: (context, i) {
           final flatIndex = flatBase + i;
-          return SizedBox(
+          final entry = bucket.entries[i];
+          final upEdge = bucketIndex == 0
+              ? () => _s._focusTopBarItem(
+                  _LiveMatchesScreenState._topBarServersIndex,
+                )
+              : null;
+          // Opaque base so overlapping rows never show through the card. The
+          // hovered clone renders active (play overlay + white border).
+          Widget buildCard(BuildContext _, {required bool hovered}) =>
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _timelineCardBase,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: _s._gridEntryCard(
+                  entry,
+                  flatIndex,
+                  bucket.entries.length,
+                  upEdge,
+                  forceActive: hovered,
+                  activeBorderColor: hovered ? Colors.white : null,
+                ),
+              );
+          return _TimelineHoverCard(
             width: cardWidth,
-            child: _TimelineHoverCard(
-              onHoverChanged: (hovering) {
-                if (!mounted) return;
-                setState(() {
-                  if (hovering) {
-                    _s._timelineHoverBucket = bucketIndex;
-                  } else if (_s._timelineHoverBucket == bucketIndex) {
-                    _s._timelineHoverBucket = null;
-                  }
-                });
-              },
-              child: _s._gridEntryCard(
-                bucket.entries[i],
-                flatIndex,
-                bucket.entries.length,
-                bucketIndex == 0
-                    ? () => _s._focusTopBarItem(
-                        _LiveMatchesScreenState._topBarServersIndex,
-                      )
-                    : null,
-                activeBorderColor: Colors.white,
-              ),
-            ),
+            height: cardHeight,
+            cardBuilder: buildCard,
           );
         },
       ),
@@ -353,46 +356,109 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
 class _TimelineBucket {
   const _TimelineBucket({required this.bucketMs, required this.entries});
 
-  /// Start of the 30-minute window (epoch ms).
+  /// Start of the 1-hour window (epoch ms).
   final int bucketMs;
   final List<_LiveMatchGridEntry> entries;
 }
 
-/// Scales its card up on pointer hover and reports the hover so the parent can
-/// lift the whole row above its neighbours. The white border comes from the
-/// card's own active state (see `activeBorderColor`).
+/// Per-card hover: on pointer enter it hides the in-place card and draws a
+/// scaled clone with a white border in the app overlay — so only that card
+/// grows and sits above every other row, independent of its row-mates. The
+/// clone tracks the original through scroll via [CompositedTransformFollower].
+typedef _HoverCardBuilder = Widget Function(
+  BuildContext context, {
+  required bool hovered,
+});
+
 class _TimelineHoverCard extends StatefulWidget {
   const _TimelineHoverCard({
-    required this.child,
-    required this.onHoverChanged,
+    required this.width,
+    required this.height,
+    required this.cardBuilder,
   });
 
-  final Widget child;
-  final ValueChanged<bool> onHoverChanged;
+  final double width;
+  final double height;
+  final _HoverCardBuilder cardBuilder;
 
   @override
   State<_TimelineHoverCard> createState() => _TimelineHoverCardState();
 }
 
 class _TimelineHoverCardState extends State<_TimelineHoverCard> {
-  bool _hover = false;
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _entry;
+  bool _hovered = false;
 
-  void _set(bool value) {
-    if (_hover == value) return;
-    setState(() => _hover = value);
-    widget.onHoverChanged(value);
+  @override
+  void dispose() {
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _removeOverlay() {
+    _entry?.remove();
+    _entry = null;
+  }
+
+  void _onEnter() {
+    if (_hovered) return;
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+    _hovered = true;
+    _entry = OverlayEntry(builder: _buildClone);
+    overlay.insert(_entry!);
+    setState(() {});
+  }
+
+  void _onExit() {
+    if (!_hovered) return;
+    _hovered = false;
+    _removeOverlay();
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildClone(BuildContext context) {
+    return CompositedTransformFollower(
+      link: _link,
+      showWhenUnlinked: false,
+      child: IgnorePointer(
+        child: SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 1.0, end: 1.06),
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            builder: (context, scale, child) =>
+                Transform.scale(scale: scale, child: child),
+            // Rendered active so the play overlay + white border show; the
+            // card draws its own border/shadow.
+            child: widget.cardBuilder(context, hovered: true),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => _set(true),
-      onExit: (_) => _set(false),
-      child: AnimatedScale(
-        scale: _hover ? 1.05 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        child: widget.child,
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => _onEnter(),
+      onExit: (_) => _onExit(),
+      child: CompositedTransformTarget(
+        link: _link,
+        child: SizedBox(
+          width: widget.width,
+          height: widget.height,
+          // Hidden while hovered — the overlay clone stands in for it — but
+          // still hit-tests so taps pass through to open the stream.
+          child: Opacity(
+            opacity: _hovered ? 0.0 : 1.0,
+            child: widget.cardBuilder(context, hovered: false),
+          ),
+        ),
       ),
     );
   }

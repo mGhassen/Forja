@@ -60,6 +60,38 @@ void main() {
         isTrue,
       );
     });
+
+    test('tran-audio mp4 is not strong', () {
+      expect(
+        StreamExtractor.isStrongStreamUrl(
+          'https://bcdn.example.com/tran-audio/20250603/clip.mp4?sign=abc',
+        ),
+        isFalse,
+      );
+      expect(
+        StreamExtractor.isAudioOnlyStreamUrl(
+          'https://bcdn.example.com/tran-audio/20250603/clip.mp4?sign=abc',
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('StreamExtractor.isDeferredStrongStreamUrl', () {
+    test('m3u8 ends deferred sniff; progressive mp4 does not', () {
+      expect(
+        StreamExtractor.isDeferredStrongStreamUrl(
+          'https://cdn.example.com/master.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        StreamExtractor.isDeferredStrongStreamUrl(
+          'https://cdn.example.com/film.mp4',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('EmbedExtractProfiles', () {
