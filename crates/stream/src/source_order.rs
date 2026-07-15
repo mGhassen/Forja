@@ -204,35 +204,23 @@ fn anime_order() -> &'static [&'static str] {
     &[
         "miruro:bee",
         "allanime:Default",
+        "allanime:Yt-mp4",
         "allanime:S-mp4",
+        "allanime:Luf-Mp4",
         "megaplay",
         "vidwish",
         "miruro:zoro",
-        "animerealms:hianime",
         "miruro:kiwi",
-        "animerealms:animepahe",
-        "allanime:Yt-mp4",
-        "allanime:Luf-Mp4",
-        "allanime:Uv-mp4",
         "miruro:ally",
-        "animerealms:allmanga",
         "miruro:hop",
         "miruro:bonk",
-        "animerealms:gogoanime",
         "miruro:moo",
-        "animerealms:zencloud",
-        "animerealms:animekai",
-        "animerealms:animez",
-        "animerealms:kickassanime",
-        "animerealms:anizone",
-        "animerealms:febbox",
         "miruro:animedunya",
         "miruro:arc",
         "miruro:jet",
         "miruro:bun",
         "miruro:kuz",
         "miruro:telli",
-        "animerealms:hanime-tv",
         "watchhentai",
         "hentaini",
     ]
@@ -246,7 +234,6 @@ fn anime_score(id: &str) -> u32 {
     }
     if id.starts_with("miruro:")
         || id.starts_with("allanime:")
-        || id.starts_with("animerealms:")
         || id == "megaplay"
         || id == "vidwish"
         || id == "watchhentai"

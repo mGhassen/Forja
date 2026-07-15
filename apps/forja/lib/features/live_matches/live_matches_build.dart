@@ -202,11 +202,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
       ),
     );
   }
-  List<_LiveMatchGridEntry> get _allGridEntries => _sortGridEntriesLiveFirst([
-    ..._s._filteredDamiTv.map(_LiveMatchGridEntry.ppv),
-    ..._s._filteredStreamed.map(_LiveMatchGridEntry.streamed),
-    ..._s._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport),
-  ]);
+  List<_LiveMatchGridEntry> get _allGridEntries =>
+      _mergePpvAndStreamedEntries(
+        ppv: _s._filteredDamiTv,
+        streamed: _s._filteredStreamed,
+        cdn: _s._filteredCdnSports,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -509,6 +510,19 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         activeBorderColor: activeBorderColor,
         onTap: () => _s._openStreamedMatch(match),
       ),
+      _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
+        _DamiTvMatchCard(
+          stream: ppv,
+          gridIndex: i,
+          gridColumns: crossCount,
+          onUpEdge: upEdge,
+          forceActive: forceActive,
+          activeBorderColor: activeBorderColor,
+          playableOverride:
+              (ppv.iframe.isNotEmpty || streamed.sources.isNotEmpty) &&
+              (ppv.isLive || streamed.isLive),
+          onTap: () => _s._openMergedMatch(ppv, streamed),
+        ),
       _LiveMatchGridEntryCdnSport(:final event) => _CdnSportCard(
         event: event,
         gridIndex: i,

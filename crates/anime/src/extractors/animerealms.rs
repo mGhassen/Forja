@@ -6,19 +6,9 @@ use super::common::{anime_post, AnimeTrackOut, StreamResultOut, DEFAULT_UA};
 
 const BASE_URL: &str = "https://www.animerealms.org";
 
-pub const DEFAULT_PROVIDERS: &[&str] = &[
-    "hianime",
-    "allmanga",
-    "gogoanime",
-    "zencloud",
-    "animepahe",
-    "animez",
-    "animekai",
-    "kickassanime",
-    "anizone",
-    "febbox",
-    "hanime-tv",
-];
+/// Upstream watch API is gone (`animerealms.org` parked). Kept empty so
+/// `animerealms_known_providers` matches the Dart catalog.
+pub const DEFAULT_PROVIDERS: &[&str] = &[];
 
 fn headers() -> HashMap<String, String> {
     HashMap::from([

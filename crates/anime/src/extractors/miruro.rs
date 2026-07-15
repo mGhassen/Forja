@@ -167,28 +167,33 @@ pub fn fetch_episodes(
     anilist_id: i64,
     webview_body: Option<&str>,
     webview_x_obf: Option<&str>,
+    webview_pipe_path: Option<&str>,
 ) -> Result<Value, String> {
-    if webview_body.is_none() {
-        if let Ok(cache) = eps_cache().lock() {
-            if let Some(v) = cache.get(&anilist_id) {
-                return Ok(v.clone());
-            }
+    // Always prefer cache — a sources-pipe WebView body must not wipe episodes.
+    if let Ok(cache) = eps_cache().lock() {
+        if let Some(v) = cache.get(&anilist_id) {
+            return Ok(v.clone());
         }
     }
     let query = HashMap::from([("anilistId".into(), anilist_id.to_string())]);
-    let result = api_get("episodes", &query, webview_body, webview_x_obf)?;
+    let use_wv = webview_pipe_path == Some("episodes");
+    let result = api_get(
+        "episodes",
+        &query,
+        if use_wv { webview_body } else { None },
+        if use_wv { webview_x_obf } else { None },
+    )?;
     match result {
         Some(v) => {
-            if webview_body.is_none() {
-                if let Ok(mut cache) = eps_cache().lock() {
-                    cache.insert(anilist_id, v.clone());
-                }
+            if let Ok(mut cache) = eps_cache().lock() {
+                cache.insert(anilist_id, v.clone());
             }
             Ok(v)
         }
         None => Ok(json!({
             "cf_blocked": true,
             "pipe_url": episodes_pipe_url(anilist_id),
+            "pipe_path": "episodes",
         })),
     }
 }
@@ -317,8 +322,9 @@ pub fn miruro_resolve(
     provider: &str,
     webview_body: Option<&str>,
     webview_x_obf: Option<&str>,
+    webview_pipe_path: Option<&str>,
 ) -> Result<Value, String> {
-    let ep_data = fetch_episodes(anilist_id, webview_body, webview_x_obf)?;
+    let ep_data = fetch_episodes(anilist_id, webview_body, webview_x_obf, webview_pipe_path)?;
     if ep_data.get("cf_blocked").and_then(|v| v.as_bool()) == Some(true) {
         return Ok(ep_data);
     }
@@ -365,7 +371,15 @@ pub fn miruro_resolve(
         ("anilistId".into(), anilist_id.to_string()),
     ]);
 
-    let src = match api_get("sources", &query, webview_body, webview_x_obf)? {
+    // Never reuse an episodes WebView body for the sources pipe — that used to
+    // return empty streams with no cf_blocked, so the Dart fallback never ran.
+    let use_wv = webview_pipe_path == Some("sources");
+    let src = match api_get(
+        "sources",
+        &query,
+        if use_wv { webview_body } else { None },
+        if use_wv { webview_x_obf } else { None },
+    )? {
         Some(v) => v,
         None => {
             let payload = json!({
@@ -381,6 +395,7 @@ pub fn miruro_resolve(
                 "streams": [],
                 "cf_blocked": true,
                 "pipe_url": format!("{base}/api/secure/pipe?e={encoded}"),
+                "pipe_path": "sources",
             }));
         }
     };
@@ -457,5 +472,45 @@ mod tests {
         let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
         let out = deobfuscate(&b64, "2").unwrap();
         assert_eq!(out, plain);
+    }
+
+    #[test]
+    fn episodes_webview_body_is_not_treated_as_sources() {
+        // Simulate: episodes JSON passed with pipe_path=episodes must not
+        // satisfy the sources step (would return empty streams, no cf_blocked).
+        let episodes_json = r#"{"providers":{"bee":{"episodes":{"sub":[{"number":1,"id":"ep1"}]}}}}"#;
+        // Cache episodes via fetch with matching path.
+        let ep = fetch_episodes(
+            999001,
+            Some(episodes_json),
+            None,
+            Some("episodes"),
+        )
+        .unwrap();
+        assert!(ep.get("providers").is_some());
+
+        // Sources step with episodes-tagged body must CF-block (no HTTP in unit test
+        // either — api_get gets None without network after skipping wrong webview).
+        let out = miruro_resolve(
+            999001,
+            1,
+            "sub",
+            "bee",
+            Some(episodes_json),
+            None,
+            Some("episodes"),
+        )
+        .unwrap();
+        // Without a real sources fetch, expect cf_blocked or empty — never a false
+        // success that silently swallowed the episodes body as sources.
+        let streams = out.get("streams").and_then(|v| v.as_array());
+        let cf = out.get("cf_blocked").and_then(|v| v.as_bool()) == Some(true);
+        assert!(
+            cf || streams.map(|s| s.is_empty()).unwrap_or(true),
+            "unexpected resolve payload: {out}"
+        );
+        if cf {
+            assert_eq!(out.get("pipe_path").and_then(|v| v.as_str()), Some("sources"));
+        }
     }
 }

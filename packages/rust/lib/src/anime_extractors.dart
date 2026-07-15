@@ -15,12 +15,13 @@ Future<Map<String, dynamic>> animeExtractorRequest(
 }
 
 /// Provider names exposed by AllAnime (matches Rust `KNOWN_PROVIDERS`).
+///
+/// `Default` is a Forja alias that tries Yt-mp4 → S-mp4 → Luf-Mp4.
 const allAnimeKnownProviders = [
   'Default',
-  'S-mp4',
   'Yt-mp4',
+  'S-mp4',
   'Luf-Mp4',
-  'Uv-mp4',
 ];
 
 /// Miruro pipe keys (matches Rust `KNOWN_PROVIDERS`).
@@ -56,19 +57,10 @@ const miruroUpstreamSources = <String, String>{
   'telli': 'Miruro',
 };
 
-const animeRealmsDefaultProviders = [
-  'hianime',
-  'allmanga',
-  'gogoanime',
-  'zencloud',
-  'animepahe',
-  'animez',
-  'animekai',
-  'kickassanime',
-  'anizone',
-  'febbox',
-  'hanime-tv',
-];
+/// AnimeRealms upstream shut down (`animerealms.org` is a parked lander;
+/// `animerealms.com` is a collectibles storefront). Kept empty so old settings
+/// keys drop out via [SettingsService.mergeProviderOrder].
+const animeRealmsDefaultProviders = <String>[];
 
 class AnimeExtractorTrack {
   final String url;
@@ -167,6 +159,9 @@ Future<List<AnimeExtractorStreamResult>> miruroExtractAllStreams({
 }
 
 /// When Rust returns [cf_blocked], fetch [pipeUrl] via WebView then retry.
+///
+/// Miruro needs two pipes (episodes → sources). Each WebView body is tagged
+/// with [webview_pipe_path] so Rust never reuses episodes JSON as sources.
 Future<MiruroRustResolve> miruroResolveWithCfFallback({
   required int anilistId,
   required int episodeNumber,
@@ -175,47 +170,38 @@ Future<MiruroRustResolve> miruroResolveWithCfFallback({
   required Future<({int status, String body, String? xObf})?> Function(String pipeUrl)
       fetchPipeViaWebView,
 }) async {
-  var decoded = await animeExtractorRequest({
-    'action': 'miruro_resolve',
-    'anilist_id': anilistId,
-    'episode_number': episodeNumber,
-    'category': category,
-    'provider': provider,
-  });
-  if (decoded['cf_blocked'] == true) {
-    var pipeUrl = decoded['pipe_url'] as String?;
-    if (pipeUrl != null && pipeUrl.isNotEmpty) {
-      var viaBrowser = await fetchPipeViaWebView(pipeUrl);
-      if (viaBrowser != null && viaBrowser.status == 200) {
-        decoded = await animeExtractorRequest({
-          'action': 'miruro_resolve',
-          'anilist_id': anilistId,
-          'episode_number': episodeNumber,
-          'category': category,
-          'provider': provider,
-          'webview_body': viaBrowser.body,
-          if (viaBrowser.xObf != null) 'webview_x_obfuscated': viaBrowser.xObf,
-        });
-        if (decoded['cf_blocked'] == true) {
-          pipeUrl = decoded['pipe_url'] as String?;
-          if (pipeUrl != null && pipeUrl.isNotEmpty) {
-            viaBrowser = await fetchPipeViaWebView(pipeUrl);
-            if (viaBrowser != null && viaBrowser.status == 200) {
-              decoded = await animeExtractorRequest({
-                'action': 'miruro_resolve',
-                'anilist_id': anilistId,
-                'episode_number': episodeNumber,
-                'category': category,
-                'provider': provider,
-                'webview_body': viaBrowser.body,
-                if (viaBrowser.xObf != null)
-                  'webview_x_obfuscated': viaBrowser.xObf,
-              });
-            }
-          }
-        }
-      }
-    }
+  Future<Map<String, dynamic>> resolve({
+    String? webviewBody,
+    String? webviewXObf,
+    String? webviewPipePath,
+  }) {
+    return animeExtractorRequest({
+      'action': 'miruro_resolve',
+      'anilist_id': anilistId,
+      'episode_number': episodeNumber,
+      'category': category,
+      'provider': provider,
+      if (webviewBody != null) 'webview_body': webviewBody,
+      if (webviewXObf != null) 'webview_x_obfuscated': webviewXObf,
+      if (webviewPipePath != null) 'webview_pipe_path': webviewPipePath,
+    });
+  }
+
+  var decoded = await resolve();
+  // At most two CF hops: episodes pipe, then sources pipe.
+  for (var hop = 0; hop < 2 && decoded['cf_blocked'] == true; hop++) {
+    final pipeUrl = decoded['pipe_url'] as String?;
+    if (pipeUrl == null || pipeUrl.isEmpty) break;
+    final pipePath = (decoded['pipe_path'] as String?)?.trim();
+    final viaBrowser = await fetchPipeViaWebView(pipeUrl);
+    if (viaBrowser == null || viaBrowser.status != 200) break;
+    decoded = await resolve(
+      webviewBody: viaBrowser.body,
+      webviewXObf: viaBrowser.xObf,
+      webviewPipePath: (pipePath != null && pipePath.isNotEmpty)
+          ? pipePath
+          : (hop == 0 ? 'episodes' : 'sources'),
+    );
   }
   final streams = decoded['streams'];
   if (streams is! List) {

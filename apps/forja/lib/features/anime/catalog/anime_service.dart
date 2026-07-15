@@ -525,18 +525,7 @@ class AnimeService {
         }
       }
     }
-    // AnimeRealms — one embed per known provider per category. API has no
-    // sub/dub split; both categories share the same watch endpoint.
-    for (final cat in const ['sub', 'dub']) {
-      for (final prov in animeRealmsDefaultProviders) {
-        all.add(AnimeEmbed(
-          label: AnimeStreamProviders.displayName('animerealms:$prov'),
-          server: 'animerealms',
-          category: cat,
-          url: 'animerealms://anilist/$anilistId/$episode/$prov',
-        ));
-      }
-    }
+    // AnimeRealms removed — upstream /api/watch is gone (see changelog).
     // WatchHentai — only for adult titles. Single embed; the extractor
     // searches watchhentai.net's catalog for any of the provided titles.
     if (isAdult && titles.isNotEmpty) {

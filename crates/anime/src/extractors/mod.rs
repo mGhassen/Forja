@@ -28,6 +28,9 @@ struct ExtractorRequest {
     webview_body: String,
     #[serde(default)]
     webview_x_obfuscated: String,
+    /// Which Miruro pipe the [webview_body] belongs to: `episodes` or `sources`.
+    #[serde(default)]
+    webview_pipe_path: String,
     #[serde(default)]
     pipe_body: String,
     #[serde(default)]
@@ -74,6 +77,14 @@ pub fn extractor_json(request_json: &str) -> String {
     } else {
         None
     };
+    let webview_pipe_path = if !req.webview_pipe_path.is_empty() {
+        Some(req.webview_pipe_path.as_str())
+    } else if webview_body.is_some() {
+        // Legacy callers only fetched the episodes pipe.
+        Some("episodes")
+    } else {
+        None
+    };
 
     let result = match req.action.as_str() {
         "allanime_search" => allanime::allanime_search(&req.title_candidates, &req.category),
@@ -91,6 +102,7 @@ pub fn extractor_json(request_json: &str) -> String {
             &req.provider,
             webview_body,
             webview_x_obf,
+            webview_pipe_path,
         ),
         "miruro_decode_pipe" => {
             let body = webview_body.unwrap_or("");

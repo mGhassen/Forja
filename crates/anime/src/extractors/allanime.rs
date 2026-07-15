@@ -23,7 +23,14 @@ const EPISODE_QUERY_HASH: &str =
 
 const SEARCH_GQL: &str = r#"query($search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType) { shows(search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin) { edges { _id name englishName availableEpisodes __typename } } }"#;
 
-pub const KNOWN_PROVIDERS: &[&str] = &["Default", "S-mp4", "Yt-mp4", "Luf-Mp4", "Uv-mp4"];
+/// Upstream `sourceName` values we expose in Settings / the Source panel.
+///
+/// `Default` is a Forja alias (not an AllAnime name) that tries the strongest
+/// live sources in order. `Uv-mp4` was removed — AllAnime no longer returns it.
+pub const KNOWN_PROVIDERS: &[&str] = &["Default", "Yt-mp4", "S-mp4", "Luf-Mp4"];
+
+/// Preference order when resolving `Default` or when a named source misses.
+const DEFAULT_TRY_ORDER: &[&str] = &["Yt-mp4", "S-mp4", "Luf-Mp4"];
 
 static SHOW_ID_CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
 static SOURCES_CACHE: OnceLock<Mutex<HashMap<String, Vec<Value>>>> = OnceLock::new();
@@ -322,6 +329,68 @@ fn resolve_decoded_path(path: &str, provider: &str) -> Result<Option<StreamResul
     }))
 }
 
+fn is_iframe_embed_url(url: &str) -> bool {
+    let u = url.to_lowercase();
+    u.contains("/embed")
+        || u.contains("ok.ru/")
+        || u.contains("streamwish.")
+        || u.contains("mp4upload.")
+        || u.contains("bysekoze.")
+        || u.contains("uns.bio")
+        || u.contains("strmup.")
+        || u.contains("vidmoly.")
+        || u.contains("filemoon.")
+}
+
+fn resolve_source_url(raw: &str, provider_label: &str) -> Result<Option<StreamResultOut>, String> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return Ok(None);
+    }
+    if raw.starts_with("--") {
+        if let Some(decoded) = decode_xor_path(raw) {
+            return resolve_decoded_path(&decoded, provider_label);
+        }
+        return Ok(None);
+    }
+    // Direct CDN / MP4 hosts (e.g. Yt-mp4 on tools.fast4speed.rsvp).
+    // AllAnime also returns iframe players we cannot play — skip those.
+    if raw.starts_with("http") && !is_iframe_embed_url(raw) {
+        return Ok(Some(StreamResultOut {
+            url: raw.to_string(),
+            referer: format!("{REFR}/"),
+            origin: REFR.to_string(),
+            tracks: Vec::new(),
+            provider: provider_label.to_string(),
+            stream_label: None,
+        }));
+    }
+    Ok(None)
+}
+
+fn try_resolve_named_source(
+    sources: &[Value],
+    wanted_name: &str,
+    provider_label: &str,
+) -> Result<Option<StreamResultOut>, String> {
+    let wanted = wanted_name.to_lowercase();
+    for src in sources {
+        let name = src
+            .get("sourceName")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_lowercase();
+        if name != wanted {
+            continue;
+        }
+        let raw = src.get("sourceUrl").and_then(|v| v.as_str()).unwrap_or("");
+        if let Some(result) = resolve_source_url(raw, provider_label)? {
+            return Ok(Some(result));
+        }
+    }
+    Ok(None)
+}
+
 pub fn allanime_sources(
     title_candidates: &[String],
     episode: i32,
@@ -339,25 +408,29 @@ pub fn allanime_sources(
         return Ok(json!({ "result": null }));
     }
 
-    let wanted = provider.to_lowercase();
-    for src in sources {
-        let name = src
-            .get("sourceName")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if name != wanted {
-            continue;
-        }
-        let raw = src.get("sourceUrl").and_then(|v| v.as_str()).unwrap_or("");
-        if raw.is_empty() || !raw.starts_with("--") {
-            continue;
-        }
-        if let Some(decoded) = decode_xor_path(raw) {
-            if let Some(result) = resolve_decoded_path(&decoded, provider)? {
+    let wanted = provider.trim();
+    if wanted.eq_ignore_ascii_case("Default") {
+        for name in DEFAULT_TRY_ORDER {
+            if let Some(result) = try_resolve_named_source(&sources, name, "Default")? {
                 return Ok(json!({ "result": result }));
             }
         }
+        // Last resort: any non-iframe http / any -- clock path still present.
+        for src in &sources {
+            let raw = src.get("sourceUrl").and_then(|v| v.as_str()).unwrap_or("");
+            let label = src
+                .get("sourceName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Default");
+            if let Some(result) = resolve_source_url(raw, label)? {
+                return Ok(json!({ "result": result }));
+            }
+        }
+        return Ok(json!({ "result": null }));
+    }
+
+    if let Some(result) = try_resolve_named_source(&sources, wanted, wanted)? {
+        return Ok(json!({ "result": result }));
     }
     Ok(json!({ "result": null }))
 }
@@ -381,5 +454,48 @@ mod tests {
     fn decrypt_tobeparsed_rejects_short_blob() {
         let b64 = base64::engine::general_purpose::STANDARD.encode([0u8; 20]);
         assert!(decrypt_tobeparsed(&b64).is_none());
+    }
+
+    #[test]
+    fn is_iframe_embed_url_detects_players() {
+        assert!(is_iframe_embed_url("https://ok.ru/videoembed/1"));
+        assert!(is_iframe_embed_url("https://streamwish.to/e/abc"));
+        assert!(!is_iframe_embed_url(
+            "https://tools.fast4speed.rsvp/media9/videos/x/sub/1?Authorization=1"
+        ));
+    }
+
+    #[test]
+    fn resolve_source_url_accepts_direct_http() {
+        let url = "https://tools.fast4speed.rsvp/media9/videos/x/sub/1?Authorization=1";
+        let out = resolve_source_url(url, "Yt-mp4").unwrap().unwrap();
+        assert_eq!(out.url, url);
+        assert!(out.referer.contains("allmanga.to"));
+    }
+
+    #[test]
+    fn resolve_source_url_skips_iframe() {
+        assert!(resolve_source_url("https://ok.ru/videoembed/1", "Ok")
+            .unwrap()
+            .is_none());
+    }
+
+    /// Live smoke — ignored by default (network).
+    #[test]
+    #[ignore]
+    fn allanime_default_resolves_frieren_ep1() {
+        let titles = vec![
+            "Frieren: Beyond Journey's End".into(),
+            "Sousou no Frieren".into(),
+        ];
+        let out = allanime_sources(&titles, 1, "sub", "Default").unwrap();
+        let url = out
+            .pointer("/result/url")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        assert!(
+            !url.is_empty() && url.starts_with("http"),
+            "expected playable url, got {out}"
+        );
     }
 }

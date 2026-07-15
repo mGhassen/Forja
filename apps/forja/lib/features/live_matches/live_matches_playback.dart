@@ -2,6 +2,82 @@ part of 'live_matches_screen.dart';
 
 mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
 
+  Future<void> _openMergedMatch(
+    _DamiTvStream ppv,
+    _StreamedMatch streamed,
+  ) async {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            decoration: BoxDecoration(
+              color: ForjaShellColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: ForjaShellColors.cinematic.borderSubtle,
+              ),
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  color: ForjaShellColors.sectionAccent,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Loading PPV and Streamed sources…',
+                  style: TextStyle(color: ForjaShellColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final streams = <_StreamedStream>[];
+    try {
+      for (final source in streamed.sources) {
+        streams.addAll(await _fetchStreamedStreams(source));
+      }
+    } catch (e) {
+      debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
+    }
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    final hasPpv = ppv.iframe.isNotEmpty;
+    if (!hasPpv && streams.isEmpty) {
+      ForjaToast.info('No streams available for this event');
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _MergedMatchStreamSheet(
+        title: streamed.title.isNotEmpty ? streamed.title : ppv.name,
+        ppv: hasPpv ? ppv : null,
+        streamed: streams,
+        onPpvSelected: () {
+          Navigator.pop(context);
+          unawaited(_openDamiTvStream(ppv));
+        },
+        onStreamedSelected: (stream) {
+          Navigator.pop(context);
+          _openStreamedEmbed(streamed, stream);
+        },
+      ),
+    );
+  }
+
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
     if (match.sources.isEmpty) {
       ForjaToast.info('Stream not yet available for this event');

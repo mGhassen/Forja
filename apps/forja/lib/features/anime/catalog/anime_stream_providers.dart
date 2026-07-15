@@ -8,38 +8,28 @@ class AnimeStreamProviders {
   AnimeStreamProviders._();
 
   /// Default try order — strongest / most reliable first.
+  ///
+  /// AnimeRealms was removed (upstream API gone — domain is a storefront).
+  /// AllAnime `Uv-mp4` was removed (upstream no longer returns it).
   static const List<String> defaultOrder = [
     // AniKoto (Miruro bee) — preferred first
     'miruro:bee',
-    // AllAnime direct CDNs
+    // AllAnime — Yt-mp4 is the reliable direct MP4; Default aliases to it first
     'allanime:Default',
+    'allanime:Yt-mp4',
     'allanime:S-mp4',
+    'allanime:Luf-Mp4',
     // Anikoto HD embeds
     'megaplay',
     'vidwish',
-    // HiAnime / AnimePahe (Miruro + AnimeRealms mirrors)
+    // HiAnime / AnimePahe (Miruro)
     'miruro:zoro',
-    'animerealms:hianime',
     'miruro:kiwi',
-    'animerealms:animepahe',
-    // Remaining AllAnime
-    'allanime:Yt-mp4',
-    'allanime:Luf-Mp4',
-    'allanime:Uv-mp4',
     // Strong Miruro pipes
     'miruro:ally',
-    'animerealms:allmanga',
     'miruro:hop',
     'miruro:bonk',
-    'animerealms:gogoanime',
     'miruro:moo',
-    'animerealms:zencloud',
-    'animerealms:animekai',
-    // Mid AnimeRealms
-    'animerealms:animez',
-    'animerealms:kickassanime',
-    'animerealms:anizone',
-    'animerealms:febbox',
     // Weaker Miruro internals / regional
     'miruro:animedunya',
     'miruro:arc',
@@ -47,7 +37,6 @@ class AnimeStreamProviders {
     'miruro:bun',
     'miruro:kuz',
     'miruro:telli',
-    'animerealms:hanime-tv',
     // Adult last
     'watchhentai',
     'hentaini',
@@ -67,24 +56,10 @@ class AnimeStreamProviders {
     for (final p in allAnimeKnownProviders) {
       out['allanime:$p'] = p;
     }
-    for (final p in animeRealmsDefaultProviders) {
-      out['animerealms:$p'] = _titleCaseProvider(p);
-    }
     return out;
   }
 
   static String displayName(String key) => catalog[key] ?? key;
-
-  static String _titleCaseProvider(String raw) {
-    return raw
-        .split('-')
-        .map((part) {
-          if (part.isEmpty) return part;
-          if (part.toLowerCase() == 'tv') return 'TV';
-          return '${part[0].toUpperCase()}${part.substring(1)}';
-        })
-        .join('-');
-  }
 
   /// Sort [keys] by [order], appending any missing keys at the end.
   static List<String> sortKeys(List<String> keys, List<String> order) {

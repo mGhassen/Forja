@@ -38,7 +38,7 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc
 | Domain | Typical engines |
 |--------|-----------------|
 | Movies / TV | Videasy, VidLink, VidFast, 2Embed, AutoEmbed, WebStreamr, … |
-| Anime | Miruro, AllAnime, AnimeRealms, … |
+| Anime | Megaplay, Vidwish, Miruro, AllAnime, … |
 | Asian Drama | KissKH |
 | IPTV | Xtream / M3U / Stalker (portal) |
 | Torrent | Local / debrid |

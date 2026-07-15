@@ -1201,6 +1201,135 @@ class _LiveMatchesEmbedPlayerScreenState
 
 // ─── Streamed stream sheet ────────────────────────────────────────────────────
 
+class _MergedMatchStreamSheet extends StatelessWidget {
+  const _MergedMatchStreamSheet({
+    required this.title,
+    required this.ppv,
+    required this.streamed,
+    required this.onPpvSelected,
+    required this.onStreamedSelected,
+  });
+
+  final String title;
+  final _DamiTvStream? ppv;
+  final List<_StreamedStream> streamed;
+  final VoidCallback onPpvSelected;
+  final ValueChanged<_StreamedStream> onStreamedSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...streamed]
+      ..sort((a, b) => b.viewers.compareTo(a.viewers));
+    final count = sorted.length + (ppv == null ? 0 : 1);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            style: const TextStyle(
+              color: ForjaShellColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$count ${count == 1 ? 'stream' : 'streams'}',
+            style: const TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  if (ppv != null)
+                    _MergedPpvStreamRow(
+                      stream: ppv!,
+                      onTap: onPpvSelected,
+                    ),
+                  for (final stream in sorted)
+                    _StreamedStreamRow(
+                      stream: stream,
+                      sourceLabel: _StreamedStreamSheet.sourceLabel(
+                        stream.source,
+                      ),
+                      serverLabel: 'Streamed',
+                      onTap: () => onStreamedSelected(stream),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MergedPpvStreamRow extends StatelessWidget {
+  const _MergedPpvStreamRow({required this.stream, required this.onTap});
+
+  final _DamiTvStream stream;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 10,
+      navLeftAlways: true,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.row,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.play_circle_outline,
+              size: 20,
+              color: ForjaShellColors.textSecondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                stream.league.isNotEmpty ? stream.league : 'PPV stream',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ForjaShellColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const _LiveStreamProviderBadge(label: 'PPV'),
+            const SizedBox(width: 10),
+            const Icon(Icons.chevron_right, size: 18, color: Colors.white38),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StreamedStreamSheet extends StatelessWidget {
   final _StreamedMatch match;
   final List<_StreamedStream> streams;
@@ -1212,7 +1341,7 @@ class _StreamedStreamSheet extends StatelessWidget {
     required this.onStreamSelected,
   });
 
-  static String _sourceLabel(String source) {
+  static String sourceLabel(String source) {
     if (source.isEmpty) return '';
     return source[0].toUpperCase() + source.substring(1);
   }
@@ -1272,7 +1401,8 @@ class _StreamedStreamSheet extends StatelessWidget {
                     for (final stream in sorted)
                       _StreamedStreamRow(
                         stream: stream,
-                        sourceLabel: _sourceLabel(stream.source),
+                        sourceLabel: sourceLabel(stream.source),
+                        serverLabel: 'Streamed',
                         onTap: () => onStreamSelected(stream),
                       ),
                   ],
@@ -1289,11 +1419,13 @@ class _StreamedStreamSheet extends StatelessWidget {
 class _StreamedStreamRow extends StatelessWidget {
   final _StreamedStream stream;
   final String sourceLabel;
+  final String serverLabel;
   final VoidCallback onTap;
 
   const _StreamedStreamRow({
     required this.stream,
     required this.sourceLabel,
+    this.serverLabel = 'Streamed',
     required this.onTap,
   });
 
@@ -1362,8 +1494,44 @@ class _StreamedStreamRow extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ],
+            _LiveStreamProviderBadge(label: serverLabel),
+            const SizedBox(width: 10),
             const Icon(Icons.chevron_right, size: 18, color: Colors.white38),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveStreamProviderBadge extends StatelessWidget {
+  const _LiveStreamProviderBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: label == 'PPV'
+            ? Colors.orange.withValues(alpha: 0.2)
+            : ForjaShellColors.sectionAccent.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: label == 'PPV'
+              ? Colors.orange.withValues(alpha: 0.55)
+              : ForjaShellColors.sectionAccent.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: label == 'PPV'
+              ? Colors.orange.shade200
+              : ForjaShellColors.sectionAccent,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -1610,6 +1778,7 @@ class _DamiTvMatchCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final Color? activeBorderColor;
   final bool forceActive;
+  final bool? playableOverride;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
@@ -1618,6 +1787,7 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.onUpEdge,
     this.activeBorderColor,
     this.forceActive = false,
+    this.playableOverride,
   });
 
   @override
@@ -1633,7 +1803,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final s = widget.stream;
     final hasIframe = s.iframe.isNotEmpty;
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
-    final canPlay = hasIframe && s.isLive;
+    final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
     final policy = ShellScope.inputPolicyOf(context);
     final active =
         widget.forceActive ||

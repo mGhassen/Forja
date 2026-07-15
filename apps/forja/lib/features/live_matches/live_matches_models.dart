@@ -435,14 +435,101 @@ List<_CdnSportEvent> _sortCdnSportsLiveFirst(List<_CdnSportEvent> items) {
 bool _gridEntryIsLive(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryPpv(:final stream) => stream.isLive,
   _LiveMatchGridEntryStreamed(:final match) => match.isLive,
+  _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
+    ppv.isLive || streamed.isLive,
   _LiveMatchGridEntryCdnSport(:final event) => event.isLive,
 };
 
 int _gridEntryStartKey(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryPpv(:final stream) => stream.startsAt,
   _LiveMatchGridEntryStreamed(:final match) => match.dateMs,
+  _LiveMatchGridEntryMerged(:final streamed) => streamed.dateMs,
   _LiveMatchGridEntryCdnSport(:final event) => _cdnSportStartKey(event),
 };
+
+String _matchTextKey(String raw) {
+  var value = raw.toLowerCase();
+  const aliases = {
+    '&': ' and ',
+    'women': ' w ',
+    'womens': ' w ',
+    'woman': ' w ',
+  };
+  for (final alias in aliases.entries) {
+    value = value.replaceAll(alias.key, alias.value);
+  }
+  final tokens = value
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where(
+        (token) =>
+            token.isNotEmpty &&
+            token != 'fc' &&
+            token != 'sc' &&
+            token != 'w',
+      )
+      .toList()
+    ..sort();
+  return tokens.join(' ');
+}
+
+String? _teamPairKey(String? home, String? away) {
+  if (home == null || away == null || home.isEmpty || away.isEmpty) return null;
+  final teams = [_matchTextKey(home), _matchTextKey(away)]..sort();
+  if (teams.any((team) => team.isEmpty)) return null;
+  return teams.join('|');
+}
+
+bool _samePpvStreamedMatch(_DamiTvStream ppv, _StreamedMatch streamed) {
+  if (ppv.isAlwaysOn || streamed.isAlwaysOn) return false;
+  if (ppv.startsAt <= 0 || streamed.dateMs <= 0) return false;
+  final ppvSport = _normalizeSportId(ppv.categoryName);
+  final streamedSport = _normalizeSportId(streamed.category);
+  if (ppvSport.isEmpty || streamedSport.isEmpty || ppvSport != streamedSport) {
+    return false;
+  }
+  final deltaMs = (ppv.startsAt * 1000 - streamed.dateMs).abs();
+  if (deltaMs > const Duration(minutes: 30).inMilliseconds) return false;
+
+  final ppvTeams = _teamPairKey(ppv.homeTeam, ppv.awayTeam);
+  final streamedTeams = _teamPairKey(streamed.homeTeam, streamed.awayTeam);
+  if (ppvTeams != null && streamedTeams != null) {
+    return ppvTeams == streamedTeams;
+  }
+  final ppvTitle = _matchTextKey(ppv.name);
+  final streamedTitle = _matchTextKey(streamed.title);
+  return ppvTitle.isNotEmpty &&
+      streamedTitle.isNotEmpty &&
+      ppvTitle == streamedTitle;
+}
+
+List<_LiveMatchGridEntry> _mergePpvAndStreamedEntries({
+  required List<_DamiTvStream> ppv,
+  required List<_StreamedMatch> streamed,
+  required List<_CdnSportEvent> cdn,
+}) {
+  final remainingStreamed = [...streamed];
+  final entries = <_LiveMatchGridEntry>[];
+  for (final stream in ppv) {
+    final matchIndex = remainingStreamed.indexWhere(
+      (match) => _samePpvStreamedMatch(stream, match),
+    );
+    if (matchIndex < 0) {
+      entries.add(_LiveMatchGridEntry.ppv(stream));
+      continue;
+    }
+    entries.add(
+      _LiveMatchGridEntry.merged(
+        stream,
+        remainingStreamed.removeAt(matchIndex),
+      ),
+    );
+  }
+  entries.addAll(remainingStreamed.map(_LiveMatchGridEntry.streamed));
+  entries.addAll(cdn.map(_LiveMatchGridEntry.cdnSport));
+  return _sortGridEntriesLiveFirst(entries);
+}
 
 List<_LiveMatchGridEntry> _sortGridEntriesLiveFirst(
   List<_LiveMatchGridEntry> entries,
@@ -841,6 +928,11 @@ sealed class _LiveMatchGridEntry {
   factory _LiveMatchGridEntry.streamed(_StreamedMatch match) =
       _LiveMatchGridEntryStreamed;
 
+  factory _LiveMatchGridEntry.merged(
+    _DamiTvStream ppv,
+    _StreamedMatch streamed,
+  ) = _LiveMatchGridEntryMerged;
+
   factory _LiveMatchGridEntry.cdnSport(_CdnSportEvent event) =
       _LiveMatchGridEntryCdnSport;
 }
@@ -853,6 +945,12 @@ final class _LiveMatchGridEntryPpv extends _LiveMatchGridEntry {
 final class _LiveMatchGridEntryStreamed extends _LiveMatchGridEntry {
   const _LiveMatchGridEntryStreamed(this.match);
   final _StreamedMatch match;
+}
+
+final class _LiveMatchGridEntryMerged extends _LiveMatchGridEntry {
+  const _LiveMatchGridEntryMerged(this.ppv, this.streamed);
+  final _DamiTvStream ppv;
+  final _StreamedMatch streamed;
 }
 
 final class _LiveMatchGridEntryCdnSport extends _LiveMatchGridEntry {

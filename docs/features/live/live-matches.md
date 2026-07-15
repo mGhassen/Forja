@@ -13,12 +13,12 @@ Tap **Live Matches** in the navigation bar.
 ## What you can do
 
 - Use **Servers** to switch between All, PPV, Streamed, or CDN Live
-- Switch sport category circles (All merges the same sport across servers — e.g. PPV “Football” and Streamed “football” share one chip). **24/7** always-on streams appear only when you select the 24/7 chip — they are hidden from All and from other sports (card grid and timeline)
+- Switch sport category circles (All merges the same sport across servers — e.g. PPV “Football” and Streamed “football” share one chip). When PPV and Streamed carry the same scheduled match, All also combines them into one card. **24/7** always-on streams appear only when you select the 24/7 chip — they are hidden from All and from other sports (card grid and timeline)
 - Switch between **card view** and **timeline view** with the button to the right of Refresh. Forja remembers this choice across app restarts. Timeline view places each **1-hour** group on a continuous clock — a 00:10 card sits at 00:00 on the ruler (not stuck at the top). Same-hour streams share one horizontal line (swipe sideways for more without moving time). Opening the timeline (or switching to it / reloading) lands on **now**, not the first card; click the playhead time badge to jump back to now anytime. Vertical scroll moves the clock; **Day / 12h / 6h** set how many hours one screen height covers. The ruler tints each day a different colour (today stays white), and a green **NOW** line marks the current time. Hovering a card scales it up, gives it a white border, and lifts it above nearby cards. CDN channels have no schedule, so timeline shows CDN sport events only.
 - Browse upcoming and live events — live matches appear first; only **live** matches are tappable and show the play control on hover/focus; upcoming cards show the start time badge only
 - Open a match and watch the stream in the embed player (PPV or Streamed badge top-right; autoplay when the embed allows it)
 - Back / Escape exits the embed and **stops audio** — the top bar sits above the WebView (not overlaid on it) so Back stays clickable on desktop
-- When a Streamed match has several streams, the picker lists each stream with an HD badge, its **source** (Admin / Delta / Echo …), language, and a **viewer count**; streams are ordered by viewers (busiest first) as a rough reliability hint — if one stream is dead, pick the next one
+- When a match has several streams, the picker badges every choice as **PPV** or **Streamed**. Streamed choices also show HD, their source (Admin / Delta / Echo …), language, and viewer count; they are ordered by viewers (busiest first) as a rough reliability hint — if one stream is dead, pick the next one
 - Double-click the video to enter/exit fullscreen (desktop window fullscreen for embeds; native PPV streams use the IPTV player)
 - Refresh lists for new events
 

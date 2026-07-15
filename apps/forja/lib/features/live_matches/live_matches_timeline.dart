@@ -44,6 +44,8 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         stream.isAlwaysOn ? null : _epochToDate(stream.startsAt),
       _LiveMatchGridEntryStreamed(:final match) =>
         match.isAlwaysOn ? null : _epochToDate(match.dateMs),
+      _LiveMatchGridEntryMerged(:final streamed) =>
+        streamed.isAlwaysOn ? null : _epochToDate(streamed.dateMs),
       _LiveMatchGridEntryCdnSport(:final event) =>
         _epochToDate(_cdnSportStartKey(event)),
     };
@@ -55,9 +57,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     final entries = <_LiveMatchGridEntry>[];
     switch (_s._server) {
       case _LiveMatchesServer.all:
-        entries.addAll(_s._filteredDamiTv.map(_LiveMatchGridEntry.ppv));
-        entries.addAll(_s._filteredStreamed.map(_LiveMatchGridEntry.streamed));
-        entries.addAll(_s._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport));
+        entries.addAll(_s._allGridEntries);
       case _LiveMatchesServer.ppv:
         entries.addAll(_s._filteredDamiTv.map(_LiveMatchGridEntry.ppv));
       case _LiveMatchesServer.streamed:
@@ -457,9 +457,12 @@ class _TimelineHoverCardState extends State<_TimelineHoverCard> {
             curve: Curves.easeOut,
             builder: (context, scale, child) =>
                 Transform.scale(scale: scale, child: child),
-            // Rendered active so the play overlay + white border show; the
-            // card draws its own border/shadow.
-            child: widget.cardBuilder(context, hovered: true),
+            // Overlay is outside Scaffold/Material — without this, Text falls
+            // back to MaterialApp's yellow-underline error style.
+            child: Material(
+              type: MaterialType.transparency,
+              child: widget.cardBuilder(context, hovered: true),
+            ),
           ),
         ),
       ),
