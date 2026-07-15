@@ -46,7 +46,11 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
   void _highlightEpisode(int episode) {
     if (_s._selectedEpisode == episode) return;
     setState(() => _s._selectedEpisode = episode);
-    _s._autoSearch();
+    if (_s._sourcesPanelOpen) {
+      _refreshSourcesForEpisode();
+    } else {
+      _s._invalidatePanelSourceCache();
+    }
   }
   void _openTorrentPanelForEpisode({bool preselectHistory = false}) {
     setState(() {
@@ -209,18 +213,10 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
         await _s._hydrateWebstreamingFromCache();
         await _loadEpisodeProgressForSeason(seasonNumber);
         _s._checkHistory();
-        if (_s._selectedSourceId == 'forja') {
-          _s._autoSearch();
-        } else if (_s._selectedSourceId == 'jackett') {
-          _s._searchJackett();
-        } else if (_s._selectedSourceId == 'prowlarr') {
-          _s._searchProwlarr();
-        } else if (_s._selectedSourceId == 'all_stremio') {
-          _s._fetchAllStremioStreams();
-        } else if (_s._isNuvioSource) {
-          _s._fetchAllNuvioStreams();
+        if (_s._sourcesPanelOpen) {
+          _refreshSourcesForEpisode();
         } else {
-          _s._fetchStremioStreams();
+          _s._invalidatePanelSourceCache();
         }
         _loadWatchedEpisodes();
       }

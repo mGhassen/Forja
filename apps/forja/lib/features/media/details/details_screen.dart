@@ -420,6 +420,28 @@ class _DetailsScreenState extends State<DetailsScreen>
     }
   }
 
+  /// Clears cached torrent / Stremio / Nuvio panel results so the next panel
+  /// open re-fetches for the current title / season / episode.
+  void _invalidatePanelSourceCache() {
+    _torrentSearchGen++;
+    _stremioFetchGen++;
+    if (_isNuvioFetching) {
+      NuvioService.instance.cancelPending();
+      _nuvioSub?.cancel();
+      _nuvioSub = null;
+    }
+    _isSearching = false;
+    _isStremioFetching = false;
+    _isNuvioFetching = false;
+    _allTorrentResults = [];
+    _stremioStreams = [];
+    _allCombinedStremioStreams = [];
+    _loadedAddonBaseUrls.clear();
+    _nuvioStreams = [];
+    _nuvioSelectedScraperId = null;
+    _errorMessage = null;
+  }
+
   void _ensurePanelSourceLoaded() {
     if (_panelShowTorrent &&
         (_panelKindFilter == 'all' || _panelKindFilter == 'torrents')) {

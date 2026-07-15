@@ -139,12 +139,11 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
         });
         await _s._hydrateWebstreamingFromCache();
         _s._maybeAutoPlay();
-        if (_s._playSourceTorrent && _s._playbackProfile.builtinTorrentSearch) {
-          _autoSearch();
+        // Torrent search + Stremio streams load only when Sources opens
+        // ([_openSourcesPanel] → [_ensurePanelSourceLoaded]). Nuvio addon
+        // listing is cheap and needed for the Nuvio chip.
+        if (_s._playSourceTorrent) {
           _s._checkAndFetchNuvio();
-        }
-        if (_s._playSourceStremio) {
-          _s._fetchAllStremioStreams();
         }
       }
     } catch (e) {
