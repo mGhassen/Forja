@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'nuvio_runtime.dart';
 
@@ -151,6 +152,7 @@ class NuvioService {
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
   static const String _bundledCleanupKey = 'nuvio_bundled_autoinstall_cleanup_v1';
+  static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
 
   /// Manifest URLs that ship with the app. Scrapers are exposed in the
   /// **Sources** panel (Direct torrent play source), not webstreaming.
@@ -174,21 +176,33 @@ class NuvioService {
     NuvioRuntime.instance.abortPendingWork();
   }
 
+  Future<void> _ensureAddonsInKv() async {
+    if (await kvHasKey(_kvMigratedKey)) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefsKey);
+    if (raw != null && raw.isNotEmpty) {
+      await kvSetString(_prefsKey, raw);
+      await prefs.remove(_prefsKey);
+    }
+    await kvSetString(_kvMigratedKey, '1');
+  }
+
   Future<List<NuvioAddon>> listAddons() async {
+    await _ensureAddonsInKv();
     final prefs = await SharedPreferences.getInstance();
     // One-time migration: prior app versions auto-installed the bundled
     // manifest at startup, so it lingers in storage as a phantom "installed"
     // addon even after we stopped doing that. Remove it once. Users who
     // genuinely want it can install it manually afterwards.
     if (!(prefs.getBool(_bundledCleanupKey) ?? false)) {
-      final raw0 = prefs.getString(_prefsKey);
+      final raw0 = await kvGetString(_prefsKey);
       if (raw0 != null && raw0.isNotEmpty) {
         try {
           final list = (jsonDecode(raw0) as List)
               .map((e) => NuvioAddon.fromJson(e as Map<String, dynamic>))
               .where((a) => !isBundled(a.manifestUrl))
               .toList();
-          await prefs.setString(
+          await kvSetString(
             _prefsKey,
             jsonEncode(list.map((e) => e.toJson()).toList()),
           );
@@ -196,7 +210,7 @@ class NuvioService {
       }
       await prefs.setBool(_bundledCleanupKey, true);
     }
-    final raw = prefs.getString(_prefsKey);
+    final raw = await kvGetString(_prefsKey);
     if (raw == null || raw.isEmpty) return [];
     try {
       final list = jsonDecode(raw) as List;
@@ -264,8 +278,8 @@ class NuvioService {
   }
 
   Future<void> _saveAddons(List<NuvioAddon> addons) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _ensureAddonsInKv();
+    await kvSetString(
       _prefsKey,
       jsonEncode(addons.map((e) => e.toJson()).toList()),
     );

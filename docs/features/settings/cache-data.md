@@ -35,7 +35,7 @@ Every action asks for confirmation and shows a toast when done.
 - Prefer **Stream cache** when Play opens a dead or stale URL.
 - Prefer **IPTV portal cache** when Live “alive” marks or channel scan hits look stale after a provider change.
 - Prefer **Provider scores** when Auto keeps favoring a flaky extractor after you fixed network / region.
-- Tokens, Stremio addons, My List, and Backup keys are never cleared here — use [Backup & restore](backup-restore.md) or account panels instead.
+- Tokens, Stremio/Nuvio addons, My List, and Backup keys are never cleared here — settings also auto-persist locally (see [Backup & restore](backup-restore.md)); use that for device-to-device copy.
 
 ## Related
 

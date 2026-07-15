@@ -179,6 +179,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Hydrate theme preset before first frame
   await Engine.init();
   _warnIfRustMissing();
+  await PlatformChannel.seedPlatformDefaultsAfterEngine();
 
   await AppTheme.initTheme();
 

@@ -454,7 +454,7 @@ class _SeasonDropdown extends StatelessWidget {
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(vertical: 4, horizontal: 6),
         ),
-        minimumSize: const WidgetStatePropertyAll(Size(148, 0)),
+        minimumSize: const WidgetStatePropertyAll(Size(168, 0)),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -465,9 +465,9 @@ class _SeasonDropdown extends StatelessWidget {
         return MenuItemButton(
           onPressed: () => onSelected(n),
           style: shellMenuItemStyle(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ).merge(ButtonStyle(
-            minimumSize: const WidgetStatePropertyAll(Size(136, 0)),
+            minimumSize: const WidgetStatePropertyAll(Size(156, 0)),
             foregroundColor: WidgetStatePropertyAll(
               isSelected
                   ? ForjaShellColors.cinematic.textPrimary
@@ -475,6 +475,7 @@ class _SeasonDropdown extends StatelessWidget {
             ),
             textStyle: WidgetStatePropertyAll(
               TextStyle(
+                fontSize: 15,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -505,12 +506,12 @@ class _SeasonDropdown extends StatelessWidget {
               onTap: toggle,
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
                 child: Text(
                   'Season $selectedSeason',
                   style: TextStyle(
                     color: ForjaShellColors.brandGreen,
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

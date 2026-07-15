@@ -1,22 +1,19 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'kv.dart';
+import 'secure_settings.dart';
+
 /// Persistent settings for the local WebStreamr port.
-/// All getters return defaults when no value is set so the service is usable
-/// out-of-the-box without showing the settings UI first.
+///
+/// Non-secret prefs live in Rust KV (`forja_engine_store.json`).
+/// MFP password and TMDB token live in [SecureSettings].
 class WebStreamrSettings {
-  // Country codes (matches webstreamr CountryCode enum) — comma list in prefs.
   static const _kCountryCodes = 'webstreamr_country_codes';
-  // MediaFlow proxy
   static const _kMfpUrl = 'webstreamr_mfp_url';
-  static const _kMfpPassword = 'webstreamr_mfp_password';
-  // FlareSolverr
   static const _kFlareUrl = 'webstreamr_flare_url';
-  // Per-extractor disable (comma list of extractor ids)
   static const _kDisabledExtractors = 'webstreamr_disabled_extractors';
-  // Excluded resolutions (comma list, e.g. "360p,4k")
   static const _kExcludedResolutions = 'webstreamr_excluded_resolutions';
-  // TMDB v4 access token (Bearer …)
-  static const _kTmdbToken = 'webstreamr_tmdb_token';
+  static const _kMigratedKey = 'webstreamr_settings_kv_v1';
 
   /// Default country set when nothing is saved yet. Enables EVERY supported
   /// CC so foreign-language sources (DE/FR/IT/ES/AL/RU/...) light up
@@ -44,78 +41,108 @@ class WebStreamrSettings {
 
   static const allResolutions = <String>['360p', '480p', '720p', '1080p', '4k'];
 
-  static Future<List<String>> getEnabledCountryCodes() async {
+  static Future<void> _ensureMigrated() async {
+    if (await kvHasKey(_kMigratedKey)) return;
     final p = await SharedPreferences.getInstance();
-    final raw = p.getStringList(_kCountryCodes);
-    if (raw == null) return List.of(defaultCountryCodes);
-    return raw;
+
+    final countries = p.getStringList(_kCountryCodes);
+    if (countries != null) {
+      await kvSetStringList(_kCountryCodes, countries);
+      await p.remove(_kCountryCodes);
+    }
+    for (final key in [_kMfpUrl, _kFlareUrl]) {
+      final v = p.getString(key);
+      if (v != null && v.isNotEmpty) {
+        await kvSetString(key, v);
+        await p.remove(key);
+      }
+    }
+    for (final key in [_kDisabledExtractors, _kExcludedResolutions]) {
+      final list = p.getStringList(key);
+      if (list != null) {
+        await kvSetStringList(key, list);
+        await p.remove(key);
+      }
+    }
+
+    await SecureSettings.migrateFromPrefs(SecureSettings.webstreamrMfpPassword);
+    // Legacy prefs used the same key strings.
+    await SecureSettings.migrateFromPrefs('webstreamr_mfp_password');
+    await SecureSettings.migrateFromPrefs(SecureSettings.webstreamrTmdbToken);
+    await SecureSettings.migrateFromPrefs('webstreamr_tmdb_token');
+
+    await kvSetString(_kMigratedKey, '1');
+  }
+
+  static Future<List<String>> getEnabledCountryCodes() async {
+    await _ensureMigrated();
+    if (!await kvHasKey(_kCountryCodes)) {
+      return List.of(defaultCountryCodes);
+    }
+    return kvGetStringList(_kCountryCodes, fallback: defaultCountryCodes);
   }
 
   static Future<void> setEnabledCountryCodes(List<String> codes) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setStringList(_kCountryCodes, codes);
+    await _ensureMigrated();
+    await kvSetStringList(_kCountryCodes, codes);
   }
 
   static Future<String?> getMediaFlowProxyUrl() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kMfpUrl);
+    await _ensureMigrated();
+    final v = await kvGetString(_kMfpUrl);
+    if (v == null || v.isEmpty) return null;
+    return v;
   }
 
   static Future<void> setMediaFlowProxyUrl(String? v) async {
-    final p = await SharedPreferences.getInstance();
-    if (v == null || v.isEmpty) {
-      await p.remove(_kMfpUrl);
-    } else {
-      await p.setString(_kMfpUrl, v);
-    }
+    await _ensureMigrated();
+    await kvSetString(_kMfpUrl, v == null || v.isEmpty ? '' : v);
   }
 
   static Future<String?> getMediaFlowProxyPassword() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kMfpPassword);
+    await _ensureMigrated();
+    return SecureSettings.read(SecureSettings.webstreamrMfpPassword);
   }
 
   static Future<void> setMediaFlowProxyPassword(String? v) async {
-    final p = await SharedPreferences.getInstance();
+    await _ensureMigrated();
     if (v == null || v.isEmpty) {
-      await p.remove(_kMfpPassword);
+      await SecureSettings.delete(SecureSettings.webstreamrMfpPassword);
     } else {
-      await p.setString(_kMfpPassword, v);
+      await SecureSettings.write(SecureSettings.webstreamrMfpPassword, v);
     }
   }
 
   static Future<String?> getFlareSolverrUrl() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kFlareUrl);
+    await _ensureMigrated();
+    final v = await kvGetString(_kFlareUrl);
+    if (v == null || v.isEmpty) return null;
+    return v;
   }
 
   static Future<void> setFlareSolverrUrl(String? v) async {
-    final p = await SharedPreferences.getInstance();
-    if (v == null || v.isEmpty) {
-      await p.remove(_kFlareUrl);
-    } else {
-      await p.setString(_kFlareUrl, v);
-    }
+    await _ensureMigrated();
+    await kvSetString(_kFlareUrl, v == null || v.isEmpty ? '' : v);
   }
 
   static Future<List<String>> getDisabledExtractors() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getStringList(_kDisabledExtractors) ?? const [];
+    await _ensureMigrated();
+    return kvGetStringList(_kDisabledExtractors, fallback: const []);
   }
 
   static Future<void> setDisabledExtractors(List<String> ids) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setStringList(_kDisabledExtractors, ids);
+    await _ensureMigrated();
+    await kvSetStringList(_kDisabledExtractors, ids);
   }
 
   static Future<List<String>> getExcludedResolutions() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getStringList(_kExcludedResolutions) ?? const [];
+    await _ensureMigrated();
+    return kvGetStringList(_kExcludedResolutions, fallback: const []);
   }
 
   static Future<void> setExcludedResolutions(List<String> res) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setStringList(_kExcludedResolutions, res);
+    await _ensureMigrated();
+    await kvSetStringList(_kExcludedResolutions, res);
   }
 
   /// Config map for [get_streams_json] / ResolverEngine (countries, MFP, filters).
@@ -143,16 +170,16 @@ class WebStreamrSettings {
   }
 
   static Future<String?> getTmdbAccessToken() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kTmdbToken);
+    await _ensureMigrated();
+    return SecureSettings.read(SecureSettings.webstreamrTmdbToken);
   }
 
   static Future<void> setTmdbAccessToken(String? v) async {
-    final p = await SharedPreferences.getInstance();
+    await _ensureMigrated();
     if (v == null || v.isEmpty) {
-      await p.remove(_kTmdbToken);
+      await SecureSettings.delete(SecureSettings.webstreamrTmdbToken);
     } else {
-      await p.setString(_kTmdbToken, v);
+      await SecureSettings.write(SecureSettings.webstreamrTmdbToken, v);
     }
   }
 }

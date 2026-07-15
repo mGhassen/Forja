@@ -44,8 +44,15 @@ abstract final class PlatformChannel {
     SettingsService.configurePlatformProfile(profile);
     ShellTokens.nativeAndroidTvDetected =
         profile == PlatformProfile.androidTv;
-    await SettingsService().ensurePlatformDefaultsSeeded(profile);
+    // Platform defaults seed after Engine.init() — see bootstrapForja.
     unawaited(DeviceCapabilitiesService.detect(platformProfile: profile));
+  }
+
+  /// Seed platform defaults once the Rust KV file is open.
+  static Future<void> seedPlatformDefaultsAfterEngine() async {
+    final profile = await detectProfile();
+    SettingsService.configurePlatformProfile(profile);
+    await SettingsService().ensurePlatformDefaultsSeeded(profile);
   }
 
   /// Android TV only — software WebView warm-up before first real WebView use.

@@ -1,8 +1,5 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../debrid_http.dart';
+import '../../secure_settings.dart';
 
 export '../../debrid_http.dart' show DebridFile;
 
@@ -43,29 +40,50 @@ class DebridApi {
   factory DebridApi() => _instance;
   DebridApi._internal();
 
-  Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
+  static var _migrationDone = false;
+
+  Future<void> _ensureMigrated() async {
+    if (_migrationDone) return;
+    for (final key in [
+      SecureSettings.rdAccessToken,
+      SecureSettings.rdRefreshToken,
+      SecureSettings.rdTokenExpiry,
+      SecureSettings.rdClientId,
+      SecureSettings.rdClientSecret,
+      SecureSettings.torboxApiKey,
+      SecureSettings.alldebridApiKey,
+      SecureSettings.premiumizeApiKey,
+      SecureSettings.debridlinkApiKey,
+    ]) {
+      await SecureSettings.migrateFromPrefs(key);
+    }
+    _migrationDone = true;
+  }
 
   Future<String?> _safeRead(String key) async {
+    await _ensureMigrated();
     try {
-      return (await _prefs).getString(key);
+      final v = await SecureSettings.read(key);
+      if (v == null || v.isEmpty) return null;
+      return v;
     } catch (_) {
       return null;
     }
   }
 
   Future<void> _safeWrite(String key, String value) async {
-    try {
-      await (await _prefs).setString(key, value);
-    } catch (_) {}
+    await _ensureMigrated();
+    await SecureSettings.write(key, value.trim());
   }
 
   Future<void> _safeDelete(String key) async {
+    await _ensureMigrated();
     try {
-      await (await _prefs).remove(key);
+      await SecureSettings.delete(key);
     } catch (_) {}
   }
 
-  static const String _rdTokenKey = 'rd_access_token';
+  static const String _rdTokenKey = SecureSettings.rdAccessToken;
 
   Future<void> saveRDApiKey(String key) async {
     final trimmed = key.trim();
@@ -95,34 +113,37 @@ class DebridApi {
   Future<void> logoutRD() async {
     for (final key in [
       _rdTokenKey,
-      'rd_refresh_token',
-      'rd_token_expiry',
-      'rd_client_id',
-      'rd_client_secret',
+      SecureSettings.rdRefreshToken,
+      SecureSettings.rdTokenExpiry,
+      SecureSettings.rdClientId,
+      SecureSettings.rdClientSecret,
     ]) {
       await _safeDelete(key);
     }
   }
 
   Future<void> saveTorBoxKey(String key) async =>
-      _safeWrite('torbox_api_key', key.trim());
+      _safeWrite(SecureSettings.torboxApiKey, key.trim());
 
-  Future<String?> getTorBoxKey() => _safeRead('torbox_api_key');
+  Future<String?> getTorBoxKey() => _safeRead(SecureSettings.torboxApiKey);
 
   Future<void> saveAllDebridKey(String key) async =>
-      _safeWrite('alldebrid_api_key', key.trim());
+      _safeWrite(SecureSettings.alldebridApiKey, key.trim());
 
-  Future<String?> getAllDebridKey() => _safeRead('alldebrid_api_key');
+  Future<String?> getAllDebridKey() =>
+      _safeRead(SecureSettings.alldebridApiKey);
 
   Future<void> savePremiumizeKey(String key) async =>
-      _safeWrite('premiumize_api_key', key.trim());
+      _safeWrite(SecureSettings.premiumizeApiKey, key.trim());
 
-  Future<String?> getPremiumizeKey() => _safeRead('premiumize_api_key');
+  Future<String?> getPremiumizeKey() =>
+      _safeRead(SecureSettings.premiumizeApiKey);
 
   Future<void> saveDebridLinkKey(String key) async =>
-      _safeWrite('debridlink_api_key', key.trim());
+      _safeWrite(SecureSettings.debridlinkApiKey, key.trim());
 
-  Future<String?> getDebridLinkKey() => _safeRead('debridlink_api_key');
+  Future<String?> getDebridLinkKey() =>
+      _safeRead(SecureSettings.debridlinkApiKey);
 
   Future<List<DebridFile>> _resolve(
     String service,

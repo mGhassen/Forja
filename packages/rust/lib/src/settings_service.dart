@@ -7,6 +7,7 @@ import 'built_in_player_engine.dart';
 import 'kv.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
+import 'secure_settings.dart';
 
 class SettingsService {
   static final SettingsService _instance = SettingsService._internal();
@@ -28,6 +29,7 @@ class SettingsService {
   PlatformDefaults get _defaults => PlatformDefaults.forProfile(_platformProfile);
 
   static const String _platformDefaultsSeededKey = 'platform_defaults_seeded_v1';
+  static const String _settingsSchemaKey = 'settings_schema_v2';
 
   static final ValueNotifier<int> addonChangeNotifier = ValueNotifier<int>(0);
 
@@ -430,10 +432,22 @@ class SettingsService {
     await kvSetString(_jackettBaseUrlKey, normalized);
   }
 
-  Future<String?> getJackettApiKey() async => kvGetString(_jackettApiKeyKey);
+  Future<String?> getJackettApiKey() async {
+    await ensureCanonicalSettingsMigrated();
+    final v = await SecureSettings.read(SecureSettings.jackettApiKey);
+    if (v == null || v.isEmpty) return null;
+    return v;
+  }
 
-  Future<void> setJackettApiKey(String apiKey) async =>
-      kvSetString(_jackettApiKeyKey, apiKey);
+  Future<void> setJackettApiKey(String apiKey) async {
+    await ensureCanonicalSettingsMigrated();
+    final trimmed = apiKey.trim();
+    if (trimmed.isEmpty) {
+      await SecureSettings.delete(SecureSettings.jackettApiKey);
+    } else {
+      await SecureSettings.write(SecureSettings.jackettApiKey, trimmed);
+    }
+  }
 
   Future<bool> isJackettConfigured() async {
     final baseUrl = await getJackettBaseUrl();
@@ -452,11 +466,22 @@ class SettingsService {
     await kvSetString(_prowlarrBaseUrlKey, normalized);
   }
 
-  Future<String?> getProwlarrApiKey() async =>
-      kvGetString(_prowlarrApiKeyKey);
+  Future<String?> getProwlarrApiKey() async {
+    await ensureCanonicalSettingsMigrated();
+    final v = await SecureSettings.read(SecureSettings.prowlarrApiKey);
+    if (v == null || v.isEmpty) return null;
+    return v;
+  }
 
-  Future<void> setProwlarrApiKey(String apiKey) async =>
-      kvSetString(_prowlarrApiKeyKey, apiKey);
+  Future<void> setProwlarrApiKey(String apiKey) async {
+    await ensureCanonicalSettingsMigrated();
+    final trimmed = apiKey.trim();
+    if (trimmed.isEmpty) {
+      await SecureSettings.delete(SecureSettings.prowlarrApiKey);
+    } else {
+      await SecureSettings.write(SecureSettings.prowlarrApiKey, trimmed);
+    }
+  }
 
   Future<bool> isProwlarrConfigured() async {
     final baseUrl = await getProwlarrBaseUrl();
@@ -610,8 +635,23 @@ class SettingsService {
     'arabic',
   ];
 
+  /// One-shot migration for schema v2: indexer API keys → secure storage.
+  Future<void> ensureCanonicalSettingsMigrated() async {
+    if (await kvHasKey(_settingsSchemaKey)) return;
+    try {
+      await SecureSettings.migrateFromKv(SecureSettings.jackettApiKey);
+      await SecureSettings.migrateFromKv(_jackettApiKeyKey);
+      await SecureSettings.migrateFromKv(SecureSettings.prowlarrApiKey);
+      await SecureSettings.migrateFromKv(_prowlarrApiKeyKey);
+      await kvSetString(_settingsSchemaKey, '2');
+    } catch (e) {
+      debugPrint('[SettingsService] canonical migration deferred: $e');
+    }
+  }
+
   Future<void> ensurePlatformDefaultsSeeded(PlatformProfile profile) async {
     configurePlatformProfile(profile);
+    await ensureCanonicalSettingsMigrated();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;
 
     final hasExistingConfig = await kvHasKey(_navbarConfigKey) ||
@@ -768,18 +808,28 @@ class SettingsService {
   }
 
   static const List<String> _secureKeys = [
-    'rd_access_token',
-    'rd_refresh_token',
-    'rd_token_expiry',
-    'rd_client_id',
-    'rd_client_secret',
-    'torbox_api_key',
+    SecureSettings.rdAccessToken,
+    SecureSettings.rdRefreshToken,
+    SecureSettings.rdTokenExpiry,
+    SecureSettings.rdClientId,
+    SecureSettings.rdClientSecret,
+    SecureSettings.torboxApiKey,
+    SecureSettings.alldebridApiKey,
+    SecureSettings.premiumizeApiKey,
+    SecureSettings.debridlinkApiKey,
+    SecureSettings.jackettApiKey,
+    SecureSettings.prowlarrApiKey,
+    SecureSettings.webstreamrMfpPassword,
+    SecureSettings.webstreamrTmdbToken,
     'trakt_access_token',
     'trakt_refresh_token',
     'trakt_expires_at',
+    'simkl_access_token',
+    'mdblist_api_key',
   ];
 
   Future<Map<String, dynamic>> exportAllSettings() async {
+    await ensureCanonicalSettingsMigrated();
     const secure = FlutterSecureStorage();
     final prefsMap = <String, dynamic>{};
 
@@ -795,13 +845,11 @@ class SettingsService {
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
-      _jackettApiKeyKey,
       _prowlarrBaseUrlKey,
-      _prowlarrApiKeyKey,
       _torrentCacheTypeKey,
     ]) {
       final v = await kvGetString(key);
-      if (v != null) prefsMap[key] = v;
+      if (v != null && v.isNotEmpty) prefsMap[key] = v;
     }
     prefsMap[_torrentRamCacheMbKey] =
         await kvGetInt(_torrentRamCacheMbKey, fallback: 200);
@@ -833,22 +881,39 @@ class SettingsService {
     if (animeOrder.isNotEmpty) {
       prefsMap[_animeProviderOrderKey] = animeOrder;
     }
+    final nuvioRaw = await kvGetString('nuvio_addons_v1');
+    if (nuvioRaw != null && nuvioRaw.isNotEmpty) {
+      prefsMap['nuvio_addons_v1'] = nuvioRaw;
+    }
+    for (final key in [
+      'webstreamr_country_codes',
+      'webstreamr_disabled_extractors',
+      'webstreamr_excluded_resolutions',
+    ]) {
+      final list = await kvGetStringList(key, fallback: const []);
+      if (list.isNotEmpty) prefsMap[key] = list;
+    }
+    for (final key in ['webstreamr_mfp_url', 'webstreamr_flare_url']) {
+      final v = await kvGetString(key);
+      if (v != null && v.isNotEmpty) prefsMap[key] = v;
+    }
 
     final secureMap = <String, String>{};
     for (final key in _secureKeys) {
       final v = await secure.read(key: key);
-      if (v != null) secureMap[key] = v;
+      if (v != null && v.isNotEmpty) secureMap[key] = v;
     }
 
     return {
       'shared_preferences': prefsMap,
       'secure_storage': secureMap,
-      'export_version': 1,
+      'export_version': 2,
       'exported_at': DateTime.now().toIso8601String(),
     };
   }
 
   Future<void> importAllSettings(Map<String, dynamic> data) async {
+    await ensureCanonicalSettingsMigrated();
     const secure = FlutterSecureStorage();
     final prefsMap = data['shared_preferences'] as Map<String, dynamic>? ?? {};
 
@@ -868,10 +933,11 @@ class SettingsService {
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
-      _jackettApiKeyKey,
       _prowlarrBaseUrlKey,
-      _prowlarrApiKeyKey,
       _torrentCacheTypeKey,
+      'webstreamr_mfp_url',
+      'webstreamr_flare_url',
+      'nuvio_addons_v1',
     ]) {
       if (prefsMap.containsKey(key)) {
         await kvSetString(key, prefsMap[key] as String);
@@ -923,12 +989,28 @@ class SettingsService {
         (prefsMap[_animeProviderOrderKey] as List).cast<String>(),
       );
     }
+    for (final key in [
+      'webstreamr_country_codes',
+      'webstreamr_disabled_extractors',
+      'webstreamr_excluded_resolutions',
+    ]) {
+      if (prefsMap.containsKey(key)) {
+        await kvSetStringList(key, (prefsMap[key] as List).cast<String>());
+      }
+    }
 
     final secureMap = data['secure_storage'] as Map<String, dynamic>? ?? {};
     for (final key in _secureKeys) {
       if (secureMap.containsKey(key)) {
         await secure.write(key: key, value: secureMap[key] as String);
       }
+    }
+    // Legacy exports put Jackett/Prowlarr keys in the non-secure map.
+    if (prefsMap.containsKey(_jackettApiKeyKey)) {
+      await setJackettApiKey(prefsMap[_jackettApiKeyKey] as String);
+    }
+    if (prefsMap.containsKey(_prowlarrApiKeyKey)) {
+      await setProwlarrApiKey(prefsMap[_prowlarrApiKeyKey] as String);
     }
 
     addonChangeNotifier.value++;
