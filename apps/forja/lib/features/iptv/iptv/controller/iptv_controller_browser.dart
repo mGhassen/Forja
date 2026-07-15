@@ -15,6 +15,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     final p = _c.activePortal;
     if (p == null) return;
     final cacheKey = _catalogCacheKey(p.key, section);
+    // Invalidate any in-flight catalog fetch for a previous shelf click.
+    final loadId = ++_c._catalogLoadId;
 
     if (!force) {
       final snap = _c._catalogCache[cacheKey];
@@ -68,6 +70,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     try {
       final cats = await IptvClient.categories(p.portal, section);
       final streams = await IptvClient.streams(p.portal, section, '');
+      // Shelf switched (or reloaded) while this request was in flight.
+      if (loadId != _c._catalogLoadId) return;
+      if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
+
       _c.categories = [const IptvCategory(id: '', name: 'All'), ...cats];
       _c.browserAllStreams = streams;
       _c.browserSelectedCategoryId = '';
@@ -79,7 +85,15 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       if (section == IptvSection.live) {
         final key = IptvAliveStore.portalKey(p.portal);
         _c.liveOnly = await IptvAliveStore.loadLiveOnly(key);
+        if (loadId != _c._catalogLoadId) return;
+        if (_c.activePortal?.key != p.key || _c.activeSection != section) {
+          return;
+        }
         final snap = await IptvAliveStore.load(key);
+        if (loadId != _c._catalogLoadId) return;
+        if (_c.activePortal?.key != p.key || _c.activeSection != section) {
+          return;
+        }
         if (snap != null) {
           _c.aliveStreamIds = snap.aliveIds;
           _c.aliveCheckedAt = snap.checkedAt;
@@ -94,13 +108,19 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         streams: _c.browserAllStreams,
       );
     } catch (e) {
+      if (loadId != _c._catalogLoadId) return;
+      if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
       _c.error = '$e';
     } finally {
-      _c.isLoading = false;
-      if (persistSection) {
-        await IptvStore.saveLastSection(section);
+      if (loadId == _c._catalogLoadId) {
+        _c.isLoading = false;
+        if (persistSection &&
+            _c.activePortal?.key == p.key &&
+            _c.activeSection == section) {
+          await IptvStore.saveLastSection(section);
+        }
+        notifyListeners();
       }
-      notifyListeners();
     }
   }
 

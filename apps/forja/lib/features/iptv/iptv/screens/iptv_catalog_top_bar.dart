@@ -633,8 +633,8 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — section gradient when selected.
-/// Hover/focus expands right to reveal a catalog reload control.
+/// Shelf tab — section gradient when selected / hovered.
+/// Hover sequence: color paints first, then the tab expands to reveal reload.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
     required this.spec,
@@ -663,6 +663,10 @@ class _IptvSectionShelfTab extends StatefulWidget {
 }
 
 class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
+  /// Pause after color so expand never leads the hover feedback.
+  static const _colorThenExpandDelay = Duration(milliseconds: 90);
+  static const _expandDuration = Duration(milliseconds: 200);
+
   bool _hover = false;
   bool _focused = false;
   bool _reloadArmed = false;
@@ -674,19 +678,34 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   bool get _revealReload => _active && _reloadArmed;
 
-  /// Color fades in first; the reload reveal is delayed until the color
-  /// transition (200ms) has played, so hover reads as "color, then expand".
+  void _setHover(bool value) {
+    if (_hover == value) return;
+    setState(() {
+      _hover = value;
+      _syncReveal();
+    });
+  }
+
+  void _setFocused(bool value) {
+    if (_focused == value) return;
+    setState(() {
+      _focused = value;
+      _syncReveal();
+    });
+  }
+
+  /// Color is applied immediately in [build]; expand arms after a short delay.
   void _syncReveal() {
     if (_active) {
       if (_reloadArmed) return;
       _revealTimer?.cancel();
-      _revealTimer = Timer(const Duration(milliseconds: 200), () {
+      _revealTimer = Timer(_colorThenExpandDelay, () {
         if (mounted && _active) setState(() => _reloadArmed = true);
       });
     } else {
       _revealTimer?.cancel();
       _revealTimer = null;
-      _reloadArmed = false;
+      if (_reloadArmed) _reloadArmed = false;
     }
   }
 
@@ -710,20 +729,14 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Instant color — AnimatedContainer gradient lerp often lags layout
+    // expand, which made the tab feel like it scaled before tinting.
     final showColor = widget.selected || _active;
 
     return MouseRegion(
-      onEnter: (_) => setState(() {
-        _hover = true;
-        _syncReveal();
-      }),
-      onExit: (_) => setState(() {
-        _hover = false;
-        _syncReveal();
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: Container(
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
           gradient: showColor
@@ -749,6 +762,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Full tab height is the hit target — not just the icon/label.
             iptvTap(
               context: context,
               onTap: widget.onTap,
@@ -770,65 +784,71 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                   ? null
                   : () =>
                         iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
-              onFocusChange: (f) => setState(() {
-                _focused = f;
-                _syncReveal();
-              }),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      widget.spec.icon,
-                      size: 16,
-                      color: showColor ? Colors.white : Colors.white60,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.spec.label,
-                      style: GoogleFonts.plusJakartaSans(
+              onFocusChange: _setFocused,
+              child: SizedBox(
+                height: _kShelfTabHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        widget.spec.icon,
+                        size: 16,
                         color: showColor ? Colors.white : Colors.white60,
-                        fontSize: 12.5,
-                        fontWeight: widget.selected
-                            ? FontWeight.w700
-                            : FontWeight.w600,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.spec.label,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: showColor ? Colors.white : Colors.white60,
+                          fontSize: 12.5,
+                          fontWeight: widget.selected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
             ClipRect(
               child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
+                duration: _expandDuration,
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.centerLeft,
                 widthFactor: _revealReload ? 1 : 0,
-                child: iptvTap(
-                  context: context,
-                  onTap: widget.onReload,
-                  borderRadius: 8,
-                  scaleOnFocus: 1.0,
-                  suppressInkHover: true,
-                  tvZone: ShellTvZone.topBar,
-                  tvRowId: 'iptv-section-reload',
-                  listIndex: widget.listIndex,
-                  tvItemIndex: widget.listIndex,
-                  onLeftEdge: () =>
-                      iptvFocusRowItem('iptv-sections', widget.listIndex),
-                  onRightEdge: widget.onRightEdge,
-                  onDownEdge: widget.onDownEdge,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Tooltip(
-                      message: 'Reload ${widget.spec.label}',
-                      child: Icon(
-                        Icons.refresh_rounded,
-                        size: 16,
-                        color: showColor || _revealReload
-                            ? Colors.white.withValues(alpha: 0.95)
-                            : Colors.white60,
+                child: SizedBox(
+                  height: _kShelfTabHeight,
+                  child: iptvTap(
+                    context: context,
+                    onTap: widget.onReload,
+                    borderRadius: 8,
+                    scaleOnFocus: 1.0,
+                    suppressInkHover: true,
+                    tvZone: ShellTvZone.topBar,
+                    tvRowId: 'iptv-section-reload',
+                    listIndex: widget.listIndex,
+                    tvItemIndex: widget.listIndex,
+                    onLeftEdge: () =>
+                        iptvFocusRowItem('iptv-sections', widget.listIndex),
+                    onRightEdge: widget.onRightEdge,
+                    onDownEdge: widget.onDownEdge,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Tooltip(
+                          message: 'Reload ${widget.spec.label}',
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            size: 16,
+                            color: showColor || _revealReload
+                                ? Colors.white.withValues(alpha: 0.95)
+                                : Colors.white60,
+                          ),
+                        ),
                       ),
                     ),
                   ),

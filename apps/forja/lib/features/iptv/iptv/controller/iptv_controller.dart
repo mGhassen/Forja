@@ -121,6 +121,8 @@ class IptvController extends ChangeNotifier
   List<IptvStream> browserAllStreams = const [];
   /// In-session catalog cache: `portalKey|section` → last successful fetch.
   final Map<String, _CatalogSnap> _catalogCache = {};
+  /// Bumped on every catalog open/reload so stale in-flight fetches are ignored.
+  int _catalogLoadId = 0;
   List<IptvEpisode> episodes = const [];
   String? error;
 
