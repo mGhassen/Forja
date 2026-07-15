@@ -375,6 +375,10 @@ jobs:
       (needs.build_android_tv.result == 'success' || needs.build_android_tv.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.resolve_version.outputs.version }}
+
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
@@ -391,10 +395,25 @@ jobs:
           \) -exec cp {} release-flat/ \;
           ls -la release-flat/
 
+      - name: Build release notes from changelog
+        id: notes
+        run: |
+          chmod +x scripts/changelog_release_notes.sh
+          ./scripts/changelog_release_notes.sh \
+            "${{ needs.resolve_version.outputs.version }}" RELEASE_NOTES.md
+          echo "----- release notes -----"
+          cat RELEASE_NOTES.md
+          if grep -q '^### ' RELEASE_NOTES.md; then
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.resolve_version.outputs.version }}
           name: Forja ${{ needs.resolve_version.outputs.version }}
           prerelease: ${{ inputs.prerelease }}
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'RELEASE_NOTES.md' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           files: release-flat/*

@@ -1,0 +1,178 @@
+---
+description: User-facing release changelogs — X.Y.x draft until tag, then exact X.Y.Z released
+globs: docs/changelog/**
+alwaysApply: true
+---
+
+# Changelog management
+
+Index: [docs/changelog](../../docs/changelog/README.md)
+
+Changelogs are **user-facing release notes**, not a commit log. One **in-progress file per minor line** (`1.2.x`), frozen to the **exact patch** on ship (`1.2.165`), not per push.
+
+**The changelog does not decide the version or codename.** The release admin picks the exact version at release time (CI bump / chosen tag); the codename comes from `kReleaseCodename` in [`app_version.dart`](../../apps/forja/lib/shared/services/app_version.dart). The changelog only carries the **bullets** — its `# 1.2.x — …` title is a human placeholder that CI ignores for numbering and naming.
+
+## Golden rules
+
+1. **One draft per minor arc** — while shipping `1.2.x` patches, all pushed work updates `docs/changelog/1.2.x-[draft].md` until the next tag.
+2. **Same turn as code** — when a change is user-visible, update the active changelog in the **same turn** as code and [feature docs](../../docs/features/README.md).
+3. **Final truth only** — edit or remove bullets when a later push corrects or reverts earlier work. No history of wrong attempts.
+4. **Short and readable** — complete for users, synthesized. No RFC/issue IDs, file paths, or implementation detail.
+5. **Version & codename are external** — admin sets the version at release; codename lives in `kReleaseCodename`. Never treat the changelog title as the source for either.
+
+## Which file is active?
+
+| App minor (`pubspec` / `kReleaseCodename`) | Draft file |
+|--------------------------------------------|------------|
+| `1.2.x` (today) | `docs/changelog/1.2.x-[draft].md` |
+| `1.3.x` (future) | `docs/changelog/1.3.x-[draft].md` |
+
+Minor bumps (`1.2` → `1.3`) start a **new** `X.Y.x-[draft].md`. Patch backlog files (`docs/backlog/1.0.1-…`) schedule RFC/issue work — **changelog draft name follows app minor + `x`**, not backlog patch filenames.
+
+## File lifecycle
+
+```
+pushing     →  docs/changelog/1.2.x-[draft].md     (accumulate bullets since last tag)
+admin ships  →  admin picks version (e.g. 1.2.165); CI builds the release body from the draft
+freeze      →  docs/changelog/done/1.2.165-[released].md   (title = shipped version)
+next pushes →  docs/changelog/1.2.x-[draft].md     (fresh empty sections; **Since release:** 1.2.165)
+minor 1.3.0 →  update kReleaseCodename + new docs/changelog/1.3.x-[draft].md
+```
+
+On release (admin picks version, then git tag `vX.Y.Z`):
+
+1. Prune bullets for work that did not ship; ensure wording matches the tagged build — do this **before** tagging, since CI reads the draft at the tagged commit.
+2. Move the draft to `docs/changelog/done/X.Y.Z-[released].md`; set body `**Status:**` → `released` and the title to the exact `X.Y.Z` the admin shipped.
+3. Update [changelog README](../../docs/changelog/README.md) **Released** table.
+4. Create empty `docs/changelog/X.Y.x-[draft].md` with `**Since release:**` pointing at the tag just shipped (all six [thematic groups](#thematic-groups-forja), empty).
+
+When bumping to a **new minor** (`1.2` → `1.3`): update `kReleaseCodename` in `app_version.dart` to the new minor's codename ([runway](../../docs/backlog/README.md#codename-runway)) and start `1.3.x-[draft].md`. CI reads the codename from `app_version.dart`, so this keeps the release title correct without editing the changelog title.
+
+## CI integration (automatic release body)
+
+The `publish_release` job in [`.github/workflows/release.yml`](../../.github/workflows/release.yml) checks out the tagged commit and runs [`scripts/changelog_release_notes.sh <version>`](../../scripts/changelog_release_notes.sh), where `<version>` is the exact version the **admin** resolved for the release. The script:
+
+- resolves the codename from `kReleaseCodename` in `app_version.dart` (not the changelog title),
+- builds the title as `# <version> — <codename>` (e.g. `# 1.2.165 — Dabaghin`),
+- pulls bullets from `docs/changelog/{major}.{minor}.x-[draft].md`,
+- drops empty thematic groups + editor scaffolding,
+- feeds the result as the GitHub Release **body**.
+
+That body is what `AppUpdaterService` fetches and the in-app update dialog shows — so **the draft must be clean and correct at tag time**. If no draft exists (or it has no group with bullets), CI falls back to `generate_release_notes` (raw commit list). Keep bullets user-facing so the update dialog stays readable.
+
+## When to add a bullet
+
+| Change | Changelog? |
+|--------|------------|
+| New user-visible feature, screen, setting, provider | ✅ |
+| Bug fix users would notice | ✅ |
+| UX copy, layout, or behavior change users see | ✅ |
+| Internal refactor, tests, CI, docs-only (no user impact) | ❌ |
+| Workaround shipped — describe user impact honestly | ✅ |
+
+Derive bullets from **what changed for the user**, not backlog `B*-S*` IDs.
+
+## Writing style
+
+- **Audience:** someone updating the app.
+- **One line per item** — start with an [action prefix](#action-prefixes), then the outcome.
+- **Thematic groups** — use the [Forja groups](#thematic-groups-forja) below; **omit empty** sections.
+- **Group** related items into one bullet when they share one user story.
+- **No** task IDs, issue numbers, crate names, or internal refactors unless user-visible.
+
+## Action prefixes
+
+Every bullet **must** start with one of these — **bold** Title case + colon:
+
+| Prefix | Use when |
+|--------|----------|
+| `**Add:**` | New capability, screen, setting, provider, or option |
+| `**Change:**` | Existing behavior or layout updated (not a bug) |
+| `**Fix:**` | Bug or broken UX users would notice |
+| `**Remove:**` | Something taken away |
+
+Format: `- **Fix:** Live match embeds on Windows no longer open white.`
+
+Do **not** invent extra verbs (`Improve:`, `Update:`, `Refactor:`). Map to the four above (`Improve` → `Change` or `Fix`).
+
+## Thematic groups (Forja)
+
+Six groups — pick **one** per bullet. Do not add sub-groups or extra headings.
+
+| Group | Use for | Examples |
+|-------|---------|----------|
+| **Features** | New screens, tabs, workflows, integrations users discover | Anime hub, Cmd+F search, settings category hub, new Jellyfin slice |
+| **Player** | Playback, controls, subtitles, PiP, speed, skip intro, next episode, external player | Flat player menus, seek preview, auto next episode |
+| **UI** | Shell, home, details layout, navigation, cards, hero, design polish, About/labels | Home hero layout, details metadata, settings layout (not provider logic) |
+| **Sources** | Stream providers, torrent resolve, embeds, scrapers, debrid, auto-resolve, cache | New VidSrc provider, dead-cache re-resolve, KissKh extract reliability |
+| **Live & IPTV** | Live Matches, Xtream, M3U, embed player for sports/IPTV | Stream picker, iframe embed fix, IPTV channel grid |
+| **TV** | Android TV, leanback launcher, D-pad focus, TV-only shell | ATV tab focus, WebView GLES workaround on TV |
+
+**Engine / Rust:** no separate group. If users would notice, phrase as an outcome under **Sources** (faster or more reliable resolve), **Player** (smoother open), or **Features** (new capability). Never “refactored crate X”.
+
+**Platform-specific:** put the bullet under the feature group (e.g. Windows live embed → **Live & IPTV**), not a “Windows” section.
+
+### Template (draft file)
+
+```markdown
+### Features
+
+### Player
+
+### UI
+
+### Sources
+
+### Live & IPTV
+
+### TV
+```
+
+### Good
+
+```markdown
+### Live & IPTV
+- **Fix:** Live match embeds on Windows no longer open as a white transparent surface.
+
+### Sources
+- **Fix:** Auto-resolve skips dead cached links and tries the next server.
+- **Add:** VidSrc.sbs as a stream provider.
+```
+
+### Bad
+
+```markdown
+### Fixed
+- Issue 053: WebView2 transparent background workaround.
+
+### Engine
+- Renamed resolver-engine crate.
+
+### UI
+- Settings About cleaned up.   ← missing **Add:** / **Change:** / **Fix:** / **Remove:**
+- Fix: missing bold on the prefix.
+```
+
+## Correcting earlier entries (mandatory)
+
+| Situation | Action |
+|-----------|--------|
+| Fix changes user-visible outcome | **Edit** the existing bullet |
+| Feature dropped or reverted before ship | **Remove** the bullet |
+| Two pushes same fix | **One** bullet |
+| Push A added X, push B removed X | **No bullet** for X |
+
+## Relationship to other docs
+
+| Layer | Purpose |
+|-------|---------|
+| [Backlog](../../docs/backlog/) | Ship checklist, RFC/issue scheduling |
+| **Changelog draft** | What users get in the **next** tagged release |
+| **Changelog released** | Frozen notes for that exact `vX.Y.Z` tag |
+| [Feature docs](../../docs/features/README.md) | How to use what shipped |
+
+## Checklist (same turn as code)
+
+- [ ] `docs/changelog/*-[draft].md` updated (add / edit / remove bullets)
+- [ ] Bullets user-facing and match current code
+- [ ] On tag: rename to `done/X.Y.Z-[released].md`, README, fresh `X.Y.x-[draft].md`

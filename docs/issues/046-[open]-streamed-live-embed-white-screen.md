@@ -40,3 +40,5 @@ Streamed.pk works in a browser; Forja opened `embed.st` as a **top-level** WebVi
 **Symptom:** Unlimited loading spinner and/or white embed screen when playing a Streamed live match.
 
 **Root:** Top-level embed load + aggressive `shouldOverrideUrlLoading` + ad script stall — not the Streamed API failing (match list / `embedUrl` resolve were fine).
+
+**Related:** Windows-only see-through white surface (Escape still pops) is [053](053-[workaround]-windows-live-embed-webview2-transparent.md) — WebView2 `DefaultBackgroundColor` alpha bug, not this embed/ad stall track.
