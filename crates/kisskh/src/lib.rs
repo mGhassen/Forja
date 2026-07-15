@@ -96,6 +96,15 @@ pub fn catalog_json(request_json: &str) -> String {
             let enriched = enrich_cards(cards);
             catalog::ok_json(&json!({ "cards": enriched }))
         }
+        "enrich_card_descriptions" => {
+            let cards: Vec<KdramaCard> = if req.cards_json.is_empty() {
+                vec![]
+            } else {
+                serde_json::from_str(&req.cards_json).unwrap_or_default()
+            };
+            let enriched = enrich_card_descriptions(cards);
+            catalog::ok_json(&json!({ "cards": enriched }))
+        }
         "enrich_home_feed" => {
             let feed: KdramaHomeFeed = if req.feed_json.is_empty() {
                 KdramaHomeFeed {

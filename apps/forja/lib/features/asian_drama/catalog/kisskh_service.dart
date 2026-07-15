@@ -85,6 +85,16 @@ class KissKhService {
     return _parseCards(decoded['cards']);
   }
 
+  /// Hero synopsis — list endpoints omit description; fetch from drama details.
+  Future<List<KdramaCard>> enrichCardDescriptions(List<KdramaCard> cards) async {
+    if (cards.isEmpty) return cards;
+    final decoded = await kisskhCatalog({
+      'action': 'enrich_card_descriptions',
+      'cards_json': jsonEncode(cards.map((c) => c.toEngineJson()).toList()),
+    });
+    return _parseCards(decoded['cards']);
+  }
+
   Future<KdramaHomeFeed> enrichHomeFeed(KdramaHomeFeed feed) async {
     final decoded = await kisskhCatalog({
       'action': 'enrich_home_feed',
@@ -433,6 +443,22 @@ class KdramaHomeFeed {
         'upcoming': upcoming.map((c) => c.toEngineJson()).toList(),
         'anime': anime.map((c) => c.toEngineJson()).toList(),
       };
+
+  /// Merge enriched cards (by id) into every feed row.
+  KdramaHomeFeed withCardsReplaced(List<KdramaCard> updates) {
+    if (updates.isEmpty) return this;
+    final byId = {for (final c in updates) c.id: c};
+    KdramaCard patch(KdramaCard c) => byId[c.id] ?? c;
+    return KdramaHomeFeed(
+      spotlight: spotlight.map(patch).toList(),
+      latest: latest.map(patch).toList(),
+      mostViewed: mostViewed.map(patch).toList(),
+      trending: trending.map(patch).toList(),
+      topRated: topRated.map(patch).toList(),
+      upcoming: upcoming.map(patch).toList(),
+      anime: anime.map(patch).toList(),
+    );
+  }
 }
 
 class KdramaDetails {

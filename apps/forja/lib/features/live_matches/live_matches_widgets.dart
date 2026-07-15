@@ -394,12 +394,11 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active = widget.forceActive ||
-        (canPlay &&
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-            ));
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
@@ -546,11 +545,9 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       ),
     );
 
-    if (!canPlay) return card;
-
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: canPlay ? widget.onTap : null,
       borderRadius: 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
@@ -1604,12 +1601,11 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active = widget.forceActive ||
-        (canPlay &&
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-            ));
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -1751,11 +1747,9 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       ),
     );
 
-    if (!canPlay) return card;
-
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: canPlay ? widget.onTap : null,
       borderRadius: 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
@@ -1813,12 +1807,11 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
     final policy = ShellScope.inputPolicyOf(context);
     final active = widget.forceActive ||
-        (canPlay &&
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-            ));
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -1971,11 +1964,9 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       ),
     );
 
-    if (!canPlay) return card;
-
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: canPlay ? widget.onTap : null,
       borderRadius: 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,

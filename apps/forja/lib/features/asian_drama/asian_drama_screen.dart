@@ -129,18 +129,30 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   Future<void> _enrichFeed(KdramaHomeFeed feed, int gen) async {
     try {
-      final enriched = await _service.enrichHomeFeed(feed);
+      var working = feed;
+      final hero = _heroCardsFrom(working);
+      if (hero.any((c) => c.description.trim().isEmpty)) {
+        final withSynopsis = await _service.enrichCardDescriptions(hero);
+        working = working.withCardsReplaced(withSynopsis);
+        if (!mounted || gen != _loadGen) return;
+        setState(() => _feed = working);
+      }
+      final enriched = await _service.enrichHomeFeed(working);
       if (!mounted || gen != _loadGen) return;
       setState(() => _feed = enriched);
     } catch (_) {}
   }
 
+  List<KdramaCard> _heroCardsFrom(KdramaHomeFeed feed) {
+    if (feed.spotlight.isNotEmpty) return feed.spotlight.take(8).toList();
+    if (feed.latest.isNotEmpty) return feed.latest.take(8).toList();
+    return feed.trending.take(8).toList();
+  }
+
   List<KdramaCard> get _spotlight {
     final f = _feed;
     if (f == null) return const [];
-    if (f.spotlight.isNotEmpty) return f.spotlight.take(8).toList();
-    if (f.latest.isNotEmpty) return f.latest.take(8).toList();
-    return f.trending.take(8).toList();
+    return _heroCardsFrom(f);
   }
 
   void _openDetails(KdramaCard a) {
@@ -277,7 +289,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             id: '${a.id}',
             title: a.title,
             imageUrl: a.cover,
-            overview: a.description,
+            overview: a.description.trim(),
             year: a.year,
             badge: a.heroMediaBadge,
             onPlay: () => _openDetails(a),

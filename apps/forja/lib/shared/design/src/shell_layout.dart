@@ -307,6 +307,15 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
   }
 
   if (!fits(titleHeight, overviewBlock)) {
+    titleHeight = minTitleHeight;
+    if (fits(titleHeight, overviewBlock)) {
+      return ShellHeroDesktopTextLayout(
+        titleHeight: titleHeight,
+        showOverview: true,
+        overviewMaxLines: lines,
+        overviewSlotHeight: slot,
+      );
+    }
     titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
     if (!fits(titleHeight, 0)) {
       titleHeight = (maxHeight - baseWithoutOverview)

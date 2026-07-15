@@ -396,6 +396,31 @@ pub fn get_details(id: i32) -> Result<KdramaDetails, String> {
     })
 }
 
+fn merge_card_meta(card: &KdramaCard, meta: &KdramaCard) -> KdramaCard {
+    KdramaCard {
+        id: card.id,
+        title: card.title.clone(),
+        cover: if card.cover.is_empty() {
+            meta.cover.clone()
+        } else {
+            card.cover.clone()
+        },
+        label: card.label.clone().or(meta.label.clone()),
+        episodes_count: if card.episodes_count > 0 {
+            card.episodes_count
+        } else {
+            meta.episodes_count
+        },
+        year: card.year.clone().or(meta.year.clone()),
+        r#type: card.r#type.clone().or(meta.r#type.clone()),
+        description: if !card.description.is_empty() {
+            card.description.clone()
+        } else {
+            meta.description.clone()
+        },
+    }
+}
+
 fn merge_card_details(card: &KdramaCard, det: &KdramaDetails) -> KdramaCard {
     let description = if !card.description.is_empty() {
         card.description.clone()
@@ -481,11 +506,35 @@ fn enrich_cards_where(
     out
 }
 
+/// Hero carousel lists — fetch synopsis before bulk meta enrich hammers the API.
+fn enrich_hero_lists(feed: &KdramaHomeFeed) -> (Vec<KdramaCard>, Vec<KdramaCard>, Vec<KdramaCard>) {
+    let mut spotlight = feed.spotlight.clone();
+    let mut latest = feed.latest.clone();
+    let mut trending = feed.trending.clone();
+    if !spotlight.is_empty() {
+        spotlight = enrich_card_descriptions(spotlight);
+    } else if !latest.is_empty() {
+        let n = latest.len().min(8);
+        let head = enrich_card_descriptions(latest[..n].to_vec());
+        latest = head.into_iter().chain(latest.into_iter().skip(n)).collect();
+    } else if !trending.is_empty() {
+        let n = trending.len().min(8);
+        let head = enrich_card_descriptions(trending[..n].to_vec());
+        trending = head.into_iter().chain(trending.into_iter().skip(n)).collect();
+    }
+    (spotlight, latest, trending)
+}
+
 pub fn enrich_home_feed(feed: KdramaHomeFeed) -> KdramaHomeFeed {
+    // Synopsis first — small hero set, before bulk meta enrich can rate-limit details.
+    let (hero_spotlight, hero_latest, hero_trending) = enrich_hero_lists(&feed);
+
     let mut by_id: std::collections::HashMap<i32, KdramaCard> = std::collections::HashMap::new();
-    for c in feed
-        .spotlight
+    for c in hero_spotlight
         .iter()
+        .chain(hero_latest.iter())
+        .chain(hero_trending.iter())
+        .chain(feed.spotlight.iter())
         .chain(feed.latest.iter())
         .chain(feed.most_viewed.iter())
         .chain(feed.trending.iter())
@@ -493,7 +542,10 @@ pub fn enrich_home_feed(feed: KdramaHomeFeed) -> KdramaHomeFeed {
         .chain(feed.upcoming.iter())
         .chain(feed.anime.iter())
     {
-        by_id.entry(c.id).or_insert_with(|| c.clone());
+        by_id
+            .entry(c.id)
+            .and_modify(|existing| *existing = merge_card_meta(existing, c))
+            .or_insert_with(|| c.clone());
     }
 
     let enriched = enrich_cards(by_id.into_values().collect::<Vec<_>>());
@@ -506,29 +558,24 @@ pub fn enrich_home_feed(feed: KdramaHomeFeed) -> KdramaHomeFeed {
             .collect()
     };
 
-    // Spotlight is the cinematic hero — ensure synopsis even when list already
-    // had year/type (meta enrich would have skipped those cards). When spotlight
-    // is empty the Flutter hub falls back to latest, then trending.
-    let mut spotlight = map_list(&feed.spotlight);
-    let mut latest = map_list(&feed.latest);
-    let mut trending = map_list(&feed.trending);
-    if !spotlight.is_empty() {
-        spotlight = enrich_card_descriptions(spotlight);
-    } else if !latest.is_empty() {
-        let n = latest.len().min(8);
-        let head = enrich_card_descriptions(latest[..n].to_vec());
-        latest = head.into_iter().chain(latest.into_iter().skip(n)).collect();
-    } else if !trending.is_empty() {
-        let n = trending.len().min(8);
-        let head = enrich_card_descriptions(trending[..n].to_vec());
-        trending = head.into_iter().chain(trending.into_iter().skip(n)).collect();
-    }
+    let merge_hero = |hero: Vec<KdramaCard>, fallback: &[KdramaCard]| -> Vec<KdramaCard> {
+        if hero.is_empty() {
+            return map_list(fallback);
+        }
+        hero.into_iter()
+            .map(|c| {
+                map.get(&c.id)
+                    .map(|meta| merge_card_meta(&c, meta))
+                    .unwrap_or(c)
+            })
+            .collect()
+    };
 
     KdramaHomeFeed {
-        spotlight,
-        latest,
+        spotlight: merge_hero(hero_spotlight, &feed.spotlight),
+        latest: merge_hero(hero_latest, &feed.latest),
         most_viewed: map_list(&feed.most_viewed),
-        trending,
+        trending: merge_hero(hero_trending, &feed.trending),
         top_rated: map_list(&feed.top_rated),
         upcoming: map_list(&feed.upcoming),
         anime: map_list(&feed.anime),
