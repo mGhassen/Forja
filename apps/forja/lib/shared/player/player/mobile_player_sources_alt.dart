@@ -13,6 +13,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
+      currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );

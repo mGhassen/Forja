@@ -250,9 +250,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
         (isTv && widget.movie != null) ||
         (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
     final hasStreamPicker = _s._hasStreamPicker;
-    final hasTorrentSources =
-        widget.movie != null &&
-        ((_s._activeMagnet ?? widget.magnetLink)?.isNotEmpty ?? false);
+    final hasTorrentSources = _s._usesCatalogSourcesPanel;
     final btnSize = 38.0;
     final iconSz = 20.0;
     final compact = MediaQuery.sizeOf(context).width < 700;

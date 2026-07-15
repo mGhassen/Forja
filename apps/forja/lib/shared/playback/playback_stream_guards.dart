@@ -10,12 +10,20 @@ import 'package:rust/rust.dart';
 bool isWebStreamProviderId(String sourceId) {
   if (sourceId.isEmpty) return false;
   if (sourceId.startsWith('nuvio:')) return false;
-  const nonWebModes = {'stremio_direct', 'amri', 'torrent'};
+  if (isCatalogSourcesMode(sourceId)) return false;
   final id = StreamProviderDisplay.canonicalId(sourceId);
-  if (nonWebModes.contains(id)) return false;
   if (StreamProviders.providers.containsKey(id)) return true;
   // Display-profile aliases that are still web extractors (e.g. kisskh).
   return StreamProviderDisplay.hasProfile(id);
+}
+
+/// True for playback modes that use the torrent/Stremio **Sources** right panel
+/// (not the layers webstreaming server picker).
+bool isCatalogSourcesMode(String? providerId) {
+  if (providerId == null || providerId.isEmpty) return false;
+  if (providerId.startsWith('nuvio:')) return true;
+  const modes = {'stremio_direct', 'amri', 'torrent'};
+  return modes.contains(StreamProviderDisplay.canonicalId(providerId));
 }
 
 /// A magnet / torrent link — NOT a direct HTTP(S) stream.

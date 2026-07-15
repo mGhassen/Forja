@@ -296,6 +296,9 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     if (pid == null || pid.isEmpty || playUrl == null || playUrl.isEmpty) {
       return;
     }
+    // Catalog modes (Stremio Direct / Nuvio / torrent / Amri) use the Sources
+    // right panel — never invent a one-row "server" list for the layers picker.
+    if (isCatalogSourcesMode(pid)) return;
 
     final catalogUrl = _s._currentPlayingCatalogUrl;
     var sources = List<StreamSource>.from(
@@ -319,7 +322,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     } else {
       final label = widget.providers != null
           ? PlayerProviderMenu.snackbarLabel(pid, widget.providers![pid])
-          : pid;
+          : StreamProviderDisplay.playerLabel(pid);
       final identity =
           (catalogUrl != null && catalogUrl.isNotEmpty) ? catalogUrl : playUrl;
       final lower = playUrl.toLowerCase();

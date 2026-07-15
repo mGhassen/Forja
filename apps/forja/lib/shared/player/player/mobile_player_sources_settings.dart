@@ -42,8 +42,7 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
         widget.providers != null &&
         widget.providers!.isNotEmpty &&
         widget.movie != null &&
-        widget.magnetLink == null &&
-        widget.activeProvider != 'stremio_direct';
+        !_s._usesCatalogSourcesPanel;
     final hasSources =
         _s._currentSources != null && _s._currentSources!.isNotEmpty;
 

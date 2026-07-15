@@ -373,18 +373,22 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   bool get _hasStreamPicker {
-    // Magnet control already opens torrent sources — don't show the
-    // server-style "Torrent" picker alongside it.
-    final onTorrent =
-        ((_s._activeMagnet ?? widget.magnetLink)?.isNotEmpty ?? false);
-    if (onTorrent) return false;
+    // Catalog Sources (magnet / Stremio Direct / Nuvio) already covers switching —
+    // don't show the layers server picker alongside it.
+    if (_usesCatalogSourcesPanel) return false;
     final hasProviders =
-        widget.providers != null &&
-        widget.providers!.isNotEmpty &&
-        widget.activeProvider != 'stremio_direct';
-    final hasSources =
-        _s._effectiveCurrentSources != null && _s._effectiveCurrentSources!.isNotEmpty;
+        widget.providers != null && widget.providers!.isNotEmpty;
+    final hasSources = _s._effectiveCurrentSources != null &&
+        _s._effectiveCurrentSources!.isNotEmpty;
     return hasProviders || hasSources;
+  }
+
+  /// Magnet or Stremio/Nuvio catalog play — link button opens Sources panel.
+  bool get _usesCatalogSourcesPanel {
+    if (widget.movie == null) return false;
+    final magnet = _s._activeMagnet ?? widget.magnetLink;
+    if (magnet != null && magnet.isNotEmpty) return true;
+    return isCatalogSourcesMode(_s._currentProvider ?? widget.activeProvider);
   }
 
   void _showStreamMenu([BuildContext? anchorContext]) {

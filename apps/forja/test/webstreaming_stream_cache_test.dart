@@ -26,6 +26,21 @@ void main() {
     });
   });
 
+  group('isCatalogSourcesMode', () {
+    test('matches Stremio Direct, torrent, Amri, and Nuvio scrapers', () {
+      expect(isCatalogSourcesMode('stremio_direct'), isTrue);
+      expect(isCatalogSourcesMode('torrent'), isTrue);
+      expect(isCatalogSourcesMode('amri'), isTrue);
+      expect(isCatalogSourcesMode('nuvio:showbox'), isTrue);
+    });
+
+    test('rejects web extractors and empty', () {
+      expect(isCatalogSourcesMode('videasy'), isFalse);
+      expect(isCatalogSourcesMode(null), isFalse);
+      expect(isCatalogSourcesMode(''), isFalse);
+    });
+  });
+
   group('WebstreamingStreamCache.cacheKey', () {
     test('movie keys ignore season/episode', () {
       expect(

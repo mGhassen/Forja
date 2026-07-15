@@ -205,9 +205,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
         (isTv && widget.movie != null) ||
         (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
     final hasStreamPicker = _s._hasStreamPicker;
-    final hasTorrentSources =
-        widget.movie != null &&
-        ((_s._activeMagnet ?? widget.magnetLink)?.isNotEmpty ?? false);
+    final hasTorrentSources = _s._usesCatalogSourcesPanel;
     final compact = MediaQuery.sizeOf(context).width < 900;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,

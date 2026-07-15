@@ -32,6 +32,7 @@ class PlayerSourcesPanel {
     int? season,
     int? episode,
     String? currentMagnet,
+    String? currentStreamUrl,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
         onStremioSelected,
@@ -52,6 +53,7 @@ class PlayerSourcesPanel {
           season: season,
           episode: episode,
           currentMagnet: currentMagnet,
+          currentStreamUrl: currentStreamUrl,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
@@ -73,12 +75,14 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.season,
     this.episode,
     this.currentMagnet,
+    this.currentStreamUrl,
   });
 
   final Movie movie;
   final int? season;
   final int? episode;
   final String? currentMagnet;
+  final String? currentStreamUrl;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -110,6 +114,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
         season: widget.season,
         episode: widget.episode,
         currentMagnet: widget.currentMagnet,
+        currentStreamUrl: widget.currentStreamUrl,
         onTorrentSelected: widget.onTorrentSelected,
         onStremioSelected: widget.onStremioSelected,
         onClose: widget.onClose,
@@ -127,12 +132,14 @@ class _PlayerSourcesBody extends StatefulWidget {
     this.season,
     this.episode,
     this.currentMagnet,
+    this.currentStreamUrl,
   });
 
   final Movie movie;
   final int? season;
   final int? episode;
   final String? currentMagnet;
+  final String? currentStreamUrl;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -214,6 +221,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   bool _isCurrentStremio(Map<String, dynamic> stream) {
+    final playUrl = widget.currentStreamUrl;
+    if (playUrl != null && playUrl.isNotEmpty) {
+      final url = stream['url']?.toString();
+      if (url != null && url.isNotEmpty && url == playUrl) return true;
+    }
     final current = _infoHashOf(widget.currentMagnet);
     if (current == null) return false;
     final hash = stream['infoHash']?.toString();
@@ -769,6 +781,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   Future<void> _selectStremio(Map<String, dynamic> stream) async {
+    if (_isCurrentStremio(stream)) {
+      widget.onClose();
+      return;
+    }
     // Close first so the player can show CHECKING SOURCES while resolving.
     widget.onClose();
     await widget.onStremioSelected(stream);

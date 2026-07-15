@@ -16,7 +16,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 
 - Start playback while the torrent still buffers
 - Select which file to play in multi-file torrents
-- Switch torrents / Stremio streams mid-playback via the link (magnet) button — opens the same right-side **Sources** panel as media details (**All / Torrents / Stremio**, provider chips, filters, source cards). Picking a result resolves and reloads in-player. The layers **Source** server picker stays hidden during torrent playback (magnet control is enough)
+- Switch torrents / Stremio streams mid-playback via the link (magnet) button — opens the same right-side **Sources** panel as media details (**All / Torrents / Stremio**, provider chips, filters, source cards). The link control also appears for **Stremio Direct / Nuvio** sessions even when the stream has no magnet (direct HTTP). Picking a result resolves and reloads in-player. The layers **Source** server picker stays hidden during catalog Sources playback (magnet or Stremio Direct)
 - On desktop, optionally show a live torrent stats card (Settings → Torrent stats, off by default) above the seek bar while controls are visible: download/upload speed, live peers, downloaded size / %, ETA. When Skip Intro or Next Episode is showing, the card lifts above those buttons
 - Adjust cache type and size in Settings for smoother streaming
 

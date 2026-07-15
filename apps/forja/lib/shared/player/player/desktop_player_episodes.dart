@@ -535,6 +535,7 @@ mixin _DesktopPlayerEpisodes
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
+      currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );
@@ -780,8 +781,7 @@ mixin _DesktopPlayerEpisodes
         widget.providers != null &&
         widget.providers!.isNotEmpty &&
         widget.movie != null &&
-        widget.magnetLink == null &&
-        widget.activeProvider != 'stremio_direct';
+        !_s._usesCatalogSourcesPanel;
     final hasSources =
         _s._currentSources != null && _s._currentSources!.isNotEmpty;
     final hasTorrent =
