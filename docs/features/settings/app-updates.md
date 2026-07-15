@@ -15,6 +15,7 @@ Forja can check GitHub Releases for newer builds when the app starts and lets yo
 - Tap **Check for updates** in Settings
 - Accept update prompt when a newer version exists
 - Install updates on Android through the update dialog when supported
+- See the app version at the bottom of About
 
 ## Tips
 

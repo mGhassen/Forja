@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:rust/rust.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
 import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
@@ -508,17 +507,8 @@ class SettingsAboutPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final loaded = Engine.isReady;
-    final version = loaded
-        ? RustLib.instance.version
-        : 'not loaded (Dart fallback)';
-    final statusColor =
-        loaded ? ForjaShellColors.brandGreen : const Color(0xFFFB923C);
-    final platformNote = loaded
-        ? ''
-        : Platform.isAndroid || Platform.isIOS
-            ? ' — run ./scripts/build_rust_mobile.sh and rebuild'
-            : ' — run ./scripts/build_rust.sh';
+    final showSplashPreview = kDebugMode &&
+        (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -527,28 +517,10 @@ class SettingsAboutPageBody extends StatelessWidget {
           label: 'Updates',
           children: const [SettingsAboutPanel()],
         ),
-        SettingsGroup(
-          label: 'Developer',
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(2, 16, 2, 16),
-              child: Row(
-                children: [
-                  Icon(Icons.memory_rounded, size: 18, color: statusColor),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      loaded
-                          ? 'Rust engine active — v$version'
-                          : 'Rust engine inactive — $version$platformNote',
-                      style: TextStyle(color: statusColor, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (kDebugMode &&
-                (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
+        if (showSplashPreview)
+          SettingsGroup(
+            label: 'Developer',
+            children: [
               SettingsActionRow(
                 leading: const Icon(
                   Icons.play_circle_outline,
@@ -562,8 +534,8 @@ class SettingsAboutPageBody extends StatelessWidget {
                   ),
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
         const SizedBox(height: 24),
         Center(
           child: AppVersionLabel(

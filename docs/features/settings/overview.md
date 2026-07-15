@@ -22,7 +22,7 @@ Settings is organized as a **category hub** (not a long accordion). On desktop/w
 | [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu |
-| [About](app-updates.md) | Check for updates, version, developer |
+| [About](app-updates.md) | Check for updates, app version |
 
 ## Tips
 
