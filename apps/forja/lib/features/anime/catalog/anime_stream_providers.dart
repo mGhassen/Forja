@@ -19,6 +19,9 @@ class AnimeStreamProviders {
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
+    // VidNest — AniList-native HiAnime / AnimePahe
+    'vidnest:hianime',
+    'vidnest:animepahe',
     // Anikoto HD embeds
     'megaplay',
     'vidwish',
@@ -55,6 +58,9 @@ class AnimeStreamProviders {
     }
     for (final p in allAnimeKnownProviders) {
       out['allanime:$p'] = p;
+    }
+    for (final p in vidnestKnownProviders) {
+      out['vidnest:$p'] = vidnestUpstreamLabels[p] ?? p;
     }
     return out;
   }

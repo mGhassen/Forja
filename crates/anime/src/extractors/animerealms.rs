@@ -38,13 +38,13 @@ fn get_streams(provider: &str, anilist_id: i64, episode: i32) -> Result<Value, S
     serde_json::from_str(&resp.body).map_err(|e| e.to_string())
 }
 
-pub fn animerealms_streams(
-    anilist_id: i64,
-    episode: i32,
-    provider: &str,
-) -> Result<Value, String> {
+pub fn animerealms_streams(anilist_id: i64, episode: i32, provider: &str) -> Result<Value, String> {
     let data = get_streams(provider, anilist_id, episode)?;
-    let streams = data.get("streams").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let streams = data
+        .get("streams")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
     let real: Vec<&Value> = streams
         .iter()
         .filter(|s| {
@@ -58,7 +58,11 @@ pub fn animerealms_streams(
         return Ok(json!({ "result": null }));
     }
     let first = real[0];
-    let url = first.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let url = first
+        .get("url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
 
     let mut tracks = Vec::new();
     if let Some(subs) = data.get("subtitles").and_then(|v| v.as_array()) {

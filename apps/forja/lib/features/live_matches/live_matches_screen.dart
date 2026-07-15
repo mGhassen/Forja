@@ -70,6 +70,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
+  /// Bucket whose row paints on top while a card inside it is hovered.
+  int? _timelineHoveredBucketMs;
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
@@ -137,6 +139,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           ? _LiveMatchesView.timeline
           : _LiveMatchesView.grid;
       _timelineAutoScrolled = false;
+      _timelineHoveredBucketMs = null;
     });
     unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));
   }

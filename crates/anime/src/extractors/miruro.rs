@@ -20,7 +20,18 @@ pub const OFFICIAL_DOMAINS: &[&str] = &[
 ];
 
 pub const KNOWN_PROVIDERS: &[&str] = &[
-    "zoro", "kiwi", "bee", "hop", "bonk", "ally", "moo", "animedunya", "arc", "jet", "bun", "kuz",
+    "zoro",
+    "kiwi",
+    "bee",
+    "hop",
+    "bonk",
+    "ally",
+    "moo",
+    "animedunya",
+    "arc",
+    "jet",
+    "bun",
+    "kuz",
     "telli",
 ];
 
@@ -238,7 +249,10 @@ fn api_get_version(
         let uri = format!("{base}/api/secure/pipe?e={encoded}");
         let direct = anime_get(&uri, &pipe_headers(&base), 20)?;
         if direct.status == 200 {
-            if let Ok(decoded) = decode_pipe_body(&direct.body, direct.headers.get("x-obfuscated").map(|s| s.as_str())) {
+            if let Ok(decoded) = decode_pipe_body(
+                &direct.body,
+                direct.headers.get("x-obfuscated").map(|s| s.as_str()),
+            ) {
                 set_active_base(&base);
                 return Ok(Some(decoded));
             }
@@ -264,8 +278,16 @@ fn parse_subtitle_tracks(src: &Value) -> Vec<AnimeTrackOut> {
             }
             tracks.push(AnimeTrackOut {
                 url: file_url.to_string(),
-                label: t.get("label").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string(),
-                language: t.get("language").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                label: t
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown")
+                    .to_string(),
+                language: t
+                    .get("language")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
                 is_default: t.get("default") == Some(&Value::Bool(true)),
             });
         }
@@ -390,7 +412,10 @@ pub fn miruro_resolve(
                 "version": PROTOCOL_VERSIONS[0],
             });
             let encoded = encode_pipe_request(&payload);
-            let base = domain_order().first().cloned().unwrap_or_else(|| OFFICIAL_DOMAINS[0].to_string());
+            let base = domain_order()
+                .first()
+                .cloned()
+                .unwrap_or_else(|| OFFICIAL_DOMAINS[0].to_string());
             return Ok(json!({
                 "streams": [],
                 "cf_blocked": true,
@@ -405,7 +430,11 @@ pub fn miruro_resolve(
         .cloned()
         .unwrap_or_else(|| OFFICIAL_DOMAINS[0].to_string());
     let tracks = parse_subtitle_tracks(&src);
-    let streams = src.get("streams").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let streams = src
+        .get("streams")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
     let mut out = Vec::new();
     let mut stream_index = 0;
 
@@ -450,7 +479,8 @@ mod tests {
 
     #[test]
     fn encode_pipe_request_is_url_safe() {
-        let payload = json!({"path":"episodes","method":"GET","query":{},"body":null,"version":"0.2.0"});
+        let payload =
+            json!({"path":"episodes","method":"GET","query":{},"body":null,"version":"0.2.0"});
         let enc = encode_pipe_request(&payload);
         assert!(!enc.contains('='));
         assert!(!enc.contains('+'));
@@ -478,15 +508,10 @@ mod tests {
     fn episodes_webview_body_is_not_treated_as_sources() {
         // Simulate: episodes JSON passed with pipe_path=episodes must not
         // satisfy the sources step (would return empty streams, no cf_blocked).
-        let episodes_json = r#"{"providers":{"bee":{"episodes":{"sub":[{"number":1,"id":"ep1"}]}}}}"#;
+        let episodes_json =
+            r#"{"providers":{"bee":{"episodes":{"sub":[{"number":1,"id":"ep1"}]}}}}"#;
         // Cache episodes via fetch with matching path.
-        let ep = fetch_episodes(
-            999001,
-            Some(episodes_json),
-            None,
-            Some("episodes"),
-        )
-        .unwrap();
+        let ep = fetch_episodes(999001, Some(episodes_json), None, Some("episodes")).unwrap();
         assert!(ep.get("providers").is_some());
 
         // Sources step with episodes-tagged body must CF-block (no HTTP in unit test
@@ -510,7 +535,10 @@ mod tests {
             "unexpected resolve payload: {out}"
         );
         if cf {
-            assert_eq!(out.get("pipe_path").and_then(|v| v.as_str()), Some("sources"));
+            assert_eq!(
+                out.get("pipe_path").and_then(|v| v.as_str()),
+                Some("sources")
+            );
         }
     }
 }

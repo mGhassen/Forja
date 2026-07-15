@@ -61,8 +61,15 @@ class ProviderRegistry {
     ),
     StreamProviderDef(
       id: 'vidsrc',
-      displayName: 'Vidsrc',
+      displayName: 'VSEmbed',
       kind: ProviderKind.extractor,
+    ),
+    StreamProviderDef(
+      id: 'vidsrcwin',
+      displayName: 'VidSrc',
+      kind: ProviderKind.template,
+      movieUrl: (id) => Engine.requireMovieUrl('vidsrcwin', id),
+      tvUrl: (id, s, e) => Engine.requireTvUrl('vidsrcwin', id, s, e),
     ),
     StreamProviderDef(
       id: 'vidnest',

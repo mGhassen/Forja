@@ -96,6 +96,46 @@ class KissKhExtractor {
     }
   }
 
+  static String _cacheBusted(String pageUrl) {
+    final sep = pageUrl.contains('?') ? '&' : '?';
+    return '$pageUrl${sep}_forja=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  static Map<String, String> _pageHeaders() => {
+        'User-Agent': _userAgent,
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': '${KissKhService.baseUrl}/',
+        'Upgrade-Insecure-Requests': '1',
+        // Bypass intermediary HTTP caches for the SPA shell.
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      };
+
+  Future<void> _purgeKissKhSiteData() async {
+    try {
+      final manager = CookieManager.instance();
+      await manager.deleteCookies(url: WebUri(KissKhService.baseUrl));
+      await manager.deleteCookies(url: WebUri('${KissKhService.baseUrl}/'));
+    } catch (e) {
+      debugPrint('[KissKhExtractor] cookie purge failed: $e');
+    }
+  }
+
+  Future<void> _hardNavigate(
+    InAppWebViewController ctrl,
+    String pageUrl,
+  ) async {
+    final url = _cacheBusted(pageUrl);
+    if (kDebugMode) {
+      debugPrint('[KissKhExtractor] hard navigate $url');
+    }
+    await ctrl.loadUrl(
+      urlRequest: URLRequest(url: WebUri(url), headers: _pageHeaders()),
+    );
+  }
+
   Future<KissKhStream?> _resolveBody({
     required int dramaId,
     required String dramaTitle,
@@ -118,27 +158,26 @@ class KissKhExtractor {
       episodeId: episodeId,
       episodeNumber: episodeNumber,
     );
+    final openUrl = _cacheBusted(pageUrl);
 
     _apiCompleter = Completer<Map<String, dynamic>>();
     _subsBuffer.clear();
-    var softReloaded = false;
+    var recoveries = 0;
     Timer? softReloadTimer;
+    Timer? secondRecoveryTimer;
     Timer? nudgeTimer;
 
     try {
-      // Incognito + no HTTP cache: cached SPA/XHR was replaying the same
-      // kkey and sometimes skipping a live Episode/*.png request entirely.
+      // Incognito + no HTTP cache alone is not enough on WKWebView: a plain
+      // reload() can reuse the SPA shell / skip UserScript reinjection, so the
+      // Episode/*.png kkey request never appears (stuck on "Waiting for stream
+      // key…"). Cache-bust + hard loadUrl + kisskh cookie purge force a live
+      // request.
+      await _purgeKissKhSiteData();
       _web = ForjaHeadlessInAppWebView(
         initialUrlRequest: URLRequest(
-          url: WebUri(pageUrl),
-          headers: {
-            'User-Agent': _userAgent,
-            'Accept':
-                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': '${KissKhService.baseUrl}/',
-            'Upgrade-Insecure-Requests': '1',
-          },
+          url: WebUri(openUrl),
+          headers: _pageHeaders(),
         ),
         initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
@@ -169,6 +208,7 @@ class KissKhExtractor {
           try {
             await controller.evaluateJavascript(
               source:
+                  'window.__kkhGotVideo = false;'
                   'window.__kkhInstallHooks && window.__kkhInstallHooks();'
                   'window.__kkhNudgePlay && window.__kkhNudgePlay(); true;',
             );
@@ -235,7 +275,7 @@ class KissKhExtractor {
       );
 
       if (kDebugMode) {
-        debugPrint('[KissKhExtractor] opening $pageUrl');
+        debugPrint('[KissKhExtractor] opening $openUrl');
       }
 
       await _web!.run();
@@ -243,19 +283,32 @@ class KissKhExtractor {
 
       // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
       // long after load-stop. Wait only for the stream API.
+      // Prefer loadUrl(+cache-bust) over reload() so UserScripts reinstall.
       softReloadTimer = Timer(const Duration(seconds: 12), () {
         if (cancelled()) return;
         final c = _apiCompleter;
         if (c == null || c.isCompleted) return;
-        if (softReloaded) return;
-        softReloaded = true;
         final ctrl = _controller;
-        if (ctrl == null) return;
+        if (ctrl == null || recoveries >= 2) return;
+        recoveries++;
         debugPrint(
-          '[KissKhExtractor] no Episode API in 12s — soft reload once',
+          '[KissKhExtractor] no Episode API in 12s — hard navigate once',
         );
         onProgress?.call('retry', 'Refreshing kisskh page…');
-        unawaited(ctrl.reload());
+        unawaited(_hardNavigate(ctrl, pageUrl));
+      });
+      secondRecoveryTimer = Timer(const Duration(seconds: 24), () {
+        if (cancelled()) return;
+        final c = _apiCompleter;
+        if (c == null || c.isCompleted) return;
+        final ctrl = _controller;
+        if (ctrl == null || recoveries >= 2) return;
+        recoveries++;
+        debugPrint(
+          '[KissKhExtractor] no Episode API in 24s — hard navigate again',
+        );
+        onProgress?.call('retry', 'Refreshing kisskh page…');
+        unawaited(_hardNavigate(ctrl, pageUrl));
       });
 
       nudgeTimer = Timer.periodic(const Duration(seconds: 2), (_) {
@@ -359,6 +412,7 @@ class KissKhExtractor {
       return null;
     } finally {
       softReloadTimer?.cancel();
+      secondRecoveryTimer?.cancel();
       nudgeTimer?.cancel();
       if (gen == _resolveGen) {
         await _cleanup();

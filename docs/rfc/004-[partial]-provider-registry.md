@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** acceptance (core) · **4 / 7** acceptance (expansion slice) |
-| **Current slice** | VidLove + VidSrc.sbs hosts shipped; retired SmashyStream + PrimeWire; in-player switch + remaining expansion not started |
+| **Progress** | **3 / 3** acceptance (core) · **5 / 8** acceptance (expansion slice) |
+| **Current slice** | VidLove + VidSrc + VidSrc.sbs hosts shipped; retired SmashyStream + PrimeWire; in-player switch + remaining expansion not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -35,6 +35,7 @@
 | 5 | R04-A08 | VidSrc.sbs as separate template embed (`vidsrc.sbs`) | ✅ |
 | 6 | R04-A09 | Remove SmashyStream from registry, resolver, settings, and extraction | ✅ |
 | 7 | R04-A10 | Remove PrimeWire from registry, resolver, settings, and extraction | ✅ |
+| 8 | R04-A11 | VidSrc.win as a separate multi-server host provider; relabel the existing `vsembed.su` provider VSEmbed | ✅ |
 
 ---
 
@@ -93,6 +94,7 @@ UI: Settings → Streaming providers (reorder + toggles)
 | 2Embed, AutoEmbed, MultiEmbed | | add |
 | PrimeSrc, VidSrc.wtf | | add |
 | VidSrc.sbs | | yes (R04-A08) |
+| VidSrc.win | | yes (R04-A11) |
 
 SmashyStream was implemented during the expansion work and later retired in
 R04-A09. The rollout row above is retained as historical scope.

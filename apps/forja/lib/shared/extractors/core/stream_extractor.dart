@@ -198,7 +198,7 @@ class StreamExtractor {
     _profile = resolved;
     _activeProviderId = sessionTag;
     if (isAndroidTvHeadlessWebViewBlocked) {
-      _log('Headless WebView blocked on Android TV (use WebStreamr/Vidsrc)');
+      _log('Headless WebView blocked on Android TV (use WebStreamr/VSEmbed)');
       _activeProviderId = null;
       return null;
     }
@@ -1052,7 +1052,8 @@ class StreamExtractor {
           if (rect.width < 24 || rect.height < 18 || rect.width > 280) return;
           const lower = text.toLowerCase();
           const cls = (el.className || '').toString().toLowerCase();
-          const labeled = labelSet.size > 0 && labelSet.has(lower);
+          const labeled = labelSet.size > 0 &&
+              Array.from(labelSet).some((label) => lower === label || lower.startsWith(label));
           const generic = /^(server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i.test(text);
           const classHit = cls.includes('server') || cls.includes('source-btn');
           if (labeled || (labelSet.size === 0 && (generic || classHit))) chips.push(el);

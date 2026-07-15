@@ -18,6 +18,7 @@ import 'package:forja/shared/extractors/providers/vidsrcsbs/profile.dart';
 import 'package:forja/shared/extractors/providers/moviesapi/profile.dart';
 import 'package:forja/shared/extractors/providers/videasy/profile.dart';
 import 'package:forja/shared/extractors/providers/vidsrc/profile.dart';
+import 'package:forja/shared/extractors/providers/vidsrcwin/profile.dart';
 import 'package:forja/shared/extractors/providers/anitaro/profile.dart';
 
 export 'package:forja/shared/extractors/core/embed_extract_profile.dart';
@@ -43,6 +44,7 @@ abstract final class EmbedExtractProfiles {
     'moviesapi': moviesapiExtractProfile,
     'videasy': videasyExtractProfile,
     'vidsrc': vidsrcExtractProfile,
+    'vidsrcwin': vidsrcwinExtractProfile,
     'anitaro': anitaroExtractProfile,
   };
 
@@ -66,5 +68,6 @@ abstract final class EmbedExtractProfiles {
     'vidsrcsbs',
     '111movies',
     'moviesapi',
+    'vidsrcwin',
   ];
 }

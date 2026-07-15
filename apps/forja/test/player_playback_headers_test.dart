@@ -125,5 +125,22 @@ void main() {
       expect(h.containsKey('Referer'), isFalse);
       expect(h.containsKey('Origin'), isFalse);
     });
+
+    test('forces kisskh.co Referer for streamingcdn hosts when headers lost', () {
+      const url =
+          'https://hls08.streamingcdn4.site/12260/Ep2.v673_index0.ts';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['Referer'], 'https://kisskh.co/');
+      expect(h['Origin'], 'https://kisskh.co');
+    });
+
+    test('rewrites CDN self-Referer to kisskh.co for streamingcdn', () {
+      const url = 'https://hls08.streamingcdn4.site/master.m3u8';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://hls08.streamingcdn4.site/',
+      }, streamUrl: url);
+      expect(h['Referer'], 'https://kisskh.co/');
+      expect(h['Origin'], 'https://kisskh.co');
+    });
   });
 }

@@ -60,6 +60,7 @@ mod tests {
             Box::new(crate::plugins::autoembed::AutoembedProvider),
             Box::new(crate::plugins::vidlove::VidloveProvider),
             Box::new(crate::plugins::vidsrcsbs::VidsrcsbsProvider),
+            Box::new(crate::plugins::vidsrcwin::VidsrcwinProvider),
             Box::new(crate::plugins::movies111::Movies111Provider),
             Box::new(crate::plugins::moviesapi::MoviesapiProvider),
         ];

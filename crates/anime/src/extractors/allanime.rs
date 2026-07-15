@@ -18,8 +18,7 @@ const YT_CHAN: &str = "https://youtu-chan.com";
 const CLOCK_HOST: &str = "https://allanime.day";
 const AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0";
-const EPISODE_QUERY_HASH: &str =
-    "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec";
+const EPISODE_QUERY_HASH: &str = "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec";
 
 const SEARCH_GQL: &str = r#"query($search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType) { shows(search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin) { edges { _id name englishName availableEpisodes __typename } } }"#;
 
@@ -50,7 +49,9 @@ fn aes_key() -> [u8; 32] {
 }
 
 pub fn decrypt_tobeparsed(blob: &str) -> Option<String> {
-    let raw = base64::engine::general_purpose::STANDARD.decode(blob).ok()?;
+    let raw = base64::engine::general_purpose::STANDARD
+        .decode(blob)
+        .ok()?;
     if raw.len() < 13 + 16 {
         return None;
     }
@@ -136,7 +137,11 @@ fn search_one(query: &str, cat: &str) -> Result<Option<String>, String> {
     let q_lower = query.to_lowercase();
     let mut best = edges.first().cloned();
     for e in &edges {
-        let name = e.get("name").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+        let name = e
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_lowercase();
         let eng = e
             .get("englishName")
             .and_then(|v| v.as_str())
@@ -148,11 +153,7 @@ fn search_one(query: &str, cat: &str) -> Result<Option<String>, String> {
         }
     }
     if let Some(e) = best {
-        return Ok(
-            e.get("_id")
-                .and_then(|v| v.as_str())
-                .map(str::to_string),
-        );
+        return Ok(e.get("_id").and_then(|v| v.as_str()).map(str::to_string));
     }
     Ok(None)
 }
@@ -209,7 +210,8 @@ fn episode_sources(show_id: &str, episode: i32, cat: &str) -> Result<Vec<Value>,
     }
     let json: Value = serde_json::from_str(&resp.body).map_err(|e| e.to_string())?;
 
-    let episode_data = if let Some(blob) = json.pointer("/data/tobeparsed").and_then(|v| v.as_str()) {
+    let episode_data = if let Some(blob) = json.pointer("/data/tobeparsed").and_then(|v| v.as_str())
+    {
         if blob.is_empty() {
             None
         } else {
@@ -248,7 +250,11 @@ fn resolve_decoded_path(path: &str, provider: &str) -> Result<Option<StreamResul
         return Ok(None);
     }
     let json: Value = serde_json::from_str(&resp.body).map_err(|e| e.to_string())?;
-    let links = json.get("links").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let links = json
+        .get("links")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
     if links.is_empty() {
         return Ok(None);
     }
@@ -260,8 +266,10 @@ fn resolve_decoded_path(path: &str, provider: &str) -> Result<Option<StreamResul
         if link.is_empty() {
             continue;
         }
-        let is_hls = l.get("hls") == Some(&Value::Bool(true)) || link.to_lowercase().contains(".m3u8");
-        let is_mp4 = l.get("mp4") == Some(&Value::Bool(true)) || link.to_lowercase().contains(".mp4");
+        let is_hls =
+            l.get("hls") == Some(&Value::Bool(true)) || link.to_lowercase().contains(".m3u8");
+        let is_mp4 =
+            l.get("mp4") == Some(&Value::Bool(true)) || link.to_lowercase().contains(".mp4");
         if is_hls && hls.is_none() {
             hls = Some(l);
         }
@@ -442,10 +450,7 @@ mod tests {
     #[test]
     fn decode_xor_path_roundtrip() {
         let path = "/apivtwo/clock?id=123";
-        let hex: String = path
-            .bytes()
-            .map(|b| format!("{:02x}", b ^ 0x38))
-            .collect();
+        let hex: String = path.bytes().map(|b| format!("{:02x}", b ^ 0x38)).collect();
         let decoded = decode_xor_path(&format!("--{hex}")).unwrap();
         assert_eq!(decoded, path);
     }

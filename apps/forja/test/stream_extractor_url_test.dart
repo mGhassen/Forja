@@ -141,6 +141,15 @@ void main() {
       expect(p.rotateServerChips, isTrue);
     });
 
+    test('vidsrcwin loads directly and rotates MoviePire servers', () {
+      final p = EmbedExtractProfiles.resolve('vidsrcwin');
+      expect(p.id, 'vidsrcwin');
+      expect(p.forceDirect, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
+      expect(p.rotateServerChips, isTrue);
+      expect(p.serverChipLabels, containsAll(['alpha', 'blaze']));
+    });
+
     test('unknown provider falls back without borrowing vidlove policy', () {
       final p = EmbedExtractProfiles.resolve('some-new-host');
       expect(p.rotateServerChips, isFalse);

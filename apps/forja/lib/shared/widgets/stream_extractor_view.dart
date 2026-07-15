@@ -114,6 +114,8 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
                      url.contains('vidsrc.to') ||
                      url.contains('vidsrc.me') ||
                      url.contains('vidsrc.cc') ||
+                     url.contains('vidsrc.win') ||
+                     url.contains('video.moviepire.co') ||
                      url.contains('vidlink.pro') ||
                      url.contains('vidnest.fun') ||
                      url.contains('vidfast.pro') ||

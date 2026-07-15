@@ -8,7 +8,8 @@ class StreamProviderDisplay {
 
   static const _labels = <String, String>{
     'videasy': 'Videasy',
-    'vidsrc': 'Vidsrc',
+    'vidsrc': 'VSEmbed',
+    'vidsrcwin': 'VidSrc',
     'vidnest': 'Vidnest',
     'vidlink': 'VidLink',
     'vixsrc': 'VixSrc',

@@ -77,6 +77,7 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidlink" => 80,
             "vixsrc" => 75,
             "vidsrc" => 70,
+            "vidsrcwin" => 69,
             "vidnest" => 65,
             "vidzee" => 60,
             "vidrock" => 55,
@@ -96,6 +97,7 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "service111477" => 85,
             "vixsrc" => 75,
             "vidsrc" => 70,
+            "vidsrcwin" => 69,
             "vidnest" => 65,
             "vidzee" => 60,
             "vidrock" => 55,
@@ -165,6 +167,8 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("vidlink", SourceDomain::Series)
             | ("vidsrc", SourceDomain::Movies)
             | ("vidsrc", SourceDomain::Series)
+            | ("vidsrcwin", SourceDomain::Movies)
+            | ("vidsrcwin", SourceDomain::Series)
             | ("vixsrc", SourceDomain::Movies)
             | ("vixsrc", SourceDomain::Series)
             | ("vidnest", SourceDomain::Movies)
@@ -207,6 +211,8 @@ fn anime_order() -> &'static [&'static str] {
         "allanime:Yt-mp4",
         "allanime:S-mp4",
         "allanime:Luf-Mp4",
+        "vidnest:hianime",
+        "vidnest:animepahe",
         "megaplay",
         "vidwish",
         "miruro:zoro",
@@ -234,6 +240,7 @@ fn anime_score(id: &str) -> u32 {
     }
     if id.starts_with("miruro:")
         || id.starts_with("allanime:")
+        || id.starts_with("vidnest:")
         || id == "megaplay"
         || id == "vidwish"
         || id == "watchhentai"

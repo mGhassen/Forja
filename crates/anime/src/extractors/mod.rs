@@ -1,8 +1,9 @@
 mod allanime;
-pub(crate) mod common;
 mod animerealms;
+pub(crate) mod common;
 mod hentaini;
 mod miruro;
+mod vidnest;
 mod watchhentai;
 
 use crate::resolve::{anikoto, direct_embed, probe};
@@ -88,12 +89,9 @@ pub fn extractor_json(request_json: &str) -> String {
 
     let result = match req.action.as_str() {
         "allanime_search" => allanime::allanime_search(&req.title_candidates, &req.category),
-        "allanime_sources" => allanime::allanime_sources(
-            &req.title_candidates,
-            episode,
-            &req.category,
-            &req.provider,
-        ),
+        "allanime_sources" => {
+            allanime::allanime_sources(&req.title_candidates, episode, &req.category, &req.provider)
+        }
         "allanime_known_providers" => Ok(json!({ "providers": allanime::KNOWN_PROVIDERS })),
         "miruro_resolve" => miruro::miruro_resolve(
             req.anilist_id,
@@ -125,9 +123,11 @@ pub fn extractor_json(request_json: &str) -> String {
         "animerealms_streams" => {
             animerealms::animerealms_streams(req.anilist_id, episode, &req.provider)
         }
-        "animerealms_known_providers" => {
-            Ok(json!({ "providers": animerealms::DEFAULT_PROVIDERS }))
+        "animerealms_known_providers" => Ok(json!({ "providers": animerealms::DEFAULT_PROVIDERS })),
+        "vidnest_streams" => {
+            vidnest::vidnest_streams(req.anilist_id, episode, &req.category, &req.provider)
         }
+        "vidnest_known_providers" => Ok(json!({ "providers": vidnest::KNOWN_PROVIDERS })),
         "hentaini_streams" => hentaini::hentaini_streams(&req.title_candidates, episode),
         "watchhentai_streams" => watchhentai::watchhentai_streams(&req.title_candidates, episode),
         "anikoto_resolve" => anikoto::anikoto_resolve(

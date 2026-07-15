@@ -3,13 +3,15 @@ import 'package:rust/src/playback/providers/display/stream_provider_display.dart
 
 void main() {
   test('built-in providers use real player labels', () {
-    expect(StreamProviderDisplay.playerLabel('vidsrc'), 'Vidsrc');
+    expect(StreamProviderDisplay.playerLabel('vidsrc'), 'VSEmbed');
+    expect(StreamProviderDisplay.playerLabel('vidsrcwin'), 'VidSrc');
     expect(StreamProviderDisplay.playerLabel('webstreamr'), 'WebStreamr');
     expect(StreamProviderDisplay.hasProfile('vidsrc'), isTrue);
+    expect(StreamProviderDisplay.hasProfile('vidsrcwin'), isTrue);
   });
 
   test('nuvio scrapers reuse built-in names when ids match', () {
-    expect(StreamProviderDisplay.playerLabel('nuvio:vidsrc'), 'Vidsrc');
+    expect(StreamProviderDisplay.playerLabel('nuvio:vidsrc'), 'VSEmbed');
     expect(StreamProviderDisplay.playerLabel('nuvio:vidrock'), 'VidRock');
   });
 

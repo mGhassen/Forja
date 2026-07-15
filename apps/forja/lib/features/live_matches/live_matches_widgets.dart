@@ -345,7 +345,8 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                   ],
                 ),
               ),
-              ShellCardPlayOverlay(active: active, visible: active),
+              // Channels are always live — keep the play affordance visible.
+              ShellCardPlayOverlay(active: active, visible: true),
               _LiveMatchCornerBadge(
                 label: '● LIVE',
                 live: true,
@@ -367,16 +368,12 @@ class _CdnSportCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
-  final Color? activeBorderColor;
-  final bool forceActive;
   const _CdnSportCard({
     required this.event,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
-    this.activeBorderColor,
-    this.forceActive = false,
   });
 
   @override
@@ -393,13 +390,12 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active =
-        widget.forceActive ||
-        (canPlay &&
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-            ));
+        canPlay &&
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
@@ -409,7 +405,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
             : Colors.white.withValues(alpha: 0.06),
         border: Border.all(
           color: active
-              ? (widget.activeBorderColor ?? ForjaShellColors.chipSelectedBorder)
+              ? ForjaShellColors.chipSelectedBorder
               : ForjaShellColors.cinematic.borderSubtle,
           width: 1.5,
         ),
@@ -534,7 +530,8 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                 ],
               ),
             ),
-            if (canPlay) ShellCardPlayOverlay(active: active, visible: active),
+            // Airing events always show the play button; hover/focus turns it green.
+            if (canPlay) ShellCardPlayOverlay(active: active, visible: true),
             _LiveMatchCornerBadge(
               label: e.isLive ? '● LIVE' : e.status.toUpperCase(),
               live: e.isLive,
@@ -1571,8 +1568,6 @@ class _StreamedMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
-  final Color? activeBorderColor;
-  final bool forceActive;
 
   const _StreamedMatchCard({
     required this.match,
@@ -1580,8 +1575,6 @@ class _StreamedMatchCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
-    this.activeBorderColor,
-    this.forceActive = false,
   });
 
   @override
@@ -1600,13 +1593,12 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active =
-        widget.forceActive ||
-        (canPlay &&
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-            ));
+        canPlay &&
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -1617,7 +1609,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
             : Colors.white.withValues(alpha: 0.06),
         border: Border.all(
           color: active
-              ? (widget.activeBorderColor ?? ForjaShellColors.chipSelectedBorder)
+              ? ForjaShellColors.chipSelectedBorder
               : ForjaShellColors.cinematic.borderSubtle,
           width: 1.5,
         ),
@@ -1705,7 +1697,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                 ],
               ),
             ),
-            if (canPlay) ShellCardPlayOverlay(active: active, visible: active),
+            // Airing matches always show the play button; hover/focus turns it green.
+            if (canPlay) ShellCardPlayOverlay(active: active, visible: true),
             _LiveMatchCornerBadge(
               label: m.categoryLabel.toUpperCase(),
               live: false,
@@ -1776,8 +1769,6 @@ class _DamiTvMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
-  final Color? activeBorderColor;
-  final bool forceActive;
   final bool? playableOverride;
   const _DamiTvMatchCard({
     required this.stream,
@@ -1785,8 +1776,6 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
-    this.activeBorderColor,
-    this.forceActive = false,
     this.playableOverride,
   });
 
@@ -1806,13 +1795,12 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
     final policy = ShellScope.inputPolicyOf(context);
     final active =
-        widget.forceActive ||
-        (canPlay &&
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-            ));
+        canPlay &&
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -1823,7 +1811,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
             : Colors.white.withValues(alpha: 0.06),
         border: Border.all(
           color: active
-              ? (widget.activeBorderColor ?? ForjaShellColors.chipSelectedBorder)
+              ? ForjaShellColors.chipSelectedBorder
               : ForjaShellColors.cinematic.borderSubtle,
           width: 1.5,
         ),
@@ -1921,7 +1909,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                 ],
               ),
             ),
-            if (canPlay) ShellCardPlayOverlay(active: active, visible: active),
+            // Airing matches always show the play button; hover/focus turns it green.
+            if (canPlay) ShellCardPlayOverlay(active: active, visible: true),
             _LiveMatchCornerBadge(
               label: s.categoryName.toUpperCase(),
               live: false,

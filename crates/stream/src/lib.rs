@@ -97,6 +97,12 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
+            id: "vidsrcwin".into(),
+            name: "VidSrc".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
             id: "111movies".into(),
             name: "111Movies".into(),
             has_movie_template: true,
@@ -116,7 +122,7 @@ pub fn list_providers() -> Vec<ProviderDef> {
         },
         ProviderDef {
             id: "vidsrc".into(),
-            name: "Vidsrc".into(),
+            name: "VSEmbed".into(),
             has_movie_template: false,
             has_tv_template: false,
         },
@@ -145,6 +151,8 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
         )),
         "vidlove" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
         "vidsrcsbs" => Some(format!("https://vidsrc.sbs/embed/movie/{tmdb_id}")),
+        // vidsrc.win/watch is CAPTCHA-gated; its actual player is MoviePire.
+        "vidsrcwin" => Some(format!("https://video.moviepire.co/embed/movie/{tmdb_id}")),
         "111movies" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
         "moviesapi" => Some(format!("https://moviesapi.to/movie/{tmdb_id}")),
         _ => None,
@@ -182,6 +190,9 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
         )),
         "vidsrcsbs" => Some(format!(
             "https://vidsrc.sbs/embed/tv/{tmdb_id}/{season}/{episode}"
+        )),
+        "vidsrcwin" => Some(format!(
+            "https://video.moviepire.co/embed/tv/{tmdb_id}/{season}/{episode}"
         )),
         "111movies" => Some(format!(
             "https://player.vidlove.cc/embed/tv/{tmdb_id}/{season}/{episode}"
@@ -271,6 +282,18 @@ mod tests {
         assert_eq!(
             build_tv_url("vidsrcsbs", 1399, 2, 5),
             Some("https://vidsrc.sbs/embed/tv/1399/2/5".into())
+        );
+    }
+
+    #[test]
+    fn vidsrcwin_urls() {
+        assert_eq!(
+            build_movie_url("vidsrcwin", 550),
+            Some("https://video.moviepire.co/embed/movie/550".into())
+        );
+        assert_eq!(
+            build_tv_url("vidsrcwin", 94997, 1, 1),
+            Some("https://video.moviepire.co/embed/tv/94997/1/1".into())
         );
     }
 }

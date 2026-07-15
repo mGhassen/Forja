@@ -198,8 +198,9 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     );
   }
 
-  /// Positioned bucket rows on the continuous time canvas. Hover lift is
-  /// per-card (an overlay clone), so rows never reorder here.
+  /// Positioned bucket rows on the continuous time canvas. Cards keep their
+  /// own in-place hover (play overlay), so rows never scale here — only paint
+  /// order changes so the hovered row sits above overlapping neighbors.
   Widget _buildTimelineCanvas({
     required List<_TimelineBucket> buckets,
     required double contentStartMs,
@@ -208,20 +209,32 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     required double cardHeight,
     required double gap,
   }) {
+    // Paint hovered bucket last so it sits above overlapping hour rows.
+    final hoveredMs = _s._timelineHoveredBucketMs;
+    final rows = <Widget>[];
+    Widget? hoveredRow;
+    for (var b = 0; b < buckets.length; b++) {
+      final bucket = buckets[b];
+      final row = _buildTimedBucketRow(
+        bucket: bucket,
+        bucketIndex: b,
+        buckets: buckets,
+        top: (bucket.bucketMs - contentStartMs) * pxPerMs,
+        cardWidth: cardWidth,
+        cardHeight: cardHeight,
+        gap: gap,
+      );
+      if (hoveredMs != null && bucket.bucketMs == hoveredMs) {
+        hoveredRow = row;
+      } else {
+        rows.add(row);
+      }
+    }
+    if (hoveredRow != null) rows.add(hoveredRow);
+
     return Stack(
       clipBehavior: Clip.none,
-      children: [
-        for (var b = 0; b < buckets.length; b++)
-          _buildTimedBucketRow(
-            bucket: buckets[b],
-            bucketIndex: b,
-            buckets: buckets,
-            top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
-            cardWidth: cardWidth,
-            cardHeight: cardHeight,
-            gap: gap,
-          ),
-      ],
+      children: rows,
     );
   }
 
@@ -244,26 +257,40 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
       right: 0,
       top: top,
       height: cardHeight,
-      child: HorizontalScroller(
-        height: cardHeight,
-        padding: EdgeInsets.only(
-          right: ShellTokens.bodyHorizontalPadding,
-        ),
-        // Horizontal scroll only — does not move the vertical time canvas.
-        itemCount: bucket.entries.length,
-        separatorBuilder: (_, _) => SizedBox(width: gap),
-        itemBuilder: (context, i) {
-          final flatIndex = flatBase + i;
-          final entry = bucket.entries[i];
-          final upEdge = bucketIndex == 0
-              ? () => _s._focusTopBarItem(
-                  _LiveMatchesScreenState._topBarServersIndex,
-                )
-              : null;
-          // Opaque base so overlapping rows never show through the card. The
-          // hovered clone renders active (play overlay + white border).
-          Widget buildCard(BuildContext _, {required bool hovered}) =>
-              DecoratedBox(
+      // One region per hour row — moving between cards in the same bucket
+      // must not clear the elevated paint order.
+      child: MouseRegion(
+        onEnter: (_) {
+          if (_s._timelineHoveredBucketMs != bucket.bucketMs) {
+            setState(() => _s._timelineHoveredBucketMs = bucket.bucketMs);
+          }
+        },
+        onExit: (_) {
+          if (_s._timelineHoveredBucketMs == bucket.bucketMs) {
+            setState(() => _s._timelineHoveredBucketMs = null);
+          }
+        },
+        child: HorizontalScroller(
+          height: cardHeight,
+          padding: EdgeInsets.only(
+            right: ShellTokens.bodyHorizontalPadding,
+          ),
+          // Horizontal scroll only — does not move the vertical time canvas.
+          itemCount: bucket.entries.length,
+          separatorBuilder: (_, _) => SizedBox(width: gap),
+          itemBuilder: (context, i) {
+            final flatIndex = flatBase + i;
+            final entry = bucket.entries[i];
+            final upEdge = bucketIndex == 0
+                ? () => _s._focusTopBarItem(
+                    _LiveMatchesScreenState._topBarServersIndex,
+                  )
+                : null;
+            // Opaque base so overlapping rows never show through the card.
+            return SizedBox(
+              width: cardWidth,
+              height: cardHeight,
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: _timelineCardBase,
                   borderRadius: BorderRadius.circular(14),
@@ -273,16 +300,11 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                   flatIndex,
                   bucket.entries.length,
                   upEdge,
-                  forceActive: hovered,
-                  activeBorderColor: hovered ? Colors.white : null,
                 ),
-              );
-          return _TimelineHoverCard(
-            width: cardWidth,
-            height: cardHeight,
-            cardBuilder: buildCard,
-          );
-        },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -381,115 +403,6 @@ class _TimelineBucket {
   /// Start of the 1-hour window (epoch ms).
   final int bucketMs;
   final List<_LiveMatchGridEntry> entries;
-}
-
-/// Per-card hover: on pointer enter it hides the in-place card and draws a
-/// scaled clone with a white border in the app overlay — so only that card
-/// grows and sits above every other row, independent of its row-mates. The
-/// clone tracks the original through scroll via [CompositedTransformFollower].
-typedef _HoverCardBuilder = Widget Function(
-  BuildContext context, {
-  required bool hovered,
-});
-
-class _TimelineHoverCard extends StatefulWidget {
-  const _TimelineHoverCard({
-    required this.width,
-    required this.height,
-    required this.cardBuilder,
-  });
-
-  final double width;
-  final double height;
-  final _HoverCardBuilder cardBuilder;
-
-  @override
-  State<_TimelineHoverCard> createState() => _TimelineHoverCardState();
-}
-
-class _TimelineHoverCardState extends State<_TimelineHoverCard> {
-  final LayerLink _link = LayerLink();
-  OverlayEntry? _entry;
-  bool _hovered = false;
-
-  @override
-  void dispose() {
-    _removeOverlay();
-    super.dispose();
-  }
-
-  void _removeOverlay() {
-    _entry?.remove();
-    _entry = null;
-  }
-
-  void _onEnter() {
-    if (_hovered) return;
-    final overlay = Overlay.maybeOf(context);
-    if (overlay == null) return;
-    _hovered = true;
-    _entry = OverlayEntry(builder: _buildClone);
-    overlay.insert(_entry!);
-    setState(() {});
-  }
-
-  void _onExit() {
-    if (!_hovered) return;
-    _hovered = false;
-    _removeOverlay();
-    if (mounted) setState(() {});
-  }
-
-  Widget _buildClone(BuildContext context) {
-    // Positioned gives the follower a tight box of the card's real size —
-    // Overlay entries otherwise get full-screen constraints, which would blow
-    // the card up to fill the screen.
-    return Positioned(
-      width: widget.width,
-      height: widget.height,
-      child: CompositedTransformFollower(
-        link: _link,
-        showWhenUnlinked: false,
-        child: IgnorePointer(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 1.0, end: 1.04),
-            duration: const Duration(milliseconds: 150),
-            curve: Curves.easeOut,
-            builder: (context, scale, child) =>
-                Transform.scale(scale: scale, child: child),
-            // Overlay is outside Scaffold/Material — without this, Text falls
-            // back to MaterialApp's yellow-underline error style.
-            child: Material(
-              type: MaterialType.transparency,
-              child: widget.cardBuilder(context, hovered: true),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => _onEnter(),
-      onExit: (_) => _onExit(),
-      child: CompositedTransformTarget(
-        link: _link,
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
-          // Hidden while hovered — the overlay clone stands in for it — but
-          // still hit-tests so taps pass through to open the stream.
-          child: Opacity(
-            opacity: _hovered ? 0.0 : 1.0,
-            child: widget.cardBuilder(context, hovered: false),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Animated ruler gauge ─────────────────────────────────────────────────────

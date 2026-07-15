@@ -526,6 +526,17 @@ class AnimeService {
       }
     }
     // AnimeRealms removed — upstream /api/watch is gone (see changelog).
+    // VidNest — AniList-native API (HiAnime + AnimePahe mirrors).
+    for (final cat in const ['sub', 'dub']) {
+      for (final prov in vidnestKnownProviders) {
+        all.add(AnimeEmbed(
+          label: AnimeStreamProviders.displayName('vidnest:$prov'),
+          server: 'vidnest',
+          category: cat,
+          url: 'vidnest://anilist/$anilistId/$episode/$cat/$prov',
+        ));
+      }
+    }
     // WatchHentai — only for adult titles. Single embed; the extractor
     // searches watchhentai.net's catalog for any of the provided titles.
     if (isAdult && titles.isNotEmpty) {
@@ -580,6 +591,9 @@ class AnimeService {
     }
     if (embed.server == 'hentaini') {
       return _extractHentaini(embed);
+    }
+    if (embed.server == 'vidnest') {
+      return _extractVidnest(embed);
     }
     try {
       final rust = await directEmbedExtract(
@@ -680,6 +694,20 @@ class AnimeService {
       anilistId: int.parse(m.group(1)!),
       episodeNumber: int.parse(m.group(2)!),
       provider: m.group(3)!,
+    );
+    if (res == null) return null;
+    return _extractorToAnimeResult(res);
+  }
+
+  Future<AnimeStreamResult?> _extractVidnest(AnimeEmbed embed) async {
+    final m = RegExp(r'^vidnest://anilist/(\d+)/(\d+)/(sub|dub)/([a-z0-9]+)$')
+        .firstMatch(embed.url);
+    if (m == null) return null;
+    final res = await vidnestExtractWithProvider(
+      anilistId: int.parse(m.group(1)!),
+      episodeNumber: int.parse(m.group(2)!),
+      category: m.group(3)!,
+      provider: m.group(4)!,
     );
     if (res == null) return null;
     return _extractorToAnimeResult(res);
@@ -1242,6 +1270,10 @@ class AnimeEmbed {
         final uri = Uri.parse(url.replaceFirst('animerealms://', 'https://'));
         final prov = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
         return 'animerealms:$prov';
+      case 'vidnest':
+        final uri = Uri.parse(url.replaceFirst('vidnest://', 'https://'));
+        final prov = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+        return 'vidnest:$prov';
       default:
         return server;
     }
@@ -1255,6 +1287,8 @@ class AnimeEmbed {
         return 'https://www.miruro.to';
       case 'allanime':
         return 'https://allmanga.to';
+      case 'vidnest':
+        return 'https://vidnest.fun';
       case 'animerealms':
         return 'https://www.animerealms.org';
       case 'watchhentai':

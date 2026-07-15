@@ -57,6 +57,14 @@ const miruroUpstreamSources = <String, String>{
   'telli': 'Miruro',
 };
 
+/// VidNest anime upstream keys (matches Rust `KNOWN_PROVIDERS`).
+const vidnestKnownProviders = ['hianime', 'animepahe'];
+
+const vidnestUpstreamLabels = <String, String>{
+  'hianime': 'VidNest HiAnime',
+  'animepahe': 'VidNest AnimePahe',
+};
+
 /// AnimeRealms upstream shut down (`animerealms.org` is a parked lander;
 /// `animerealms.com` is a collectibles storefront). Kept empty so old settings
 /// keys drop out via [SettingsService.mergeProviderOrder].
@@ -232,6 +240,24 @@ Future<AnimeExtractorStreamResult?> animeRealmsExtractWithProvider({
     'action': 'animerealms_streams',
     'anilist_id': anilistId,
     'episode_number': episodeNumber,
+    'provider': provider,
+  });
+  final result = decoded['result'];
+  if (result is! Map) return null;
+  return AnimeExtractorStreamResult.fromJson(result.cast<String, dynamic>());
+}
+
+Future<AnimeExtractorStreamResult?> vidnestExtractWithProvider({
+  required int anilistId,
+  required int episodeNumber,
+  required String category,
+  required String provider,
+}) async {
+  final decoded = await animeExtractorRequest({
+    'action': 'vidnest_streams',
+    'anilist_id': anilistId,
+    'episode_number': episodeNumber,
+    'category': category,
     'provider': provider,
   });
   final result = decoded['result'];

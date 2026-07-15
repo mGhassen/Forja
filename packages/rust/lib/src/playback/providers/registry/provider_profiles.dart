@@ -11,6 +11,8 @@ abstract final class ProviderProfiles {
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
+    'vidnest:hianime',
+    'vidnest:animepahe',
     'megaplay',
     'vidwish',
     'miruro:zoro',
@@ -42,6 +44,10 @@ abstract final class ProviderProfiles {
     'vidsrc': const ProviderProfile(
       id: 'vidsrc',
       priority: {SourceDomain.movies: 70, SourceDomain.series: 70},
+    ),
+    'vidsrcwin': const ProviderProfile(
+      id: 'vidsrcwin',
+      priority: {SourceDomain.movies: 69, SourceDomain.series: 69},
     ),
     'vixsrc': const ProviderProfile(
       id: 'vixsrc',

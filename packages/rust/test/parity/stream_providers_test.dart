@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../helpers/rust_engine.dart';
 import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,6 +55,10 @@ void main() {
       movie: 'https://vidsrc.sbs/embed/movie/$tmdbId',
       tv: 'https://vidsrc.sbs/embed/tv/$tvId/$season/$episode',
     ),
+    'vidsrcwin': (
+      movie: 'https://video.moviepire.co/embed/movie/$tmdbId',
+      tv: 'https://video.moviepire.co/embed/tv/$tvId/$season/$episode',
+    ),
     '111movies': (
       movie: 'https://player.vidlove.cc/embed/movie/$tmdbId',
       tv: 'https://player.vidlove.cc/embed/tv/$tvId/$season/$episode',
@@ -86,6 +92,15 @@ void main() {
   test('listProvidersJson includes vidlink', () {
     final json = RustLib.instance.listProvidersJson();
     expect(json, contains('vidlink'));
+  });
+
+  test('listProvidersJson distinguishes VSEmbed from VidSrc', () {
+    final rows =
+        (jsonDecode(RustLib.instance.listProvidersJson()) as List)
+            .cast<Map<String, dynamic>>();
+    final names = {for (final row in rows) row['id']: row['name']};
+    expect(names['vidsrc'], 'VSEmbed');
+    expect(names['vidsrcwin'], 'VidSrc');
   });
 
   test('listProvidersJson excludes retired SmashyStream', () {

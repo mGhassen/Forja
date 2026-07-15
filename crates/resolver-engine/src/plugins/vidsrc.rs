@@ -58,7 +58,7 @@ impl Provider for VidsrcProvider {
                 }
             }
         }
-        let source = from_legacy(url, "Vidsrc", "hls", headers, self.id(), 0);
+        let source = from_legacy(url, "VSEmbed", "hls", headers, self.id(), 0);
         let mut source = source;
         source.headers = ctx.merge_headers(self.id(), source.headers);
         Ok(StreamResult {

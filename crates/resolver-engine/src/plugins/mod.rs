@@ -17,6 +17,7 @@ pub mod vidnest;
 pub mod vidrock;
 pub mod vidsrc;
 pub mod vidsrcsbs;
+pub mod vidsrcwin;
 pub mod vidzee;
 pub mod vixsrc;
 pub mod webstreamr;
@@ -41,6 +42,7 @@ pub fn built_in() -> Vec<Arc<dyn Provider>> {
         Arc::new(autoembed::AutoembedProvider),
         Arc::new(vidlove::VidloveProvider),
         Arc::new(vidsrcsbs::VidsrcsbsProvider),
+        Arc::new(vidsrcwin::VidsrcwinProvider),
         Arc::new(movies111::Movies111Provider),
         Arc::new(moviesapi::MoviesapiProvider),
         Arc::new(nuvio::NuvioProvider),

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
-/// Vidsrc / vsembed.su — resolved via Rust (3 HTTP fetches + HTML chain).
+/// VSEmbed / vsembed.su — resolved via Rust (3 HTTP fetches + HTML chain).
 class VidsrcExtractor {
   static int _resolveGeneration = 0;
 
@@ -35,11 +35,11 @@ class VidsrcExtractor {
   }) async {
     final tmdb = int.tryParse(tmdbId);
     if (tmdb == null) {
-      debugPrint('[Vidsrc] Invalid tmdbId: $tmdbId');
+      debugPrint('[VSEmbed] Invalid tmdbId: $tmdbId');
       return null;
     }
     if (!Engine.isReady) {
-      debugPrint('[Vidsrc] Rust engine not loaded');
+      debugPrint('[VSEmbed] Rust engine not loaded');
       return null;
     }
 
@@ -56,7 +56,7 @@ class VidsrcExtractor {
       if (gen != _resolveGeneration) return null;
       final m = jsonDecode(raw) as Map<String, dynamic>;
       if (m.containsKey('error')) {
-        debugPrint('[Vidsrc] ${m['error']}');
+        debugPrint('[VSEmbed] ${m['error']}');
         return null;
       }
       final url = m['url'] as String?;
@@ -69,17 +69,17 @@ class VidsrcExtractor {
             e.key.toString(): e.value?.toString() ?? '',
         };
       }
-      debugPrint('[Vidsrc] ✅ $url');
+      debugPrint('[VSEmbed] ✅ $url');
       return ExtractedMedia(
         url: url,
         headers: headers ?? const {},
         provider: 'vidsrc',
       );
     } on TimeoutException {
-      debugPrint('[Vidsrc] timed out after ${timeout.inSeconds}s');
+      debugPrint('[VSEmbed] timed out after ${timeout.inSeconds}s');
       return null;
     } catch (e, st) {
-      debugPrint('[Vidsrc] $e\n$st');
+      debugPrint('[VSEmbed] $e\n$st');
       return null;
     }
   }

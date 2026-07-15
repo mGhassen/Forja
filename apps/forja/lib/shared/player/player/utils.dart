@@ -122,7 +122,10 @@ Map<String, String> resolvePlaybackHttpHeaders(
 bool _isKissKhCdnStream(String url) {
   final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
-  return host.contains('cdnvideo') || host.contains('kisskh');
+  // cdnvideo*.shop (legacy) · streamingcdn*.site (current HLS) · kisskh hosts
+  return host.contains('cdnvideo') ||
+      host.contains('streamingcdn') ||
+      host.contains('kisskh');
 }
 
 /// Tokenized Vidsrc CloudStream playlist — segments reject Referer/Origin.

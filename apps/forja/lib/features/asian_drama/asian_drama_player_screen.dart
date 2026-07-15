@@ -310,6 +310,12 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       );
     }
 
+    // TV-shaped cache key (mediaType is always `tv` for hub movies). Pass the
+    // real episode so reopen / hydrate does not collapse every ep onto S1:E1.
+    final cacheEpisode = episode.number == episode.number.truncateToDouble()
+        ? episode.number.toInt()
+        : (episode.number * 100).round();
+
     _fadeOutNotifier.value = true;
     final playerFuture = AppRouter.openPlayer(
       context,
@@ -319,6 +325,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       sources: sources,
       activeProvider: 'kisskh',
       movie: _hubMovieFromDrama(drama, overview: overview),
+      selectedSeason: 1,
+      selectedEpisode: cacheEpisode,
       startPosition: widget.startPosition,
       externalSubtitles: subs.isNotEmpty ? subs : null,
       hubEpisodes: hubEpisodes,

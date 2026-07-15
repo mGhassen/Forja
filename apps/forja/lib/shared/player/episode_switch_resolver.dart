@@ -290,6 +290,7 @@ const _builtinProviderKeys = {
   'webstreamr',
   'videasy',
   'vidsrc',
+  'vidsrcwin',
   'vidlink',
   'vixsrc',
   'vidnest',
