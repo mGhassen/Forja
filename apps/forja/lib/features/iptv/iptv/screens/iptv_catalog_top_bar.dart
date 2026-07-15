@@ -665,12 +665,36 @@ class _IptvSectionShelfTab extends StatefulWidget {
 class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   bool _hover = false;
   bool _focused = false;
+  bool _reloadArmed = false;
+  Timer? _revealTimer;
 
   bool get _tv => iptvUseTvFocus(context);
 
   bool get _active => _hover || (_focused && !_tv);
 
-  bool get _revealReload => _active;
+  bool get _revealReload => _active && _reloadArmed;
+
+  /// Color fades in first; the reload reveal is delayed until the color
+  /// transition (200ms) has played, so hover reads as "color, then expand".
+  void _syncReveal() {
+    if (_active) {
+      if (_reloadArmed) return;
+      _revealTimer?.cancel();
+      _revealTimer = Timer(const Duration(milliseconds: 200), () {
+        if (mounted && _active) setState(() => _reloadArmed = true);
+      });
+    } else {
+      _revealTimer?.cancel();
+      _revealTimer = null;
+      _reloadArmed = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    super.dispose();
+  }
 
   BorderRadius get _radius {
     final r = Radius.circular(_kShelfTabRadius - 1);
@@ -689,10 +713,16 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
     final showColor = widget.selected || _active;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
+      onEnter: (_) => setState(() {
+        _hover = true;
+        _syncReveal();
+      }),
+      onExit: (_) => setState(() {
+        _hover = false;
+        _syncReveal();
+      }),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
@@ -740,7 +770,10 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                   ? null
                   : () =>
                         iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
-              onFocusChange: (f) => setState(() => _focused = f),
+              onFocusChange: (f) => setState(() {
+                _focused = f;
+                _syncReveal();
+              }),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
