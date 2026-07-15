@@ -1568,6 +1568,8 @@ class _StreamedMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final bool forceActive;
+  final ValueChanged<bool>? onHoverChanged;
 
   const _StreamedMatchCard({
     required this.match,
@@ -1575,6 +1577,8 @@ class _StreamedMatchCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.forceActive = false,
+    this.onHoverChanged,
   });
 
   @override
@@ -1592,13 +1596,13 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active =
-        canPlay &&
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        );
+    final active = widget.forceActive ||
+        (canPlay &&
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+            ));
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -1755,7 +1759,10 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       tvZone: ShellTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      onHoverChange: (hovered) {
+        setState(() => _hovered = hovered);
+        widget.onHoverChanged?.call(hovered);
+      },
       child: card,
     );
   }
@@ -1770,6 +1777,8 @@ class _DamiTvMatchCard extends StatefulWidget {
   final int? gridColumns;
   final VoidCallback? onUpEdge;
   final bool? playableOverride;
+  final bool forceActive;
+  final ValueChanged<bool>? onHoverChanged;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
@@ -1777,6 +1786,8 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.gridColumns,
     this.onUpEdge,
     this.playableOverride,
+    this.forceActive = false,
+    this.onHoverChanged,
   });
 
   @override
@@ -1794,13 +1805,13 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
     final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
     final policy = ShellScope.inputPolicyOf(context);
-    final active =
-        canPlay &&
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        );
+    final active = widget.forceActive ||
+        (canPlay &&
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+            ));
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 150),

@@ -141,6 +141,7 @@ class PlayerSidePanelHeader extends StatelessWidget {
     required this.onClose,
     this.leading,
     this.trailing,
+    this.titleTrailing,
     this.badge,
   });
 
@@ -148,6 +149,9 @@ class PlayerSidePanelHeader extends StatelessWidget {
   final VoidCallback onClose;
   final Widget? leading;
   final Widget? trailing;
+
+  /// Rendered inline right after the title (e.g. a SUB/DUB group toggle).
+  final Widget? titleTrailing;
   final String? badge;
 
   @override

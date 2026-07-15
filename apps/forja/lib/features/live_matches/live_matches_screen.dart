@@ -70,8 +70,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
-  /// Bucket whose row paints on top while a card inside it is hovered.
+  /// The single hovered timeline card (bucket + index) lifted above neighbors.
   int? _timelineHoveredBucketMs;
+  int? _timelineHoveredIndex;
+  /// Stable transform links per timeline card so the elevated hover copy can
+  /// track the real card's on-screen position (`bucketMs:index`).
+  final Map<String, LayerLink> _timelineCardLinks = {};
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
@@ -140,6 +144,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           : _LiveMatchesView.grid;
       _timelineAutoScrolled = false;
       _timelineHoveredBucketMs = null;
+      _timelineHoveredIndex = null;
     });
     unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));
   }

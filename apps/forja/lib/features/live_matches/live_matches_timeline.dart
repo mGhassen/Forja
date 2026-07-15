@@ -156,6 +156,8 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                           cardWidth: cardWidth,
                           cardHeight: cardHeight,
                           gap: gap,
+                          hoverLift:
+                              ShellScope.inputPolicyOf(context).scaleOnHover,
                         ),
                       ),
                     ),
@@ -198,9 +200,9 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     );
   }
 
-  /// Positioned bucket rows on the continuous time canvas. Cards keep their
-  /// own in-place hover (play overlay), so rows never scale here — only paint
-  /// order changes so the hovered row sits above overlapping neighbors.
+  /// Positioned bucket rows on the continuous time canvas. Rows never scale or
+  /// reorder — only the single hovered card is redrawn on top (desktop) via a
+  /// transform-linked copy so it escapes overlapping neighbor rows.
   Widget _buildTimelineCanvas({
     required List<_TimelineBucket> buckets,
     required double contentStartMs,
@@ -208,33 +210,72 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     required double cardWidth,
     required double cardHeight,
     required double gap,
+    required bool hoverLift,
   }) {
-    // Paint hovered bucket last so it sits above overlapping hour rows.
-    final hoveredMs = _s._timelineHoveredBucketMs;
-    final rows = <Widget>[];
-    Widget? hoveredRow;
-    for (var b = 0; b < buckets.length; b++) {
-      final bucket = buckets[b];
-      final row = _buildTimedBucketRow(
-        bucket: bucket,
-        bucketIndex: b,
-        buckets: buckets,
-        top: (bucket.bucketMs - contentStartMs) * pxPerMs,
-        cardWidth: cardWidth,
-        cardHeight: cardHeight,
-        gap: gap,
-      );
-      if (hoveredMs != null && bucket.bucketMs == hoveredMs) {
-        hoveredRow = row;
-      } else {
-        rows.add(row);
+    final children = <Widget>[
+      for (var b = 0; b < buckets.length; b++)
+        _buildTimedBucketRow(
+          bucket: buckets[b],
+          bucketIndex: b,
+          buckets: buckets,
+          top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
+          cardWidth: cardWidth,
+          cardHeight: cardHeight,
+          gap: gap,
+          hoverLift: hoverLift,
+        ),
+    ];
+
+    // Elevated copy of just the hovered card, painted above every row. It
+    // follows the real card's position and ignores pointers, so hover stays on
+    // the original underneath (no flicker) — only this one card comes forward.
+    final hb = _s._timelineHoveredBucketMs;
+    final hi = _s._timelineHoveredIndex;
+    if (hoverLift && hb != null && hi != null) {
+      final bucketIndex = buckets.indexWhere((x) => x.bucketMs == hb);
+      if (bucketIndex >= 0 && hi < buckets[bucketIndex].entries.length) {
+        final bucket = buckets[bucketIndex];
+        final link = _s._timelineCardLinks['$hb:$hi'];
+        if (link != null) {
+          final flatBase = buckets
+              .take(bucketIndex)
+              .fold<int>(0, (n, x) => n + x.entries.length);
+          children.add(
+            Positioned(
+              left: 0,
+              top: 0,
+              child: CompositedTransformFollower(
+                link: link,
+                showWhenUnlinked: false,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    width: cardWidth,
+                    height: cardHeight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: _timelineCardBase,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: _s._gridEntryCard(
+                        bucket.entries[hi],
+                        flatBase + hi,
+                        bucket.entries.length,
+                        null,
+                        forceActive: true,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
       }
     }
-    if (hoveredRow != null) rows.add(hoveredRow);
 
     return Stack(
       clipBehavior: Clip.none,
-      children: rows,
+      children: children,
     );
   }
 
@@ -246,6 +287,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     required double cardWidth,
     required double cardHeight,
     required double gap,
+    required bool hoverLift,
   }) {
     final flatBase = buckets
         .take(bucketIndex)
@@ -257,56 +299,74 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
       right: 0,
       top: top,
       height: cardHeight,
-      // One region per hour row — moving between cards in the same bucket
-      // must not clear the elevated paint order.
-      child: MouseRegion(
-        onEnter: (_) {
-          if (_s._timelineHoveredBucketMs != bucket.bucketMs) {
-            setState(() => _s._timelineHoveredBucketMs = bucket.bucketMs);
-          }
-        },
-        onExit: (_) {
-          if (_s._timelineHoveredBucketMs == bucket.bucketMs) {
-            setState(() => _s._timelineHoveredBucketMs = null);
-          }
-        },
-        child: HorizontalScroller(
-          height: cardHeight,
-          padding: EdgeInsets.only(
-            right: ShellTokens.bodyHorizontalPadding,
-          ),
-          // Horizontal scroll only — does not move the vertical time canvas.
-          itemCount: bucket.entries.length,
-          separatorBuilder: (_, _) => SizedBox(width: gap),
-          itemBuilder: (context, i) {
-            final flatIndex = flatBase + i;
-            final entry = bucket.entries[i];
-            final upEdge = bucketIndex == 0
-                ? () => _s._focusTopBarItem(
-                    _LiveMatchesScreenState._topBarServersIndex,
-                  )
-                : null;
-            // Opaque base so overlapping rows never show through the card.
-            return SizedBox(
-              width: cardWidth,
-              height: cardHeight,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _timelineCardBase,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: _s._gridEntryCard(
-                  entry,
-                  flatIndex,
-                  bucket.entries.length,
-                  upEdge,
-                ),
-              ),
-            );
-          },
+      child: HorizontalScroller(
+        height: cardHeight,
+        padding: EdgeInsets.only(
+          right: ShellTokens.bodyHorizontalPadding,
         ),
+        // Horizontal scroll only — does not move the vertical time canvas.
+        itemCount: bucket.entries.length,
+        separatorBuilder: (_, _) => SizedBox(width: gap),
+        itemBuilder: (context, i) {
+          final flatIndex = flatBase + i;
+          final entry = bucket.entries[i];
+          final upEdge = bucketIndex == 0
+              ? () => _s._focusTopBarItem(
+                  _LiveMatchesScreenState._topBarServersIndex,
+                )
+              : null;
+          // Opaque base so overlapping rows never show through the card.
+          Widget slot = SizedBox(
+            width: cardWidth,
+            height: cardHeight,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _timelineCardBase,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _s._gridEntryCard(
+                entry,
+                flatIndex,
+                bucket.entries.length,
+                upEdge,
+                onHoverChanged: hoverLift
+                    ? (hovered) => _onTimelineCardHover(bucket.bucketMs, i, hovered)
+                    : null,
+              ),
+            ),
+          );
+          if (hoverLift) {
+            final link = _s._timelineCardLinks.putIfAbsent(
+              '${bucket.bucketMs}:$i',
+              () => LayerLink(),
+            );
+            slot = CompositedTransformTarget(link: link, child: slot);
+          }
+          return slot;
+        },
       ),
     );
+  }
+
+  /// Track the single hovered card so its elevated copy can be drawn on top.
+  /// Only clears when the card leaving is still the tracked one, so moving
+  /// between cards never drops the newly entered card.
+  void _onTimelineCardHover(int bucketMs, int index, bool hovered) {
+    if (hovered) {
+      if (_s._timelineHoveredBucketMs != bucketMs ||
+          _s._timelineHoveredIndex != index) {
+        setState(() {
+          _s._timelineHoveredBucketMs = bucketMs;
+          _s._timelineHoveredIndex = index;
+        });
+      }
+    } else if (_s._timelineHoveredBucketMs == bucketMs &&
+        _s._timelineHoveredIndex == index) {
+      setState(() {
+        _s._timelineHoveredBucketMs = null;
+        _s._timelineHoveredIndex = null;
+      });
+    }
   }
 
   /// Returns true once the scroll view has clients and the offset was applied.
@@ -406,6 +466,10 @@ class _TimelineBucket {
 }
 
 // ─── Animated ruler gauge ─────────────────────────────────────────────────────
+
+/// Distance from the ruler's right edge to its vertical time axis. Shared by
+/// the ruler painter and the NOW badge so the badge stays centered on the line.
+const double _rulerLineInset = 12;
 
 ({int minorMin, int majorMin}) _timelineTickIntervals(int spanHours) =>
     switch (spanHours) {
@@ -549,7 +613,7 @@ class _TimelineNowLineState extends State<_TimelineNowLine> {
               children: [
                 Positioned(
                   left: widget.leftInset,
-                  right: 10,
+                  right: 0,
                   top: y - 1,
                   height: 2,
                   child: DecoratedBox(
@@ -565,32 +629,30 @@ class _TimelineNowLineState extends State<_TimelineNowLine> {
                   ),
                 ),
                 Positioned(
+                  // Center the badge on the ruler axis (the vertical timeline
+                  // line sits at leftInset - 12; see _TimelineRulerPainter).
                   left: 0,
-                  width: widget.leftInset,
+                  width: (widget.leftInset - _rulerLineInset) * 2,
                   top: y - 9,
                   height: 18,
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _green,
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
+                  child: const Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: _green,
+                        borderRadius: BorderRadius.all(Radius.circular(4)),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
                         ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          child: Text(
-                            'NOW',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
+                        child: Text(
+                          'NOW',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -660,7 +722,7 @@ class _TimelineRulerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final lineX = size.width - 12;
+    final lineX = size.width - _rulerLineInset;
     final playheadY = size.height * playheadFraction;
     final pxPerMs = size.height / (spanHours * 3600000);
 
