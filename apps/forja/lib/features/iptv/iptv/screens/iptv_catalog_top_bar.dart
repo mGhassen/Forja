@@ -668,8 +668,9 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   bool get _tv => iptvUseTvFocus(context);
 
-  bool get _revealReload =>
-      widget.selected && (_hover || (_focused && !_tv));
+  bool get _active => _hover || (_focused && !_tv);
+
+  bool get _revealReload => _active;
 
   BorderRadius get _radius {
     final r = Radius.circular(_kShelfTabRadius - 1);
@@ -685,13 +686,13 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    final showColor = widget.selected;
+    final showColor = widget.selected || _active;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedContainer(
-        duration: Duration.zero,
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
