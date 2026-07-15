@@ -177,6 +177,18 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                       onJumpToNow: scrollToNow,
                     ),
                   ),
+                  // Green marker at the real current time, tracked across
+                  // scroll and ticking every minute.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: _TimelineNowLine(
+                        controller: _s._timelineScrollController,
+                        contentStartMs: contentStartMs,
+                        pxPerMs: pxPerMs,
+                        leftInset: _timelineRulerWidth,
+                      ),
+                    ),
+                  ),
                 ],
               );
             },
@@ -562,6 +574,113 @@ class _TimelineRuler extends StatelessWidget {
   }
 }
 
+/// Horizontal green line at the real current time. Positioned over the whole
+/// timeline, it tracks scrolling (via [controller]) and re-renders each minute
+/// so it drifts down as time passes.
+class _TimelineNowLine extends StatefulWidget {
+  const _TimelineNowLine({
+    required this.controller,
+    required this.contentStartMs,
+    required this.pxPerMs,
+    required this.leftInset,
+  });
+
+  final ScrollController controller;
+  final double contentStartMs;
+  final double pxPerMs;
+  final double leftInset;
+
+  @override
+  State<_TimelineNowLine> createState() => _TimelineNowLineState();
+}
+
+class _TimelineNowLineState extends State<_TimelineNowLine> {
+  static const _green = Color(0xFF37E36B);
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        return AnimatedBuilder(
+          animation: widget.controller,
+          builder: (context, _) {
+            final offset =
+                widget.controller.hasClients ? widget.controller.offset : 0.0;
+            final nowMs = DateTime.now().millisecondsSinceEpoch.toDouble();
+            final y = (nowMs - widget.contentStartMs) * widget.pxPerMs - offset;
+            if (y < 0 || y > height) return const SizedBox.shrink();
+            return Stack(
+              children: [
+                Positioned(
+                  left: widget.leftInset,
+                  right: 0,
+                  top: y - 9,
+                  height: 18,
+                  child: Row(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _green,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'NOW',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Container(
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: _green,
+                            boxShadow: [
+                              BoxShadow(
+                                color: _green.withValues(alpha: 0.6),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
 class _TimelineRulerPainter extends CustomPainter {
   _TimelineRulerPainter({
     required this.centerMs,
@@ -607,12 +726,20 @@ class _TimelineRulerPainter extends CustomPainter {
     );
   }
 
+  /// Stable per-day tint so each day's ruler segment reads differently.
+  static Color _dayColor(DateTime dayStart) {
+    final key = dayStart.difference(DateTime(2000)).inDays;
+    final hue = (key * 47) % 360;
+    return HSVColor.fromAHSV(0.75, hue.toDouble(), 0.55, 0.95).toColor();
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final lineX = size.width - 12;
     final playheadY = size.height * playheadFraction;
     final pxPerMs = size.height / (spanHours * 3600000);
 
+    // Faint base rail.
     canvas.drawLine(
       Offset(lineX, 0),
       Offset(lineX, size.height),
@@ -620,6 +747,36 @@ class _TimelineRulerPainter extends CustomPainter {
         ..color = Colors.white.withValues(alpha: 0.12)
         ..strokeWidth = 1.5,
     );
+
+    // Per-day coloured segments over the rail; today stays white.
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final topMs = centerMs + (0 - playheadY) / pxPerMs;
+    final bottomMs = centerMs + (size.height - playheadY) / pxPerMs;
+    final topDt = DateTime.fromMillisecondsSinceEpoch(topMs.round());
+    var dayStart = DateTime(topDt.year, topDt.month, topDt.day);
+    while (dayStart.millisecondsSinceEpoch < bottomMs) {
+      final dayEnd = dayStart.add(const Duration(days: 1));
+      final yStart =
+          playheadY + (dayStart.millisecondsSinceEpoch - centerMs) * pxPerMs;
+      final yEnd =
+          playheadY + (dayEnd.millisecondsSinceEpoch - centerMs) * pxPerMs;
+      final segTop = yStart.clamp(0.0, size.height);
+      final segBottom = yEnd.clamp(0.0, size.height);
+      if (segBottom > segTop) {
+        final isToday = dayStart == todayStart;
+        canvas.drawLine(
+          Offset(lineX, segTop),
+          Offset(lineX, segBottom),
+          Paint()
+            ..color = isToday
+                ? Colors.white.withValues(alpha: 0.9)
+                : _dayColor(dayStart)
+            ..strokeWidth = 3,
+        );
+      }
+      dayStart = dayEnd;
+    }
 
     canvas.drawCircle(
       Offset(lineX, playheadY),

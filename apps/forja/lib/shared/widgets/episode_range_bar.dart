@@ -100,12 +100,22 @@ class EpisodeRangeSelector extends StatelessWidget {
     );
     final cinematic = ForjaShellColors.cinematic;
 
+    // Cap the dropdown at 8 rows; taller lists scroll inside the panel.
+    const double menuItemHeight = 44;
+    const int maxVisibleRanges = 8;
+    const double menuVerticalPadding = 8;
+    final maxMenuHeight =
+        menuItemHeight * maxVisibleRanges + menuVerticalPadding;
+
     return MenuAnchor(
       alignmentOffset: const Offset(0, 4),
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(cinematic.menuSurface),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        ),
+        maximumSize: WidgetStatePropertyAll(
+          Size(double.infinity, maxMenuHeight),
         ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -116,6 +126,9 @@ class EpisodeRangeSelector extends StatelessWidget {
           MenuItemButton(
             onPressed: () => onSelected(range.index),
             style: shellMenuItemStyle().merge(ButtonStyle(
+              minimumSize: const WidgetStatePropertyAll(
+                Size(120, menuItemHeight),
+              ),
               foregroundColor: WidgetStatePropertyAll(
                 range.index == selectedIndex
                     ? cinematic.textPrimary
@@ -145,7 +158,11 @@ class EpisodeRangeSelector extends StatelessWidget {
         final trigger = shellRoundedInkHost(
           radius: radius,
           onTap: toggle,
-          decoration: shellChipDecoration(selected: false, radius: radius),
+          decoration: BoxDecoration(
+            color: cinematic.menuSurface,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: cinematic.borderSubtle),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -122,7 +122,14 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       _s._loading = true;
       _s._error = null;
       _s._sportFilter = 'all';
+      // Fresh data rebuilds the time canvas — land on now again, not the
+      // previous pixel offset (which maps to a wrong clock after reload).
+      _s._timelineAutoScrolled = false;
     });
+    // Drop the stale offset immediately so a remount can't flash Dec/epoch junk.
+    if (_s._timelineScrollController.hasClients) {
+      _s._timelineScrollController.jumpTo(0);
+    }
     if (_s._server == _LiveMatchesServer.all) {
       await _loadAll();
       return;
