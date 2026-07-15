@@ -3,7 +3,7 @@
 ; CI: iscc /DMyAppVersion=1.0.9 /DMyOutputBaseFilename=Forja-1.0.9-windows-setup setup.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.149"
+  #define MyAppVersion "1.2.164"
 #endif
 #ifndef MyOutputBaseFilename
   #define MyOutputBaseFilename "Forja-Windows-Setup"
