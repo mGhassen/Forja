@@ -768,9 +768,9 @@ class _LiveMatchesEmbedPlayerScreenState
       javaScriptCanOpenWindowsAutomatically: true,
       contentBlockers: _liveEmbedContentBlockers(),
     );
-    // Wrapper + iframe usually finishes quickly; if an ad CDN still hangs the
-    // document, don't leave the spinner forever.
-    _loadingWatchdog = Timer(const Duration(seconds: 12), _clearLoading);
+    // Clear the Flutter spinner early; iframe load / embedReady also clears it.
+    // A long center spinner sits on top of the embed play button.
+    _loadingWatchdog = Timer(const Duration(seconds: 2), _clearLoading);
     WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
   }
 
@@ -947,6 +947,13 @@ class _LiveMatchesEmbedPlayerScreenState
                     unawaited(_toggleFullscreen());
                   },
                 );
+                controller.addJavaScriptHandler(
+                  handlerName: 'embedReady',
+                  callback: (_) {
+                    _loadingWatchdog?.cancel();
+                    _clearLoading();
+                  },
+                );
               },
               onLoadStart: (_, _) {
                 // Ad main-frame hijack attempts can fire load-start; do not
@@ -997,10 +1004,21 @@ class _LiveMatchesEmbedPlayerScreenState
                 return NavigationActionPolicy.CANCEL;
               },
             ),
+            // Keep any remaining spinner off the center play button and
+            // non-blocking so the embed stays tappable.
             if (_loading)
-              Center(
-                child: CircularProgressIndicator(
-                  color: ForjaShellColors.sectionAccent,
+              Positioned(
+                top: _topBarTopPadding(context) + 36,
+                right: 16,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: ForjaShellColors.sectionAccent,
+                    ),
+                  ),
                 ),
               ),
             if (!_isFullscreen) ...[
@@ -1069,31 +1087,19 @@ class _StreamedStreamSheet extends StatelessWidget {
   });
 
   static String _sourceLabel(String source) {
-    if (source.isEmpty) return 'Stream';
+    if (source.isEmpty) return '';
     return source[0].toUpperCase() + source.substring(1);
   }
 
-  /// Group streams by source, sort streams within each group by viewers (a
-  /// rough reliability hint — dead feeds trend low), and order sources by
-  /// their most-watched stream so the busiest source shows first.
-  List<MapEntry<String, List<_StreamedStream>>> _groupedBySource() {
-    final groups = <String, List<_StreamedStream>>{};
-    for (final s in streams) {
-      groups.putIfAbsent(s.source, () => []).add(s);
-    }
-    for (final list in groups.values) {
-      list.sort((a, b) => b.viewers.compareTo(a.viewers));
-    }
-    int peak(List<_StreamedStream> list) =>
-        list.fold(0, (p, s) => s.viewers > p ? s.viewers : p);
-    final entries = groups.entries.toList()
-      ..sort((a, b) => peak(b.value).compareTo(peak(a.value)));
-    return entries;
+  /// Flat list sorted by viewers (a rough reliability hint — dead feeds
+  /// trend low).
+  List<_StreamedStream> _sortedByViewers() {
+    return [...streams]..sort((a, b) => b.viewers.compareTo(a.viewers));
   }
 
   @override
   Widget build(BuildContext context) {
-    final groups = _groupedBySource();
+    final sorted = _sortedByViewers();
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
 
     return Padding(
@@ -1123,8 +1129,7 @@ class _StreamedStreamSheet extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${groups.length} ${groups.length == 1 ? 'source' : 'sources'} · '
-            '${streams.length} ${streams.length == 1 ? 'stream' : 'streams'}',
+            '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -1138,11 +1143,11 @@ class _StreamedStreamSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final entry in groups)
-                      _StreamedSourceGroup(
-                        sourceName: _sourceLabel(entry.key),
-                        streams: entry.value,
-                        onStreamSelected: onStreamSelected,
+                    for (final stream in sorted)
+                      _StreamedStreamRow(
+                        stream: stream,
+                        sourceLabel: _sourceLabel(stream.source),
+                        onTap: () => onStreamSelected(stream),
                       ),
                   ],
                 ),
@@ -1155,94 +1160,23 @@ class _StreamedStreamSheet extends StatelessWidget {
   }
 }
 
-class _StreamedSourceGroup extends StatelessWidget {
-  final String sourceName;
-  final List<_StreamedStream> streams;
-  final void Function(_StreamedStream) onStreamSelected;
+class _StreamedStreamRow extends StatelessWidget {
+  final _StreamedStream stream;
+  final String sourceLabel;
+  final VoidCallback onTap;
 
-  const _StreamedSourceGroup({
-    required this.sourceName,
-    required this.streams,
-    required this.onStreamSelected,
+  const _StreamedStreamRow({
+    required this.stream,
+    required this.sourceLabel,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 12, 8),
-            child: Row(
-              children: [
-                Text(
-                  sourceName,
-                  style: const TextStyle(
-                    color: ForjaShellColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionAccent.withValues(
-                      alpha: 0.16,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${streams.length} '
-                    '${streams.length == 1 ? 'stream' : 'streams'}',
-                    style: TextStyle(
-                      color: ForjaShellColors.sectionAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          for (var i = 0; i < streams.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                indent: 14,
-                endIndent: 14,
-                color: ForjaShellColors.cinematic.borderSubtle,
-              ),
-            _StreamedStreamRow(
-              stream: streams[i],
-              onTap: () => onStreamSelected(streams[i]),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _StreamedStreamRow extends StatelessWidget {
-  final _StreamedStream stream;
-  final VoidCallback onTap;
-
-  const _StreamedStreamRow({required this.stream, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
+    final subtitleParts = <String>[
+      if (sourceLabel.isNotEmpty) sourceLabel,
+      if (stream.language.isNotEmpty) stream.language,
+    ];
     return shellFocusableTap(
       context: context,
       onTap: onTap,
@@ -1251,7 +1185,7 @@ class _StreamedStreamRow extends StatelessWidget {
       tvTabId: 'live_matches',
       tvZone: ShellTvZone.row,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
           children: [
             if (stream.hd)
@@ -1276,10 +1210,10 @@ class _StreamedStreamRow extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (stream.language.isNotEmpty) ...[
+                  if (subtitleParts.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
-                      stream.language,
+                      subtitleParts.join(' · '),
                       style: const TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: 12,

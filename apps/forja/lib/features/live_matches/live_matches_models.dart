@@ -527,6 +527,23 @@ iframe{border:0;width:100%;height:100%;display:block}
 </style>
 </head><body>
 <iframe id="p" src="$safe" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="unsafe-url"></iframe>
+<script>
+(function () {
+  function ready() {
+    try { window.flutter_inappwebview.callHandler('embedReady'); } catch (_) {}
+  }
+  var f = document.getElementById('p');
+  if (f) {
+    f.addEventListener('load', ready);
+    // If the embed already finished before this script ran.
+    try {
+      if (f.contentDocument && f.contentDocument.readyState === 'complete') ready();
+    } catch (_) {}
+  }
+  // Don't leave the Flutter spinner over the play button if load is slow.
+  setTimeout(ready, 1500);
+})();
+</script>
 </body></html>''';
 }
 

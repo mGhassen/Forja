@@ -16,7 +16,7 @@ Tap **Live Matches** in the navigation bar.
 - Switch sport category circles (All merges the same sport across servers — e.g. PPV “Football” and Streamed “football” share one chip)
 - Browse upcoming and live events — live matches appear first; only **live** matches are tappable and show the play control on hover/focus; upcoming cards show the start time badge only
 - Open a match and watch the stream in the embed player (PPV or Streamed badge top-right; autoplay when the embed allows it)
-- When a Streamed match has several streams, the picker groups them by **source** (Admin / Delta / Echo …) with an HD badge, language, and a **viewer count**; sources and streams are ordered by viewers (busiest first) as a rough reliability hint — if one stream is dead, pick another source or the next stream
+- When a Streamed match has several streams, the picker lists each stream with an HD badge, its **source** (Admin / Delta / Echo …), language, and a **viewer count**; streams are ordered by viewers (busiest first) as a rough reliability hint — if one stream is dead, pick the next one
 - Double-click the video to enter/exit fullscreen (desktop window fullscreen for embeds; native PPV streams use the IPTV player)
 - Refresh lists for new events
 
