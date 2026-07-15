@@ -341,7 +341,14 @@ class SettingsToggleRow extends StatelessWidget {
               value: value,
               onChanged: onChanged,
               activeTrackColor: ForjaShellColors.brandGreen,
-              thumbColor: const WidgetStatePropertyAll(Colors.white),
+              thumbColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused) ||
+                    states.contains(WidgetState.pressed)) {
+                  return Colors.white;
+                }
+                return ForjaShellColors.surfaceElevated;
+              }),
               trackOutlineColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
                   return Colors.transparent;

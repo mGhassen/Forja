@@ -99,6 +99,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
   String _statusLine = '';
   bool _failedAll = false;
+  /// KissKh countdown / not-yet-published — skip extract, show availability copy.
+  bool _isUpcoming = false;
   bool _cancelled = false;
   KdramaCard? _resolvedDrama;
   KdramaEpisode? _resolvedEpisode;
@@ -108,7 +110,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _messageNotifier = ValueNotifier('Fetching streams…');
+    _messageNotifier = ValueNotifier('Checking availability…');
     _fadeOutNotifier = ValueNotifier(false);
     _bootstrap();
   }
@@ -133,23 +135,67 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     return null;
   }
 
-  Future<bool> _resolveEpisodeContext() async {
+  String _upcomingStatusLine(KdramaDetails det) {
+    final release = det.releaseDate.trim();
+    if (release.isNotEmpty) {
+      final label = KissKhService.formatReleaseDateLabel(release);
+      return 'Marked Upcoming on kisskh — expected $label. '
+          'The site shows a countdown until streams unlock.';
+    }
+    return 'Marked Upcoming on kisskh. '
+        'The site shows a countdown until streams unlock.';
+  }
+
+  /// Loads drama details (status gate) and resolves the episode row.
+  Future<({
+    KdramaDetails details,
+    KdramaCard drama,
+    KdramaEpisode? episode,
+    List<KdramaEpisode> episodes,
+    bool matched,
+  })> _resolveEpisodeContext() async {
     var drama = widget.drama;
     var episodes = widget.allEpisodes;
     var episode = widget.episode;
 
-    if (episodes.isEmpty || drama.title.trim().isEmpty) {
-      if (!mounted) return false;
-      setState(() => _setPhase('Loading drama…'));
-      final det = await _service.getDetails(drama.id);
-      episodes = det.episodes;
-      drama = det.toCard();
-      _resolvedOverview = det.description;
-      final matched = det.episodeForResume(
-        episodeNumber: episode.number,
-        episodeId: episode.id > 0 ? episode.id : null,
+    setState(() => _setPhase('Checking availability…'));
+
+    final det = await _service.getDetails(drama.id);
+    if (!mounted) {
+      return (
+        details: det,
+        drama: drama,
+        episode: null,
+        episodes: episodes,
+        matched: false,
       );
-      if (matched != null) episode = matched;
+    }
+    drama = det.toCard();
+    _resolvedOverview = det.description;
+    if (det.episodes.isNotEmpty) {
+      episodes = det.episodes;
+    }
+
+    // Upcoming titles often list stub episodes (or none) with a site countdown.
+    if (KissKhService.isUpcomingStatus(det.status)) {
+      _resolvedDrama = drama;
+      _resolvedEpisode = episode.id > 0 ? episode : null;
+      _resolvedEpisodes = episodes;
+      return (
+        details: det,
+        drama: drama,
+        episode: episode,
+        episodes: episodes,
+        matched: true,
+      );
+    }
+
+    final matched = det.episodeForResume(
+      episodeNumber: episode.number,
+      episodeId: episode.id > 0 ? episode.id : null,
+    );
+    if (matched != null) {
+      episode = matched;
     } else if (episode.id > 0) {
       try {
         episode = episodes.firstWhere((e) => e.id == episode.id);
@@ -160,7 +206,13 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         } else if (episodes.length == 1) {
           episode = episodes.first;
         } else {
-          return false;
+          return (
+            details: det,
+            drama: drama,
+            episode: null,
+            episodes: episodes,
+            matched: false,
+          );
         }
       }
     } else {
@@ -170,32 +222,68 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       } else if (episodes.length == 1) {
         episode = episodes.first;
       } else {
-        return false;
+        return (
+          details: det,
+          drama: drama,
+          episode: null,
+          episodes: episodes,
+          matched: false,
+        );
       }
     }
 
-    if (episode.id <= 0 || episodes.isEmpty) return false;
+    if (episode.id <= 0 || episodes.isEmpty) {
+      return (
+        details: det,
+        drama: drama,
+        episode: null,
+        episodes: episodes,
+        matched: false,
+      );
+    }
 
     _resolvedDrama = drama;
     _resolvedEpisode = episode;
     _resolvedEpisodes = episodes;
-    return true;
+    return (
+      details: det,
+      drama: drama,
+      episode: episode,
+      episodes: episodes,
+      matched: true,
+    );
   }
 
   Future<void> _bootstrap() async {
     try {
-      if (!await _resolveEpisodeContext()) {
-        if (!mounted) return;
+      final ctx = await _resolveEpisodeContext();
+      if (!mounted) return;
+
+      if (KissKhService.isUpcomingStatus(ctx.details.status)) {
         setState(() {
           _failedAll = true;
+          _isUpcoming = true;
+          _setPhase('Not available yet');
+          _statusLine = _upcomingStatusLine(ctx.details);
+        });
+        return;
+      }
+
+      if (!ctx.matched || ctx.episode == null) {
+        setState(() {
+          _failedAll = true;
+          _isUpcoming = false;
           _setPhase('Episode not found');
           _statusLine = 'Could not resolve this episode on kisskh.';
         });
         return;
       }
 
-      final drama = _resolvedDrama!;
-      final episode = _resolvedEpisode!;
+      final drama = ctx.drama;
+      final episode = ctx.episode!;
+
+      if (!mounted) return;
+      setState(() => _setPhase('Fetching streams…'));
 
       final stream = await _extractor.resolve(
         dramaId: drama.id,
@@ -220,6 +308,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       if (stream == null) {
         setState(() {
           _failedAll = true;
+          _isUpcoming = false;
           _setPhase('No stream available');
         });
         return;
@@ -229,6 +318,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       if (!mounted) return;
       setState(() {
         _failedAll = true;
+        _isUpcoming = false;
         _setPhase('Resolver crashed');
         _statusLine = '$e';
       });
@@ -381,6 +471,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
   Widget _buildFailure(AppThemePreset theme) {
     final backdropUrl = widget.drama.cover;
+    final upcoming = _isUpcoming;
     return Material(
       color: Colors.black,
       child: Stack(
@@ -403,8 +494,11 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline,
-                        color: theme.primaryColor, size: 56),
+                    Icon(
+                      upcoming ? Icons.schedule : Icons.error_outline,
+                      color: theme.primaryColor,
+                      size: 56,
+                    ),
                     const SizedBox(height: 14),
                     Text(
                       _messageNotifier.value,
@@ -431,13 +525,14 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
                       onPressed: () {
                         setState(() {
                           _failedAll = false;
-                          _setPhase('Fetching streams…');
+                          _isUpcoming = false;
+                          _setPhase('Checking availability…');
                           _statusLine = '';
                         });
                         _bootstrap();
                       },
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Try again'),
+                      label: Text(upcoming ? 'Check again' : 'Try again'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: BorderSide(

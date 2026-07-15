@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
-import 'package:rust/rust.dart';
 
 import 'helpers/rust_engine.dart';
 
@@ -30,6 +29,10 @@ void main() {
                 animeOrder: const ['miruro:bee'],
                 onAnimeOrderChanged: (_) {},
                 onAnimeOrderReset: () {},
+                asianDramaCatalog: const {'kisskh': 'KissKH'},
+                asianDramaOrder: const ['kisskh'],
+                onAsianDramaOrderChanged: (_) {},
+                onAsianDramaOrderReset: () {},
               ),
             ),
           ),
@@ -40,6 +43,7 @@ void main() {
       expect(find.text('Movies'), findsOneWidget);
       expect(find.text('Series'), findsOneWidget);
       expect(find.text('Anime'), findsOneWidget);
+      expect(find.text('Asian Drama'), findsOneWidget);
       expect(find.text('Score'), findsOneWidget);
       expect(find.text('Tries'), findsOneWidget);
       expect(find.text('Videasy'), findsOneWidget);
@@ -47,6 +51,10 @@ void main() {
       await tester.tap(find.text('Anime'));
       await tester.pumpAndSettle();
       expect(find.text('Miruro'), findsOneWidget);
+
+      await tester.tap(find.text('Asian Drama'));
+      await tester.pumpAndSettle();
+      expect(find.text('KissKH'), findsOneWidget);
     });
 
     testWidgets('tries badge uses auto-try position not effective rank', (tester) async {
@@ -66,6 +74,10 @@ void main() {
                 animeOrder: const [],
                 onAnimeOrderChanged: (_) {},
                 onAnimeOrderReset: () {},
+                asianDramaCatalog: const {'kisskh': 'KissKH'},
+                asianDramaOrder: const ['kisskh'],
+                onAsianDramaOrderChanged: (_) {},
+                onAsianDramaOrderReset: () {},
               ),
             ),
           ),

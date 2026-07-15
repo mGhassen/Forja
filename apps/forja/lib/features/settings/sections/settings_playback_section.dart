@@ -31,6 +31,14 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   String _maxPlaybackHeightLabel = 'Auto';
   List<String> _streamProviderOrder = [];
   List<String> _animeProviderOrder = [];
+  List<String> _asianDramaProviderOrder = List<String>.from(
+    _kAsianDramaProviderOrder,
+  );
+
+  static const Map<String, String> _kAsianDramaCatalog = {
+    'kisskh': 'KissKH',
+  };
+  static const List<String> _kAsianDramaProviderOrder = ['kisskh'];
 
   @override
   void initState() {
@@ -221,6 +229,10 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _animeProviderOrder,
       animeCatalog.keys,
     );
+    final asianDramaOrder = SettingsService.mergeProviderOrder(
+      _asianDramaProviderOrder,
+      _kAsianDramaCatalog.keys,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -250,6 +262,18 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           );
           await _settings.setAnimeProviderOrder(defaults);
           setState(() => _animeProviderOrder = defaults);
+        },
+        asianDramaCatalog: _kAsianDramaCatalog,
+        asianDramaOrder: asianDramaOrder,
+        onAsianDramaOrderChanged: (next) {
+          setState(() => _asianDramaProviderOrder = next);
+        },
+        onAsianDramaOrderReset: () {
+          setState(
+            () => _asianDramaProviderOrder = List<String>.from(
+              _kAsianDramaProviderOrder,
+            ),
+          );
         },
       ),
     );

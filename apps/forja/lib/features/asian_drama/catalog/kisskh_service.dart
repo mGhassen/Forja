@@ -118,6 +118,30 @@ class KissKhService {
     return null;
   }
 
+  /// KissKh drama `status` when the site shows a countdown instead of video.
+  static bool isUpcomingStatus(String? status) {
+    final s = (status ?? '').trim().toLowerCase();
+    return s == 'upcoming';
+  }
+
+  /// Human label for kisskh `releaseDate` (`YYYY-MM-DD…` → `Jun 14, 2026`).
+  static String formatReleaseDateLabel(String releaseDate) {
+    final raw = releaseDate.trim();
+    if (raw.length < 10) return raw;
+    final parts = raw.substring(0, 10).split('-');
+    if (parts.length != 3) return raw.substring(0, 10);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (month == null || day == null || month < 1 || month > 12) {
+      return raw.substring(0, 10);
+    }
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[month - 1]} $day, ${parts[0]}';
+  }
+
   /// Slug for URL building (title with spaces → dashes, lowercased).
   static String slugify(String title) {
     final s = title

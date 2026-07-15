@@ -20,7 +20,7 @@ Built-in **webstreaming** movie/series providers include Videasy, VSEmbed, VidSr
 
 ## How to open it
 
-**Settings → Playback → Server reliability** — Movies / Series / Anime tabs with live **Score** and Auto **Tries** order.
+**Settings → Playback → Server reliability** — Movies / Series / Anime / Asian Drama tabs with live **Score** and Auto **Tries** order.
 
 **In player → Servers** — pick **Auto** (default) or pin a specific server. Stream rows show a language flag when the title encodes a region/language. Header **Embed** (next to reload) controls WebView sniff mode: checked loads the embed inside an iframe; unchecked loads the embed URL directly.
 

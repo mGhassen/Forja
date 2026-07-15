@@ -14,6 +14,10 @@ class ProviderScoringPanel extends StatefulWidget {
     required this.animeOrder,
     required this.onAnimeOrderChanged,
     required this.onAnimeOrderReset,
+    required this.asianDramaCatalog,
+    required this.asianDramaOrder,
+    required this.onAsianDramaOrderChanged,
+    required this.onAsianDramaOrderReset,
   });
 
   final Map<String, String> streamCatalog;
@@ -26,11 +30,16 @@ class ProviderScoringPanel extends StatefulWidget {
   final ValueChanged<List<String>> onAnimeOrderChanged;
   final VoidCallback onAnimeOrderReset;
 
+  final Map<String, String> asianDramaCatalog;
+  final List<String> asianDramaOrder;
+  final ValueChanged<List<String>> onAsianDramaOrderChanged;
+  final VoidCallback onAsianDramaOrderReset;
+
   @override
   State<ProviderScoringPanel> createState() => _ProviderScoringPanelState();
 }
 
-enum _ScoringTab { movies, series, anime }
+enum _ScoringTab { movies, series, anime, asianDrama }
 
 class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
   _ScoringTab _tab = _ScoringTab.movies;
@@ -56,15 +65,41 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
         _ScoringTab.movies => SourceDomain.movies,
         _ScoringTab.series => SourceDomain.series,
         _ScoringTab.anime => SourceDomain.anime,
+        _ScoringTab.asianDrama => SourceDomain.asianDrama,
       };
 
-  bool get _isAnime => _tab == _ScoringTab.anime;
+  Map<String, String> get _catalog => switch (_tab) {
+        _ScoringTab.anime => widget.animeCatalog,
+        _ScoringTab.asianDrama => widget.asianDramaCatalog,
+        _ => widget.streamCatalog,
+      };
 
-  Map<String, String> get _catalog =>
-      _isAnime ? widget.animeCatalog : widget.streamCatalog;
+  List<String> get _savedOrder => switch (_tab) {
+        _ScoringTab.anime => widget.animeOrder,
+        _ScoringTab.asianDrama => widget.asianDramaOrder,
+        _ => widget.streamOrder,
+      };
+
+  void _onOrderChanged(List<String> next) {
+    switch (_tab) {
+      case _ScoringTab.anime:
+        widget.onAnimeOrderChanged(next);
+      case _ScoringTab.asianDrama:
+        widget.onAsianDramaOrderChanged(next);
+      case _ScoringTab.movies:
+      case _ScoringTab.series:
+        widget.onStreamOrderChanged(next);
+    }
+  }
+
+  VoidCallback get _onOrderReset => switch (_tab) {
+        _ScoringTab.anime => widget.onAnimeOrderReset,
+        _ScoringTab.asianDrama => widget.onAsianDramaOrderReset,
+        _ => widget.onStreamOrderReset,
+      };
 
   List<String> get _order {
-    final saved = _isAnime ? widget.animeOrder : widget.streamOrder;
+    final saved = _savedOrder;
     final catalog = _catalog;
     final seen = <String>{};
     final out = <String>[];
@@ -128,11 +163,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
               final next = List<String>.from(order);
               final item = next.removeAt(oldIndex);
               next.insert(newIndex, item);
-              if (_isAnime) {
-                widget.onAnimeOrderChanged(next);
-              } else {
-                widget.onStreamOrderChanged(next);
-              }
+              _onOrderChanged(next);
             },
             itemBuilder: (context, index) {
               final id = order[index];
@@ -154,9 +185,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: _isAnime
-                  ? widget.onAnimeOrderReset
-                  : widget.onStreamOrderReset,
+              onPressed: _onOrderReset,
               child: const Text('Reset order'),
             ),
           ),
@@ -208,6 +237,7 @@ class _TabStrip extends StatelessWidget {
         chip(_ScoringTab.movies, 'Movies'),
         chip(_ScoringTab.series, 'Series'),
         chip(_ScoringTab.anime, 'Anime'),
+        chip(_ScoringTab.asianDrama, 'Asian Drama'),
       ],
     );
   }
