@@ -61,6 +61,9 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
 
 class _MediaDetailsTorrentActionRowState
     extends State<MediaDetailsTorrentActionRow> {
+  /// Hero ⋮ menu (Trakt/Simkl) — kept wired; hide until product wants it back.
+  static const bool _overflowVisible = false;
+
   @override
   void dispose() {
     final tabId = widget.tvTabId;
@@ -130,7 +133,7 @@ class _MediaDetailsTorrentActionRowState
   int _iconGroupSlotCount() {
     var n = 1;
     if (widget.showPlay) n++;
-    n++;
+    if (_overflowVisible) n++;
     return n;
   }
 
@@ -285,7 +288,7 @@ class _MediaDetailsTorrentActionRowState
               tooltip: 'Download',
               onTap: widget.onDownload ?? widget.onOpenSources,
             ),
-          _buildOverflowSlot(context),
+          if (_overflowVisible) _buildOverflowSlot(context),
         ],
       ),
     );
