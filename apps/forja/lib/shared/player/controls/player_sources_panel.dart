@@ -33,6 +33,9 @@ class PlayerSourcesPanel {
     int? episode,
     String? currentMagnet,
     String? currentStreamUrl,
+    /// `torrents` | `stremio` | `nuvio` — opens on the playing source kind.
+    String? preferredKind,
+    String? currentAddonBaseUrl,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
         onStremioSelected,
@@ -54,6 +57,8 @@ class PlayerSourcesPanel {
           episode: episode,
           currentMagnet: currentMagnet,
           currentStreamUrl: currentStreamUrl,
+          preferredKind: preferredKind,
+          currentAddonBaseUrl: currentAddonBaseUrl,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
@@ -76,6 +81,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.episode,
     this.currentMagnet,
     this.currentStreamUrl,
+    this.preferredKind,
+    this.currentAddonBaseUrl,
   });
 
   final Movie movie;
@@ -83,6 +90,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? episode;
   final String? currentMagnet;
   final String? currentStreamUrl;
+  final String? preferredKind;
+  final String? currentAddonBaseUrl;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -115,6 +124,8 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
         episode: widget.episode,
         currentMagnet: widget.currentMagnet,
         currentStreamUrl: widget.currentStreamUrl,
+        preferredKind: widget.preferredKind,
+        currentAddonBaseUrl: widget.currentAddonBaseUrl,
         onTorrentSelected: widget.onTorrentSelected,
         onStremioSelected: widget.onStremioSelected,
         onClose: widget.onClose,
@@ -133,6 +144,8 @@ class _PlayerSourcesBody extends StatefulWidget {
     this.episode,
     this.currentMagnet,
     this.currentStreamUrl,
+    this.preferredKind,
+    this.currentAddonBaseUrl,
   });
 
   final Movie movie;
@@ -140,6 +153,8 @@ class _PlayerSourcesBody extends StatefulWidget {
   final int? episode;
   final String? currentMagnet;
   final String? currentStreamUrl;
+  final String? preferredKind;
+  final String? currentAddonBaseUrl;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -195,7 +210,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _kindFilter == 'torrents' || _kindFilter == 'all';
   bool get _showsStremio =>
       _kindFilter == 'stremio' || _kindFilter == 'all';
-  bool get _showsNuvio => _kindFilter == 'nuvio';
+  bool get _showsNuvio =>
+      _kindFilter == 'nuvio' || _kindFilter == 'all';
   bool get _showsMerged => _kindFilter == 'all';
 
   @override
@@ -319,18 +335,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         for (final s in a.scrapers)
           if (s.enabled) s.id,
     };
-    String kind;
-    if (hasTorrent && hasStremio) {
-      kind = 'all';
-    } else if (hasTorrent) {
-      kind = 'torrents';
-    } else if (hasNuvio) {
-      kind = 'nuvio';
-    } else if (hasStremio) {
-      kind = 'stremio';
-    } else {
-      kind = 'torrents';
-    }
+    final kind = _resolveInitialKind(
+      hasTorrent: hasTorrent,
+      hasStremio: hasStremio,
+      hasNuvio: hasNuvio,
+    );
 
     setState(() {
       _sortPreference = sort;
@@ -344,20 +353,153 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _nuvioSelectedScraperIds = nuvioScraperIds;
       _streamAddons = addons;
       _kindFilter = kind;
-      _selectedSourceId = switch (kind) {
-        'stremio' => addons.length > 1
-            ? 'all_stremio'
-            : (addons.isNotEmpty
-                ? addons.first['baseUrl'] as String
-                : 'forja'),
-        'nuvio' => 'all_nuvio',
-        _ => 'forja',
-      };
+      _selectedSourceId = _sourceIdForKind(kind, addons);
     });
 
     if (_showsTorrents) unawaited(_runTorrentSearch());
     if (_showsStremio) unawaited(_fetchStremioStreams());
     if (_showsNuvio) unawaited(_fetchAllNuvioStreams());
+    // Prefetch other kinds so we can jump to the playing row if preferred
+    // kind was wrong (e.g. Stremio Direct that is actually Nuvio).
+    if (!_showsNuvio && hasNuvio) unawaited(_fetchAllNuvioStreams());
+    if (!_showsStremio && hasStremio) unawaited(_fetchStremioStreams());
+    if (!_showsTorrents && hasTorrent) unawaited(_runTorrentSearch());
+  }
+
+  String _sourceIdForKind(String kind, List<Map<String, dynamic>> addons) {
+    return switch (kind) {
+      'stremio' => addons.length > 1
+          ? 'all_stremio'
+          : (addons.isNotEmpty
+              ? addons.first['baseUrl'] as String
+              : 'forja'),
+      'nuvio' => 'all_nuvio',
+      'all' => 'forja',
+      _ => 'forja',
+    };
+  }
+
+  /// Prefer the currently playing catalog kind; fall back to a sensible default.
+  String _resolveInitialKind({
+    required bool hasTorrent,
+    required bool hasStremio,
+    required bool hasNuvio,
+  }) {
+    final preferred = _effectivePreferredKind();
+    if (preferred != null) {
+      if (preferred == 'nuvio' && hasNuvio) return 'nuvio';
+      if (preferred == 'stremio' && hasStremio) return 'stremio';
+      if (preferred == 'torrents' && hasTorrent) return 'torrents';
+    }
+    if (hasTorrent && hasStremio) return 'all';
+    if (hasTorrent) return 'torrents';
+    if (hasNuvio) return 'nuvio';
+    if (hasStremio) return 'stremio';
+    return 'torrents';
+  }
+
+  String? _effectivePreferredKind() {
+    final base = widget.currentAddonBaseUrl;
+    if (base != null && base.startsWith('nuvio:')) return 'nuvio';
+    final preferred = widget.preferredKind;
+    if (preferred == 'nuvio' ||
+        preferred == 'stremio' ||
+        preferred == 'torrents') {
+      return preferred;
+    }
+    final magnet = widget.currentMagnet;
+    if (magnet != null && magnet.isNotEmpty && preferred != 'stremio') {
+      return 'torrents';
+    }
+    return preferred;
+  }
+
+  /// After lists update, switch to the kind that contains the playing source
+  /// and scroll it into view.
+  void _focusPlayingSourceIfNeeded() {
+    if (!mounted) return;
+
+    bool torrentsHit() =>
+        _showTorrents && _results.any((r) => _isCurrentMagnet(r.magnet));
+    bool nuvioHit() => _showNuvio && _nuvioStreams.any(_isCurrentStremio);
+    bool stremioHit() =>
+        _showStremio && _stremioStreams.any(_isCurrentStremio);
+
+    // Already visible under the active filter — only scroll.
+    if (_kindFilter == 'all' &&
+        (torrentsHit() || nuvioHit() || stremioHit())) {
+      _requestScrollToCurrent();
+      return;
+    }
+    if (_kindFilter == 'torrents' && torrentsHit()) {
+      _requestScrollToCurrent();
+      return;
+    }
+    if (_kindFilter == 'nuvio' && nuvioHit()) {
+      _requestScrollToCurrent();
+      return;
+    }
+    if (_kindFilter == 'stremio' && stremioHit()) {
+      _requestScrollToCurrent();
+      return;
+    }
+
+    void go(String kind) {
+      if (_kindFilter == kind) {
+        _requestScrollToCurrent();
+        return;
+      }
+      setState(() {
+        _kindFilter = kind;
+        _selectedSourceId = _sourceIdForKind(kind, _streamAddons);
+        if (kind == 'nuvio' || kind == 'all') {
+          if (_nuvioSelectedScraperIds.isEmpty) {
+            _nuvioSelectedScraperIds = {
+              for (final a in _nuvioAddons)
+                for (final s in a.scrapers)
+                  if (s.enabled) s.id,
+            };
+          }
+        }
+      });
+      _requestScrollToCurrent();
+    }
+
+    // Prefer the caller's kind when it already has the playing row.
+    // While that kind is still loading, do not steal focus to a Torrentio
+    // mirror under Torrents / Stremio.
+    final preferred = _effectivePreferredKind();
+    if (preferred == 'nuvio' && _showNuvio) {
+      if (nuvioHit()) {
+        go('nuvio');
+        return;
+      }
+      if (_nuvioFetching) return;
+    }
+    if (preferred == 'stremio' && _showStremio) {
+      if (stremioHit()) {
+        go('stremio');
+        return;
+      }
+      if (_stremioFetching) return;
+    }
+    if (preferred == 'torrents' && _showTorrents) {
+      if (torrentsHit()) {
+        go('torrents');
+        return;
+      }
+      if (_searching) return;
+    }
+
+    // Discovery order: Nuvio before Stremio/Torrents so a Torrentio mirror of
+    // the same infoHash does not steal a Nuvio / Stremio Direct session.
+    if (nuvioHit()) {
+      go('nuvio');
+    } else if (stremioHit()) {
+      go('stremio');
+    } else if (torrentsHit()) {
+      go('torrents');
+    }
   }
 
   List<TorrentResult> get _filteredTorrents {
@@ -529,10 +671,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       setState(() {
         _results = found;
         _searching = false;
-        if (found.isEmpty && !_showsStremio) {
+        if (found.isEmpty && !_showsStremio && !_showsNuvio) {
           _error = 'No torrents found';
         }
       });
+      _focusPlayingSourceIfNeeded();
       _requestScrollToCurrent();
     } catch (e) {
       if (!mounted || gen != _searchGen) return;
@@ -613,7 +756,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           }
           _stremioStreams.addAll(tagged);
         });
-        if (tagged.isNotEmpty) _requestScrollToCurrent();
+        if (tagged.isNotEmpty) {
+          _focusPlayingSourceIfNeeded();
+          _requestScrollToCurrent();
+        }
       }).catchError((_) {
         // skip failed addon
       }).whenComplete(completeOne);
@@ -653,6 +799,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
             ),
           );
         });
+        _focusPlayingSourceIfNeeded();
         _requestScrollToCurrent();
       },
       onError: (_) {},
@@ -661,10 +808,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         if (!mounted) return;
         setState(() {
           _nuvioFetching = false;
-          if (_nuvioStreams.isEmpty) {
+          if (_nuvioStreams.isEmpty && !_showsTorrents && !_showsStremio) {
             _error = 'No streams found from any Nuvio addon';
           }
         });
+        _focusPlayingSourceIfNeeded();
       },
       cancelOnError: false,
     );
@@ -688,6 +836,13 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
                 : 'all_stremio');
       } else if (kind == 'nuvio') {
         _selectedSourceId = 'all_nuvio';
+        _nuvioSelectedScraperIds = {
+          for (final a in _nuvioAddons)
+            for (final s in a.scrapers)
+              if (s.enabled) s.id,
+        };
+      } else if (kind == 'all') {
+        _selectedSourceId = 'forja';
         _nuvioSelectedScraperIds = {
           for (final a in _nuvioAddons)
             for (final s in a.scrapers)

@@ -257,6 +257,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   List<PlayableSource>? _playableSources;
   String? _currentUrl;
   String? _activeMagnet;
+  /// Catalog Sources kind for the playing session: `torrents` | `stremio` | `nuvio`.
+  String? _catalogSourceKind;
+  /// Last Stremio/Nuvio `_addonBaseUrl` (e.g. `nuvio:showbox`) for panel focus.
+  String? _catalogAddonBaseUrl;
   // ── HLS Quality Selector ─────────────────────────────────────────────────
   // Populated when the playing URL is a master HLS playlist with 2+
   // variants. The gear button in the top control bar is hidden until this

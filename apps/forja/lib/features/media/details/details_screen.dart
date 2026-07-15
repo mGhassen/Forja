@@ -462,7 +462,8 @@ class _DetailsScreenState extends State<DetailsScreen>
         _fetchAllStremioStreams();
       }
     }
-    if (_panelKindFilter == 'nuvio' && _panelShowNuvio) {
+    if (_panelShowNuvio &&
+        (_panelKindFilter == 'all' || _panelKindFilter == 'nuvio')) {
       unawaited(_ensureNuvioPanelLoaded());
     }
   }
@@ -470,7 +471,8 @@ class _DetailsScreenState extends State<DetailsScreen>
   /// Loads addon list, selects all scrapers, then fetches every scraper once.
   Future<void> _ensureNuvioPanelLoaded() async {
     await _checkAndFetchNuvio();
-    if (!mounted || !_panelShowNuvio || _panelKindFilter != 'nuvio') return;
+    if (!mounted || !_panelShowNuvio) return;
+    if (_panelKindFilter != 'nuvio' && _panelKindFilter != 'all') return;
     if (_nuvioSelectedScraperIds.isEmpty) {
       setState(_selectAllEnabledNuvioScrapers);
     }
@@ -505,6 +507,7 @@ class _DetailsScreenState extends State<DetailsScreen>
                 : _streamAddons.first['baseUrl'] as String;
             _applyStremioFilter();
           }
+          if (_panelShowNuvio) _selectAllEnabledNuvioScrapers();
       }
     });
     _ensurePanelSourceLoaded();

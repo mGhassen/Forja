@@ -3,6 +3,18 @@ part of 'desktop_player_screen.dart';
 mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
+  String? _initialCatalogSourceKind() {
+    final base = widget.stremioAddonBaseUrl;
+    if (base != null && base.startsWith('nuvio:')) return 'nuvio';
+    final provider = widget.activeProvider;
+    if (provider == 'torrent') return 'torrents';
+    if (provider == 'stremio_direct') return 'stremio';
+    if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) {
+      return 'torrents';
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -12,6 +24,8 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
 
     // ── Provider initialization ──────────────────────────────────────────
     _s._currentProvider = widget.activeProvider;
+    _s._catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
+    _s._catalogSourceKind = _initialCatalogSourceKind();
     // Do not pin from pinSource / preloaded sources — that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());

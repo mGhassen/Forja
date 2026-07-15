@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 5 / 5** fix · **0 / 2** acceptance (manual smoke ⬜) |
+| **Progress** | **Complete · 6 / 6** fix · **0 / 2** acceptance (manual smoke ⬜) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 3 | I64-T03 | Hide layers server picker whenever catalog Sources is available | ✅ |
 | 4 | I64-T04 | Match current HTTP Stremio/Nuvio URL in player Sources panel highlight | ✅ |
 | 5 | I64-T05 | Player Sources panel — Nuvio kind chip + scraper toggles (parity with details) | ✅ |
+| 6 | I64-T06 | Sources **All** includes Nuvio; panel opens on playing kind and scrolls to current row | ✅ |
 
 ---
 

@@ -316,12 +316,11 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSourcesPanelContent() {
-    final showMerged =
-        _s._panelKindFilter == 'all' && _s._panelShowTorrent && _s._panelShowStremio;
+    final showMerged = _s._panelKindFilter == 'all';
     final showTorrents = _s._panelKindFilter == 'torrents' || showMerged;
-    final showNuvio = _s._panelKindFilter == 'nuvio';
-    final showSort = showTorrents && !showNuvio;
-    final showAudio = showTorrents && !showNuvio;
+    final showNuvio = _s._panelKindFilter == 'nuvio' || showMerged;
+    final showSort = showTorrents && _s._panelKindFilter != 'nuvio';
+    final showAudio = showTorrents && _s._panelKindFilter != 'nuvio';
     final providerChips = showMerged
         ? const <Map<String, dynamic>>[]
         : _s._sourceChips();

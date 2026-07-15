@@ -14,6 +14,9 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
       episode: widget.selectedEpisode,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
+      preferredKind: _s._catalogSourceKind,
+      currentAddonBaseUrl:
+          _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );
@@ -85,6 +88,11 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
       _s._hasError = false;
       _s._errorMessage = '';
       _s._currentSources = null;
+      final base = stream['_addonBaseUrl']?.toString();
+      _s._catalogAddonBaseUrl = base;
+      _s._catalogSourceKind =
+          (base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio';
+      _s._currentProvider = 'stremio_direct';
     });
     _s._playbackConfirmed = true;
     _s._statusController.complete();
@@ -157,6 +165,9 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
       _s._hasError = false;
       _s._errorMessage = '';
       _s._currentSources = null;
+      _s._catalogSourceKind = 'torrents';
+      _s._catalogAddonBaseUrl = null;
+      _s._currentProvider = 'torrent';
     });
     _s._playbackConfirmed = true;
     _s._statusController.complete();

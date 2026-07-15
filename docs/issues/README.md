@@ -85,7 +85,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [061-[fixed]-…](fixed/061-[fixed]-engine-worker-hang-on-quit.md) | Engine worker hang on quit (AniList uncancellable) | P1 | High | fixed | Complete · 4/4 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [062-[fixed]-…](fixed/062-[fixed]-windows-quit-freeze-unbounded-mpv-teardown.md) | Windows quit freezes (unbounded mpv teardown) | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [063-[fixed]-…](fixed/063-[fixed]-iptv-catalog-scrape-extract-still-dart.md) | IPTV catalog scrape extract still Dart | P2 | Medium | fixed | Complete · 4/4 · 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [064-[fixed]-…](fixed/064-[fixed]-stremio-nuvio-player-sources-panel-missing.md) | Stremio/Nuvio player Sources panel missing | P2 | Medium | fixed | Complete · 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [064-[fixed]-…](fixed/064-[fixed]-stremio-nuvio-player-sources-panel-missing.md) | Stremio/Nuvio player Sources panel missing | P2 | Medium | fixed | Complete · 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -16,8 +16,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     sizeFilters: _s._activeSizeFilters,
   );
 
-  bool get _panelShowsMerged =>
-      _s._panelKindFilter == 'all' && _s._panelShowTorrent && _s._panelShowStremio;
+  bool get _panelShowsMerged => _s._panelKindFilter == 'all';
 
   bool get _panelShowsTorrents =>
       _s._panelKindFilter == 'torrents' || _panelShowsMerged;
@@ -25,7 +24,8 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
   bool get _panelShowsStremio =>
       _s._panelKindFilter == 'stremio' || _panelShowsMerged;
 
-  bool get _panelShowsNuvio => _s._panelKindFilter == 'nuvio';
+  bool get _panelShowsNuvio =>
+      _s._panelKindFilter == 'nuvio' || _panelShowsMerged;
 
   List<Map<String, dynamic>> get _filteredPanelStremioStreams {
     final streams = _s._selectedSourceId == 'all_stremio' || _panelShowsMerged

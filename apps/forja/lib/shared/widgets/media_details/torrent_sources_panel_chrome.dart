@@ -278,7 +278,7 @@ class _KindChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = <({String id, String label, Widget? icon})>[
-      if (showTorrents && showStremio)
+      if ([showTorrents, showStremio, showNuvio].where((e) => e).length >= 2)
         (id: 'all', label: 'All', icon: null),
       if (showTorrents)
         (
