@@ -16,6 +16,7 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 - **Stream cache** — saved webstreaming and anime stream URLs, torrent temp files, and seek buffers. Next Play re-resolves. Settings and continue watching stay.
 - **Images & WebView** — poster thumbnails and extractor WebView caches. Images re-download when needed.
+- **Downloaded updates** (desktop) — installer files saved by in-app update (`.dmg`, `.exe`, AppImage). Safe to remove after you install.
 
 ### Learned
 

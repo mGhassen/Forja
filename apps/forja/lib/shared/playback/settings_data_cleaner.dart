@@ -3,6 +3,8 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/services/app_update_download_storage.dart';
+import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
@@ -36,6 +38,14 @@ abstract final class SettingsDataCleaner {
     try {
       await WebViewCleanup.cleanupWebView2Cache();
     } catch (_) {}
+  }
+
+  /// In-app update installers saved on desktop (.dmg / .exe / AppImage).
+  static Future<void> clearDownloadedUpdates() async {
+    if (AppUpdateDownloadService.instance.isDownloading) {
+      throw StateError('An update is currently downloading');
+    }
+    await AppUpdateDownloadStorage.clearDownloadedFiles();
   }
 
   /// Learned provider reliability (Settings Score / Auto nudge).

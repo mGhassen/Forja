@@ -1,14 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // Conditional import for Android-only package
@@ -65,7 +64,8 @@ class _UpdateLayout {
 
   factory _UpdateLayout.of(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final isTv = (ShellScope.maybeOf(context)?.profile ??
+    final isTv =
+        (ShellScope.maybeOf(context)?.profile ??
             resolveShellProfile(context)) ==
         ShellProfile.tv;
     final isWide = !isTv && size.width > 720;
@@ -99,7 +99,7 @@ class _UpdateLayout {
 
     return _UpdateLayout._(
       isTv: false,
-      contentWidth: isWide ? 520 : size.width - 56,
+      contentWidth: isWide ? 640 : size.width - 48,
       headlineSize: size.width > 600 ? 40 : 34,
       versionSize: 22,
       metaSize: 14,
@@ -144,10 +144,8 @@ class UpdateDialog extends StatefulWidget {
       barrierColor: AppTheme.bgDark,
       barrierLabel: 'Software update',
       transitionDuration: const Duration(milliseconds: 480),
-      pageBuilder: (dialogContext, _, _) => _scopeHost(
-        hostContext,
-        UpdateDialog(updateInfo: updateInfo),
-      ),
+      pageBuilder: (dialogContext, _, _) =>
+          _scopeHost(hostContext, UpdateDialog(updateInfo: updateInfo)),
       transitionBuilder: (context, animation, _, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -187,8 +185,81 @@ class UpdateDialog extends StatefulWidget {
 }
 
 class _UpdateDialogState extends State<UpdateDialog> {
+  final AppUpdateDownloadService _desktopDownload =
+      AppUpdateDownloadService.instance;
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
+  bool _showingDownloadComplete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _desktopDownload.state.addListener(_onDesktopDownloadChanged);
+    final current = _desktopDownload.state.value;
+    if (current.phase == AppUpdateDownloadPhase.downloading &&
+        current.updateInfo?.latestVersion == widget.updateInfo.latestVersion) {
+      _isDownloading = true;
+      _downloadProgress = current.progress;
+    } else if (current.phase == AppUpdateDownloadPhase.completed &&
+        current.updateInfo?.latestVersion == widget.updateInfo.latestVersion) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _onDesktopDownloadChanged();
+      });
+    } else if ((Platform.isWindows ||
+            Platform.isLinux ||
+            (Platform.isMacOS && _hasDirectAsset)) &&
+        current.updateInfo?.latestVersion != widget.updateInfo.latestVersion) {
+      unawaited(_desktopDownload.restoreCached(widget.updateInfo));
+    }
+  }
+
+  @override
+  void dispose() {
+    _desktopDownload.state.removeListener(_onDesktopDownloadChanged);
+    super.dispose();
+  }
+
+  void _onDesktopDownloadChanged() {
+    final current = _desktopDownload.state.value;
+    if (current.updateInfo?.latestVersion != widget.updateInfo.latestVersion ||
+        !mounted) {
+      return;
+    }
+
+    if (current.phase == AppUpdateDownloadPhase.downloading) {
+      setState(() {
+        _isDownloading = true;
+        _downloadProgress = current.progress;
+      });
+    } else if (current.phase == AppUpdateDownloadPhase.failed) {
+      setState(() => _isDownloading = false);
+    } else if (current.phase == AppUpdateDownloadPhase.completed) {
+      setState(() {
+        _isDownloading = false;
+        _downloadProgress = 1;
+      });
+      if (!_showingDownloadComplete) {
+        _showingDownloadComplete = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showCompletedDesktopDownload(current);
+        });
+      }
+    }
+  }
+
+  Future<void> _showCompletedDesktopDownload(
+    AppUpdateDownloadState current,
+  ) async {
+    final filePath = current.filePath;
+    if (filePath == null) return;
+    await _DownloadCompleteScreen.show(
+      context: context,
+      filePath: filePath,
+      dirPath: File(filePath).parent.path,
+      fileName: File(filePath).uri.pathSegments.last,
+    );
+    if (mounted) Navigator.of(context).pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -213,55 +284,49 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         minHeight: constraints.maxHeight,
                         maxWidth: layout.contentWidth,
                       ),
-                      child: Center(
-                        child: _buildDownloadingBody(size, layout),
-                      ),
+                      child: Center(child: _buildDownloadingBody(size, layout)),
                     ),
                   );
                 },
               )
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
+            : Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: layout.contentWidth),
+                  child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      horizontalPad,
+                      24,
                       layout.isTv ? 16 : 24,
-                      horizontalPad,
+                      24,
                       padding.bottom > 0 ? 12 : 24,
                     ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                        maxWidth: layout.contentWidth,
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildOfferBody(size, layout),
-                            SizedBox(height: layout.footerGap),
-                            _UpdateFooter(
-                              layout: layout,
-                              onUpdate: _handleUpdate,
-                              onSkip: () => Navigator.of(context).pop(),
-                            ),
-                          ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildOfferHeader(size, layout),
+                        Expanded(
+                          child: _ReleaseNotesScroller(
+                            layout: layout,
+                            child: _buildReleaseNotes(layout),
+                          ),
                         ),
-                      ),
+                        SizedBox(height: layout.footerGap),
+                        _UpdateFooter(
+                          layout: layout,
+                          onUpdate: _handleUpdate,
+                          onSkip: () => Navigator.of(context).pop(),
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
       ),
     );
   }
 
-  Widget _buildOfferBody(Size size, _UpdateLayout layout) {
+  Widget _buildOfferHeader(Size size, _UpdateLayout layout) {
     final logoWidth = size.width.clamp(280.0, 520.0) * layout.logoWidthFactor;
     final logoHeight = logoWidth / forjaLogoAspectRatio;
-    final sections =
-        _ReleaseNotesParser.parseSections(widget.updateInfo.releaseNotes);
     final published = _formatPublishedDate(widget.updateInfo.publishedAt);
 
     return Column(
@@ -345,38 +410,40 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
         SizedBox(height: layout.sectionLabelGap),
-        if (sections.isEmpty)
-          Text(
-            'No release notes were published for this version.',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: layout.bodySize,
-              height: 1.6,
-              color: ForjaShellColors.textSecondary,
+      ],
+    );
+  }
+
+  Widget _buildReleaseNotes(_UpdateLayout layout) {
+    final sections = _ReleaseNotesParser.parseSections(
+      widget.updateInfo.releaseNotes,
+    );
+
+    if (sections.isEmpty) {
+      return Text(
+        'No release notes were published for this version.',
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: layout.bodySize,
+          height: 1.6,
+          color: ForjaShellColors.textSecondary,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < sections.length; i++) ...[
+          if (sections[i].title != null)
+            _ReleaseNoteGroupHeader(
+              title: sections[i].title!,
+              layout: layout,
+              isFirst: i == 0,
             ),
-          )
-        else
-          ...sections.expand((section) => [
-                    if (section.title != null) ...[
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: layout.isTv ? 4 : 8,
-                          bottom: layout.isTv ? 4 : 6,
-                        ),
-                        child: Text(
-                          section.title!,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: layout.sectionSize * 0.85,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                            color: ForjaShellColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                    ...section.items.map(
-                      (item) => _ReleaseNoteRow(item: item, layout: layout),
-                    ),
-                  ]),
+          ...sections[i].items.map(
+            (item) => _ReleaseNoteRow(item: item, layout: layout),
+          ),
+        ],
       ],
     );
   }
@@ -439,15 +506,27 @@ class _UpdateDialogState extends State<UpdateDialog> {
             color: ForjaShellColors.iconMuted,
           ),
         ),
+        SizedBox(height: layout.isTv ? 18 : 28),
+        _UpdateTextAction(
+          layout: layout,
+          label: 'Continue in background',
+          onTap: () {
+            _desktopDownload.continueInBackground();
+            Navigator.of(context).pop();
+          },
+        ),
       ],
     );
   }
+
+  bool get _hasDirectAsset =>
+      widget.updateInfo.downloadUrl.contains('/releases/download/');
 
   String? get _platformNotice {
     if (widget.updateInfo.isIOS) {
       return 'Install opens GitHub in your browser.';
     }
-    if (widget.updateInfo.isMacOS) {
+    if (widget.updateInfo.isMacOS && !_hasDirectAsset) {
       return 'Install opens GitHub in your browser.';
     }
     return null;
@@ -478,8 +557,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Future<void> _handleUpdate() async {
     if (Platform.isAndroid) {
       await _downloadAndInstallAndroid();
-    } else if (Platform.isWindows || Platform.isLinux) {
-      await _downloadAndInstallDesktop();
+    } else if (Platform.isWindows ||
+        Platform.isLinux ||
+        (Platform.isMacOS && _hasDirectAsset)) {
+      await _desktopDownload.start(widget.updateInfo);
     } else {
       await AppUpdaterService().openDownloadPage(widget.updateInfo.downloadUrl);
       if (mounted) Navigator.of(context).pop();
@@ -539,73 +620,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
       }
     }
   }
-
-  Future<void> _downloadAndInstallDesktop() async {
-    setState(() {
-      _isDownloading = true;
-      _downloadProgress = 0.0;
-    });
-
-    try {
-      Directory? downloadsDir;
-      try {
-        downloadsDir = await getDownloadsDirectory();
-      } catch (_) {
-        downloadsDir = null;
-      }
-      final dir = downloadsDir ?? await getTemporaryDirectory();
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-
-      final extension = Platform.isWindows ? '.exe' : '.AppImage';
-      final fileName = 'Forja-${widget.updateInfo.latestVersion}$extension';
-      final filePath = path.join(dir.path, fileName);
-      final file = File(filePath);
-
-      final request = http.Request('GET', Uri.parse(widget.updateInfo.downloadUrl));
-      final response = await request.send();
-
-      final contentLength = response.contentLength ?? 0;
-      var downloadedBytes = 0;
-      var lastUpdateTime = DateTime.now().millisecondsSinceEpoch;
-
-      final sink = file.openWrite();
-
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        downloadedBytes += chunk.length;
-
-        final now = DateTime.now().millisecondsSinceEpoch;
-        if (contentLength > 0 &&
-            mounted &&
-            (now - lastUpdateTime > 100 || downloadedBytes == contentLength)) {
-          lastUpdateTime = now;
-          setState(() {
-            _downloadProgress = downloadedBytes / contentLength;
-          });
-        }
-      }
-
-      await sink.close();
-
-      if (mounted) {
-        setState(() => _isDownloading = false);
-        await _DownloadCompleteScreen.show(
-          context: context,
-          filePath: filePath,
-          dirPath: dir.path,
-          fileName: fileName,
-        );
-        if (mounted) Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isDownloading = false);
-        ForjaToast.error('Download failed: $e');
-      }
-    }
-  }
 }
 
 class _UpdateFooter extends StatelessWidget {
@@ -637,10 +651,94 @@ class _UpdateFooter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Divider(height: 1, color: ForjaShellColors.borderSubtle),
+        SizedBox(height: layout.isTv ? 12 : 16),
         install,
         SizedBox(height: layout.isTv ? 12 : 12),
         Center(child: skip),
       ],
+    );
+  }
+}
+
+/// Scroll region for the release notes with a scrollbar + top fade so the
+/// pinned footer reads as a separate layer.
+class _ReleaseNotesScroller extends StatefulWidget {
+  const _ReleaseNotesScroller({required this.layout, required this.child});
+
+  final _UpdateLayout layout;
+  final Widget child;
+
+  @override
+  State<_ReleaseNotesScroller> createState() => _ReleaseNotesScrollerState();
+}
+
+class _ReleaseNotesScrollerState extends State<_ReleaseNotesScroller> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      controller: _controller,
+      thumbVisibility: !widget.layout.isTv,
+      child: SingleChildScrollView(
+        controller: _controller,
+        padding: EdgeInsets.only(
+          right: widget.layout.isTv ? 0 : 10,
+          bottom: widget.layout.isTv ? 8 : 12,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _ReleaseNoteGroupHeader extends StatelessWidget {
+  const _ReleaseNoteGroupHeader({
+    required this.title,
+    required this.layout,
+    required this.isFirst,
+  });
+
+  final String title;
+  final _UpdateLayout layout;
+  final bool isFirst;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: isFirst ? 0 : (layout.isTv ? 14 : 20),
+        bottom: layout.isTv ? 8 : 10,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: layout.sectionSize + 4,
+            decoration: BoxDecoration(
+              color: ForjaShellColors.brandGreen,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          SizedBox(width: layout.isTv ? 8 : 10),
+          Text(
+            title.toUpperCase(),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: layout.sectionSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: ForjaShellColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -749,12 +847,9 @@ class _ReleaseNoteRow extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: layout.isTv ? 6 : 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
+    final leading = item.prefix != null
+        ? _ReleaseNoteTag(prefix: item.prefix!, layout: layout)
+        : Padding(
             padding: EdgeInsets.only(top: layout.isTv ? 6 : 8),
             child: Container(
               width: layout.isTv ? 5 : 6,
@@ -764,19 +859,75 @@ class _ReleaseNoteRow extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
             ),
+          );
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: layout.isTv ? 8 : 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: layout.isTv ? 54 : 68,
+            child: Align(alignment: Alignment.topLeft, child: leading),
           ),
-          SizedBox(width: layout.isTv ? 10 : 14),
+          SizedBox(width: layout.isTv ? 8 : 12),
           Expanded(
             child: Text(
               item.text,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: layout.bodySize,
-                height: 1.55,
+                height: 1.5,
                 color: ForjaShellColors.textPrimary,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReleaseNoteTag extends StatelessWidget {
+  const _ReleaseNoteTag({required this.prefix, required this.layout});
+
+  final String prefix;
+  final _UpdateLayout layout;
+
+  static Color _colorFor(String prefix) {
+    switch (prefix.toLowerCase()) {
+      case 'add':
+        return ForjaShellColors.brandGreen;
+      case 'fix':
+        return const Color(0xFF60A5FA);
+      case 'change':
+        return const Color(0xFFFBBF24);
+      case 'remove':
+        return const Color(0xFFF87171);
+      default:
+        return ForjaShellColors.textSecondary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorFor(prefix);
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: layout.isTv ? 6 : 8,
+        vertical: layout.isTv ? 2 : 3,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        prefix.toUpperCase(),
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: (layout.bodySize - 4).clamp(9, 12).toDouble(),
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: color,
+        ),
       ),
     );
   }
@@ -842,10 +993,14 @@ class _ReleaseNoteLink extends StatelessWidget {
 }
 
 class _ReleaseNoteItem {
-  const _ReleaseNoteItem({required this.text, this.url});
+  const _ReleaseNoteItem({required this.text, this.url, this.prefix});
 
   final String text;
   final String? url;
+
+  /// Action prefix parsed from `**Add/Change/Fix/Remove:**` — null for links
+  /// and free-form bullets.
+  final String? prefix;
 }
 
 class _ReleaseNoteSection {
@@ -858,6 +1013,10 @@ class _ReleaseNoteSection {
 abstract final class _ReleaseNotesParser {
   static final _urlPattern = RegExp(r'https?://[^\s)\]]+');
   static final _bulletPattern = RegExp(r'^[-*•]\s+');
+  static final _prefixPattern = RegExp(
+    r'^\*\*\s*(Add|Change|Fix|Remove)\s*:\s*\*\*\s*',
+    caseSensitive: false,
+  );
 
   static List<_ReleaseNoteSection> parseSections(String raw) {
     final sections = <_ReleaseNoteSection>[];
@@ -896,15 +1055,26 @@ abstract final class _ReleaseNotesParser {
   }
 
   static _ReleaseNoteItem _parseBullet(String line) {
-    var text = line.replaceAllMapped(
+    var text = line.replaceFirst(_bulletPattern, '').trim();
+
+    String? prefix;
+    final prefixMatch = _prefixPattern.firstMatch(text);
+    if (prefixMatch != null) {
+      prefix =
+          prefixMatch.group(1)![0].toUpperCase() +
+          prefixMatch.group(1)!.substring(1).toLowerCase();
+      text = text.substring(prefixMatch.end).trim();
+    }
+
+    // Drop any remaining inline bold markers.
+    text = text.replaceAllMapped(
       RegExp(r'\*\*(.+?)\*\*'),
       (match) => match.group(1) ?? '',
     );
-    text = text.replaceFirst(_bulletPattern, '');
 
     final urlMatch = _urlPattern.firstMatch(text);
     if (urlMatch == null) {
-      return _ReleaseNoteItem(text: text);
+      return _ReleaseNoteItem(text: text, prefix: prefix);
     }
 
     final url = urlMatch.group(0)!;
@@ -997,9 +1167,11 @@ class _DownloadCompleteScreen extends StatelessWidget {
                 SizedBox(height: layout.isTv ? 16 : 24),
                 Text(
                   Platform.isWindows
-                      ? 'Close Forja and run the installer to finish updating.'
+                      ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
+                      : Platform.isMacOS
+                      ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
                       : 'Make the file executable, then run it:\n'
-                          'chmod +x "$fileName"\n./$fileName',
+                            'chmod +x "$fileName"\n./$fileName',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: layout.bodySize,
                     height: 1.55,
@@ -1009,22 +1181,30 @@ class _DownloadCompleteScreen extends StatelessWidget {
                 const Spacer(flex: 2),
                 _UpdatePrimaryAction(
                   layout: layout,
-                  label: 'Done',
-                  onTap: () => Navigator.of(context).pop(),
+                  label: Platform.isMacOS || Platform.isWindows
+                      ? 'Install and close Forja'
+                      : 'Done',
+                  onTap: Platform.isMacOS || Platform.isWindows
+                      ? () => _installDesktopUpdate(context)
+                      : () => Navigator.of(context).pop(),
                 ),
                 SizedBox(height: layout.isTv ? 8 : 12),
                 Center(
                   child: _UpdateTextAction(
                     layout: layout,
-                    label: 'Open downloads folder',
-                    onTap: () async {
-                      if (Platform.isWindows) {
-                        await Process.run('explorer', ['/select,', filePath]);
-                      } else if (Platform.isLinux) {
-                        await Process.run('xdg-open', [dirPath]);
-                      }
-                      if (context.mounted) Navigator.of(context).pop();
-                    },
+                    label: Platform.isMacOS || Platform.isWindows
+                        ? 'Skip for now'
+                        : 'Open downloads folder',
+                    onTap: Platform.isMacOS || Platform.isWindows
+                        ? () => Navigator.of(context).pop()
+                        : () async {
+                            if (Platform.isLinux) {
+                              await Process.run('xdg-open', [dirPath]);
+                            }
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
                   ),
                 ),
                 SizedBox(height: layout.isTv ? 8 : 12),
@@ -1034,5 +1214,26 @@ class _DownloadCompleteScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _installDesktopUpdate(BuildContext context) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', [
+          filePath,
+        ], mode: ProcessStartMode.detached);
+      } else {
+        await Process.start(
+          filePath,
+          const [],
+          mode: ProcessStartMode.detached,
+        );
+      }
+      exit(0);
+    } catch (error) {
+      if (context.mounted) {
+        ForjaToast.error('Could not open the update: $error');
+      }
+    }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -62,6 +64,27 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 action: SettingsDataCleaner.clearImageAndWebViewCaches,
               ),
             ),
+            if (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+              _ClearTile(
+                busy: _busy == _ClearBusy.updates,
+                icon: Icons.system_update_alt_outlined,
+                iconColor: const Color(0xFFA78BFA),
+                title: 'Downloaded updates',
+                subtitle:
+                    'Installer files saved by in-app update (.dmg, .exe, AppImage). '
+                    'Safe to remove after you install or if you downloaded again.',
+                onTap: () => _run(
+                  kind: _ClearBusy.updates,
+                  title: 'Clear downloaded updates?',
+                  body:
+                      'Removes update installers Forja saved in Downloads, app storage, '
+                      'or temp while downloading.\n\n'
+                      'Your installed app version and settings are not affected.',
+                  confirmLabel: 'Clear',
+                  success: 'Downloaded update files cleared',
+                  action: SettingsDataCleaner.clearDownloadedUpdates,
+                ),
+              ),
           ],
         ),
         SettingsGroup(
@@ -171,7 +194,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
   }
 }
 
-enum _ClearBusy { streams, images, scores, continueWatching, watched }
+enum _ClearBusy { streams, images, updates, scores, continueWatching, watched }
 
 class _ClearTile extends StatelessWidget {
   const _ClearTile({
@@ -199,10 +222,7 @@ class _ClearTile extends StatelessWidget {
       subtitle: subtitle,
       trailing: busy
           ? null
-          : const Icon(
-              Icons.delete_outline_rounded,
-              color: Color(0xFFF87171),
-            ),
+          : const Icon(Icons.delete_outline_rounded, color: Color(0xFFF87171)),
       onTap: onTap,
       destructive: false,
     );

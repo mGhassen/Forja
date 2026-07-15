@@ -2,16 +2,14 @@
 
 **Version:** v1.0 (partial) / v1.1 (complete)  
 **Status:** partial — GitHub check + dialog shipped; platform install paths uneven  
-**Target version:** [1.0.0 Bab Souika](../backlog/done/1.0.0-[done].md) (v1.1 polish slice)  
-**Area:** `packages/api/lib/services/app_updater_service.dart`, `apps/forja/lib/shared/widgets/update_dialog.dart`
+**Area:** `apps/forja/lib/shared/services/app_updater_service.dart`, `apps/forja/lib/shared/widgets/update_dialog.dart`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **1 / 7** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — CI release workflow shipped; skip version, SHA256, macOS DMG download |
-| **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.0](../backlog/done/1.0.0-[done].md) (v1.1 polish slice) |
+| **Progress** | **7 / 7** acceptance (v1.0) · **8 / 12** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — desktop background download, cached-installer reuse, macOS/Windows close-before-install, and clickable failure fallback shipped; skip version, SHA256, CI assets remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -51,11 +49,16 @@
 |--:|----|-------------|--------|
 | 1 | R15-A08 | `update_dismissed_version` — respect Later | ⬜ |
 | 2 | R15-A09 | Auto-check throttle (max once per 24h) | ⬜ |
-| 3 | R15-A10 | Windows/Linux download with in-dialog progress | ⬜ |
-| 4 | R15-A11 | macOS: download DMG to Downloads + open | ⬜ |
+| 3 | R15-A10 | Windows/Linux download with in-dialog progress | ✅ |
+| 4 | R15-A11 | macOS: download DMG to Downloads + open | ✅ |
 | 5 | R15-A12 | SHA256 verification before install | ⬜ |
 | 6 | R15-A13 | Repo slug configurable / Forja-branded GitHub org | ✅ |
 | 7 | R15-A14 | CI publishes correctly named assets on every `v*` tag | 🔄 |
+| 8 | R15-A17 | Windows/macOS download errors offer a clickable direct asset URL | ✅ |
+| 9 | R15-A18 | macOS opens the downloaded DMG only after Install confirmation, then closes Forja | ✅ |
+| 10 | R15-A19 | Desktop update can continue in the background and posts an Install toast when ready | ✅ |
+| 11 | R15-A20 | Update check detects an already-downloaded installer and goes directly to install confirmation | ✅ |
+| 12 | R15-A21 | Windows launches the downloaded installer only after confirmation, then closes Forja | ✅ |
 
 ---
 
@@ -77,7 +80,7 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 - User discovers updates without leaving the app (or via Settings → Check for updates)
 - Android: download APK + install in-app (`ota_update`)
 - Windows/Linux: download installer/binary with progress
-- macOS/iOS: open release page or DMG (store policy limits in-app install on iOS)
+- macOS: download `.dmg` to Downloads and open the disk image; iOS: open release page (store policy limits in-app install)
 - Optional: skip version, auto-check interval, mandatory security updates
 
 ## Non-goals (v1.0)
@@ -97,7 +100,7 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 └───────────────────────────┬─────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────┐
-│  packages/api/services/app_updater_service.dart    │
+│  apps/forja/lib/shared/services/app_updater_service.dart │
 │    GET GitHub Releases API → semver compare → UpdateInfo │
 └───────────────────────────┬─────────────────────────────┘
                             │
@@ -121,7 +124,7 @@ Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_u
 | Android | `*Forja*.apk` or `*.apk` | In-app OTA install |
 | Windows | `*windows*.exe` | Download + launch installer |
 | Linux | `*.AppImage` or `*.deb` | Download + chmod + exec |
-| macOS | `*.dmg` or `*.zip` | Open releases page / mount DMG (v1.1: in-app download) |
+| macOS | `Forja-*-macos-arm64.dmg` (prefer host arch) | Download to Downloads + `open` DMG |
 | iOS | — | Link to releases / TestFlight only |
 
 **Release body:** Markdown release notes shown in dialog (scrollable).
@@ -148,12 +151,12 @@ Settings → About → **Check for updates** → same dialog or "You're up to da
 
 ### Platform install behavior
 
-| Platform | v1.0 (today) | v1.1 (target) |
-|----------|--------------|---------------|
+| Platform | Shipped | Remaining |
+|----------|---------|-----------|
 | Android | OTA download + install intent | + SHA256 verify asset |
-| Windows | Download `.exe`, run installer | + progress bar, silent optional |
-| Linux | Download AppImage/deb | + AppImage exec helper |
-| macOS | Open browser / releases URL | Download `.dmg`, open mount helper |
+| Windows | Download `.exe` with in-dialog progress | silent optional |
+| Linux | Download AppImage/deb with progress | AppImage exec helper |
+| macOS | Download `.dmg` to Downloads + `open` | SHA256 verify |
 | iOS | Open releases URL | TestFlight deep link if configured |
 
 ## Settings keys (v1.1)

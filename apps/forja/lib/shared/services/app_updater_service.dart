@@ -49,7 +49,7 @@ class AppUpdaterService {
             );
             downloadUrl = asset?['browser_download_url'];
           } else if (Platform.isMacOS) {
-            downloadUrl = data['html_url'];
+            downloadUrl = _pickMacosDmgUrl(assets);
           } else if (Platform.isAndroid) {
             downloadUrl = _pickAndroidApkUrl(assets);
           } else if (Platform.isIOS) {
@@ -99,6 +99,41 @@ class AppUpdaterService {
     }
 
     return candidates.first['browser_download_url'] as String?;
+  }
+
+  /// Prefer `Forja-*-macos-arm64.dmg` (CI), then any macOS `.dmg` / `.zip`.
+  String? _pickMacosDmgUrl(List<dynamic> assets) {
+    final macosAssets = assets.where((a) {
+      final name = (a['name'] as String).toLowerCase();
+      return name.contains('macos') &&
+          (name.endsWith('.dmg') || name.endsWith('.zip'));
+    }).toList();
+    if (macosAssets.isEmpty) return null;
+
+    final archNeedle = _macosArchNeedle();
+    for (final asset in macosAssets) {
+      final name = (asset['name'] as String).toLowerCase();
+      if (name.contains(archNeedle) && name.endsWith('.dmg')) {
+        return asset['browser_download_url'] as String;
+      }
+    }
+    for (final asset in macosAssets) {
+      final name = (asset['name'] as String).toLowerCase();
+      if (name.endsWith('.dmg')) {
+        return asset['browser_download_url'] as String;
+      }
+    }
+    return macosAssets.first['browser_download_url'] as String?;
+  }
+
+  String _macosArchNeedle() {
+    try {
+      final result = Process.runSync('uname', ['-m']);
+      final machine = (result.stdout as String).trim().toLowerCase();
+      if (machine == 'x86_64' || machine == 'i386') return 'x86_64';
+      if (machine == 'arm64' || machine == 'aarch64') return 'arm64';
+    } catch (_) {}
+    return 'arm64';
   }
 
   bool _isNewerVersion(String current, String latest) {

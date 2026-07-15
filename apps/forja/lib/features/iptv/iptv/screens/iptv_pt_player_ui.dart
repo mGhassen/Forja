@@ -607,7 +607,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         children: [
           // Current time
           SizedBox(
-            width: compact ? 56 : 64,
+            width: compact ? 84 : 100,
             child: Text(
               _IptvPtPlayerScreenState._fmtDur(shownPos),
               style: GoogleFonts.spaceMono(
@@ -662,22 +662,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                   } catch (_) {}
                   _scheduleHideControls();
                 },
-              ),
-            ),
-          ),
-          // Total time
-          SizedBox(
-            width: compact ? 56 : 64,
-            child: Text(
-              _IptvPtPlayerScreenState._fmtDur(_s._duration),
-              textAlign: TextAlign.right,
-              style: GoogleFonts.spaceMono(
-                color: Colors.white70,
-                fontSize: compact ? 12 : 13,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                shadows: const [
-                  Shadow(blurRadius: 6, color: Colors.black87),
-                ],
               ),
             ),
           ),
