@@ -83,6 +83,11 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   void initState() {
     super.initState();
     ProviderScoreMemory.revision.addListener(_onScoreRevision);
+    // Show scrim immediately so the seek bar under this OverlayEntry cannot
+    // steal taps while settings / score memory load.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_open) setState(() => _open = true);
+    });
     unawaited(_bootstrap());
   }
 

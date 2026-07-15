@@ -75,6 +75,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [051-[open]-…](051-[open]-embed-multiserver-sniff-proxy-cookies.md) | Embed multi-server sniff / proxy body / cookies | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [052-[fixed]-…](fixed/052-[fixed]-extractor-ownership-playback-layout.md) | Host extractor ownership + playback package layout | P2 | Medium | fixed | 4/4 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [053-[workaround]-…](053-[workaround]-windows-live-embed-webview2-transparent.md) | Windows Live Matches WebView2 transparent / blank embed | P1 | High | workaround | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [054-[fixed]-…](fixed/054-[fixed]-vidsrc-cloudstream-referer-blocks-segments.md) | Vidsrc CloudStream Referer blocks HLS segments | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [055-[fixed]-…](fixed/055-[fixed]-vidnest-moviebox-referer-429.md) | VidNest MovieBox CDN Referer → HTTP 429 | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

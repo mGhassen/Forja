@@ -735,26 +735,32 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
             left: 0,
             top: topBarHeight,
             bottom: 110,
-            child: AnimatedOpacity(
-              opacity: _isPlaying ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: IgnorePointer(
-                ignoring: _isPlaying,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: PlayerPausedHero(
-                    movie: widget.movie!,
-                    season: widget.hubEpisodes != null
-                        ? null
-                        : widget.selectedSeason,
-                    episode: widget.hubEpisodes != null
-                        ? null
-                        : widget.selectedEpisode,
-                    episodeLine: _episodeLine,
-                    episodeOverview: widget.episodeOverview,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isBufferingNotifier,
+              builder: (context, buffering, _) {
+                final showHero = !_isPlaying || buffering;
+                return AnimatedOpacity(
+                  opacity: showHero ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IgnorePointer(
+                    ignoring: !showHero,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: PlayerPausedHero(
+                        movie: widget.movie!,
+                        season: widget.hubEpisodes != null
+                            ? null
+                            : widget.selectedSeason,
+                        episode: widget.hubEpisodes != null
+                            ? null
+                            : widget.selectedEpisode,
+                        episodeLine: _episodeLine,
+                        episodeOverview: widget.episodeOverview,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         if (showCenterActions && !tvFocus)

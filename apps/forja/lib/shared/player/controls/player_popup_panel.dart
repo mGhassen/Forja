@@ -45,7 +45,7 @@ Color playerSourceStatusColor(PlayerSourceStatus status) {
 /// Uses [OverlayEntry] — never touches the shell route stack.
 class PlayerPopupPanel {
   static const _bottomControlsZoneHeight = 120.0;
-  static const _progressBarClearance = 56.0;
+  static const _progressBarClearance = 72.0;
 
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
@@ -256,11 +256,14 @@ class PlayerPopupPanel {
                     Positioned.fill(
                       child: GestureDetector(
                         onTap: close,
+                        // Opaque hit target — fully transparent colors can let
+                        // the seek bar under the overlay still receive taps on
+                        // desktop (Source / Audio / Settings menus sit above it).
                         behavior: HitTestBehavior.opaque,
                         child: ColoredBox(
                           color: centered
                               ? Colors.black.withValues(alpha: 0.62)
-                              : Colors.transparent,
+                              : const Color(0x01000000),
                         ),
                       ),
                     ),

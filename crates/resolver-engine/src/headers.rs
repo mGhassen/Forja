@@ -15,12 +15,11 @@ impl HeaderManager {
                 ("Accept".into(), "*/*".into()),
             ]),
         );
+        // Vidsrc CloudStream segments 403 when Referer/Origin are present —
+        // do not default either; extractor supplies UA only.
         defaults.insert(
             "vidsrc".into(),
-            HashMap::from([
-                ("User-Agent".into(), "Mozilla/5.0".into()),
-                ("Referer".into(), "https://vsembed.su/".into()),
-            ]),
+            HashMap::from([("User-Agent".into(), "Mozilla/5.0".into())]),
         );
         Self { defaults }
     }

@@ -86,5 +86,49 @@ void main() {
       expect(h.containsKey('user-agent'), isFalse);
       expect(h.containsKey('origin'), isFalse);
     });
+
+    test('strips Referer/Origin for Vidsrc CloudStream /pl/ token streams', () {
+      const url =
+          'https://sagaciousslumber.site/pl/H4sIAAAAAAAAAw/master.m3u8?token=eyJhbGciOiJIUzI1NiJ9.e30';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://sagaciousslumber.site/',
+        'Origin': 'https://sagaciousslumber.site',
+        'User-Agent': 'CustomUA',
+      }, streamUrl: url);
+      expect(h['User-Agent'], 'CustomUA');
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
+    test('does not derive Referer from CloudStream /pl/ stream URL', () {
+      const url =
+          'https://sagaciousslumber.site/pl/abc/master.m3u8?token=abc';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['User-Agent'], contains('Mozilla/5.0'));
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
+    test('strips Referer/Origin for VidNest MovieBox hakunaymatata CDN', () {
+      const url =
+          'https://bcdn.hakunaymatata.com/resource/h265/abc.mp4?sign=x&t=1';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://vidnest.fun/',
+        'Origin': 'https://vidnest.fun',
+        'User-Agent': 'CustomUA',
+      }, streamUrl: url);
+      expect(h['User-Agent'], 'CustomUA');
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
+    test('does not derive Referer from hakunaymatata stream URL', () {
+      const url =
+          'https://sacdn.hakunaymatata.com/dash/x/index_web.mpd?host=y';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['User-Agent'], contains('Mozilla/5.0'));
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
   });
 }

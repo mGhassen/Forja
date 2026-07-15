@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
 
@@ -215,6 +216,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onHorizontalDragStart: (details) {
+              if (playerChromeOverlayBlocksSeek()) return;
               setState(() {
                 _isDragging = true;
                 double dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
@@ -223,20 +225,25 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
               widget.onDragStart?.call();
             },
             onHorizontalDragUpdate: (details) {
+              if (!_isDragging) return;
               setState(() {
                 double dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
                 _dragValue = (dx / constraints.maxWidth) * safeTotal;
               });
             },
             onHorizontalDragEnd: (details) {
+              if (!_isDragging) return;
               final seekTo = Duration(milliseconds: _dragValue.toInt());
               setState(() {
                 _isDragging = false;
               });
-              widget.onSeek?.call(seekTo);
+              if (!playerChromeOverlayBlocksSeek()) {
+                widget.onSeek?.call(seekTo);
+              }
               widget.onDragEnd?.call();
             },
             onTapUp: (details) {
+               if (playerChromeOverlayBlocksSeek()) return;
                final dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
                final value = (dx / constraints.maxWidth) * safeTotal;
                widget.onSeek?.call(Duration(milliseconds: value.toInt()));

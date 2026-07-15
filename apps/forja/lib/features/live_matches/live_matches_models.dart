@@ -2,6 +2,24 @@ part of 'live_matches_screen.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
+/// Grid (card catalog) vs vertical timeline layout for the body.
+enum _LiveMatchesView { grid, timeline }
+
+/// Time window that one screen height of the timeline rail represents.
+enum _TimelineGranularity { day, h12, h6 }
+
+int _timelineSpanHours(_TimelineGranularity g) => switch (g) {
+  _TimelineGranularity.day => 24,
+  _TimelineGranularity.h12 => 12,
+  _TimelineGranularity.h6 => 6,
+};
+
+String _timelineGranularityLabel(_TimelineGranularity g) => switch (g) {
+  _TimelineGranularity.day => 'Day',
+  _TimelineGranularity.h12 => '12h',
+  _TimelineGranularity.h6 => '6h',
+};
+
 class _Sport {
   final String id;
   final String name;
@@ -136,6 +154,9 @@ bool _sportIdsMatch(String raw, String filterId) {
   if (normalized.isEmpty) return false;
   return normalized == _normalizeSportId(filterId);
 }
+
+/// 24/7 always-on streams — only shown when the 24/7 sport chip is selected.
+bool _is247Sport(String raw) => _normalizeSportId(raw) == '24-7';
 
 class _DamiTvStream {
   final String id;

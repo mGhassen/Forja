@@ -14,8 +14,8 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc
 
 | Type | Providers | Mechanism |
 |------|-----------|-----------|
-| Direct extractors | Videasy, Vidsrc | Rust HTTP chain (Videasy: `api.wingsdatabase.com`; Vidsrc: embed → CDN rcp/prorcp → m3u8) |
-| Embed + WebView sniff | VidLink, VixSrc, Vidnest, Vidzee, VidRock, VidFast, 2Embed, SuperEmbed, AutoEmbed, VidLove, VidSrc.sbs, 111Movies, MoviesAPI, SmashyStream, PrimeWire | Canonical embed URL → Resolver `HostRequired` → headless WebView captures stream (desktop/mobile) |
+| Direct extractors | Videasy, Vidsrc, Vidnest | Videasy: `api.wingsdatabase.com` (+ sniff fallback); Vidsrc: embed → CDN chain; VidNest: `new.vidnest.fun` API (+ sniff fallback) |
+| Embed + WebView sniff | VidLink, VixSrc, Vidzee, VidRock, VidFast, 2Embed, SuperEmbed, AutoEmbed, VidLove, VidSrc.sbs, 111Movies, MoviesAPI, SmashyStream, PrimeWire | Canonical embed URL → Resolver `HostRequired` → headless WebView captures stream (desktop/mobile) |
 | Aggregator / index | WebStreamr, 111477 | Multi-scraper resolve or index match + local proxy |
 
 ## How to open it
@@ -49,7 +49,8 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc
 - Power users: pin a server from the player menu
 - WebStreamr is powerful but slower — profile priority keeps it lower by default
 - **Videasy** resolves via `db.wingsdatabase.com` + `api.wingsdatabase.com` mirrors (same as [player.videasy.to](https://player.videasy.to) Servers: Yoru→`cdn`, Neon→`neon2`, Sage→`ym`, … — not the public embed docs on [videasy.to](https://www.videasy.to/docs)). Forja probes **Yoru/`cdn` first** (website default); hung mirrors fail fast. Successful mirrors show as named sources (Yoru, Neon, …). If all mirrors fail/CF-block, Forja sniffs `player.videasy.to`
-- **Vidsrc** uses `vsembed.su` embeds (`/embed/movie?tmdb=` · `/embed/tv?tmdb=&season=&episode=`); the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`
+- **Vidsrc** uses `vsembed.su` embeds (`/embed/movie?tmdb=` · `/embed/tv?tmdb=&season=&episode=`); the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`. CloudStream playlists use tokenized `/pl/…/master.m3u8` URLs whose `page-N.html` segments reject `Referer`/`Origin` (browser no-referrer) — Forja opens them with User-Agent only
+- **VidNest** ([vidnest.fun](https://vidnest.fun/)) resolves via `new.vidnest.fun` (Gama/MovieBox first). MovieBox CDN links (`*.hakunaymatata.com`) must open **without** Referer/Origin — that CDN returns HTTP 429 when Referer is set. If the API path fails, Forja falls back to sniffing the public embed
 - **VidSrc.sbs** (`vidsrc.sbs/embed/…`) is a separate template embed from **Vidsrc** (`vsembed.su`). Its aggregator rejects iframe-wrapped playback, so Forja opens it as the headless WebView's top-level document before sniffing on desktop/mobile. Nested `1embed` proxy responses are scanned for `.m3u8` URLs in the response body (not only in the request URL). Policy lives on that provider’s `EmbedExtractProfile` under `shared/extractors/providers/vidsrcsbs/`
 - **VidLove** (`player.vidlove.cc`) and similar multi-server embeds: that provider’s profile under `shared/extractors/providers/vidlove/` rotates internal server chips (e.g. Neta / Gogo / Mafia / Fabric) when the default server is stuck loading, and attaches WebView cookies + the embed Referer when opening the CDN playlist
 - Host sniff: Rust plugins stay in `crates/resolver-engine/src/plugins/`; Flutter owns `shared/extractors/core/` (WebView engine) + `shared/extractors/providers/<id>/` (per-provider profile/extractor). `packages/rust/lib/src/playback/` is typed clients/models/ordering only — not host extractors

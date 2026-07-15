@@ -55,22 +55,30 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onHorizontalDragStart: (d) {
+        if (playerChromeOverlayBlocksSeek()) return;
         widget.onDragStart();
         setState(() {
           _isDragging = true;
           _dragFrac = _fracFromLocal(d.localPosition.dx);
         });
       },
-      onHorizontalDragUpdate: (d) => setState(() {
-        _dragFrac = _fracFromLocal(d.localPosition.dx);
-      }),
+      onHorizontalDragUpdate: (d) {
+        if (!_isDragging) return;
+        setState(() {
+          _dragFrac = _fracFromLocal(d.localPosition.dx);
+        });
+      },
       onHorizontalDragEnd: (_) {
+        if (!_isDragging) return;
         final total = widget.duration.inMilliseconds.toDouble();
-        widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+        if (!playerChromeOverlayBlocksSeek()) {
+          widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+        }
         widget.onDragEnd();
         setState(() => _isDragging = false);
       },
       onTapUp: (d) {
+        if (playerChromeOverlayBlocksSeek()) return;
         final total = widget.duration.inMilliseconds.toDouble();
         widget.onSeek(
           Duration(

@@ -12,11 +12,14 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       );
       return;
     }
-    if (!_s._refreshFocusNode.canRequestFocus) return;
-    _s._refreshFocusNode.requestFocus();
+    final node = index == _LiveMatchesScreenState._topBarViewIndex
+        ? _s._viewFocusNode
+        : _s._refreshFocusNode;
+    if (!node.canRequestFocus) return;
+    node.requestFocus();
     ShellTvFocusCoordinator.saveFocus(
       _LiveMatchesScreenState._tabId,
-      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _s._refreshFocusNode),
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
     );
   }
 
@@ -342,24 +345,36 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
+  /// True when the 24/7 chip is selected (normalized id).
+  bool get _showing247 => _normalizeSportId(_s._sportFilter) == '24-7';
+
+  /// Hide 24/7 streams from All / other sports; show them only on the 24/7 chip.
+  bool _includeSportCategory(String raw) {
+    if (_is247Sport(raw)) return _showing247;
+    return _sportIdsMatch(raw, _s._sportFilter);
+  }
+
   List<_DamiTvStream> get _filteredDamiTv => _sortDamiTvLiveFirst(
     _s._damiTvStreams
-        .where((s) => _sportIdsMatch(s.categoryName, _s._sportFilter))
+        .where((s) => _includeSportCategory(s.categoryName))
         .toList(),
   );
 
   List<_StreamedMatch> get _filteredStreamed => _sortStreamedLiveFirst(
     _s._streamedMatches
-        .where((m) => _sportIdsMatch(m.category, _s._sportFilter))
+        .where((m) => _includeSportCategory(m.category))
         .toList(),
   );
 
   List<_CdnSportEvent> get _filteredCdnSports => _sortCdnSportsLiveFirst(
     _s._cdnSports.where((s) {
-      if (_s._sportFilter == 'all') return true;
       // All-servers uses sport buckets; CDN-only still filters by tournament.
       if (_s._server == _LiveMatchesServer.all) {
-        return _sportIdsMatch(s.sport, _s._sportFilter);
+        return _includeSportCategory(s.sport);
+      }
+      if (_s._sportFilter == 'all') {
+        // CDN-only: tournaments are not the 24/7 sport chip — keep all.
+        return true;
       }
       return s.tournament == _s._sportFilter;
     }).toList(),

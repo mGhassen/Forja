@@ -14,6 +14,10 @@ class TorrentSourcesPanel extends StatelessWidget {
     this.enableBlur = true,
     this.frozenFrame,
     this.contentPadding,
+    /// Player OverlayEntry only: keep a hit-absorbing scrim while [isOpen] is
+    /// still false during the open animation. Details must leave this false —
+    /// the panel stays mounted when closed and must not block the page.
+    this.absorbHitsWhenClosed = false,
   });
 
   final bool isOpen;
@@ -22,6 +26,7 @@ class TorrentSourcesPanel extends StatelessWidget {
   final bool enableBlur;
   final Uint8List? frozenFrame;
   final EdgeInsets? contentPadding;
+  final bool absorbHitsWhenClosed;
 
   static double panelWidthOf(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -47,17 +52,24 @@ class TorrentSourcesPanel extends StatelessWidget {
     final panelWidth = panelWidthOf(context);
     final padding = contentPadding ?? defaultContentPadding(playerOverlay: !enableBlur);
     final playerFrost = !enableBlur;
+    final showScrim = isOpen || absorbHitsWhenClosed;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (isOpen)
+        if (showScrim)
           Positioned.fill(
             child: GestureDetector(
               onTap: onClose,
               behavior: HitTestBehavior.opaque,
-              child: ColoredBox(
-                color: Colors.black.withValues(alpha: playerFrost ? 0.22 : 0.54),
+              child: AnimatedOpacity(
+                opacity: isOpen ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: ColoredBox(
+                  color: Colors.black.withValues(
+                    alpha: playerFrost ? 0.22 : 0.54,
+                  ),
+                ),
               ),
             ),
           ),

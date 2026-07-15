@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
+import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -101,6 +102,46 @@ abstract final class HostProviderAdapter {
       );
     }
 
+    if (providerId == 'vidnest') {
+      final result = await VidnestExtractor(onLog: debugPrint).extract(
+        tmdbId: movie.id.toString(),
+        isMovie: !isTv,
+        season: isTv ? season : null,
+        episode: isTv ? episode : null,
+        isCancelled: cancelled,
+      );
+      if (!cancelled() && result != null && result.url.isNotEmpty) {
+        return _encodeResolveResult(
+          url: result.url,
+          sources: result.sources,
+          headers: result.headers,
+        );
+      }
+      // API empty — fall through to embed WebView sniff.
+      if (cancelled() || isAndroidTvHeadlessWebViewBlocked) return null;
+      final fromPayload = payload['embedUrl']?.toString();
+      final embed = (fromPayload != null && fromPayload.isNotEmpty)
+          ? fromPayload
+          : (isTv
+                ? 'https://vidnest.fun/tv/${movie.id}/$season/$episode'
+                : 'https://vidnest.fun/movie/${movie.id}');
+      debugPrint('[vidnest] API empty — sniffing $embed');
+      final profile = EmbedExtractProfiles.resolve('vidnest');
+      final sniffed = await _extractor.extract(
+        embed,
+        profile: profile,
+        referer: embed,
+        isCancelled: cancelled,
+        providerId: 'vidnest',
+      );
+      if (cancelled() || sniffed == null || sniffed.url.isEmpty) return null;
+      return _encodeResolveResult(
+        url: sniffed.url,
+        sources: sniffed.sources,
+        headers: sniffed.headers,
+      );
+    }
+
     if (providerId.startsWith('nuvio') || providerId == 'nuvio') {
       final scraperId = providerId.contains(':')
           ? providerId.split(':').last
@@ -179,6 +220,7 @@ abstract final class HostProviderAdapter {
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
     VideasyExtractor.cancelPending();
+    VidnestExtractor.cancelPending();
     NuvioService.instance.cancelPending();
     Engine.cancelPendingResolve();
     unawaited(_extractor.cancel());

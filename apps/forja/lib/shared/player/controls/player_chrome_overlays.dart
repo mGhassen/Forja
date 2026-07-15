@@ -40,6 +40,7 @@ Widget playerOverlayShell({
       enableBlur: enableBlur,
       frozenFrame: frozenFrame,
       contentPadding: contentPadding,
+      absorbHitsWhenClosed: true,
       child: playerSidePanelTvScope(
         context: context,
         onClose: onClose,
@@ -165,4 +166,15 @@ bool dismissAnyPlayerChromeOverlay() {
     return true;
   }
   return false;
+}
+
+/// True while a menu/panel overlay is mounted — seek bar must ignore taps.
+bool playerChromeOverlayBlocksSeek() {
+  return PlayerStreamMenu.isShowing ||
+      PlayerPopupPanel.isShowing ||
+      PlayerEpisodePanel.isShowing ||
+      PlayerHubEpisodePanel.isShowing ||
+      PlayerSourcesPanel.isShowing ||
+      PlayerTorrentFilePanel.isShowing ||
+      PlayerSubtitleSettingsDialog.isShowing;
 }

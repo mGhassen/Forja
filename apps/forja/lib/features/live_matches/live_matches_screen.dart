@@ -33,6 +33,7 @@ part 'live_matches_models.dart';
 part 'live_matches_widgets.dart';
 part 'live_matches_data.dart';
 part 'live_matches_build.dart';
+part 'live_matches_timeline.dart';
 part 'live_matches_playback.dart';
 
 class LiveMatchesScreen extends StatefulWidget {
@@ -43,7 +44,12 @@ class LiveMatchesScreen extends StatefulWidget {
 }
 
 class _LiveMatchesScreenState extends State<LiveMatchesScreen>
-    with TickerProviderStateMixin, _LiveMatchesData, _LiveMatchesBuild, _LiveMatchesPlayback {
+    with
+        TickerProviderStateMixin,
+        _LiveMatchesData,
+        _LiveMatchesBuild,
+        _LiveMatchesTimeline,
+        _LiveMatchesPlayback {
   static const _tabId = 'live_matches';
   static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
@@ -57,6 +63,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   // selected sport filter ('all' = no filter)
   String _sportFilter = 'all';
 
+  // Body layout: card grid or vertical timeline.
+  _LiveMatchesView _view = _LiveMatchesView.grid;
+  _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
+  final ScrollController _timelineScrollController = ScrollController();
+  bool _timelineAutoScrolled = false;
+
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
   List<_DamiTvStream> _damiTvStreams = [];
@@ -67,9 +79,13 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   static const _topBarServersIndex = 0;
   static const _topBarRefreshIndex = 1;
+  static const _topBarViewIndex = 2;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',
+  );
+  final FocusNode _viewFocusNode = FocusNode(
+    debugLabel: 'live-matches-view-toggle',
   );
 
 
@@ -86,9 +102,20 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   @override
   void dispose() {
     _refreshFocusNode.dispose();
+    _viewFocusNode.dispose();
+    _timelineScrollController.dispose();
     ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  void _toggleView() {
+    setState(() {
+      _view = _view == _LiveMatchesView.grid
+          ? _LiveMatchesView.timeline
+          : _LiveMatchesView.grid;
+      _timelineAutoScrolled = false;
+    });
   }
 
 }

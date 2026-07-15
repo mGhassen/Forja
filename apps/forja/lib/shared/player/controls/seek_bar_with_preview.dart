@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 typedef SeekFrameCapture = Future<Uint8List?> Function(Duration position);
@@ -78,6 +79,9 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
 
   double _fracFromLocal(double dx) => (dx / _trackWidth).clamp(0.0, 1.0);
 
+  /// Menus / side panels live in a higher [Overlay]; skip scrub while any are up.
+  bool get _chromeOverlayBlocksSeek => playerChromeOverlayBlocksSeek();
+
   @override
   Widget build(BuildContext context) {
     final active = _hovering || _isDragging;
@@ -102,6 +106,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragStart: (d) {
+          if (_chromeOverlayBlocksSeek) return;
           widget.onDragStart?.call();
           setState(() {
             _isDragging = true;
@@ -111,6 +116,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
           _schedulePreview();
         },
         onHorizontalDragUpdate: (d) {
+          if (!_isDragging) return;
           setState(() {
             _dragFrac = _fracFromLocal(d.localPosition.dx);
             _hoverFrac = _dragFrac;
@@ -118,18 +124,24 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
           _schedulePreview();
         },
         onHorizontalDragEnd: (_) {
+          if (!_isDragging) return;
           final total = widget.duration.inMilliseconds.toDouble();
-          widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+          if (!_chromeOverlayBlocksSeek) {
+            widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+          }
           widget.onDragEnd?.call();
           setState(() => _isDragging = false);
         },
         onTapUp: (d) {
+          if (_chromeOverlayBlocksSeek) return;
           final total = widget.duration.inMilliseconds.toDouble();
           final frac = _fracFromLocal(d.localPosition.dx);
           widget.onSeek(Duration(milliseconds: (frac * total).round()));
         },
+        // Fixed hit height — preview paints above via [clipBehavior: Clip.none]
+        // and must not grow this box into the transport / Source button row.
         child: SizedBox(
-          height: active && _previewBytes != null ? 88 : 28,
+          height: 28,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.bottomCenter,
@@ -138,9 +150,11 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                 Positioned(
                   bottom: 24,
                   left: (_hoverFrac * _trackWidth - 64).clamp(0.0, _trackWidth - 128),
-                  child: _PreviewBubble(
-                    time: _hoverTime,
-                    imageBytes: _previewBytes,
+                  child: IgnorePointer(
+                    child: _PreviewBubble(
+                      time: _hoverTime,
+                      imageBytes: _previewBytes,
+                    ),
                   ),
                 ),
               Align(

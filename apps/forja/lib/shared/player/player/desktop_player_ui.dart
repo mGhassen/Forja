@@ -3,12 +3,32 @@ part of 'desktop_player_screen.dart';
 mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
+  /// Keep the pointer visible while CHECKING SOURCES / episode load is on screen.
+  bool get _keepPlayerCursorVisible {
+    if (_s._showControls ||
+        _s._isInitPlaybackRunning ||
+        _s._isLoadingNextEp ||
+        _s._hasError ||
+        _s._checkingSourceIndices.isNotEmpty) {
+      return true;
+    }
+    return _s._statusController.entries.any(isStatusRouletteEntry);
+  }
+
+  bool get _statusBlocksControlsHide {
+    if (_s._isLoadingNextEp || _s._checkingSourceIndices.isNotEmpty) {
+      return true;
+    }
+    return _s._statusController.entries.any(isStatusRouletteEntry);
+  }
+
   void _startHideTimer() {
     _s._hideTimer?.cancel();
     if (_s._isInitPlaybackRunning ||
         !_s._playbackConfirmed ||
         _s._hasError ||
-        !_s._isPlayingNotifier.value) {
+        !_s._isPlayingNotifier.value ||
+        _statusBlocksControlsHide) {
       return;
     }
     _s._hideTimer = Timer(const Duration(seconds: 3), () {
@@ -16,7 +36,8 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
           !_s._disposed &&
           !_s._hasError &&
           _s._playbackConfirmed &&
-          !_s._isInitPlaybackRunning) {
+          !_s._isInitPlaybackRunning &&
+          !_s._statusBlocksControlsHide) {
         setState(() => _s._showControls = false);
       }
     });

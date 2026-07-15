@@ -18,14 +18,19 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
       data: ThemeData.dark(),
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: MouseRegion(
-          onHover: (_) => _s._onMouseMove(),
-          cursor: _s._showControls
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.none,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
+        body: ListenableBuilder(
+          listenable: _s._statusController,
+          builder: (context, _) => MouseRegion(
+            onHover: (_) => _s._onMouseMove(),
+            // Immersive hide uses [SystemMouseCursors.none], but keep the
+            // pointer visible while CHECKING SOURCES (status roulette) is up —
+            // otherwise chrome can auto-hide mid-check and the cursor vanishes.
+            cursor: _s._keepPlayerCursorVisible
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.none,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
               // ── Video ────────────────────────────────────────────────
               Video(
                 controller: _s._controller,
@@ -120,6 +125,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                   bufferingListenable: _s._isBufferingNotifier,
                 ),
             ],
+          ),
           ),
         ),
       ),
@@ -284,29 +290,36 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
             left: 0,
             top: topBarHeight,
             bottom: 120,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _s._isPlayingNotifier,
-              builder: (context, playing, _) => AnimatedOpacity(
-                opacity: playing ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
-                  ignoring: playing,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: PlayerPausedHero(
-                      movie: _s._displayMovie!,
-                      season: widget.hubEpisodes != null
-                          ? null
-                          : widget.selectedSeason,
-                      episode: widget.hubEpisodes != null
-                          ? null
-                          : widget.selectedEpisode,
-                      episodeLine: _s._hubEpisodeLine,
-                      episodeOverview: _s._pausedEpisodeOverview,
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                _s._isPlayingNotifier,
+                _s._isBufferingNotifier,
+              ]),
+              builder: (context, _) {
+                final showHero = !_s._isPlayingNotifier.value ||
+                    _s._isBufferingNotifier.value;
+                return AnimatedOpacity(
+                  opacity: showHero ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IgnorePointer(
+                    ignoring: !showHero,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: PlayerPausedHero(
+                        movie: _s._displayMovie!,
+                        season: widget.hubEpisodes != null
+                            ? null
+                            : widget.selectedSeason,
+                        episode: widget.hubEpisodes != null
+                            ? null
+                            : widget.selectedEpisode,
+                        episodeLine: _s._hubEpisodeLine,
+                        episodeOverview: _s._pausedEpisodeOverview,
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
 
@@ -438,7 +451,11 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                       ),
                 ),
                 const SizedBox(height: 10),
-                Row(
+                // Full-width absorber so empty space between left/right
+                // transport clusters cannot fall through to the seek bar.
+                Material(
+                  type: MaterialType.transparency,
+                  child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
@@ -555,6 +572,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                       ],
                     ),
                   ],
+                ),
                 ),
               ],
             ),

@@ -40,10 +40,6 @@ fn cdn_host_from_url(url: &str) -> Option<String> {
     }
 }
 
-fn cdn_origin(host: &str) -> String {
-    format!("https://{host}")
-}
-
 #[derive(Debug, Deserialize)]
 struct ResolveRequest {
     tmdb_id: i64,
@@ -233,21 +229,13 @@ pub fn extract_vidsrc_chain_json(
 ) -> String {
     match extract_from_html_chain(outer_html, rcp_html, prorcp_html, rcp_url) {
         Some(file) => {
-            let playback_origin = cdn_host_from_url(&file.url)
-                .map(|h| cdn_origin(&h))
-                .or_else(|| {
-                    rcp_url
-                        .and_then(cdn_host_from_url)
-                        .map(|h| cdn_origin(&h))
-                })
-                .unwrap_or_else(|| cdn_origin(LEGACY_CDN_HOST));
+            // CloudStream leaf segments (`page-N.html`) return CF 403 when
+            // Referer/Origin are set — browser players use no-referrer. UA only.
             serde_json::json!({
                 "url": file.url,
                 "format": "hls",
                 "headers": {
                     "User-Agent": USER_AGENT,
-                    "Referer": format!("{playback_origin}/"),
-                    "Origin": playback_origin,
                 }
             })
             .to_string()
@@ -295,19 +283,12 @@ pub fn resolve_vidsrc_embed_json(request_json: &str) -> String {
         return serde_json::json!({ "error": "no_m3u8" }).to_string();
     };
 
-    let cdn_host = cdn_host_from_url(&rcp_url).unwrap_or_else(|| LEGACY_CDN_HOST.into());
-    let playback_origin = cdn_host_from_url(&file.url)
-        .map(|h| cdn_origin(&h))
-        .unwrap_or_else(|| cdn_origin(&cdn_host));
-
     serde_json::json!({
         "url": file.url,
         "format": "hls",
         "provider": "vidsrc",
         "headers": {
             "User-Agent": USER_AGENT,
-            "Referer": format!("{playback_origin}/"),
-            "Origin": playback_origin,
         }
     })
     .to_string()
@@ -379,6 +360,11 @@ mod tests {
         let rcp_url = "https://cloudorchestranova.com/rcp/abc";
         let json = extract_vidsrc_chain_json(&outer, &rcp, &prorcp, Some(rcp_url));
         assert!(json.contains("cloudorchestranova.com/hls/movie.m3u8"));
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let headers = v.get("headers").and_then(|h| h.as_object()).unwrap();
+        assert!(headers.get("User-Agent").is_some());
+        assert!(headers.get("Referer").is_none());
+        assert!(headers.get("Origin").is_none());
     }
 
     #[test]

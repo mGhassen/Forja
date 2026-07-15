@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 /// Touch-friendly seek bar for mobile / TV player chrome (no hover preview).
@@ -55,22 +56,30 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onHorizontalDragStart: (d) {
+        if (playerChromeOverlayBlocksSeek()) return;
         widget.onDragStart();
         setState(() {
           _isDragging = true;
           _dragFrac = _fracFromLocal(d.localPosition.dx);
         });
       },
-      onHorizontalDragUpdate: (d) => setState(() {
-        _dragFrac = _fracFromLocal(d.localPosition.dx);
-      }),
+      onHorizontalDragUpdate: (d) {
+        if (!_isDragging) return;
+        setState(() {
+          _dragFrac = _fracFromLocal(d.localPosition.dx);
+        });
+      },
       onHorizontalDragEnd: (_) {
+        if (!_isDragging) return;
         final total = widget.duration.inMilliseconds.toDouble();
-        widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+        if (!playerChromeOverlayBlocksSeek()) {
+          widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+        }
         widget.onDragEnd();
         setState(() => _isDragging = false);
       },
       onTapUp: (d) {
+        if (playerChromeOverlayBlocksSeek()) return;
         final total = widget.duration.inMilliseconds.toDouble();
         widget.onSeek(
           Duration(

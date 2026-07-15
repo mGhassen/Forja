@@ -228,7 +228,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         tabId: _LiveMatchesScreenState._tabId,
         rowId: _LiveMatchesScreenState._topBarRowId,
         sortOrder: 0,
-        itemCount: _LiveMatchesScreenState._topBarRefreshIndex + 1,
+        itemCount: _LiveMatchesScreenState._topBarViewIndex + 1,
       );
     }
 
@@ -245,6 +245,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             tvZone: ShellTvZone.topBar,
             onDownEdge: _s._topBarDownEdge,
             onLeftEdge: () => _s._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
+            onRightEdge: () => _s._focusTopBarItem(_LiveMatchesScreenState._topBarViewIndex),
             onFocusChange: (focused) {
               if (focused) {
                 ShellTvFocusCoordinator.saveFocus(
@@ -277,7 +278,64 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         ShellTokens.bodyHorizontalPadding,
         8,
       ),
-      child: Row(children: [_s._serversTopBarButton(), const Spacer(), refresh]),
+      child: Row(
+        children: [
+          _s._serversTopBarButton(),
+          const Spacer(),
+          refresh,
+          const SizedBox(width: 4),
+          _buildViewToggle(tvFocus),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewToggle(bool tvFocus) {
+    final isTimeline = _s._view == _LiveMatchesView.timeline;
+    final icon = isTimeline
+        ? Icons.grid_view_rounded
+        : Icons.view_timeline_rounded;
+    final tip = isTimeline ? 'Card view' : 'Timeline view';
+
+    if (!tvFocus) {
+      return IconButton(
+        tooltip: tip,
+        icon: Icon(icon, color: Colors.white70),
+        onPressed: _s._toggleView,
+      );
+    }
+
+    return shellFocusableTap(
+      context: context,
+      onTap: _s._toggleView,
+      borderRadius: 24,
+      scaleOnFocus: 1.0,
+      focusNode: _s._viewFocusNode,
+      tvTabId: _LiveMatchesScreenState._tabId,
+      tvRowId: _LiveMatchesScreenState._topBarRowId,
+      tvItemIndex: _LiveMatchesScreenState._topBarViewIndex,
+      tvZone: ShellTvZone.topBar,
+      onDownEdge: _s._topBarDownEdge,
+      onLeftEdge: () =>
+          _s._focusTopBarItem(_LiveMatchesScreenState._topBarRefreshIndex),
+      onFocusChange: (focused) {
+        if (focused) {
+          ShellTvFocusCoordinator.saveFocus(
+            _LiveMatchesScreenState._tabId,
+            ShellTvFocusMemory(
+              zone: ShellTvZone.topBar,
+              node: _s._viewFocusNode,
+            ),
+          );
+        }
+      },
+      child: Tooltip(
+        message: tip,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, color: Colors.white70),
+        ),
+      ),
     );
   }
 
@@ -366,6 +424,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         buttonIcon: Icons.refresh,
       );
     }
+    if (_s._view == _LiveMatchesView.timeline) return _s._buildTimelineBody();
     if (_s._server == _LiveMatchesServer.all) return _buildAllBody();
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_s._server == _LiveMatchesServer.streamed) return _buildStreamedBody();
@@ -410,36 +469,48 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             mainAxisSpacing: gap,
           ),
           itemCount: entries.length,
-          itemBuilder: (context, i) {
-            final entry = entries[i];
-            final upEdge = _s._gridUpEdge(context, i, crossCount);
-            return switch (entry) {
-              _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
-                stream: stream,
-                gridIndex: i,
-                gridColumns: crossCount,
-                onUpEdge: upEdge,
-                onTap: () => _s._openDamiTvStream(stream),
-              ),
-              _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
-                match: match,
-                gridIndex: i,
-                gridColumns: crossCount,
-                onUpEdge: upEdge,
-                onTap: () => _s._openStreamedMatch(match),
-              ),
-              _LiveMatchGridEntryCdnSport(:final event) => _CdnSportCard(
-                event: event,
-                gridIndex: i,
-                gridColumns: crossCount,
-                onUpEdge: upEdge,
-                onTap: () => _s._openCdnSportEvent(event),
-              ),
-            };
-          },
+          itemBuilder: (context, i) => _gridEntryCard(
+            entries[i],
+            i,
+            crossCount,
+            _s._gridUpEdge(context, i, crossCount),
+          ),
         );
       },
     );
+  }
+
+  /// Shared backdrop card for a unified grid entry — reused by the card grid
+  /// and the timeline view so both render identical posters/badges.
+  Widget _gridEntryCard(
+    _LiveMatchGridEntry entry,
+    int i,
+    int crossCount,
+    VoidCallback? upEdge,
+  ) {
+    return switch (entry) {
+      _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
+        stream: stream,
+        gridIndex: i,
+        gridColumns: crossCount,
+        onUpEdge: upEdge,
+        onTap: () => _s._openDamiTvStream(stream),
+      ),
+      _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
+        match: match,
+        gridIndex: i,
+        gridColumns: crossCount,
+        onUpEdge: upEdge,
+        onTap: () => _s._openStreamedMatch(match),
+      ),
+      _LiveMatchGridEntryCdnSport(:final event) => _CdnSportCard(
+        event: event,
+        gridIndex: i,
+        gridColumns: crossCount,
+        onUpEdge: upEdge,
+        onTap: () => _s._openCdnSportEvent(event),
+      ),
+    };
   }
 
   Widget _buildStreamedBody() {

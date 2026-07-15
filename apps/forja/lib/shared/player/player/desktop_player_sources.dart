@@ -96,6 +96,10 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       ..clear()
       ..add(index);
     _syncUrlCheckFromIndex(index, PlayerSourceStatus.checking);
+    _s._hideTimer?.cancel();
+    if (mounted && !_s._showControls) {
+      setState(() => _s._showControls = true);
+    }
     _notifySourceMenuChanged();
   }
 

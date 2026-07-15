@@ -82,6 +82,27 @@ Map<String, String> resolvePlaybackHttpHeaders(
     }
   }
 
+  // Vidsrc CloudStream (`/pl/…/master.m3u8?token=`): master/variant 200 with
+  // any headers, but leaf `page-N.html` segments return CF 403 when Referer or
+  // Origin is set. Browser players use referrerpolicy=no-referrer — strip both
+  // and never derive them from the stream host.
+  if (streamUrl != null && _isVidsrcCloudStreamPl(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
+  // VidNest MovieBox CDN (`*.hakunaymatata.com`): progressive MP4 returns HTTP
+  // 429 whenever Referer is set (including self-origin). Browser JWPlayer uses
+  // no-referrer — strip Referer/Origin and never derive them from the CDN host.
+  if (streamUrl != null && _isVidnestMovieBoxCdn(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
   final origin = take('Origin', 'origin');
   if (origin != null && origin.isNotEmpty) {
     putCanonical('Origin', 'origin', origin);
@@ -102,6 +123,23 @@ bool _isKissKhCdnStream(String url) {
   final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
   return host.contains('cdnvideo') || host.contains('kisskh');
+}
+
+/// Tokenized Vidsrc CloudStream playlist — segments reject Referer/Origin.
+bool _isVidsrcCloudStreamPl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || uri.host.isEmpty) return false;
+  final path = uri.path.toLowerCase();
+  if (!path.contains('/pl/')) return false;
+  if (!path.contains('.m3u8')) return false;
+  return uri.queryParameters.containsKey('token');
+}
+
+/// VidNest Gama/MovieBox (and related) CDN — rejects any Referer with HTTP 429.
+bool _isVidnestMovieBoxCdn(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('hakunaymatata.com');
 }
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on
