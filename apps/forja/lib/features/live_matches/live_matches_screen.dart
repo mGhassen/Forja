@@ -120,7 +120,13 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         ? _LiveMatchesView.timeline
         : _LiveMatchesView.grid;
     if (_view != savedView) {
-      setState(() => _view = savedView);
+      setState(() {
+        _view = savedView;
+        // Landing on timeline from a restored preference must scroll to now.
+        if (savedView == _LiveMatchesView.timeline) {
+          _timelineAutoScrolled = false;
+        }
+      });
     }
   }
 

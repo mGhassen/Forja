@@ -179,6 +179,38 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     });
   }
 
+  /// One server check at a time — drop other spinners and invalidate their gens.
+  void _supersedeOtherServerLoads(String providerId) {
+    final others = _loadingProviders.where((id) => id != providerId).toList();
+    for (final id in others) {
+      _loadGens[id] = (_loadGens[id] ?? 0) + 1;
+      widget.statusController?.remove('provider-$id');
+    }
+    final probes = widget.providerProbesNotifier;
+    if (probes is ValueNotifier<List<StreamProviderProbe>> &&
+        probes.value.any(
+          (p) =>
+              p.id != providerId &&
+              p.status == StreamProviderProbeStatus.trying,
+        )) {
+      probes.value = [
+        for (final p in probes.value)
+          if (p.id != providerId &&
+              p.status == StreamProviderProbeStatus.trying)
+            p.copyWith(status: StreamProviderProbeStatus.pending)
+          else
+            p,
+      ];
+    }
+    if (others.isNotEmpty || !_loadingProviders.contains(providerId)) {
+      setState(() {
+        _loadingProviders
+          ..removeWhere((id) => id != providerId)
+          ..add(providerId);
+      });
+    }
+  }
+
   Future<void> _loadServer(
     String providerId, {
     bool clearCache = false,
@@ -188,6 +220,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
 
     final gen = (_loadGens[providerId] ?? 0) + 1;
     _loadGens[providerId] = gen;
+    _supersedeOtherServerLoads(providerId);
     setState(() {
       _loadingProviders.add(providerId);
       _collapsedProviders.remove(providerId);

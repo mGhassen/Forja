@@ -10,6 +10,13 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
       return cached;
     }
 
+    // One host WebView — abandon other in-flight Source-panel loads.
+    for (final id in _s._providerLoadGens.keys.toList()) {
+      if (id == providerId) continue;
+      _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
+    }
+    DomainStreamProviderResolver.cancelAllPending();
+
     final gen = (_s._providerLoadGens[providerId] ?? 0) + 1;
     _s._providerLoadGens[providerId] = gen;
 

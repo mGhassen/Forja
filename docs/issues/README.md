@@ -72,7 +72,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [047-[fixed]-…](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) | Vidsrc: broken plugin request + vsembed.su host | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [049-[open]-…](049-[open]-live-embed-ad-hijack-crash.md) | Live embed ad main-frame hijack crash | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [050-[fixed]-…](fixed/050-[fixed]-template-embed-one-file-per-plugin.md) | Template embed one file per plugin | P2 | Medium | fixed | Complete · 2/2 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [051-[open]-…](051-[open]-embed-multiserver-sniff-proxy-cookies.md) | Embed multi-server sniff / proxy body / cookies | P1 | High | open | 9/9 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [051-[open]-…](051-[open]-embed-multiserver-sniff-proxy-cookies.md) | Embed multi-server sniff / proxy body / cookies | P1 | High | open | 10/10 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [052-[fixed]-…](fixed/052-[fixed]-extractor-ownership-playback-layout.md) | Host extractor ownership + playback package layout | P2 | Medium | fixed | 4/4 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [053-[workaround]-…](053-[workaround]-windows-live-embed-webview2-transparent.md) | Windows Live Matches WebView2 transparent / blank embed | P1 | High | workaround | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [054-[fixed]-…](fixed/054-[fixed]-vidsrc-cloudstream-referer-blocks-segments.md) | Vidsrc CloudStream Referer blocks HLS segments | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -80,7 +80,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [056-[fixed]-…](fixed/056-[fixed]-autoembed-player-sandbox-playback-blocked.md) | AutoEmbed player sandbox / Playback blocked | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [057-[fixed]-…](fixed/057-[fixed]-2embed-stale-cc-url-multiserver.md) | 2Embed stale `.cc` URL / multi-server sniff | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [058-[fixed]-…](fixed/058-[fixed]-live-embed-audio-continues-after-exit.md) | Live Matches embed audio continues after exit | P1 | High | fixed | Complete · 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [059-[fixed]-…](fixed/059-[fixed]-vod-player-audio-continues-after-exit.md) | Movie/TV player audio continues after exit | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [059-[fixed]-…](fixed/059-[fixed]-vod-player-audio-continues-after-exit.md) | Movie/TV player audio continues after exit | P1 | High | fixed | Complete · 7/7 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

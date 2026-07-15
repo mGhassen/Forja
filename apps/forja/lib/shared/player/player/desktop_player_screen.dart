@@ -58,6 +58,7 @@ import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shell/app_router.dart';
 
@@ -371,32 +372,16 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     super.dispose();
   }
 
-  /// Mute + stop immediately so audio dies before/with route pop.
+  /// Instant silence before route pop (native mpv props; no hung init waits).
   Future<void> _stopPlaybackForExit() async {
     if (_playbackStopped || !_playerReady) return;
     _playbackStopped = true;
-    try {
-      await _player.setVolume(0);
-    } catch (_) {}
-    try {
-      await _player.stop();
-    } catch (_) {}
+    await silenceMediaKitPlayer(_player);
   }
 
-  /// IPTV pattern: stop then dispose so media_kit's internal stop is not
-  /// the only path (and is not swallowed before it runs).
+  /// Full stop+dispose with timeouts after the route is gone.
   Future<void> _teardownMediaKitPlayer(Player player) async {
-    if (!_playbackStopped) {
-      _playbackStopped = true;
-      try {
-        await player.setVolume(0);
-      } catch (_) {}
-      try {
-        await player.stop();
-      } catch (_) {}
-    }
-    try {
-      await player.dispose();
-    } catch (_) {}
+    _playbackStopped = true;
+    await teardownMediaKitPlayer(player);
   }
 }

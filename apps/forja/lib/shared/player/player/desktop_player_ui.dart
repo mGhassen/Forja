@@ -92,22 +92,16 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
   }
 
   Future<void> _exitPlayer() async {
-    if (PlayerStreamMenu.isShowing) {
-      PlayerStreamMenu.dismiss();
-      return;
-    }
-    if (PlayerPopupPanel.isShowing) {
-      PlayerPopupPanel.dismiss();
-      return;
-    }
+    // First Back closes an open panel/menu; second exits (mobile parity).
+    if (dismissAnyPlayerChromeOverlay()) return;
     if (_s._isFullscreen) {
       await windowManager.setFullScreen(false);
       if (mounted) setState(() => _s._isFullscreen = false);
     }
     _s._cancelPendingStreamWork();
     _s._saveWatchHistory();
-    // Stop mpv before pop — dispose-only is fire-and-forget and can leave
-    // audio playing after the route is gone (issue 059; IPTV already stops).
+    // Instant native mute/pause/ao=null — do not await hung media_kit stop
+    // before popping (that left the UI stuck with audio still playing).
     await _s._stopPlaybackForExit();
     if (mounted) Navigator.of(context).pop(_s._positionNotifier.value);
   }

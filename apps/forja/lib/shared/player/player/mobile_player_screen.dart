@@ -394,31 +394,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     super.dispose();
   }
 
-  /// Mute + stop immediately so audio dies before orientation / route pop.
+  /// Instant silence before orientation / route pop.
   Future<void> _stopPlaybackForExit() async {
     if (_playbackStopped) return;
     _playbackStopped = true;
-    try {
-      await _player.setVolume(0);
-    } catch (_) {}
-    try {
-      await _player.stop();
-    } catch (_) {}
+    await silenceMediaKitPlayer(_player);
   }
 
-  /// IPTV pattern: stop then dispose (do not rely on dispose-only).
+  /// Full stop+dispose with timeouts after the route is gone.
   Future<void> _teardownMediaKitPlayer() async {
-    if (!_playbackStopped) {
-      _playbackStopped = true;
-      try {
-        await _player.setVolume(0);
-      } catch (_) {}
-      try {
-        await _player.stop();
-      } catch (_) {}
-    }
-    try {
-      await _player.dispose();
-    } catch (_) {}
+    _playbackStopped = true;
+    await teardownMediaKitPlayer(_player);
   }
 }

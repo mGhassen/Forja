@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4/4** fix · **0/1** acceptance (manual smoke ⬜) |
+| **Progress** | **Complete · 7/7** fix · **0/1** acceptance (manual smoke ⬜) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,9 @@
 | 2 | I59-T02 | Mobile `_exitPlayer` + PopScope: mute + `stop()` before orientation/pop | ✅ |
 | 3 | I59-T03 | Desktop/mobile `dispose`: stop-then-dispose (IPTV pattern), not dispose-only | ✅ |
 | 4 | I59-T04 | ExoPlayer `_exit` + dispose: `stop()` before/with teardown | ✅ |
+| 5 | I59-T05 | Desktop top-bar Back wired to `_exitPlayer` (was a direct pop that skipped stop) | ✅ |
+| 6 | I59-T06 | `silenceMediaKitPlayer`: native mute/pause/`ao=null` with `waitForInitialization: false` | ✅ |
+| 7 | I59-T07 | `teardownMediaKitPlayer`: stop+dispose with timeouts so hung locks cannot leave audio | ✅ |
 
 ---
 
@@ -41,13 +44,15 @@ Exiting the VOD player left mpv/Exo audio playing after the route closed. Back o
 ### Root cause
 
 - Desktop/mobile `_exitPlayer` never called `player.stop()` before pop.
-- `dispose` relied on media_kit’s internal stop inside `dispose()`, which waits on init gates and was not awaited — UI gone while audio could continue.
-- IPTV already used `await stop()` then `await dispose()`; VOD did not.
+- Desktop top-bar Back had a **separate** handler that popped without calling `_exitPlayer` at all — so the first stop-before-pop fix never ran on the UI back button.
+- `player.stop()` / `dispose()` await media_kit video-controller init; if that hangs, exit never completes and audio never dies.
+- media_kit delays `mpv_terminate_destroy` by 5s after dispose — silence must happen via mpv properties before that.
 
 ### Fix (shipped)
 
-- `_stopPlaybackForExit()` — mute + stop before pop (desktop + mobile).
-- `_teardownMediaKitPlayer()` — stop then dispose on widget dispose (same as IPTV).
+- Top-bar Back → `_exitPlayer` (desktop).
+- `silenceMediaKitPlayer` — `mute`/`pause`/`volume=0`/`ao=null` with `waitForInitialization: false`.
+- `teardownMediaKitPlayer` — silence + timed `stop` + timed `dispose`.
 - Exo: `ExoPlayerBridge.stop` on exit and before dispose.
 
 Live Matches WebView leftover audio is a separate bug ([058](058-[fixed]-live-embed-audio-continues-after-exit.md)).
@@ -55,8 +60,8 @@ Live Matches WebView leftover audio is a separate bug ([058](058-[fixed]-live-em
 ### Verify
 
 1. Open a movie or TV episode until audio plays
-2. Back / Escape out of the player
-3. Audio must stop immediately on the details/home screen
+2. Tap the player **Back** button (not only Escape)
+3. Player must close and audio must stop immediately
 
 ## Related
 

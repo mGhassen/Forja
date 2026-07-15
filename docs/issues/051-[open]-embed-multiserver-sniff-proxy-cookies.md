@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix tasks · **0 / 5** acceptance |
+| **Progress** | **10 / 10** fix tasks · **0 / 6** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I51-T07 | Generic headless navigation guard: block ad/tracker navigations and cancel main-frame hijacks away from the embed/player site | ✅ |
 | 8 | I51-T08 | Cancel mid-sniff keeps a captured playable URL (complete + cookies) instead of discarding as `null` | ✅ |
 | 9 | I51-T09 | Deferred-strong sniff ignores audio-only CDN clips (`tran-audio`) and waits for HLS/DASH before early-complete | ✅ |
+| 10 | I51-T10 | Source panel: tapping another server clears the previous spinner and cancels the in-flight host sniff | ✅ |
 
 ---
 
@@ -40,6 +41,7 @@
 | 3 | I51-A03 | Multi-server chips: sniffer logs server-chip clicks; default LOADMAXING does not strand forever | ⬜ |
 | 4 | I51-A04 | Template embed with popup/ad redirect: headless sniff blocks popup/main-frame hijack and still captures a playable stream | ⬜ |
 | 5 | I51-A05 | Manual switch to another provider after a stream was detected: previous provider still returns that hit (not hard-null discard) | ⬜ |
+| 6 | I51-A06 | Source panel: tap server A then B — only B shows the checking spinner; A stops loading | ⬜ |
 
 ---
 
@@ -77,6 +79,10 @@ Manual provider switch and race teardown call `cancelAllPending()` → shared `S
 - completes with the best non-audio playable URL already captured.
 
 Deferred-strong profiles (VidLove, 111movies, VidSrc.sbs, …) no longer early-complete on progressive `tran-audio` mp4 clips — they wait for HLS/DASH (`isDeferredStrongStreamUrl`).
+
+### Source panel one-at-a-time (I51-T10)
+
+The in-player Source menu kept every tapped server in `_loadingProviders` until that future finished, so tapping VidRock while Vidzee was checking left **both** spinners on. The overlay now supersedes other loads (clear spinner, bump gen, drop status-roulette / probe `trying`), and `_loadProvider` cancels other in-flight host sniffs before starting the new one.
 
 ---
 

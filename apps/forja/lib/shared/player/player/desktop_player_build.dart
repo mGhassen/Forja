@@ -247,15 +247,9 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                     onStream: hasStreamPicker ? _s._showStreamMenu : null,
                   )
                 : null,
-            onBack: () async {
-              if (_s._isFullscreen) {
-                await windowManager.setFullScreen(false);
-                setState(() => _s._isFullscreen = false);
-              }
-              _s._cancelPendingStreamWork();
-              _s._saveWatchHistory();
-              if (mounted) Navigator.of(context).pop(_s._positionNotifier.value);
-            },
+            // Must go through [_exitPlayer] — a direct pop skipped silence/stop
+            // and left mpv audio playing (issue 059).
+            onBack: () => unawaited(_s._exitPlayer()),
             trailing: PlayerTopBarActions(
               showPlayer: widget.onSwitchPlayer != null,
               onPlayer: widget.onSwitchPlayer != null

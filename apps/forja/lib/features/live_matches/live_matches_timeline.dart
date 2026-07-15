@@ -131,7 +131,6 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                 contentStartMs: contentStartMs,
                 pxPerMs: pxPerMs,
                 playheadY: playheadY,
-                focusMs: DateTime.now().millisecondsSinceEpoch.toDouble(),
               );
 
               void scrollToNow() => _scrollTimelineToMs(
@@ -276,7 +275,8 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     );
   }
 
-  void _scrollTimelineToMs({
+  /// Returns true once the scroll view has clients and the offset was applied.
+  bool _scrollTimelineToMs({
     required double contentStartMs,
     required double pxPerMs,
     required double playheadY,
@@ -284,7 +284,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     bool animate = false,
   }) {
     final ctrl = _s._timelineScrollController;
-    if (!ctrl.hasClients) return;
+    if (!ctrl.hasClients) return false;
     final target = (focusMs - contentStartMs) * pxPerMs - playheadY;
     final clamped = target.clamp(0.0, ctrl.position.maxScrollExtent);
     if (animate) {
@@ -296,26 +296,36 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     } else {
       ctrl.jumpTo(clamped);
     }
+    return true;
   }
 
+  /// On first open of the timeline (or after a view/granularity reset), land
+  /// the playhead on *now* — not the first card. Retries until the scroll
+  /// view is attached; only then marks the one-shot as done.
   void _maybeAutoScrollToTime({
     required double contentStartMs,
     required double pxPerMs,
     required double playheadY,
-    required double focusMs,
   }) {
     if (_s._timelineAutoScrolled) return;
-    _s._timelineAutoScrolled = true;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _scrollTimelineToMs(
+    void attempt() {
+      if (!mounted || _s._timelineAutoScrolled) return;
+      final ok = _scrollTimelineToMs(
         contentStartMs: contentStartMs,
         pxPerMs: pxPerMs,
         playheadY: playheadY,
-        focusMs: focusMs,
+        focusMs: DateTime.now().millisecondsSinceEpoch.toDouble(),
       );
-    });
+      if (ok) {
+        _s._timelineAutoScrolled = true;
+        return;
+      }
+      // Scroll view not attached yet — try again next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   Widget _buildTimelineGranularityBar() {
@@ -419,15 +429,18 @@ class _TimelineHoverCardState extends State<_TimelineHoverCard> {
   }
 
   Widget _buildClone(BuildContext context) {
-    return CompositedTransformFollower(
-      link: _link,
-      showWhenUnlinked: false,
-      child: IgnorePointer(
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
+    // Positioned gives the follower a tight box of the card's real size —
+    // Overlay entries otherwise get full-screen constraints, which would blow
+    // the card up to fill the screen.
+    return Positioned(
+      width: widget.width,
+      height: widget.height,
+      child: CompositedTransformFollower(
+        link: _link,
+        showWhenUnlinked: false,
+        child: IgnorePointer(
           child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 1.0, end: 1.06),
+            tween: Tween(begin: 1.0, end: 1.04),
             duration: const Duration(milliseconds: 150),
             curve: Curves.easeOut,
             builder: (context, scale, child) =>

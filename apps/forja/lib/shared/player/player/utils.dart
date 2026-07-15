@@ -171,6 +171,40 @@ Future<void> applyMediaHttpHeaders(
   );
 }
 
+/// Kill audible output immediately via libmpv, without waiting on media_kit's
+/// video-controller init futures (those can hang and leave audio after exit).
+Future<void> silenceMediaKitPlayer(Player player) async {
+  try {
+    if (player.platform is NativePlayer) {
+      final mpv = player.platform as NativePlayer;
+      // waitForInitialization: false — must not block exit on stuck VC init.
+      await mpv.setProperty('mute', 'yes', waitForInitialization: false);
+      await mpv.setProperty('pause', 'yes', waitForInitialization: false);
+      await mpv.setProperty('volume', '0', waitForInitialization: false);
+      // Detach audio output so decode cannot keep playing after the UI pops.
+      await mpv.setProperty('ao', 'null', waitForInitialization: false);
+    }
+  } catch (_) {}
+  try {
+    await player.setVolume(0).timeout(const Duration(milliseconds: 250));
+  } catch (_) {}
+  try {
+    await player.pause().timeout(const Duration(milliseconds: 250));
+  } catch (_) {}
+}
+
+/// Stop then dispose with timeouts so a hung media_kit lock cannot leave
+/// audio forever. Always silences first.
+Future<void> teardownMediaKitPlayer(Player player) async {
+  await silenceMediaKitPlayer(player);
+  try {
+    await player.stop().timeout(const Duration(milliseconds: 800));
+  } catch (_) {}
+  try {
+    await player.dispose().timeout(const Duration(seconds: 2));
+  } catch (_) {}
+}
+
 /// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
 Future<String> openPlayerStream(
   Player player, {
