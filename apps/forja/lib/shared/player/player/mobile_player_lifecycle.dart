@@ -453,6 +453,9 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     }
     _s._cancelPendingStreamWork();
     _saveWatchHistory();
+    // Stop mpv before orientation/pop — dispose alone is fire-and-forget
+    // and can leave audio after the route is gone (issue 059).
+    await _s._stopPlaybackForExit();
     // Unlock orientation so the rest of the app follows system settings.
     await SystemChrome.setPreferredOrientations([]);
     // Let the rotation finish before popping — avoids BLASTBufferQueue

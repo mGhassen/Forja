@@ -3,22 +3,18 @@ part of 'live_matches_screen.dart';
 // ═════════════════════════════════════════════════════════════════════════════
 //  VERTICAL TIMELINE VIEW
 //
-//  Events are grouped into 30-minute buckets. Each bucket is one horizontal
-//  row of the same backdrop cards — same-time streams share a line; overflow
-//  scrolls sideways without moving the time. Vertical scroll moves through
-//  time buckets while an animated ruler gauge on the left tracks the playhead.
-//  The list is padded so the row under the playhead (near the top) is aligned
-//  with its time — a single card is not stuck at the top next to wrong ticks.
-//  Day / 12h / 6h buttons set how many hours one screen height of the ruler
-//  spans (the timeline scale).
+//  Continuous time canvas: each 30-minute bucket is positioned at its real
+//  clock Y (empty hours take space) so a card sticks to its time — not the
+//  top of the list. Same-time streams share one horizontal line; overflow
+//  scrolls sideways without moving time. Vertical scroll moves the clock;
+//  Day / 12h / 6h set how many hours one screen height spans.
 // ═════════════════════════════════════════════════════════════════════════════
 
 mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   static const double _timelineRulerWidth = 112;
-  /// Playhead near the top so a lone card (and the current row) sits on its time.
-  static const double _timelinePlayheadFraction = 0.14;
+  static const double _timelinePlayheadFraction = 0.38;
   static const int _bucketMinutes = 30;
 
   /// Normalize an epoch (seconds or milliseconds) into a local [DateTime].
@@ -114,85 +110,68 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
               final cardWidth = _s._matchCardWidth(context);
               final cardHeight = _s._matchCardHeight(context);
               final gap = _s._gridGap(context);
-              final rowExtent = cardHeight + gap;
+              final spanHours = _timelineSpanHours(_s._timelineGranularity);
+              final pxPerMs = viewportH / (spanHours * 3600000.0);
               final playheadY = viewportH * _timelinePlayheadFraction;
-              // Top pad = playhead so row 0 sits on the time card (not above it
-              // next to wrong ticks). Bottom pad lets the last row reach it.
-              final topPad = playheadY;
-              final bottomPad =
-                  (viewportH - playheadY - cardHeight).clamp(20.0, viewportH);
-              final rowMs = [for (final b in buckets) b.bucketMs];
 
-              _maybeAutoScrollBuckets(buckets, rowExtent);
+              // Pad so the first/last bucket can sit on the playhead.
+              final padTopMs = playheadY / pxPerMs;
+              final padBottomMs =
+                  (viewportH - playheadY + cardHeight) / pxPerMs;
+              final contentStartMs = buckets.first.bucketMs - padTopMs;
+              final contentEndMs = buckets.last.bucketMs + padBottomMs;
+              final contentHeight =
+                  (contentEndMs - contentStartMs) * pxPerMs;
 
-              // Vertical list of 30-min rows (adjacent, no empty-time gaps);
-              // ruler overlaid on the left with IgnorePointer so scroll over
-              // the timeline space still drives the shared vertical controller.
-              // Cards in a row scroll horizontally — time for that row stays put.
+              _maybeAutoScrollToTime(
+                contentStartMs: contentStartMs,
+                pxPerMs: pxPerMs,
+                playheadY: playheadY,
+                focusMs: DateTime.now().millisecondsSinceEpoch.toDouble(),
+              );
+
+              void scrollToNow() => _scrollTimelineToMs(
+                    contentStartMs: contentStartMs,
+                    pxPerMs: pxPerMs,
+                    playheadY: playheadY,
+                    focusMs:
+                        DateTime.now().millisecondsSinceEpoch.toDouble(),
+                    animate: true,
+                  );
+
               return Stack(
                 children: [
                   Positioned.fill(
-                    child: ListView.builder(
+                    child: SingleChildScrollView(
                       controller: _s._timelineScrollController,
-                      padding: EdgeInsets.fromLTRB(
-                        _timelineRulerWidth + 6,
-                        topPad,
-                        0,
-                        bottomPad,
+                      child: SizedBox(
+                        height: contentHeight,
+                        child: _buildTimelineCanvas(
+                          buckets: buckets,
+                          contentStartMs: contentStartMs,
+                          pxPerMs: pxPerMs,
+                          cardWidth: cardWidth,
+                          cardHeight: cardHeight,
+                          gap: gap,
+                        ),
                       ),
-                      itemExtent: rowExtent,
-                      itemCount: buckets.length,
-                      itemBuilder: (context, rowIndex) {
-                        final bucket = buckets[rowIndex];
-                        final flatBase = buckets
-                            .take(rowIndex)
-                            .fold<int>(0, (n, b) => n + b.entries.length);
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: HorizontalScroller(
-                            height: cardHeight,
-                            padding: EdgeInsets.only(
-                              right: ShellTokens.bodyHorizontalPadding,
-                            ),
-                            itemCount: bucket.entries.length,
-                            separatorBuilder: (_, _) => SizedBox(width: gap),
-                            itemBuilder: (context, i) {
-                              final flatIndex = flatBase + i;
-                              return SizedBox(
-                                width: cardWidth,
-                                child: _s._gridEntryCard(
-                                  bucket.entries[i],
-                                  flatIndex,
-                                  bucket.entries.length,
-                                  rowIndex == 0
-                                      ? () => _s._focusTopBarItem(
-                                          _LiveMatchesScreenState
-                                              ._topBarServersIndex,
-                                        )
-                                      : null,
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
                     ),
                   ),
+                  // Ruler paint ignores pointers (scroll passes through); only
+                  // the playhead pill is tappable — jumps the clock to now.
                   Positioned(
                     left: 0,
                     top: 0,
                     bottom: 0,
                     width: _timelineRulerWidth,
-                    child: IgnorePointer(
-                      child: _TimelineRuler(
-                        width: _timelineRulerWidth,
-                        controller: _s._timelineScrollController,
-                        rowMs: rowMs,
-                        rowExtent: rowExtent,
-                        topPad: topPad,
-                        playheadFraction: _timelinePlayheadFraction,
-                        granularity: _s._timelineGranularity,
-                      ),
+                    child: _TimelineRuler(
+                      width: _timelineRulerWidth,
+                      controller: _s._timelineScrollController,
+                      contentStartMs: contentStartMs,
+                      pxPerMs: pxPerMs,
+                      playheadFraction: _timelinePlayheadFraction,
+                      granularity: _s._timelineGranularity,
+                      onJumpToNow: scrollToNow,
                     ),
                   ),
                 ],
@@ -204,28 +183,135 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     );
   }
 
-  void _maybeAutoScrollBuckets(
-    List<_TimelineBucket> buckets,
-    double rowExtent,
-  ) {
+  /// Positioned bucket rows, with the hovered row moved last so its scaled
+  /// card paints above its neighbours.
+  Widget _buildTimelineCanvas({
+    required List<_TimelineBucket> buckets,
+    required double contentStartMs,
+    required double pxPerMs,
+    required double cardWidth,
+    required double cardHeight,
+    required double gap,
+  }) {
+    final rows = <Widget>[
+      for (var b = 0; b < buckets.length; b++)
+        _buildTimedBucketRow(
+          bucket: buckets[b],
+          bucketIndex: b,
+          buckets: buckets,
+          top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
+          cardWidth: cardWidth,
+          cardHeight: cardHeight,
+          gap: gap,
+        ),
+    ];
+    final hovered = _s._timelineHoverBucket;
+    if (hovered != null && hovered >= 0 && hovered < rows.length) {
+      rows.add(rows.removeAt(hovered));
+    }
+    return Stack(clipBehavior: Clip.none, children: rows);
+  }
+
+  Widget _buildTimedBucketRow({
+    required _TimelineBucket bucket,
+    required int bucketIndex,
+    required List<_TimelineBucket> buckets,
+    required double top,
+    required double cardWidth,
+    required double cardHeight,
+    required double gap,
+  }) {
+    final flatBase = buckets
+        .take(bucketIndex)
+        .fold<int>(0, (n, b) => n + b.entries.length);
+
+    return Positioned(
+      // Stable key so reordering for z-lift keeps each row's scroll/hover state.
+      key: ValueKey(bucket.bucketMs),
+      left: _timelineRulerWidth + 6,
+      right: 0,
+      top: top,
+      height: cardHeight,
+      child: HorizontalScroller(
+        height: cardHeight,
+        padding: EdgeInsets.only(
+          right: ShellTokens.bodyHorizontalPadding,
+        ),
+        // Horizontal scroll only — does not move the vertical time canvas.
+        itemCount: bucket.entries.length,
+        separatorBuilder: (_, _) => SizedBox(width: gap),
+        itemBuilder: (context, i) {
+          final flatIndex = flatBase + i;
+          return SizedBox(
+            width: cardWidth,
+            child: _TimelineHoverCard(
+              onHoverChanged: (hovering) {
+                if (!mounted) return;
+                setState(() {
+                  if (hovering) {
+                    _s._timelineHoverBucket = bucketIndex;
+                  } else if (_s._timelineHoverBucket == bucketIndex) {
+                    _s._timelineHoverBucket = null;
+                  }
+                });
+              },
+              child: _s._gridEntryCard(
+                bucket.entries[i],
+                flatIndex,
+                bucket.entries.length,
+                bucketIndex == 0
+                    ? () => _s._focusTopBarItem(
+                        _LiveMatchesScreenState._topBarServersIndex,
+                      )
+                    : null,
+                activeBorderColor: Colors.white,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _scrollTimelineToMs({
+    required double contentStartMs,
+    required double pxPerMs,
+    required double playheadY,
+    required double focusMs,
+    bool animate = false,
+  }) {
+    final ctrl = _s._timelineScrollController;
+    if (!ctrl.hasClients) return;
+    final target = (focusMs - contentStartMs) * pxPerMs - playheadY;
+    final clamped = target.clamp(0.0, ctrl.position.maxScrollExtent);
+    if (animate) {
+      ctrl.animateTo(
+        clamped,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      ctrl.jumpTo(clamped);
+    }
+  }
+
+  void _maybeAutoScrollToTime({
+    required double contentStartMs,
+    required double pxPerMs,
+    required double playheadY,
+    required double focusMs,
+  }) {
     if (_s._timelineAutoScrolled) return;
     _s._timelineAutoScrolled = true;
 
-    final nowBucket = _bucketFloorMs(DateTime.now().millisecondsSinceEpoch);
-    var targetRow = 0;
-    for (var i = 0; i < buckets.length; i++) {
-      if (buckets[i].bucketMs >= nowBucket) {
-        targetRow = i;
-        break;
-      }
-      targetRow = i;
-    }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctrl = _s._timelineScrollController;
-      if (!mounted || !ctrl.hasClients) return;
-      final target = targetRow * rowExtent;
-      ctrl.jumpTo(target.clamp(0.0, ctrl.position.maxScrollExtent));
+      if (!mounted) return;
+      _scrollTimelineToMs(
+        contentStartMs: contentStartMs,
+        pxPerMs: pxPerMs,
+        playheadY: playheadY,
+        focusMs: focusMs,
+      );
     });
   }
 
@@ -251,7 +337,10 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                   vertical: 6,
                 ),
                 fontSize: 11.5,
-                onTap: () => setState(() => _s._timelineGranularity = g),
+                onTap: () {
+                  _s._timelineAutoScrolled = false;
+                  setState(() => _s._timelineGranularity = g);
+                },
               ),
             ],
           ],
@@ -269,6 +358,46 @@ class _TimelineBucket {
   final List<_LiveMatchGridEntry> entries;
 }
 
+/// Scales its card up on pointer hover and reports the hover so the parent can
+/// lift the whole row above its neighbours. The white border comes from the
+/// card's own active state (see `activeBorderColor`).
+class _TimelineHoverCard extends StatefulWidget {
+  const _TimelineHoverCard({
+    required this.child,
+    required this.onHoverChanged,
+  });
+
+  final Widget child;
+  final ValueChanged<bool> onHoverChanged;
+
+  @override
+  State<_TimelineHoverCard> createState() => _TimelineHoverCardState();
+}
+
+class _TimelineHoverCardState extends State<_TimelineHoverCard> {
+  bool _hover = false;
+
+  void _set(bool value) {
+    if (_hover == value) return;
+    setState(() => _hover = value);
+    widget.onHoverChanged(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _set(true),
+      onExit: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _hover ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 // ─── Animated ruler gauge ─────────────────────────────────────────────────────
 
 ({int minorMin, int majorMin}) _timelineTickIntervals(int spanHours) =>
@@ -282,33 +411,25 @@ class _TimelineRuler extends StatelessWidget {
   const _TimelineRuler({
     required this.width,
     required this.controller,
-    required this.rowMs,
-    required this.rowExtent,
-    required this.topPad,
+    required this.contentStartMs,
+    required this.pxPerMs,
     required this.playheadFraction,
     required this.granularity,
+    required this.onJumpToNow,
   });
 
   final double width;
   final ScrollController controller;
-  final List<int> rowMs;
-  final double rowExtent;
-  final double topPad;
+  final double contentStartMs;
+  final double pxPerMs;
   final double playheadFraction;
   final _TimelineGranularity granularity;
+  final VoidCallback onJumpToNow;
 
   double _centerMs(double viewportHeight) {
-    if (rowMs.isEmpty) {
-      return DateTime.now().millisecondsSinceEpoch.toDouble();
-    }
     final offset = controller.hasClients ? controller.offset : 0.0;
     final playheadY = viewportHeight * playheadFraction;
-    var pos = (offset + playheadY - topPad) / rowExtent;
-    pos = pos.clamp(0.0, (rowMs.length - 1).toDouble());
-    final i0 = pos.floor();
-    final i1 = (i0 + 1).clamp(0, rowMs.length - 1);
-    final f = pos - i0;
-    return rowMs[i0] + (rowMs[i1] - rowMs[i0]) * f;
+    return contentStartMs + (offset + playheadY) / pxPerMs;
   }
 
   @override
@@ -330,20 +451,27 @@ class _TimelineRuler extends StatelessWidget {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  // Ticks / line ignore hits so vertical scroll still works
+                  // over the ruler gutter.
                   Positioned.fill(
-                    child: CustomPaint(
-                      painter: _TimelineRulerPainter(
-                        centerMs: centerMs,
-                        spanHours: spanHours,
-                        playheadFraction: playheadFraction,
-                        accent: ForjaShellColors.sectionAccent,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _TimelineRulerPainter(
+                          centerMs: centerMs,
+                          spanHours: spanHours,
+                          playheadFraction: playheadFraction,
+                          accent: ForjaShellColors.sectionAccent,
+                        ),
                       ),
                     ),
                   ),
                   Positioned(
                     left: 6,
                     top: playheadY - 22,
-                    child: _TimelinePlayheadPill(time: centerDt),
+                    child: _TimelinePlayheadPill(
+                      time: centerDt,
+                      onTap: onJumpToNow,
+                    ),
                   ),
                 ],
               );
@@ -406,7 +534,6 @@ class _TimelineRulerPainter extends CustomPainter {
     final playheadY = size.height * playheadFraction;
     final pxPerMs = size.height / (spanHours * 3600000);
 
-    // Rail line.
     canvas.drawLine(
       Offset(lineX, 0),
       Offset(lineX, size.height),
@@ -415,7 +542,6 @@ class _TimelineRulerPainter extends CustomPainter {
         ..strokeWidth = 1.5,
     );
 
-    // Glow + playhead accent line.
     canvas.drawCircle(
       Offset(lineX, playheadY),
       12,
@@ -495,9 +621,10 @@ class _TimelineRulerPainter extends CustomPainter {
 }
 
 class _TimelinePlayheadPill extends StatelessWidget {
-  const _TimelinePlayheadPill({required this.time});
+  const _TimelinePlayheadPill({required this.time, required this.onTap});
 
   final DateTime time;
+  final VoidCallback onTap;
 
   static const _weekday = [
     'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', //
@@ -515,45 +642,55 @@ class _TimelinePlayheadPill extends StatelessWidget {
     final clock =
         '${time.hour.toString().padLeft(2, '0')}:'
         '${time.minute.toString().padLeft(2, '0')}';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        // Opaque so the playhead line sits behind the time card, not through it.
-        color: const Color(0xFF1E1E20),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: accent.withValues(alpha: 0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            date,
-            style: TextStyle(
-              color: accent,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Tooltip(
+          message: 'Jump to now',
+          waitDuration: const Duration(milliseconds: 600),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E20),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: accent.withValues(alpha: 0.6)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  date,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  clock,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    height: 1.0,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 1),
-          Text(
-            clock,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              height: 1.0,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

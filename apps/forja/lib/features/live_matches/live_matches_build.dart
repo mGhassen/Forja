@@ -486,14 +486,16 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     _LiveMatchGridEntry entry,
     int i,
     int crossCount,
-    VoidCallback? upEdge,
-  ) {
+    VoidCallback? upEdge, {
+    Color? activeBorderColor,
+  }) {
     return switch (entry) {
       _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
         stream: stream,
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        activeBorderColor: activeBorderColor,
         onTap: () => _s._openDamiTvStream(stream),
       ),
       _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
@@ -501,6 +503,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        activeBorderColor: activeBorderColor,
         onTap: () => _s._openStreamedMatch(match),
       ),
       _LiveMatchGridEntryCdnSport(:final event) => _CdnSportCard(
@@ -508,6 +511,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        activeBorderColor: activeBorderColor,
         onTap: () => _s._openCdnSportEvent(event),
       ),
     };

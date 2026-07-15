@@ -165,6 +165,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   late VideoController _controller;
   bool _playerReady = false;
   bool _disposed = false;
+  bool _playbackStopped = false;
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =
@@ -348,8 +349,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _isReloadingStreams.dispose();
 
     if (_playerReady) {
+      _playerReady = false;
       MpvExclusiveSession.instance.untrackPlayer(_player);
-      final disposeFuture = _player.dispose().catchError((_) {});
+      final disposeFuture = _teardownMediaKitPlayer(_player);
       MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
       unawaited(disposeFuture);
     }
@@ -367,5 +369,34 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
 
     super.dispose();
+  }
+
+  /// Mute + stop immediately so audio dies before/with route pop.
+  Future<void> _stopPlaybackForExit() async {
+    if (_playbackStopped || !_playerReady) return;
+    _playbackStopped = true;
+    try {
+      await _player.setVolume(0);
+    } catch (_) {}
+    try {
+      await _player.stop();
+    } catch (_) {}
+  }
+
+  /// IPTV pattern: stop then dispose so media_kit's internal stop is not
+  /// the only path (and is not swallowed before it runs).
+  Future<void> _teardownMediaKitPlayer(Player player) async {
+    if (!_playbackStopped) {
+      _playbackStopped = true;
+      try {
+        await player.setVolume(0);
+      } catch (_) {}
+      try {
+        await player.stop();
+      } catch (_) {}
+    }
+    try {
+      await player.dispose();
+    } catch (_) {}
   }
 }

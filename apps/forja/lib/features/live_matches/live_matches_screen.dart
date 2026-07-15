@@ -68,6 +68,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
+  // Bucket row currently hovered — lifted above neighbours so its scaled card
+  // is drawn on top.
+  int? _timelineHoverBucket;
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;

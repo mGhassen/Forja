@@ -106,6 +106,9 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
     }
     _s._cancelPendingStreamWork();
     _s._saveWatchHistory();
+    // Stop mpv before pop — dispose-only is fire-and-forget and can leave
+    // audio playing after the route is gone (issue 059; IPTV already stops).
+    await _s._stopPlaybackForExit();
     if (mounted) Navigator.of(context).pop(_s._positionNotifier.value);
   }
 

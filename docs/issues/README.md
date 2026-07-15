@@ -79,6 +79,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [055-[fixed]-…](fixed/055-[fixed]-vidnest-moviebox-referer-429.md) | VidNest MovieBox CDN Referer → HTTP 429 | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [056-[fixed]-…](fixed/056-[fixed]-autoembed-player-sandbox-playback-blocked.md) | AutoEmbed player sandbox / Playback blocked | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [057-[fixed]-…](fixed/057-[fixed]-2embed-stale-cc-url-multiserver.md) | 2Embed stale `.cc` URL / multi-server sniff | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [058-[fixed]-…](fixed/058-[fixed]-live-embed-audio-continues-after-exit.md) | Live Matches embed audio continues after exit | P1 | High | fixed | Complete · 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [059-[fixed]-…](fixed/059-[fixed]-vod-player-audio-continues-after-exit.md) | Movie/TV player audio continues after exit | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

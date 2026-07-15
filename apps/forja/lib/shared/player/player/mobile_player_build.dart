@@ -9,7 +9,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
       canPop: _s._routePopAllowed,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        _s._exitPlayer();
+        await _s._exitPlayer();
       },
       child: Theme(
         data: ThemeData.dark(),

@@ -367,12 +367,14 @@ class _CdnSportCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final Color? activeBorderColor;
   const _CdnSportCard({
     required this.event,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.activeBorderColor,
   });
 
   @override
@@ -404,7 +406,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
             : Colors.white.withValues(alpha: 0.06),
         border: Border.all(
           color: active
-              ? ForjaShellColors.chipSelectedBorder
+              ? (widget.activeBorderColor ?? ForjaShellColors.chipSelectedBorder)
               : ForjaShellColors.cinematic.borderSubtle,
           width: 1.5,
         ),
@@ -686,8 +688,11 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _loading = true;
   bool _isFullscreen = false;
   bool _ready = false;
+  bool _mediaStopped = false;
+  bool _exiting = false;
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
+  InAppWebViewController? _webViewController;
 
   /// Native popup ([window.open]) from an ad. Accepted off-screen so Streamed
   /// embeds that require a successful open keep working; never shown in UI.
@@ -768,7 +773,8 @@ class _LiveMatchesEmbedPlayerScreenState
         javaScriptEnabled: true,
         disableDefaultErrorPage: true,
         allowsAirPlayForMediaPlayback: true,
-        allowsPictureInPictureMediaPlayback: true,
+        // PiP can keep OS media sessions alive after the Flutter route pops.
+        allowsPictureInPictureMediaPlayback: false,
         iframeAllow: 'autoplay; fullscreen; encrypted-media',
         iframeAllowFullscreen: true,
         useShouldOverrideUrlLoading: true,
@@ -795,7 +801,8 @@ class _LiveMatchesEmbedPlayerScreenState
         javaScriptEnabled: true,
         disableDefaultErrorPage: true,
         allowsAirPlayForMediaPlayback: true,
-        allowsPictureInPictureMediaPlayback: true,
+        // PiP can keep OS media sessions alive after the Flutter route pops.
+        allowsPictureInPictureMediaPlayback: false,
         iframeAllow: 'autoplay; fullscreen; encrypted-media',
         iframeAllowFullscreen: true,
         useShouldOverrideUrlLoading: true,
@@ -869,11 +876,48 @@ class _LiveMatchesEmbedPlayerScreenState
     }
   }
 
+  /// Stop HTML5 / iframe media before the route is gone. Platform WebViews can
+  /// keep playing audio after Flutter disposes the widget chrome alone.
+  Future<void> _stopEmbedMedia() async {
+    if (_mediaStopped) return;
+    _mediaStopped = true;
+    _dismissAdWindow();
+    final controller = _webViewController;
+    _webViewController = null;
+    if (controller == null) return;
+    try {
+      await controller.evaluateJavascript(source: _stopEmbedMediaJs);
+    } catch (_) {}
+    try {
+      await controller.stopLoading();
+    } catch (_) {}
+    try {
+      await controller.loadUrl(
+        urlRequest: URLRequest(url: WebUri('about:blank')),
+      );
+    } catch (_) {}
+    // Dispose after blanking so native media sessions die before/with pop.
+    // The platform view may already be tearing down — ignore dispose errors.
+    try {
+      controller.dispose();
+    } catch (_) {}
+  }
+
+  Future<void> _exitPlayer() async {
+    if (_exiting) return;
+    _exiting = true;
+    await _stopEmbedMedia();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
   @override
   void dispose() {
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
     _backFocusNode.dispose();
+    // Route may dispose without going through [_exitPlayer] (e.g. pushReplacement).
+    unawaited(_stopEmbedMedia());
     if (DesktopWindowChrome.isDesktop) {
       Future.microtask(() async {
         try {
@@ -925,7 +969,7 @@ class _LiveMatchesEmbedPlayerScreenState
         children: [
           iptvBackButton(
             context,
-            onTap: () => Navigator.of(context).maybePop(),
+            onTap: () => unawaited(_exitPlayer()),
             color: Colors.white,
             size: 26,
             focusNode: _backFocusNode,
@@ -965,156 +1009,164 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   Widget build(BuildContext context) {
     final embedUrl = widget.embedUrl;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: LayoutBuilder(
-        builder: (context, constraints) => Stack(
-          fit: StackFit.expand,
-          children: [
-            ForjaInAppWebView(
-              // Windows: direct embed URL (worked before macOS iframe rewrite).
-              // Others: iframe under catalog origin for document.referrer + ad
-              // isolation (issues 046 / 049).
-              initialData: _initialData,
-              initialUrlRequest: _initialUrlRequest,
-              initialUserScripts: _initialUserScripts,
-              initialSettings: _initialSettings,
-              onWebViewCreated: (controller) {
-                controller.addJavaScriptHandler(
-                  handlerName: 'toggleFullscreen',
-                  callback: (_) {
-                    unawaited(_toggleFullscreen());
-                  },
-                );
-                if (!_windowsDirectEmbed) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _exitPlayer();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            fit: StackFit.expand,
+            children: [
+              ForjaInAppWebView(
+                // Windows: direct embed URL (worked before macOS iframe rewrite).
+                // Others: iframe under catalog origin for document.referrer + ad
+                // isolation (issues 046 / 049).
+                initialData: _initialData,
+                initialUrlRequest: _initialUrlRequest,
+                initialUserScripts: _initialUserScripts,
+                initialSettings: _initialSettings,
+                onWebViewCreated: (controller) {
+                  _webViewController = controller;
                   controller.addJavaScriptHandler(
-                    handlerName: 'embedReady',
+                    handlerName: 'toggleFullscreen',
                     callback: (_) {
-                      _loadingWatchdog?.cancel();
-                      _clearLoading();
+                      unawaited(_toggleFullscreen());
                     },
                   );
-                }
-              },
-              onLoadStart: (_, _) {
-                // Ad main-frame hijack attempts can fire load-start; do not
-                // setState after the player is ready (rebuild churn + WK crash).
-                if (!mounted || _ready || _loading) return;
-                setState(() => _loading = true);
-              },
-              onLoadStop: (ctrl, _) async {
-                _loadingWatchdog?.cancel();
-                _clearLoading();
-                try {
-                  await ctrl.evaluateJavascript(source: _autoplayJs);
-                  await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
-                } catch (_) {}
-                WidgetsBinding.instance.addPostFrameCallback(
-                  (_) => _focusBack(),
-                );
-              },
-              onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
-              onExitFullscreen: (_) => unawaited(_exitFullscreen()),
-              onCreateWindow: _windowsDirectEmbed
-                  ? null
-                  : (_, action) async {
-                      // Keep a single hidden child; ignore extra ad spawns.
-                      if (!mounted || _adWindowId != null) return false;
-                      setState(() => _adWindowId = action.windowId);
-                      _adWindowCloseTimer?.cancel();
-                      _adWindowCloseTimer = Timer(
-                        const Duration(seconds: 4),
-                        _dismissAdWindow,
-                      );
-                      return true;
-                    },
-              shouldOverrideUrlLoading: (ctrl, action) async {
-                // Player CDNs and nested iframes leave embed.st — never cancel
-                // subframe navigations (that caused blank/white players).
-                if (action.isForMainFrame != true) {
-                  return NavigationActionPolicy.ALLOW;
-                }
-                final url = action.request.url?.toString() ?? '';
-                if (_liveEmbedAllowsNavigation(
-                  url: url,
-                  embedUrl: embedUrl,
-                  referer: widget.referer,
-                  origin: widget.origin,
-                )) {
-                  return NavigationActionPolicy.ALLOW;
-                }
-                debugPrint('[LiveMatches] blocked main-frame nav: $url');
-                return NavigationActionPolicy.CANCEL;
-              },
-            ),
-            // Keep any remaining spinner off the center play button and
-            // non-blocking so the embed stays tappable.
-            if (_loading)
-              Positioned(
-                top: _topBarTopPadding(context) + 36,
-                right: 16,
-                child: IgnorePointer(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: ForjaShellColors.sectionAccent,
-                    ),
-                  ),
-                ),
+                  if (!_windowsDirectEmbed) {
+                    controller.addJavaScriptHandler(
+                      handlerName: 'embedReady',
+                      callback: (_) {
+                        _loadingWatchdog?.cancel();
+                        _clearLoading();
+                      },
+                    );
+                  }
+                },
+                onLoadStart: (_, _) {
+                  // Ad main-frame hijack attempts can fire load-start; do not
+                  // setState after the player is ready (rebuild churn + WK crash).
+                  if (!mounted || _ready || _loading) return;
+                  setState(() => _loading = true);
+                },
+                onLoadStop: (ctrl, _) async {
+                  _loadingWatchdog?.cancel();
+                  _clearLoading();
+                  try {
+                    await ctrl.evaluateJavascript(source: _autoplayJs);
+                    await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
+                  } catch (_) {}
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _focusBack(),
+                  );
+                },
+                onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
+                onExitFullscreen: (_) => unawaited(_exitFullscreen()),
+                onCreateWindow: _windowsDirectEmbed
+                    ? null
+                    : (_, action) async {
+                        // Keep a single hidden child; ignore extra ad spawns.
+                        if (!mounted || _adWindowId != null) return false;
+                        setState(() => _adWindowId = action.windowId);
+                        _adWindowCloseTimer?.cancel();
+                        _adWindowCloseTimer = Timer(
+                          const Duration(seconds: 4),
+                          _dismissAdWindow,
+                        );
+                        return true;
+                      },
+                shouldOverrideUrlLoading: (ctrl, action) async {
+                  // Player CDNs and nested iframes leave embed.st — never cancel
+                  // subframe navigations (that caused blank/white players).
+                  if (action.isForMainFrame != true) {
+                    return NavigationActionPolicy.ALLOW;
+                  }
+                  final url = action.request.url?.toString() ?? '';
+                  if (_liveEmbedAllowsNavigation(
+                    url: url,
+                    embedUrl: embedUrl,
+                    referer: widget.referer,
+                    origin: widget.origin,
+                  )) {
+                    return NavigationActionPolicy.ALLOW;
+                  }
+                  debugPrint('[LiveMatches] blocked main-frame nav: $url');
+                  return NavigationActionPolicy.CANCEL;
+                },
               ),
-            if (!_isFullscreen) ...[
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.black87, Colors.transparent],
-                    ),
-                  ),
-                  child: _buildTopBar(),
-                ),
-              ),
-              Positioned(
-                top: _topBarTopPadding(context),
-                right: 16,
-                child: _buildSourceBadge(),
-              ),
-            ],
-            // Off-screen host for ad window.open — required by some Streamed
-            // embeds on macOS; never visible. Skipped on Windows direct path.
-            if (!_windowsDirectEmbed && _adWindowId != null)
-              Positioned(
-                left: -2,
-                top: -2,
-                width: 1,
-                height: 1,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0,
-                    child: InAppWebView(
-                      windowId: _adWindowId,
-                      // Use forjaWebViewSettings so Windows gets the opaque
-                      // WebView2 create workaround (issue 053) if this path
-                      // is ever enabled there.
-                      initialSettings: forjaWebViewSettings(
-                        InAppWebViewSettings(
-                          transparentBackground: true,
-                          supportMultipleWindows: false,
-                          javaScriptCanOpenWindowsAutomatically: false,
-                        ),
+              // Keep any remaining spinner off the center play button and
+              // non-blocking so the embed stays tappable.
+              if (_loading)
+                Positioned(
+                  top: _topBarTopPadding(context) + 36,
+                  right: 16,
+                  child: IgnorePointer(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: ForjaShellColors.sectionAccent,
                       ),
-                      onCloseWindow: (_) => _dismissAdWindow(),
                     ),
                   ),
                 ),
-              ),
-          ],
+              if (!_isFullscreen) ...[
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black87, Colors.transparent],
+                      ),
+                    ),
+                    child: _buildTopBar(),
+                  ),
+                ),
+                Positioned(
+                  top: _topBarTopPadding(context),
+                  right: 16,
+                  child: _buildSourceBadge(),
+                ),
+              ],
+              // Off-screen host for ad window.open — required by some Streamed
+              // embeds on macOS; never visible. Skipped on Windows direct path.
+              if (!_windowsDirectEmbed && _adWindowId != null)
+                Positioned(
+                  left: -2,
+                  top: -2,
+                  width: 1,
+                  height: 1,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0,
+                      child: InAppWebView(
+                        windowId: _adWindowId,
+                        // Use forjaWebViewSettings so Windows gets the opaque
+                        // WebView2 create workaround (issue 053) if this path
+                        // is ever enabled there.
+                        initialSettings: forjaWebViewSettings(
+                          InAppWebViewSettings(
+                            transparentBackground: true,
+                            supportMultipleWindows: false,
+                            javaScriptCanOpenWindowsAutomatically: false,
+                          ),
+                        ),
+                        onCloseWindow: (_) => _dismissAdWindow(),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1325,6 +1377,7 @@ class _StreamedMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final Color? activeBorderColor;
 
   const _StreamedMatchCard({
     required this.match,
@@ -1332,6 +1385,7 @@ class _StreamedMatchCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.activeBorderColor,
   });
 
   @override
@@ -1366,7 +1420,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
             : Colors.white.withValues(alpha: 0.06),
         border: Border.all(
           color: active
-              ? ForjaShellColors.chipSelectedBorder
+              ? (widget.activeBorderColor ?? ForjaShellColors.chipSelectedBorder)
               : ForjaShellColors.cinematic.borderSubtle,
           width: 1.5,
         ),
@@ -1525,12 +1579,14 @@ class _DamiTvMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final Color? activeBorderColor;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.activeBorderColor,
   });
 
   @override
@@ -1565,7 +1621,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
             : Colors.white.withValues(alpha: 0.06),
         border: Border.all(
           color: active
-              ? ForjaShellColors.chipSelectedBorder
+              ? (widget.activeBorderColor ?? ForjaShellColors.chipSelectedBorder)
               : ForjaShellColors.cinematic.borderSubtle,
           width: 1.5,
         ),

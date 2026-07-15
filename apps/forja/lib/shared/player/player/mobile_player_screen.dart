@@ -173,6 +173,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   late final Player _player;
   late final VideoController _controller;
   bool _disposed = false;
+  bool _playbackStopped = false;
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =
@@ -373,7 +374,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _sourceMenuRevision.dispose();
     _isReloadingStreams.dispose();
 
-    _player.dispose();
+    unawaited(_teardownMediaKitPlayer());
 
     // Remove torrent from engine on player exit (use magnetLink for hash,
     // fall back to mediaPath which may be a stream URL).
@@ -391,5 +392,33 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     WakelockPlus.disable();
 
     super.dispose();
+  }
+
+  /// Mute + stop immediately so audio dies before orientation / route pop.
+  Future<void> _stopPlaybackForExit() async {
+    if (_playbackStopped) return;
+    _playbackStopped = true;
+    try {
+      await _player.setVolume(0);
+    } catch (_) {}
+    try {
+      await _player.stop();
+    } catch (_) {}
+  }
+
+  /// IPTV pattern: stop then dispose (do not rely on dispose-only).
+  Future<void> _teardownMediaKitPlayer() async {
+    if (!_playbackStopped) {
+      _playbackStopped = true;
+      try {
+        await _player.setVolume(0);
+      } catch (_) {}
+      try {
+        await _player.stop();
+      } catch (_) {}
+    }
+    try {
+      await _player.dispose();
+    } catch (_) {}
   }
 }

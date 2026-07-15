@@ -260,7 +260,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget _buildOfferBody(Size size, _UpdateLayout layout) {
     final logoWidth = size.width.clamp(280.0, 520.0) * layout.logoWidthFactor;
     final logoHeight = logoWidth / forjaLogoAspectRatio;
-    final items = _ReleaseNotesParser.parse(widget.updateInfo.releaseNotes);
+    final sections =
+        _ReleaseNotesParser.parseSections(widget.updateInfo.releaseNotes);
     final published = _formatPublishedDate(widget.updateInfo.publishedAt);
 
     return Column(
@@ -344,7 +345,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
         SizedBox(height: layout.sectionLabelGap),
-        if (items.isEmpty)
+        if (sections.isEmpty)
           Text(
             'No release notes were published for this version.',
             style: GoogleFonts.plusJakartaSans(
@@ -354,7 +355,28 @@ class _UpdateDialogState extends State<UpdateDialog> {
             ),
           )
         else
-          ...items.map((item) => _ReleaseNoteRow(item: item, layout: layout)),
+          ...sections.expand((section) => [
+                    if (section.title != null) ...[
+                      Padding(
+                        padding: EdgeInsets.only(
+                          top: layout.isTv ? 4 : 8,
+                          bottom: layout.isTv ? 4 : 6,
+                        ),
+                        child: Text(
+                          section.title!,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: layout.sectionSize * 0.85,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: ForjaShellColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                    ...section.items.map(
+                      (item) => _ReleaseNoteRow(item: item, layout: layout),
+                    ),
+                  ]),
       ],
     );
   }
@@ -826,35 +848,71 @@ class _ReleaseNoteItem {
   final String? url;
 }
 
+class _ReleaseNoteSection {
+  const _ReleaseNoteSection({this.title, required this.items});
+
+  final String? title;
+  final List<_ReleaseNoteItem> items;
+}
+
 abstract final class _ReleaseNotesParser {
   static final _urlPattern = RegExp(r'https?://[^\s)\]]+');
+  static final _bulletPattern = RegExp(r'^[-*•]\s+');
 
-  static List<_ReleaseNoteItem> parse(String raw) {
-    final lines = raw
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
+  static List<_ReleaseNoteSection> parseSections(String raw) {
+    final sections = <_ReleaseNoteSection>[];
+    String? currentTitle;
+    var currentItems = <_ReleaseNoteItem>[];
 
-    return lines.map((line) {
-      var text = line.replaceAllMapped(
-        RegExp(r'\*\*(.+?)\*\*'),
-        (match) => match.group(1) ?? '',
+    void flush() {
+      if (currentItems.isEmpty) return;
+      sections.add(
+        _ReleaseNoteSection(title: currentTitle, items: List.of(currentItems)),
       );
-      text = text.replaceFirst(RegExp(r'^[-*•]\s*'), '');
+      currentItems = [];
+    }
 
-      final urlMatch = _urlPattern.firstMatch(text);
-      if (urlMatch == null) {
-        return _ReleaseNoteItem(text: text);
+    for (final rawLine in raw.split('\n')) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+
+      if (line.startsWith('# ') && !line.startsWith('### ')) {
+        continue;
       }
 
-      final url = urlMatch.group(0)!;
-      var label = text.replaceFirst(url, '').trim();
-      label = label.replaceAll(RegExp(r'[:：]\s*$'), '').trim();
-      if (label.isEmpty) label = 'View full changelog';
+      if (line.startsWith('### ')) {
+        flush();
+        currentTitle = line.substring(4).trim();
+        continue;
+      }
 
-      return _ReleaseNoteItem(text: label, url: url);
-    }).toList();
+      if (!_bulletPattern.hasMatch(line)) continue;
+
+      currentItems.add(_parseBullet(line));
+    }
+
+    flush();
+    return sections;
+  }
+
+  static _ReleaseNoteItem _parseBullet(String line) {
+    var text = line.replaceAllMapped(
+      RegExp(r'\*\*(.+?)\*\*'),
+      (match) => match.group(1) ?? '',
+    );
+    text = text.replaceFirst(_bulletPattern, '');
+
+    final urlMatch = _urlPattern.firstMatch(text);
+    if (urlMatch == null) {
+      return _ReleaseNoteItem(text: text);
+    }
+
+    final url = urlMatch.group(0)!;
+    var label = text.replaceFirst(url, '').trim();
+    label = label.replaceAll(RegExp(r'[:：]\s*$'), '').trim();
+    if (label.isEmpty) label = 'View full changelog';
+
+    return _ReleaseNoteItem(text: label, url: url);
   }
 }
 

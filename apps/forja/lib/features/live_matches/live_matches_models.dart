@@ -511,6 +511,28 @@ const _autoplayJs = r'''
 })();
 ''';
 
+/// Pause + tear down HTML media before the Flutter route pops. Parent-frame
+/// `video`/`audio` alone is not enough for the iframe wrapper — blank iframes too.
+const _stopEmbedMediaJs = r'''
+(function () {
+  document.querySelectorAll('video,audio').forEach(function (el) {
+    try {
+      el.pause();
+      el.muted = true;
+      el.removeAttribute('src');
+      while (el.firstChild) el.removeChild(el.firstChild);
+      el.load();
+    } catch (e) {}
+  });
+  document.querySelectorAll('iframe').forEach(function (frame) {
+    try {
+      frame.src = 'about:blank';
+      frame.removeAttribute('src');
+    } catch (e) {}
+  });
+})();
+''';
+
 /// Double-click the embed surface → toggle host fullscreen (films / IPTV parity).
 const _dblclickFullscreenJs = r'''
 (function () {

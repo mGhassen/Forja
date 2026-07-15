@@ -480,6 +480,11 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       return;
     }
     await _saveProgress();
+    // Stop Exo before pop — dispose alone is unawaited and can leave audio
+    // after the route is gone (issue 059).
+    try {
+      await ExoPlayerBridge.stop(_viewId);
+    } catch (_) {}
     if (!mounted) return;
     _popPlayerRoute();
   }
@@ -589,9 +594,18 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
     _eventSub?.cancel();
-    unawaited(ExoPlayerBridge.dispose(_viewId));
+    unawaited(_teardownExoPlayer());
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  Future<void> _teardownExoPlayer() async {
+    try {
+      await ExoPlayerBridge.stop(_viewId);
+    } catch (_) {}
+    try {
+      await ExoPlayerBridge.dispose(_viewId);
+    } catch (_) {}
   }
 
   Widget _buildControlsOverlay() {

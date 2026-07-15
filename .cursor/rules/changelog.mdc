@@ -44,7 +44,7 @@ On release (admin picks version, then git tag `vX.Y.Z`):
 1. Prune bullets for work that did not ship; ensure wording matches the tagged build — do this **before** tagging, since CI reads the draft at the tagged commit.
 2. Move the draft to `docs/changelog/done/X.Y.Z-[released].md`; set body `**Status:**` → `released` and the title to the exact `X.Y.Z` the admin shipped.
 3. Update [changelog README](../../docs/changelog/README.md) **Released** table.
-4. Create empty `docs/changelog/X.Y.x-[draft].md` with `**Since release:**` pointing at the tag just shipped (all six [thematic groups](#thematic-groups-forja), empty).
+4. Create empty `docs/changelog/X.Y.x-[draft].md` with `**Since release:**` pointing at the tag just shipped — **no group headings** until the first bullet (see [template](#template-draft-file)).
 
 When bumping to a **new minor** (`1.2` → `1.3`): update `kReleaseCodename` in `app_version.dart` to the new minor's codename ([runway](../../docs/backlog/README.md#codename-runway)) and start `1.3.x-[draft].md`. CI reads the codename from `app_version.dart`, so this keeps the release title correct without editing the changelog title.
 
@@ -76,7 +76,7 @@ Derive bullets from **what changed for the user**, not backlog `B*-S*` IDs.
 
 - **Audience:** someone updating the app.
 - **One line per item** — start with an [action prefix](#action-prefixes), then the outcome.
-- **Thematic groups** — use the [Forja groups](#thematic-groups-forja) below; **omit empty** sections.
+- **Thematic groups** — use the [Forja groups](#thematic-groups-forja) below; **add a `### Group` heading only when that group has bullets** — never leave empty group headers in the draft (CI and the update dialog omit them automatically).
 - **Group** related items into one bullet when they share one user story.
 - **No** task IDs, issue numbers, crate names, or internal refactors unless user-visible.
 
@@ -114,19 +114,18 @@ Six groups — pick **one** per bullet. Do not add sub-groups or extra headings.
 
 ### Template (draft file)
 
+Start with no group headings. When you add the first bullet for a group, add its `###` heading above it:
+
 ```markdown
-### Features
-
-### Player
-
 ### UI
+- **Change:** …
 
 ### Sources
-
-### Live & IPTV
-
-### TV
+- **Add:** …
+- **Fix:** …
 ```
+
+Do **not** pre-fill all six groups with empty `###` headings.
 
 ### Good
 
