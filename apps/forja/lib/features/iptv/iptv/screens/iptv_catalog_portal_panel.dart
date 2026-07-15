@@ -27,10 +27,12 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   bool _searchOpen = false;
   bool _didFocusHeaderOnOpen = false;
   String? _scrolledToActiveKey;
+  late Set<String> _knownPortalKeys;
 
   @override
   void initState() {
     super.initState();
+    _knownPortalKeys = {for (final v in widget.ctrl.verified) v.key};
     widget.ctrl.addListener(_onCtrlChanged);
     if (widget.ctrl.portalPanelOpen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,16 +54,41 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
 
   void _onCtrlChanged() {
     if (!mounted) return;
+    final currentKeys = {for (final v in widget.ctrl.verified) v.key};
     if (widget.ctrl.portalPanelOpen) {
       if (!_didFocusHeaderOnOpen && !_searchOpen) {
         _didFocusHeaderOnOpen = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
       }
       final activeKey = widget.ctrl.activePortal?.key;
-      if (activeKey != null && activeKey != _scrolledToActiveKey) {
+      final willScrollActive =
+          activeKey != null && activeKey != _scrolledToActiveKey;
+      if (willScrollActive) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActivePortal());
       }
+      final added = currentKeys.difference(_knownPortalKeys);
+      _knownPortalKeys = currentKeys;
+      if (added.isNotEmpty && _query.trim().isEmpty) {
+        // Sorted list puts newest non-favorites first after favorites — scroll
+        // to the first newly added key in that order (e.g. scrape hits).
+        String? scrollKey;
+        for (final v in widget.ctrl.verified) {
+          if (added.contains(v.key)) {
+            scrollKey = v.key;
+            break;
+          }
+        }
+        // Skip if active-portal scroll already covers this key (manual/share add).
+        if (scrollKey != null &&
+            !(willScrollActive && scrollKey == activeKey)) {
+          final key = scrollKey;
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _scrollToPortalKey(key, animate: true),
+          );
+        }
+      }
     } else {
+      _knownPortalKeys = currentKeys;
       _didFocusHeaderOnOpen = false;
       _scrolledToActiveKey = null;
     }
@@ -73,22 +100,36 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   }
 
   void _scrollToActivePortal() {
-    if (!mounted || !widget.ctrl.portalPanelOpen) return;
-    if (_query.trim().isNotEmpty) return;
     final activeKey = widget.ctrl.activePortal?.key;
     if (activeKey == null) return;
-    final index = _filtered.indexWhere((v) => v.key == activeKey);
+    _scrollToPortalKey(activeKey, animate: false);
+    _scrolledToActiveKey = activeKey;
+  }
+
+  void _scrollToPortalKey(String key, {required bool animate}) {
+    if (!mounted || !widget.ctrl.portalPanelOpen) return;
+    if (_query.trim().isNotEmpty) return;
+    final index = _filtered.indexWhere((v) => v.key == key);
     if (index < 0) return;
     if (!_listScroll.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActivePortal());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToPortalKey(key, animate: animate),
+      );
       return;
     }
     final target = (index * _portalRowHeight).clamp(
       0.0,
       _listScroll.position.maxScrollExtent,
     );
-    _listScroll.jumpTo(target);
-    _scrolledToActiveKey = activeKey;
+    if (animate) {
+      _listScroll.animateTo(
+        target,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _listScroll.jumpTo(target);
+    }
   }
 
   void _openSearch() {
