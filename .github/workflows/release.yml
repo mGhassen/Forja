@@ -108,7 +108,11 @@ jobs:
             echo "::error::Tag v${NEW} already exists — sync pubspec to the latest tag, push, then re-run."
             exit 1
           fi
-          git add apps/forja/pubspec.yaml installer/windows/setup.iss
+
+          chmod +x scripts/changelog_freeze.sh
+          ./scripts/changelog_freeze.sh "$NEW"
+
+          git add apps/forja/pubspec.yaml installer/windows/setup.iss docs/changelog
           git commit -m "chore: release v${NEW}"
           git tag -a "v${NEW}" -m "Forja ${NEW}"
           git push origin HEAD

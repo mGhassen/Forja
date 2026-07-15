@@ -41,10 +41,14 @@ minor 1.3.0 →  update kReleaseCodename + new docs/changelog/1.3.x-[draft].md
 
 On release (admin picks version, then git tag `vX.Y.Z`):
 
-1. Prune bullets for work that did not ship; ensure wording matches the tagged build — do this **before** tagging, since CI reads the draft at the tagged commit.
-2. Move the draft to `docs/changelog/done/X.Y.Z-[released].md`; set body `**Status:**` → `released` and the title to the exact `X.Y.Z` the admin shipped.
-3. Update [changelog README](../../docs/changelog/README.md) **Released** table.
-4. Create empty `docs/changelog/X.Y.x-[draft].md` with `**Since release:**` pointing at the tag just shipped — **no group headings** until the first bullet (see [template](#template-draft-file)).
+1. **You (human):** Prune bullets for work that did not ship; ensure wording matches the tagged build — do this **before** running the release workflow, since the freeze snapshots the draft into the tagged commit.
+2. **CI (automatic):** The `Release Forja` workflow runs [`scripts/changelog_freeze.sh <version>`](../../scripts/changelog_freeze.sh) in the version-bump step, **before** it commits and tags. That script:
+   - moves the draft to `docs/changelog/done/X.Y.Z-[released].md` (title `# X.Y.Z — <codename>`, body `**Status:** released`),
+   - refreshes the [changelog README](../../docs/changelog/README.md) **Active** row + **Released** table,
+   - starts a fresh empty `docs/changelog/X.Y.x-[draft].md` with `**Since release:**` pointing at the version just shipped — **no group headings** until the first bullet (see [template](#template-draft-file)).
+   These changes are part of the `chore: release vX.Y.Z` commit, so the tag contains the frozen released file and the fresh draft.
+
+The freeze is **idempotent** — if `done/X.Y.Z-[released].md` already exists or the draft is missing, it is a no-op (so re-runs and the "Existing tag" release mode are safe). Only run `changelog_freeze.sh` by hand when a release was tagged without it (older workflow) and you need to backfill.
 
 When bumping to a **new minor** (`1.2` → `1.3`): update `kReleaseCodename` in `app_version.dart` to the new minor's codename ([runway](../../docs/backlog/README.md#codename-runway)) and start `1.3.x-[draft].md`. CI reads the codename from `app_version.dart`, so this keeps the release title correct without editing the changelog title.
 
@@ -54,7 +58,7 @@ The `publish_release` job in [`.github/workflows/release.yml`](../../.github/wor
 
 - resolves the codename from `kReleaseCodename` in `app_version.dart` (not the changelog title),
 - builds the title as `# <version> — <codename>` (e.g. `# 1.2.165 — Dabaghin`),
-- pulls bullets from `docs/changelog/{major}.{minor}.x-[draft].md`,
+- pulls bullets from the frozen `docs/changelog/done/<version>-[released].md` (written by `changelog_freeze.sh` earlier in the same run), falling back to `docs/changelog/{major}.{minor}.x-[draft].md` if the freeze did not run,
 - drops empty thematic groups + editor scaffolding,
 - feeds the result as the GitHub Release **body**.
 
@@ -174,4 +178,5 @@ Do **not** pre-fill all six groups with empty `###` headings.
 
 - [ ] `docs/changelog/*-[draft].md` updated (add / edit / remove bullets)
 - [ ] Bullets user-facing and match current code
-- [ ] On tag: rename to `done/X.Y.Z-[released].md`, README, fresh `X.Y.x-[draft].md`
+- [ ] Before the release workflow: bullets pruned to what actually ships (the freeze snapshots the draft into the tag)
+- [ ] Freeze to `done/X.Y.Z-[released].md`, README update, and fresh `X.Y.x-[draft].md` are done **automatically** by the release workflow (`changelog_freeze.sh`) — only backfill by hand if a tag was cut without it

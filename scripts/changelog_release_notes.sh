@@ -13,7 +13,9 @@ set -euo pipefail
 #   - takes the exact shipped <version> from the admin (e.g. 1.2.165),
 #   - resolves the codename from kReleaseCodename in app_version.dart (source of
 #     truth for the shipping minor),
-#   - maps 1.2.165 -> docs/changelog/1.2.x-[draft].md for the body bullets,
+#   - reads bullets from the frozen docs/changelog/done/1.2.165-[released].md when
+#     it exists (the release step freezes the draft before tagging), otherwise
+#     falls back to docs/changelog/1.2.x-[draft].md,
 #   - drops empty thematic groups + editor scaffolding.
 #
 # Output is used as the GitHub Release body, which the in-app update dialog shows
@@ -26,7 +28,14 @@ VERSION="${1:?usage: changelog_release_notes.sh <version> [out_file]}"
 OUT="${2:-}"
 
 IFS=. read -r major minor _patch <<<"$VERSION"
+released="$ROOT/docs/changelog/done/${VERSION}-[released].md"
 draft="$ROOT/docs/changelog/${major}.${minor}.x-[draft].md"
+
+# Prefer the frozen released file for this exact version (the release step
+# freezes the draft before tagging, leaving a fresh empty draft behind).
+if [[ -f "$released" ]]; then
+  draft="$released"
+fi
 
 # Codename source of truth: kReleaseCodename in app_version.dart (admin updates
 # it when shipping a new minor). Not read from the changelog title.
