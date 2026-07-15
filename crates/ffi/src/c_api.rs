@@ -32,6 +32,16 @@ pub extern "C" fn ffi_engine_cancel_pending() {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_engine_prepare_shutdown() {
+    crate::engine_prepare_shutdown();
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_engine_clear_shutdown() {
+    crate::engine_clear_shutdown();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_engine_submit_job(kind: u32, payload_json: *const c_char) -> u64 {
     crate::engine_submit_job(kind, from_c_str(payload_json))
 }

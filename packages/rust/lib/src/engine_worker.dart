@@ -72,6 +72,11 @@ class _WorkerStartupFailure {
   final String error;
 }
 
+/// Cooperative exit after the current FFI job returns (see [EngineWorkerPool.shutdown]).
+class _WorkerShutdown {
+  const _WorkerShutdown();
+}
+
 /// Pool of worker isolates with Rust dylib loaded once each.
 abstract final class EngineWorkerPool {
   static const _poolSize = 3;
@@ -135,7 +140,10 @@ abstract final class EngineWorkerPool {
     }
   }
 
-  /// Kill worker isolates so the VM can exit without waiting on check-in.
+  /// Tear down workers: cancel Rust work, ask isolates to exit, then force-kill.
+  ///
+  /// Catalog HTTP (AniList) ignores playback cancel but honors
+  /// [RustLib.enginePrepareShutdown] — call that before this (via [Engine.shutdown]).
   static Future<void> shutdown() async {
     final starting = _starting;
     if (starting != null) {
@@ -144,13 +152,28 @@ abstract final class EngineWorkerPool {
       } catch (_) {}
     }
     _starting = null;
+
+    final ports = List<SendPort>.from(_ports);
     _ports.clear();
     for (final port in _mainExitListenerPorts) {
       Isolate.current.removeOnExitListener(port);
     }
     _mainExitListenerPorts.clear();
     _roundRobin = 0;
-    for (final isolate in _isolates) {
+
+    // Cooperative exit once in-flight FFI returns (after prepare_shutdown abort).
+    for (final port in ports) {
+      try {
+        port.send(const _WorkerShutdown());
+      } catch (_) {}
+    }
+
+    // Brief window for cancelled block_on + Isolate.exit before force-kill.
+    if (ports.isNotEmpty) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+
+    for (final isolate in List<Isolate>.from(_isolates)) {
       isolate.kill(priority: Isolate.immediate);
     }
     _isolates.clear();
@@ -196,6 +219,9 @@ void _engineWorkerMain(List<Object?> startArgs) {
   readyPort.send([jobs.sendPort, mainDeath.sendPort]);
 
   jobs.listen((message) {
+    if (message is _WorkerShutdown) {
+      Isolate.exit();
+    }
     final job = message as _WorkerJob;
     try {
       final result = _dispatchJob(job);

@@ -56,19 +56,20 @@ fn fetch_with_headers(
     })
 }
 
-/// Catalog/metadata HTTP — not tied to playback [engine_cancel::request].
+/// Catalog/metadata HTTP — ignores playback [engine_cancel::request],
+/// but aborts on [engine_cancel::request_shutdown] so worker isolates can exit.
 pub fn fetch_post_with_headers_unchecked(
     url: &str,
     timeout_secs: u64,
     headers: &HashMap<String, String>,
     body: &str,
 ) -> Result<HttpResponse, String> {
-    RUNTIME.block_on(fetch_with_headers_async(
-        url,
-        timeout_secs,
-        headers,
-        Some(body),
-    ))
+    RUNTIME.block_on(async {
+        utils::engine_cancel::with_shutdown_cancel(async {
+            fetch_with_headers_async(url, timeout_secs, headers, Some(body)).await
+        })
+        .await
+    })
 }
 
 async fn fetch_with_headers_async(

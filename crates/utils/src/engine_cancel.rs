@@ -1,6 +1,7 @@
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
+use tokio::sync::Notify;
 pub use tokio_util::sync::CancellationToken;
 
 static ROOT: LazyLock<Mutex<CancellationToken>> =
@@ -8,8 +9,13 @@ static ROOT: LazyLock<Mutex<CancellationToken>> =
 
 static CANCEL_GENERATION: AtomicU64 = AtomicU64::new(0);
 
+/// Process teardown — aborts catalog HTTP that ignores playback [request].
+static SHUTDOWN: AtomicBool = AtomicBool::new(false);
+static SHUTDOWN_NOTIFY: LazyLock<Notify> = LazyLock::new(Notify::new);
+
 /// Shared token for the current job (rayon / multi-thread resolve).
-static JOB_TOKEN_GLOBAL: LazyLock<Mutex<Option<CancellationToken>>> = LazyLock::new(|| Mutex::new(None));
+static JOB_TOKEN_GLOBAL: LazyLock<Mutex<Option<CancellationToken>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 thread_local! {
     static JOB_TOKEN: RefCell<Option<CancellationToken>> = const { RefCell::new(None) };
@@ -32,7 +38,8 @@ pub fn clear_job_token() {
     JOB_TOKEN.with(|t| *t.borrow_mut() = None);
 }
 
-/// Host Cancel — aborts in-flight HTTP and resets for new jobs.
+/// Host Cancel — aborts in-flight playback HTTP and resets for new jobs.
+/// Does **not** abort catalog paths that use [with_shutdown_cancel] only.
 pub fn request() {
     if let Some(token) = JOB_TOKEN_GLOBAL.lock().unwrap().take() {
         token.cancel();
@@ -42,6 +49,22 @@ pub fn request() {
     *root = CancellationToken::new();
     CANCEL_GENERATION.fetch_add(1, Ordering::SeqCst);
     JOB_TOKEN.with(|t| *t.borrow_mut() = None);
+}
+
+/// App exit — abort playback **and** catalog HTTP so worker isolates can unwind.
+pub fn request_shutdown() {
+    SHUTDOWN.store(true, Ordering::SeqCst);
+    SHUTDOWN_NOTIFY.notify_waiters();
+    request();
+}
+
+pub fn is_shutdown_requested() -> bool {
+    SHUTDOWN.load(Ordering::SeqCst)
+}
+
+/// Clear shutdown latch (engine init / tests after [request_shutdown]).
+pub fn clear_shutdown() {
+    SHUTDOWN.store(false, Ordering::SeqCst);
 }
 
 pub fn cancellation_token() -> CancellationToken {
@@ -79,6 +102,22 @@ where
     }
 }
 
+/// Catalog HTTP: ignore playback [request], abort on [request_shutdown].
+pub async fn with_shutdown_cancel<F, T>(fut: F) -> Result<T, String>
+where
+    F: std::future::Future<Output = Result<T, String>>,
+{
+    let notified = SHUTDOWN_NOTIFY.notified();
+    tokio::pin!(notified);
+    if is_shutdown_requested() {
+        return Err(cancelled_message());
+    }
+    tokio::select! {
+        res = fut => res,
+        _ = &mut notified => Err(cancelled_message()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,5 +130,26 @@ mod tests {
         request();
         assert!(token.is_cancelled());
         clear_job_token();
+    }
+
+    #[tokio::test]
+    async fn playback_cancel_does_not_abort_shutdown_only_path() {
+        clear_shutdown();
+        let fut = with_shutdown_cancel(async { Ok::<_, String>(42) });
+        request();
+        assert_eq!(fut.await.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    async fn shutdown_aborts_shutdown_only_path() {
+        clear_shutdown();
+        let handle = tokio::spawn(async {
+            with_shutdown_cancel(std::future::pending::<Result<i32, String>>()).await
+        });
+        tokio::task::yield_now().await;
+        request_shutdown();
+        let err = handle.await.unwrap().unwrap_err();
+        assert_eq!(err, cancelled_message());
+        clear_shutdown();
     }
 }

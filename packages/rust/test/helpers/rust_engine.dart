@@ -12,6 +12,7 @@ Future<void> initRustForTests() async {
     );
   }
   await RustLib.init(libraryPath: path);
+  RustLib.instance.engineClearShutdown();
   await EngineWorkerPool.start(path);
 }
 

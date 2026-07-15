@@ -44,6 +44,9 @@ fn fetch_once(url: &str) -> Result<String, String> {
     let mut last_error = String::from("GET failed");
 
     for attempt in 0..MAX_ATTEMPTS {
+        if utils::engine_cancel::is_shutdown_requested() {
+            return Err(utils::engine_cancel::cancelled_message());
+        }
         if attempt > 0 {
             std::thread::sleep(Duration::from_millis(400 * attempt as u64));
         }

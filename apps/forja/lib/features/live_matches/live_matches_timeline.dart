@@ -541,51 +541,60 @@ class _TimelineNowLineState extends State<_TimelineNowLine> {
             final nowMs = DateTime.now().millisecondsSinceEpoch.toDouble();
             final y = (nowMs - widget.contentStartMs) * widget.pxPerMs - offset;
             if (y < 0 || y > height) return const SizedBox.shrink();
+            // Green line runs across the content; the NOW badge is anchored on
+            // the ruler axis (like the tick labels) and both sit on the topmost
+            // layer so nothing covers them.
             return Stack(
+              clipBehavior: Clip.none,
               children: [
                 Positioned(
                   left: widget.leftInset,
                   right: 0,
+                  top: y - 1,
+                  height: 2,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: _green,
+                      boxShadow: [
+                        BoxShadow(
+                          color: _green.withValues(alpha: 0.6),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  width: widget.leftInset,
                   top: y - 9,
                   height: 18,
-                  child: Row(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: _green,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
-                        child: const Text(
-                          'NOW',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          child: Text(
+                            'NOW',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Container(
-                          height: 2,
-                          decoration: BoxDecoration(
-                            color: _green,
-                            boxShadow: [
-                              BoxShadow(
-                                color: _green.withValues(alpha: 0.6),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],

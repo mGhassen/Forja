@@ -58,7 +58,8 @@ abstract final class EngineJobs {
     _pollTimer?.cancel();
     _pollTimer = null;
     if (RustLib.isInitialized) {
-      RustLib.instance.engineCancelPending();
+      // Playback cancel + catalog (AniList) abort so worker isolates can exit.
+      RustLib.instance.enginePrepareShutdown();
     }
     for (final completer in _pending.values) {
       if (!completer.isCompleted) {

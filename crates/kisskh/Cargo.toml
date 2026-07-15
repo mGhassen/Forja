@@ -10,3 +10,4 @@ serde_json = { workspace = true }
 regex = { workspace = true }
 urlencoding = "2"
 anime = { path = "../anime" }
+utils = { path = "../utils" }

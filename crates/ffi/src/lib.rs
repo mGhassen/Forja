@@ -39,6 +39,15 @@ fn engine_cancel_pending() {
     engine_jobs::cancel_all();
 }
 
+fn engine_prepare_shutdown() {
+    utils::engine_cancel::request_shutdown();
+    engine_jobs::cancel_all();
+}
+
+fn engine_clear_shutdown() {
+    utils::engine_cancel::clear_shutdown();
+}
+
 fn engine_submit_job(kind: u32, payload_json: String) -> u64 {
     engine_jobs::submit(kind, payload_json)
 }

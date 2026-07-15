@@ -71,6 +71,12 @@ class RustLib {
 
   void engineCancelPending() => _native.ffi_engine_cancel_pending();
 
+  /// Abort playback + catalog HTTP so worker isolates can unwind on app exit.
+  void enginePrepareShutdown() => _native.ffi_engine_prepare_shutdown();
+
+  /// Clear shutdown latch after [enginePrepareShutdown] (init / tests).
+  void engineClearShutdown() => _native.ffi_engine_clear_shutdown();
+
   int engineSubmitJob(int kind, String payloadJson) => using((arena) {
         final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _native.ffi_engine_submit_job(kind, ptr);
@@ -709,6 +715,16 @@ final class _FfiNative {
               'ffi_engine_cancel_pending',
             )
             .asFunction(),
+        ffi_engine_prepare_shutdown = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'ffi_engine_prepare_shutdown',
+            )
+            .asFunction(),
+        ffi_engine_clear_shutdown = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'ffi_engine_clear_shutdown',
+            )
+            .asFunction(),
         ffi_engine_submit_job = lib
             .lookup<ffi.NativeFunction<_EngineSubmitJobNative>>(
               'ffi_engine_submit_job',
@@ -1181,6 +1197,8 @@ final class _FfiNative {
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
   final void Function() ffi_engine_cancel_pending;
+  final void Function() ffi_engine_prepare_shutdown;
+  final void Function() ffi_engine_clear_shutdown;
   final int Function(int, ffi.Pointer<ffi.Char>) ffi_engine_submit_job;
   final ffi.Pointer<ffi.Char> Function(int) ffi_engine_take_job_result;
   final int Function(int, int) ffi_add;

@@ -37,6 +37,7 @@ abstract final class Engine {
         }
         try {
           await RustLib.init(libraryPath: candidate);
+          RustLib.instance.engineClearShutdown();
           _enabled = true;
           _libraryPath = RustLib.loadedLibraryPath ?? candidate;
           final storePath = storagePath ?? await _defaultStoragePath();
