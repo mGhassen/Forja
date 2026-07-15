@@ -251,6 +251,17 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   @override
   void dispose() {
+    // Leave the title → stop every in-flight source check (Nuvio/Xpass,
+    // Stremio, torrents, KissKh, embeds). Subscription cancel alone is not
+    // enough — scrapers kept fetching after the route was gone.
+    _cancelActiveSourceFetch();
+    _torrentSearchGen++;
+    _stremioFetchGen++;
+    NuvioService.instance.cancelPending();
+    Engine.cancelPendingResolve();
+    DomainStreamProviderResolver.cancelAllPending();
+    _nuvioSub?.cancel();
+    _nuvioSub = null;
     _detailsHeroPlayFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
@@ -258,7 +269,6 @@ class _DetailsScreenState extends State<DetailsScreen>
     _jackett.dispose();
     _prowlarr.dispose();
     _linkResolver.dispose();
-    _nuvioSub?.cancel();
     super.dispose();
   }
 

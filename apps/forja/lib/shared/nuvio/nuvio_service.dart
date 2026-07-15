@@ -166,8 +166,13 @@ class NuvioService {
 
   int _scraperGeneration = 0;
 
-  /// Ignore in-flight [runOneScraper] / JS runtime work (e.g. user Cancel).
-  void cancelPending() => _scraperGeneration++;
+  /// Abort in-flight scrapers (details panel, player Source checks, etc.).
+  /// Bumps generation so Dart callers discard results, and tears down the
+  /// shared JS runtime's HTTP/timers so Xpass-style scrapers stop fetching.
+  void cancelPending() {
+    _scraperGeneration++;
+    NuvioRuntime.instance.abortPendingWork();
+  }
 
   Future<List<NuvioAddon>> listAddons() async {
     final prefs = await SharedPreferences.getInstance();
@@ -477,8 +482,9 @@ class NuvioService {
     int? season,
     int? episode,
   }) async {
+    final gen = _scraperGeneration;
     final addons = await listScrapingAddons();
-    if (addons.isEmpty) return [];
+    if (addons.isEmpty || gen != _scraperGeneration) return [];
     final futures = <Future<List<Map<String, dynamic>>>>[];
     for (final addon in addons) {
       for (final s in addon.scrapers) {
@@ -488,20 +494,21 @@ class NuvioService {
             !(type == 'tv' && s.supportedTypes.contains('series'))) {
           continue;
         }
-        futures.add(_runOne(addon, s, tmdbId, type, season, episode));
+        futures.add(_runOne(addon, s, tmdbId, type, season, episode, gen));
       }
     }
     if (futures.isEmpty) return [];
     final results = await Future.wait(futures);
+    if (gen != _scraperGeneration) return [];
     return results.expand((e) => e).toList();
   }
 
   /// Streaming variant — emits a [NuvioScraperResult] for every enabled
   /// scraper as soon as it finishes (or fails / times out, in which case
   /// `streams` is empty). The stream closes when every scraper has
-  /// reported. Cancelling the subscription does NOT abort in-flight
-  /// scrapers (the underlying JS engine is shared), but no further events
-  /// will be delivered.
+  /// reported. Call [cancelPending] to abort in-flight scrapers (HTTP +
+  /// JS timers); cancelling only the subscription stops UI updates but
+  /// used to leave scrapers running — that path now also honors generation.
   Stream<NuvioScraperResult> streamAll({
     required String tmdbId,
     required String type, // 'movie' or 'tv'
@@ -509,9 +516,11 @@ class NuvioService {
     int? episode,
   }) {
     final ctrl = StreamController<NuvioScraperResult>();
+    final gen = _scraperGeneration;
     () async {
       try {
         final addons = await listScrapingAddons();
+        if (gen != _scraperGeneration) return;
         final tasks = <Future<void>>[];
         for (final addon in addons) {
           for (final s in addon.scrapers) {
@@ -523,20 +532,21 @@ class NuvioService {
             }
             tasks.add(() async {
               final streams =
-                  await _runOne(addon, s, tmdbId, type, season, episode);
-              if (!ctrl.isClosed) {
-                ctrl.add(NuvioScraperResult(
-                  scraperId: s.id,
-                  scraperName: s.name,
-                  streams: streams,
-                ));
-              }
+                  await _runOne(addon, s, tmdbId, type, season, episode, gen);
+              if (gen != _scraperGeneration || ctrl.isClosed) return;
+              ctrl.add(NuvioScraperResult(
+                scraperId: s.id,
+                scraperName: s.name,
+                streams: streams,
+              ));
             }());
           }
         }
         await Future.wait(tasks);
       } catch (e, st) {
-        if (!ctrl.isClosed) ctrl.addError(e, st);
+        if (!ctrl.isClosed && gen == _scraperGeneration) {
+          ctrl.addError(e, st);
+        }
       } finally {
         if (!ctrl.isClosed) await ctrl.close();
       }
@@ -551,21 +561,26 @@ class NuvioService {
     String type,
     int? season,
     int? episode,
+    int gen,
   ) async {
     try {
+      if (gen != _scraperGeneration) return [];
       final code = await _loadScriptBody(addon, s);
-      if (code == null) return [];
+      if (gen != _scraperGeneration || code == null) return [];
       final rt = NuvioRuntime.instance;
       if (!rt.isLoaded(s.id)) {
         await rt.loadScraper(scraperId: s.id, code: code);
       }
+      if (gen != _scraperGeneration) return [];
       final raw = await rt.getStreams(
         scraperId: s.id,
         tmdbId: tmdbId,
         mediaType: type,
         season: season,
         episode: episode,
+        isCancelled: () => gen != _scraperGeneration,
       );
+      if (gen != _scraperGeneration) return [];
       return raw.map((m) {
         final headers = <String, String>{};
         final h = m['headers'];

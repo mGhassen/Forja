@@ -67,15 +67,19 @@ class NuvioRuntime {
   final Map<int, Completer<String>> _pendingResults = {};
 
   // --- per-fetch coordination --------------------------------------------
-  final Map<int, http.Client> _activeFetches = {};
+  // Generation bumped by [abortPendingWork] so late HTTP completions are
+  // dropped instead of feeding cancelled scrapers.
+  int _fetchGeneration = 0;
+  final Map<int, int> _fetchGens = {};
 
   // --- per-timer coordination --------------------------------------------
   int _timerSeq = 0;
   final Map<int, Timer> _activeTimers = {};
 
   // Single shared http client – reuses connections, much faster than
-  // spawning a fresh client per request.
-  final http.Client _http = http.Client();
+  // spawning a fresh client per request. Recreated on abort so in-flight
+  // requests fail immediately.
+  http.Client _http = http.Client();
 
   // ─── bootstrap ─────────────────────────────────────────────────────────
 
@@ -227,9 +231,16 @@ class NuvioRuntime {
           hRaw.forEach((k, v) => headers[k.toString()] = v.toString());
         }
         final body = (m['body'] ?? '').toString();
+        final gen = _fetchGeneration;
+        _fetchGens[id] = gen;
         // Fire and forget; the request runs on its own scheduling.
         unawaited(_dispatchFetch(
-            id: id, url: url, method: method, headers: headers, body: body));
+            id: id,
+            url: url,
+            method: method,
+            headers: headers,
+            body: body,
+            gen: gen));
       } catch (_) {}
       return null;
     });
@@ -434,6 +445,7 @@ class NuvioRuntime {
         stopwatch.elapsedMilliseconds < timeout.inMilliseconds) {
       if (isCancelled?.call() == true) {
         _pendingResults.remove(callId);
+        if (!completer.isCompleted) completer.complete('[]');
         debugPrint('[NuvioRuntime] $scraperId cancelled');
         return [];
       }
@@ -449,6 +461,7 @@ class NuvioRuntime {
     }
 
     final body = (await completer.future).trim();
+    if (isCancelled?.call() == true) return [];
     if (body.isEmpty || body == 'null' || body == 'undefined') return [];
     try {
       final decoded = jsonDecode(body);
@@ -463,19 +476,31 @@ class NuvioRuntime {
     }
   }
 
-  void dispose() {
+  /// Hard-stop in-flight scraper work: cancel timers, complete pending
+  /// captures empty, and recreate the HTTP client so open requests abort.
+  /// Called from [NuvioService.cancelPending] when the user leaves a title.
+  void abortPendingWork() {
+    _fetchGeneration++;
+    _fetchGens.clear();
     for (final t in _activeTimers.values) {
       try {
         t.cancel();
       } catch (_) {}
     }
     _activeTimers.clear();
-    for (final c in _activeFetches.values) {
-      try {
-        c.close();
-      } catch (_) {}
+    for (final c in _pendingResults.values) {
+      if (!c.isCompleted) c.complete('[]');
     }
-    _activeFetches.clear();
+    _pendingResults.clear();
+    try {
+      _http.close();
+    } catch (_) {}
+    _http = http.Client();
+    debugPrint('[NuvioRuntime] abortPendingWork');
+  }
+
+  void dispose() {
+    abortPendingWork();
     try {
       _http.close();
     } catch (_) {}
@@ -494,7 +519,12 @@ class NuvioRuntime {
     required String method,
     required Map<String, String> headers,
     required String body,
+    required int gen,
   }) async {
+    if (gen != _fetchGeneration) {
+      _fetchGens.remove(id);
+      return;
+    }
     Map<String, dynamic> envelope;
     try {
       // Default UA — many CDNs reject the empty/Dart UA.
@@ -516,7 +546,15 @@ class NuvioRuntime {
       final streamed = await _http
           .send(req)
           .timeout(const Duration(seconds: 25));
+      if (gen != _fetchGeneration) {
+        _fetchGens.remove(id);
+        return;
+      }
       final bytes = await streamed.stream.toBytes();
+      if (gen != _fetchGeneration) {
+        _fetchGens.remove(id);
+        return;
+      }
       String text;
       try {
         text = utf8.decode(bytes, allowMalformed: true);
@@ -539,6 +577,10 @@ class NuvioRuntime {
         'headers': respHeaders,
       };
     } catch (e) {
+      if (gen != _fetchGeneration) {
+        _fetchGens.remove(id);
+        return;
+      }
       envelope = {
         'ok': false,
         'status': 0,
@@ -548,6 +590,8 @@ class NuvioRuntime {
         'headers': <String, dynamic>{},
       };
     }
+    _fetchGens.remove(id);
+    if (gen != _fetchGeneration) return;
     _resolveFetch(id, envelope);
   }
 

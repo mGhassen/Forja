@@ -7,6 +7,7 @@ import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
+import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
@@ -226,6 +227,7 @@ abstract final class HostProviderAdapter {
     NuvioService.instance.cancelPending();
     Engine.cancelPendingResolve();
     unawaited(_extractor.cancel());
+    unawaited(KissKhExtractor.cancelAllPending());
   }
 
   static String _encodeResolveResult({

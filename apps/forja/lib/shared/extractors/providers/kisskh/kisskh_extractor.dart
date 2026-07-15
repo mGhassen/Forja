@@ -46,6 +46,16 @@ class KissKhExtractor {
   int _resolveGen = 0;
   Future<void> _resolveChain = Future<void>.value();
 
+  /// Last resolve that registered itself for [cancelAllPending].
+  static KissKhExtractor? _activeForCancel;
+
+  /// Abort any in-flight KissKh WebView extract (player quit / title change).
+  static Future<void> cancelAllPending() async {
+    final active = _activeForCancel;
+    if (active == null) return;
+    await active.cancel();
+  }
+
   static const _blockedHosts = <String>[
     'tickcounter.com',
     'google.com',
@@ -81,6 +91,7 @@ class KissKhExtractor {
     _resolveChain = gate.future;
     await cancel();
     await previous;
+    _activeForCancel = this;
     try {
       return await _resolveBody(
         dramaId: dramaId,
@@ -92,6 +103,9 @@ class KissKhExtractor {
         isCancelled: isCancelled,
       );
     } finally {
+      if (identical(_activeForCancel, this)) {
+        _activeForCancel = null;
+      }
       if (!gate.isCompleted) gate.complete();
     }
   }

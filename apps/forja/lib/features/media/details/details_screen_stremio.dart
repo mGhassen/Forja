@@ -15,24 +15,17 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   }
   /// Stops in-flight torrent / Stremio / Nuvio fetches on the details tab.
   void _cancelActiveSourceFetch() {
-    var changed = false;
-    if (_s._isSearching) {
-      _s._torrentSearchGen++;
-      _s._isSearching = false;
-      changed = true;
-    }
-    if (_s._isStremioFetching) {
-      _s._stremioFetchGen++;
-      _s._isStremioFetching = false;
-      changed = true;
-    }
-    if (_s._isNuvioFetching) {
-      NuvioService.instance.cancelPending();
-      _s._nuvioSub?.cancel();
-      _s._nuvioSub = null;
-      _s._isNuvioFetching = false;
-      changed = true;
-    }
+    final changed =
+        _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
+    _s._torrentSearchGen++;
+    _s._stremioFetchGen++;
+    Engine.cancelPendingResolve();
+    NuvioService.instance.cancelPending();
+    _s._nuvioSub?.cancel();
+    _s._nuvioSub = null;
+    _s._isSearching = false;
+    _s._isStremioFetching = false;
+    _s._isNuvioFetching = false;
     if (changed && mounted) setState(() {});
   }
 

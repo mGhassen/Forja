@@ -298,6 +298,7 @@ class DomainStreamProviderResolver {
   static void cancelAllPending() {
     PlaybackEngine.cancelAllPending();
     MiruroPipeSession.instance.cancelPending();
+    unawaited(KissKhExtractor.cancelAllPending());
   }
 }
 
