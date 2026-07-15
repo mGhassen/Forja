@@ -58,7 +58,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | KissKh catalog API | `crates/kisskh` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
 | Anime extractors (5) | `crates/anime/extractors/*` · `anime_extractor_json` | Deleted Dart extractors; `miruro_pipe_session.dart` stays host |
 | Live matches fetch | `crates/live-matches` · `live_matches_fetch_json` | `live_matches_models.dart` — playback/embed host only |
-| IPTV Reddit scraper | `crates/iptv/reddit_catalog` · `iptv_reddit_catalog_json` | `iptv_network.dart` — probe/session host |
+| IPTV Reddit scraper | `crates/iptv` (`reddit_catalog` + `portal_extract`) · `scrape_page` | Thin `IptvScraper` host glue |
 
 | Anime Anikoto resolve + direct embed | `crates/anime/resolve/*` · `anime_extractor_json` | `anime_service.dart` — orchestration + cache only |
 
@@ -144,7 +144,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 | Dart today | LOC | Target | Notes | Status |
 |------------|----:|--------|-------|--------|
-| `IptvScraper` (in `iptv_network.dart`) | ~650 | `iptv` | Reddit OAuth + paste/M3U link scrape | ✅ |
+| `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
 | `live_matches_models.dart` fetch fns | ~200 | `live-matches` | Streamed.pk + CDN APIs | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 

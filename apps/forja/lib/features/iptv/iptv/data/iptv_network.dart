@@ -458,7 +458,7 @@ class RedditCatalogCursor {
   const RedditCatalogCursor({this.subIdx = 0, this.after});
 }
 
-/// Decodes cursors produced by [_scrapeRedditCatalog]:
+/// Decodes Reddit catalog cursors (parity with Rust `parse_reddit_catalog_cursor`):
 ///   `reddit:<subIdx>:<token>` — current format
 ///   `reddit:<token>`          — legacy (sub 0)
 ///   `<token>`                 — legacy bare token (sub 0)
@@ -488,51 +488,17 @@ class IptvScraper {
   /// only until adult-host filtering / source quality is addressed.
   static const _xml2ScrapeEnabled = false;
 
+  /// Number of Reddit catalog subs scraped by the Rust engine.
   static const catalogSubCount = 4;
-  // Reddit OAuth + catalog fetch live in Rust (`iptv_reddit_catalog_json`).
-  static const _catalogSubs = ['IPTV_ZONENEW', 'FreeIPTV', 'iptvguru', 'IPTVfree'];
+
   static const _ua = 'Mozilla/5.0 (Linux; Android 11; Forja) '
       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
-  static const _pasteDomains = [
-    'paste.sh', 'pastebin.com', 'justpaste.it', 'controlc.com',
-    'pastes.dev', 'text.is', 'rentry.co',
-  ];
-
-  static final _b64 = RegExp(r'aHR0c[a-zA-Z0-9+/=]{10,}');
-  static final _rawPaste = RegExp(
-    r'https?://(?:paste\.sh|pastebin\.com|justpaste\.it|controlc\.com|pastes\.dev|text\.is|rentry\.co)/[a-zA-Z0-9#_=-]+',
-    caseSensitive: false,
-  );
-  static final _urlParam = RegExp(
-    r'''(https?://[^?\s"'<]+)\?(?:[^\s"'<]*?&)?(?:username|user)=([^&\s"'<]+)\s*&(?:password|pass)=([^&\s"'<]+)''',
-    caseSensitive: false,
-  );
-  // Label fallback for posts that don't expose a full /get.php?username=…&password=… URL.
-  // Accepts English ("Host/User/Pass"), Portuguese ("Usuário/Senha"), Spanish ("Usuario/Contraseña"),
-  // unicode smallcaps variants used by WTF-M3U scanners (Hᴏsᴛ / Usᴇʀ / Pᴀss / Usᴜᴀʀɪᴏ / Sᴇɴʜᴀ),
-  // and any combination of decorative separators (➢, ►, :, ., …, whitespace) between the label
-  // and the value. Trailing dots after the label (Raptor's "Host......:") are absorbed by `\W*`.
-  static final _label = RegExp(
-    r'''(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Real|URL|🔗|🌍|🌐)\W*?(https?://[^<\s"']+)[\s\S]{1,500}?(?:Username|Usu[áa]rio|Usuario|User|Us[ᴇe]r|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|👤)\W*?([^\s|<"'\n]+)[\s\S]{1,200}?(?:Password|Senha|Contrase[ñn]a|Pass|P[ᴀa]ss|S[ᴇe]nh[ᴀa]|🔑)\W*?([^\s|<"'\n]+)''',
-    caseSensitive: false,
-  );
-
-  static const _junkTokens = [
-    'type=m3u', 'output=ts', 'password=', 'username=', 'password', 'username',
-  ];
-
-  // ── GitHub XML2 dump source — curated portal lists, fetched FIRST. ──
-  // Pulled from https://github.com/akeotaseo/world_repo/tree/main/Updater_Matrix/XML2
-  // Each file is a plain-text dump of `http://host:port/get.php?username=…&password=…`
-  // URLs which `_extractPortals` already understands. We list the directory
-  // dynamically (so newly added files are picked up automatically) and fall
-  // back to the snapshot below if GitHub's API is unreachable / rate-limited.
+  // ── GitHub XML2 dump source (disabled via [_xml2ScrapeEnabled]). ──
   static const _xml2Base =
       'https://raw.githubusercontent.com/akeotaseo/world_repo/main/Updater_Matrix/XML2/';
   static const _xml2ListApi =
       'https://api.github.com/repos/akeotaseo/world_repo/contents/Updater_Matrix/XML2?ref=main';
-  // Snapshot fallback if the GitHub API call fails. Path-encoded for raw fetch.
   static const _xml2FallbackFiles = <String>[
     '25.txt',
     '71.txt',
@@ -549,8 +515,6 @@ class IptvScraper {
     '%7BAllTelegram%7D2.txt',
   ];
 
-  // Cached file list (paths are URI-component-encoded ready for raw fetch).
-  // Populated on first call, valid for [_xml2ListTtl].
   static List<String>? _xml2Files;
   static DateTime? _xml2FilesFetchedAt;
   static const _xml2ListTtl = Duration(hours: 6);
@@ -575,8 +539,6 @@ class IptvScraper {
       if (body != null) {
         final decoded = json.decode(body);
         if (decoded is List) {
-          // Collect (encoded-name, size) pairs so we can sort ascending —
-          // smaller files = fewer portals = faster first results for the user.
           final entries = <MapEntry<String, int>>[];
           for (final entry in decoded) {
             if (entry is! Map) continue;
@@ -584,8 +546,7 @@ class IptvScraper {
             final name = entry['name']?.toString();
             if (name == null || !name.toLowerCase().endsWith('.txt')) continue;
             final size =
-                int.tryParse('${entry['size'] ?? ''}') ?? 1 << 30; // unknown → last
-            // Path-encode each segment so spaces/brackets survive the raw URL.
+                int.tryParse('${entry['size'] ?? ''}') ?? 1 << 30;
             entries.add(MapEntry(Uri.encodeComponent(name), size));
           }
           if (entries.isNotEmpty) {
@@ -604,7 +565,6 @@ class IptvScraper {
     } catch (e) {
       debugPrint('[XML2] list failed: $e');
     }
-    // Fall back to snapshot — still cache so we don't hammer GitHub.
     _xml2Files = _xml2FallbackFiles;
     _xml2FilesFetchedAt = DateTime.now();
     debugPrint('[XML2] using fallback list (${_xml2FallbackFiles.length} files)');
@@ -616,9 +576,8 @@ class IptvScraper {
   ///   `'reddit:<sub>:<tok>'` → Reddit pagination
   ///   `'xml2:N'`             → XML2 dump at index N
   ///
-  /// Default: Reddit catalog only ([_xml2ScrapeEnabled] off). When XML2 is
-  /// re-enabled, exhausted Reddit hands off to `xml2:0`. Pass [source] to lock
-  /// to one backend.
+  /// Reddit fetch + portal extract + paste deep-links run in Rust
+  /// (`iptv_reddit_catalog_json` action `scrape_page`).
   static Future<ScrapePage> scrapeCatalogPage({
     int maxResults = 50,
     String? after,
@@ -651,7 +610,6 @@ class IptvScraper {
       return _scrapeRedditCatalog(maxResults: maxResults, after: after);
     }
 
-    // Unified: Reddit first, then XML2.
     final reddit = await _scrapeRedditCatalog(
       maxResults: maxResults,
       after: after,
@@ -666,7 +624,6 @@ class IptvScraper {
     if (files.isEmpty) {
       return ScrapePage(portals: reddit.portals, nextAfter: null);
     }
-    // Hand off to XML2 on the next Get-More / page fetch.
     return ScrapePage(portals: reddit.portals, nextAfter: 'xml2:0');
   }
 
@@ -699,357 +656,69 @@ class IptvScraper {
       return ScrapePage(portals: const [], nextAfter: next);
     }
 
-    final extracted = _extractPortals(body, 'XML2/$pretty');
+    final extracted = await _extractPortalsEngine(body, 'XML2/$pretty');
     debugPrint('[XML2]   $pretty → ${extracted.length} portals');
     return ScrapePage(portals: extracted, nextAfter: next);
   }
 
-  static Future<ScrapePage> _scrapeRedditCatalog(
-      {int maxResults = 50, String? after}) async {
-    final out = <String, IptvPortal>{};
-
-    // Cursor format: 'reddit:<subIdx>:<token>' or legacy 'reddit:<token>'.
-    final cursor = parseRedditCatalogCursor(after);
-    var subIdx = cursor.subIdx;
-    var redditAfter = cursor.after;
-    if (subIdx >= _catalogSubs.length) subIdx = 0;
-    final currentSub = _catalogSubs[subIdx];
-
-    // ── Try OAuth2 JSON API first (100 posts/page, unlimited pagination) ──
-    final catalogJson = await _fetchCatalogOAuth(
-        sub: currentSub, after: redditAfter);
-    if (catalogJson != null) {
-      Map<String, dynamic>? data;
-      try {
-        data = (json.decode(catalogJson) as Map<String, dynamic>)['data']
-            as Map<String, dynamic>?;
-      } catch (e) {
-        debugPrint('[Catalog] JSON parse failed: $e');
+  /// Reddit catalog page — fetch, parse, deep-link follow, extract in Rust.
+  static Future<ScrapePage> _scrapeRedditCatalog({
+    int maxResults = 50,
+    String? after,
+  }) async {
+    debugPrint('[Catalog] scrape_page after=$after max=$maxResults');
+    try {
+      final raw = await runIptvRedditCatalogJson(
+        jsonEncode({
+          'action': 'scrape_page',
+          'max_results': maxResults,
+          if (after != null && after.isNotEmpty) 'after': after,
+        }),
+      );
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) {
+        debugPrint('[Catalog] scrape_page error: ${parsed['error']}');
+        return const ScrapePage(portals: [], nextAfter: null);
       }
-      if (data != null) {
-        final posts = data['children'] as List? ?? [];
-        final nextAfterRaw = data['after']?.toString();
-        final hasMore = nextAfterRaw != null &&
-            nextAfterRaw.isNotEmpty &&
-            nextAfterRaw != 'null';
-        // Build next cursor: same sub with pagination, or move to next sub.
-        String? nextAfter;
-        if (hasMore) {
-          nextAfter = 'reddit:$subIdx:$nextAfterRaw';
-        } else if (subIdx + 1 < _catalogSubs.length) {
-          nextAfter = 'reddit:${subIdx + 1}:';
-        }
-        debugPrint(
-            '[Catalog] OAuth r/$currentSub: ${posts.length} posts '
-            '(after=$redditAfter, next=$nextAfter)');
-
-        _processPosts(posts, out, maxResults);
-
-        // Follow deep links.
-        await _processDeepLinks(posts, out, maxResults);
-
-        debugPrint('[Catalog] DONE — ${out.length} unique portals');
-        return ScrapePage(portals: out.values.toList(), nextAfter: nextAfter);
-      }
-    }
-
-    // ── Fallback: RSS (25 posts, limited pagination) ──
-    debugPrint('[Catalog] OAuth failed, falling back to RSS');
-    final rssBody = await _fetchCatalogRss(sub: currentSub, after: redditAfter);
-    if (rssBody == null) {
-      debugPrint('[Catalog] RSS also failed');
-      // Try next sub if available.
-      if (subIdx + 1 < _catalogSubs.length) {
-        return ScrapePage(
-            portals: const [], nextAfter: 'reddit:${subIdx + 1}:');
-      }
+      final portals = _portalsFromJson(parsed['portals']);
+      final nextRaw = parsed['next_after']?.toString();
+      final nextAfter =
+          (nextRaw == null || nextRaw.isEmpty || nextRaw == 'null')
+              ? null
+              : nextRaw;
+      debugPrint(
+          '[Catalog] DONE — ${portals.length} portals next=$nextAfter');
+      return ScrapePage(portals: portals, nextAfter: nextAfter);
+    } catch (e) {
+      debugPrint('[Catalog] scrape_page failed: $e');
       return const ScrapePage(portals: [], nextAfter: null);
     }
-
-    final entryRe = RegExp(r'<entry>(.*?)</entry>', dotAll: true);
-    final titleRe = RegExp(r'<title[^>]*>(.*?)</title>', dotAll: true);
-    final contentRe = RegExp(r'<content[^>]*>(.*?)</content>', dotAll: true);
-    final idRe = RegExp(r'<id>(t3_[^<]+)</id>');
-
-    final entries = entryRe.allMatches(rssBody).toList();
-    final postIds = idRe.allMatches(rssBody).map((m) => m.group(1)!).toList();
-    final lastPostId = postIds.isNotEmpty ? postIds.last : null;
-    String? nextAfter;
-    if (lastPostId != null && entries.length >= 20) {
-      nextAfter = 'reddit:$subIdx:$lastPostId';
-    } else if (subIdx + 1 < _catalogSubs.length) {
-      nextAfter = 'reddit:${subIdx + 1}:';
-    }
-    debugPrint('[Catalog] RSS r/$currentSub: ${entries.length} entries');
-
-    var postIdx = 0;
-    for (final entry in entries) {
-      postIdx++;
-      if (out.length >= maxResults) break;
-      final entryText = entry.group(1)!;
-      final titleMatch = titleRe.firstMatch(entryText);
-      final title = _decodeXmlEntities(titleMatch?.group(1) ?? '');
-      final contentMatch = contentRe.firstMatch(entryText);
-      final rawContent = _decodeXmlEntities(contentMatch?.group(1) ?? '');
-      final body = '$title ${rawContent.replaceAll(
-        RegExp(r'<(?:p|br|div|li|h\d)[^>]*>', caseSensitive: false),
-        '\n',
-      ).replaceAll(RegExp(r'<[^>]+>'), ' ').replaceAll(RegExp(r'\s+'), ' ')}'
-          .trim();
-      _processPostBody(body, title, postIdx, out, maxResults);
-    }
-
-    debugPrint('[Catalog] DONE — ${out.length} unique portals');
-    return ScrapePage(portals: out.values.toList(), nextAfter: nextAfter);
   }
 
-  /// Extract portals from OAuth2 JSON posts.
-  static void _processPosts(
-      List posts, Map<String, IptvPortal> out, int maxResults) {
-    var postIdx = 0;
-    for (final post in posts) {
-      postIdx++;
-      if (out.length >= maxResults) break;
-      final pdata =
-          ((post as Map<String, dynamic>)['data']) as Map<String, dynamic>?;
-      if (pdata == null) continue;
-      final title = pdata['title']?.toString() ?? '';
-      final body = '$title ${pdata['selftext']?.toString() ?? ''}'.trim();
-      _processPostBody(body, title, postIdx, out, maxResults);
-    }
-  }
-
-  /// Process a single post body: extract direct portals + collect deep links.
-  static void _processPostBody(String body, String title, int postIdx,
-      Map<String, IptvPortal> out, int maxResults) {
-    debugPrint('[Catalog] post[$postIdx] '
-        "'${title.length > 60 ? '${title.substring(0, 60)}…' : title}'"
-        ' bodyLen=${body.length}');
-
-    // 1. Direct extraction.
-    final direct = _extractPortals(body, 'Catalog');
-    if (direct.isNotEmpty) {
-      debugPrint('[Catalog]   direct: ${direct.length}');
-    }
-    for (final p in direct) {
-      _addPortal(out, p, maxResults);
-    }
-  }
-
-  /// Follow base64 and paste deep links from OAuth2 JSON posts.
-  static Future<void> _processDeepLinks(
-      List posts, Map<String, IptvPortal> out, int maxResults) async {
-    for (final post in posts) {
-      if (out.length >= maxResults) break;
-      final pdata =
-          ((post as Map<String, dynamic>)['data']) as Map<String, dynamic>?;
-      if (pdata == null) continue;
-      final title = pdata['title']?.toString() ?? '';
-      final body = '$title ${pdata['selftext']?.toString() ?? ''}'.trim();
-
-      final deepLinks = <String>[];
-      for (final m in _b64.allMatches(body)) {
-        try {
-          final decoded = utf8.decode(base64.decode(m.group(0)!),
-              allowMalformed: true);
-          if (decoded.startsWith('http') && _isPasteSite(decoded)) {
-            deepLinks.add(decoded);
-          } else if (!decoded.startsWith('http') && decoded.contains(':')) {
-            _extractPortals(decoded, 'Catalog (decoded)')
-                .forEach((p) => _addPortal(out, p, maxResults));
-          }
-        } catch (_) {}
-      }
-      for (final m in _rawPaste.allMatches(body)) {
-        deepLinks.add(m.group(0)!);
-      }
-      final unique = deepLinks.toSet().take(4);
-      for (final dl in unique) {
-        if (out.length >= maxResults) break;
-        debugPrint('[Catalog]   deep: ${_redact(dl)}');
-        final text = await _fetchPaste(dl);
-        if (text == null || text.isEmpty) {
-          debugPrint('[Catalog]     → empty');
-          continue;
-        }
-        final found = _extractPortals(text, 'Catalog (deep)');
-        debugPrint(
-            '[Catalog]     → ${text.length} chars, ${found.length} portals');
-        for (final p in found) {
-          _addPortal(out, p, maxResults);
-        }
-      }
-    }
-  }
-
-  static void _addPortal(
-      Map<String, IptvPortal> sink, IptvPortal p, int max) {
-    if (sink.length >= max) return;
-    sink.putIfAbsent(p.key, () => p);
-  }
-
-  static List<IptvPortal> _extractPortals(String rawText, String source) {
-    if (rawText.length < 15 || _isJunkCode(rawText)) return const [];
-    final cleaned = rawText
-        .replaceAll('&amp;', '&')
-        .replaceAll('&quot;', '"')
-        .replaceAll(
-          RegExp(r'<(?:p|br|div|li|h\d)[^>]*>', caseSensitive: false),
-          '\n',
-        )
-        .replaceAll(RegExp(r'<[^>]+>'), '');
-
-    final acc = <String, IptvPortal>{};
-    for (final m in _urlParam.allMatches(cleaned)) {
-      _finalize(acc, m.group(1)!, m.group(2)!, m.group(3)!, source);
-    }
-    for (final m in _label.allMatches(cleaned)) {
-      _finalize(acc, m.group(1)!, m.group(2)!, m.group(3)!, source);
-    }
-    return acc.values.toList();
-  }
-
-  static bool _isJunkCode(String text) {
-    const markers = [
-      'Array.isArray', 'prototype.', 'function(', 'var ', 'const ',
-      'let ', 'return!', 'void ', '.message}', 'window.', 'document.',
-    ];
-    var hits = 0;
-    for (final m in markers) {
-      if (text.contains(m)) hits++;
-      if (hits >= 2) return true;
-    }
-    return false;
-  }
-
-  static void _finalize(Map<String, IptvPortal> acc, String rawUrl,
-      String rawUser, String rawPass, String source) {
-    final url = _cleanPortalUrl(rawUrl);
-    final user = _cleanCred(rawUser);
-    final pass = _cleanCred(rawPass);
-    if (url.isEmpty || user.length < 3 || pass.length < 3) return;
-    if (user.contains('http') || pass.contains('http')) return;
-    final lu = user.toLowerCase();
-    final lp = pass.toLowerCase();
-    for (final j in _junkTokens) {
-      if (lu.contains(j) || lp.contains(j)) return;
-    }
-    final p = IptvPortal(url: url, username: user, password: pass, source: source);
-    acc.putIfAbsent(p.key, () => p);
-  }
-
-  static String _cleanPortalUrl(String raw) {
-    var clean = raw.replaceAll(RegExp(r'\s+'), '');
-    final qIdx = clean.indexOf('?');
-    if (qIdx >= 0) clean = clean.substring(0, qIdx);
-    clean = clean.trim();
-    if (clean.contains('@')) {
-      clean = 'http://${clean.substring(clean.lastIndexOf('@') + 1)}';
-    }
-    clean = clean.replaceAll(
-      RegExp(
-        r'/(?:get|live|portal|c|index|playlist|player_api|xmltv|index\.php|portal\.php)\.php$',
-        caseSensitive: false,
-      ),
-      '',
-    );
-    while (clean.endsWith('/')) {
-      clean = clean.substring(0, clean.length - 1);
-    }
-    if (!clean.startsWith('http')) clean = 'http://$clean';
-    return clean;
-  }
-
-  static String _cleanCred(String raw) {
-    var s = raw;
-    while (s.startsWith('=')) {
-      s = s.substring(1);
-    }
-    final parts = s.split(RegExp(r'[ \n&?]'));
-    return parts.isEmpty ? '' : parts.first.trim();
-  }
-
-  static bool _isPasteSite(String url) =>
-      _pasteDomains.any((d) => url.contains(d));
-
-  static Future<String?> _fetchPaste(String url) async {
-    try {
-      final raw = await runIptvRedditCatalogJson(
-        jsonEncode({'action': 'fetch_paste', 'url': url}),
-      );
-      final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) return null;
-      final body = parsed['body'] as String?;
-      if (body == null || body.isEmpty) return null;
-      return body;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Strip a URL down to host + masked path so it doesn't appear in user logs.
-  static String _redact(String url) {
-    try {
-      final u = Uri.parse(url);
-      final host = u.host.isEmpty ? '?' : u.host;
-      final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
-      final path = segs.isEmpty
-          ? ''
-          : '/${segs.map((s) => s.length <= 2 ? s : '${s.substring(0, 2)}***').join('/')}';
-      return '$host$path';
-    } catch (_) {
-      return '<url>';
-    }
-  }
-
-  /// Decode common XML/HTML entities in RSS content.
-  static String _decodeXmlEntities(String s) => s
-      .replaceAll('&amp;', '&')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&quot;', '"')
-      .replaceAll('&#39;', "'")
-      .replaceAll('&#32;', ' ');
-
-  /// Fetches subreddit listing via OAuth2 JSON API (Rust engine).
-  static Future<String?> _fetchCatalogOAuth(
-      {required String sub, String? after}) async {
-    debugPrint('[Catalog] OAuth GET r/$sub (after=$after)');
+  static Future<List<IptvPortal>> _extractPortalsEngine(
+      String text, String source) async {
     try {
       final raw = await runIptvRedditCatalogJson(
         jsonEncode({
-          'action': 'oauth_listing',
-          'sub': sub,
-          if (after != null && after.isNotEmpty) 'after': after,
+          'action': 'extract_portals',
+          'text': text,
+          'source': source,
         }),
       );
       final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) return null;
-      return parsed['body'] as String?;
-    } catch (e) {
-      debugPrint('[Catalog]   OAuth failed: $e');
-      return null;
+      if (parsed.containsKey('error')) return const [];
+      return _portalsFromJson(parsed['portals']);
+    } catch (_) {
+      return const [];
     }
   }
 
-  /// Fetches subreddit listing as RSS (Atom). Fallback when OAuth fails.
-  static Future<String?> _fetchCatalogRss(
-      {required String sub, String? after}) async {
-    debugPrint('[Catalog] GET RSS r/$sub (after=$after)');
-    try {
-      final raw = await runIptvRedditCatalogJson(
-        jsonEncode({
-          'action': 'rss_listing',
-          'sub': sub,
-          if (after != null && after.isNotEmpty) 'after': after,
-        }),
-      );
-      final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) return null;
-      return parsed['body'] as String?;
-    } catch (e) {
-      debugPrint('[Catalog]   RSS failed: $e');
-      return null;
-    }
+  static List<IptvPortal> _portalsFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((m) => IptvPortal.fromJson(Map<String, dynamic>.from(m)))
+        .where((p) => p.url.isNotEmpty && p.username.isNotEmpty)
+        .toList();
   }
 }

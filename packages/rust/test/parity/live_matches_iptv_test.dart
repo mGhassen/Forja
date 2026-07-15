@@ -40,4 +40,20 @@ void main() {
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     expect(parsed['error'], contains('sub required'));
   });
+
+  test('iptvRedditCatalogJson extract_portals returns portals', () {
+    final raw = RustLib.instance.iptvRedditCatalogJson(
+      jsonEncode({
+        'action': 'extract_portals',
+        'text':
+            'http://panel.example:8080/get.php?username=alice99&password=secret99',
+        'source': 'Catalog',
+      }),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    final portals = parsed['portals'] as List;
+    expect(portals, isNotEmpty);
+    expect(portals.first['username'], 'alice99');
+    expect(portals.first['url'], 'http://panel.example:8080');
+  });
 }

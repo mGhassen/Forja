@@ -170,13 +170,13 @@ Nuvio JS host lives in **`apps/forja/lib/shared/nuvio/`** (`nuvio_runtime.dart`,
 
 | Location | LOC | What |
 |----------|-----|------|
-| [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) | ~1,100 | Catalog scraper orchestration; Xtream HTTP via Rust FFI |
+| [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) | thin | Xtream client + scrape UI glue; Reddit scrape via Rust `scrape_page` |
 | [`m3u_store.dart`](../apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart) | small | M3U fetch via Rust `httpGetJson` |
 | [`pastesh_decryptor.dart`](../apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart) | small | HTTP + decrypt via Rust FFI |
 | [`details_screen.dart`](../apps/forja/lib/features/home/details_screen.dart) | — | Direct `Engine.sortTorrents` |
 | Player screens | — | Inline provider resolution (webstreamr, nuvio, 111477, videasy) |
 
-**Observation:** IPTV catalog discovery (Reddit/GitHub portals) remains Dart orchestration — wave 2 or permanent host adapter.
+**Observation:** IPTV Reddit catalog discovery (fetch + portal extract + paste deep links) is engine (`crates/iptv`). Dart keeps Scrape UI / cancel / XML2 stub (disabled).
 
 ---
 
@@ -186,7 +186,8 @@ Nuvio JS host lives in **`apps/forja/lib/shared/nuvio/`** (`nuvio_runtime.dart`,
 |------------|------|-------------------|-------|
 | WebStreamr full resolve | `webstreamr_get_streams_json` fetches | Thin Dart wrapper + isolate | Rust does HTTP |
 | Stremio | `stremio_http_get_json` | `StremioService` uses FFI | ✅ unified |
-| IPTV Xtream HTTP | `http_get_json` FFI | `iptv_network` calls FFI | ✅ unified; catalog scraper still Dart |
+| IPTV Xtream HTTP | `http_get_json` FFI | `iptv_network` calls FFI | ✅ unified |
+| IPTV Reddit catalog scrape | `iptv_reddit_catalog_json` `scrape_page` | thin `IptvScraper` wrapper | ✅ unified (issue 063) |
 | IPTV probe | `iptv_probe_stream_json` | thin wrapper | ✅ unified |
 | Torrent search | `search_torrents_json` | Jackett / Prowlarr separate in api | Two indexer systems |
 | HLS qualities | `parse_hls_master_json` | Dart fetches master playlist first | Split fetch / parse |
