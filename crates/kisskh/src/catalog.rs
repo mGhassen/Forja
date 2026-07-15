@@ -196,7 +196,7 @@ pub fn episode_page_url(
     };
     format!(
         "{}/Drama/{slug}/Episode-{ep_label}?id={drama_id}&ep={episode_id}&page=0&pageSize=100",
-        http::base_url()
+        http::current_base_url()
     )
 }
 
@@ -224,21 +224,20 @@ pub fn match_resume_episode(
 }
 
 pub fn get_home() -> Result<KdramaHomeFeed, String> {
-    let api = http::api_base();
-    let urls = [
-        format!("{api}/DramaList/Show"),
-        format!("{api}/DramaList/LastUpdate?ispc=false"),
-        format!("{api}/DramaList/MostView"),
-        format!("{api}/DramaList/MostSearch?ispc=false"),
-        format!("{api}/DramaList/TopRating?ispc=false"),
-        format!("{api}/DramaList/Upcoming?ispc=false"),
-        format!("{api}/DramaList/Animate?ispc=false"),
+    let paths = [
+        "/DramaList/Show",
+        "/DramaList/LastUpdate?ispc=false",
+        "/DramaList/MostView",
+        "/DramaList/MostSearch?ispc=false",
+        "/DramaList/TopRating?ispc=false",
+        "/DramaList/Upcoming?ispc=false",
+        "/DramaList/Animate?ispc=false",
     ];
 
     let bodies: Result<Vec<String>, String> = std::thread::scope(|scope| {
-        let handles: Vec<_> = urls
+        let handles: Vec<_> = paths
             .iter()
-            .map(|url| scope.spawn(|| http::get(url, true)))
+            .map(|path| scope.spawn(|| http::get_api(path, true)))
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()
     });
@@ -261,11 +260,8 @@ pub fn search(query: &str) -> Result<Vec<KdramaCard>, String> {
         return Ok(vec![]);
     }
     let encoded = urlencoding::encode(q);
-    let url = format!(
-        "{}/DramaList/Search?q={encoded}&type=0",
-        http::api_base()
-    );
-    let body = http::get(&url, false)?;
+    let path = format!("/DramaList/Search?q={encoded}&type=0");
+    let body = http::get_api(&path, false)?;
     Ok(parse_card_list(&body))
 }
 
@@ -278,11 +274,10 @@ pub fn explore(
     order: i32,
     page_size: i32,
 ) -> Result<KdramaExplorePage, String> {
-    let url = format!(
-        "{}/DramaList/List?page={page}&type={type_filter}&sub={sub}&country={country}&status={status}&order={order}&pageSize={page_size}",
-        http::api_base()
+    let path = format!(
+        "/DramaList/List?page={page}&type={type_filter}&sub={sub}&country={country}&status={status}&order={order}&pageSize={page_size}"
     );
-    let body = http::get(&url, true)?;
+    let body = http::get_api(&path, true)?;
     let raw: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
     let Some(obj) = raw.as_object() else {
         return Ok(KdramaExplorePage {
@@ -312,8 +307,8 @@ pub fn explore(
 }
 
 pub fn get_details(id: i32) -> Result<KdramaDetails, String> {
-    let url = format!("{}/DramaList/Drama/{id}?isq=false", http::api_base());
-    let body = http::get(&url, true)?;
+    let path = format!("/DramaList/Drama/{id}?isq=false");
+    let body = http::get_api(&path, true)?;
     let raw: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
     let obj = raw.as_object().ok_or_else(|| "details must be object".to_string())?;
 

@@ -42,6 +42,8 @@ struct CatalogRequest {
     episode_id: i32,
     #[serde(default)]
     title: String,
+    #[serde(default)]
+    base_url: String,
 }
 
 fn default_page() -> i32 {
@@ -130,6 +132,17 @@ pub fn catalog_json(request_json: &str) -> String {
             let enriched = enrich_home_feed(feed);
             catalog::ok_json(&enriched)
         }
+        "resolve_base_url" => match http::select_base_url() {
+            Ok(base_url) => catalog::ok_json(&json!({
+                "base_url": base_url,
+                "mirror_urls": http::MIRROR_BASE_URLS,
+            })),
+            Err(e) => catalog::error_json(&e),
+        },
+        "activate_base_url" => match http::activate_base_url(&req.base_url) {
+            Ok(base_url) => catalog::ok_json(&json!({ "base_url": base_url })),
+            Err(e) => catalog::error_json(&e),
+        },
         "slugify" => catalog::ok_json(&json!({ "slug": slugify(&req.title) })),
         "episode_page_url" => catalog::ok_json(&json!({
             "url": episode_page_url(req.id, &req.title, req.episode_id, req.episode_number)

@@ -24,8 +24,9 @@ Tap **Asian Drama** in the navigation bar.
 
 - KissKH availability can vary by region and site status
 - Watch history is stored per drama in this hub
-- Stream resolve uses a fresh (no HTTP cache) headless browser so kisskh can sign the stream key — first open can take up to ~45s; if the key request stays silent, Forja hard-reloads the page with a cache-bust (not a soft refresh) and tries again — that is recovery when the player is slow, not a kisskh.co outage
-- Playback always sends `Referer`/`Origin` for `kisskh.co` (including when reopening a cached stream URL on `streamingcdn` hosts)
+- Forja checks the API-compatible KissKH mirrors (`.co`, `.nl`, `.ovh`, `.la`, `.do`) and keeps the first working one; unrelated sites using the KissKH name are not used
+- Stream resolve uses a fresh (no HTTP cache) headless browser so KissKH can sign the stream key — if one mirror stays silent for eight seconds, Forja moves to the next verified mirror instead of waiting on the same page for the full timeout
+- Playback and subtitle requests send the `Referer`/`Origin` of the mirror that produced the stream (including cached URLs on `streamingcdn` hosts)
 
 ## Related
 

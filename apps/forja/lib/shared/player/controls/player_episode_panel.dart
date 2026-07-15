@@ -465,7 +465,7 @@ class _SeasonDropdown extends StatelessWidget {
         return MenuItemButton(
           onPressed: () => onSelected(n),
           style: shellMenuItemStyle(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ).merge(ButtonStyle(
             minimumSize: const WidgetStatePropertyAll(Size(156, 0)),
             foregroundColor: WidgetStatePropertyAll(

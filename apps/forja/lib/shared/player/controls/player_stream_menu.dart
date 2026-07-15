@@ -93,8 +93,10 @@ class PlayerStreamMenu {
     ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier,
     PlayerStatusController? statusController,
     required PlayerStreamMenuState Function() readState,
-    required Future<List<StreamSource>?> Function(String providerId)
-        onLoadProvider,
+    required Future<List<StreamSource>?> Function(
+      String providerId, {
+      bool forceRefresh,
+    }) onLoadProvider,
     required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
     required Future<void> Function(StreamSource source, int index)

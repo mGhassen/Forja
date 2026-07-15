@@ -69,10 +69,10 @@ class KissKhExtractor {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-  static Map<String, String> playbackHeaders() => {
+  static Map<String, String> playbackHeaders(String baseUrl) => {
     'User-Agent': _userAgent,
-    'Referer': '${KissKhService.baseUrl}/',
-    'Origin': KissKhService.baseUrl,
+    'Referer': '${baseUrl.replaceFirst(RegExp(r'/$'), '')}/',
+    'Origin': baseUrl.replaceFirst(RegExp(r'/$'), ''),
   };
 
   Future<KissKhStream?> resolve({
@@ -115,23 +115,23 @@ class KissKhExtractor {
     return '$pageUrl${sep}_forja=${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  static Map<String, String> _pageHeaders() => {
+  static Map<String, String> _pageHeaders(String baseUrl) => {
         'User-Agent': _userAgent,
         'Accept':
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': '${KissKhService.baseUrl}/',
+        'Referer': '${baseUrl.replaceFirst(RegExp(r'/$'), '')}/',
         'Upgrade-Insecure-Requests': '1',
         // Bypass intermediary HTTP caches for the SPA shell.
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
       };
 
-  Future<void> _purgeKissKhSiteData() async {
+  Future<void> _purgeKissKhSiteData(String baseUrl) async {
     try {
       final manager = CookieManager.instance();
-      await manager.deleteCookies(url: WebUri(KissKhService.baseUrl));
-      await manager.deleteCookies(url: WebUri('${KissKhService.baseUrl}/'));
+      await manager.deleteCookies(url: WebUri(baseUrl));
+      await manager.deleteCookies(url: WebUri('$baseUrl/'));
     } catch (e) {
       debugPrint('[KissKhExtractor] cookie purge failed: $e');
     }
@@ -140,13 +140,15 @@ class KissKhExtractor {
   Future<void> _hardNavigate(
     InAppWebViewController ctrl,
     String pageUrl,
+    String baseUrl,
   ) async {
     final url = _cacheBusted(pageUrl);
     if (kDebugMode) {
       debugPrint('[KissKhExtractor] hard navigate $url');
     }
+    await _purgeKissKhSiteData(baseUrl);
     await ctrl.loadUrl(
-      urlRequest: URLRequest(url: WebUri(url), headers: _pageHeaders()),
+      urlRequest: URLRequest(url: WebUri(url), headers: _pageHeaders(baseUrl)),
     );
   }
 
@@ -164,34 +166,43 @@ class KissKhExtractor {
     bool cancelled() =>
         _cancelled || gen != _resolveGen || (isCancelled?.call() ?? false);
 
-    onProgress?.call('init', 'Opening kisskh page…');
-
-    final pageUrl = KissKhService.episodePageUrl(
-      dramaId: dramaId,
-      title: dramaTitle,
-      episodeId: episodeId,
-      episodeNumber: episodeNumber,
-    );
-    final openUrl = _cacheBusted(pageUrl);
-
     _apiCompleter = Completer<Map<String, dynamic>>();
     _subsBuffer.clear();
-    var recoveries = 0;
-    Timer? softReloadTimer;
-    Timer? secondRecoveryTimer;
+    late String baseUrl;
+    late List<String> mirrorUrls;
+    late String pageUrl;
+    late String openUrl;
+    var mirrorIndex = 0;
+    var recoveryInFlight = false;
+    Timer? recoveryTimer;
     Timer? nudgeTimer;
 
     try {
+      onProgress?.call('init', 'Checking kisskh mirrors…');
+      final endpoint = await KissKhService.resolveEndpoint();
+      if (cancelled()) return null;
+      baseUrl = endpoint.selected;
+      mirrorUrls = endpoint.mirrors;
+      pageUrl = KissKhService.episodePageUrl(
+        baseUrl: baseUrl,
+        dramaId: dramaId,
+        title: dramaTitle,
+        episodeId: episodeId,
+        episodeNumber: episodeNumber,
+      );
+      openUrl = _cacheBusted(pageUrl);
+      onProgress?.call('init', 'Opening kisskh page…');
+
       // Incognito + no HTTP cache alone is not enough on WKWebView: a plain
       // reload() can reuse the SPA shell / skip UserScript reinjection, so the
       // Episode/*.png kkey request never appears (stuck on "Waiting for stream
       // key…"). Cache-bust + hard loadUrl + kisskh cookie purge force a live
       // request.
-      await _purgeKissKhSiteData();
+      await _purgeKissKhSiteData(baseUrl);
       _web = ForjaHeadlessInAppWebView(
         initialUrlRequest: URLRequest(
           url: WebUri(openUrl),
-          headers: _pageHeaders(),
+          headers: _pageHeaders(baseUrl),
         ),
         initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
@@ -296,33 +307,36 @@ class KissKhExtractor {
       if (cancelled()) return null;
 
       // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
-      // long after load-stop. Wait only for the stream API.
-      // Prefer loadUrl(+cache-bust) over reload() so UserScripts reinstall.
-      softReloadTimer = Timer(const Duration(seconds: 12), () {
-        if (cancelled()) return;
+      // long after load-stop. Give each API-compatible mirror an 8s window,
+      // then hard-navigate to the next mirror so a silent SPA cannot consume
+      // the entire 45s extract timeout.
+      recoveryTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
+        if (cancelled() || recoveryInFlight) return;
         final c = _apiCompleter;
         if (c == null || c.isCompleted) return;
         final ctrl = _controller;
-        if (ctrl == null || recoveries >= 2) return;
-        recoveries++;
-        debugPrint(
-          '[KissKhExtractor] no Episode API in 12s — hard navigate once',
+        if (ctrl == null || mirrorIndex + 1 >= mirrorUrls.length) return;
+
+        recoveryInFlight = true;
+        mirrorIndex++;
+        baseUrl = mirrorUrls[mirrorIndex];
+        pageUrl = KissKhService.episodePageUrl(
+          baseUrl: baseUrl,
+          dramaId: dramaId,
+          title: dramaTitle,
+          episodeId: episodeId,
+          episodeNumber: episodeNumber,
         );
-        onProgress?.call('retry', 'Refreshing kisskh page…');
-        unawaited(_hardNavigate(ctrl, pageUrl));
-      });
-      secondRecoveryTimer = Timer(const Duration(seconds: 24), () {
-        if (cancelled()) return;
-        final c = _apiCompleter;
-        if (c == null || c.isCompleted) return;
-        final ctrl = _controller;
-        if (ctrl == null || recoveries >= 2) return;
-        recoveries++;
         debugPrint(
-          '[KissKhExtractor] no Episode API in 24s — hard navigate again',
+          '[KissKhExtractor] no Episode API after ${timer.tick * 8}s — '
+          'trying mirror $baseUrl',
         );
-        onProgress?.call('retry', 'Refreshing kisskh page…');
-        unawaited(_hardNavigate(ctrl, pageUrl));
+        onProgress?.call('retry', 'Trying another kisskh mirror…');
+        unawaited(
+          _hardNavigate(ctrl, pageUrl, baseUrl).whenComplete(() {
+            recoveryInFlight = false;
+          }),
+        );
       });
 
       nudgeTimer = Timer.periodic(const Duration(seconds: 2), (_) {
@@ -346,6 +360,11 @@ class KissKhExtractor {
       );
       // Empty map is the cancel sentinel — not a real Episode payload.
       if (cancelled() || api.isEmpty) return null;
+      try {
+        await KissKhService.activateEndpoint(baseUrl);
+      } catch (e) {
+        debugPrint('[KissKhExtractor] mirror activation failed: $e');
+      }
 
       // Brief grace so Sub/*.json can land after Video.
       if (_subsBuffer.isEmpty) {
@@ -355,7 +374,7 @@ class KissKhExtractor {
 
       var streamUrl = _pickPlayableUrl(api);
       var streamType = _streamTypeFor(streamUrl);
-      final referer = '${KissKhService.baseUrl}/';
+      final referer = '${baseUrl.replaceFirst(RegExp(r'/$'), '')}/';
 
       if (streamUrl == null) {
         final embed = _thirdPartyEmbedUrl(api);
@@ -404,7 +423,7 @@ class KissKhExtractor {
             episodeId: episodeId,
             language: (s['language'] ?? 'sub').toString(),
             userAgent: _userAgent,
-            referer: '${KissKhService.baseUrl}/',
+            referer: referer,
           );
           if (localUri != null) {
             s['url'] = localUri;
@@ -418,15 +437,14 @@ class KissKhExtractor {
         url: streamUrl,
         type: streamType,
         subtitles: List<Map<String, dynamic>>.from(_subsBuffer),
-        headers: playbackHeaders(),
+        headers: playbackHeaders(baseUrl),
       );
     } catch (e) {
       if (cancelled()) return null;
       onProgress?.call('error', '$e');
       return null;
     } finally {
-      softReloadTimer?.cancel();
-      secondRecoveryTimer?.cancel();
+      recoveryTimer?.cancel();
       nudgeTimer?.cancel();
       if (gen == _resolveGen) {
         await _cleanup();

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 1** device smoke |
+| **Progress** | **10 / 10** fix · **0 / 2** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,9 @@
 | 5 | I45-T05 | Soft-reload + play nudge if Episode API silent | ✅ |
 | 6 | I45-T06 | Hard `loadUrl` + cache-bust recovery (replace plain `reload()`); purge kisskh cookies; second recovery at 24s | ✅ |
 | 7 | I45-T07 | Expand KissKh CDN Referer fix to `streamingcdn*.site` + per-episode Asian Drama cache keys | ✅ |
+| 8 | I45-T08 | Rust mirror health selection + sticky API failover across compatible KissKh domains | ✅ |
+| 9 | I45-T09 | Use the Rust-selected mirror for WebView page, cookies, retries, Referer, Origin, and subtitles | ✅ |
+| 10 | I45-T10 | Mirror compatibility / failover unit tests and host URL contract tests | ✅ |
 
 ---
 
@@ -34,6 +37,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I45-A01 | Backrooms (and a TVSeries title) resolve to `xhr hit` without stuck “Waiting for stream key…” on cold open | ⬜ |
+| 2 | I45-A02 | With the active KissKh domain unavailable, catalog and episode extract select another compatible mirror and preserve matching IDs | ⬜ |
 
 ---
 
@@ -48,3 +52,20 @@ KissKh stream extract opened a **cached** headless WebView, waited up to **35s o
 ### Follow-up (2026-07-15)
 
 Live macOS logs still showed Episode API silent after I45-T05 `reload()` (e.g. re-open Episode-2 → “no Episode API in 12s — soft reload once” with no `xhr hit`). WKWebView `reload()` can reuse the SPA shell / skip UserScript reinjection. Current HLS hosts are `*.streamingcdn*.site`, which I45-T04’s `cdnvideo`/`kisskh` host check missed — cached reopen lost `kisskh.co` Referer. Asian Drama `openPlayer` also omitted season/episode, collapsing every episode onto cache key `S1:E1`.
+
+### Mirror failover slice (2026-07-16)
+
+Live compatibility probes found that `kisskh.co`, `kisskh.nl`, `kisskh.ovh`,
+`kisskh.la`, and `kisskh.do` expose the same Angular JSON API and drama IDs.
+Other similarly named domains returned unrelated HTML, 404, DNS failure, or a
+refused connection and are deliberately excluded. Rust owns health selection
+and API failover; the host WebView still owns signed `kkey` extraction but must
+use the same selected base URL.
+
+**Shipped:** `crates/kisskh` races the five verified API mirrors, keeps the
+first valid response sticky, and retries catalog requests across the remaining
+mirrors on HTTP or non-JSON failure. `KissKhExtractor` starts from that selected
+host, rotates to another mirror every eight seconds while the Episode API is
+silent, and feeds the winning host back to Rust. Page cookies, navigation
+headers, playback headers, third-party extraction, and subtitle fetch all use
+that winning host.

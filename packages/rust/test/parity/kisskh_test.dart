@@ -34,6 +34,26 @@ void main() {
     expect(url, contains('ep=42'));
   });
 
+  test('kisskhCatalogJson activates only verified mirrors', () {
+    final activated =
+        jsonDecode(
+              RustLib.instance.kisskhCatalogJson(
+                '{"action":"activate_base_url","base_url":"https://kisskh.nl"}',
+              ),
+            )
+            as Map<String, dynamic>;
+    expect(activated['base_url'], 'https://kisskh.nl');
+
+    final rejected =
+        jsonDecode(
+              RustLib.instance.kisskhCatalogJson(
+                '{"action":"activate_base_url","base_url":"https://kisskh.buzz"}',
+              ),
+            )
+            as Map<String, dynamic>;
+    expect(rejected['error'], contains('Unsupported KissKh mirror'));
+  });
+
   test('kisskhCatalogJson enrich_cards empty', () async {
     final decoded = await kisskhCatalog({
       'action': 'enrich_cards',

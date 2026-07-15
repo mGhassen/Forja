@@ -3,11 +3,21 @@ part of 'mobile_player_screen.dart';
 mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
-  Future<List<StreamSource>?> _loadProvider(String providerId) async {
-    final cached = _s._liveProviderSourcesCache.value[providerId];
-    if (cached != null && cached.isNotEmpty) {
-      _s._markProviderLoadSucceeded(providerId);
-      return cached;
+  Future<List<StreamSource>?> _loadProvider(
+    String providerId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _s._liveProviderSourcesCache.value[providerId];
+      if (cached != null && cached.isNotEmpty) {
+        _s._markProviderLoadSucceeded(providerId);
+        return cached;
+      }
+    } else {
+      final next = Map<String, List<StreamSource>>.from(
+        _s._liveProviderSourcesCache.value,
+      )..remove(providerId);
+      _s._liveProviderSourcesCache.value = next;
     }
 
     // One host WebView — abandon other in-flight Source-panel loads.
@@ -33,6 +43,7 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
         episode: widget.selectedEpisode ?? 1,
         isCancelled: () =>
             _s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen,
+        bypassDiskCache: forceRefresh,
       );
       if (_s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen) {
         return null;
@@ -43,6 +54,16 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
           ..._s._liveProviderSourcesCache.value,
           providerId: sources,
         };
+        // Current server list prefers live [_currentSources] over session
+        // cache — refresh it so panel reload is not a no-op after cache play.
+        if (forceRefresh &&
+            (_s._currentProvider == providerId ||
+                ((_s._currentProvider == null || _s._currentProvider!.isEmpty) &&
+                    widget.activeProvider == providerId))) {
+          _s._currentSources = sources;
+          _s._failedSourceIndices.clear();
+          _s._checkingSourceIndices.clear();
+        }
         _s._markProviderLoadSucceeded(providerId);
         _s._scoreServerUp(providerId);
         _s._sourceMenuRevision.value++;

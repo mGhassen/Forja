@@ -95,6 +95,9 @@ abstract final class PlayerSourceResolve {
     required int season,
     required int episode,
     bool Function()? isCancelled,
+    /// Server-panel reload: skip disk hit and drop a matching entry so the
+    /// next Play cannot revive the same stale URLs.
+    bool bypassDiskCache = false,
   }) async {
     final cacheKey = WebstreamingStreamCache.cacheKeyFromProgress(
       tmdbId: movie.id,
@@ -105,7 +108,8 @@ abstract final class PlayerSourceResolve {
     final cached = await WebstreamingStreamCache.read(cacheKey);
     // Only reuse cache when it is for this exact provider. A different
     // server's extract must resolve fresh.
-    if (cached != null &&
+    if (!bypassDiskCache &&
+        cached != null &&
         cached.sources.isNotEmpty &&
         cached.providerId == providerId) {
       final rank = providers.keys.toList().indexOf(cached.providerId);
@@ -122,6 +126,11 @@ abstract final class PlayerSourceResolve {
         headers: first.headers,
         sources: sources,
       );
+    }
+    if (bypassDiskCache &&
+        cached != null &&
+        cached.providerId == providerId) {
+      await WebstreamingStreamCache.drop(cacheKey);
     }
 
     final order = await _movieSettingsOrder(movie);

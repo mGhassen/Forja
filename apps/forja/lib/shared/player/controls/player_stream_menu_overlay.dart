@@ -44,7 +44,10 @@ class _StreamMenuOverlay extends StatefulWidget {
   final ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier;
   final PlayerStatusController? statusController;
   final PlayerStreamMenuState Function() readState;
-  final Future<List<StreamSource>?> Function(String providerId) onLoadProvider;
+  final Future<List<StreamSource>?> Function(
+    String providerId, {
+    bool forceRefresh,
+  }) onLoadProvider;
   final Future<List<StreamSource>?> Function(String providerId) onSelectProvider;
   final Future<void> Function(StreamSource source, int index) onSelectSource;
   final Future<bool> Function(StreamSource source, int index, [String? providerId])
@@ -244,7 +247,10 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     }
 
     try {
-      final sources = await widget.onLoadProvider(providerId);
+      final sources = await widget.onLoadProvider(
+        providerId,
+        forceRefresh: clearCache,
+      );
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
       // Server extract OK → auto-probe each stream (same as tapping them).

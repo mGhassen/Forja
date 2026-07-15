@@ -13,8 +13,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rust/rust.dart';
 
 class KissKhService {
-  static const String baseUrl = 'https://kisskh.co';
-  static const String apiBase = '$baseUrl/api';
+  static const String primaryBaseUrl = 'https://kisskh.co';
+
+  /// Ask the Rust catalog engine to race API-compatible mirrors. The returned
+  /// order keeps the first healthy mirror first and excludes unrelated sites
+  /// that happen to use the KissKh name.
+  static Future<KissKhEndpointSelection> resolveEndpoint() async {
+    final decoded = await kisskhCatalog({'action': 'resolve_base_url'});
+    final selected = (decoded['base_url'] as String? ?? '').trim();
+    final rawMirrors = decoded['mirror_urls'] as List<dynamic>? ?? const [];
+    final mirrors = rawMirrors
+        .map((value) => value.toString().trim().replaceFirst(RegExp(r'/$'), ''))
+        .where((value) => Uri.tryParse(value)?.hasScheme == true)
+        .toSet()
+        .toList();
+    if (selected.isEmpty || !mirrors.contains(selected)) {
+      throw StateError('Rust returned an invalid KissKh mirror: $selected');
+    }
+    return KissKhEndpointSelection(
+      selected: selected,
+      mirrors: [selected, ...mirrors.where((value) => value != selected)],
+    );
+  }
+
+  static Future<void> activateEndpoint(String baseUrl) async {
+    await kisskhCatalog({'action': 'activate_base_url', 'base_url': baseUrl});
+  }
 
   // ─── Public API (Rust engine) ─────────────────────────────────
   Future<KdramaHomeFeed> getHome() async {
@@ -155,6 +179,7 @@ class KissKhService {
 
   /// Episode page URL — used as the WebView entry-point for the extractor.
   static String episodePageUrl({
+    required String baseUrl,
     required int dramaId,
     required String title,
     required int episodeId,
@@ -164,7 +189,8 @@ class KissKhService {
     final epLabel = episodeNumber == episodeNumber.truncateToDouble()
         ? episodeNumber.toInt().toString()
         : episodeNumber.toString();
-    return '$baseUrl/Drama/$slug/Episode-$epLabel'
+    final base = baseUrl.trim().replaceFirst(RegExp(r'/$'), '');
+    return '$base/Drama/$slug/Episode-$epLabel'
         '?id=$dramaId&ep=$episodeId&page=0&pageSize=100';
   }
 
@@ -310,6 +336,16 @@ class KissKhService {
     await p.remove(_historyKey);
     watchHistoryRevision.value++;
   }
+}
+
+class KissKhEndpointSelection {
+  final String selected;
+  final List<String> mirrors;
+
+  const KissKhEndpointSelection({
+    required this.selected,
+    required this.mirrors,
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════

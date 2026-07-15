@@ -147,8 +147,23 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
           });
           _notifySourceMenuChanged();
         }
+        return;
       }
-      // Source validity is checked on click — not eagerly in the background.
+      // Webstreaming / drama: no host callback — force-refresh the active
+      // server so header reload is not a no-op after cache play.
+      final pid = _s._currentProvider ?? widget.activeProvider;
+      if (pid == null || pid.isEmpty) return;
+      final fresh = await _s._loadProvider(pid, forceRefresh: true);
+      if (!mounted) return;
+      if (fresh != null && fresh.isNotEmpty) {
+        setState(() {
+          _s._currentSources = fresh;
+          _s._failedSourceIndices.clear();
+          _s._checkingSourceIndices.clear();
+          _s._urlCheckStatuses.clear();
+        });
+        _notifySourceMenuChanged();
+      }
     } finally {
       if (mounted) _s._isReloadingStreams.value = false;
     }

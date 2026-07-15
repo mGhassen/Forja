@@ -5,8 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
-static STORE: LazyLock<Mutex<EngineStore>> =
-    LazyLock::new(|| Mutex::new(EngineStore::default()));
+static STORE: LazyLock<Mutex<EngineStore>> = LazyLock::new(|| Mutex::new(EngineStore::default()));
 
 #[derive(Default)]
 struct EngineStore {
@@ -176,7 +175,10 @@ mod tests {
         set("stream_provider_order", serde_json::json!(["videasy"])).unwrap();
         let raw = fs::read_to_string(&path).unwrap();
         let parsed: HashMap<String, Value> = serde_json::from_str(&raw).unwrap();
-        assert_eq!(parsed["stream_provider_order"], serde_json::json!(["videasy"]));
+        assert_eq!(
+            parsed["stream_provider_order"],
+            serde_json::json!(["videasy"])
+        );
         assert!(!Path::new(&path).with_extension("json.tmp").exists());
         assert!(backup_path(Path::new(&path)).exists());
         let _ = fs::remove_file(&path);
