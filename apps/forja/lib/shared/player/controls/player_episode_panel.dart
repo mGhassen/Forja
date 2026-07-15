@@ -34,6 +34,7 @@ class PlayerEpisodePanel {
     required Future<void> Function(int season, int episode) onEpisodeSelected,
   }) {
     dismiss();
+    playerChromeCancelSeekScrubs();
 
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
@@ -555,6 +556,7 @@ class PlayerHubEpisodePanel {
     String? fallbackPosterPath,
   }) {
     dismiss();
+    playerChromeCancelSeekScrubs();
 
     final overlay = Overlay.of(context);
     _completer = Completer<void>();

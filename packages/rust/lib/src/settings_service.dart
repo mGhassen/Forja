@@ -298,14 +298,11 @@ class SettingsService {
     'vidrock',
     'vidfast',
     '2embed',
-    'superembed',
     'autoembed',
     'vidlove',
     'vidsrcsbs',
     '111movies',
     'moviesapi',
-    'smashystream',
-    'primewire',
     'service111477',
     'webstreamr',
   ];
@@ -316,7 +313,13 @@ class SettingsService {
     if (saved.isEmpty) {
       return List<String>.from(defaultStreamProviderOrder);
     }
-    final out = <String>[...saved];
+    // Drop provider IDs retired from the built-in registry; otherwise an old
+    // persisted order can keep removed providers visible after an upgrade.
+    final available = defaultStreamProviderOrder.toSet();
+    final out = <String>[
+      for (final id in saved)
+        if (available.contains(id)) id,
+    ];
     for (final k in defaultStreamProviderOrder) {
       if (!out.contains(k)) out.add(k);
     }

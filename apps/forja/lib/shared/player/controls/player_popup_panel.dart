@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
+import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -122,6 +123,7 @@ class PlayerPopupPanel {
 
     final overlay = Overlay.of(context);
     dismiss();
+    playerChromeCancelSeekScrubs();
 
     _completer = Completer<void>();
 

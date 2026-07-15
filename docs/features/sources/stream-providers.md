@@ -8,14 +8,14 @@ Forja resolves streams through the **Rust Resolver Engine** (`crates/resolver-en
 
 Green **Play** calls `PlaybackService.resolve()` → Resolver Engine job. Host-only providers (WebView embed sniff, Videasy WASM, Nuvio) are fulfilled by a host adapter after the engine requests them.
 
-Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc.sbs, VidLink, VixSrc, Vidnest, Vidzee, VidRock, VidFast, 2Embed, SuperEmbed, AutoEmbed, VidLove, 111Movies, MoviesAPI, SmashyStream, PrimeWire, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
+Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc.sbs, VidLink, VixSrc, Vidnest, Vidzee, VidRock, VidFast, 2Embed, AutoEmbed, VidLove, 111Movies, MoviesAPI, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
 
 **How providers resolve:**
 
 | Type | Providers | Mechanism |
 |------|-----------|-----------|
 | Direct extractors | Videasy, Vidsrc, Vidnest | Videasy: `api.wingsdatabase.com` (+ sniff fallback); Vidsrc: embed → CDN chain; VidNest: `new.vidnest.fun` API (+ sniff fallback) |
-| Embed + WebView sniff | VidLink, VixSrc, Vidzee, VidRock, VidFast, 2Embed, SuperEmbed, AutoEmbed, VidLove, VidSrc.sbs, 111Movies, MoviesAPI, SmashyStream, PrimeWire | Canonical embed URL → Resolver `HostRequired` → headless WebView captures stream (desktop/mobile) |
+| Embed + WebView sniff | VidLink, VixSrc, Vidzee, VidRock, VidFast, 2Embed, AutoEmbed, VidLove, VidSrc.sbs, 111Movies, MoviesAPI | Canonical embed URL → Resolver `HostRequired` → headless WebView captures stream (desktop/mobile) |
 | Aggregator / index | WebStreamr, 111477 | Multi-scraper resolve or index match + local proxy |
 
 ## How to open it
@@ -37,7 +37,7 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc
 
 | Domain | Typical engines |
 |--------|-----------------|
-| Movies / TV | Videasy, VidLink, VidFast, 2Embed, SuperEmbed, AutoEmbed, WebStreamr, … |
+| Movies / TV | Videasy, VidLink, VidFast, 2Embed, AutoEmbed, WebStreamr, … |
 | Anime | Miruro, AllAnime, AnimeRealms, … |
 | Asian Drama | KissKH |
 | IPTV | Xtream / M3U / Stalker (portal) |
@@ -52,12 +52,14 @@ Built-in **webstreaming** movie/series providers include Videasy, Vidsrc, VidSrc
 - **Vidsrc** uses `vsembed.su` embeds (`/embed/movie?tmdb=` · `/embed/tv?tmdb=&season=&episode=`); the inner CDN host (e.g. `cloudorchestranova.com`) is detected automatically — do not hardcode legacy `cloudnestra.com`. CloudStream playlists use tokenized `/pl/…/master.m3u8` URLs whose `page-N.html` segments reject `Referer`/`Origin` (browser no-referrer) — Forja opens them with User-Agent only
 - **VidNest** ([vidnest.fun](https://vidnest.fun/)) resolves via `new.vidnest.fun` (Gama/MovieBox first). MovieBox CDN links (`*.hakunaymatata.com`) must open **without** Referer/Origin — that CDN returns HTTP 429 when Referer is set. If the API path fails, Forja falls back to sniffing the public embed
 - **VidSrc.sbs** (`vidsrc.sbs/embed/…`) is a separate template embed from **Vidsrc** (`vsembed.su`). Its aggregator rejects iframe-wrapped playback, so Forja opens it as the headless WebView's top-level document before sniffing on desktop/mobile. Nested `1embed` proxy responses are scanned for `.m3u8` URLs in the response body (not only in the request URL). Policy lives on that provider’s `EmbedExtractProfile` under `shared/extractors/providers/vidsrcsbs/`
+- **AutoEmbed** uses `player.autoembed.co/embed/…` directly (the public `autoembed.co/…` page only iframes that player, which then shows “Playback blocked” when nested under Forja’s WebView)
+- **2Embed** uses `2embed.stream/embed/…` (same as [2embed.online](https://www.2embed.online/) docs after redirect). Legacy `2embed.cc` is not used — top-level loads there bounce to `.skin` and break sniff. Multi-server chips are rotated when the default source stalls
 - **VidLove** (`player.vidlove.cc`) and similar multi-server embeds: that provider’s profile under `shared/extractors/providers/vidlove/` rotates internal server chips (e.g. Neta / Gogo / Mafia / Fabric) when the default server is stuck loading, and attaches WebView cookies + the embed Referer when opening the CDN playlist
 - Host sniff: Rust plugins stay in `crates/resolver-engine/src/plugins/`; Flutter owns `shared/extractors/core/` (WebView engine) + `shared/extractors/providers/<id>/` (per-provider profile/extractor). `packages/rust/lib/src/playback/` is typed clients/models/ordering only — not host extractors
-- Template embed hosts are kept on documented canonical domains: VidFast (`vidfast.vc`), VidRock (`vidrock.ru`), Vidzee (`player.vidzee.wtf/embed/…`), VidLove / 111Movies (`player.vidlove.cc/embed/…`), VidSrc.sbs (`vidsrc.sbs/embed/…`), SmashyStream (`anyembed.xyz/embed/…`). SuperEmbed still uses `multiembed.mov` per provider docs (may redirect internally)
-- **PrimeWire** (`primewire.tf`) has been unreliable in live checks — expect misses; pick another server if it fails
+- Host sniff blocks popup windows and cancels main-frame ad redirects away from the original embed/player site during automated play clicks. Subframe/player resources still load so generic template embeds can reach their real stream requests.
+- Template embed hosts are kept on documented canonical domains: VidFast (`vidfast.vc`), VidRock (`vidrock.ru`), Vidzee (`player.vidzee.wtf/embed/…`), VidLove / 111Movies (`player.vidlove.cc/embed/…`), VidSrc.sbs (`vidsrc.sbs/embed/…`), AutoEmbed (`player.autoembed.co/embed/…` — not the outer `autoembed.co` shell), 2Embed (`2embed.stream/embed/…` per [2embed.online](https://www.2embed.online/))
 - When Rust cannot resolve a VidSrc-style embed (common on older films), Forja falls back to a headless browser sniff on desktop/mobile — same idea as PlayTorrio. Configure **MediaFlow Proxy** / **FlareSolverr** in WebStreamr settings if regional hosts return 403
-- **Template embeds** (VidFast, 2Embed, SuperEmbed, …): Resolver Engine builds the canonical embed URL and the host sniffs it with a headless WebView. Pin a server in **Sources** to force that path; **Auto** may finish earlier on WebStreamr/Vidsrc without sniffing every embed
+- **Template embeds** (VidFast, 2Embed, …): Resolver Engine builds the canonical embed URL and the host sniffs it with a headless WebView. Pin a server in **Sources** to force that path; **Auto** may finish earlier on WebStreamr/Vidsrc without sniffing every embed
 - **Android TV:** WebView-based extractors (VidLink, VixSrc, Vidnest, Videasy, …) are skipped — the loading screen marks them **SKIPPED ON TV** and only **WebStreamr**, **Vidsrc**, and **111477** are checked (Chromium GPU crash workaround)
 - External players (VLC, MX Player) bypass Forja’s automatic fallback chain
 

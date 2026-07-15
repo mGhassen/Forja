@@ -11,14 +11,11 @@ import 'package:forja/shared/extractors/providers/vidzee/profile.dart';
 import 'package:forja/shared/extractors/providers/vidrock/profile.dart';
 import 'package:forja/shared/extractors/providers/vidfast/profile.dart';
 import 'package:forja/shared/extractors/providers/2embed/profile.dart';
-import 'package:forja/shared/extractors/providers/superembed/profile.dart';
 import 'package:forja/shared/extractors/providers/autoembed/profile.dart';
 import 'package:forja/shared/extractors/providers/vidlove/profile.dart';
 import 'package:forja/shared/extractors/providers/111movies/profile.dart';
 import 'package:forja/shared/extractors/providers/vidsrcsbs/profile.dart';
 import 'package:forja/shared/extractors/providers/moviesapi/profile.dart';
-import 'package:forja/shared/extractors/providers/smashystream/profile.dart';
-import 'package:forja/shared/extractors/providers/primewire/profile.dart';
 import 'package:forja/shared/extractors/providers/videasy/profile.dart';
 import 'package:forja/shared/extractors/providers/vidsrc/profile.dart';
 import 'package:forja/shared/extractors/providers/anitaro/profile.dart';
@@ -39,14 +36,11 @@ abstract final class EmbedExtractProfiles {
     'vidrock': vidrockExtractProfile,
     'vidfast': vidfastExtractProfile,
     '2embed': p2embedExtractProfile,
-    'superembed': superembedExtractProfile,
     'autoembed': autoembedExtractProfile,
     'vidlove': vidloveExtractProfile,
     '111movies': p111moviesExtractProfile,
     'vidsrcsbs': vidsrcsbsExtractProfile,
     'moviesapi': moviesapiExtractProfile,
-    'smashystream': smashystreamExtractProfile,
-    'primewire': primewireExtractProfile,
     'videasy': videasyExtractProfile,
     'vidsrc': vidsrcExtractProfile,
     'anitaro': anitaroExtractProfile,
@@ -67,13 +61,10 @@ abstract final class EmbedExtractProfiles {
     'vidrock',
     'vidfast',
     '2embed',
-    'superembed',
     'autoembed',
     'vidlove',
     'vidsrcsbs',
     '111movies',
     'moviesapi',
-    'smashystream',
-    'primewire',
   ];
 }

@@ -57,14 +57,11 @@ mod tests {
             Box::new(crate::plugins::vidrock::VidrockProvider),
             Box::new(crate::plugins::vidfast::VidfastProvider),
             Box::new(crate::plugins::two_embed::TwoEmbedProvider),
-            Box::new(crate::plugins::superembed::SuperembedProvider),
             Box::new(crate::plugins::autoembed::AutoembedProvider),
             Box::new(crate::plugins::vidlove::VidloveProvider),
             Box::new(crate::plugins::vidsrcsbs::VidsrcsbsProvider),
             Box::new(crate::plugins::movies111::Movies111Provider),
             Box::new(crate::plugins::moviesapi::MoviesapiProvider),
-            Box::new(crate::plugins::smashystream::SmashystreamProvider),
-            Box::new(crate::plugins::primewire::PrimewireProvider),
         ];
         let ids: std::collections::HashSet<&str> = plugins.iter().map(|p| p.id()).collect();
         for def in list_providers() {

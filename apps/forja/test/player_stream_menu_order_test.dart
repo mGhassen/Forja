@@ -94,6 +94,51 @@ void main() {
 
       expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink']);
     });
+
+    test('ignores reliability effectiveRank so checking a server does not reshuffle', () {
+      // After a check, SourceEngine bumps effectiveRank for the winner while
+      // settingsRank stays fixed — panel must keep settings order.
+      final scoreRows = {
+        'vixsrc': ProviderOrderRow(
+          id: 'vixsrc',
+          settingsRank: 0,
+          domainScore: 10,
+          reliabilityScore: 0,
+          effectiveRank: 2,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'vidlink': ProviderOrderRow(
+          id: 'vidlink',
+          settingsRank: 1,
+          domainScore: 10,
+          reliabilityScore: 4,
+          effectiveRank: 0,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'vidsrc': ProviderOrderRow(
+          id: 'vidsrc',
+          settingsRank: 2,
+          domainScore: 10,
+          reliabilityScore: 2,
+          effectiveRank: 1,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+      };
+
+      final order = PlayerStreamMenu.orderedProviderEntriesForPanel(
+        {
+          'vidsrc': const {},
+          'vidlink': const {},
+          'vixsrc': const {},
+        },
+        scoreRows: scoreRows,
+      );
+
+      expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink', 'vidsrc']);
+    });
   });
 
   group('PlayerStreamMenu panel stream order', () {

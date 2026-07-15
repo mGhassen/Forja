@@ -79,12 +79,6 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
-            id: "superembed".into(),
-            name: "SuperEmbed".into(),
-            has_movie_template: true,
-            has_tv_template: true,
-        },
-        ProviderDef {
             id: "autoembed".into(),
             name: "AutoEmbed".into(),
             has_movie_template: true,
@@ -115,18 +109,6 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
-            id: "smashystream".into(),
-            name: "SmashyStream".into(),
-            has_movie_template: true,
-            has_tv_template: true,
-        },
-        ProviderDef {
-            id: "primewire".into(),
-            name: "PrimeWire".into(),
-            has_movie_template: true,
-            has_tv_template: true,
-        },
-        ProviderDef {
             id: "videasy".into(),
             name: "Videasy".into(),
             has_movie_template: false,
@@ -153,21 +135,18 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
         "vidfast" => Some(format!(
             "https://vidfast.vc/movie/{tmdb_id}?autoPlay=true"
         )),
-        "2embed" => Some(format!("https://www.2embed.cc/embed/{tmdb_id}")),
-        "superembed" => Some(format!(
-            "https://multiembed.mov/?video_id={tmdb_id}&tmdb=1"
+        // Canonical host per https://www.2embed.online/ — .online 301s here.
+        // Legacy www.2embed.cc redirects top-level loads to .skin and breaks sniff.
+        "2embed" => Some(format!("https://2embed.stream/embed/movie/{tmdb_id}")),
+        // Player host as top-level — outer autoembed.co iframes this URL; nested
+        // loads hit sandbox/"Playback blocked" (asb.html) in headless WebView.
+        "autoembed" => Some(format!(
+            "https://player.autoembed.co/embed/movie/{tmdb_id}"
         )),
-        "autoembed" => Some(format!("https://autoembed.co/movie/tmdb/{tmdb_id}")),
         "vidlove" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
         "vidsrcsbs" => Some(format!("https://vidsrc.sbs/embed/movie/{tmdb_id}")),
         "111movies" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
         "moviesapi" => Some(format!("https://moviesapi.to/movie/{tmdb_id}")),
-        "smashystream" => Some(format!(
-            "https://anyembed.xyz/embed/tmdb-movie-{tmdb_id}"
-        )),
-        "primewire" => Some(format!(
-            "https://www.primewire.tf/embed/movie?tmdb={tmdb_id}"
-        )),
         _ => None,
     }
 }
@@ -193,13 +172,10 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
             "https://vidfast.vc/tv/{tmdb_id}/{season}/{episode}?autoPlay=true"
         )),
         "2embed" => Some(format!(
-            "https://www.2embed.cc/embedtv/{tmdb_id}&s={season}&e={episode}"
-        )),
-        "superembed" => Some(format!(
-            "https://multiembed.mov/?video_id={tmdb_id}&tmdb=1&s={season}&e={episode}"
+            "https://2embed.stream/embed/tv/{tmdb_id}/{season}/{episode}"
         )),
         "autoembed" => Some(format!(
-            "https://autoembed.co/tv/tmdb/{tmdb_id}-{season}-{episode}"
+            "https://player.autoembed.co/embed/tv/{tmdb_id}/{season}-{episode}/"
         )),
         "vidlove" => Some(format!(
             "https://player.vidlove.cc/embed/tv/{tmdb_id}/{season}/{episode}"
@@ -212,12 +188,6 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
         )),
         "moviesapi" => Some(format!(
             "https://moviesapi.to/tv/{tmdb_id}-{season}-{episode}"
-        )),
-        "smashystream" => Some(format!(
-            "https://anyembed.xyz/embed/tmdb-tv-{tmdb_id}-{season}-{episode}"
-        )),
-        "primewire" => Some(format!(
-            "https://www.primewire.tf/embed/tv?tmdb={tmdb_id}&season={season}&episode={episode}"
         )),
         _ => None,
     }
@@ -284,11 +254,11 @@ mod tests {
     fn twoembed_urls() {
         assert_eq!(
             build_movie_url("2embed", 550),
-            Some("https://www.2embed.cc/embed/550".into())
+            Some("https://2embed.stream/embed/movie/550".into())
         );
         assert_eq!(
             build_tv_url("2embed", 1399, 2, 5),
-            Some("https://www.2embed.cc/embedtv/1399&s=2&e=5".into())
+            Some("https://2embed.stream/embed/tv/1399/2/5".into())
         );
     }
 

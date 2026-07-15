@@ -134,6 +134,7 @@ class PlayerStreamMenu {
     PlayerHubEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
+    playerChromeCancelSeekScrubs();
 
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
@@ -266,9 +267,12 @@ class PlayerStreamMenu {
       probeIndex[probes[i].id] = i;
     }
 
+    // Use settingsRank only — never effectiveRank. Checking a server updates
+    // reliability scores (and thus effectiveRank), which must not reshuffle
+    // the panel under the user's cursor.
     int sortRank(String providerId) {
       final row = scoreRows[providerId];
-      if (row != null && row.supported) return row.effectiveRank;
+      if (row != null && row.supported) return row.settingsRank;
       return probeIndex[providerId] ?? 999;
     }
 

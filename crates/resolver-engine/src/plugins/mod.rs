@@ -5,11 +5,8 @@ pub mod kisskh;
 pub mod movies111;
 pub mod moviesapi;
 pub mod nuvio;
-pub mod primewire;
 pub mod service111477;
-pub mod smashystream;
 pub mod stremio_addon;
-pub mod superembed;
 pub mod torrentio;
 pub mod two_embed;
 pub mod videasy;
@@ -41,14 +38,11 @@ pub fn built_in() -> Vec<Arc<dyn Provider>> {
         Arc::new(vidrock::VidrockProvider),
         Arc::new(vidfast::VidfastProvider),
         Arc::new(two_embed::TwoEmbedProvider),
-        Arc::new(superembed::SuperembedProvider),
         Arc::new(autoembed::AutoembedProvider),
         Arc::new(vidlove::VidloveProvider),
         Arc::new(vidsrcsbs::VidsrcsbsProvider),
         Arc::new(movies111::Movies111Provider),
         Arc::new(moviesapi::MoviesapiProvider),
-        Arc::new(smashystream::SmashystreamProvider),
-        Arc::new(primewire::PrimewireProvider),
         Arc::new(nuvio::NuvioProvider),
         Arc::new(kisskh::KisskhProvider),
         Arc::new(torrentio::TorrentioProvider),

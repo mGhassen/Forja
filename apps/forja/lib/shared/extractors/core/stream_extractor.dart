@@ -242,12 +242,20 @@ class StreamExtractor {
           clearCache: false,
           allowsInlineMediaPlayback: true,
           useOnLoadResource: true,
+          useShouldOverrideUrlLoading: true,
+          javaScriptCanOpenWindowsAutomatically: false,
+          supportMultipleWindows: false,
           iframeAllow: 'autoplay; fullscreen; encrypted-media',
           iframeAllowFullscreen: true,
         ),
         onLoadResource: _onLoadResource(url),
         onLoadStop: _onLoadStop(),
         onConsoleMessage: _onConsoleMessage(url),
+        shouldOverrideUrlLoading: _shouldOverrideUrlLoading(
+          embedUrl: url,
+          wrapperBase: wrapperBase,
+        ),
+        onCreateWindow: _onCreateWindow(),
       );
     } else {
       final initialReq = URLRequest(
@@ -278,12 +286,17 @@ class StreamExtractor {
           clearCache: false,
           allowsInlineMediaPlayback: true,
           useOnLoadResource: true,
+          useShouldOverrideUrlLoading: true,
+          javaScriptCanOpenWindowsAutomatically: false,
+          supportMultipleWindows: false,
           iframeAllow: 'autoplay; fullscreen; encrypted-media',
           iframeAllowFullscreen: true,
         ),
         onLoadResource: _onLoadResource(url),
         onLoadStop: _onLoadStop(),
         onConsoleMessage: _onConsoleMessage(url),
+        shouldOverrideUrlLoading: _shouldOverrideUrlLoading(embedUrl: url),
+        onCreateWindow: _onCreateWindow(),
       );
     }
 
@@ -367,6 +380,48 @@ class StreamExtractor {
     }
   };
 
+  Future<NavigationActionPolicy?> Function(
+    InAppWebViewController,
+    NavigationAction,
+  )
+  _shouldOverrideUrlLoading({required String embedUrl, String? wrapperBase}) =>
+      (controller, navigationAction) async {
+        final target = navigationAction.request.url?.toString() ?? '';
+        if (target.isEmpty) return NavigationActionPolicy.ALLOW;
+
+        if (_isBlockedAdOrTrackerUrl(target)) {
+          _log('Blocked ad/tracker navigation: $target');
+          return NavigationActionPolicy.CANCEL;
+        }
+
+        if (!navigationAction.isForMainFrame) {
+          return NavigationActionPolicy.ALLOW;
+        }
+
+        if (_isAllowedMainFrameNavigation(
+          target,
+          embedUrl: embedUrl,
+          wrapperBase: wrapperBase,
+        )) {
+          return NavigationActionPolicy.ALLOW;
+        }
+
+        if (isPlayableStreamUrl(target)) {
+          _processUrl(target, embedUrl);
+          return NavigationActionPolicy.ALLOW;
+        }
+
+        _log('Blocked main-frame redirect: $target');
+        return NavigationActionPolicy.CANCEL;
+      };
+
+  Future<bool?> Function(InAppWebViewController, CreateWindowAction)
+  _onCreateWindow() => (controller, createWindowAction) async {
+    final url = createWindowAction.request.url?.toString();
+    _log('Blocked popup window${url == null ? '' : ': $url'}');
+    return true;
+  };
+
   String _buildIframeWrapperHtml(String embedUrl) {
     // Minimal page: full-bleed iframe with autoplay + fullscreen perms.
     // Because we load this via `loadData(baseUrl: …)`, the iframe's
@@ -389,6 +444,98 @@ class StreamExtractor {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
     return '${uri.scheme}://${uri.host}/';
+  }
+
+  bool _isAllowedMainFrameNavigation(
+    String target, {
+    required String embedUrl,
+    String? wrapperBase,
+  }) {
+    final targetUri = Uri.tryParse(target);
+    if (targetUri == null) return false;
+    if (targetUri.scheme == 'about' || targetUri.scheme == 'data') return true;
+    if (!targetUri.isScheme('http') && !targetUri.isScheme('https')) {
+      return false;
+    }
+    // AutoEmbed (and similar) anti-iframe pages — never treat as success.
+    final path = targetUri.path.toLowerCase();
+    if (path == '/asb.html' || path.endsWith('/asb.html')) {
+      return false;
+    }
+    final embedUri = Uri.tryParse(embedUrl);
+    final wrapperUri = wrapperBase == null ? null : Uri.tryParse(wrapperBase);
+    if (_sameSite(targetUri, embedUri) || _sameSite(targetUri, wrapperUri)) {
+      return true;
+    }
+
+    // Some embeds legitimately bounce between player subdomains before loading.
+    final host = targetUri.host.toLowerCase();
+    final embedHost = embedUri?.host.toLowerCase() ?? '';
+    if (embedHost.isNotEmpty &&
+        (host.endsWith('.$embedHost') || embedHost.endsWith('.$host'))) {
+      return true;
+    }
+    // 2embed.online docs → 2embed.stream player (different registrable domains).
+    if (_is2embedFamily(host) && _is2embedFamily(embedHost)) {
+      return true;
+    }
+    return false;
+  }
+
+  static bool _is2embedFamily(String host) {
+    return host == '2embed.stream' ||
+        host == 'www.2embed.online' ||
+        host == '2embed.online' ||
+        host == 'www.2embed.stream';
+  }
+
+  static bool _sameSite(Uri a, Uri? b) {
+    if (b == null || b.host.isEmpty) return false;
+    if (a.host.toLowerCase() == b.host.toLowerCase()) return true;
+    return _registrableDomain(a.host) == _registrableDomain(b.host);
+  }
+
+  static String _registrableDomain(String host) {
+    final parts = host
+        .toLowerCase()
+        .split('.')
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.length <= 2) return parts.join('.');
+    return parts.sublist(parts.length - 2).join('.');
+  }
+
+  bool _isBlockedAdOrTrackerUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    final lower = url.toLowerCase();
+    final host = uri?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return false;
+    if (isPlayableStreamUrl(url)) return false;
+    const blockedHostParts = [
+      'doubleclick.net',
+      'googlesyndication.com',
+      'google-analytics.com',
+      'googletagmanager.com',
+      'adservice.google.',
+      'popads.net',
+      'popcash.net',
+      'onclickads.net',
+      'propellerads.com',
+      'exoclick.com',
+      'adsterra.',
+      'effectivecpm',
+      'hilltopads',
+      'trafficjunky',
+      'taboola.com',
+      'outbrain.com',
+    ];
+    if (blockedHostParts.any(host.contains)) return true;
+    return lower.contains('/ads/') ||
+        lower.contains('/adserver') ||
+        lower.contains('vast.php') ||
+        lower.contains('vast.xml') ||
+        lower.contains('popunder') ||
+        lower.contains('prebid');
   }
 
   void _processUrl(

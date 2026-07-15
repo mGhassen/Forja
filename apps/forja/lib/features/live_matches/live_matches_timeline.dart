@@ -7,6 +7,8 @@ part of 'live_matches_screen.dart';
 //  row of the same backdrop cards — same-time streams share a line; overflow
 //  scrolls sideways without moving the time. Vertical scroll moves through
 //  time buckets while an animated ruler gauge on the left tracks the playhead.
+//  The list is padded so the row under the playhead (near the top) is aligned
+//  with its time — a single card is not stuck at the top next to wrong ticks.
 //  Day / 12h / 6h buttons set how many hours one screen height of the ruler
 //  spans (the timeline scale).
 // ═════════════════════════════════════════════════════════════════════════════
@@ -15,8 +17,8 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   static const double _timelineRulerWidth = 112;
-  static const double _timelinePlayheadFraction = 0.38;
-  static const double _timelineTopPad = 4;
+  /// Playhead near the top so a lone card (and the current row) sits on its time.
+  static const double _timelinePlayheadFraction = 0.14;
   static const int _bucketMinutes = 30;
 
   /// Normalize an epoch (seconds or milliseconds) into a local [DateTime].
@@ -108,18 +110,25 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final viewportH = constraints.maxHeight;
               final cardWidth = _s._matchCardWidth(context);
               final cardHeight = _s._matchCardHeight(context);
               final gap = _s._gridGap(context);
               final rowExtent = cardHeight + gap;
+              final playheadY = viewportH * _timelinePlayheadFraction;
+              // Top pad = playhead so row 0 sits on the time card (not above it
+              // next to wrong ticks). Bottom pad lets the last row reach it.
+              final topPad = playheadY;
+              final bottomPad =
+                  (viewportH - playheadY - cardHeight).clamp(20.0, viewportH);
               final rowMs = [for (final b in buckets) b.bucketMs];
 
               _maybeAutoScrollBuckets(buckets, rowExtent);
 
-              // Full-width vertical list of 30-min rows; ruler overlaid on the
-              // left with IgnorePointer so scroll over the timeline space
-              // still drives the shared vertical controller. Cards in a row
-              // scroll horizontally — time for that row stays put.
+              // Vertical list of 30-min rows (adjacent, no empty-time gaps);
+              // ruler overlaid on the left with IgnorePointer so scroll over
+              // the timeline space still drives the shared vertical controller.
+              // Cards in a row scroll horizontally — time for that row stays put.
               return Stack(
                 children: [
                   Positioned.fill(
@@ -127,9 +136,9 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                       controller: _s._timelineScrollController,
                       padding: EdgeInsets.fromLTRB(
                         _timelineRulerWidth + 6,
-                        _timelineTopPad,
+                        topPad,
                         0,
-                        20,
+                        bottomPad,
                       ),
                       itemExtent: rowExtent,
                       itemCount: buckets.length,
@@ -146,8 +155,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                               right: ShellTokens.bodyHorizontalPadding,
                             ),
                             itemCount: bucket.entries.length,
-                            separatorBuilder: (_, _) =>
-                                SizedBox(width: gap),
+                            separatorBuilder: (_, _) => SizedBox(width: gap),
                             itemBuilder: (context, i) {
                               final flatIndex = flatBase + i;
                               return SizedBox(
@@ -181,7 +189,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                         controller: _s._timelineScrollController,
                         rowMs: rowMs,
                         rowExtent: rowExtent,
-                        topPad: _timelineTopPad,
+                        topPad: topPad,
                         playheadFraction: _timelinePlayheadFraction,
                         granularity: _s._timelineGranularity,
                       ),

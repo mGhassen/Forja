@@ -297,12 +297,9 @@ const _builtinProviderKeys = {
   'vidrock',
   'vidfast',
   '2embed',
-  'superembed',
   'autoembed',
   'vidlove',
   'vidsrcsbs',
   '111movies',
   'moviesapi',
-  'smashystream',
-  'primewire',
 };

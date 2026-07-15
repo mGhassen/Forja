@@ -15,30 +15,44 @@ class ForjaHeadlessInAppWebView {
     void Function(InAppWebViewController controller)? onWebViewCreated,
     void Function(InAppWebViewController controller, WebUri? url)? onLoadStop,
     void Function(InAppWebViewController controller, LoadedResource resource)?
-        onLoadResource,
+    onLoadResource,
     void Function(
       InAppWebViewController controller,
       ConsoleMessage consoleMessage,
-    )? onConsoleMessage,
+    )?
+    onConsoleMessage,
+    Future<NavigationActionPolicy?> Function(
+      InAppWebViewController controller,
+      NavigationAction navigationAction,
+    )?
+    shouldOverrideUrlLoading,
+    Future<bool?> Function(
+      InAppWebViewController controller,
+      CreateWindowAction createWindowAction,
+    )?
+    onCreateWindow,
     void Function(
       InAppWebViewController controller,
       WebResourceRequest request,
       WebResourceError error,
-    )? onReceivedError,
+    )?
+    onReceivedError,
   }) : _delegate = HeadlessInAppWebView(
-          initialData: initialData,
-          initialUrlRequest: initialUrlRequest,
-          initialSize: initialSize,
-          initialUserScripts: initialUserScripts,
-          initialSettings: forjaWebViewSettings(
-            initialSettings ?? InAppWebViewSettings(),
-          ),
-          onWebViewCreated: onWebViewCreated,
-          onLoadStop: onLoadStop,
-          onLoadResource: onLoadResource,
-          onConsoleMessage: onConsoleMessage,
-          onReceivedError: onReceivedError,
-        );
+         initialData: initialData,
+         initialUrlRequest: initialUrlRequest,
+         initialSize: initialSize,
+         initialUserScripts: initialUserScripts,
+         initialSettings: forjaWebViewSettings(
+           initialSettings ?? InAppWebViewSettings(),
+         ),
+         onWebViewCreated: onWebViewCreated,
+         onLoadStop: onLoadStop,
+         onLoadResource: onLoadResource,
+         onConsoleMessage: onConsoleMessage,
+         shouldOverrideUrlLoading: shouldOverrideUrlLoading,
+         onCreateWindow: onCreateWindow,
+         onReceivedError: onReceivedError,
+       );
 
   final HeadlessInAppWebView _delegate;
 

@@ -82,14 +82,11 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidrock" => 55,
             "vidfast" => 58,
             "2embed" => 57,
-            "superembed" => 56,
             "autoembed" => 55,
             "vidlove" => 54,
             "vidsrcsbs" => 52,
             "111movies" => 54,
             "moviesapi" => 53,
-            "smashystream" => 46,
-            "primewire" => 48,
             "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
@@ -102,16 +99,13 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidnest" => 65,
             "vidzee" => 60,
             "vidrock" => 55,
-            "smashystream" => 62,
             "vidfast" => 58,
             "2embed" => 57,
-            "superembed" => 56,
             "autoembed" => 55,
             "vidlove" => 54,
             "vidsrcsbs" => 52,
             "111movies" => 54,
             "moviesapi" => 53,
-            "primewire" => 48,
             "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
@@ -183,8 +177,6 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("vidfast", SourceDomain::Series)
             | ("2embed", SourceDomain::Movies)
             | ("2embed", SourceDomain::Series)
-            | ("superembed", SourceDomain::Movies)
-            | ("superembed", SourceDomain::Series)
             | ("autoembed", SourceDomain::Movies)
             | ("autoembed", SourceDomain::Series)
             | ("vidlove", SourceDomain::Movies)
@@ -195,10 +187,6 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("111movies", SourceDomain::Series)
             | ("moviesapi", SourceDomain::Movies)
             | ("moviesapi", SourceDomain::Series)
-            | ("smashystream", SourceDomain::Movies)
-            | ("smashystream", SourceDomain::Series)
-            | ("primewire", SourceDomain::Movies)
-            | ("primewire", SourceDomain::Series)
             | ("service111477", SourceDomain::Movies)
             | ("service111477", SourceDomain::Series)
             | ("webstreamr", SourceDomain::Movies)
@@ -510,22 +498,20 @@ mod tests {
 
     #[test]
     fn reliability_nudge_affects_score_rank_within_cap() {
-        // Same settings order; smashystream domain (46) below webstreamr (50).
-        // Heavy live reliability on smashystream should promote it in score sort.
         let response = order_providers(OrderProvidersRequest {
             domain: SourceDomain::Movies,
-            candidate_ids: vec!["webstreamr".into(), "smashystream".into()],
-            settings_order: vec!["webstreamr".into(), "smashystream".into()],
+            candidate_ids: vec!["webstreamr".into(), "moviesapi".into()],
+            settings_order: vec!["webstreamr".into(), "moviesapi".into()],
             preferred: "auto".into(),
-            reliability: HashMap::from([("smashystream".into(), 20)]),
+            reliability: HashMap::from([("moviesapi".into(), 20)]),
         });
-        let smash = response
+        let moviesapi = response
             .rows
             .iter()
-            .find(|r| r.id == "smashystream")
+            .find(|r| r.id == "moviesapi")
             .unwrap();
-        assert_eq!(smash.reliability_score, 20);
-        // With +20 live, smash ranking_score 66 > webstreamr 50 → can move up within ±2.
-        assert!(smash.effective_rank <= 1);
+        assert_eq!(moviesapi.reliability_score, 20);
+        assert!(moviesapi.effective_rank <= 1);
     }
+
 }

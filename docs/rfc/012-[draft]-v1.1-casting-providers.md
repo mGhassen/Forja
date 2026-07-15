@@ -58,6 +58,9 @@ Add to `packages/streaming/lib/src/provider_registry.dart`:
 | 2Embed, AutoEmbed, MultiEmbed | | add |
 | PrimeSrc, VidSrc.wtf API | | add |
 
+SmashyStream was later retired by RFC-004 R04-A09; its row remains as the
+historical bundle scope.
+
 Settings: enable/disable + drag order via `ProviderSettingsRepo`.
 
 ### 3. Casting (RFC-005)

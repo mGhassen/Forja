@@ -10,6 +10,8 @@ import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 
+export 'player_seek_scrub_cancel.dart';
+
 /// True when player chrome should use centered TV dialogs (not side panels).
 bool playerTvUsesCenteredDialogs(BuildContext context) =>
     ShellScope.inputPolicyOf(context).useFocusableMoodChips;

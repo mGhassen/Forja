@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** acceptance (core) · **2 / 5** acceptance (expansion slice) |
-| **Current slice** | VidLove + VidSrc.sbs hosts shipped; in-player switch + remaining expansion not started |
+| **Progress** | **3 / 3** acceptance (core) · **4 / 7** acceptance (expansion slice) |
+| **Current slice** | VidLove + VidSrc.sbs hosts shipped; retired SmashyStream + PrimeWire; in-player switch + remaining expansion not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -33,6 +33,8 @@
 | 3 | R04-A06 | `last_used_provider_id` remembered per title | ⬜ |
 | 4 | R04-A07 | VidLove as separate template embed (`player.vidlove.cc`) | ✅ |
 | 5 | R04-A08 | VidSrc.sbs as separate template embed (`vidsrc.sbs`) | ✅ |
+| 6 | R04-A09 | Remove SmashyStream from registry, resolver, settings, and extraction | ✅ |
+| 7 | R04-A10 | Remove PrimeWire from registry, resolver, settings, and extraction | ✅ |
 
 ---
 
@@ -91,5 +93,8 @@ UI: Settings → Streaming providers (reorder + toggles)
 | 2Embed, AutoEmbed, MultiEmbed | | add |
 | PrimeSrc, VidSrc.wtf | | add |
 | VidSrc.sbs | | yes (R04-A08) |
+
+SmashyStream was implemented during the expansion work and later retired in
+R04-A09. The rollout row above is retained as historical scope.
 
 Stremio addon streams are separate from built-in provider grid (torrent/debrid path).

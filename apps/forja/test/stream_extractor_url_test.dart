@@ -90,6 +90,25 @@ void main() {
       expect(p.deferUntilStrongStream, isTrue);
     });
 
+    test('autoembed forces player top-level load (anti-sandbox)', () {
+      final p = EmbedExtractProfiles.resolve('autoembed');
+      expect(p.id, 'autoembed');
+      expect(p.forceDirect, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
+      expect(
+        p.cdnHostsPreferEmbedReferer.any((h) => h.contains('cloudfabric')),
+        isTrue,
+      );
+    });
+
+    test('2embed forces stream host top-level and rotates servers', () {
+      final p = EmbedExtractProfiles.resolve('2embed');
+      expect(p.id, '2embed');
+      expect(p.forceDirect, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
+      expect(p.rotateServerChips, isTrue);
+    });
+
     test('unknown provider falls back without borrowing vidlove policy', () {
       final p = EmbedExtractProfiles.resolve('some-new-host');
       expect(p.rotateServerChips, isFalse);

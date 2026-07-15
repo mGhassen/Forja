@@ -38,16 +38,12 @@ void main() {
       tv: 'https://vidfast.vc/tv/$tvId/$season/$episode?autoPlay=true',
     ),
     '2embed': (
-      movie: 'https://www.2embed.cc/embed/$tmdbId',
-      tv: 'https://www.2embed.cc/embedtv/$tvId&s=$season&e=$episode',
-    ),
-    'superembed': (
-      movie: 'https://multiembed.mov/?video_id=$tmdbId&tmdb=1',
-      tv: 'https://multiembed.mov/?video_id=$tvId&tmdb=1&s=$season&e=$episode',
+      movie: 'https://2embed.stream/embed/movie/$tmdbId',
+      tv: 'https://2embed.stream/embed/tv/$tvId/$season/$episode',
     ),
     'autoembed': (
-      movie: 'https://autoembed.co/movie/tmdb/$tmdbId',
-      tv: 'https://autoembed.co/tv/tmdb/$tvId-$season-$episode',
+      movie: 'https://player.autoembed.co/embed/movie/$tmdbId',
+      tv: 'https://player.autoembed.co/embed/tv/$tvId/$season-$episode/',
     ),
     'vidlove': (
       movie: 'https://player.vidlove.cc/embed/movie/$tmdbId',
@@ -64,15 +60,6 @@ void main() {
     'moviesapi': (
       movie: 'https://moviesapi.to/movie/$tmdbId',
       tv: 'https://moviesapi.to/tv/$tvId-$season-$episode',
-    ),
-    'smashystream': (
-      movie: 'https://anyembed.xyz/embed/tmdb-movie-$tmdbId',
-      tv: 'https://anyembed.xyz/embed/tmdb-tv-$tvId-$season-$episode',
-    ),
-    'primewire': (
-      movie: 'https://www.primewire.tf/embed/movie?tmdb=$tmdbId',
-      tv:
-          'https://www.primewire.tf/embed/tv?tmdb=$tvId&season=$season&episode=$episode',
     ),
   };
 
@@ -99,5 +86,15 @@ void main() {
   test('listProvidersJson includes vidlink', () {
     final json = RustLib.instance.listProvidersJson();
     expect(json, contains('vidlink'));
+  });
+
+  test('listProvidersJson excludes retired SmashyStream', () {
+    final json = RustLib.instance.listProvidersJson();
+    expect(json, isNot(contains('smashystream')));
+  });
+
+  test('listProvidersJson excludes retired PrimeWire', () {
+    final json = RustLib.instance.listProvidersJson();
+    expect(json, isNot(contains('primewire')));
   });
 }

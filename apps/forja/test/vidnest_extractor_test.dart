@@ -9,7 +9,8 @@ void main() {
       // Round-trip: encode with the same alphabet, then decrypt.
       const alphabet =
           'RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=';
-      const plain = '{"provider":"MovieBox","url":[{"link":"https://bcdn.hakunaymatata.com/x.mp4","resolution":"720p","type":"mp4"}]}';
+      const plain =
+          '{"provider":"MovieBox","url":[{"link":"https://bcdn.hakunaymatata.com/x.mp4","resolution":"720p","type":"mp4"}]}';
       final encoded = _encodeCipher(plain, alphabet);
       final decoded = VidnestExtractor.decryptCipherForTest(encoded);
       final map = jsonDecode(decoded) as Map<String, dynamic>;

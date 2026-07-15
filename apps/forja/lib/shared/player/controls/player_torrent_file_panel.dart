@@ -36,6 +36,7 @@ class PlayerTorrentFilePanel {
   }) {
     dismiss();
     PlayerPopupPanel.dismiss();
+    playerChromeCancelSeekScrubs();
 
     final overlay = Overlay.of(context);
     _completer = Completer<void>();

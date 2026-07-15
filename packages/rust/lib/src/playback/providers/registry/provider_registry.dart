@@ -114,13 +114,6 @@ class ProviderRegistry {
       tvUrl: (id, s, e) => Engine.requireTvUrl('2embed', id, s, e),
     ),
     StreamProviderDef(
-      id: 'superembed',
-      displayName: 'SuperEmbed',
-      kind: ProviderKind.template,
-      movieUrl: (id) => Engine.requireMovieUrl('superembed', id),
-      tvUrl: (id, s, e) => Engine.requireTvUrl('superembed', id, s, e),
-    ),
-    StreamProviderDef(
       id: 'autoembed',
       displayName: 'AutoEmbed',
       kind: ProviderKind.template,
@@ -154,20 +147,6 @@ class ProviderRegistry {
       kind: ProviderKind.template,
       movieUrl: (id) => Engine.requireMovieUrl('moviesapi', id),
       tvUrl: (id, s, e) => Engine.requireTvUrl('moviesapi', id, s, e),
-    ),
-    StreamProviderDef(
-      id: 'smashystream',
-      displayName: 'SmashyStream',
-      kind: ProviderKind.template,
-      movieUrl: (id) => Engine.requireMovieUrl('smashystream', id),
-      tvUrl: (id, s, e) => Engine.requireTvUrl('smashystream', id, s, e),
-    ),
-    StreamProviderDef(
-      id: 'primewire',
-      displayName: 'PrimeWire',
-      kind: ProviderKind.template,
-      movieUrl: (id) => Engine.requireMovieUrl('primewire', id),
-      tvUrl: (id, s, e) => Engine.requireTvUrl('primewire', id, s, e),
     ),
     StreamProviderDef(
       id: 'service111477',

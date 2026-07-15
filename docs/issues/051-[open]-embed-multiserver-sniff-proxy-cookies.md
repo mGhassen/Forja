@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix tasks · **0 / 3** acceptance |
+| **Progress** | **7 / 7** fix tasks · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,8 @@
 | 3 | I51-T03 | Harvest WebView cookies into playback headers; prefer embed Referer over CDN FRAME | ✅ |
 | 4 | I51-T04 | Defer early-complete for `vidlove` / `vidsrc.sbs` / `1embed`; `forceDirect` + embed referer for those hosts | ✅ |
 | 5 | I51-T05 | Per-provider `EmbedExtractProfile` registry — `StreamExtractor` stays generic; VidLove/VidSrc.sbs policy does not apply to other hosts | ✅ |
+| 6 | I51-T06 | Headless WebView native popup window cancellation (`onCreateWindow`) | ✅ |
+| 7 | I51-T07 | Generic headless navigation guard: block ad/tracker navigations and cancel main-frame hijacks away from the embed/player site | ✅ |
 
 ---
 
@@ -34,12 +36,24 @@
 | 1 | I51-A01 | VidLove HOTD S1E1: sniff detects `.m3u8` and player opens (probe + progress) | ⬜ |
 | 2 | I51-A02 | VidSrc.sbs HOTD S1E1: `VIDEO/STREAM DETECTED` (not only proxy/blob) then opens | ⬜ |
 | 3 | I51-A03 | Multi-server chips: sniffer logs server-chip clicks; default LOADMAXING does not strand forever | ⬜ |
+| 4 | I51-A04 | Template embed with popup/ad redirect: headless sniff blocks popup/main-frame hijack and still captures a playable stream | ⬜ |
 
 ---
 
 ## Summary
 
 Browser works because users (or the page) pick a working internal server and the player keeps session cookies + correct Referer. Forja’s headless sniffer only clicked play overlays, ignored `/api/proxy` bodies without `.m3u8` in the URL, and opened CDN playlists with UA/Referer/Origin only (no Cookie). VidSrc.sbs nested into `1embed.cc` and never produced `VIDEO/STREAM DETECTED`. VidLove sometimes detected HLS then failed probe/open without cookies.
+
+### Ad / redirect hardening (I51-T06–T07)
+
+Template embeds often work in a browser because popup ads open in another tab or the user dismisses them. The production headless sniffer did not have native `shouldOverrideUrlLoading` / `onCreateWindow` guards, so automated play/overlay clicks could send the main frame to an ad page before the real media request was captured.
+
+The generic headless path now:
+
+- disables JavaScript window creation and support for multiple windows,
+- treats every `onCreateWindow` callback as handled/blocked,
+- blocks obvious ad/tracker navigation URLs,
+- cancels main-frame redirects away from the original embed/player site while still allowing subframe/player resources and playable media URLs.
 
 ### Architecture (I51-T05)
 

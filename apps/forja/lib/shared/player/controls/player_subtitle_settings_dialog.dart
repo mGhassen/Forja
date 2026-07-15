@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:media_kit/media_kit.dart';
@@ -45,6 +46,7 @@ class PlayerSubtitleSettingsDialog {
     Player? player,
   }) {
     _isShowing = true;
+    playerChromeCancelSeekScrubs();
     return showDialog<void>(
       context: context,
       useRootNavigator: false,

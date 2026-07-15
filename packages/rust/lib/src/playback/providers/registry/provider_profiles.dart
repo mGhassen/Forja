@@ -79,10 +79,6 @@ abstract final class ProviderProfiles {
       id: '2embed',
       priority: {SourceDomain.movies: 57, SourceDomain.series: 57},
     ),
-    'superembed': const ProviderProfile(
-      id: 'superembed',
-      priority: {SourceDomain.movies: 56, SourceDomain.series: 56},
-    ),
     'autoembed': const ProviderProfile(
       id: 'autoembed',
       priority: {SourceDomain.movies: 55, SourceDomain.series: 55},
@@ -102,14 +98,6 @@ abstract final class ProviderProfiles {
     'moviesapi': const ProviderProfile(
       id: 'moviesapi',
       priority: {SourceDomain.movies: 53, SourceDomain.series: 53},
-    ),
-    'smashystream': const ProviderProfile(
-      id: 'smashystream',
-      priority: {SourceDomain.movies: 46, SourceDomain.series: 62},
-    ),
-    'primewire': const ProviderProfile(
-      id: 'primewire',
-      priority: {SourceDomain.movies: 48, SourceDomain.series: 48},
     ),
     'service111477': const ProviderProfile(
       id: 'service111477',

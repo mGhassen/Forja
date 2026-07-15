@@ -24,7 +24,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [001-[fixed]-…](fixed/001-[fixed]-monorepo.md) | Monorepo + feature boundaries | v1.0 | fixed | Complete · 4/4 | [0.0.1](../backlog/done/0.0.1-[done].md) |
 | [002-[fixed]-…](fixed/002-[fixed]-iptv-groups.md) | IPTV portal groups | v1.0 | fixed | Complete · 4/4 | [0.0.1](../backlog/done/0.0.1-[done].md) |
 | [003-[partial]-…](003-[partial]-player-overlay.md) | Player overlay + server grid | v1.1 | partial | 4/6 · 0/4 | [0.0.1](../backlog/done/0.0.1-[done].md) slice → [1.0.2](../backlog/1.0.2-[draft].md) |
-| [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 2/5 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.1](../backlog/1.0.1-[open].md) / [1.0.2](../backlog/1.0.2-[draft].md) |
+| [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 4/7 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.1](../backlog/1.0.1-[open].md) / [1.0.2](../backlog/1.0.2-[draft].md) |
 | [005-[partial]-…](005-[partial]-casting.md) | AirPlay + Chromecast | v1.1 | stub | 0/1 · 0/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | stub | 0/1 · 0/4 | v2 |
 | [007-[draft]-…](007-[draft]-lan-companion.md) | LAN remote API | v1.2 | draft | 0/4 | v2 |

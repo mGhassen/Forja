@@ -5,9 +5,7 @@ void main() {
   group('normalizePlaybackStreamUrl', () {
     test('strips trailing slash after media extension', () {
       expect(
-        normalizePlaybackStreamUrl(
-          'https://cdn.example/get_file/x/video.mp4/',
-        ),
+        normalizePlaybackStreamUrl('https://cdn.example/get_file/x/video.mp4/'),
         'https://cdn.example/get_file/x/video.mp4',
       );
       expect(
@@ -55,10 +53,9 @@ void main() {
     });
 
     test('keeps extractor Referer over CDN-host fallback', () {
-      final h = resolvePlaybackHttpHeaders(
-        {'Referer': 'https://embed.example/play'},
-        streamUrl: 'https://cdn.other/file.mp4',
-      );
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://embed.example/play',
+      }, streamUrl: 'https://cdn.other/file.mp4');
       expect(h['Referer'], 'https://embed.example/play');
       expect(h['Origin'], 'https://embed.example');
     });
@@ -101,8 +98,7 @@ void main() {
     });
 
     test('does not derive Referer from CloudStream /pl/ stream URL', () {
-      const url =
-          'https://sagaciousslumber.site/pl/abc/master.m3u8?token=abc';
+      const url = 'https://sagaciousslumber.site/pl/abc/master.m3u8?token=abc';
       final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
       expect(h['User-Agent'], contains('Mozilla/5.0'));
       expect(h.containsKey('Referer'), isFalse);
@@ -123,8 +119,7 @@ void main() {
     });
 
     test('does not derive Referer from hakunaymatata stream URL', () {
-      const url =
-          'https://sacdn.hakunaymatata.com/dash/x/index_web.mpd?host=y';
+      const url = 'https://sacdn.hakunaymatata.com/dash/x/index_web.mpd?host=y';
       final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
       expect(h['User-Agent'], contains('Mozilla/5.0'));
       expect(h.containsKey('Referer'), isFalse);
