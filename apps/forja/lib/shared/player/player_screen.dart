@@ -13,6 +13,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
 class PlayerScreen extends StatefulWidget {
@@ -50,8 +51,10 @@ class PlayerScreen extends StatefulWidget {
   /// watch history should be persisted (lifecycle pause, periodic tick,
   /// player exit). Used by anime / arabic flows that own their own
   /// per-source history store and don't go through `WatchHistoryService`.
-  final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
-  final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
+  final Future<void> Function(Duration position, Duration duration)?
+  onSaveProgress;
+  final Future<void> Function(String sourceUrl, String sourceTitle)?
+  onSourcePinned;
   final bool pinSource;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
@@ -122,6 +125,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    ShellBus.enterPlayerSurface();
     _sessionStreamUrl = widget.streamUrl;
     _sessionActiveProvider = widget.activeProvider;
     _sessionSources = widget.sources;
@@ -161,13 +165,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    ShellBus.leavePlayerSurface();
     site111477_proxy.retainForExternalHandoff = false;
     TorrentStreamService().retainForExternalHandoff = false;
     if (site111477_proxy.is111477ProxyRunning) {
       unawaited(site111477_proxy.stop111477Proxy(force: true));
     }
     final torrentId = widget.magnetLink ?? _sessionStreamUrl;
-    if (widget.magnetLink != null || isLocalTorrentStreamUrl(_sessionStreamUrl)) {
+    if (widget.magnetLink != null ||
+        isLocalTorrentStreamUrl(_sessionStreamUrl)) {
       TorrentStreamService().removeTorrent(torrentId);
     }
     super.dispose();
@@ -191,7 +197,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return true;
     }
     // Player not found — fall back to built-in player
-    ForjaToast.warning('$_externalPlayerName not found. Using built-in player.');
+    ForjaToast.warning(
+      '$_externalPlayerName not found. Using built-in player.',
+    );
     setState(() {
       _useExternalPlayer = false;
       _externalLaunched = false;
@@ -293,9 +301,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return Scaffold(
         backgroundColor: DesignTokens.bgDark,
         body: Center(
-          child: CircularProgressIndicator(
-            color: ForjaShellColors.brandGreen,
-          ),
+          child: CircularProgressIndicator(color: ForjaShellColors.brandGreen),
         ),
       );
     }

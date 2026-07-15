@@ -29,6 +29,7 @@ import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/app_update_progress_banner.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -322,8 +323,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           builder: (context, child) {
             Widget content = ShellScopeBuilder(
               builder: (context, _) => ForjaToastHost(
-                child: BackNavigationScope(
-                  child: child ?? const SizedBox.shrink(),
+                child: AppUpdateProgressBannerHost(
+                  child: BackNavigationScope(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               ),
             );
@@ -362,8 +365,9 @@ class _SplashScreenState extends State<SplashScreen> {
   /// HomeScreen build, layout, paint and prefetch in the background. That
   /// way, when the overlay slides away, the first frames of the real UI are
   /// already warm and scrolling is smooth instead of janky.
-  static Duration get _minSplashDuration =>
-      kDebugMode ? const Duration(milliseconds: 800) : const Duration(seconds: 8);
+  static Duration get _minSplashDuration => kDebugMode
+      ? const Duration(milliseconds: 800)
+      : const Duration(seconds: 8);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition

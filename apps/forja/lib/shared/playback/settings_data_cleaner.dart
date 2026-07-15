@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
@@ -42,10 +44,21 @@ abstract final class SettingsDataCleaner {
 
   /// In-app update installers saved on desktop (.dmg / .exe / AppImage).
   static Future<void> clearDownloadedUpdates() async {
-    if (AppUpdateDownloadService.instance.isDownloading) {
+    final download = AppUpdateDownloadService.instance;
+    if (download.isDownloading) {
       throw StateError('An update is currently downloading');
     }
+    final trackedPath = download.state.value.filePath;
+    if (trackedPath != null) {
+      try {
+        final tracked = File(trackedPath);
+        if (await tracked.exists()) {
+          await tracked.delete();
+        }
+      } catch (_) {}
+    }
     await AppUpdateDownloadStorage.clearDownloadedFiles();
+    download.resetAfterCacheClear();
   }
 
   /// Learned provider reliability (Settings Score / Auto nudge).

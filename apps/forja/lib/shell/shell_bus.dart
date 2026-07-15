@@ -17,7 +17,9 @@ class ShellBus {
       ValueNotifier<String?>(null);
 
   /// TMDB watch-provider filter for Home desktop top bar (`null` = all providers).
-  static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(null);
+  static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(
+    null,
+  );
 
   /// Home feed vertical scroll — [HomeTopBar] hides when this passes [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
@@ -43,8 +45,32 @@ class ShellBus {
   static final ValueNotifier<bool> hideGlobalNav = ValueNotifier<bool>(false);
 
   /// True when [ShellOverlayNavigator] has a route above the transparent root.
-  static final ValueNotifier<bool> shellOverlayHasPage =
-      ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> shellOverlayHasPage = ValueNotifier<bool>(
+    false,
+  );
+
+  /// True while any fullscreen video player surface is mounted.
+  /// Used to hide chrome like background-update progress toasts over playback.
+  static final ValueNotifier<bool> playerSurfaceActive = ValueNotifier<bool>(
+    false,
+  );
+
+  static int _playerSurfaceDepth = 0;
+
+  static void enterPlayerSurface() {
+    _playerSurfaceDepth++;
+    if (!playerSurfaceActive.value) {
+      playerSurfaceActive.value = true;
+    }
+  }
+
+  static void leavePlayerSurface() {
+    if (_playerSurfaceDepth > 0) _playerSurfaceDepth--;
+    final active = _playerSurfaceDepth > 0;
+    if (playerSurfaceActive.value != active) {
+      playerSurfaceActive.value = active;
+    }
+  }
 
   static void notifyShellChromeChanged() {
     shellChromeRevision.value++;
@@ -58,9 +84,15 @@ class ShellBus {
     }
   }
 
-  static void openStremioSearch({required String query, required String addonBaseUrl}) {
+  static void openStremioSearch({
+    required String query,
+    required String addonBaseUrl,
+  }) {
     stremioSearchNotifier.value = null;
-    stremioSearchNotifier.value = {'query': query, 'addonBaseUrl': addonBaseUrl};
+    stremioSearchNotifier.value = {
+      'query': query,
+      'addonBaseUrl': addonBaseUrl,
+    };
   }
 
   static final List<bool Function()> _findShortcutHandlers = [];

@@ -23,6 +23,7 @@ import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -70,9 +71,11 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
+
   /// The single hovered timeline card (bucket + index) lifted above neighbors.
   int? _timelineHoveredBucketMs;
   int? _timelineHoveredIndex;
+
   /// Stable transform links per timeline card so the elevated hover copy can
   /// track the real card's on-screen position (`bucketMs:index`).
   final Map<String, LayerLink> _timelineCardLinks = {};

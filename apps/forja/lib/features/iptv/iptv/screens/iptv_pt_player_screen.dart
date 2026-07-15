@@ -29,6 +29,7 @@ import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shell/shell_bus.dart';
 
 part 'iptv_pt_player_engine.dart';
 part 'iptv_pt_player_ui.dart';
@@ -71,15 +72,14 @@ class IptvPtPlayerScreen extends StatefulWidget {
     required IptvStream stream,
     String? portalName,
     IptvChannelGuide? channelGuide,
-  }) =>
-      IptvPtPlayerScreen(
-        key: key,
-        sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
-        title: stream.name,
-        subtitle: portalName,
-        logoUrl: stream.icon.isEmpty ? null : stream.icon,
-        channelGuide: channelGuide,
-      );
+  }) => IptvPtPlayerScreen(
+    key: key,
+    sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
+    title: stream.name,
+    subtitle: portalName,
+    logoUrl: stream.icon.isEmpty ? null : stream.icon,
+    channelGuide: channelGuide,
+  );
 
   /// Convenience: build for a list of channel hits (multi-source).
   factory IptvPtPlayerScreen.fromHits({
@@ -87,22 +87,23 @@ class IptvPtPlayerScreen extends StatefulWidget {
     required List<ChannelHit> hits,
     required String title,
     String? logoUrl,
-  }) =>
-      IptvPtPlayerScreen(
-        key: key,
-        title: title,
-        logoUrl: logoUrl,
-        sources: hits
-            .asMap()
-            .entries
-            .map((e) => IptvPlaySource(
-                  url: e.value.streamUrl,
-                  label: e.value.portal.name.isNotEmpty
-                      ? e.value.portal.name
-                      : 'Source ${e.key + 1}',
-                ))
-            .toList(),
-      );
+  }) => IptvPtPlayerScreen(
+    key: key,
+    title: title,
+    logoUrl: logoUrl,
+    sources: hits
+        .asMap()
+        .entries
+        .map(
+          (e) => IptvPlaySource(
+            url: e.value.streamUrl,
+            label: e.value.portal.name.isNotEmpty
+                ? e.value.portal.name
+                : 'Source ${e.key + 1}',
+          ),
+        )
+        .toList(),
+  );
 
   @override
   State<IptvPtPlayerScreen> createState() => _IptvPtPlayerScreenState();
@@ -123,9 +124,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _playerReady = false;
   int _videoEpoch = 0;
   bool _softwareDecodeForced = false;
+
   /// Android MediaKit uses software decode — HW surfaces fail on many devices
   /// and ATV emulators (EGL_BAD_ATTRIBUTE, audio OK / black frame).
   bool _androidMediaKitSafeMode = false;
+
   /// Probed after each open — pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
 
@@ -192,7 +195,16 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   // When the user explicitly paused (so play-after-pause can rejoin live edge)
   // ignore: unused_field
   DateTime? _pausedAt;
-  final List<int> _backoffMs = const [500, 1000, 2000, 3000, 4000, 6000, 8000, 8000];
+  final List<int> _backoffMs = const [
+    500,
+    1000,
+    2000,
+    3000,
+    4000,
+    6000,
+    8000,
+    8000,
+  ];
   static const int _maxRetries = 8;
   static const Duration _healthyStreakNeeded = Duration(seconds: 6);
   // After exhausting per-source retries on a single-source stream, keep
@@ -232,6 +244,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   @override
   void initState() {
     super.initState();
+    ShellBus.enterPlayerSurface();
     _sources = List<IptvPlaySource>.from(widget.sources);
     _title = widget.title;
     _subtitle = widget.subtitle;
@@ -259,9 +272,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   void dispose() {
+    ShellBus.leavePlayerSurface();
     _disposed = true;
-    SettingsService.iptvEpgEnabledNotifier
-        .removeListener(_onIptvEpgPrefChanged);
+    SettingsService.iptvEpgEnabledNotifier.removeListener(
+      _onIptvEpgPrefChanged,
+    );
     WidgetsBinding.instance.removeObserver(this);
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();

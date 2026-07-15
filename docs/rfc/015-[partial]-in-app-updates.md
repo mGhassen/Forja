@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **8 / 12** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — desktop background download, cached-installer reuse, macOS/Windows close-before-install, and clickable failure fallback shipped; skip version, SHA256, CI assets remain |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — sticky background progress toast, cached-installer reuse, macOS/Windows close-before-install, and clickable failure fallback shipped; skip version, SHA256, CI assets remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -59,6 +59,7 @@
 | 10 | R15-A19 | Desktop update can continue in the background and posts an Install toast when ready | ✅ |
 | 11 | R15-A20 | Update check detects an already-downloaded installer and goes directly to install confirmation | ✅ |
 | 12 | R15-A21 | Windows launches the downloaded installer only after confirmation, then closes Forja | ✅ |
+| 13 | R15-A22 | Background download shows a sticky progress toast (dismissible; hidden over video players) | ✅ |
 
 ---
 

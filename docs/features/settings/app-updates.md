@@ -18,7 +18,7 @@ Forja can check GitHub Releases for newer builds when the app starts and lets yo
 - On macOS, download the `.dmg`, then choose **Install and close Forja** to open it and quit the app, or **Skip for now** to keep using Forja; if Downloads is unavailable, the app falls back to its own updates folder
 - On Windows, download the `.exe`, then choose **Install and close Forja** to launch it and quit the app, or **Skip for now**
 - On Linux, download the installer with progress from the same dialog
-- During a desktop download, choose **Continue in background** to return to Forja; an **Install** toast appears when it finishes
+- During a desktop download, choose **Continue in background** to return to Forja; a sticky progress toast stays visible (you can close it) and an **Install** toast appears when it finishes. Progress is hidden while a video player is open.
 - Checking for the same update again reuses a completed installer already on disk instead of downloading it again
 - If a Windows or macOS download fails, use **Open download URL** in the error message to retry in your browser
 - **Settings → Data & backup → Downloaded updates** removes saved installer files from in-app update

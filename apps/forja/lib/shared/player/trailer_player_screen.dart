@@ -12,12 +12,12 @@ import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 
 part 'trailer_player_web.dart';
 part 'trailer_player_menus.dart';
 part 'trailer_player_build.dart';
-
 
 class TrailerPlayerScreen extends StatefulWidget {
   const TrailerPlayerScreen({
@@ -65,12 +65,14 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   @override
   void initState() {
     super.initState();
+    ShellBus.enterPlayerSurface();
     _currentIndex = widget.initialIndex;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
   }
 
   @override
   void dispose() {
+    ShellBus.leavePlayerSurface();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _backFocus.dispose();
     _playFocus.dispose();
@@ -123,6 +125,4 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _exitTrailer();
     return true;
   }
-
 }
-

@@ -393,7 +393,8 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final e = widget.event;
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active = widget.forceActive ||
+    final active =
+        widget.forceActive ||
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hovered,
@@ -741,6 +742,7 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   void initState() {
     super.initState();
+    ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
     _windowsDirectEmbed = !kIsWeb && Platform.isWindows;
     _initialUserScripts = UnmodifiableListView([
@@ -923,6 +925,7 @@ class _LiveMatchesEmbedPlayerScreenState
 
   @override
   void dispose() {
+    ShellBus.leavePlayerSurface();
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
     _backFocusNode.dispose();
@@ -1016,7 +1019,10 @@ class _LiveMatchesEmbedPlayerScreenState
                       widget.subtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                 ],
               ),
@@ -1261,10 +1267,7 @@ class _MergedMatchStreamSheet extends StatelessWidget {
               child: Column(
                 children: [
                   if (ppv != null)
-                    _MergedPpvStreamRow(
-                      stream: ppv!,
-                      onTap: onPpvSelected,
-                    ),
+                    _MergedPpvStreamRow(stream: ppv!, onTap: onPpvSelected),
                   for (final stream in sorted)
                     _StreamedStreamRow(
                       stream: stream,
@@ -1600,7 +1603,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
-    final active = widget.forceActive ||
+    final active =
+        widget.forceActive ||
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hovered,
@@ -1806,7 +1810,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
     final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
     final policy = ShellScope.inputPolicyOf(context);
-    final active = widget.forceActive ||
+    final active =
+        widget.forceActive ||
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hovered,

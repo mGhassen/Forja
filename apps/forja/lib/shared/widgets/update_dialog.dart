@@ -200,17 +200,21 @@ class _UpdateDialogState extends State<UpdateDialog> {
         current.updateInfo?.latestVersion == widget.updateInfo.latestVersion) {
       _isDownloading = true;
       _downloadProgress = current.progress;
-    } else if (current.phase == AppUpdateDownloadPhase.completed &&
-        current.updateInfo?.latestVersion == widget.updateInfo.latestVersion) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _onDesktopDownloadChanged();
-      });
-    } else if ((Platform.isWindows ||
-            Platform.isLinux ||
-            (Platform.isMacOS && _hasDirectAsset)) &&
-        current.updateInfo?.latestVersion != widget.updateInfo.latestVersion) {
-      unawaited(_desktopDownload.restoreCached(widget.updateInfo));
+    } else if (Platform.isWindows ||
+        Platform.isLinux ||
+        (Platform.isMacOS && _hasDirectAsset)) {
+      // Always re-check disk: Settings may have cleared installers while the
+      // in-memory service still said "completed".
+      unawaited(_reconcileCachedInstaller());
     }
+  }
+
+  Future<void> _reconcileCachedInstaller() async {
+    final usable = await _desktopDownload.hasUsableCachedInstaller(
+      widget.updateInfo,
+    );
+    if (!mounted || !usable) return;
+    _onDesktopDownloadChanged();
   }
 
   @override
