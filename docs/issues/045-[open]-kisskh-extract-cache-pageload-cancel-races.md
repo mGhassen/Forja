@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `asian_drama/catalog/kisskh_extractor.dart`, `shared/player/player/utils.dart`
+**Area:** `shared/extractors/providers/kisskh/kisskh_extractor.dart`, `shared/player/player/utils.dart`
 
 ## Status at a glance
 

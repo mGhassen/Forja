@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja/shared/extractors/arabic_service.dart';
+import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'arabic_details_screen.dart';
 import 'arabic_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';

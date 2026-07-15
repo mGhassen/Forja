@@ -3,7 +3,7 @@
 **Status:** fixed  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `packages/rust/lib/src/playback/videasy_extractor.dart`, Videasy host resolve
+**Area:** `apps/forja/lib/shared/extractors/providers/videasy/videasy_extractor.dart`, Videasy host resolve
 
 ## Status at a glance
 

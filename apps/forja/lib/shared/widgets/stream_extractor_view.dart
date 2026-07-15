@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 

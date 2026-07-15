@@ -19,6 +19,8 @@ import 'playback_recovery.dart';
 import 'playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
+import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
+import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
@@ -31,7 +33,7 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
-import 'package:forja/shared/extractors/arabic_service.dart';
+import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';

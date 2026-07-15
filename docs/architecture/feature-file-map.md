@@ -204,7 +204,7 @@ Paths relative to `apps/forja/lib/features/`.
 | 532 | comics | `comics/comic_reader_screen.dart` | Player | Out |
 | 526 | iptv | `iptv/iptv/channel_guide/iptv_guide_epg.dart` | UI Panel | In |
 | 521 | iptv | `iptv/iptv/channel_guide/iptv_channel_search_overlay.dart` | UI Panel | In |
-| 503 | asian_drama | `asian_drama/catalog/kisskh_extractor.dart` | Data/Service | In |
+| 503 | shared | `shared/extractors/providers/kisskh/kisskh_extractor.dart` | Data/Service | In |
 | 498 | manga | `manga/manga_details_screen.dart` | Details | Out |
 | 486 | asian_drama | `asian_drama/asian_drama_player_screen.dart` | Player | In |
 | 482 | arabic | `arabic/arabic_details_screen.dart` | Details | Out |

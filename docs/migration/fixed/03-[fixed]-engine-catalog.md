@@ -154,9 +154,9 @@ Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja
 
 | Area | Files | Class | Notes |
 |------|-------|-------|-------|
-| KissKh WebView | `asian_drama/catalog/kisskh_extractor.dart` | C3 | WebView embed sniff |
+| KissKh WebView | `shared/extractors/providers/kisskh/kisskh_extractor.dart` | C3 | WebView embed sniff |
 | Allanime / Miruro / Hentaini | `anime/catalog/*_extractor.dart` | C2+C3 | HTML parse in Dart; HTTP via FFI |
-| Arabic verticals | `shared/extractors/arabic_service.dart` | C2 | Multi-site scrape in Dart |
+| Arabic verticals | `shared/extractors/providers/arabic/arabic_service.dart` | C2 | Multi-site scrape in Dart |
 | Anime Arabic | `anime_arabic/catalog/anime_arabic_extractor.dart` | C2+C3 | Mega Rust; iframe scrape Dart |
 | Nuvio | `shared/nuvio/nuvio_runtime.dart` | C4 | `flutter_js` |
 | Videasy | `packages/rust/.../videasy_extractor.dart` | C5 | WASM host |

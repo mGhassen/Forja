@@ -55,4 +55,4 @@ Cancel: start WebStreamr/Vidsrc resolve, tap Cancel — Rust stops at next HTTP 
 | `packages/rust/lib/src/engine_worker.dart` | Persistent worker pool (3 isolates) |
 | `packages/rust/lib/src/isolate_runner.dart` | Typed job runners |
 | `packages/rust/lib/src/engine.dart`, `facade.dart` | `engineCancelPending`, `Engine.cancelPendingResolve`, pool start at init |
-| `packages/api/lib/playback/webstreamr_service.dart`, `vidsrc_extractor.dart` | Wire cancel to Rust |
+| `packages/api/lib/playback/providers/services/webstreamr_service.dart`, `vidsrc_extractor.dart` | Wire cancel to Rust |

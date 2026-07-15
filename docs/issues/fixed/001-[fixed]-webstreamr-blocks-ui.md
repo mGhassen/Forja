@@ -5,7 +5,7 @@
 **Tracked:** P2-91 ([Phase 2 task](../migration/fixed/02-[fixed]-rust-engine-complete.md))  
 **Status:** fixed (2026-07-06) — [EngineWorkerPool](../../packages/rust/lib/src/engine_worker.dart) + async Rust ([015](015-[fixed]-rust-blocking-http-engine-debt.md))  
 **Root fix:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)  
-**Area:** `packages/api/lib/playback/webstreamr_service.dart`, `packages/rust/lib/src/isolate_runner.dart`, `crates/webstreamr`  
+**Area:** `packages/api/lib/playback/providers/services/webstreamr_service.dart`, `packages/rust/lib/src/isolate_runner.dart`, `crates/webstreamr`  
 **Reported:** 2026-07-06
 ## Status at a glance
 
@@ -52,7 +52,7 @@
 Isolate offload — still required (R5). Engine async HTTP + parallel resolve shipped in [015](015-[fixed]-rust-blocking-http-engine-debt.md).
 
 1. `runWebstreamrGetStreamsJson` in `packages/rust/lib/src/isolate_runner.dart` — loads Rust dylib in worker isolate.
-2. `packages/api/lib/playback/webstreamr_service.dart:50`:
+2. `packages/api/lib/playback/providers/services/webstreamr_service.dart:50`:
 
 ```dart
 final raw = await runWebstreamrGetStreamsJson(jsonEncode(request));

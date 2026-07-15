@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/extractors/arabic_service.dart';
+import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';

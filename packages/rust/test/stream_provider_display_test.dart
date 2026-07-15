@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rust/src/playback/stream_provider_display.dart';
+import 'package:rust/src/playback/providers/display/stream_provider_display.dart';
 
 void main() {
   test('built-in providers use real player labels', () {

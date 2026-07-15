@@ -3,7 +3,7 @@
 **Status:** draft  
 **Priority:** P2  
 **Severity:** Medium  
-**Area:** `apps/forja/lib/shared/lan`, `apps/forja/lib/features/settings`, `packages/rust/lib/src/playback/playback_profile.dart`
+**Area:** `apps/forja/lib/shared/lan`, `apps/forja/lib/features/settings`, `packages/rust/lib/src/playback/platform/playback_profile.dart`
 
 ## Status at a glance
 

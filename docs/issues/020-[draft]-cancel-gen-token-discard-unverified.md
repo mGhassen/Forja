@@ -4,7 +4,7 @@
 **Severity:** Medium  
 **Status:** draft  
 **Parent:** [018](018-[draft]-migration-playback-parity-unverified.md)  
-**Area:** `apps/forja/lib/features/home/details_screen.dart`, `streaming_details_screen.dart`, `packages/api/lib/playback/webstreamr_service.dart`, player screens  
+**Area:** `apps/forja/lib/features/home/details_screen.dart`, `streaming_details_screen.dart`, `packages/api/lib/playback/providers/services/webstreamr_service.dart`, player screens  
 **Reported:** 2026-07-07  
 **Related:** [009](fixed/009-[fixed]-post-migration-resilience-audit.md) (cancel UX shipped; races not QA’d)
 ## Status at a glance

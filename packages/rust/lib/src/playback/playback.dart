@@ -1,36 +1,34 @@
-export 'device_capabilities_service.dart';
-export 'playback_normalize.dart';
-export 'playback_selection.dart';
-export 'extracted_media.dart';
-export 'local_server_service.dart';
-export 'playback_profile.dart';
-export 'provider_profiles.dart';
-export 'provider_registry.dart';
-export 'provider_score_memory.dart';
-export 'provider_score_scope.dart';
-export 'resolver_engine_client.dart';
-export 'source_domain.dart';
-export 'source_engine.dart';
-export 'source_order_engine.dart';
-export 'stream_provider_display.dart';
-export 'site111477_proxy.dart';
-export 'stream_providers.dart';
-export 'torrent_engine_backend.dart';
-export 'torrent_stream_service.dart';
-export 'vidsrc_extractor.dart';
-export 'videasy_extractor.dart';
-export 'webstreamr_service.dart';
-export 'debrid_api.dart'
+export 'platform/device_capabilities_service.dart';
+export 'selection/playback_normalize.dart';
+export 'selection/playback_selection.dart';
+export 'domain/extracted_media.dart';
+export 'proxy/local_server_service.dart';
+export 'platform/playback_profile.dart';
+export 'providers/registry/provider_profiles.dart';
+export 'providers/registry/provider_registry.dart';
+export 'ordering/provider_score_memory.dart';
+export 'domain/provider_score_scope.dart';
+export 'resolver/resolver_engine_client.dart';
+export 'domain/source_domain.dart';
+export 'ordering/source_engine.dart';
+export 'ordering/source_order_engine.dart';
+export 'providers/display/stream_provider_display.dart';
+export 'proxy/site111477_proxy.dart';
+export 'providers/registry/stream_providers.dart';
+export 'domain/torrent_engine_backend.dart';
+export 'torrent/torrent_stream_service.dart';
+export 'providers/services/webstreamr_service.dart';
+export 'torrent/debrid_api.dart'
     show
         DebridApi,
         DebridAuthException,
         DebridFile,
         debridUserMessage,
         isDebridAuthFailure;
-export 'stremio_stream_resolver.dart';
-export 'torrent_playback_resolver.dart';
-export 'site111477_service.dart';
-export 'jackett_service.dart' hide ConnectionTestResult;
-export 'prowlarr_service.dart';
-export 'link_resolver.dart';
-export 'mega_proxy.dart';
+export 'stremio/stremio_stream_resolver.dart';
+export 'torrent/torrent_playback_resolver.dart';
+export 'providers/services/site111477_service.dart';
+export 'torrent/jackett_service.dart' hide ConnectionTestResult;
+export 'torrent/prowlarr_service.dart';
+export 'torrent/link_resolver.dart';
+export 'proxy/mega_proxy.dart';

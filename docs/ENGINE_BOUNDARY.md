@@ -117,7 +117,7 @@ WebView, `flutter_js`, and WASM hosts **cannot** move off the main Dart isolate.
 | Kisskh WebView | `packages/api/lib/api/kisskh_extractor.dart` | 10–25s (+ subtitle decrypt) | ✅ 25s | ✅ `cancel()` + `isCancelled` |
 | Amri WebView | `packages/api/lib/api/amri_extractor.dart` | 15–30s | ✅ 30s | ✅ `cancel()` + `isCancelled` |
 | Nuvio scrapers | `apps/forja/lib/shared/nuvio/nuvio_runtime.dart` | 10–30s (JS event loop) | ✅ 30s | ✅ `NuvioService.cancelPending()` |
-| Videasy WASM | `packages/api/lib/playback/videasy_extractor.dart` | 5–45s (HTTP + WASM + AES FFI) | ✅ 45s | ✅ `isCancelled` |
+| Videasy WASM | `apps/forja/lib/shared/extractors/providers/videasy/videasy_extractor.dart` | 5–45s (HTTP + WASM + AES FFI) | ✅ 45s | ✅ `isCancelled` |
 | Arabic WebView fallback | `packages/api/lib/api/arabic_service.dart` | 5–15s | ✅ 15s | via `StreamExtractor.cancel()` |
 
 Rust-side decrypt/resolve for vidsrc/videasy uses [`EngineJobs`](../packages/rust/lib/src/engine_jobs.dart) ([006](issues/006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md), [016](issues/016-[fixed]-async-job-ffi-hard-cancel.md)).
@@ -130,7 +130,7 @@ Rust-side decrypt/resolve for vidsrc/videasy uses [`EngineJobs`](../packages/rus
 |-----------|----------|---------|
 | Index fetch + CF/rate-limit retry (429, error 1015) | `packages/api/lib/api/site111477_service.dart` | Legacy API — **not** engine |
 | Seekable localhost proxy | `crates/proxy/src/seek111477.rs` | **Engine** (C7) |
-| Proxy FFI glue | `packages/api/lib/playback/site111477_proxy.dart` | Thin wrapper |
+| Proxy FFI glue | `packages/api/lib/playback/proxy/site111477_proxy.dart` | Thin wrapper |
 
 The Rust proxy receives a **resolved file URL** only. Cloudflare backoff is not duplicated in Rust by design. See [crates/proxy/README.md](../../crates/proxy/README.md).
 

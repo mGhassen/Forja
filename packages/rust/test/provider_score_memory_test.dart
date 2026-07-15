@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rust/src/playback/provider_score_memory.dart';
-import 'package:rust/src/playback/provider_score_scope.dart';
+import 'package:rust/src/playback/ordering/provider_score_memory.dart';
+import 'package:rust/src/playback/domain/provider_score_scope.dart';
 
 void main() {
   setUp(ProviderScoreMemory.resetForTest);

@@ -38,7 +38,7 @@ Stremio addons are manifest-based extensions. Forja supports installing the same
 | Desktop, Android, iOS | Play direct | Local torrent engine | Debrid URL |
 | Web, TV (planned) | Play direct | Requires debrid | Debrid URL |
 
-Capability profile: `PlatformPlayback.capabilities` in `packages/api/lib/playback/playback_profile.dart`. Stream resolution: `resolveStremioStream()` in `stremio_stream_resolver.dart`.
+Capability profile: `PlatformPlayback.capabilities` in `packages/api/lib/playback/platform/playback_profile.dart`. Stream resolution: `resolveStremioStream()` in `stremio_stream_resolver.dart`.
 
 ## Related
 

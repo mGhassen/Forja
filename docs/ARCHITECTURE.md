@@ -326,7 +326,7 @@ flowchart TD
 
 ### 4.3 Provider registry resolve
 
-From [RFC-004](rfc/004-[partial]-provider-registry.md). Registry: [`packages/rust/lib/src/playback/provider_registry.dart`](../packages/rust/lib/src/playback/provider_registry.dart).
+From [RFC-004](rfc/004-[partial]-provider-registry.md). Registry: [`packages/rust/lib/src/playback/providers/registry/provider_registry.dart`](../packages/rust/lib/src/playback/providers/registry/provider_registry.dart).
 
 ```mermaid
 flowchart TD

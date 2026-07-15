@@ -4,7 +4,7 @@
 **Severity:** Medium  
 **Status:** draft  
 **Parent:** [018](018-[draft]-migration-playback-parity-unverified.md)  
-**Area:** `packages/rust/test/parity/`, `packages/api/lib/playback/webstreamr_service.dart`, `packages/rust/lib/src/engine_jobs.dart`  
+**Area:** `packages/rust/test/parity/`, `packages/api/lib/playback/providers/services/webstreamr_service.dart`, `packages/rust/lib/src/engine_jobs.dart`  
 **Reported:** 2026-07-07
 ## Status at a glance
 

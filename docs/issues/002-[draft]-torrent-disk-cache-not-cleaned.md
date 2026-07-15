@@ -3,7 +3,7 @@
 **Priority:** P2  
 **Severity:** High  
 **Status:** draft  
-**Area:** `crates/torrent`, `packages/api/lib/playback/torrent_stream_service.dart`, `apps/forja` (player, settings, bootstrap)  
+**Area:** `crates/torrent`, `packages/api/lib/playback/torrent/torrent_stream_service.dart`, `apps/forja` (player, settings, bootstrap)  
 **Reported:** 2026-07-06
 
 ## Status at a glance
@@ -50,7 +50,7 @@ Playback is **stream-while-download** (not download-then-play): the player reads
 
 5. **No selective file download** — `AddTorrentOptions` sets `overwrite: true` only. No `only_files` for the selected video index, so multi-file torrents may download more than the stream file.
 
-6. **Misleading settings UI** — Settings → Torrent Engine shows **Cache Type (RAM / Disk)** and **RAM Cache Size**. `packages/api/lib/playback/torrent_stream_service.dart` never reads `getTorrentCacheType()` or `getTorrentRamCacheMb()`. Leftover from libtorrent; Rust always uses disk.
+6. **Misleading settings UI** — Settings → Torrent Engine shows **Cache Type (RAM / Disk)** and **RAM Cache Size**. `packages/api/lib/playback/torrent/torrent_stream_service.dart` never reads `getTorrentCacheType()` or `getTorrentRamCacheMb()`. Leftover from libtorrent; Rust always uses disk.
 
 ## Impact
 

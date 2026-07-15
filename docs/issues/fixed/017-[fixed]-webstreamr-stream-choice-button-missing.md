@@ -3,7 +3,7 @@
 **Priority:** P2  
 **Severity:** Medium  
 **Status:** fixed (2026-07-07)  
-**Area:** `apps/forja/lib/shared/player/player/`, `packages/api/lib/playback/webstreamr_service.dart`, `apps/forja/lib/features/home/streaming_details_screen.dart`, `crates/webstreamr/src/resolver.rs`  
+**Area:** `apps/forja/lib/shared/player/player/`, `packages/api/lib/playback/providers/services/webstreamr_service.dart`, `apps/forja/lib/features/home/streaming_details_screen.dart`, `crates/webstreamr/src/resolver.rs`  
 **Reported:** 2026-07-07
 ## Status at a glance
 

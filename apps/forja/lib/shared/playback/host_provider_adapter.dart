@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/extractors/embed_extract_profile.dart';
-import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/extractors/embed_extract_profiles.dart';
+import 'package:forja/shared/extractors/core/stream_extractor.dart';
+import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
+import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
@@ -112,8 +114,7 @@ abstract final class HostProviderAdapter {
         episode: isTv ? episode : null,
       );
       if (cancelled() || results.isEmpty) return null;
-      final direct =
-          results.where((r) => !isTorrentStreamUrl(r.url)).toList();
+      final direct = results.where((r) => !isTorrentStreamUrl(r.url)).toList();
       if (direct.isEmpty) return null;
       return jsonEncode(
         direct
@@ -149,7 +150,9 @@ abstract final class HostProviderAdapter {
     }
 
     final provider = providers[providerId];
-    if (provider == null || provider['movie'] == null || provider['tv'] == null) {
+    if (provider == null ||
+        provider['movie'] == null ||
+        provider['tv'] == null) {
       return null;
     }
     if (isAndroidTvHeadlessWebViewBlocked) return null;

@@ -27,8 +27,8 @@ Forja now follows Stremio's **platform-constrained playback model** via a shared
 
 | Piece | Location |
 |-------|----------|
-| `PlaybackProfile` + `PlatformPlayback.capabilities` | `packages/api/lib/playback/playback_profile.dart` |
-| `resolveStremioStream()`, `filterStremioStreamsForProfile()` | `packages/api/lib/playback/stremio_stream_resolver.dart` |
+| `PlaybackProfile` + `PlatformPlayback.capabilities` | `packages/api/lib/playback/platform/playback_profile.dart` |
+| `resolveStremioStream()`, `filterStremioStreamsForProfile()` | `packages/api/lib/playback/stremio/stremio_stream_resolver.dart` |
 | Details play path | `apps/forja/lib/features/home/details_screen.dart` |
 | Streaming details Stremio path | `apps/forja/lib/features/home/streaming_details_screen.dart` |
 | Skip torrent engine on constrained | `apps/forja/lib/app/bootstrap.dart`, `torrent_stream_service.dart` |

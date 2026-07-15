@@ -517,7 +517,8 @@ const _dblclickFullscreenJs = r'''
 ///
 /// Do **not** set HTML `sandbox` — embed hosts reject sandboxed parents with
 /// "SANDBOX IFRAME NOT ALLOWED". Main-frame hijacks are cancelled in
-/// `shouldOverrideUrlLoading`; ad `window.open` goes to the movable popup.
+/// `shouldOverrideUrlLoading`; ad `window.open` is accepted off-screen (hidden)
+/// so Streamed embeds that require a successful open keep playing.
 String _buildLiveEmbedWrapperHtml(String embedUrl) {
   final safe = embedUrl
       .replaceAll('&', '&amp;')
@@ -541,8 +542,8 @@ iframe{border:0;width:100%;height:100%;display:block}
 /// `onLoadStop` from firing (unlimited spinner + blank player).
 List<ContentBlocker> _liveEmbedContentBlockers() {
   // Only parser-blocking script hosts that hang the player document itself.
-  // Click / interstitial networks are NOT blocked here — their popups are
-  // contained in the movable ad popup, and the iframe sandbox stops top-nav.
+  // Click / interstitial networks are not URL-blocked here — window.open is
+  // accepted off-screen (hidden), and main-frame redirects are cancelled.
   const hosts = <String>[
     r'.*therocketlanguages\.com.*',
     r'.*optimserve\.agency.*',

@@ -193,14 +193,14 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 | `MyListService` | `my_list_service.dart` | C9 lists | ✅ Engine |
 | `BookProgressService` | `book_progress_service.dart` | C9 reading progress | ✅ Engine |
 | `EpisodeWatchedService` | `episode_watched_service.dart` | C9 + tracker sync callback | ✅ Engine |
-| `WebStreamrService` | `playback/webstreamr_service.dart` | C2 direct streaming | ✅ Engine |
-| `JackettService` / `ProwlarrService` | `playback/jackett_service.dart`, `prowlarr_service.dart` | C2 indexers | ✅ Engine |
-| `LinkResolver` | `playback/link_resolver.dart` | C2 magnet resolve | ✅ Engine |
-| `DebridApi` | `playback/debrid_api.dart` | C2 debrid | ✅ Engine |
-| `TorrentStreamService` | `playback/torrent_stream_service.dart` | C7 torrent playback | ✅ Engine |
-| `LocalServerService` | `playback/local_server_service.dart` | C7 loopback | ✅ Engine |
-| `Site111477Service` | `playback/site111477_service.dart` | C2 index + C7 proxy glue | ✅ Engine |
-| `DeviceCapabilitiesService` | `playback/device_capabilities_service.dart` | C6 probe | ✅ FFI helper |
+| `WebStreamrService` | `playback/providers/services/webstreamr_service.dart` | C2 direct streaming | ✅ Engine |
+| `JackettService` / `ProwlarrService` | `playback/torrent/jackett_service.dart`, `prowlarr_service.dart` | C2 indexers | ✅ Engine |
+| `LinkResolver` | `playback/torrent/link_resolver.dart` | C2 magnet resolve | ✅ Engine |
+| `DebridApi` | `playback/torrent/debrid_api.dart` | C2 debrid | ✅ Engine |
+| `TorrentStreamService` | `playback/torrent/torrent_stream_service.dart` | C7 torrent playback | ✅ Engine |
+| `LocalServerService` | `playback/proxy/local_server_service.dart` | C7 loopback | ✅ Engine |
+| `Site111477Service` | `playback/providers/services/site111477_service.dart` | C2 index + C7 proxy glue | ✅ Engine |
+| `DeviceCapabilitiesService` | `playback/platform/device_capabilities_service.dart` | C6 probe | ✅ FFI helper |
 
 ---
 
@@ -221,11 +221,12 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 
 | Component | Path | Capability | Port to Rust? |
 |-----------|------|------------|---------------|
-| `StreamExtractor` | `shared/extractors/stream_extractor.dart` | C3 WebView embed sniff | ❌ Host unless crypto reversed |
-| `AmriExtractor` | `shared/extractors/amri_extractor.dart` | C3 WebView | ❌ Host |
-| `ArabicService` | `shared/extractors/arabic_service.dart` | C2 multi-site scrape | 🔄 Port HTML parse to engine; keep WebView paths on host |
+| `StreamExtractor` | `shared/extractors/core/stream_extractor.dart` | C3 WebView embed sniff | ❌ Host unless crypto reversed |
+| `AmriExtractor` | `shared/extractors/providers/amri/amri_extractor.dart` | C3 WebView | ❌ Host |
+| `ArabicService` | `shared/extractors/providers/arabic/arabic_service.dart` | C2 multi-site scrape | 🔄 Port HTML parse to engine; keep WebView paths on host |
 | `NuvioService` / `NuvioScraper` | `shared/nuvio/nuvio_service.dart` | C4 `flutter_js` | ❌ Permanent host |
-| `VideasyExtractor` | `packages/rust/.../videasy_extractor.dart` | C5 WASM | ❌ WASM host in Dart |
+| `VideasyExtractor` | `shared/extractors/providers/videasy/videasy_extractor.dart` | C5 WASM | ❌ WASM host in Dart |
+| Per-provider profiles | `shared/extractors/providers/<id>/` | HostRequired sniff policy | ❌ Host |
 
 ---
 

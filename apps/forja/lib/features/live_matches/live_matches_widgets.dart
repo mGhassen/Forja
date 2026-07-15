@@ -688,11 +688,11 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _isFullscreen = false;
   bool _ready = false;
   Timer? _loadingWatchdog;
+  Timer? _adWindowCloseTimer;
 
-  /// Native popup ([window.open]) surfaced by an ad — shown in a small movable
-  /// box instead of hijacking the player. Only one popup is kept at a time.
+  /// Native popup ([window.open]) from an ad. Accepted off-screen so Streamed
+  /// embeds that require a successful open keep working; never shown in UI.
   int? _adWindowId;
-  Offset? _adPopupOffset;
 
   late final InAppWebViewInitialData _initialData;
   late final InAppWebViewSettings _initialSettings;
@@ -720,12 +720,11 @@ class _LiveMatchesEmbedPlayerScreenState
     });
   }
 
-  void _closeAdPopup() {
+  void _dismissAdWindow() {
+    _adWindowCloseTimer?.cancel();
+    _adWindowCloseTimer = null;
     if (!mounted || _adWindowId == null) return;
-    setState(() {
-      _adWindowId = null;
-      _adPopupOffset = null;
-    });
+    setState(() => _adWindowId = null);
   }
 
   @override
@@ -766,7 +765,8 @@ class _LiveMatchesEmbedPlayerScreenState
       iframeAllow: 'autoplay; fullscreen; encrypted-media',
       iframeAllowFullscreen: true,
       useShouldOverrideUrlLoading: true,
-      // Ad window.open → onCreateWindow → contained movable popup.
+      // Accept window.open off-screen. Rejecting it falls back to main-frame
+      // ad navigations that break Streamed HLS (manifestParsingError).
       supportMultipleWindows: true,
       javaScriptCanOpenWindowsAutomatically: true,
       contentBlockers: _liveEmbedContentBlockers(),
@@ -837,6 +837,7 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   void dispose() {
     _loadingWatchdog?.cancel();
+    _adWindowCloseTimer?.cancel();
     _backFocusNode.dispose();
     if (DesktopWindowChrome.isDesktop) {
       Future.microtask(() async {
@@ -969,9 +970,14 @@ class _LiveMatchesEmbedPlayerScreenState
               onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
               onExitFullscreen: (_) => unawaited(_exitFullscreen()),
               onCreateWindow: (_, action) async {
-                // Keep a single popup; ignore extra ad spawns until closed.
+                // Keep a single hidden child; ignore extra ad spawns until closed.
                 if (!mounted || _adWindowId != null) return false;
                 setState(() => _adWindowId = action.windowId);
+                _adWindowCloseTimer?.cancel();
+                _adWindowCloseTimer = Timer(
+                  const Duration(seconds: 4),
+                  _dismissAdWindow,
+                );
                 return true;
               },
               shouldOverrideUrlLoading: (ctrl, action) async {
@@ -1021,95 +1027,30 @@ class _LiveMatchesEmbedPlayerScreenState
                 child: _buildSourceBadge(),
               ),
             ],
-            if (_adWindowId != null) _buildAdPopup(constraints),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdPopup(BoxConstraints constraints) {
-    const w = 320.0;
-    const h = 240.0;
-    final maxLeft = (constraints.maxWidth - w).clamp(0.0, double.infinity);
-    final maxTop = (constraints.maxHeight - h).clamp(0.0, double.infinity);
-    // Default anchor: bottom-right with a 16px margin.
-    final base = _adPopupOffset ??
-        Offset(
-          (maxLeft - 16).clamp(0.0, maxLeft),
-          (maxTop - 16).clamp(0.0, maxTop),
-        );
-    final left = base.dx.clamp(0.0, maxLeft);
-    final top = base.dy.clamp(0.0, maxTop);
-
-    return Positioned(
-      left: left,
-      top: top,
-      width: w,
-      height: h,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white24),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Column(
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanUpdate: (d) {
-                  setState(() {
-                    _adPopupOffset = Offset(
-                      (left + d.delta.dx).clamp(0.0, maxLeft),
-                      (top + d.delta.dy).clamp(0.0, maxTop),
-                    );
-                  });
-                },
-                child: Container(
-                  height: 30,
-                  color: const Color(0xFF1E1E1E),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.drag_indicator_rounded,
-                          size: 16, color: Colors.white38),
-                      const SizedBox(width: 6),
-                      const Expanded(
-                        child: Text(
-                          'Ad',
-                          style: TextStyle(color: Colors.white54, fontSize: 11),
-                        ),
+            // Off-screen host for ad window.open — required by some Streamed
+            // embeds; never visible or interactive.
+            if (_adWindowId != null)
+              Positioned(
+                left: -2,
+                top: -2,
+                width: 1,
+                height: 1,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: 0,
+                    child: InAppWebView(
+                      windowId: _adWindowId,
+                      initialSettings: InAppWebViewSettings(
+                        transparentBackground: true,
+                        supportMultipleWindows: false,
+                        javaScriptCanOpenWindowsAutomatically: false,
                       ),
-                      InkWell(
-                        onTap: _closeAdPopup,
-                        child: const Padding(
-                          padding: EdgeInsets.all(2),
-                          child: Icon(Icons.close_rounded,
-                              size: 16, color: Colors.white70),
-                        ),
-                      ),
-                    ],
+                      onCloseWindow: (_) => _dismissAdWindow(),
+                    ),
                   ),
                 ),
               ),
-              Expanded(
-                child: InAppWebView(
-                  windowId: _adWindowId,
-                  initialSettings: InAppWebViewSettings(
-                    transparentBackground: false,
-                    supportMultipleWindows: true,
-                    javaScriptCanOpenWindowsAutomatically: false,
-                  ),
-                  onCloseWindow: (_) => _closeAdPopup(),
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );

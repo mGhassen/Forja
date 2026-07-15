@@ -134,7 +134,7 @@ Three outcomes:
 
 Fallback: if the desktop is offline, **play direct** cells keep working; **desktop serves** titles show as unavailable (distinct from "never paired" — see §13).
 
-Provider resolution on the server reuses the host orchestration in `packages/api/lib/playback/provider_registry.dart` + `StreamResolver`, calling into `libffi` for Rust pipelines ([RFC-004](004-[partial]-provider-registry.md), [ARCHITECTURE.md](../ARCHITECTURE.md) §4.3).
+Provider resolution on the server reuses the host orchestration in `packages/api/lib/playback/providers/registry/provider_registry.dart` + `StreamResolver`, calling into `libffi` for Rust pipelines ([RFC-004](004-[partial]-provider-registry.md), [ARCHITECTURE.md](../ARCHITECTURE.md) §4.3).
 
 ---
 

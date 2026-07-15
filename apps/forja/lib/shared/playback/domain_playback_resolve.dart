@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
+import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:rust/rust.dart';
 

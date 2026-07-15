@@ -23,7 +23,7 @@ Tap **Live Matches** in the navigation bar.
 
 - Streams are third-party — availability changes with broadcasts and region
 - Streamed / PPV embeds play inside a WebView iframe that mirrors the website parent page (`streamed.pk` / `ppv.is`); ad scripts that block the player page are filtered, and main-frame ad redirects are cancelled so they cannot take over the player
-- If an ad opens a popup, it appears as a small window in the bottom-right that you can **drag to move** or **close** — it never takes over the player
+- Ad popups are accepted off-screen (required by some Streamed embeds) and never shown over the player; main-frame ad redirects are still cancelled
 - WebView playback may behave differently per platform; some embeds still require a tap if the site blocks unmuted autoplay
 
 ## Related

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/extractors/embed_extract_profile.dart';
-import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/extractors/embed_extract_profiles.dart';
+import 'package:forja/shared/extractors/core/stream_extractor.dart';
 
 void main() {
   group('StreamExtractor.isPlayableStreamUrl', () {
@@ -25,7 +25,9 @@ void main() {
     test('rejects relative demo placeholders', () {
       expect(StreamExtractor.isPlayableStreamUrl('/demo-video.mp4'), isFalse);
       expect(
-        StreamExtractor.isPlayableStreamUrl('https://cdn.example/demo-video.mp4'),
+        StreamExtractor.isPlayableStreamUrl(
+          'https://cdn.example/demo-video.mp4',
+        ),
         isFalse,
       );
     });
