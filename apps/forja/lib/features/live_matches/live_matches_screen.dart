@@ -68,7 +68,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   static const _viewPreferenceKey = 'live_matches_timeline_view';
   _LiveMatchesView _view = _LiveMatchesView.grid;
   bool _viewWasToggled = false;
-  _TimelineGranularity _timelineGranularity = _TimelineGranularity.h6;
+  _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
 

@@ -6,18 +6,20 @@ part of 'live_matches_screen.dart';
 enum _LiveMatchesView { grid, timeline }
 
 /// Time window that one screen height of the timeline rail represents.
-enum _TimelineGranularity { day, h12, h6 }
+enum _TimelineGranularity { day, h12, h6, h3 }
 
 int _timelineSpanHours(_TimelineGranularity g) => switch (g) {
   _TimelineGranularity.day => 24,
   _TimelineGranularity.h12 => 12,
   _TimelineGranularity.h6 => 6,
+  _TimelineGranularity.h3 => 3,
 };
 
 String _timelineGranularityLabel(_TimelineGranularity g) => switch (g) {
   _TimelineGranularity.day => 'Day',
   _TimelineGranularity.h12 => '12h',
   _TimelineGranularity.h6 => '6h',
+  _TimelineGranularity.h3 => '3h',
 };
 
 class _Sport {

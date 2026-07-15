@@ -431,28 +431,71 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         6,
       ),
       child: FocusTraversalGroup(
-        child: Row(
-          children: [
-            for (final g in _TimelineGranularity.values) ...[
-              if (g != _TimelineGranularity.values.first)
-                const SizedBox(width: 6),
-              ForjaShellChip(
-                label: _timelineGranularityLabel(g),
-                selected: _s._timelineGranularity == g,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                fontSize: 11.5,
-                onTap: () {
-                  _s._timelineAutoScrolled = false;
-                  setState(() => _s._timelineGranularity = g);
-                },
+        child: Align(
+          alignment: Alignment.centerLeft,
+          // Segmented control: 4 small equal-width tabs in one rounded shell.
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: ForjaShellColors.cinematic.borderSubtle,
               ),
-            ],
-          ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final g in _TimelineGranularity.values)
+                  _buildTimelineGranularityTab(g),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTimelineGranularityTab(_TimelineGranularity g) {
+    final selected = _s._timelineGranularity == g;
+    final cinematic = ForjaShellColors.cinematic;
+    final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
+    const radius = 9.0;
+
+    final tab = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      width: 46,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: selected ? ForjaShellColors.chipSelectedBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: selected
+              ? ForjaShellColors.chipSelectedBorder
+              : Colors.transparent,
+        ),
+      ),
+      child: Text(
+        _timelineGranularityLabel(g),
+        style: TextStyle(
+          color: fg,
+          fontSize: 11.5,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+    );
+
+    return shellFocusableTap(
+      context: context,
+      borderRadius: radius,
+      scaleOnFocus: 1.0,
+      onTap: () {
+        _s._timelineAutoScrolled = false;
+        setState(() => _s._timelineGranularity = g);
+      },
+      child: tab,
     );
   }
 }
@@ -473,6 +516,7 @@ const double _rulerLineInset = 12;
 
 ({int minorMin, int majorMin}) _timelineTickIntervals(int spanHours) =>
     switch (spanHours) {
+      3 => (minorMin: 15, majorMin: 30),
       6 => (minorMin: 15, majorMin: 60),
       12 => (minorMin: 30, majorMin: 120),
       _ => (minorMin: 60, majorMin: 180),

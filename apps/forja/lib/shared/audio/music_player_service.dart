@@ -10,6 +10,7 @@ import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/lyrics_service.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 
 class MusicPlayerService {
@@ -49,17 +50,14 @@ class MusicPlayerService {
   Future<void> releaseMpvForVideo() async {
     if (_player == null) return;
     final player = _player!;
-    MpvExclusiveSession.instance.untrackPlayer(player);
-    try {
-      await player.stop();
-    } catch (_) {}
-    try {
-      await player.dispose();
-    } catch (_) {}
     _player = null;
     _playerListenersAttached = false;
     isPlaying.value = false;
     isBuffering.value = false;
+    MpvExclusiveSession.instance.untrackPlayer(player);
+    try {
+      await teardownMediaKitPlayer(player);
+    } catch (_) {}
   }
 
   void setHandler(BaseAudioHandler handler) {

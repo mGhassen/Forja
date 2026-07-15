@@ -148,6 +148,14 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
+  /// Sport chip / tab change rebuilds the time canvas — re-land on now.
+  void _setSportFilter(String id) {
+    setState(() {
+      _s._sportFilter = id;
+      _s._timelineAutoScrolled = false;
+    });
+  }
+
   void _applySportTabs(List<_Sport> cats) {
     final oldCtrl = _s._tabController;
     setState(() {
@@ -161,7 +169,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     newCtrl.addListener(() {
       if (!newCtrl.indexIsChanging) {
         final idx = newCtrl.index;
-        setState(() => _s._sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
+        _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
       }
     });
     setState(() => _s._tabController = newCtrl);
@@ -241,7 +249,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         newCtrl.addListener(() {
           if (!newCtrl.indexIsChanging) {
             final idx = newCtrl.index;
-            setState(() => _s._sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
+            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
           }
         });
         if (mounted) setState(() => _s._tabController = newCtrl);
@@ -290,7 +298,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         newCtrl.addListener(() {
           if (!newCtrl.indexIsChanging) {
             final idx = newCtrl.index;
-            setState(() => _s._sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
+            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
           }
         });
         if (mounted) setState(() => _s._tabController = newCtrl);
@@ -337,7 +345,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         newCtrl.addListener(() {
           if (!newCtrl.indexIsChanging) {
             final idx = newCtrl.index;
-            setState(() => _s._sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
+            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
           }
         });
         if (mounted) setState(() => _s._tabController = newCtrl);

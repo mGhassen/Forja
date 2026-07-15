@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:media_kit/media_kit.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/shared/player/player/utils.dart';
 
 /// macOS bundles libmpv as [Mpv.framework] with ObjC classes (Application,
 /// MpvVideoView, …). A second [Player] dlopens the same framework again and
@@ -32,7 +33,9 @@ class MpvExclusiveSession {
   /// Release background audio players and wait for any in-flight video dispose.
   Future<void> prepareForVideoPlayer() async {
     if (!required) return;
-    await _pendingVideoDispose;
+    try {
+      await _pendingVideoDispose?.timeout(const Duration(seconds: 2));
+    } catch (_) {}
     await MusicPlayerService().releaseMpvForVideo();
     await AudiobookPlayerService().releaseMpvForVideo();
   }
@@ -49,29 +52,30 @@ class MpvExclusiveSession {
 
   /// Stop every tracked mpv instance before the VM shuts down.
   ///
+  /// Uses timed teardown — unbounded [Player.stop]/[Player.dispose] hangs
+  /// (stuck video-controller init) and freezes desktop quit while
+  /// `setPreventClose(true)` keeps the window alive.
+  ///
   /// mpv core threads can still fire FFI property callbacks after
   /// [Player.dispose] returns; without a grace period the Dart runtime hits
   /// "GetFfiCallbackMetadata called after shutdown".
   Future<void> shutdownAllPlayers() async {
-    await _pendingVideoDispose;
+    try {
+      await _pendingVideoDispose?.timeout(const Duration(seconds: 2));
+    } catch (_) {}
+    _pendingVideoDispose = null;
 
     final players = _trackedPlayers.toList();
     _trackedPlayers.clear();
 
-    final disposals = <Future<void>>[];
     for (final player in players) {
       try {
-        await player.stop();
+        await teardownMediaKitPlayer(player);
       } catch (_) {}
-      disposals.add(
-        player.dispose().catchError((_) {}).whenComplete(() {}),
-      );
     }
-    await Future.wait(disposals);
-    await _pendingVideoDispose;
 
     if (players.isNotEmpty) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
   }
 }

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 
 class AudiobookPlayerService {
@@ -50,21 +51,20 @@ class AudiobookPlayerService {
   Future<void> releaseMpvForVideo() async {
     if (_player == null) return;
     final player = _player!;
-    MpvExclusiveSession.instance.untrackPlayer(player);
-    for (final s in _subscriptions) {
-      await s.cancel();
-    }
-    _subscriptions.clear();
-    try {
-      await player.stop();
-    } catch (_) {}
-    try {
-      await player.dispose();
-    } catch (_) {}
     _player = null;
     _playerListenersAttached = false;
     isPlaying.value = false;
     isBuffering.value = false;
+    MpvExclusiveSession.instance.untrackPlayer(player);
+    for (final s in _subscriptions) {
+      try {
+        await s.cancel().timeout(const Duration(milliseconds: 200));
+      } catch (_) {}
+    }
+    _subscriptions.clear();
+    try {
+      await teardownMediaKitPlayer(player);
+    } catch (_) {}
   }
 
   void init(BaseAudioHandler handler) {

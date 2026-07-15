@@ -243,45 +243,38 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (_appShutdownStarted) return;
     _appShutdownStarted = true;
 
+    // Hide first so a slow teardown does not look like a frozen close button.
+    // (Windows 1.2.192 still froze here when media_kit stop/dispose hung.)
+    try {
+      await windowManager.hide();
+    } catch (_) {}
+
     // Graceful shutdown — calling exit(0) while media_kit (mpv)
     // / WebView2 native threads are still running races their teardown and
     // produces the Windows "system error unknown hard error" dialog
     // (STATUS_ASSERTION_FAILURE in ntdll). Dispose the heavy native plugins
     // first, then ask windowManager to destroy the window which lets Flutter
     // shut down its engine cleanly.
+    //
+    // Every step is timed: unbounded awaits (stuck Player.dispose / pending
+    // video teardown) previously kept setPreventClose(true) forever.
     try {
-      await _shutdownMediaKitPlayers();
+      await _shutdownMediaKitPlayers().timeout(const Duration(seconds: 3));
     } catch (_) {}
     try {
-      await Engine.shutdown();
+      await Engine.shutdown().timeout(const Duration(seconds: 2));
     } catch (_) {}
-    try {
-      await TorrentStreamService().cleanup();
-    } catch (_) {}
-    try {
-      // Stop any running 111477 proxy. Cache deletion happens AFTER
-      // PlayerPoolService.dispose() above so that media_kit / MPV has
-      // released its file handle on the proxy connection — otherwise
-      // Windows pending-delete keeps the cache files around.
-      if (site111477_proxy.is111477ProxyRunning) {
-        await site111477_proxy.stop111477Proxy();
-      }
-    } catch (_) {}
+
+    // Torrent engine stop is sync FFI (block_on) — must not run on this isolate
+    // before destroy, or a stuck librqbit session freezes quit with no timeout.
+    // Process exit reclaims the engine; cache wipe is best-effort after destroy.
     try {
       // Fire-and-forget — WebView2 cache wipe must not block close.
       unawaited(WebViewCleanup.cleanupWebView2Cache());
     } catch (_) {}
 
-    // Small grace period so background threads can unwind before the process
-    // image gets torn down.
-    await Future.delayed(const Duration(milliseconds: 250));
-
-    // Final cache wipe AFTER the grace period — by now any lingering MPV
-    // file handle on the proxy stream is gone, so Windows will let us
-    // actually delete the on-disk cache files.
-    try {
-      await site111477_proxy.purge111477Cache();
-    } catch (_) {}
+    // Small grace period so mpv threads can unwind after timed dispose.
+    await Future.delayed(const Duration(milliseconds: 150));
 
     try {
       await windowManager.setPreventClose(false);
