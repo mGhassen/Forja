@@ -1,8 +1,16 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 void main() {
-  tearDown(ShellBus.clearHideGlobalNav);
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  tearDown(() {
+    ShellBus.clearHideGlobalNav();
+    while (ShellBus.playerSurfaceActive.value) {
+      ShellBus.leavePlayerSurface();
+    }
+  });
 
   test('ShellBus find shortcut handlers invoke newest first', () {
     var firstCalls = 0;
@@ -42,4 +50,35 @@ void main() {
     ShellBus.clearHideGlobalNav();
     expect(ShellBus.hideGlobalNav.value, isFalse);
   });
+
+  test('ShellBus player surface depth tracks nested enter/leave', () {
+    expect(ShellBus.playerSurfaceActive.value, isFalse);
+    ShellBus.enterPlayerSurface();
+    expect(ShellBus.playerSurfaceActive.value, isTrue);
+    ShellBus.enterPlayerSurface();
+    expect(ShellBus.playerSurfaceActive.value, isTrue);
+    ShellBus.leavePlayerSurface();
+    expect(ShellBus.playerSurfaceActive.value, isTrue);
+    ShellBus.leavePlayerSurface();
+    expect(ShellBus.playerSurfaceActive.value, isFalse);
+  });
+
+  testWidgets(
+    'ShellBus enterPlayerSurface during build does not throw',
+    (tester) async {
+      await tester.pumpWidget(
+        Builder(
+          builder: (context) {
+            ShellBus.enterPlayerSurface();
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+      await tester.pump();
+      expect(ShellBus.playerSurfaceActive.value, isTrue);
+      ShellBus.leavePlayerSurface();
+      await tester.pump();
+      expect(ShellBus.playerSurfaceActive.value, isFalse);
+    },
+  );
 }

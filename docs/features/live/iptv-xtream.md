@@ -55,9 +55,11 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
 - **Scrape** walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now)
 - Portal quality varies — timeouts usually mean provider or network issues
+- Clear stale alive checks / channel scan hits from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay)
 - Series VOD uses the same player as live with seek support when the stream allows — the VOD seek bar uses Forja brand green for the played fill and thumb
 
 ## Related
 
 - [IPTV — M3U](iptv-m3u.md)
+- [Cache & data](../settings/cache-data.md)
 - [Player](../playback/player.md)

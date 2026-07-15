@@ -139,6 +139,18 @@ class IptvAliveStore {
     await prefs.remove(_liveOnlyKey(key));
   }
 
+  /// Clears every portal's alive-ID snapshot and Live-only pref.
+  /// Does not touch verified portals or favorites.
+  static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where(
+      (k) => k.startsWith('pt_iptv_alive_') || k.startsWith('pt_iptv_liveonly_'),
+    );
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
+
   static Future<bool> loadLiveOnly(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_liveOnlyKey(key)) ?? false;
@@ -210,6 +222,16 @@ class IptvChannelResultsStore {
   static Future<void> clear(String channelId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key(channelId));
+  }
+
+  /// Clears cached channel-scan hits for every hardcoded channel.
+  /// Does not touch per-channel favorite stream URLs (`pt_iptv_chfav_*`).
+  static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('pt_iptv_ch_'));
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
   }
 }
 

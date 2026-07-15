@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// Home desktop top-bar category (Films vs TV Shows).
 enum ShellHomeCategory { films, tvShows }
@@ -56,20 +57,41 @@ class ShellBus {
   );
 
   static int _playerSurfaceDepth = 0;
+  static bool _playerSurfaceNotifyPending = false;
+
+  /// Updates [playerSurfaceActive] from [_playerSurfaceDepth]. Defers the
+  /// notifier when called during build/layout/paint so ListenableBuilder
+  /// ancestors are not marked dirty mid-frame.
+  static void _syncPlayerSurfaceActive() {
+    final active = _playerSurfaceDepth > 0;
+    if (playerSurfaceActive.value == active) return;
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      playerSurfaceActive.value = active;
+      return;
+    }
+
+    if (_playerSurfaceNotifyPending) return;
+    _playerSurfaceNotifyPending = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _playerSurfaceNotifyPending = false;
+      final shouldBeActive = _playerSurfaceDepth > 0;
+      if (playerSurfaceActive.value != shouldBeActive) {
+        playerSurfaceActive.value = shouldBeActive;
+      }
+    });
+  }
 
   static void enterPlayerSurface() {
     _playerSurfaceDepth++;
-    if (!playerSurfaceActive.value) {
-      playerSurfaceActive.value = true;
-    }
+    _syncPlayerSurfaceActive();
   }
 
   static void leavePlayerSurface() {
     if (_playerSurfaceDepth > 0) _playerSurfaceDepth--;
-    final active = _playerSurfaceDepth > 0;
-    if (playerSurfaceActive.value != active) {
-      playerSurfaceActive.value = active;
-    }
+    _syncPlayerSurfaceActive();
   }
 
   static void notifyShellChromeChanged() {
