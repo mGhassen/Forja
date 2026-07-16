@@ -73,6 +73,23 @@ class NavDestinationIcon extends StatelessWidget {
   }
 }
 
+/// Tabs withheld from the shell and Settings → Navigation for now.
+/// Destinations and [navTabBuilders] stay registered — remove an ID here to restore.
+const Set<String> temporarilyHiddenNavIds = {
+  'discover',
+  'similar',
+  'downloader',
+  'magnet',
+  'audiobooks',
+  'books',
+  'music',
+  'comics',
+  'manga',
+  'jellyfin',
+  'anime_arabic',
+  'arabic',
+};
+
 /// Single source of nav item metadata keyed by nav ID.
 const Map<String, NavDestination> navDestinations = {
   'home': NavDestination(

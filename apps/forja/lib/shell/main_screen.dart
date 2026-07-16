@@ -284,6 +284,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _loadNavbarConfig() async {
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
+    visible = visible
+        .where((id) => !temporarilyHiddenNavIds.contains(id))
+        .toList();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       visible = visible
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))

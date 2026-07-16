@@ -201,6 +201,7 @@ class IptvController extends ChangeNotifier
   IptvController() {
     _epgEnabled = SettingsService.iptvEpgEnabledNotifier.value;
     SettingsService.iptvEpgEnabledNotifier.addListener(_onEpgPrefChanged);
+    IptvStore.listRevision.addListener(_onStoreListRevision);
     unawaited(_syncEpgPref());
   }
 
@@ -219,6 +220,46 @@ class IptvController extends ChangeNotifier
     if (!enabled) {
       _epgCache.clear();
       _hitEpgCache.clear();
+    }
+    notifyListeners();
+  }
+
+  void _onStoreListRevision() {
+    unawaited(_softReloadPortalsFromStore());
+  }
+
+  /// Pull portals/favorites from [IptvStore] after an external CSV import.
+  Future<void> _softReloadPortalsFromStore() async {
+    final stored = await IptvStore.load();
+    _favoritePortals
+      ..clear()
+      ..addAll(await IptvStore.loadFavorites());
+    final knownKeys = stored.map((v) => v.key).toSet();
+    for (final key in _portalRecencyKeys.toList()) {
+      if (!knownKeys.contains(key)) _portalRecencyKeys.remove(key);
+    }
+    for (final v in stored) {
+      if (!_portalRecencyKeys.contains(v.key) &&
+          !_favoritePortals.contains(v.key)) {
+        _portalRecencyKeys.add(v.key);
+      }
+    }
+    verified = _sortPortals(stored);
+    _verifiedKeys
+      ..clear()
+      ..addAll(stored.map((v) => v.credKey));
+    final active = activePortal;
+    if (active != null && !knownKeys.contains(active.key)) {
+      activePortal = null;
+      activeSection = null;
+      await IptvStore.clearLastPortalKey();
+    } else if (active != null) {
+      for (final v in verified) {
+        if (v.key == active.key) {
+          activePortal = v;
+          break;
+        }
+      }
     }
     notifyListeners();
   }
@@ -473,6 +514,7 @@ class IptvController extends ChangeNotifier
   void dispose() {
     SettingsService.iptvEpgEnabledNotifier
         .removeListener(_onEpgPrefChanged);
+    IptvStore.listRevision.removeListener(_onStoreListRevision);
     cancelAllLazyChecks();
     super.dispose();
   }

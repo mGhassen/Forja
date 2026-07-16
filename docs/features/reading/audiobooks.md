@@ -8,7 +8,7 @@ Search and browse audiobooks from multiple sources in parallel. Like titles, tra
 
 ## How to open it
 
-Tap **Audiobooks** in the navigation bar.
+The **Audiobooks** tab is temporarily hidden from the navigation bar and Settings → Navigation.
 
 ## What you can do
 

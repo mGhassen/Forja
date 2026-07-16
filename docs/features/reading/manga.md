@@ -8,7 +8,7 @@ Browse and search a manga catalog, filter by genre, paginate results, like serie
 
 ## How to open it
 
-Tap **Manga** in the navigation bar.
+The **Manga** tab is temporarily hidden from the navigation bar and Settings → Navigation.
 
 ## What you can do
 

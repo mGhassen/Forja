@@ -8,7 +8,7 @@ The Music tab uses Deezer metadata for search, trending, playlists, and album ar
 
 ## How to open it
 
-Tap **Music** in the navigation bar.
+The **Music** tab is temporarily hidden from the navigation bar and Settings → Navigation.
 
 ## What you can do
 

@@ -16,7 +16,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
 - On **Home (desktop)**, a **Search** icon then **Films / TV Shows / Categories** menu overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
-- Open **Settings → Navigation** to toggle tabs on/off, drag to reorder, and star the tab that opens on app start
+- Open **Settings → Navigation** to toggle tabs on/off, drag to reorder, and star the tab that opens on app start (only the tabs listed below are available right now)
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)
 
 ## Desktop shell layout
@@ -43,11 +43,13 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 
 ## Available tabs
 
-Home · Discover · Similar · Media Downloader · Search · My List · Magnet · Live Matches · IPTV · Audiobooks · Books · Music · Comics · Manga · Jellyfin · Anime · Anime Arabic · Asian Drama · Arabic · Settings
+Home · Search · My List · Live Matches · IPTV · Anime · Asian Drama · Settings
+
+Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, and Arabic are built but temporarily hidden from the shell and Navigation settings.
 
 ## Tips
 
-- Hide tabs you never use to reduce clutter — they can be re-enabled anytime
+- Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 
 ## Related

@@ -5,13 +5,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
 import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
 import 'package:forja/features/settings/sections/settings_forja_account_panel.dart';
+import 'package:forja/features/settings/sections/settings_iptv_portals_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
@@ -131,9 +131,6 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
           .split('.')
           .first;
       final fileName = 'forja_settings_$timestamp.json';
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/$fileName');
-      await tempFile.writeAsString(jsonStr);
 
       final result = await FilePicker.platform.saveFile(
         dialogTitle: 'Export Settings',
@@ -143,18 +140,22 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
         bytes: Uint8List.fromList(utf8.encode(jsonStr)),
       );
 
-      if (result != null) {
-        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-          await File(result).writeAsString(jsonStr);
-        }
+      if (result == null) {
+        // User cancelled the save dialog.
+        return;
       }
 
-      await tempFile.delete();
+      // Desktop saveFile returns a path; write explicitly (sandbox needs
+      // com.apple.security.files.user-selected.read-write on macOS).
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        await File(result).writeAsString(jsonStr);
+      }
 
-      if (result != null && mounted) {
+      if (mounted) {
         ForjaToast.success('Settings exported successfully!');
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[SettingsData] export failed: $e\n$st');
       if (mounted) ForjaToast.error('Export failed: $e');
     } finally {
       if (mounted) setState(() => _isExporting = false);
@@ -252,6 +253,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
             ),
           ],
         ),
+        const SettingsIptvPortalsSection(),
         const SettingsCacheDataSection(),
       ],
     );
@@ -282,7 +284,10 @@ class _SettingsNavigationPageBodyState
   Future<void> _load() async {
     var navVisible = await _settings.getNavbarConfig();
     final defaultNavTab = await _settings.getDefaultNavTab();
-    final allIds = SettingsService.allNavIds;
+    final allIds = SettingsService.allNavIds
+        .where((id) => !temporarilyHiddenNavIds.contains(id))
+        .toList();
+    navVisible.removeWhere(temporarilyHiddenNavIds.contains);
     final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
     var navOrder = [...navVisible, ...hidden];
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {

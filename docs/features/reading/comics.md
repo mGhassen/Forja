@@ -8,7 +8,7 @@ Search comics, maintain a liked list, and resume reading history. The reader loa
 
 ## How to open it
 
-Tap **Comics** in the navigation bar.
+The **Comics** tab is temporarily hidden from the navigation bar and Settings → Navigation.
 
 ## What you can do
 

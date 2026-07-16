@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'built_in_player_engine.dart';
 import 'kv.dart';
@@ -881,7 +880,6 @@ class SettingsService {
 
   Future<Map<String, dynamic>> exportAllSettings() async {
     await ensureCanonicalSettingsMigrated();
-    const secure = FlutterSecureStorage();
     final prefsMap = <String, dynamic>{};
 
     prefsMap[_streamingModeKey] = await kvGetBool(
@@ -966,10 +964,16 @@ class SettingsService {
       if (v != null && v.isNotEmpty) prefsMap[key] = v;
     }
 
+    // Prefer SecureSettings.read so Keychain misses still pick up legacy prefs
+    // (e.g. macOS -34018 before keychain-access-groups is present).
     final secureMap = <String, String>{};
     for (final key in _secureKeys) {
-      final v = await secure.read(key: key);
-      if (v != null && v.isNotEmpty) secureMap[key] = v;
+      try {
+        final v = await SecureSettings.read(key);
+        if (v != null && v.isNotEmpty) secureMap[key] = v;
+      } catch (e) {
+        debugPrint('[SettingsService] export skipped secure key ($key): $e');
+      }
     }
 
     return {
@@ -982,7 +986,6 @@ class SettingsService {
 
   Future<void> importAllSettings(Map<String, dynamic> data) async {
     await ensureCanonicalSettingsMigrated();
-    const secure = FlutterSecureStorage();
     final prefsMap = data['shared_preferences'] as Map<String, dynamic>? ?? {};
 
     for (final key in [
@@ -1079,7 +1082,7 @@ class SettingsService {
     final secureMap = data['secure_storage'] as Map<String, dynamic>? ?? {};
     for (final key in _secureKeys) {
       if (secureMap.containsKey(key)) {
-        await secure.write(key: key, value: secureMap[key] as String);
+        await SecureSettings.write(key, secureMap[key] as String);
       }
     }
     // Legacy exports put Jackett/Prowlarr keys in the non-secure map.

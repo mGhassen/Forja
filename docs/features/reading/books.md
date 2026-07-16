@@ -8,7 +8,7 @@ Browse a books library, search titles, and continue reading where you stopped. T
 
 ## How to open it
 
-Tap **Books** in the navigation bar.
+The **Books** tab is temporarily hidden from the navigation bar and Settings → Navigation.
 
 ## What you can do
 

@@ -476,4 +476,17 @@ void main() {
       'mylist',
     ]);
   });
+
+  test('temporarily hidden nav ids stay registered but are withheld', () {
+    for (final id in temporarilyHiddenNavIds) {
+      expect(navDestinations.containsKey(id), isTrue);
+      expect(navTabBuilders.containsKey(id), isTrue);
+    }
+    expect(
+      temporarilyHiddenNavIds.intersection(
+        SettingsService.defaultVisibleNavIds.toSet(),
+      ),
+      isEmpty,
+    );
+  });
 }

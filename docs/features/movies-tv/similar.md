@@ -8,7 +8,7 @@ The Similar hub lets you search TMDB or pick from trending titles, then shows a 
 
 ## How to open it
 
-Tap **Similar** in the navigation bar.
+The **Similar** tab is temporarily hidden from the navigation bar and Settings → Navigation.
 
 ## What you can do
 

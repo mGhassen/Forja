@@ -11,6 +11,13 @@ class IptvStore {
   static const _lastPortalKey = 'pt_iptv_last_portal_key';
   static const _lastSectionKey = 'pt_iptv_last_section';
 
+  /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
+  static final ValueNotifier<int> listRevision = ValueNotifier(0);
+
+  static void notifyListChanged() {
+    listRevision.value++;
+  }
+
   static Future<List<VerifiedPortal>> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
