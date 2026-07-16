@@ -1,0 +1,1 @@
+import{E as e,t,x as n}from"./index-B4b0zaau.js";var r=e();function i({children:e}){let{user:i,loading:a}=t();return a?(0,r.jsx)(`div`,{className:`flex min-h-screen items-center justify-center text-forja-muted`,children:`Loading…`}):i?e:(0,r.jsx)(n,{to:`/login`})}export{i as t};

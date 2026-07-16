@@ -137,15 +137,15 @@ export function IptvPage() {
 
             <div className="relative" id="proof">
               <img
-                src="/brand/forja-iptv-live.jpg"
-                alt="Forja IPTV Player — live channels and categories"
+                src="/brand/forja-iptv-player.png"
+                alt="Forja IPTV Player — live stream with progress and control desk"
                 width={1024}
-                height={637}
+                height={636}
                 className="h-auto w-full rounded-lg border border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)]"
                 decoding="async"
               />
               <p className="font-mono-ui mt-4 text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
-                IPTV Player · live · films · series
+                IPTV Player · progress · audio · subtitles · fullscreen
               </p>
             </div>
           </div>
@@ -200,8 +200,40 @@ export function IptvPage() {
           </div>
         </section>
 
+        {/* Player on screen — full bleed with control desk */}
+        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
+          <Reveal>
+            <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.95] tracking-[-0.03em]">
+              Controls that
+              <br />
+              <span className="text-brand">stay out of the way.</span>
+            </h2>
+            <p className="mt-5 max-w-2xl font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.5)]">
+              Progress. Pause. Volume. Subtitles. Audio.
+              <br />
+              <span className="text-[#EDE6DA]">The desk sits at the bottom — until you need it.</span>
+            </p>
+          </Reveal>
+          <Reveal delayMs={80}>
+            <figure className="mx-auto mt-10 max-w-[1200px] sm:mt-14">
+              <img
+                src="/brand/forja-iptv-player.png"
+                alt="Forja IPTV player controls — green seek bar and bottom desk with pause, volume, subtitles, audio, and fullscreen"
+                width={1024}
+                height={636}
+                className="h-auto w-full rounded-xl border border-white/10 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)]"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption className="font-mono-ui mt-4 text-center text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
+                Live player · control desk
+              </figcaption>
+            </figure>
+          </Reveal>
+        </section>
+
         {/* Catalog through the player */}
-        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-24">
+        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
           <Reveal>
             <h2 className="font-disp text-[clamp(28px,4.5vw,52px)] uppercase tracking-[-0.03em]">
               Three shelves.
@@ -271,16 +303,16 @@ export function IptvPage() {
           </div>
         </section>
 
-        {/* Screens + player close */}
-        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
-          <div className="mx-auto grid max-w-[1400px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
+        {/* Desk — catalog UI full width at bottom */}
+        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
+          <div className="mx-auto max-w-[1400px]">
             <Reveal>
               <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.95]">
                 Desk or couch.
                 <br />
                 <span className="text-flame">Same player.</span>
               </h2>
-              <div className="mt-5 space-y-3 font-disp text-[clamp(18px,2.2vw,26px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.55)]">
+              <div className="mt-5 max-w-xl space-y-3 font-disp text-[clamp(18px,2.2vw,26px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.55)]">
                 <p>Windows. Mac. Linux.</p>
                 <p>
                   <span className="text-[#EDE6DA]">Android TV for the living room.</span>
@@ -288,15 +320,21 @@ export function IptvPage() {
               </div>
               <PlatformDownloadButtons variant="row" className="mt-8 max-w-md" />
             </Reveal>
-            <Reveal delayMs={60}>
-              <img
-                src="/brand/forja-iptv-live.jpg"
-                alt="Forja IPTV Player on screen"
-                width={1024}
-                height={637}
-                className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
-                decoding="async"
-              />
+            <Reveal delayMs={80}>
+              <figure className="mt-10 sm:mt-14">
+                <img
+                  src="/brand/forja-iptv-desk.png"
+                  alt="Forja IPTV desk — Live, Movies, and Series catalog with portals"
+                  width={1024}
+                  height={638}
+                  className="h-auto w-full rounded-xl border border-white/10 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)]"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption className="font-mono-ui mt-4 text-center text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
+                  IPTV desk · live · movies · series · portals
+                </figcaption>
+              </figure>
             </Reveal>
           </div>
         </section>

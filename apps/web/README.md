@@ -19,6 +19,15 @@ cp .env.example .env
 pnpm dev
 ```
 
+## Deploy (Vercel)
+
+1. Root Directory: `apps/web`
+2. Framework Preset: TanStack Start
+3. Leave Build / Output / Install on defaults (do **not** override Output to `dist`)
+4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+Nitro (`nitro()` in `vite.config.ts`) is required — without it Vercel returns `404: NOT_FOUND` because there is no serverless entry.
+
 ## Scripts
 
 | Command | Purpose |
