@@ -10,7 +10,7 @@ const FAQ: {
 }[] = [
   {
     q: 'What is Forja?',
-    a: 'Forja is a free app for movies, series, anime, live sport, and live TV - everything in one place so you can relax and watch. Download it for your computer or living-room TV. This site is for getting the app and your account.',
+    a: 'Forja is a free app for movies, series, anime, live sport, and live TV. Download it for your computer or living-room TV. This site is for getting the app and your account.',
   },
   {
     q: 'Which download should I pick?',
@@ -398,7 +398,7 @@ export function DownloadHelp() {
           </h2>
           <p className="mt-4 max-w-2xl leading-relaxed text-[rgba(237,230,218,0.5)]">
             What Forja is, which download to grab, and what to do if Windows or Mac
-            hesitates the first time.
+            blocks the first open.
           </p>
         </Reveal>
 

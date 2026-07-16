@@ -65,13 +65,30 @@ class WebStreamrSettings {
       }
     }
 
-    await SecureSettings.migrateFromPrefs(SecureSettings.webstreamrMfpPassword);
+    var secretsOk = true;
+    if (!await SecureSettings.migrateFromPrefs(
+      SecureSettings.webstreamrMfpPassword,
+    )) {
+      secretsOk = false;
+    }
     // Legacy prefs used the same key strings.
-    await SecureSettings.migrateFromPrefs('webstreamr_mfp_password');
-    await SecureSettings.migrateFromPrefs(SecureSettings.webstreamrTmdbToken);
-    await SecureSettings.migrateFromPrefs('webstreamr_tmdb_token');
+    if (!await SecureSettings.migrateFromPrefs('webstreamr_mfp_password')) {
+      secretsOk = false;
+    }
+    if (!await SecureSettings.migrateFromPrefs(
+      SecureSettings.webstreamrTmdbToken,
+    )) {
+      secretsOk = false;
+    }
+    if (!await SecureSettings.migrateFromPrefs('webstreamr_tmdb_token')) {
+      secretsOk = false;
+    }
 
-    await kvSetString(_kMigratedKey, '1');
+    // Non-secret prefs already moved; only gate the marker on secrets so a
+    // later Keychain entitlement fix can still migrate passwords/tokens.
+    if (secretsOk) {
+      await kvSetString(_kMigratedKey, '1');
+    }
   }
 
   static Future<List<String>> getEnabledCountryCodes() async {

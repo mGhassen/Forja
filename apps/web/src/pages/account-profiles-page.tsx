@@ -127,11 +127,11 @@ export function AccountProfilesPage() {
             <>
               <div className="relative w-full text-center">
                 <Link
-                  to="/account"
+                  to="/account/settings"
                   className="absolute left-0 top-1/2 hidden -translate-y-1/2 items-center gap-2 text-sm text-forja-muted hover:text-forja-text sm:flex"
                 >
                   <ArrowLeft className="size-4" />
-                  Account
+                  Settings
                 </Link>
                 <h1 className="font-display text-4xl tracking-tight sm:text-5xl">
                   {screen === 'manage' ? 'Manage profiles' : "Who's watching?"}

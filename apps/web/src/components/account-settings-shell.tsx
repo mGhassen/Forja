@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
   Check,
   ChevronDown,
   ListOrdered,
+  LogOut,
   PlayCircle,
   Puzzle,
   Radio,
 } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { RequireAuth } from '@/components/require-auth'
+import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import {
@@ -67,6 +69,8 @@ export function AccountSettingsShell({
   footer,
 }: AccountSettingsShellProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
   const { profiles, activeProfile, selectProfile, loading: profilesLoading } =
     useProfiles()
 
@@ -107,6 +111,11 @@ export function AccountSettingsShell({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Switch profile</DropdownMenuLabel>
+                  {user?.email ? (
+                    <p className="px-2 pb-1.5 text-xs text-forja-muted">
+                      {user.email}
+                    </p>
+                  ) : null}
                   <DropdownMenuSeparator />
                   {profiles.map((profile) => {
                     const selected = profile.id === activeProfile?.id
@@ -135,6 +144,18 @@ export function AccountSettingsShell({
                     <Link to="/account/profiles" className="cursor-pointer">
                       Manage profiles
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2 text-red-300 focus:text-red-200"
+                    onSelect={() => {
+                      void (async () => {
+                        await signOut()
+                        void navigate({ to: '/' })
+                      })()
+                    }}
+                  >
+                    <LogOut className="size-4" />
+                    Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

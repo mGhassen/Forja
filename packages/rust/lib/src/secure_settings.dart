@@ -8,9 +8,11 @@ import 'kv.dart';
 /// Platform Keychain/Keystore for credentials.
 ///
 /// Non-secret configuration belongs in Rust KV (`forja_engine_store.json`).
-/// Never write secrets into that file; never fall back to plaintext when
-/// secure storage fails on a real device — report and leave the caller's
-/// write incomplete. MissingPluginException (unit tests) is soft-skipped.
+/// Never write secrets into that file; never fall back to plaintext **writes**
+/// when secure storage fails on a real device — report and leave the caller's
+/// write incomplete. Reads may still surface legacy SharedPreferences values
+/// until migration into Keychain succeeds. MissingPluginException (unit tests)
+/// is soft-skipped.
 abstract final class SecureSettings {
   static const FlutterSecureStorage _secure = FlutterSecureStorage();
 
@@ -52,13 +54,21 @@ abstract final class SecureSettings {
 
   static Future<String?> read(String key) async {
     try {
-      return await _secure.read(key: key);
+      final v = await _secure.read(key: key);
+      if (v != null && v.isNotEmpty) return v;
     } on MissingPluginException {
-      return null;
+      // Unit tests / no plugin — fall through to prefs legacy.
     } catch (e) {
       debugPrint('[SecureSettings] read failed ($key): $e');
-      rethrow;
+      // Keychain can fail on macOS without keychain-access-groups (-34018).
+      // Fall through to prefs so Settings can still load unmigrated secrets.
     }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final legacy = prefs.getString(key);
+      if (legacy != null && legacy.isNotEmpty) return legacy;
+    } catch (_) {}
+    return null;
   }
 
   static Future<void> write(String key, String value) async {
@@ -82,47 +92,76 @@ abstract final class SecureSettings {
       debugPrint('[SecureSettings] delete failed ($key): $e');
       rethrow;
     }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(key);
+    } catch (_) {}
   }
 
   /// Copy [key] from SharedPreferences → secure storage, then remove prefs.
-  static Future<void> migrateFromPrefs(String key) async {
+  ///
+  /// Returns `false` when a secret still sits in prefs and Keychain write
+  /// failed (e.g. macOS `-34018` missing entitlement). Callers should retry
+  /// later and must not crash the UI.
+  static Future<bool> migrateFromPrefs(String key) async {
     try {
-      final existing = await _secure.read(key: key);
+      String? existing;
+      try {
+        existing = await _secure.read(key: key);
+      } catch (e) {
+        final prefs = await SharedPreferences.getInstance();
+        final legacy = prefs.getString(key);
+        if (legacy == null || legacy.isEmpty) return true;
+        debugPrint('[SecureSettings] migrateFromPrefs failed ($key): $e');
+        return false;
+      }
       if (existing != null && existing.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove(key);
-        return;
+        return true;
       }
       final prefs = await SharedPreferences.getInstance();
       final legacy = prefs.getString(key);
-      if (legacy == null || legacy.isEmpty) return;
+      if (legacy == null || legacy.isEmpty) return true;
       await _secure.write(key: key, value: legacy);
       await prefs.remove(key);
+      return true;
     } on MissingPluginException {
-      return;
+      return true;
     } catch (e) {
       debugPrint('[SecureSettings] migrateFromPrefs failed ($key): $e');
-      rethrow;
+      return false;
     }
   }
 
   /// Copy [key] from Rust KV → secure storage, then clear the KV value.
-  static Future<void> migrateFromKv(String key) async {
+  ///
+  /// Returns `false` when a secret still sits in KV and Keychain write failed.
+  static Future<bool> migrateFromKv(String key) async {
     try {
-      final existing = await _secure.read(key: key);
+      String? existing;
+      try {
+        existing = await _secure.read(key: key);
+      } catch (e) {
+        final legacy = await kvGetString(key);
+        if (legacy == null || legacy.isEmpty) return true;
+        debugPrint('[SecureSettings] migrateFromKv failed ($key): $e');
+        return false;
+      }
       if (existing != null && existing.isNotEmpty) {
         await kvSetString(key, '');
-        return;
+        return true;
       }
       final legacy = await kvGetString(key);
-      if (legacy == null || legacy.isEmpty) return;
+      if (legacy == null || legacy.isEmpty) return true;
       await _secure.write(key: key, value: legacy);
       await kvSetString(key, '');
+      return true;
     } on MissingPluginException {
-      return;
+      return true;
     } catch (e) {
       debugPrint('[SecureSettings] migrateFromKv failed ($key): $e');
-      rethrow;
+      return false;
     }
   }
 }

@@ -459,7 +459,7 @@ bool sourceRequiresVideoDecode(String url, {String? type}) {
 
 Duration videoDecodeTimeoutForUrl(String url) {
   return isLocalTorrentStreamUrl(url)
-      ? const Duration(seconds: 45)
+      ? const Duration(seconds: 90)
       : const Duration(seconds: 8);
 }
 
@@ -492,7 +492,7 @@ Future<bool> confirmOpenedStreamVideoDecode(
 }) async {
   if (!sourceRequiresVideoDecode(openUrl, type: type)) return true;
   final openTimeout = isLocalTorrentStreamUrl(openUrl)
-      ? const Duration(seconds: 45)
+      ? const Duration(seconds: 90)
       : const Duration(seconds: 25);
   final decodeTimeout = videoDecodeTimeoutForUrl(openUrl);
 

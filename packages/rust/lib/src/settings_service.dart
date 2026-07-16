@@ -682,10 +682,17 @@ class SettingsService {
   Future<void> ensureCanonicalSettingsMigrated() async {
     if (await kvHasKey(_settingsSchemaKey)) return;
     try {
-      await SecureSettings.migrateFromKv(SecureSettings.jackettApiKey);
-      await SecureSettings.migrateFromKv(_jackettApiKeyKey);
-      await SecureSettings.migrateFromKv(SecureSettings.prowlarrApiKey);
-      await SecureSettings.migrateFromKv(_prowlarrApiKeyKey);
+      final ok =
+          await SecureSettings.migrateFromKv(SecureSettings.jackettApiKey) &&
+          await SecureSettings.migrateFromKv(_jackettApiKeyKey) &&
+          await SecureSettings.migrateFromKv(SecureSettings.prowlarrApiKey) &&
+          await SecureSettings.migrateFromKv(_prowlarrApiKeyKey);
+      if (!ok) {
+        debugPrint(
+          '[SettingsService] canonical migration deferred: Keychain unavailable',
+        );
+        return;
+      }
       await kvSetString(_settingsSchemaKey, '2');
     } catch (e) {
       debugPrint('[SettingsService] canonical migration deferred: $e');

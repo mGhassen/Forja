@@ -3,7 +3,7 @@ import { HeroTvMock } from '@/components/interactive-shell-demo'
 import { Reveal } from '@/components/reveal'
 
 /**
- * Marketing hero - player app pitch, Download CTA, product mock.
+ * Marketing hero - product mock and Download CTA.
  */
 export function LandingHero() {
   return (
@@ -20,16 +20,14 @@ export function LandingHero() {
       <div className="relative z-[2] mx-auto grid w-full max-w-[1500px] items-center gap-8 px-[5vw] pb-12 pt-6 sm:pb-16 sm:pt-10 lg:grid-cols-[0.9fr_1.2fr] lg:gap-10 lg:pb-24 lg:pt-14">
         <div className="hero-enter max-w-xl">
           <h1 className="font-disp text-[clamp(34px,9vw,72px)] uppercase leading-[0.9] tracking-[-0.04em]">
-            <span className="inline sm:whitespace-nowrap">A player built</span>
+            <span className="inline sm:whitespace-nowrap">A free media</span>
             <br />
-            <span className="font-serif-i normal-case text-flame">to stream.</span>
+            <span className="font-serif-i normal-case text-flame">player.</span>
           </h1>
           <p className="mt-4 max-w-lg font-disp text-[clamp(16px,4.2vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)] sm:mt-5">
-            Playback. Guides. Live lists.
+            Windows, Mac, Linux, and Android TV.
             <br />
-            Sources you connect.
-            <br />
-            <span className="text-[#EDE6DA]">One app. Your screens.</span>
+            <span className="text-[#EDE6DA]">Download and press play.</span>
           </p>
 
           <Link

@@ -67,13 +67,12 @@ export function SiteFooter() {
           <div className="max-w-xl">
             <BrandLogo to="/" imgClassName="h-8 w-auto sm:h-10" />
             <p className="mt-6 font-disp text-[clamp(28px,5vw,48px)] uppercase leading-[0.92] tracking-[-0.03em]">
-              A player built
+              Get the
               <br />
-              <span className="font-serif-i normal-case text-flame">to stream.</span>
+              <span className="font-serif-i normal-case text-flame">app.</span>
             </p>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Free media player for streaming playback - on your desk, couch, or big
-              screen. Forja does not host media files.
+              Free download for Windows, Mac, Linux, and Android TV.
             </p>
             <Link
               to="/download"
@@ -158,7 +157,7 @@ export function SiteFooter() {
               © {year} Forja · Streaming player
             </p>
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.28)]">
-              Desk · Couch · TV
+              Windows · macOS · Linux · Android TV
             </p>
           </div>
         </div>

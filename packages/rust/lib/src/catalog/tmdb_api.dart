@@ -5,8 +5,9 @@ import '../models/media_details_extras.dart';
 import '../models/watch_provider.dart';
 
 class TmdbApi {
-  /// ISO 3166-1 watch region for discover, providers, and regional popular.
+  /// ISO 3166-1 watch region for watch-provider filters and provider lists.
   /// TMDB has no continent code — use a country (FR, DE, GB, …).
+  /// Popular / unfiltered discover omit region (global).
   static const String kWatchRegion = 'FR';
 
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
@@ -51,7 +52,8 @@ class TmdbApi {
 
   /// Website-style popular: discover sorted by popularity with a minimum vote
   /// floor so low-signal titles from raw `/popular` do not dominate the row.
-  Future<List<Movie>> getPopular({String watchRegion = kWatchRegion}) {
+  /// No `watch_region` by default (global popularity).
+  Future<List<Movie>> getPopular({String? watchRegion}) {
     return discoverMovies(
       watchRegion: watchRegion,
       sortBy: 'popularity.desc',
@@ -59,7 +61,7 @@ class TmdbApi {
     );
   }
 
-  Future<List<Movie>> getPopularTv({String watchRegion = kWatchRegion}) {
+  Future<List<Movie>> getPopularTv({String? watchRegion}) {
     return discoverTvShows(
       watchRegion: watchRegion,
       sortBy: 'popularity.desc',
@@ -251,11 +253,17 @@ class TmdbApi {
     int? minVoteCount,
     String? language,
     int? watchProviderId,
-    String watchRegion = kWatchRegion,
+    String? watchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
   }) async {
-    var path = 'discover/movie?page=$page&watch_region=$watchRegion&sort_by=$sortBy';
+    // watch_providers require a region; otherwise omit for global discover.
+    final region =
+        watchRegion ?? (watchProviderId != null ? kWatchRegion : null);
+    var path = 'discover/movie?page=$page&sort_by=$sortBy';
+    if (region != null) {
+      path += '&watch_region=$region';
+    }
     if (genres != null && genres.isNotEmpty) {
       path += '&with_genres=${genres.join(',')}';
     }
@@ -294,11 +302,16 @@ class TmdbApi {
     int? minVoteCount,
     String? language,
     int? watchProviderId,
-    String watchRegion = kWatchRegion,
+    String? watchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
   }) async {
-    var path = 'discover/tv?page=$page&watch_region=$watchRegion&sort_by=$sortBy';
+    final region =
+        watchRegion ?? (watchProviderId != null ? kWatchRegion : null);
+    var path = 'discover/tv?page=$page&sort_by=$sortBy';
+    if (region != null) {
+      path += '&watch_region=$region';
+    }
     if (genres != null && genres.isNotEmpty) {
       path += '&with_genres=${genres.join(',')}';
     }

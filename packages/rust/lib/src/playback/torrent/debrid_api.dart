@@ -44,6 +44,7 @@ class DebridApi {
 
   Future<void> _ensureMigrated() async {
     if (_migrationDone) return;
+    var allOk = true;
     for (final key in [
       SecureSettings.rdAccessToken,
       SecureSettings.rdRefreshToken,
@@ -55,9 +56,10 @@ class DebridApi {
       SecureSettings.premiumizeApiKey,
       SecureSettings.debridlinkApiKey,
     ]) {
-      await SecureSettings.migrateFromPrefs(key);
+      if (!await SecureSettings.migrateFromPrefs(key)) allOk = false;
     }
-    _migrationDone = true;
+    // Retry on next open when Keychain was unavailable (e.g. macOS -34018).
+    if (allOk) _migrationDone = true;
   }
 
   Future<String?> _safeRead(String key) async {

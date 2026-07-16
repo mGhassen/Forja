@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  CalendarDays,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Pencil,
   Plus,
@@ -8,6 +11,7 @@ import {
   Share2,
   Star,
   Trash2,
+  Users,
   X,
 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
@@ -34,8 +38,125 @@ import {
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
 
+const PAGE_SIZE = 10
+
 function newM3uId() {
   return `${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 10)}`
+}
+
+/** Match desktop `_portalExpiryTone` (iptv_catalog_portal_form.dart). */
+function portalExpiryTone(expiry?: string): { label: string; className: string } {
+  const label = (expiry ?? '').trim() || 'Unknown'
+  const end = (() => {
+    const d = new Date(label)
+    return Number.isNaN(d.getTime()) ? null : d
+  })()
+  if (!end) {
+    return {
+      label: label === 'Unknown' ? 'Ends: Unknown' : `Ends: ${label}`,
+      className: 'text-forja-muted',
+    }
+  }
+  const today = new Date()
+  const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const days = Math.floor((end.getTime() - midnight.getTime()) / 86_400_000)
+  const className =
+    days < 0
+      ? 'text-red-400'
+      : days <= 7
+        ? 'text-amber-400'
+        : days <= 30
+          ? 'text-yellow-400'
+          : 'text-forja-green'
+  return {
+    label: `${days < 0 ? 'Expired' : 'Ends'} ${label}`,
+    className,
+  }
+}
+
+function seatsTone(active?: string, max?: string) {
+  const used = (active ?? '').trim() || '0'
+  const cap = (max ?? '').trim() || '?'
+  const activeN = Number.parseInt(used, 10)
+  const maxN = Number.parseInt(cap, 10)
+  const full =
+    Number.isFinite(activeN) &&
+    Number.isFinite(maxN) &&
+    maxN > 0 &&
+    activeN >= maxN
+  return {
+    label: `${used}/${cap}`,
+    className: full ? 'text-zinc-400' : 'text-sky-400',
+  }
+}
+
+function pageSlice<T>(items: T[], page: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+  const safePage = Math.min(Math.max(page, 1), totalPages)
+  const start = (safePage - 1) * PAGE_SIZE
+  return {
+    page: safePage,
+    totalPages,
+    start: items.length === 0 ? 0 : start + 1,
+    end: Math.min(start + PAGE_SIZE, items.length),
+    items: items.slice(start, start + PAGE_SIZE),
+  }
+}
+
+function ListPager({
+  page,
+  totalPages,
+  start,
+  end,
+  total,
+  label,
+  onPageChange,
+}: {
+  page: number
+  totalPages: number
+  start: number
+  end: number
+  total: number
+  label: string
+  onPageChange: (page: number) => void
+}) {
+  if (total === 0) return null
+  return (
+    <div className="mt-2 flex items-center justify-between gap-3 text-xs text-forja-muted">
+      <span>
+        {start}–{end} of {total} {label}
+      </span>
+      {totalPages > 1 ? (
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            disabled={page <= 1}
+            aria-label="Previous page"
+            onClick={() => onPageChange(page - 1)}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <span className="min-w-12 text-center">
+            {page}/{totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            disabled={page >= totalPages}
+            aria-label="Next page"
+            onClick={() => onPageChange(page + 1)}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 type AddMode = 'share' | 'manual'
@@ -62,6 +183,8 @@ export function AccountSettingsIptvPage() {
   const [sharingKey, setSharingKey] = useState<string | null>(null)
   const [m3uForm, setM3uForm] = useState({ name: '', sourceUrl: '' })
   const [savedFlash, setSavedFlash] = useState(false)
+  const [portalPage, setPortalPage] = useState(1)
+  const [m3uPage, setM3uPage] = useState(1)
 
   useEffect(() => {
     setDraft(emptyIptvPayload())
@@ -69,7 +192,17 @@ export function AccountSettingsIptvPage() {
     setM3uQuery('')
     setAddOpen(false)
     setEditingKey(null)
+    setPortalPage(1)
+    setM3uPage(1)
   }, [profileId])
+
+  useEffect(() => {
+    setPortalPage(1)
+  }, [portalQuery])
+
+  useEffect(() => {
+    setM3uPage(1)
+  }, [m3uQuery])
 
   useEffect(() => {
     if (!data) return
@@ -122,6 +255,15 @@ export function AccountSettingsIptvPage() {
         .includes(q),
     )
   }, [draft.m3uPlaylists, m3uQuery])
+
+  const portalPager = useMemo(
+    () => pageSlice(filteredPortals, portalPage),
+    [filteredPortals, portalPage],
+  )
+  const m3uPager = useMemo(
+    () => pageSlice(filteredM3u, m3uPage),
+    [filteredM3u, m3uPage],
+  )
 
   const toggleFavorite = (row: IptvPortalRow) => {
     const key = portalKey(row)
@@ -290,7 +432,7 @@ export function AccountSettingsIptvPage() {
   return (
     <AccountSettingsShell
       title="IPTV portals"
-      description="Manage many Xtream portals and M3U URLs. Share codes work like the app — peer transfer, not account invite."
+      description="Manage many Xtream portals and M3U URLs. Share codes work like the app: peer transfer, not an account invite."
       footer={
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
@@ -344,6 +486,9 @@ export function AccountSettingsIptvPage() {
         <p className="mb-2 text-xs text-forja-muted">
           {filteredPortals.length}
           {portalQuery.trim() ? ` of ${draft.portals.length}` : ''} portals
+          {portalPager.totalPages > 1
+            ? ` · page ${portalPager.page} of ${portalPager.totalPages}`
+            : ''}
         </p>
 
         {addOpen ? (
@@ -386,7 +531,7 @@ export function AccountSettingsIptvPage() {
                 ) : (
                   <p className="text-xs text-forja-muted">
                     Same share codes as the Forja app. Credentials never go through
-                    your account sync — only encrypted ciphertext.
+                    your account sync, only encrypted ciphertext.
                   </p>
                 )}
               </TabsContent>
@@ -461,101 +606,145 @@ export function AccountSettingsIptvPage() {
         ) : filteredPortals.length === 0 ? (
           <p className="text-sm text-forja-muted">
             {draft.portals.length === 0
-              ? 'No portals yet — add a share code or enter credentials.'
+              ? 'No portals yet. Add a share code or enter credentials.'
               : 'No portals match your search.'}
           </p>
         ) : (
-          <ul className="max-h-[420px] divide-y divide-forja-border overflow-y-auto pr-1">
-            {filteredPortals.map((portal) => {
-              const key = portalKey(portal)
-              const starred = favorites.has(key)
-              const shownCode = shareFlash[key]
-              return (
-                <li
-                  key={key}
-                  className="flex min-h-14 items-center gap-2 px-0.5 py-2.5"
-                >
-                  <button
-                    type="button"
-                    className={cn(
-                      'shrink-0 text-forja-muted hover:text-forja-green',
-                      starred && 'text-amber-300 hover:text-amber-200',
-                    )}
-                    onClick={() => toggleFavorite(portal)}
-                    aria-label={starred ? 'Remove favorite' : 'Mark favorite'}
+          <>
+            <ul className="divide-y divide-forja-border">
+              {portalPager.items.map((portal) => {
+                const key = portalKey(portal)
+                const starred = favorites.has(key)
+                const shownCode = shareFlash[key]
+                const title = portal.name || portal.username || 'Portal'
+                const expiry = portalExpiryTone(portal.expiry)
+                const seats = seatsTone(portal.active, portal.max)
+
+                return (
+                  <li
+                    key={key}
+                    className="flex min-h-22 items-center gap-2 px-0.5 py-2.5"
                   >
-                    <Star
-                      className="size-4"
-                      fill={starred ? 'currentColor' : 'none'}
-                    />
-                  </button>
-
-                  <div className="min-w-0 flex-1">
-                    {shownCode ? (
-                      <p className="font-mono text-base tracking-[0.18em] text-forja-green">
-                        {shownCode}
-                      </p>
+                    {shownCode || sharingKey === key ? (
+                      <div className="min-w-0 flex-1">
+                        {sharingKey === key && !shownCode ? (
+                          <p className="text-sm text-forja-muted">
+                            Creating share code…
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
+                              SHARE CODE
+                            </p>
+                            <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
+                              {shownCode}
+                            </p>
+                          </>
+                        )}
+                      </div>
                     ) : (
-                      <>
-                        <p className="truncate font-medium">
-                          {portal.name || portal.username || portal.url}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p
+                          className={cn(
+                            'flex items-center gap-1.5 text-[11px] font-semibold',
+                            expiry.className,
+                          )}
+                        >
+                          <CalendarDays className="size-3 shrink-0" />
+                          <span className="truncate">{expiry.label}</span>
                         </p>
-                        <p className="truncate text-xs text-forja-muted">
+                        <p
+                          className={cn(
+                            'truncate text-[13px] font-semibold',
+                            starred ? 'text-amber-300' : 'text-forja-text',
+                          )}
+                        >
+                          {title}
+                        </p>
+                        <p className="truncate text-[11px] text-white/40">
                           {portal.url}
-                          {portal.username ? ` · ${portal.username}` : ''}
-                          {portal.expiry ? ` · expires ${portal.expiry}` : ''}
-                          {portal.max
-                            ? ` · ${portal.active || '0'}/${portal.max}`
-                            : ''}
                         </p>
-                      </>
+                        <p
+                          className={cn(
+                            'flex items-center gap-1.5 text-[11px] font-semibold',
+                            seats.className,
+                          )}
+                        >
+                          <Users className="size-3 shrink-0" />
+                          <span>{seats.label}</span>
+                        </p>
+                      </div>
                     )}
-                  </div>
 
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      disabled={sharingKey === key}
-                      aria-label="Copy share code"
-                      title="Copy share code"
-                      onClick={() => void copyShare(portal)}
-                    >
-                      {sharingKey === key ? (
-                        <Share2 className="size-4 animate-pulse" />
-                      ) : shownCode ? (
-                        <Check className="size-4 text-forja-green" />
-                      ) : (
-                        <Copy className="size-4" />
+                      className={cn(
+                        'shrink-0 self-center p-1 text-white/30 hover:text-forja-green',
+                        starred && 'text-amber-300 hover:text-amber-200',
                       )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      aria-label="Edit portal"
-                      onClick={() => beginEdit(portal)}
+                      onClick={() => toggleFavorite(portal)}
+                      aria-label={starred ? 'Remove favorite' : 'Mark favorite'}
                     >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-300 hover:text-red-200"
-                      aria-label="Delete portal"
-                      onClick={() => removePortal(key)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+                      <Star
+                        className="size-4"
+                        fill={starred ? 'currentColor' : 'none'}
+                      />
+                    </button>
+
+                    <div className="flex shrink-0 items-center self-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        disabled={sharingKey === key}
+                        aria-label="Copy share code"
+                        title="Copy share code"
+                        onClick={() => void copyShare(portal)}
+                      >
+                        {sharingKey === key ? (
+                          <Share2 className="size-4 animate-pulse" />
+                        ) : shownCode ? (
+                          <Check className="size-4 text-forja-green" />
+                        ) : (
+                          <Copy className="size-4" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        aria-label="Edit portal"
+                        onClick={() => beginEdit(portal)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                        aria-label="Delete portal"
+                        onClick={() => removePortal(key)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+            <ListPager
+              page={portalPager.page}
+              totalPages={portalPager.totalPages}
+              start={portalPager.start}
+              end={portalPager.end}
+              total={filteredPortals.length}
+              label="portals"
+              onPageChange={setPortalPage}
+            />
+          </>
         )}
       </SettingsSection>
 
@@ -583,30 +772,45 @@ export function AccountSettingsIptvPage() {
               : 'No playlists match your search.'}
           </p>
         ) : (
-          <ul className="mb-4 max-h-64 divide-y divide-forja-border overflow-y-auto">
-            {filteredM3u.map((playlist) => (
-              <li
-                key={playlist.id}
-                className="flex min-h-14 items-center justify-between gap-3 px-0.5 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{playlist.name}</p>
-                  <p className="truncate text-xs text-forja-muted">
-                    {playlist.sourceUrl}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-red-300 hover:text-red-200"
-                  onClick={() => removeM3u(playlist.id)}
+          <>
+            <ul className="divide-y divide-forja-border">
+              {m3uPager.items.map((playlist) => (
+                <li
+                  key={playlist.id}
+                  className="flex items-center justify-between gap-3 px-0.5 py-2.5"
                 >
-                  <Trash2 className="size-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {playlist.name}
+                    </p>
+                    {playlist.sourceUrl ? (
+                      <p className="mt-0.5 truncate text-[11px] text-white/40">
+                        {playlist.sourceUrl}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 p-0 text-red-400 hover:text-red-300"
+                    onClick={() => removeM3u(playlist.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <ListPager
+              page={m3uPager.page}
+              totalPages={m3uPager.totalPages}
+              start={m3uPager.start}
+              end={m3uPager.end}
+              total={filteredM3u.length}
+              label="playlists"
+              onPageChange={setM3uPage}
+            />
+          </>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">

@@ -9,8 +9,10 @@ use axum::{
 use utils::{episode_matcher, torrent_filter};
 use futures_util::TryStreamExt;
 use librqbit::api::{Api, TorrentDetailsResponseFile, TorrentIdOrHash};
+use librqbit::dht::DhtPersistenceConfig;
 use librqbit::{
-    AddTorrent, AddTorrentOptions, AddTorrentResponse, DhtSessionConfig, Session, SessionOptions,
+    AddTorrent, AddTorrentOptions, AddTorrentResponse, DhtSessionConfig, ListenerMode,
+    ListenerOptions, Session, SessionOptions,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -22,15 +24,17 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
 use tokio::sync::oneshot;
 use tokio_util::io::ReaderStream;
 
-/// Bytes to pull from the selected file before handing the URL to mpv.
-/// Enough for container probe (MKV/MP4 headers); keeps startup snappy.
-const STREAM_HEAD_BYTES: u64 = 256 * 1024;
-const STREAM_HEAD_TIMEOUT: Duration = Duration::from_secs(60);
+/// Prefer this many head bytes before handing the URL to mpv (container probe).
+const STREAM_HEAD_BYTES: u64 = 64 * 1024;
+/// On timeout, still succeed if we got at least this many — mpv keeps pulling.
+const STREAM_HEAD_MIN_ACCEPT: u64 = 16 * 1024;
+/// Healthy swarms can take >60s after a cold DHT; desktop clients keep waiting.
+const STREAM_HEAD_TIMEOUT: Duration = Duration::from_secs(180);
 
 /// `session.add_torrent` for a magnet **includes DHT/tracker metadata resolve**
 /// (librqbit has no separate metadata step). An 8s cap made healthy but slow
 /// swarms fail while desktop clients (PlayTorr / qBittorrent) still worked.
-const MAGNET_ADD_TIMEOUT: Duration = Duration::from_secs(60);
+const MAGNET_ADD_TIMEOUT: Duration = Duration::from_secs(90);
 const TORRENT_INIT_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -130,19 +134,51 @@ impl TorrentEngine {
         std::env::temp_dir().join("torrent")
     }
 
-    /// librqbit defaults persist DHT under `~/Library/Caches/com.rqbit.dht`, which
-    /// fails in the macOS app sandbox. Keep DHT in-memory and disable LSD multicast.
+    /// Sandbox-safe session: DHT under our writable temp dir (not
+    /// `~/Library/Caches/com.rqbit.dht`), TCP listen for incoming peers, no LSD.
     fn session_options(peer_limit: usize) -> SessionOptions {
+        let dht_path = Self::download_dir().join("dht_state.json");
         SessionOptions {
             peer_limit: Some(peer_limit),
             dht: Some(DhtSessionConfig {
-                persistence: None,
+                persistence: Some(DhtPersistenceConfig {
+                    dump_interval: Some(Duration::from_secs(60)),
+                    config_filename: Some(dht_path),
+                }),
                 ..Default::default()
             }),
+            // Outgoing-only was the main gap vs qBittorrent / PlayTorr: many
+            // swarms never push pieces until we accept inbound connections.
+            listen: Some(ListenerOptions {
+                mode: ListenerMode::TcpOnly,
+                listen_addr: SocketAddr::from(([0, 0, 0, 0], 0)),
+                enable_upnp_port_forwarding: false,
+                ipv4_only: true,
+                ..Default::default()
+            }),
+            // Magnets often ship with few/dead `tr=` entries. Desktop clients keep a
+            // default tracker list — without it, metadata resolve stalls on DHT alone.
+            trackers: Self::default_public_trackers(),
             disable_local_service_discovery: true,
             ipv4_only: true,
             ..Default::default()
         }
+    }
+
+    fn default_public_trackers() -> HashSet<url::Url> {
+        const URLS: &[&str] = &[
+            "udp://tracker.opentrackr.org:1337/announce",
+            "udp://open.stealth.si:80/announce",
+            "udp://tracker.torrent.eu.org:451/announce",
+            "udp://explodie.org:6969/announce",
+            "udp://tracker.internetwarriors.net:1337/announce",
+            "udp://tracker.moeking.me:6969/announce",
+            "http://tracker.openbittorrent.com:80/announce",
+            "http://tracker.opentrackr.org:1337/announce",
+        ];
+        URLS.iter()
+            .filter_map(|u| url::Url::parse(u).ok())
+            .collect()
     }
 
     pub fn set_peer_limit(&self, limit: u32) {
@@ -354,6 +390,38 @@ impl TorrentEngine {
     }
 
     async fn prepare_magnet(&self, magnet: &str) -> Result<PreparedTorrent, String> {
+        self.prepare_add(
+            AddTorrent::from_url(magnet),
+            extract_info_hash(magnet),
+            MAGNET_ADD_TIMEOUT,
+            format!(
+                "Timed out resolving magnet (no metadata/peers in {}s)",
+                MAGNET_ADD_TIMEOUT.as_secs()
+            ),
+        )
+        .await
+    }
+
+    async fn prepare_torrent_bytes(&self, bytes: Vec<u8>) -> Result<PreparedTorrent, String> {
+        self.prepare_add(
+            AddTorrent::from_bytes(bytes),
+            None,
+            TORRENT_INIT_TIMEOUT,
+            format!(
+                "Timed out adding torrent file ({}s)",
+                TORRENT_INIT_TIMEOUT.as_secs()
+            ),
+        )
+        .await
+    }
+
+    async fn prepare_add(
+        &self,
+        add: AddTorrent<'_>,
+        new_hash: Option<String>,
+        add_timeout: Duration,
+        add_timeout_msg: String,
+    ) -> Result<PreparedTorrent, String> {
         let api = {
             let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
             if inner.http_port == 0 || inner.api.is_none() {
@@ -362,11 +430,14 @@ impl TorrentEngine {
             inner.api.clone().unwrap()
         };
 
-        let new_hash = extract_info_hash(magnet);
         let forget_id = {
             let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
             if let Some(active) = inner.active.clone() {
-                if new_hash.as_deref() != Some(active.info_hash.as_str()) {
+                let switch = match new_hash.as_deref() {
+                    Some(h) => h != active.info_hash.as_str(),
+                    None => true,
+                };
+                if switch {
                     inner.active = None;
                     Some(active.id)
                 } else {
@@ -389,26 +460,24 @@ impl TorrentEngine {
 
         let add_opts = AddTorrentOptions {
             overwrite: true,
+            trackers: Some(
+                Self::default_public_trackers()
+                    .into_iter()
+                    .map(|u| u.to_string())
+                    .collect(),
+            ),
             ..Default::default()
         };
-        let response = tokio::time::timeout(
-            MAGNET_ADD_TIMEOUT,
-            session.add_torrent(AddTorrent::from_url(magnet), Some(add_opts)),
-        )
-        .await
-        .map_err(|_| {
-            format!(
-                "Timed out resolving magnet (no metadata/peers in {}s)",
-                MAGNET_ADD_TIMEOUT.as_secs()
-            )
-        })?
-        .map_err(|e| e.to_string())?;
+        let response = tokio::time::timeout(add_timeout, session.add_torrent(add, Some(add_opts)))
+            .await
+            .map_err(|_| add_timeout_msg)?
+            .map_err(|e| e.to_string())?;
 
         let handle = match response {
             AddTorrentResponse::Added(_, handle) => handle,
             AddTorrentResponse::AlreadyManaged(_, handle) => handle,
             AddTorrentResponse::ListOnly(_) => {
-                return Err("Magnet resolved as list-only torrent".into());
+                return Err("Torrent resolved as list-only".into());
             }
         };
 
@@ -560,6 +629,10 @@ impl TorrentEngine {
 /// Opens a librqbit file stream (registers piece priority) and reads until
 /// [min_bytes] arrive or [timeout] elapses. Dropping the stream keeps the
 /// downloaded head on disk for the subsequent HTTP open from mpv.
+///
+/// On timeout: still succeed if we got [STREAM_HEAD_MIN_ACCEPT] — matches
+/// desktop clients that open playback once *some* head exists and keep
+/// buffering. Hard-fail only when the head is still empty.
 async fn wait_for_stream_head(
     api: &Api,
     torrent_id: usize,
@@ -572,10 +645,11 @@ async fn wait_for_stream_head(
         .await
         .map_err(|e| e.to_string())?;
     let need = min_bytes.min(stream.len()).max(1) as usize;
+    let min_accept = (STREAM_HEAD_MIN_ACCEPT as usize).min(need);
     let mut buf = vec![0u8; need];
     let mut read = 0usize;
 
-    tokio::time::timeout(timeout, async {
+    let timed_out = tokio::time::timeout(timeout, async {
         while read < need {
             let n = stream
                 .read(&mut buf[read..])
@@ -588,15 +662,44 @@ async fn wait_for_stream_head(
         }
         Ok::<(), String>(())
     })
-    .await
-    .map_err(|_| {
-        "Timed out waiting for torrent stream head (no peers / slow swarm)".to_string()
-    })??;
+    .await;
+
+    match timed_out {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => return Err(e),
+        Err(_) => {
+            if read >= min_accept {
+                // Partial head — hand URL to mpv; HTTP stream continues pull.
+                return Ok(());
+            }
+            let (peers, seen, progress) = peer_snapshot(api, torrent_id);
+            return Err(format!(
+                "Timed out waiting for torrent stream head \
+                 (got {read}/{need} bytes, peers={peers}/{seen}, progress={progress}B)"
+            ));
+        }
+    }
 
     if read == 0 {
-        return Err("Torrent stream head empty".into());
+        let (peers, seen, progress) = peer_snapshot(api, torrent_id);
+        return Err(format!(
+            "Torrent stream head empty (peers={peers}/{seen}, progress={progress}B)"
+        ));
     }
     Ok(())
+}
+
+fn peer_snapshot(api: &Api, torrent_id: usize) -> (u32, u32, u64) {
+    let Ok(stats) = api.api_stats_v1(TorrentIdOrHash::Id(torrent_id)) else {
+        return (0, 0, 0);
+    };
+    let progress = stats.progress_bytes;
+    let (live, seen) = stats
+        .live
+        .as_ref()
+        .map(|l| (l.snapshot.peer_stats.live, l.snapshot.peer_stats.seen))
+        .unwrap_or((0, 0));
+    (live, seen, progress)
 }
 
 async fn stream_file_handler(
@@ -788,4 +891,129 @@ mod tests {
         engine.stop_engine();
         assert_eq!(engine.engine_port(), 0);
     }
+
+    /// Live network smoke: public-domain Big Buck Bunny magnet → stream head bytes.
+    /// Run: cargo test -p torrent stream_head_from_public_magnet -- --ignored --nocapture
+    #[test]
+    #[ignore = "network: live magnet swarm"]
+    fn stream_head_from_public_magnet() {
+        let magnet = "magnet:?xt=urn:btih:dd8255ecdd7faa5fb887f54fb303487061a6e1f6\
+&dn=Big+Buck+Bunny\
+&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337\
+&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce\
+&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce";
+        let engine = TorrentEngine::new();
+        let port = engine.start_engine(0).expect("start_engine");
+        assert!(port > 0);
+        let json = engine.stream_magnet_json(magnet, None, None, None);
+        eprintln!("stream_magnet_json => {json}");
+        let v: serde_json::Value = serde_json::from_str(&json).expect("json");
+        if let Some(err) = v.get("error") {
+            panic!("stream failed: {err}");
+        }
+        let url = v["url"].as_str().expect("url");
+        assert!(url.starts_with("http://127.0.0.1:"), "{url}");
+        assert_localhost_range_ok(url);
+        engine.stop_engine();
+    }
+
+    /// Live network smoke with .torrent metadata already present (skips magnet DHT).
+    /// Run: cargo test -p torrent stream_head_from_bbb_torrent_file -- --ignored --nocapture
+    #[test]
+    #[ignore = "network: live torrent swarm"]
+    fn stream_head_from_bbb_torrent_file() {
+        let path = "/tmp/bbb.torrent";
+        if !std::path::Path::new(path).exists() {
+            let status = std::process::Command::new("curl")
+                .args([
+                    "-sSL",
+                    "-o",
+                    path,
+                    "https://webtorrent.io/torrents/big-buck-bunny.torrent",
+                ])
+                .status()
+                .expect("curl");
+            assert!(status.success(), "failed to download {path}");
+        }
+        let bytes = std::fs::read(path).expect("read torrent");
+        let engine = TorrentEngine::new();
+        let port = engine.start_engine(0).expect("start_engine");
+        assert!(port > 0);
+
+        let url = engine
+            .runtime
+            .block_on(async {
+                let prepared = engine.prepare_torrent_bytes(bytes).await?;
+                let file_idx = select_file_index(&prepared.files, None, None, None)
+                    .ok_or_else(|| "No suitable video file found".to_string())?;
+                let api = {
+                    let inner = engine.inner.lock().map_err(|_| "Engine lock poisoned")?;
+                    inner.api.clone().ok_or("Torrent engine not started")?
+                };
+                let only_files = HashSet::from([file_idx]);
+                api.api_torrent_action_update_only_files(
+                    TorrentIdOrHash::Id(prepared.torrent_id),
+                    &only_files,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+                wait_for_stream_head(
+                    &api,
+                    prepared.torrent_id,
+                    file_idx,
+                    STREAM_HEAD_BYTES,
+                    STREAM_HEAD_TIMEOUT,
+                )
+                .await?;
+                let file_name = prepared
+                    .files
+                    .get(file_idx)
+                    .map(|f| f.name.as_str())
+                    .unwrap_or("file");
+                let encoded_name = urlencoding::encode(file_name);
+                Ok::<String, String>(format!(
+                    "http://127.0.0.1:{port}/torrents/{}/stream/{file_idx}/{encoded_name}",
+                    prepared.torrent_id
+                ))
+            })
+            .expect("stream from torrent file");
+
+        eprintln!("stream url => {url}");
+        assert_localhost_range_ok(&url);
+        engine.stop_engine();
+    }
+
+    fn assert_localhost_range_ok(url: &str) {
+        let out = std::process::Command::new("curl")
+            .args([
+                "-sS",
+                "-D",
+                "-",
+                "-o",
+                "/tmp/forja_torrent_head.bin",
+                "-r",
+                "0-1023",
+                url,
+            ])
+            .output()
+            .expect("curl");
+        let headers = String::from_utf8_lossy(&out.stdout);
+        eprintln!("http headers =>\n{headers}");
+        assert!(
+            out.status.success(),
+            "curl failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(
+            headers.contains("200") || headers.contains("206"),
+            "unexpected status: {headers}"
+        );
+        let len = std::fs::metadata("/tmp/forja_torrent_head.bin")
+            .expect("head file")
+            .len();
+        eprintln!("http body len => {len}");
+        assert!(len > 0);
+    }
+
+
 }

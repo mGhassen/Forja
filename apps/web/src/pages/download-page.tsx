@@ -262,8 +262,8 @@ export function DownloadPage() {
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Forja is a free media player for streaming - playback, live playlists,
-              and controls on the screen you use.
+              Forja is a free media player for movies, series, anime, live sport, and
+              IPTV.
             </p>
             <p>
               Windows, Mac, Linux, or Android TV. Same player everywhere.
@@ -301,14 +301,14 @@ export function DownloadPage() {
               )}
               {isError && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.12em] text-red-300">
-                  Downloads are taking a break
+                  Could not load downloads
                   {error instanceof Error ? ` - ${error.message}` : ''}
                 </p>
               )}
               {!isLoading && !isError && !data && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)]">
                   {supabaseConfigured
-                    ? 'Nothing to grab yet - check back soon'
+                    ? 'No release files yet. Check back soon.'
                     : 'Downloads are not ready on this site yet'}
                 </p>
               )}
@@ -331,12 +331,12 @@ export function DownloadPage() {
         <Reveal delayMs={160}>
           <section className="relative mt-20 overflow-hidden border-t border-[rgba(237,230,218,0.14)] pt-16">
             <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-brand">
-              From download to stream
+              How to install
             </p>
             <h2 className="mt-4 max-w-[14ch] font-disp text-[clamp(40px,8vw,88px)] uppercase leading-[0.88] tracking-[-0.04em]">
               Three steps.
               <br />
-              <span className="font-serif-i normal-case text-flame">Zero drama.</span>
+              <span className="font-serif-i normal-case text-flame">Then watch.</span>
             </h2>
 
             <ol className="mt-14 grid gap-0 border-y border-[rgba(237,230,218,0.14)] md:grid-cols-3">
@@ -379,10 +379,9 @@ export function DownloadPage() {
 
             <div className="mt-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <p className="max-w-xl font-disp text-[clamp(22px,3.2vw,36px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.72)]">
-                Desk. Couch.{' '}
-                <span className="text-[#EDE6DA]">Big screen.</span>
+                PC, TV, or living room.
                 <br />
-                <span className="text-brand">Same player.</span>
+                <span className="text-brand">Same Forja app.</span>
               </p>
               <a
                 href="#platforms"

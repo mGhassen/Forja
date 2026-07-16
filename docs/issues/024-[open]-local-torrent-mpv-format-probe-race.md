@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 4** fix · **0 / 1** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I24-T02 | Player: `waitForMediaOpen` on primary torrent path; tolerate early format probe; longer timeout | ✅ |
 | 3 | I24-T03 | Manual smoke: Stremio/Torrentio magnet → Local Torrent Engine plays (desktop) | ⬜ |
 | 4 | I24-T04 | `waitForMediaOpen`: local torrent readiness requires decoded video (not buffer/moov alone) | ✅ |
+| 5 | I24-T05 | Engine: TCP listen + sandbox DHT persist; 180s head wait; accept ≥16 KiB partial head; richer timeout stats | ✅ |
 
 ---
 
@@ -31,6 +32,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I24-A01 | Magnet that works in Stremio plays via local engine without `Failed to recognize file format` abort | ⬜ |
+| 2 | I24-A02 | Magnet that plays in qBittorrent / PlayTorr also starts via Local Torrent Engine (desktop) | ⬜ |
 
 ---
 
@@ -43,3 +45,13 @@ Stremio/Torrentio magnets resolve to `http://127.0.0.1:…/torrents/…/stream/�
 ### Follow-up (I24-T04)
 
 After T01/T02, Torrents-tab magnets could still **false-confirm** open: `waitForMediaOpen` treated buffer / moov duration / playing as ready while `videoParams` stayed `0×0`. Playback looked frozen (black screen + abortive `completed` loops). Stremio/Torrentio magnets that actually decoded a frame still worked. Fix: local torrent URLs require `hasDecodedVideo` before settle (same bar as `sourceRequiresVideoDecode` on the sources path).
+
+### Follow-up (I24-T05)
+
+Healthy magnets that worked in qBittorrent / PlayTorr still failed in Forja with `Timed out waiting for torrent stream head`. Root causes vs desktop clients:
+
+1. **No TCP listen** — session was outgoing-only (`listen: None`), so many swarms never delivered pieces
+2. **Cold DHT every boot** — persistence disabled for sandbox; now dumped under `{temp}/torrent/dht_state.json`
+3. **Hard 60s / 256 KiB abort** — raised to 180s / prefer 64 KiB, and accept ≥16 KiB partial head so mpv can keep pulling
+
+Manual smoke (`I24-T03`, `I24-A01`–`A02`) still required.

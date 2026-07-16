@@ -130,7 +130,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
           <div className="ml-auto hidden items-center gap-2 md:flex">
             {!loading && user ? (
               <Link
-                to="/account"
+                to="/account/settings"
                 data-hover=""
                 className={cn(
                   'inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200',
@@ -253,7 +253,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         </nav>
 
         <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
-          Free · Desk to TV
+          Free download
         </p>
       </div>
     </header>

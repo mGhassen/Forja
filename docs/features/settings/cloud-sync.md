@@ -14,8 +14,8 @@ another screen.
 ## How to open it
 
 - **App:** Settings → Accounts → **Forja account**
-- **Web:** sign in at `/login`, choose an avatar on **Who's watching?**, then
-  open **Account → Profiles** or **Remote settings**
+- **Web:** sign in at `/login`, choose a profile on **Who's watching?**, then
+  manage **Remote settings**. Switch profiles from the settings header menu.
 
 ## What syncs (remote settings)
 
@@ -42,12 +42,15 @@ Not synced — device-specific or sensitive:
 ## What you can do
 
 - Create an account or sign in with email and password (app or web)
-- Choose a profile after web sign-in using the Netflix-style avatar screen
+- Open **Account** after sign-in: pick a profile on **Who’s watching?**, then
+  land in **Remote settings**. Switch or manage profiles from the settings
+  profile menu — not as a peer of settings.
 - Create, rename, and delete profiles on the web, with 30 avatars organized
   into Characters, Creatures, Space, and Retro categories
 - Select the active profile from the app account panel or web settings header
 - Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from
-  the web (share codes match the app peer-code flow)
+  the web (share codes match the app peer-code flow). Portal rows match the app
+  panel (expiry, name, URL, seats); lists paginate every 10 items
 - Change playback prefs and provider order from the web
 - Manage Stremio addon URLs from the web
 - Sign out (local settings stay on the device)
