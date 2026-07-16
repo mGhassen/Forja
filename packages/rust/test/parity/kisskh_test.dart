@@ -34,6 +34,20 @@ void main() {
     expect(url, contains('ep=42'));
   });
 
+  test('kisskhCatalogJson probe_mirrors returns mirror rows', () {
+    final raw = RustLib.instance.kisskhCatalogJson('{"action":"probe_mirrors"}');
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    expect(map.containsKey('error'), isFalse);
+    final mirrors = map['mirrors'] as List<dynamic>;
+    expect(mirrors.length, 5);
+    for (final row in mirrors) {
+      expect(row, isA<Map>());
+      final m = Map<String, dynamic>.from(row as Map);
+      expect(m['base_url'], startsWith('https://kisskh.'));
+      expect(m.containsKey('healthy'), isTrue);
+    }
+  });
+
   test('kisskhCatalogJson activates only verified mirrors', () {
     final activated =
         jsonDecode(

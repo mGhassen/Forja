@@ -40,26 +40,46 @@ class StremioResolveFailure extends StremioResolveOutcome {
   StremioResolveFailure({required this.error, required this.message});
 }
 
-/// Builds a magnet link from a Stremio addon stream map.
-String buildMagnetFromStremioStream(Map<String, dynamic> stream) {
-  final infoHash = stream['infoHash'] as String;
-  final streamTitle = (stream['title'] ?? stream['name'] ?? '').toString();
-  final dn = streamTitle.isNotEmpty
-      ? '&dn=${Uri.encodeComponent(streamTitle)}'
-      : '';
+/// True when [url] is a magnet / torrent link — not a direct HTTP(S) stream.
+bool isStremioTorrentUrl(String url) {
+  final u = url.trim().toLowerCase();
+  return u.startsWith('magnet:') ||
+      u.contains('urn:btih:') ||
+      u.endsWith('.torrent');
+}
 
-  final trackerParams = StringBuffer();
-  final sources = stream['sources'];
-  if (sources is List) {
-    for (final src in sources) {
-      if (src is String && src.startsWith('tracker:')) {
-        final tracker = src.substring('tracker:'.length);
-        trackerParams.write('&tr=${Uri.encodeComponent(tracker)}');
+/// Builds a magnet link from a Stremio addon stream map.
+///
+/// Prefer [infoHash] (+ trackers). If the addon only put a magnet in `url`,
+/// return that magnet as-is.
+String buildMagnetFromStremioStream(Map<String, dynamic> stream) {
+  final infoHash = stream['infoHash']?.toString();
+  if (infoHash != null && infoHash.isNotEmpty) {
+    final streamTitle = (stream['title'] ?? stream['name'] ?? '').toString();
+    final dn = streamTitle.isNotEmpty
+        ? '&dn=${Uri.encodeComponent(streamTitle)}'
+        : '';
+
+    final trackerParams = StringBuffer();
+    final sources = stream['sources'];
+    if (sources is List) {
+      for (final src in sources) {
+        if (src is String && src.startsWith('tracker:')) {
+          final tracker = src.substring('tracker:'.length);
+          trackerParams.write('&tr=${Uri.encodeComponent(tracker)}');
+        }
       }
     }
+
+    return 'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
   }
 
-  return 'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
+  final url = stream['url']?.toString().trim() ?? '';
+  if (isStremioTorrentUrl(url)) return url;
+
+  throw ArgumentError(
+    'Stremio stream has neither infoHash nor magnet url',
+  );
 }
 
 bool isStremioStreamVisible(
@@ -98,9 +118,12 @@ StremioResolveOutcome? classifyStremioStream(
     return StremioExternalLink(externalUrl);
   }
 
-  if (stream['url'] != null) {
+  final url = stream['url']?.toString();
+  // Magnet / .torrent in `url` must go through magnet resolve — never open as
+  // a file path (mpv treats relative paths under temp → "File name too long").
+  if (url != null && url.isNotEmpty && !isStremioTorrentUrl(url)) {
     return StremioPlayable(
-      streamUrl: stream['url'] as String,
+      streamUrl: url,
       headers: Map<String, String>.from(
         stream['behaviorHints']?['proxyHeaders']?['request'] ?? {},
       ),
@@ -108,7 +131,10 @@ StremioResolveOutcome? classifyStremioStream(
     );
   }
 
-  if (stream['infoHash'] == null) {
+  final infoHash = stream['infoHash']?.toString();
+  final hasInfoHash = infoHash != null && infoHash.isNotEmpty;
+  final urlIsMagnet = url != null && isStremioTorrentUrl(url);
+  if (!hasInfoHash && !urlIsMagnet) {
     return StremioResolveFailure(
       error: StremioPlaybackError.unsupported,
       message: 'Unsupported stream type.',

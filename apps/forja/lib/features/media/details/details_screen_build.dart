@@ -316,14 +316,9 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSourcesPanelContent() {
-    final showMerged = _s._panelKindFilter == 'all';
-    final showTorrents = _s._panelKindFilter == 'torrents' || showMerged;
-    final showNuvio = _s._panelKindFilter == 'nuvio' || showMerged;
-    final showSort = showTorrents && _s._panelKindFilter != 'nuvio';
-    final showAudio = showTorrents && _s._panelKindFilter != 'nuvio';
-    final providerChips = showMerged
-        ? const <Map<String, dynamic>>[]
-        : _s._sourceChips();
+    final showTorrents = _s._panelKindFilter == 'torrents';
+    final showSort = showTorrents;
+    final showAudio = showTorrents;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,15 +336,15 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
               : null,
           isFetching: _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching,
           onCancelFetch: _s._cancelActiveSourceFetch,
-          providerChips: providerChips,
+          providerOptions: _s._providerOptions(),
           selectedSourceId: _s._selectedSourceId,
           nuvioSelectedScraperIds: _s._nuvioSelectedScraperIds,
-          chipsScrollController: _s._chipsScrollController,
-          onChipTap: _s._onSourceChipTap,
-          onScrollBack: _s._scrollChipsBack,
-          onScrollForward: _s._scrollChipsForward,
+          onProviderTap: _s._onSourceChipTap,
           searchQuery: _s._sourceSearchQuery,
-          onSearchChanged: (q) => setState(() => _s._sourceSearchQuery = q),
+          onSearchChanged: (q) => setState(() {
+            _s._resetPanelVisibleLimit();
+            _s._sourceSearchQuery = q;
+          }),
           availableQualities: _s._panelAvailableQualities,
           availableLanguages: _s._panelAvailableLanguages,
           availableTech: _s._panelAvailableTech,
@@ -358,19 +353,35 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
           activeLanguageFilters: _s._activeLanguageFilters,
           activeTechFilters: _s._activeTechFilters,
           activeSizeFilters: _s._activeSizeFilters,
-          onQualityFiltersChanged: (v) =>
-              setState(() => _s._activeQualityFilters = v),
-          onLanguageFiltersChanged: (v) =>
-              setState(() => _s._activeLanguageFilters = v),
-          onTechFiltersChanged: (v) => setState(() => _s._activeTechFilters = v),
-          onSizeFiltersChanged: (v) => setState(() => _s._activeSizeFilters = v),
+          onQualityFiltersChanged: (v) => setState(() {
+            _s._resetPanelVisibleLimit();
+            _s._activeQualityFilters = v;
+          }),
+          onLanguageFiltersChanged: (v) => setState(() {
+            _s._resetPanelVisibleLimit();
+            _s._activeLanguageFilters = v;
+          }),
+          onTechFiltersChanged: (v) => setState(() {
+            _s._resetPanelVisibleLimit();
+            _s._activeTechFilters = v;
+          }),
+          onSizeFiltersChanged: (v) => setState(() {
+            _s._resetPanelVisibleLimit();
+            _s._activeSizeFilters = v;
+          }),
           showAudioFilters: showAudio,
           activeAudioFilters: _s._activeAudioFilters,
-          onAudioFiltersChanged: (v) => setState(() => _s._activeAudioFilters = v),
+          onAudioFiltersChanged: (v) => setState(() {
+            _s._resetPanelVisibleLimit();
+            _s._activeAudioFilters = v;
+          }),
           sortPreference: showSort ? _s._sortPreference : null,
           onSortChanged: showSort
               ? (val) {
-                  setState(() => _s._sortPreference = val);
+                  setState(() {
+                    _s._resetPanelVisibleLimit();
+                    _s._sortPreference = val;
+                  });
                   _s._settings.setSortPreference(val);
                   _s._sortResults();
                 }

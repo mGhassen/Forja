@@ -388,12 +388,63 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
               ];
         _prepareProbes(preferred: pin);
 
+        // Parallel API URL check first — mark DOWN without opening WebViews.
+        for (final host in tryOrder) {
+          _applyProbeStatus(host, StreamProviderProbeStatus.trying);
+        }
+        _setPhase('Checking mirror URLs…');
+        KissKhMirrorHealth health;
+        try {
+          health = await KissKhService.probeMirrors();
+        } catch (e) {
+          debugPrint('[AsianDrama] mirror probe failed: $e');
+          health = const KissKhMirrorHealth(
+            selected: null,
+            healthyHosts: [],
+            unhealthyHosts: [],
+          );
+        }
+        if (!mounted || _cancelled) return;
+        if (_switchingManualMirror) {
+          if (_pendingManualMirrorId != null) {
+            preferred = _pendingManualMirrorId!;
+            _pendingManualMirrorId = null;
+          }
+          continue;
+        }
+
+        final healthyOrder = <String>[
+          for (final host in tryOrder)
+            if (health.healthyHosts.contains(host) ||
+                // Manual pin: still attempt extract even if API probe flaked.
+                (!SourceEngine.isAuto(pin) && host == pin))
+              host,
+        ];
+        for (final host in tryOrder) {
+          if (healthyOrder.contains(host)) {
+            _applyProbeStatus(host, StreamProviderProbeStatus.pending);
+          } else {
+            _applyProbeStatus(host, StreamProviderProbeStatus.failed);
+          }
+        }
+
+        if (healthyOrder.isEmpty) {
+          stream = null;
+          winningHost = null;
+          if (_switchingManualMirror && _pendingManualMirrorId != null) {
+            preferred = _pendingManualMirrorId!;
+            _pendingManualMirrorId = null;
+            continue;
+          }
+          break;
+        }
+
         stream = null;
         winningHost = null;
-        for (final host in tryOrder) {
+        for (final host in healthyOrder) {
           if (!mounted || _cancelled || _switchingManualMirror) break;
           _applyProbeStatus(host, StreamProviderProbeStatus.trying);
-          _setPhase('Checking ${KissKhService.mirrorLabel(host)}…');
+          _setPhase('Opening ${KissKhService.mirrorLabel(host)}…');
 
           final result = await _extractor.resolve(
             dramaId: drama.id,
@@ -450,7 +501,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           _failedAll = true;
           _isUpcoming = false;
           _setPhase('No stream available');
-          _statusLine = 'All KissKH mirrors failed for this episode.';
+          _statusLine =
+              'No healthy KissKH mirror returned a stream for this episode.';
         });
         return;
       }

@@ -16,24 +16,26 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     sizeFilters: _s._activeSizeFilters,
   );
 
-  bool get _panelShowsMerged => _s._panelKindFilter == 'all';
+  bool get _panelShowsTorrents => _s._panelKindFilter == 'torrents';
 
-  bool get _panelShowsTorrents =>
-      _s._panelKindFilter == 'torrents' || _panelShowsMerged;
+  bool get _panelShowsStremio => _s._panelKindFilter == 'stremio';
 
-  bool get _panelShowsStremio =>
-      _s._panelKindFilter == 'stremio' || _panelShowsMerged;
-
-  bool get _panelShowsNuvio =>
-      _s._panelKindFilter == 'nuvio' || _panelShowsMerged;
+  bool get _panelShowsNuvio => _s._panelKindFilter == 'nuvio';
 
   List<Map<String, dynamic>> get _filteredPanelStremioStreams {
-    final streams = _s._selectedSourceId == 'all_stremio' || _panelShowsMerged
+    final streams = _s._selectedSourceId == 'all_stremio'
         ? _s._allCombinedStremioStreams
         : _s._stremioStreams;
     return streams
         .whereType<Map<String, dynamic>>()
-        .where((s) => _matchesPanelStreamFilters(s))
+        .where((s) {
+          if (_s._selectedSourceId != 'all_stremio' &&
+              _s._selectedSourceId.isNotEmpty &&
+              s['_addonBaseUrl'] != _s._selectedSourceId) {
+            return false;
+          }
+          return _matchesPanelStreamFilters(s);
+        })
         .toList();
   }
 
@@ -61,11 +63,8 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       names.addAll(_s._allTorrentResults.map((r) => r.name));
     }
     if (_panelShowsStremio) {
-      final streams = _panelShowsMerged || _s._selectedSourceId == 'all_stremio'
-          ? _s._allCombinedStremioStreams
-          : _s._stremioStreams;
       names.addAll(
-        streams.map(
+        _s._stremioStreams.map(
           (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
         ),
       );
@@ -99,10 +98,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       }
     }
     if (_panelShowsStremio) {
-      final streams = _panelShowsMerged || _s._selectedSourceId == 'all_stremio'
-          ? _s._allCombinedStremioStreams
-          : _s._stremioStreams;
-      for (final s in streams.whereType<Map<String, dynamic>>()) {
+      for (final s in _s._stremioStreams.whereType<Map<String, dynamic>>()) {
         final bytes = _streamSizeBytes(s);
         if (bytes > 0) sizes.add(bytes);
       }
@@ -180,64 +176,47 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       _s._selectedSourceId.startsWith('nuvio://');
 
 
-  List<Map<String, dynamic>> _sourceChips() {
-    final chips = <Map<String, dynamic>>[];
+  List<SourcesPanelProviderOption> _providerOptions() {
+    final options = <SourcesPanelProviderOption>[];
     if (_s._panelKindFilter == 'torrents') {
-      chips.add({'id': 'forja', 'label': 'Forja'});
-      if (_s._isJackettConfigured)
-        chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
-      if (_s._isProwlarrConfigured)
-        chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
-      for (final a in _s._streamAddons) {
-        if (a['type'] == 'torrent')
-          chips.add({'id': a['baseUrl'], 'label': a['name']});
+      options.add(const SourcesPanelProviderOption(id: 'forja', label: 'Forja'));
+      if (_s._isJackettConfigured) {
+        options.add(
+          const SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
+        );
+      }
+      if (_s._isProwlarrConfigured) {
+        options.add(
+          const SourcesPanelProviderOption(id: 'prowlarr', label: 'Prowlarr'),
+        );
       }
     } else if (_s._panelKindFilter == 'nuvio') {
       for (final a in _s._nuvioAddons) {
         for (final s in a.scrapers) {
           if (!s.enabled) continue;
-          chips.add({'id': 'nuvio:${s.id}', 'label': s.name});
+          options.add(
+            SourcesPanelProviderOption(id: 'nuvio:${s.id}', label: s.name),
+          );
         }
       }
     } else if (_s._panelKindFilter == 'stremio') {
-      if (_s._streamAddons.length > 1) {
-        chips.add({'id': 'all_stremio', 'label': '⚡ All'});
-      }
       for (final a in _s._streamAddons) {
-        if (_s._loadedAddonBaseUrls.contains(a['baseUrl'])) {
-          chips.add({'id': a['baseUrl'], 'label': a['name']});
-        }
+        options.add(
+          SourcesPanelProviderOption(
+            id: a['baseUrl'] as String,
+            label: (a['name'] ?? 'Addon').toString(),
+          ),
+        );
       }
     }
-    return chips;
-  }
-
-  void _scrollChipsBack() {
-    _s._chipsScrollController.animateTo(
-      (_s._chipsScrollController.offset - 160).clamp(
-        0.0,
-        _s._chipsScrollController.position.maxScrollExtent,
-      ),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _scrollChipsForward() {
-    _s._chipsScrollController.animateTo(
-      (_s._chipsScrollController.offset + 160).clamp(
-        0.0,
-        _s._chipsScrollController.position.maxScrollExtent,
-      ),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOut,
-    );
+    return options;
   }
 
   void _onSourceChipTap(String id) {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       setState(() {
+        _s._resetPanelVisibleLimit();
         _s._selectedSourceId = 'all_nuvio';
         if (_s._nuvioSelectedScraperIds.contains(scraperId)) {
           _s._nuvioSelectedScraperIds = Set<String>.from(
@@ -254,6 +233,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       return;
     }
     setState(() {
+      _s._resetPanelVisibleLimit();
       _s._selectedSourceId = id;
       _resetPanelFilters();
     });
@@ -263,24 +243,24 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       _s._searchJackett();
     } else if (id == 'prowlarr') {
       _s._searchProwlarr();
-    } else if (id == 'all_stremio') {
+    } else if (id == 'all_nuvio') {
+      setState(() => _s._errorMessage = null);
+    } else if (_s._panelKindFilter == 'stremio') {
       setState(() {
         _s._applyStremioFilter();
         _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
-            ? 'No streams found from any addon'
+            ? 'No streams found in selected addon'
             : null;
       });
-    } else if (id == 'all_nuvio') {
-      setState(() => _s._errorMessage = null);
     } else {
-      final chip = _sourceChips().firstWhere(
-        (c) => c['id'] == id,
-        orElse: () => {'label': 'addon'},
+      final chip = _providerOptions().firstWhere(
+        (c) => c.id == id,
+        orElse: () => const SourcesPanelProviderOption(id: '', label: 'addon'),
       );
       setState(() {
         _s._applyStremioFilter();
         _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
-            ? 'No streams found in ${chip['label']}'
+            ? 'No streams found in ${chip.label}'
             : null;
       });
     }
@@ -393,11 +373,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     final count = torrents.length + stremio.length + nuvio.length;
     final rawCount =
         (_panelShowsTorrents ? _s._allTorrentResults.length : 0) +
-        (_panelShowsStremio
-            ? (_panelShowsMerged || _s._selectedSourceId == 'all_stremio'
-                  ? _s._allCombinedStremioStreams.length
-                  : _s._stremioStreams.length)
-            : 0) +
+        (_panelShowsStremio ? _s._stremioStreams.length : 0) +
         (_panelShowsNuvio ? _selectedNuvioStreams.length : 0);
     final isFetching =
         (_panelShowsTorrents && _s._isSearching) ||
@@ -439,16 +415,28 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     }
 
     final showAddonName =
-        _panelShowsMerged || _s._selectedSourceId == 'all_stremio';
+        _panelShowsNuvio ||
+        (_panelShowsStremio && _providerOptions().length > 1);
+    final visibleCount =
+        count < _s._panelVisibleLimit ? count : _s._panelVisibleLimit;
+    final showLoadMore = visibleCount < count;
 
     return ListView.separated(
       shrinkWrap: !inPanel,
       physics: inPanel
           ? const BouncingScrollPhysics()
           : const NeverScrollableScrollPhysics(),
-      itemCount: count,
+      itemCount: visibleCount + (showLoadMore ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
+        if (showLoadMore && i == visibleCount) {
+          return SourcesLoadMoreButton(
+            remaining: count - visibleCount,
+            onPressed: () => setState(() {
+              _s._panelVisibleLimit += kSourcesListPageSize;
+            }),
+          );
+        }
         if (i < torrents.length) return _torrentTileFor(torrents[i]);
         final j = i - torrents.length;
         if (j < stremio.length) {

@@ -359,7 +359,44 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         }
       } else {
         // No sources list — primary mediaPath (torrent localhost or direct URL).
-        final openUrl = widget.mediaPath;
+        // Never hand a raw magnet to mpv (treated as a relative file under tmp).
+        var openUrl = widget.mediaPath;
+        if (isTorrentStreamUrl(openUrl)) {
+          final magnet = (widget.magnetLink != null &&
+                  widget.magnetLink!.isNotEmpty)
+              ? widget.magnetLink!
+              : openUrl;
+          final settings = SettingsService();
+          final playback = await resolveMagnetForPlayback(
+            magnet: magnet,
+            useDebrid: await settings.useDebridForStreams(),
+            debridService: await settings.getDebridService(),
+            localTorrentEngine:
+                PlatformPlayback.capabilities.localTorrentEngine,
+            season: widget.selectedSeason,
+            episode: widget.selectedEpisode,
+            fileIdx: widget.fileIndex,
+          );
+          if (_fallbackAborted(initGen)) return;
+          if (playback == null) {
+            if (mounted) {
+              setState(() {
+                _s._hasError = true;
+                _s._showControls = true;
+                _s._errorMessage = 'Torrent stream failed to open.';
+              });
+            }
+            await _failPlaybackNoFailover(
+              message: 'Torrent stream failed to open.',
+            );
+            return;
+          }
+          openUrl = playback.url;
+          setState(() {
+            _s._currentUrl = openUrl;
+            _s._activeMagnet = magnet;
+          });
+        }
         final isTorrent =
             isLocalTorrentStreamUrl(openUrl) || widget.magnetLink != null;
         int retryCount = 0;

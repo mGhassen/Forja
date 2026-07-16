@@ -171,7 +171,6 @@ class _PlayerSourcesBody extends StatefulWidget {
 class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   final _settings = SettingsService();
   final _stremio = StremioService();
-  final _chipsScrollController = ScrollController();
   final _listScrollController = ScrollController();
   final _currentTileKey = GlobalKey();
   final _profile = PlatformPlayback.capabilities;
@@ -197,7 +196,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   bool _showTorrents = true;
   bool _showStremio = false;
   bool _showNuvio = false;
-  String _kindFilter = 'all';
+  String _kindFilter = 'torrents';
   String _selectedSourceId = 'forja';
   String _searchQuery = '';
   String _sortPreference = 'seeders';
@@ -206,18 +205,15 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   Set<String> _techFilters = {};
   Set<String> _audioFilters = {};
   Set<String> _sizeFilters = {};
+  int _visibleLimit = kSourcesListPageSize;
 
   bool _jackettConfigured = false;
   bool _prowlarrConfigured = false;
   bool _localTorrentEngine = true;
 
-  bool get _showsTorrents =>
-      _kindFilter == 'torrents' || _kindFilter == 'all';
-  bool get _showsStremio =>
-      _kindFilter == 'stremio' || _kindFilter == 'all';
-  bool get _showsNuvio =>
-      _kindFilter == 'nuvio' || _kindFilter == 'all';
-  bool get _showsMerged => _kindFilter == 'all';
+  bool get _showsTorrents => _kindFilter == 'torrents';
+  bool get _showsStremio => _kindFilter == 'stremio';
+  bool get _showsNuvio => _kindFilter == 'nuvio';
 
   @override
   void initState() {
@@ -233,7 +229,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     _nuvioSub = null;
     NuvioService.instance.cancelPending();
     Engine.cancelPendingResolve();
-    _chipsScrollController.dispose();
     _listScrollController.dispose();
     super.dispose();
   }
@@ -359,7 +354,12 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _nuvioSelectedScraperIds = nuvioScraperIds;
       _streamAddons = addons;
       _kindFilter = kind;
-      _selectedSourceId = _sourceIdForKind(kind, addons);
+      _selectedSourceId = kind == 'stremio'
+          ? (addons.isNotEmpty
+              ? addons.first['baseUrl'] as String
+              : 'forja')
+          : _sourceIdForKind(kind, addons);
+      _resetVisibleLimit();
     });
 
     // Load only the selected kind(s) — no prefetch of other categories.
@@ -461,42 +461,43 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         _ensureStremioLoaded(force: true);
       case 'nuvio':
         unawaited(_ensureNuvioLoaded(force: true));
-      case 'all':
-        if (_showTorrents) _ensureTorrentsLoaded(force: true);
-        if (_showStremio) _ensureStremioLoaded(force: true);
-        if (_showNuvio) unawaited(_ensureNuvioLoaded(force: true));
     }
   }
 
   String _sourceIdForKind(String kind, List<Map<String, dynamic>> addons) {
     return switch (kind) {
-      'stremio' => addons.length > 1
-          ? 'all_stremio'
-          : (addons.isNotEmpty
-              ? addons.first['baseUrl'] as String
-              : 'forja'),
+      'stremio' => addons.isNotEmpty
+          ? addons.first['baseUrl'] as String
+          : 'forja',
       'nuvio' => 'all_nuvio',
-      'all' => 'forja',
+      'torrents' => 'forja',
       _ => 'forja',
     };
   }
 
-  /// Prefer All when multiple catalog kinds are on; otherwise the only kind.
+  /// Prefer Torrents when available; never open on a merged All kind.
   String _resolveInitialKind({
     required bool hasTorrent,
     required bool hasStremio,
     required bool hasNuvio,
   }) {
-    final available = [
-      hasTorrent,
-      hasStremio,
-      hasNuvio,
-    ].where((e) => e).length;
-    if (available >= 2) return 'all';
     if (hasTorrent) return 'torrents';
     if (hasNuvio) return 'nuvio';
     if (hasStremio) return 'stremio';
     return 'torrents';
+  }
+
+  String _defaultStremioSourceId() {
+    if (_streamAddons.isEmpty) return 'forja';
+    for (final a in _streamAddons) {
+      final base = a['baseUrl'] as String?;
+      if (base != null && _loadedAddonBaseUrls.contains(base)) return base;
+    }
+    return _streamAddons.first['baseUrl'] as String;
+  }
+
+  void _resetVisibleLimit() {
+    _visibleLimit = kSourcesListPageSize;
   }
 
   String? _effectivePreferredKind() {
@@ -515,8 +516,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return preferred;
   }
 
-  /// After lists update, scroll the playing source into view. When on All,
-  /// keep that chip selected (do not hop to Torrents / Stremio / Nuvio).
+  /// After lists update, scroll the playing source into view when it is
+  /// already under the active kind; otherwise switch to the kind that has it.
   void _focusPlayingSourceIfNeeded() {
     if (!mounted) return;
 
@@ -526,12 +527,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     bool stremioHit() =>
         _showStremio && _stremioStreams.any(_isCurrentStremio);
 
-    if (_kindFilter == 'all') {
-      if (torrentsHit() || nuvioHit() || stremioHit()) {
-        _requestScrollToCurrent();
-      }
-      return;
-    }
     // Already visible under the active filter — only scroll.
     if (_kindFilter == 'torrents' && torrentsHit()) {
       _requestScrollToCurrent();
@@ -554,7 +549,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       setState(() {
         _kindFilter = kind;
         _selectedSourceId = _sourceIdForKind(kind, _streamAddons);
-        if (kind == 'nuvio' || kind == 'all') {
+        if (kind == 'nuvio') {
           if (_nuvioSelectedScraperIds.isEmpty) {
             _nuvioSelectedScraperIds = {
               for (final a in _nuvioAddons)
@@ -692,40 +687,35 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         ),
       );
 
-  List<Map<String, dynamic>> get _providerChips {
+  List<SourcesPanelProviderOption> get _providerOptions {
     if (_kindFilter == 'stremio') {
-      final chips = <Map<String, dynamic>>[];
-      if (_streamAddons.length > 1) {
-        chips.add({'id': 'all_stremio', 'label': '⚡ All'});
-      }
-      for (final a in _streamAddons) {
-        if (_loadedAddonBaseUrls.contains(a['baseUrl'])) {
-          chips.add({'id': a['baseUrl'], 'label': a['name']});
-        }
-      }
-      return chips;
+      return [
+        for (final a in _streamAddons)
+          SourcesPanelProviderOption(
+            id: a['baseUrl'] as String,
+            label: (a['name'] ?? 'Addon').toString(),
+          ),
+      ];
     }
     if (_kindFilter == 'nuvio') {
-      final chips = <Map<String, dynamic>>[];
-      for (final a in _nuvioAddons) {
-        for (final s in a.scrapers) {
-          if (!s.enabled) continue;
-          chips.add({'id': 'nuvio:${s.id}', 'label': s.name});
-        }
-      }
-      return chips;
+      return [
+        for (final a in _nuvioAddons)
+          for (final s in a.scrapers)
+            if (s.enabled)
+              SourcesPanelProviderOption(
+                id: 'nuvio:${s.id}',
+                label: s.name,
+              ),
+      ];
     }
     if (_kindFilter == 'torrents') {
-      final chips = <Map<String, dynamic>>[
-        {'id': 'forja', 'label': 'Forja'},
+      return [
+        const SourcesPanelProviderOption(id: 'forja', label: 'Forja'),
+        if (_jackettConfigured)
+          const SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
+        if (_prowlarrConfigured)
+          const SourcesPanelProviderOption(id: 'prowlarr', label: 'Prowlarr'),
       ];
-      if (_jackettConfigured) {
-        chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
-      }
-      if (_prowlarrConfigured) {
-        chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
-      }
-      return chips;
     }
     return const [];
   }
@@ -860,6 +850,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         setState(() {
           if (tagged.isNotEmpty) {
             _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
+            if (_kindFilter == 'stremio' &&
+                (_selectedSourceId == 'all_stremio' ||
+                    !_loadedAddonBaseUrls.contains(_selectedSourceId))) {
+              _selectedSourceId = addon['baseUrl'] as String;
+            }
           }
           _stremioStreams.addAll(tagged);
         });
@@ -930,6 +925,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (kind == _kindFilter) return;
     setState(() {
       _kindFilter = kind;
+      _resetVisibleLimit();
       _qualityFilters = {};
       _languageFilters = {};
       _techFilters = {};
@@ -937,20 +933,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _sizeFilters = {};
       _searchQuery = '';
       if (kind == 'stremio') {
-        _selectedSourceId = _streamAddons.length > 1
-            ? 'all_stremio'
-            : (_streamAddons.isNotEmpty
-                ? _streamAddons.first['baseUrl'] as String
-                : 'all_stremio');
+        _selectedSourceId = _defaultStremioSourceId();
       } else if (kind == 'nuvio') {
         _selectedSourceId = 'all_nuvio';
-        _nuvioSelectedScraperIds = {
-          for (final a in _nuvioAddons)
-            for (final s in a.scrapers)
-              if (s.enabled) s.id,
-        };
-      } else if (kind == 'all') {
-        _selectedSourceId = 'forja';
         _nuvioSelectedScraperIds = {
           for (final a in _nuvioAddons)
             for (final s in a.scrapers)
@@ -1149,6 +1134,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       setState(() {
+        _resetVisibleLimit();
         _selectedSourceId = 'all_nuvio';
         if (_nuvioSelectedScraperIds.contains(scraperId)) {
           _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
@@ -1165,6 +1151,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
     if (id == _selectedSourceId) return;
     setState(() {
+      _resetVisibleLimit();
       _selectedSourceId = id;
       _qualityFilters = {};
       _languageFilters = {};
@@ -1174,8 +1161,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _searchQuery = '';
     });
     if (_kindFilter == 'stremio') {
-      // Streams already fetched; chip only filters which addon rows show.
-      unawaited(_fetchStremioStreams());
+      // Streams already fetched; provider only filters which addon rows show.
     } else if (_kindFilter != 'nuvio') {
       unawaited(_runTorrentSearch());
     }
@@ -1214,6 +1200,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final stremio =
         _showsStremio ? _visibleStremioStreams : <Map<String, dynamic>>[];
     final nuvio = _showsNuvio ? _filteredNuvio : <Map<String, dynamic>>[];
+    final totalCount = torrents.length + stremio.length + nuvio.length;
+    final visibleCount = totalCount < _visibleLimit ? totalCount : _visibleLimit;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1225,7 +1213,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           showStremio: _showStremio,
           showNuvio: _showNuvio,
           onKindChanged: _onKindChanged,
-          resultCount: _visibleCount,
+          resultCount: totalCount,
           episodeLabel: _episodeLabel,
           isFetching: _isFetching,
           onCancelFetch: () {
@@ -1240,33 +1228,15 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
               _nuvioFetching = false;
             });
           },
-          providerChips: _providerChips,
+          providerOptions: _providerOptions,
           selectedSourceId: _selectedSourceId,
           nuvioSelectedScraperIds: _nuvioSelectedScraperIds,
-          chipsScrollController: _chipsScrollController,
-          onChipTap: _onChipTap,
-          onScrollBack: () {
-            _chipsScrollController.animateTo(
-              (_chipsScrollController.offset - 160).clamp(
-                0.0,
-                _chipsScrollController.position.maxScrollExtent,
-              ),
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOut,
-            );
-          },
-          onScrollForward: () {
-            _chipsScrollController.animateTo(
-              (_chipsScrollController.offset + 160).clamp(
-                0.0,
-                _chipsScrollController.position.maxScrollExtent,
-              ),
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOut,
-            );
-          },
+          onProviderTap: _onChipTap,
           searchQuery: _searchQuery,
-          onSearchChanged: (q) => setState(() => _searchQuery = q),
+          onSearchChanged: (q) => setState(() {
+            _resetVisibleLimit();
+            _searchQuery = q;
+          }),
           availableQualities: _availableQualities,
           availableLanguages: _availableLanguages,
           availableTech: _availableTech,
@@ -1275,17 +1245,35 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           activeLanguageFilters: _languageFilters,
           activeTechFilters: _techFilters,
           activeSizeFilters: _sizeFilters,
-          onQualityFiltersChanged: (v) => setState(() => _qualityFilters = v),
-          onLanguageFiltersChanged: (v) => setState(() => _languageFilters = v),
-          onTechFiltersChanged: (v) => setState(() => _techFilters = v),
-          onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
+          onQualityFiltersChanged: (v) => setState(() {
+            _resetVisibleLimit();
+            _qualityFilters = v;
+          }),
+          onLanguageFiltersChanged: (v) => setState(() {
+            _resetVisibleLimit();
+            _languageFilters = v;
+          }),
+          onTechFiltersChanged: (v) => setState(() {
+            _resetVisibleLimit();
+            _techFilters = v;
+          }),
+          onSizeFiltersChanged: (v) => setState(() {
+            _resetVisibleLimit();
+            _sizeFilters = v;
+          }),
           showAudioFilters: _showsTorrents,
           activeAudioFilters: _audioFilters,
-          onAudioFiltersChanged: (v) => setState(() => _audioFilters = v),
+          onAudioFiltersChanged: (v) => setState(() {
+            _resetVisibleLimit();
+            _audioFilters = v;
+          }),
           sortPreference: _showsTorrents ? _sortPreference : null,
           onSortChanged: _showsTorrents
               ? (val) {
-                  setState(() => _sortPreference = val);
+                  setState(() {
+                    _resetVisibleLimit();
+                    _sortPreference = val;
+                  });
                   _settings.setSortPreference(val);
                 }
               : null,
@@ -1296,7 +1284,15 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           onReloadKind: _reloadKind,
         ),
         const SizedBox(height: 4),
-        Expanded(child: _buildList(torrents, stremio, nuvio)),
+        Expanded(
+          child: _buildList(
+            torrents,
+            stremio,
+            nuvio,
+            visibleCount: visibleCount,
+            totalCount: totalCount,
+          ),
+        ),
       ],
     );
   }
@@ -1304,7 +1300,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   List<Map<String, dynamic>> get _visibleStremioStreams {
     final filtered = _filteredStremio;
     if (_kindFilter != 'stremio') return filtered;
-    if (_selectedSourceId == 'all_stremio') return filtered;
+    if (_selectedSourceId.isEmpty || _selectedSourceId == 'all_stremio') {
+      return filtered;
+    }
     return filtered
         .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
         .toList();
@@ -1316,10 +1314,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   Widget _buildList(
     List<TorrentResult> torrents,
     List<Map<String, dynamic>> stremio,
-    List<Map<String, dynamic>> nuvio,
-  ) {
-    final count = torrents.length + stremio.length + nuvio.length;
-    if (_isFetching && count == 0) {
+    List<Map<String, dynamic>> nuvio, {
+    required int visibleCount,
+    required int totalCount,
+  }) {
+    if (_isFetching && totalCount == 0) {
       return const Center(
         child: SizedBox(
           width: 28,
@@ -1328,7 +1327,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         ),
       );
     }
-    if (_error != null && count == 0) {
+    if (_error != null && totalCount == 0) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -1353,7 +1352,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         ),
       );
     }
-    if (count == 0) {
+    if (totalCount == 0) {
       final emptyMsg = _showsNuvio && _nuvioSelectedScraperIds.isEmpty
           ? 'Select at least one provider'
           : 'No matching sources';
@@ -1368,9 +1367,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       );
     }
 
-    final showAddonName = _showsMerged ||
-        _selectedSourceId == 'all_stremio' ||
-        _showsNuvio;
+    final showAddonName = _showsNuvio ||
+        (_kindFilter == 'stremio' && _providerOptions.length > 1);
+    final showLoadMore = visibleCount < totalCount;
 
     _scheduleScrollToCurrent();
 
@@ -1380,9 +1379,17 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return ListView.separated(
       controller: _listScrollController,
       padding: const EdgeInsets.only(top: 2, bottom: 8),
-      itemCount: count,
+      itemCount: visibleCount + (showLoadMore ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
+        if (showLoadMore && i == visibleCount) {
+          return SourcesLoadMoreButton(
+            remaining: totalCount - visibleCount,
+            onPressed: () => setState(() {
+              _visibleLimit += kSourcesListPageSize;
+            }),
+          );
+        }
         if (i < torrents.length) {
           final r = torrents[i];
           final isCurrent = i == currentIndex;

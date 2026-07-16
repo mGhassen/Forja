@@ -139,6 +139,32 @@ pub fn catalog_json(request_json: &str) -> String {
             })),
             Err(e) => catalog::error_json(&e),
         },
+        "probe_mirrors" => {
+            let results = http::probe_mirrors();
+            let mirrors: Vec<_> = results
+                .iter()
+                .map(|(base_url, healthy)| {
+                    json!({
+                        "base_url": base_url,
+                        "healthy": healthy,
+                    })
+                })
+                .collect();
+            let healthy: Vec<_> = results
+                .iter()
+                .filter(|(_, ok)| *ok)
+                .map(|(base, _)| base.clone())
+                .collect();
+            let selected = healthy.first().cloned().unwrap_or_default();
+            if !selected.is_empty() {
+                let _ = http::activate_base_url(&selected);
+            }
+            catalog::ok_json(&json!({
+                "base_url": selected,
+                "healthy_urls": healthy,
+                "mirrors": mirrors,
+            }))
+        }
         "activate_base_url" => match http::activate_base_url(&req.base_url) {
             Ok(base_url) => catalog::ok_json(&json!({ "base_url": base_url })),
             Err(e) => catalog::error_json(&e),

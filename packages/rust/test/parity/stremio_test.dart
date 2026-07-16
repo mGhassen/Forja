@@ -92,4 +92,62 @@ void main() {
     final parsed = jsonDecode(json) as Map<String, dynamic>;
     expect(parsed.containsKey('error'), isTrue);
   });
+
+  group('classifyStremioStream magnet url', () {
+    const desktop = PlaybackProfile.desktop;
+
+    test('HTTP url is direct playable', () {
+      final out = classifyStremioStream(
+        {'url': 'https://cdn.example/a.m3u8', 'title': '1080p'},
+        desktop,
+        useDebrid: false,
+        debridService: 'None',
+      );
+      expect(out, isA<StremioPlayable>());
+      expect((out as StremioPlayable).streamUrl, 'https://cdn.example/a.m3u8');
+    });
+
+    test('magnet url is not direct playable — falls through to resolve', () {
+      final out = classifyStremioStream(
+        {
+          'url':
+              'magnet:?xt=urn:btih:c3b7fe335840a824e2ab9131fdeebabc58b126e8',
+          'title': 'S01E01',
+        },
+        desktop,
+        useDebrid: false,
+        debridService: 'None',
+      );
+      expect(out, isNull);
+    });
+
+    test('infoHash alone falls through to resolve', () {
+      final out = classifyStremioStream(
+        {'infoHash': 'c3b7fe335840a824e2ab9131fdeebabc58b126e8'},
+        desktop,
+        useDebrid: false,
+        debridService: 'None',
+      );
+      expect(out, isNull);
+    });
+
+    test('buildMagnetFromStremioStream uses magnet url when no infoHash', () {
+      const magnet =
+          'magnet:?xt=urn:btih:c3b7fe335840a824e2ab9131fdeebabc58b126e8&tr=udp://x';
+      expect(
+        buildMagnetFromStremioStream({'url': magnet}),
+        magnet,
+      );
+    });
+
+    test('buildMagnetFromStremioStream prefers infoHash over magnet url', () {
+      final built = buildMagnetFromStremioStream({
+        'infoHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'url': 'magnet:?xt=urn:btih:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        'title': 'Show',
+      });
+      expect(built, startsWith('magnet:?xt=urn:btih:aaaaaaaa'));
+      expect(built, contains('dn=Show'));
+    });
+  });
 }

@@ -179,6 +179,47 @@ fn probe_base(base: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Probe every verified mirror in parallel. Each result is `(base_url, healthy)`.
+/// Mirrors that do not answer within [MIRROR_PROBE_TIMEOUT] are reported down.
+pub fn probe_mirrors() -> Vec<(String, bool)> {
+    let (sender, receiver) = mpsc::channel();
+    for &base in MIRROR_BASE_URLS {
+        let sender = sender.clone();
+        std::thread::spawn(move || {
+            let ok = probe_base(base);
+            let _ = sender.send((base.to_string(), ok));
+        });
+    }
+    drop(sender);
+
+    let deadline = Instant::now() + MIRROR_PROBE_TIMEOUT;
+    let mut seen: HashMap<String, bool> = HashMap::new();
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        match receiver.recv_timeout(remaining) {
+            Ok((base, ok)) => {
+                seen.insert(base, ok);
+                if seen.len() >= MIRROR_BASE_URLS.len() {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    MIRROR_BASE_URLS
+        .iter()
+        .map(|base| {
+            let url = (*base).to_string();
+            let ok = seen.get(&url).copied().unwrap_or(false);
+            (url, ok)
+        })
+        .collect()
+}
+
 /// Race API-compatible mirrors and keep the first valid response as the sticky
 /// base. Only the five domains verified to expose the same Angular API and IDs
 /// are candidates; similarly named WordPress clones are deliberately excluded.

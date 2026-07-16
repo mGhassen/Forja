@@ -131,9 +131,8 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
           _s._isLoading = false;
           if (!_s._playbackProfile.builtinTorrentSearch &&
               streamAddons.isNotEmpty) {
-            _s._selectedSourceId = streamAddons.length > 1
-                ? 'all_stremio'
-                : streamAddons.first['baseUrl'] as String;
+            _s._selectedSourceId =
+                streamAddons.first['baseUrl'] as String;
           }
           _s._syncSelectedSourceToPlaySources();
         });

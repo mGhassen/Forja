@@ -547,6 +547,7 @@ mixin _DesktopPlayerEpisodes
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
+    final switchGen = ++_s._fallbackGen;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-stremio-${stream.hashCode}';
     _s._playbackConfirmed = false;
@@ -557,76 +558,94 @@ mixin _DesktopPlayerEpisodes
     );
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
-    await _s._player.stop();
+    if (!mounted || _s._fallbackAborted(switchGen)) return;
 
-    final resolved = await resolveStremioStream(
-      stream: stream,
-      profile: PlatformPlayback.capabilities,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-    );
-    if (!mounted) return;
+    try {
+      await _s._player.stop();
 
-    if (resolved is! StremioPlayable) {
-      final msg = resolved is StremioResolveFailure
-          ? resolved.message
-          : 'Failed to resolve stream';
+      final resolved = await resolveStremioStream(
+        stream: stream,
+        profile: PlatformPlayback.capabilities,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+
+      if (resolved is! StremioPlayable) {
+        final msg = resolved is StremioResolveFailure
+            ? resolved.message
+            : 'Failed to resolve stream';
+        _s._statusController.upsert(
+          statusId,
+          title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        if (msg.isNotEmpty) {
+          debugPrint('[Player] Stremio switch failed: $msg');
+        }
+        return;
+      }
+
+      await _s._configureMpvProperties();
+      await resetPlayerForOpen(_s._player);
+      final openedUrl = await openPlayerStream(
+        _s._player,
+        url: resolved.streamUrl,
+        headers: resolved.headers,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      _s._player.setVolume(_s._volumeNotifier.value);
+
+      final opened = await waitForMediaOpen(
+        _s._player,
+        streamUrl: openedUrl,
+        timeout: isLocalTorrentStreamUrl(openedUrl)
+            ? const Duration(seconds: 45)
+            : const Duration(seconds: 25),
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!opened) {
+        _s._statusController.upsert(
+          statusId,
+          title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        return;
+      }
+
+      setState(() {
+        _s._currentUrl = resolved.streamUrl;
+        _s._activeMagnet = resolved.magnetLink;
+        _s._hasError = false;
+        _s._errorMessage = '';
+        _s._currentSources = null;
+        final base = stream['_addonBaseUrl']?.toString();
+        _s._catalogAddonBaseUrl = base;
+        _s._catalogSourceKind =
+            (base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio';
+        _s._currentProvider = 'stremio_direct';
+      });
+      _s._playbackConfirmed = true;
+      _s._statusController.complete();
+      widget.onPlaybackStarted?.call();
+      _s._onMouseMove();
+    } catch (e) {
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      debugPrint('[Player] Stremio switch failed: $e');
       _s._statusController.upsert(
         statusId,
         title,
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      throw Exception(msg);
     }
-
-    await _s._configureMpvProperties();
-    await resetPlayerForOpen(_s._player);
-    final openedUrl = await openPlayerStream(
-      _s._player,
-      url: resolved.streamUrl,
-      headers: resolved.headers,
-    );
-    _s._player.setVolume(_s._volumeNotifier.value);
-
-    final opened = await waitForMediaOpen(
-      _s._player,
-      streamUrl: openedUrl,
-      timeout: isLocalTorrentStreamUrl(openedUrl)
-          ? const Duration(seconds: 45)
-          : const Duration(seconds: 25),
-    );
-    if (!mounted) return;
-    if (!opened) {
-      _s._statusController.upsert(
-        statusId,
-        title,
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
-      throw Exception('Stream failed to open');
-    }
-
-    setState(() {
-      _s._currentUrl = resolved.streamUrl;
-      _s._activeMagnet = resolved.magnetLink;
-      _s._hasError = false;
-      _s._errorMessage = '';
-      _s._currentSources = null;
-      final base = stream['_addonBaseUrl']?.toString();
-      _s._catalogAddonBaseUrl = base;
-      _s._catalogSourceKind =
-          (base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio';
-      _s._currentProvider = 'stremio_direct';
-    });
-    _s._playbackConfirmed = true;
-    _s._statusController.complete();
-    widget.onPlaybackStarted?.call();
-    _s._onMouseMove();
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
+    // Abort in-flight init / failover so we do not race with a stale open.
+    final switchGen = ++_s._fallbackGen;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-torrent-${result.magnet.hashCode}';
     _s._playbackConfirmed = false;
@@ -637,68 +656,81 @@ mixin _DesktopPlayerEpisodes
     );
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
-    await _s._player.stop();
+    if (!mounted || _s._fallbackAborted(switchGen)) return;
 
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
-    final debridService = await settings.getDebridService();
-    final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
+    try {
+      await _s._player.stop();
 
-    final playback = await resolveMagnetForPlayback(
-      magnet: result.magnet,
-      useDebrid: useDebrid,
-      debridService: debridService,
-      localTorrentEngine: localEngine,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-    );
-    if (!mounted) return;
-    if (playback == null) {
+      final settings = SettingsService();
+      final useDebrid = await settings.useDebridForStreams();
+      final debridService = await settings.getDebridService();
+      final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
+
+      final playback = await resolveMagnetForPlayback(
+        magnet: result.magnet,
+        useDebrid: useDebrid,
+        debridService: debridService,
+        localTorrentEngine: localEngine,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (playback == null) {
+        _s._statusController.upsert(
+          statusId,
+          result.name,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        return;
+      }
+
+      await _s._configureMpvProperties();
+      await resetPlayerForOpen(_s._player);
+      await openPlayerStream(_s._player, url: playback.url);
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      _s._player.setVolume(_s._volumeNotifier.value);
+
+      final opened = await waitForMediaOpen(
+        _s._player,
+        streamUrl: playback.url,
+        timeout: const Duration(seconds: 45),
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!opened) {
+        _s._statusController.upsert(
+          statusId,
+          result.name,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        return;
+      }
+
+      setState(() {
+        _s._currentUrl = playback.url;
+        _s._activeMagnet = result.magnet;
+        _s._hasError = false;
+        _s._errorMessage = '';
+        _s._currentSources = null;
+        _s._catalogSourceKind = 'torrents';
+        _s._catalogAddonBaseUrl = null;
+        _s._currentProvider = 'torrent';
+      });
+      _s._playbackConfirmed = true;
+      _s._statusController.complete();
+      widget.onPlaybackStarted?.call();
+      _s._onMouseMove();
+    } catch (e) {
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      debugPrint('[Player] Torrent switch failed: $e');
       _s._statusController.upsert(
         statusId,
         result.name,
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      throw Exception('Failed to resolve torrent');
     }
-
-    await _s._configureMpvProperties();
-    await resetPlayerForOpen(_s._player);
-    await _s._player.open(Media(playback.url));
-    _s._player.setVolume(_s._volumeNotifier.value);
-
-    final opened = await waitForMediaOpen(
-      _s._player,
-      streamUrl: playback.url,
-      timeout: const Duration(seconds: 45),
-    );
-    if (!mounted) return;
-    if (!opened) {
-      _s._statusController.upsert(
-        statusId,
-        result.name,
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
-      throw Exception('Torrent failed to open');
-    }
-
-    setState(() {
-      _s._currentUrl = playback.url;
-      _s._activeMagnet = result.magnet;
-      _s._hasError = false;
-      _s._errorMessage = '';
-      _s._currentSources = null;
-      _s._catalogSourceKind = 'torrents';
-      _s._catalogAddonBaseUrl = null;
-      _s._currentProvider = 'torrent';
-    });
-    _s._playbackConfirmed = true;
-    _s._statusController.complete();
-    widget.onPlaybackStarted?.call();
-    _s._onMouseMove();
   }
 
   Future<void> _persistProgressForSwitch() async {

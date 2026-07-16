@@ -84,6 +84,43 @@ class KissKhService {
     await kisskhCatalog({'action': 'activate_base_url', 'base_url': baseUrl});
   }
 
+  /// Parallel API health check for every verified mirror (no WebView).
+  /// Use before extract so dead hosts are marked DOWN without a 16s wait.
+  static Future<KissKhMirrorHealth> probeMirrors() async {
+    final decoded = await kisskhCatalog({'action': 'probe_mirrors'});
+    final raw = decoded['mirrors'] as List<dynamic>? ?? const [];
+    final healthyHosts = <String>[];
+    final unhealthyHosts = <String>[];
+    for (final row in raw) {
+      if (row is! Map) continue;
+      final map = Map<String, dynamic>.from(row);
+      final base = (map['base_url'] as String? ?? '').trim();
+      if (base.isEmpty) continue;
+      final host = hostFromBaseUrl(base);
+      if (!isMirrorHost(host)) continue;
+      if (map['healthy'] == true) {
+        healthyHosts.add(host);
+      } else {
+        unhealthyHosts.add(host);
+      }
+    }
+    // Ensure catalog hosts missing from Rust still appear somewhere.
+    for (final host in mirrorHosts) {
+      if (!healthyHosts.contains(host) && !unhealthyHosts.contains(host)) {
+        unhealthyHosts.add(host);
+      }
+    }
+    final selectedRaw = (decoded['base_url'] as String? ?? '').trim();
+    final selected = selectedRaw.isEmpty
+        ? (healthyHosts.isEmpty ? null : healthyHosts.first)
+        : hostFromBaseUrl(selectedRaw);
+    return KissKhMirrorHealth(
+      selected: selected,
+      healthyHosts: healthyHosts,
+      unhealthyHosts: unhealthyHosts,
+    );
+  }
+
   // ─── Public API (Rust engine) ─────────────────────────────────
   Future<KdramaHomeFeed> getHome() async {
     final decoded = await kisskhCatalog({'action': 'home'});
@@ -390,6 +427,21 @@ class KissKhEndpointSelection {
     required this.selected,
     required this.mirrors,
   });
+}
+
+class KissKhMirrorHealth {
+  final String? selected;
+  final List<String> healthyHosts;
+  final List<String> unhealthyHosts;
+
+  const KissKhMirrorHealth({
+    required this.selected,
+    required this.healthyHosts,
+    required this.unhealthyHosts,
+  });
+
+  bool isHealthy(String hostOrId) =>
+      healthyHosts.contains(KissKhService.normalizeMirrorId(hostOrId));
 }
 
 // ════════════════════════════════════════════════════════════════════

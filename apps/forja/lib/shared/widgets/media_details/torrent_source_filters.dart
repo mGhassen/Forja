@@ -8,6 +8,60 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
+/// How many catalog rows to show before the Sources **Load more** footer.
+const kSourcesListPageSize = 10;
+
+/// Provider / addon / scraper row for the Sources Filters panel.
+class SourcesPanelProviderOption {
+  const SourcesPanelProviderOption({
+    required this.id,
+    required this.label,
+  });
+
+  final String id;
+  final String label;
+}
+
+/// Footer control that reveals the next [kSourcesListPageSize] matching rows.
+class SourcesLoadMoreButton extends StatelessWidget {
+  const SourcesLoadMoreButton({
+    super.key,
+    required this.remaining,
+    required this.onPressed,
+  });
+
+  final int remaining;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: FocusableControl(
+        onTap: onPressed,
+        borderRadius: 10,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: _torrentPanelControlDecoration(active: false, radius: 10),
+          alignment: Alignment.center,
+          child: Text(
+            remaining == 1
+                ? 'Load more (1 left)'
+                : 'Load more ($remaining left)',
+            style: TextStyle(
+              color: cinematic.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 const kTorrentAudioTags = [
   'Atmos', 'TrueHD', 'DTS:X', 'DTS-HD', 'DTS', 'DD+', 'DD', 'AAC', '7.1', '5.1', '2.0',
 ];
@@ -192,11 +246,7 @@ class TorrentSourceKindFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kindCount =
-        [showTorrents, showStremio, showNuvio].where((e) => e).length;
     final options = <({String id, String label, IconData icon})>[
-      if (kindCount >= 2)
-        (id: 'all', label: 'All', icon: Icons.apps_rounded),
       if (showTorrents)
         (id: 'torrents', label: 'Torrents', icon: Icons.downloading_rounded),
       if (showStremio)
@@ -270,7 +320,6 @@ class TorrentSourceToggle extends StatelessWidget {
           case 'nuvio':
             onNuvioTap();
           case 'stremio':
-          case 'all':
             onStremioTap();
         }
       },
@@ -786,6 +835,10 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
     this.onSizeFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
+    this.providerOptions = const [],
+    this.selectedProviderId,
+    this.nuvioSelectedScraperIds = const {},
+    this.onProviderTap,
     /// Details: true (BackdropFilter). Player: false (no freeze-frame / no live blur).
     this.enableBlur = true,
   });
@@ -810,14 +863,27 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
+  final List<SourcesPanelProviderOption> providerOptions;
+  final String? selectedProviderId;
+  final Set<String> nuvioSelectedScraperIds;
+  final ValueChanged<String>? onProviderTap;
   final bool enableBlur;
+
+  int get _providerActiveCount {
+    if (providerOptions.isEmpty || onProviderTap == null) return 0;
+    final nuvio = providerOptions.where((p) => p.id.startsWith('nuvio:'));
+    if (nuvio.isNotEmpty) return nuvioSelectedScraperIds.length;
+    if (selectedProviderId == null || selectedProviderId!.isEmpty) return 0;
+    return 1;
+  }
 
   int get _activeCount =>
       activeQualityFilters.length +
       activeLanguageFilters.length +
       activeTechFilters.length +
       activeAudioFilters.length +
-      activeSizeFilters.length;
+      activeSizeFilters.length +
+      _providerActiveCount;
 
   Future<void> _openFilters(BuildContext context) async {
     await _openFiltersSidePanel(context);
@@ -849,6 +915,10 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
           activeSizeFilters: activeSizeFilters,
           showAudioFilters: showAudioFilters,
           sortPreference: sortPreference,
+          providerOptions: providerOptions,
+          selectedProviderId: selectedProviderId,
+          nuvioSelectedScraperIds: nuvioSelectedScraperIds,
+          onProviderTap: onProviderTap,
           onQualityFiltersChanged: onQualityFiltersChanged,
           onLanguageFiltersChanged: onLanguageFiltersChanged,
           onTechFiltersChanged: onTechFiltersChanged,
@@ -878,7 +948,8 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
             availableTech.isNotEmpty ||
             availableSizeRanges.isNotEmpty ||
             showAudioFilters ||
-            sortPreference != null);
+            sortPreference != null ||
+            providerOptions.isNotEmpty);
 
     return Row(
       children: [
@@ -1005,6 +1076,10 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.onSortChanged,
     this.onAudioFiltersChanged,
     this.onSizeFiltersChanged,
+    this.providerOptions = const [],
+    this.selectedProviderId,
+    this.nuvioSelectedScraperIds = const {},
+    this.onProviderTap,
     this.onRequestClose,
   });
 
@@ -1025,6 +1100,10 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final ValueChanged<Set<String>>? onAudioFiltersChanged;
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final ValueChanged<String>? onSortChanged;
+  final List<SourcesPanelProviderOption> providerOptions;
+  final String? selectedProviderId;
+  final Set<String> nuvioSelectedScraperIds;
+  final ValueChanged<String>? onProviderTap;
   final VoidCallback onClearAll;
   final VoidCallback? onRequestClose;
 
@@ -1039,6 +1118,8 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   late Set<String> _audio;
   late Set<String> _size;
   late String? _sort;
+  late String? _selectedProviderId;
+  late Set<String> _nuvioSelectedScraperIds;
 
   @override
   void initState() {
@@ -1049,6 +1130,20 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     _audio = Set<String>.from(widget.activeAudioFilters);
     _size = Set<String>.from(widget.activeSizeFilters);
     _sort = widget.sortPreference;
+    _selectedProviderId = widget.selectedProviderId;
+    _nuvioSelectedScraperIds = Set<String>.from(widget.nuvioSelectedScraperIds);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TorrentSourceFilterSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedProviderId != widget.selectedProviderId) {
+      _selectedProviderId = widget.selectedProviderId;
+    }
+    if (oldWidget.nuvioSelectedScraperIds != widget.nuvioSelectedScraperIds) {
+      _nuvioSelectedScraperIds =
+          Set<String>.from(widget.nuvioSelectedScraperIds);
+    }
   }
 
   void _toggle(Set<String> set, String value, void Function(Set<String>) emit) {
@@ -1060,6 +1155,22 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       }
       emit(Set<String>.from(set));
     });
+  }
+
+  void _onProviderTap(String id) {
+    setState(() {
+      if (id.startsWith('nuvio:')) {
+        final scraperId = id.substring('nuvio:'.length);
+        if (_nuvioSelectedScraperIds.contains(scraperId)) {
+          _nuvioSelectedScraperIds.remove(scraperId);
+        } else {
+          _nuvioSelectedScraperIds.add(scraperId);
+        }
+      } else {
+        _selectedProviderId = id;
+      }
+    });
+    widget.onProviderTap?.call(id);
   }
 
   @override
@@ -1107,6 +1218,23 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
               ],
             ),
             const SizedBox(height: 8),
+            if (widget.providerOptions.isNotEmpty &&
+                widget.onProviderTap != null)
+              _sheetSection(
+                'Providers',
+                widget.providerOptions.map((option) {
+                  final selected = option.id.startsWith('nuvio:')
+                      ? _nuvioSelectedScraperIds.contains(
+                          option.id.substring('nuvio:'.length),
+                        )
+                      : _selectedProviderId == option.id;
+                  return _sheetChip(
+                    label: option.label,
+                    selected: selected,
+                    onTap: () => _onProviderTap(option.id),
+                  );
+                }),
+              ),
             if (widget.sortPreference != null && widget.onSortChanged != null)
               _sheetSection(
                 'Sort',

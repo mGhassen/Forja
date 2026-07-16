@@ -116,8 +116,9 @@ class _DetailsScreenState extends State<DetailsScreen>
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
 
-  /// Panel list filter: `all` | `torrents` | `stremio` | `nuvio`.
-  String _panelKindFilter = 'all';
+  /// Panel list filter: `torrents` | `stremio` | `nuvio`.
+  String _panelKindFilter = 'torrents';
+  int _panelVisibleLimit = kSourcesListPageSize;
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -199,7 +200,6 @@ class _DetailsScreenState extends State<DetailsScreen>
   Map<String, Map<String, dynamic>> _episodeProgress = {};
 
   final ScrollController _episodeScrollController = ScrollController();
-  final ScrollController _chipsScrollController = ScrollController();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _detailsHeroPlayFocus = FocusNode(
     debugLabel: 'details-hero-play',
@@ -266,7 +266,6 @@ class _DetailsScreenState extends State<DetailsScreen>
     _detailsHeroPlayFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
-    _chipsScrollController.dispose();
     _jackett.dispose();
     _prowlarr.dispose();
     _linkResolver.dispose();
@@ -289,24 +288,23 @@ class _DetailsScreenState extends State<DetailsScreen>
 
 
   void _applyPanelFilterForSavedMethod(String? method) {
-    // Keep All when multiple kinds are available; only pin a single chip
-    // when that is the sole enabled catalog source.
-    final multi = [
-      _panelShowTorrent,
-      _panelShowStremio,
-      _panelShowNuvio,
-    ].where((e) => e).length >= 2;
-    if (multi) {
-      _panelKindFilter = 'all';
-      return;
-    }
     switch (method) {
       case 'torrent':
         if (_panelShowTorrent) _panelKindFilter = 'torrents';
       case 'stremio_direct':
-        if (_panelShowStremio) _panelKindFilter = 'stremio';
+        if (_panelShowStremio) {
+          _panelKindFilter = 'stremio';
+        } else if (_panelShowTorrent) {
+          _panelKindFilter = 'torrents';
+        }
       default:
-        break;
+        if (_panelShowTorrent) {
+          _panelKindFilter = 'torrents';
+        } else if (_panelShowNuvio) {
+          _panelKindFilter = 'nuvio';
+        } else if (_panelShowStremio) {
+          _panelKindFilter = 'stremio';
+        }
     }
   }
 
@@ -385,12 +383,6 @@ class _DetailsScreenState extends State<DetailsScreen>
       _panelShowTorrent || _panelShowStremio || _panelShowNuvio;
 
   String _defaultPanelKindFilter() {
-    final available = [
-      _panelShowTorrent,
-      _panelShowStremio,
-      _panelShowNuvio,
-    ].where((e) => e).length;
-    if (available >= 2) return 'all';
     if (_panelShowTorrent) return 'torrents';
     if (_panelShowNuvio) return 'nuvio';
     if (_panelShowStremio) return 'stremio';
@@ -398,13 +390,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _syncPanelKindFilterToPlaySources() {
-    final kindCount = [
-      _panelShowTorrent,
-      _panelShowStremio,
-      _panelShowNuvio,
-    ].where((e) => e).length;
     final allowed = <String>{
-      if (kindCount >= 2) 'all',
       if (_panelShowTorrent) 'torrents',
       if (_panelShowStremio) 'stremio',
       if (_panelShowNuvio) 'nuvio',
@@ -424,11 +410,22 @@ class _DetailsScreenState extends State<DetailsScreen>
   String _defaultSourceId() {
     if (_panelShowTorrent) return 'forja';
     if (_panelShowStremio && _streamAddons.isNotEmpty) {
-      return _streamAddons.length > 1
-          ? 'all_stremio'
-          : _streamAddons.first['baseUrl'] as String;
+      return _streamAddons.first['baseUrl'] as String;
     }
     return 'forja';
+  }
+
+  String _defaultStremioSourceId() {
+    if (_streamAddons.isEmpty) return 'forja';
+    for (final a in _streamAddons) {
+      final base = a['baseUrl'] as String?;
+      if (base != null && _loadedAddonBaseUrls.contains(base)) return base;
+    }
+    return _streamAddons.first['baseUrl'] as String;
+  }
+
+  void _resetPanelVisibleLimit() {
+    _panelVisibleLimit = kSourcesListPageSize;
   }
 
   void _syncSelectedSourceToPlaySources() {
@@ -487,16 +484,13 @@ class _DetailsScreenState extends State<DetailsScreen>
       );
 
   void _ensurePanelSourceLoaded({bool force = false}) {
-    if (_panelShowTorrent &&
-        (_panelKindFilter == 'all' || _panelKindFilter == 'torrents')) {
+    if (_panelShowTorrent && _panelKindFilter == 'torrents') {
       _ensureTorrentsPanelLoaded(force: force);
     }
-    if (_panelShowStremio &&
-        (_panelKindFilter == 'all' || _panelKindFilter == 'stremio')) {
+    if (_panelShowStremio && _panelKindFilter == 'stremio') {
       _ensureStremioPanelLoaded(force: force);
     }
-    if (_panelShowNuvio &&
-        (_panelKindFilter == 'all' || _panelKindFilter == 'nuvio')) {
+    if (_panelShowNuvio && _panelKindFilter == 'nuvio') {
       unawaited(_ensureNuvioPanelLoaded(force: force));
     }
   }
@@ -555,7 +549,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   Future<void> _ensureNuvioPanelLoaded({bool force = false}) async {
     await _checkAndFetchNuvio();
     if (!mounted || !_panelShowNuvio) return;
-    if (_panelKindFilter != 'nuvio' && _panelKindFilter != 'all') return;
+    if (_panelKindFilter != 'nuvio') return;
     if (_nuvioSelectedScraperIds.isEmpty) {
       setState(_selectAllEnabledNuvioScrapers);
     }
@@ -577,6 +571,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _reloadPanelKind(String kind) {
+    _resetPanelVisibleLimit();
     switch (kind) {
       case 'torrents':
         _ensureTorrentsPanelLoaded(force: true);
@@ -584,40 +579,25 @@ class _DetailsScreenState extends State<DetailsScreen>
         _ensureStremioPanelLoaded(force: true);
       case 'nuvio':
         unawaited(_ensureNuvioPanelLoaded(force: true));
-      case 'all':
-        if (_panelShowTorrent) _ensureTorrentsPanelLoaded(force: true);
-        if (_panelShowStremio) _ensureStremioPanelLoaded(force: true);
-        if (_panelShowNuvio) unawaited(_ensureNuvioPanelLoaded(force: true));
     }
   }
 
   void _onPanelKindFilterChanged(String kind) {
     setState(() {
       _panelKindFilter = kind;
+      _resetPanelVisibleLimit();
       _errorMessage = null;
       switch (kind) {
         case 'torrents':
           _selectedSourceId = 'forja';
         case 'stremio':
-          _selectedSourceId = _streamAddons.length > 1
-              ? 'all_stremio'
-              : (_streamAddons.isNotEmpty
-                    ? _streamAddons.first['baseUrl'] as String
-                    : 'all_stremio');
+          _selectedSourceId = _defaultStremioSourceId();
           _applyStremioFilter();
         case 'nuvio':
           _selectedSourceId = 'all_nuvio';
           _selectAllEnabledNuvioScrapers();
-        case 'all':
-          if (_panelShowTorrent) {
-            _selectedSourceId = 'forja';
-          } else if (_streamAddons.isNotEmpty) {
-            _selectedSourceId = _streamAddons.length > 1
-                ? 'all_stremio'
-                : _streamAddons.first['baseUrl'] as String;
-            _applyStremioFilter();
-          }
-          if (_panelShowNuvio) _selectAllEnabledNuvioScrapers();
+        default:
+          _selectedSourceId = 'forja';
       }
     });
     _ensurePanelSourceLoaded();

@@ -275,6 +275,11 @@ Future<String> openPlayerStream(
   Map<String, String>? headers,
 }) async {
   final openUrl = normalizePlaybackStreamUrl(url);
+  if (isTorrentStreamUrl(openUrl)) {
+    throw Exception(
+      'Cannot open magnet/torrent URL directly — resolve to a stream first',
+    );
+  }
   final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: openUrl);
   await applyMediaHttpHeaders(
     player,

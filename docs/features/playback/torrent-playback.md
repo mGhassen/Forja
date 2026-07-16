@@ -31,6 +31,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 
 - More seeders = smoother start; sort torrents by seeders in Settings
 - First play of a magnet waits for the file head before video starts — dead swarms time out instead of flashing a format error
+- Stremio/Torrentio magnet links are always resolved through the torrent engine or debrid — they are never opened as a local file path
 - Disk cache helps on low-RAM devices for large files
 - [Debrid](../sources/debrid.md) avoids slow swarms when the torrent is already cached remotely
 

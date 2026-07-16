@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/playback/host_provider_adapter.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/episode_torrent_resolver.dart';
 import 'package:rust/rust.dart';
 
@@ -84,6 +85,35 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
           headers = Map<String, String>.from(proxyHeaders);
         }
         final url = stream['url'] as String;
+        // Magnet in `url` must resolve like infoHash — never open as a file path.
+        if (isTorrentStreamUrl(url)) {
+          final settings = SettingsService();
+          final playback = await resolveMagnetForPlayback(
+            magnet: url,
+            useDebrid: await settings.useDebridForStreams(),
+            debridService: await settings.getDebridService(),
+            localTorrentEngine:
+                PlatformPlayback.capabilities.localTorrentEngine,
+            season: season,
+            episode: episode,
+          );
+          if (playback != null) {
+            final ranked = await PlaybackSelection.rankAndDedupe(
+              sources: [
+                PlaybackNormalize.fromTorrentUrl(playback.url).toStreamSource(),
+              ],
+              providerId: 'torrent',
+            );
+            return EpisodeSwitchResult(
+              streamUrl: ranked.first.url,
+              magnetLink: url,
+              fileIndex: playback.fileIndex,
+              sources: ranked,
+              activeProvider: 'torrent',
+            );
+          }
+          continue;
+        }
         final ranked = await PlaybackSelection.rankAndDedupe(
           sources: [
             PlaybackNormalize.fromStremioUrl(url, headers: headers)

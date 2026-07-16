@@ -31,4 +31,14 @@ void main() {
     expect(KissKhService.isMirrorHost('kisskh.ovh'), isTrue);
     expect(KissKhService.isMirrorHost('kisskh.buzz'), isFalse);
   });
+
+  test('mirror health model tracks healthy hosts', () {
+    const health = KissKhMirrorHealth(
+      selected: 'kisskh.nl',
+      healthyHosts: ['kisskh.nl', 'kisskh.ovh'],
+      unhealthyHosts: ['kisskh.co'],
+    );
+    expect(health.isHealthy('kisskh.nl'), isTrue);
+    expect(health.isHealthy('https://kisskh.co'), isFalse);
+  });
 }

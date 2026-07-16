@@ -4,7 +4,7 @@ import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 
 /// Compact top chrome for the Sources panel:
-/// title + count · kind chips · optional providers · search/filters.
+/// title + count · kind chips · search/filters (providers live in Filters).
 class TorrentSourcesPanelChrome extends StatelessWidget {
   const TorrentSourcesPanelChrome({
     super.key,
@@ -29,13 +29,10 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     required this.onLanguageFiltersChanged,
     required this.onTechFiltersChanged,
     this.episodeLabel,
-    this.providerChips = const [],
+    this.providerOptions = const [],
     this.selectedSourceId,
     this.nuvioSelectedScraperIds = const {},
-    this.chipsScrollController,
-    this.onChipTap,
-    this.onScrollBack,
-    this.onScrollForward,
+    this.onProviderTap,
     this.showAudioFilters = false,
     this.activeAudioFilters = const {},
     this.onAudioFiltersChanged,
@@ -48,7 +45,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.showCacheLine = false,
     /// Details: true. Player: false (no freeze-frame / no live video blur).
     this.filterEnableBlur = true,
-    /// Force-refetch the selected kind (`torrents` | `stremio` | `nuvio` | `all`).
+    /// Force-refetch the selected kind (`torrents` | `stremio` | `nuvio`).
     this.onReloadKind,
   });
 
@@ -63,13 +60,10 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final VoidCallback onCancelFetch;
   final ValueChanged<String>? onReloadKind;
   final String? episodeLabel;
-  final List<Map<String, dynamic>> providerChips;
+  final List<SourcesPanelProviderOption> providerOptions;
   final String? selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
-  final ScrollController? chipsScrollController;
-  final ValueChanged<String>? onChipTap;
-  final VoidCallback? onScrollBack;
-  final VoidCallback? onScrollForward;
+  final ValueChanged<String>? onProviderTap;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final Set<String> availableQualities;
@@ -116,23 +110,8 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onChanged: onKindChanged,
           onReloadKind: isFetching ? null : onReloadKind,
         ),
-        if (providerChips.isNotEmpty &&
-            chipsScrollController != null &&
-            onChipTap != null &&
-            selectedSourceId != null) ...[
-          SizedBox(height: gap),
-          TorrentSourceChips(
-            chips: providerChips,
-            selectedSourceId: selectedSourceId!,
-            nuvioSelectedScraperIds: nuvioSelectedScraperIds,
-            scrollController: chipsScrollController!,
-            onChipTap: onChipTap!,
-            onScrollBack: onScrollBack ?? () {},
-            onScrollForward: onScrollForward ?? () {},
-          ),
-        ],
         SizedBox(height: gap),
-        TorrentSourcePanelToolbar(
+        TorrentSourceSearchToolbar(
           searchQuery: searchQuery,
           onSearchChanged: onSearchChanged,
           availableQualities: availableQualities,
@@ -153,6 +132,10 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onSizeFiltersChanged: onSizeFiltersChanged,
           sortPreference: sortPreference,
           onSortChanged: onSortChanged,
+          providerOptions: providerOptions,
+          selectedProviderId: selectedSourceId,
+          nuvioSelectedScraperIds: nuvioSelectedScraperIds,
+          onProviderTap: onProviderTap,
           enableBlur: filterEnableBlur,
         ),
         if (showCacheLine && cacheRefreshToken != null) ...[
@@ -284,8 +267,6 @@ class _KindChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = <({String id, String label, Widget? icon})>[
-      if ([showTorrents, showStremio, showNuvio].where((e) => e).length >= 2)
-        (id: 'all', label: 'All', icon: null),
       if (showTorrents)
         (
           id: 'torrents',

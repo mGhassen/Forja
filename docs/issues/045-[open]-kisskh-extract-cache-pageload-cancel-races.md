@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** fix · **0 / 2** device smoke |
+| **Progress** | **14 / 14** fix · **0 / 2** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,7 @@
 | 11 | I45-T11 | Loading overlay: sequential CHECKING/UP/DOWN probes per KissKH mirror (movie-style) | ✅ |
 | 12 | I45-T12 | Settings → Playback: persist reorderable KissKH mirror list | ✅ |
 | 13 | I45-T13 | Player Sources panel: expose mirrors as servers + switch via forced-base extract | ✅ |
+| 14 | I45-T14 | Parallel API URL probe before WebView — mark dead mirrors DOWN without extract | ✅ |
 
 ---
 
@@ -71,3 +72,5 @@ mirrors on HTTP or non-JSON failure. `KissKhExtractor` can pin a forced base
 URL for sequential probe / Sources switching, or hop mirrors when unpinned.
 Loading, Settings → Playback (Asian Drama), and the player Sources panel list
 each mirror (`kisskh.co` / `.nl` / `.ovh` / `.la` / `.do`) like movie servers.
+Before any WebView extract, Rust probes all mirror APIs in parallel and the
+loader marks unhealthy hosts DOWN so dead domains never burn extract time.
