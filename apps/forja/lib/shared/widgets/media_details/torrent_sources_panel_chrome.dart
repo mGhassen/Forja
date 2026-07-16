@@ -48,6 +48,8 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.showCacheLine = false,
     /// Details: true. Player: false (no freeze-frame / no live video blur).
     this.filterEnableBlur = true,
+    /// Force-refetch the selected kind (`torrents` | `stremio` | `nuvio` | `all`).
+    this.onReloadKind,
   });
 
   final VoidCallback onClose;
@@ -59,6 +61,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final int? resultCount;
   final bool isFetching;
   final VoidCallback onCancelFetch;
+  final ValueChanged<String>? onReloadKind;
   final String? episodeLabel;
   final List<Map<String, dynamic>> providerChips;
   final String? selectedSourceId;
@@ -111,6 +114,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           showStremio: showStremio,
           showNuvio: showNuvio,
           onChanged: onKindChanged,
+          onReloadKind: isFetching ? null : onReloadKind,
         ),
         if (providerChips.isNotEmpty &&
             chipsScrollController != null &&
@@ -267,6 +271,7 @@ class _KindChips extends StatelessWidget {
     required this.showStremio,
     required this.showNuvio,
     required this.onChanged,
+    this.onReloadKind,
   });
 
   final String selected;
@@ -274,6 +279,7 @@ class _KindChips extends StatelessWidget {
   final bool showStremio;
   final bool showNuvio;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onReloadKind;
 
   @override
   Widget build(BuildContext context) {
@@ -324,6 +330,9 @@ class _KindChips extends StatelessWidget {
               icon: options[i].icon,
               selected: selected == options[i].id,
               onTap: () => onChanged(options[i].id),
+              onReload: onReloadKind == null
+                  ? null
+                  : () => onReloadKind!(options[i].id),
             ),
           ],
         ],
@@ -338,12 +347,14 @@ class _KindChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
+    this.onReload,
   });
 
   final String label;
   final Widget? icon;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -385,6 +396,20 @@ class _KindChip extends StatelessWidget {
                 color: selected ? cinematic.textPrimary : cinematic.textSecondary,
               ),
             ),
+            if (onReload != null) ...[
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: onReload,
+                behavior: HitTestBehavior.opaque,
+                child: Icon(
+                  Icons.refresh_rounded,
+                  size: 14,
+                  color: selected
+                      ? cinematic.textPrimary
+                      : cinematic.textSecondary,
+                ),
+              ),
+            ],
           ],
         ),
       ),

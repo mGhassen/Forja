@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
@@ -227,6 +228,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     _nuvioSub?.cancel();
     _nuvioSub = null;
     NuvioService.instance.cancelPending();
+    Engine.cancelPendingResolve();
     _chipsScrollController.dispose();
     _listScrollController.dispose();
     super.dispose();
@@ -356,14 +358,110 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _selectedSourceId = _sourceIdForKind(kind, addons);
     });
 
-    if (_showsTorrents) unawaited(_runTorrentSearch());
-    if (_showsStremio) unawaited(_fetchStremioStreams());
-    if (_showsNuvio) unawaited(_fetchAllNuvioStreams());
-    // Prefetch other kinds so we can jump to the playing row if preferred
-    // kind was wrong (e.g. Stremio Direct that is actually Nuvio).
-    if (!_showsNuvio && hasNuvio) unawaited(_fetchAllNuvioStreams());
-    if (!_showsStremio && hasStremio) unawaited(_fetchStremioStreams());
-    if (!_showsTorrents && hasTorrent) unawaited(_runTorrentSearch());
+    // Load only the selected kind(s) — no prefetch of other categories.
+    _ensureVisibleKindsLoaded();
+  }
+
+  String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
+        mediaId: widget.movie.id,
+        mediaType: widget.movie.mediaType,
+        season: widget.season,
+        episode: widget.episode,
+      );
+
+  /// Hydrate from session TTL cache or fetch — only for kinds currently shown.
+  void _ensureVisibleKindsLoaded({bool force = false}) {
+    if (_showsTorrents) _ensureTorrentsLoaded(force: force);
+    if (_showsStremio) _ensureStremioLoaded(force: force);
+    if (_showsNuvio) unawaited(_ensureNuvioLoaded(force: force));
+  }
+
+  void _ensureTorrentsLoaded({bool force = false}) {
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(
+        _catalogCacheKey,
+        kind: 'torrents',
+      );
+      unawaited(_runTorrentSearch());
+      return;
+    }
+    if (_results.isNotEmpty || _searching) return;
+    final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
+    if (cached != null) {
+      setState(() {
+        _results = cached;
+        _error = null;
+      });
+      _focusPlayingSourceIfNeeded();
+      _requestScrollToCurrent();
+      return;
+    }
+    unawaited(_runTorrentSearch());
+  }
+
+  void _ensureStremioLoaded({bool force = false}) {
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(
+        _catalogCacheKey,
+        kind: 'stremio',
+      );
+      unawaited(_fetchStremioStreams());
+      return;
+    }
+    if (_stremioStreams.isNotEmpty || _stremioFetching) return;
+    final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+    if (cached != null) {
+      setState(() {
+        _stremioStreams = cached;
+        _loadedAddonBaseUrls
+          ..clear()
+          ..addAll({
+            for (final s in cached)
+              if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
+          });
+        _error = null;
+      });
+      _focusPlayingSourceIfNeeded();
+      _requestScrollToCurrent();
+      return;
+    }
+    unawaited(_fetchStremioStreams());
+  }
+
+  Future<void> _ensureNuvioLoaded({bool force = false}) async {
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
+      await _fetchAllNuvioStreams();
+      return;
+    }
+    if (_nuvioStreams.isNotEmpty || _nuvioFetching) return;
+    final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
+    if (cached != null) {
+      if (!mounted) return;
+      setState(() {
+        _nuvioStreams = cached;
+        _error = null;
+      });
+      _focusPlayingSourceIfNeeded();
+      _requestScrollToCurrent();
+      return;
+    }
+    await _fetchAllNuvioStreams();
+  }
+
+  void _reloadKind(String kind) {
+    switch (kind) {
+      case 'torrents':
+        _ensureTorrentsLoaded(force: true);
+      case 'stremio':
+        _ensureStremioLoaded(force: true);
+      case 'nuvio':
+        unawaited(_ensureNuvioLoaded(force: true));
+      case 'all':
+        if (_showTorrents) _ensureTorrentsLoaded(force: true);
+        if (_showStremio) _ensureStremioLoaded(force: true);
+        if (_showNuvio) unawaited(_ensureNuvioLoaded(force: true));
+    }
   }
 
   String _sourceIdForKind(String kind, List<Map<String, dynamic>> addons) {
@@ -391,7 +489,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       if (preferred == 'stremio' && hasStremio) return 'stremio';
       if (preferred == 'torrents' && hasTorrent) return 'torrents';
     }
-    if (hasTorrent && hasStremio) return 'all';
+    // Prefer a single kind so we do not fetch every category on open.
     if (hasTorrent) return 'torrents';
     if (hasNuvio) return 'nuvio';
     if (hasStremio) return 'stremio';
@@ -668,6 +766,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       }
 
       if (!mounted || gen != _searchGen) return;
+      CatalogSourcesSessionCache.writeTorrents(_catalogCacheKey, found);
       setState(() {
         _results = found;
         _searching = false;
@@ -716,6 +815,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       if (!mounted || gen != _stremioGen) return;
       pending--;
       if (pending <= 0) {
+        CatalogSourcesSessionCache.writeStremio(
+          _catalogCacheKey,
+          _stremioStreams,
+        );
         setState(() {
           _stremioFetching = false;
           if (_stremioStreams.isEmpty && !_showsTorrents) {
@@ -806,6 +909,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       onDone: () {
         _nuvioSub = null;
         if (!mounted) return;
+        CatalogSourcesSessionCache.writeNuvio(_catalogCacheKey, _nuvioStreams);
         setState(() {
           _nuvioFetching = false;
           if (_nuvioStreams.isEmpty && !_showsTorrents && !_showsStremio) {
@@ -852,13 +956,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         _selectedSourceId = 'forja';
       }
     });
-    if (_showsTorrents && _results.isEmpty) unawaited(_runTorrentSearch());
-    if (_showsStremio && _stremioStreams.isEmpty) {
-      unawaited(_fetchStremioStreams());
-    }
-    if (_showsNuvio && _nuvioStreams.isEmpty && !_nuvioFetching) {
-      unawaited(_fetchAllNuvioStreams());
-    }
+    _ensureVisibleKindsLoaded();
     _requestScrollToCurrent();
   }
 
@@ -1191,6 +1289,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           cacheRefreshToken:
               Object.hash(_openToken, _results.length, _searching),
           filterEnableBlur: false,
+          onReloadKind: _reloadKind,
         ),
         const SizedBox(height: 4),
         Expanded(child: _buildList(torrents, stremio, nuvio)),
@@ -1242,11 +1341,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () {
-                  if (_showsTorrents) unawaited(_runTorrentSearch());
-                  if (_showsStremio) unawaited(_fetchStremioStreams());
-                  if (_showsNuvio) unawaited(_fetchAllNuvioStreams());
-                },
+                onPressed: () => _reloadKind(_kindFilter),
                 child: const Text('Retry'),
               ),
             ],

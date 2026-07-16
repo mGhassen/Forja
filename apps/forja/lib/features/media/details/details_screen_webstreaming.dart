@@ -599,7 +599,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     );
     // Persist only after playbackConfirmed (player lifecycle) so unreachable
     // extracts from any provider are not reused on the next green Play.
-    if (mounted && _s._sourcesPanelOpen) setState(() => _s._sourcesPanelOpen = false);
+    if (mounted && _s._sourcesPanelOpen) _s._closeSourcesPanel();
     try {
       await AppRouter.openPlayer(
         context,

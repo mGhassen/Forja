@@ -13,6 +13,7 @@ import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
+import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -116,7 +117,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   bool _playSourceWebstreaming = true;
 
   /// Panel list filter: `all` | `torrents` | `stremio` | `nuvio`.
-  String _panelKindFilter = 'all';
+  String _panelKindFilter = 'torrents';
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -377,11 +378,11 @@ class _DetailsScreenState extends State<DetailsScreen>
       _panelShowTorrent || _panelShowStremio || _panelShowNuvio;
 
   String _defaultPanelKindFilter() {
-    if (_panelShowTorrent && _panelShowStremio) return 'all';
+    // Prefer a single kind so opening Sources does not fetch every category.
     if (_panelShowTorrent) return 'torrents';
     if (_panelShowNuvio) return 'nuvio';
     if (_panelShowStremio) return 'stremio';
-    return 'all';
+    return 'torrents';
   }
 
   void _syncPanelKindFilterToPlaySources() {
@@ -461,33 +462,115 @@ class _DetailsScreenState extends State<DetailsScreen>
     _nuvioSelectedScraperIds = _allEnabledNuvioScraperIds();
   }
 
-  void _ensurePanelSourceLoaded() {
+  String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
+        mediaId: _movie.id,
+        mediaType: _movie.mediaType,
+        season: _movie.mediaType == 'tv' ? _selectedSeason : null,
+        episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
+      );
+
+  void _ensurePanelSourceLoaded({bool force = false}) {
     if (_panelShowTorrent &&
         (_panelKindFilter == 'all' || _panelKindFilter == 'torrents')) {
-      if (_allTorrentResults.isEmpty && !_isSearching) _autoSearch();
+      _ensureTorrentsPanelLoaded(force: force);
     }
     if (_panelShowStremio &&
         (_panelKindFilter == 'all' || _panelKindFilter == 'stremio')) {
-      if (_allCombinedStremioStreams.isEmpty && !_isStremioFetching) {
-        _fetchAllStremioStreams();
-      }
+      _ensureStremioPanelLoaded(force: force);
     }
     if (_panelShowNuvio &&
         (_panelKindFilter == 'all' || _panelKindFilter == 'nuvio')) {
-      unawaited(_ensureNuvioPanelLoaded());
+      unawaited(_ensureNuvioPanelLoaded(force: force));
     }
   }
 
+  void _ensureTorrentsPanelLoaded({bool force = false}) {
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(
+        _catalogCacheKey,
+        kind: 'torrents',
+      );
+      _autoSearch();
+      return;
+    }
+    if (_allTorrentResults.isNotEmpty || _isSearching) return;
+    final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
+    if (cached != null) {
+      setState(() {
+        _allTorrentResults = cached;
+        _errorMessage = null;
+      });
+      unawaited(_sortResults());
+      return;
+    }
+    _autoSearch();
+  }
+
+  void _ensureStremioPanelLoaded({bool force = false}) {
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(
+        _catalogCacheKey,
+        kind: 'stremio',
+      );
+      _fetchAllStremioStreams();
+      return;
+    }
+    if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
+    final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+    if (cached != null) {
+      setState(() {
+        _allCombinedStremioStreams = cached;
+        _loadedAddonBaseUrls
+          ..clear()
+          ..addAll({
+            for (final s in cached)
+              if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
+          });
+        _errorMessage = null;
+        _applyStremioFilter();
+      });
+      return;
+    }
+    _fetchAllStremioStreams();
+  }
+
   /// Loads addon list, selects all scrapers, then fetches every scraper once.
-  Future<void> _ensureNuvioPanelLoaded() async {
+  Future<void> _ensureNuvioPanelLoaded({bool force = false}) async {
     await _checkAndFetchNuvio();
     if (!mounted || !_panelShowNuvio) return;
     if (_panelKindFilter != 'nuvio' && _panelKindFilter != 'all') return;
     if (_nuvioSelectedScraperIds.isEmpty) {
       setState(_selectAllEnabledNuvioScrapers);
     }
-    if (_nuvioStreams.isEmpty && !_isNuvioFetching) {
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
       await _fetchAllNuvioStreams();
+      return;
+    }
+    if (_nuvioStreams.isNotEmpty || _isNuvioFetching) return;
+    final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
+    if (cached != null) {
+      setState(() {
+        _nuvioStreams = cached;
+        _errorMessage = null;
+      });
+      return;
+    }
+    await _fetchAllNuvioStreams();
+  }
+
+  void _reloadPanelKind(String kind) {
+    switch (kind) {
+      case 'torrents':
+        _ensureTorrentsPanelLoaded(force: true);
+      case 'stremio':
+        _ensureStremioPanelLoaded(force: true);
+      case 'nuvio':
+        unawaited(_ensureNuvioPanelLoaded(force: true));
+      case 'all':
+        if (_panelShowTorrent) _ensureTorrentsPanelLoaded(force: true);
+        if (_panelShowStremio) _ensureStremioPanelLoaded(force: true);
+        if (_panelShowNuvio) unawaited(_ensureNuvioPanelLoaded(force: true));
     }
   }
 
@@ -530,6 +613,20 @@ class _DetailsScreenState extends State<DetailsScreen>
       _sourcesPanelOpen = true;
     });
     _ensurePanelSourceLoaded();
+  }
+
+  /// Close Sources and stop any in-flight Torrents / Stremio / Nuvio fetches.
+  void _closeSourcesPanel() {
+    if (!_sourcesPanelOpen &&
+        !_isSearching &&
+        !_isStremioFetching &&
+        !_isNuvioFetching) {
+      return;
+    }
+    _cancelActiveSourceFetch();
+    if (_sourcesPanelOpen && mounted) {
+      setState(() => _sourcesPanelOpen = false);
+    }
   }
 
   Future<void> _loadSortPreference() async {

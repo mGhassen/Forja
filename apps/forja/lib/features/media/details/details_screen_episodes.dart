@@ -29,19 +29,10 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
     if (!_s._isCurrentSourceAllowed()) {
       _s._syncSelectedSourceToPlaySources();
     }
-    if (_s._selectedSourceId == 'forja') {
-      _s._autoSearch();
-    } else if (_s._selectedSourceId == 'jackett') {
-      _s._searchJackett();
-    } else if (_s._selectedSourceId == 'prowlarr') {
-      _s._searchProwlarr();
-    } else if (_s._selectedSourceId == 'all_stremio') {
-      _s._fetchAllStremioStreams();
-    } else if (_s._isNuvioSource) {
-      _s._fetchAllNuvioStreams();
-    } else {
-      _s._fetchStremioStreams();
-    }
+    // Drop in-memory rows for the previous episode; session TTL cache is
+    // keyed by S/E so the new episode hydrates or fetches independently.
+    _s._invalidatePanelSourceCache();
+    _s._ensurePanelSourceLoaded();
   }
   void _highlightEpisode(int episode) {
     if (_s._selectedEpisode == episode) return;

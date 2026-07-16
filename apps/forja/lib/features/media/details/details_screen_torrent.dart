@@ -36,6 +36,10 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
 
   Future<void> _sortResults() async {
     if (_s._allTorrentResults.isEmpty) {
+      CatalogSourcesSessionCache.writeTorrents(
+        _s._catalogCacheKey,
+        _s._allTorrentResults,
+      );
       _s._maybeAutoPlay();
       return;
     }
@@ -52,6 +56,10 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
       }
     }
     if (mounted) setState(() => _s._allTorrentResults = sorted);
+    CatalogSourcesSessionCache.writeTorrents(
+      _s._catalogCacheKey,
+      _s._allTorrentResults,
+    );
     _s._maybeAutoPlay();
   }
   Future<void> _searchTvTorrents(

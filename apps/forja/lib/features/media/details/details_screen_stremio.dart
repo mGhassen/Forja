@@ -58,6 +58,10 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
         if (!mounted || gen != _s._stremioFetchGen) return;
         pendingCount--;
         if (pendingCount <= 0) {
+          CatalogSourcesSessionCache.writeStremio(
+            _s._catalogCacheKey,
+            List<Map<String, dynamic>>.from(_s._allCombinedStremioStreams),
+          );
           setState(() {
             _s._isStremioFetching = false;
             if (_s._isTorrentSource) _applyStremioFilter();
@@ -174,6 +178,10 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       onDone: () {
         _s._nuvioSub = null;
         if (!mounted) return;
+        CatalogSourcesSessionCache.writeNuvio(
+          _s._catalogCacheKey,
+          List<Map<String, dynamic>>.from(_s._nuvioStreams),
+        );
         setState(() {
           _s._isNuvioFetching = false;
           if (_s._selectedSourceId == 'all_nuvio' && _s._nuvioStreams.isEmpty) {

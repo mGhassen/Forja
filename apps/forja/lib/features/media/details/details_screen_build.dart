@@ -205,7 +205,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
           if (!_s._isCollection && _s._hasPanelPlaySources)
             TorrentSourcesPanel(
               isOpen: _s._sourcesPanelOpen,
-              onClose: () => setState(() => _s._sourcesPanelOpen = false),
+              onClose: _s._closeSourcesPanel,
               child: _buildSourcesPanelContent(),
             ),
           const MediaDetailsBackButton(),
@@ -329,7 +329,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TorrentSourcesPanelChrome(
-          onClose: () => setState(() => _s._sourcesPanelOpen = false),
+          onClose: _s._closeSourcesPanel,
           kindFilter: _s._panelKindFilter,
           showTorrents: _s._panelShowTorrent,
           showStremio: _s._panelShowStremio,
@@ -381,6 +381,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
             _s._allTorrentResults.length,
             _s._isSearching,
           ),
+          onReloadKind: _s._reloadPanelKind,
         ),
         const SizedBox(height: 8),
         Expanded(child: _s._buildStreamList(inPanel: true)),

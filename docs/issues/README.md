@@ -89,6 +89,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [065-[fixed]-…](fixed/065-[fixed]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |
 | [066-[open]-…](066-[open]-canonical-settings-persistence.md) | Canonical settings persistence (KV file + secure secrets) | P1 | High | open | 5/5 · A 4/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [067-[fixed]-…](fixed/067-[fixed]-server-panel-reload-ignores-disk-cache.md) | Server panel reload no-op from disk cache | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
