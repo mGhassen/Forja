@@ -41,6 +41,7 @@ void main() {
     ShellBus.homeCategory.value = null;
     ShellBus.homeSelectedGenreId.value = null;
     ShellBus.homeHeroHeight.value = 0;
+    ShellBus.homeScrollOffset.value = 0;
     ShellBus.selectedWatchProviderId.value = null;
     ShellBus.requestTab.value = null;
     ShellBus.shellOverlayHasPage.value = false;
@@ -172,6 +173,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(ShellBus.homeCategory.value, isNull);
+  });
+
+  testWidgets('HomeTopBar slides away after scrolling past hero height',
+      (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const HomeTopBar()),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+
+    Offset hideOffset() {
+      final transforms = tester
+          .widgetList<Transform>(
+            find.descendant(
+              of: find.byType(HomeTopBar),
+              matching: find.byType(Transform),
+            ),
+          )
+          .toList();
+      expect(transforms, isNotEmpty);
+      final t = transforms.first.transform.getTranslation();
+      return Offset(t.x, t.y);
+    }
+
+    ShellBus.homeHeroHeight.value = 400;
+    ShellBus.homeScrollOffset.value = 0;
+    await tester.pump();
+    expect(hideOffset().dy, 0);
+
+    // hideStart = heroHeight - barHeight; fully hidden well past that.
+    ShellBus.homeScrollOffset.value = 2000;
+    await tester.pump();
+    expect(hideOffset().dy, lessThan(0));
   });
 
   testWidgets('ShellScaffold hides home top bar when shell overlay has page',

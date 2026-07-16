@@ -22,10 +22,12 @@ class ShellBus {
     null,
   );
 
-  /// Home feed vertical scroll — [HomeTopBar] hides when this passes [homeHeroHeight].
+  /// Home feed vertical scroll — [HomeTopBar] slides away near [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
 
-  /// Hero block height in px — [HomeScreen] publishes on layout.
+  /// Cinematic hero height in px (not the extended page-bleed backdrop).
+  /// [HomeCinematicHero] publishes on layout; [HomeTopBar] uses it as the
+  /// scroll-hide anchor.
   static final ValueNotifier<double> homeHeroHeight = ValueNotifier(0);
 
   /// SearchScreen listens for incoming Stremio search requests.

@@ -178,13 +178,31 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         defaultBottom;
   }
 
+  /// Scroll-hide anchor for [HomeTopBar] — cinematic chrome only.
+  ///
+  /// Must not use the extended page-bleed backdrop height (Featured row), or
+  /// the top bar stays visible until nearly a full viewport of scroll.
+  double _homeTopBarHideAnchorHeight(
+    BuildContext context, {
+    required bool compact,
+  }) {
+    return _snapToDevicePixels(
+      context,
+      _cinematicHeroHeight(context, compact: compact) +
+          _desktopTopBarBleed(context),
+    );
+  }
+
   void _publishHomeHeroHeight() {
     if (_heroHeightSyncScheduled) return;
     _heroHeightSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _heroHeightSyncScheduled = false;
       if (!mounted) return;
-      final height = _homeBackdropHeight(context, compact: widget.compact);
+      final height = _homeTopBarHideAnchorHeight(
+        context,
+        compact: widget.compact,
+      );
       if (ShellBus.homeHeroHeight.value != height) {
         ShellBus.homeHeroHeight.value = height;
       }
