@@ -480,6 +480,45 @@ Future<bool> waitForVideoDecode(
   }
 }
 
+/// After [waitForMediaOpen], require a decoded frame for adaptive streams.
+///
+/// When GPU decode stalls (seen on some Windows `auto-safe` setups), retry once
+/// with `hwdec=no` before failing over to the next source.
+Future<bool> confirmOpenedStreamVideoDecode(
+  Player player, {
+  required String openUrl,
+  Map<String, String>? headers,
+  String? type,
+}) async {
+  if (!sourceRequiresVideoDecode(openUrl, type: type)) return true;
+  final openTimeout = isLocalTorrentStreamUrl(openUrl)
+      ? const Duration(seconds: 45)
+      : const Duration(seconds: 25);
+  final decodeTimeout = videoDecodeTimeoutForUrl(openUrl);
+
+  if (await waitForVideoDecode(player, timeout: decodeTimeout)) {
+    return true;
+  }
+
+  if (player.platform is! NativePlayer) return false;
+  debugPrint('[Player] hw decode miss — retry software: $openUrl');
+  await resetPlayerForOpen(player);
+  await (player.platform as NativePlayer).setProperty('hwdec', 'no');
+  final retryUrl = await openPlayerStream(
+    player,
+    url: openUrl,
+    headers: headers,
+  );
+  if (!await waitForMediaOpen(
+    player,
+    streamUrl: retryUrl,
+    timeout: openTimeout,
+  )) {
+    return false;
+  }
+  return waitForVideoDecode(player, timeout: decodeTimeout);
+}
+
 Future<bool> waitForSeekableDuration(
   Player player, {
   Duration timeout = const Duration(seconds: 5),

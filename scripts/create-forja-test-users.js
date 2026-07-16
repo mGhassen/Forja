@@ -5,9 +5,9 @@
  * Run after `supabase db reset` (or via scripts/reset-forja-supabase.js).
  */
 
-const { execSync } = require('child_process')
 const path = require('path')
 const { createRequire } = require('module')
+const { runSupabaseStatus } = require('./supabase-local-status')
 
 const webCwd = path.join(__dirname, '..', 'apps', 'web')
 const requireFromWeb = createRequire(path.join(webCwd, 'package.json'))
@@ -25,19 +25,6 @@ const TEST_USERS = [
     label: 'Demo',
   },
 ]
-
-function readSupabaseStatus() {
-  const out = execSync('supabase status -o json 2>&1', {
-    cwd: webCwd,
-    encoding: 'utf8',
-    stdio: 'pipe',
-  })
-  const jsonStart = out.indexOf('{')
-  if (jsonStart < 0) {
-    throw new Error(`Could not parse supabase status:\n${out}`)
-  }
-  return JSON.parse(out.slice(jsonStart))
-}
 
 async function ensureUser(admin, { email, password, label }) {
   const { data: listed, error: listError } = await admin.auth.admin.listUsers({
@@ -70,7 +57,12 @@ async function ensureUser(admin, { email, password, label }) {
 }
 
 async function main() {
-  const status = readSupabaseStatus()
+  const { status } = runSupabaseStatus(webCwd)
+  if (!status) {
+    throw new Error(
+      'Could not parse `supabase status -o json`. Is local Supabase running?',
+    )
+  }
   const url = status.API_URL
   const serviceKey = status.SERVICE_ROLE_KEY
   if (!url || !serviceKey) {

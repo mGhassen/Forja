@@ -12,6 +12,7 @@ import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
+import 'package:forja/shared/widgets/hero/hero_watch_providers_row.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
@@ -42,6 +43,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.lastAirDate,
     this.networks = const [],
     this.creators = const [],
+    this.watchProviders = const [],
     this.bodyOverlap,
     this.pageBottomChild,
   });
@@ -69,6 +71,7 @@ class MediaDetailsHero extends StatefulWidget {
   final String? lastAirDate;
   final List<String> networks;
   final List<String> creators;
+  final List<WatchProvider> watchProviders;
   final double? bodyOverlap;
   /// Rendered on the page backdrop below hero chrome (e.g. TV season rail).
   final Widget? pageBottomChild;
@@ -807,6 +810,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                               lastAirDate: widget.lastAirDate,
                               networks: widget.networks,
                               creators: widget.creators,
+                              watchProviders: widget.watchProviders,
                               certification: widget.certification,
                               imdbRating: widget.imdbRating,
                               actionRow: widget.actionRow,
@@ -1011,6 +1015,7 @@ class _HeroLayout extends StatelessWidget {
     this.lastAirDate,
     this.networks = const [],
     this.creators = const [],
+    this.watchProviders = const [],
     this.certification,
     this.imdbRating,
     this.actionRow,
@@ -1034,6 +1039,7 @@ class _HeroLayout extends StatelessWidget {
   final String? lastAirDate;
   final List<String> networks;
   final List<String> creators;
+  final List<WatchProvider> watchProviders;
   final String? certification;
   final double? imdbRating;
   final Widget? actionRow;
@@ -1055,6 +1061,7 @@ class _HeroLayout extends StatelessWidget {
       directorName: directorName,
       certification: certification,
       imdbRating: imdbRating,
+      watchProviders: watchProviders,
       actionRow: actionRow,
       positionMs: positionMs,
       durationMs: durationMs,
@@ -1131,6 +1138,7 @@ class _HeroMainColumn extends StatelessWidget {
     this.directorName,
     this.certification,
     this.imdbRating,
+    this.watchProviders = const [],
     this.actionRow,
     this.positionMs,
     this.durationMs,
@@ -1147,6 +1155,7 @@ class _HeroMainColumn extends StatelessWidget {
   static const _metaBlockHeight = 24.0;
   static const _metaBlockHeightWrapped = 48.0;
   static const _directorBlockHeight = 20.0;
+  static const _providersBlockHeight = HeroWatchProvidersRow.rowHeight;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
@@ -1157,6 +1166,7 @@ class _HeroMainColumn extends StatelessWidget {
   final String? directorName;
   final String? certification;
   final double? imdbRating;
+  final List<WatchProvider> watchProviders;
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
@@ -1177,6 +1187,7 @@ class _HeroMainColumn extends StatelessWidget {
   double _usedHeight({
     required bool showDirector,
     required bool showGenres,
+    required bool showProviders,
     required bool showOverview,
     required bool showProgress,
     required double titleHeight,
@@ -1184,6 +1195,7 @@ class _HeroMainColumn extends StatelessWidget {
     var used = titleHeight;
     if (showGenres) used += 10 + _genreBlockHeight;
     used += 14 + _metaHeight();
+    if (showProviders) used += 10 + _providersBlockHeight;
     if (showDirector) used += 10 + _directorBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
     if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
@@ -1200,6 +1212,7 @@ class _HeroMainColumn extends StatelessWidget {
 
     var showDirector = hasDirector;
     var showGenres = movie.genres.isNotEmpty;
+    var showProviders = watchProviders.isNotEmpty;
     var showOverview = movie.overview.isNotEmpty;
     var showProgress = hasProgress;
     var titleHeight = _titleBlockHeight;
@@ -1208,6 +1221,7 @@ class _HeroMainColumn extends StatelessWidget {
       if (_usedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
+            showProviders: showProviders,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1218,6 +1232,7 @@ class _HeroMainColumn extends StatelessWidget {
       if (_usedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
+            showProviders: showProviders,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1228,6 +1243,18 @@ class _HeroMainColumn extends StatelessWidget {
       if (_usedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
+            showProviders: showProviders,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        showProviders = false;
+      }
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
+            showProviders: showProviders,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1238,6 +1265,7 @@ class _HeroMainColumn extends StatelessWidget {
       if (_usedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
+            showProviders: showProviders,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1248,6 +1276,7 @@ class _HeroMainColumn extends StatelessWidget {
       if (_usedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
+            showProviders: showProviders,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1257,6 +1286,7 @@ class _HeroMainColumn extends StatelessWidget {
                 _usedHeight(
                   showDirector: showDirector,
                   showGenres: showGenres,
+                  showProviders: showProviders,
                   showOverview: showOverview,
                   showProgress: showProgress,
                   titleHeight: 0,
@@ -1306,6 +1336,10 @@ class _HeroMainColumn extends StatelessWidget {
             certification: certification,
             imdbRating: imdbRating,
           ),
+          if (showProviders) ...[
+            const SizedBox(height: 10),
+            HeroWatchProvidersRow(providers: watchProviders),
+          ],
           if (showDirector) ...[
             const SizedBox(height: 10),
             Text(
@@ -1327,6 +1361,7 @@ class _HeroMainColumn extends StatelessWidget {
                           _usedHeight(
                             showDirector: showDirector,
                             showGenres: showGenres,
+                            showProviders: showProviders,
                             showOverview: false,
                             showProgress: showProgress,
                             titleHeight: titleHeight,

@@ -169,12 +169,12 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           continue;
         }
         final needsDuration = sourceExpectsDuration(openUrl, type: source.type);
-        final decoded =
-            !sourceRequiresVideoDecode(openUrl, type: source.type) ||
-            await waitForVideoDecode(
-              _s._player,
-              timeout: videoDecodeTimeoutForUrl(openUrl),
-            );
+        final decoded = await confirmOpenedStreamVideoDecode(
+          _s._player,
+          openUrl: openUrl,
+          headers: srcHeaders,
+          type: source.type,
+        );
         if (_fallbackAborted(runGen)) return false;
         if (!decoded) {
           debugPrint('[Player] Source $i opened without video: $openUrl');

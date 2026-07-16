@@ -30,6 +30,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       lastAirDate: _s._lastAirDate,
       networks: _s._networks,
       creators: _s._creators,
+      watchProviders: _s._watchProviders,
       actionRow: _s._isCollection ? null : _buildHeroActionRow(),
     );
   }

@@ -388,6 +388,63 @@
   animation: forja-float 5.5s ease-in-out infinite;
 }
 
+/* Login — cycling headline word */
+@keyframes forja-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.animate-word-in {
+  animation: forja-word-in 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes forja-login-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.06);
+  }
+}
+
+.animate-login-glow {
+  animation: forja-login-glow 6s ease-in-out infinite;
+}
+
+@keyframes forja-scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.login-scanline::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(28, 231, 131, 0.06) 48%,
+    transparent 100%
+  );
+  animation: forja-scanline 4.5s linear infinite;
+}
+
 /* ——— index hover ——— */
 .index-list.hovering .irow {
   opacity: 0.32;

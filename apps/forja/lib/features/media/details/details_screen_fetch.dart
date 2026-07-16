@@ -124,6 +124,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
           _s._spokenLanguages = rich.extras.spokenLanguages;
           _s._productionCompanies = rich.extras.productionCompanies;
           _s._originCountries = rich.extras.originCountries;
+          _s._watchProviders = rich.watchProviders;
           _s._castMembers = rich.extras.cast;
           _s._trailers = rich.extras.trailers;
           _s._streamAddons = streamAddons;

@@ -206,6 +206,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   List<String> _spokenLanguages = [];
   List<String> _productionCompanies = [];
   List<String> _originCountries = [];
+  List<WatchProvider> _watchProviders = [];
   final Map<int, String> _seasonPosters = {};
   Map<String, Map<String, dynamic>> _episodeProgress = {};
 

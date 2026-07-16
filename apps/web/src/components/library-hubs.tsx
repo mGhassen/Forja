@@ -6,49 +6,41 @@ type Mood = {
   label: string
   line: string
   accent: 'brand' | 'flame'
-  /** Full-bleed visual — TMDB backdrop path or /brand/... */
+  /** Full-bleed visual — /brand/... only (open films, app shots, sport stills). */
   backdrop: string
   /** Optional logo chips for Live TV */
   logos?: { src: string; alt: string }[]
 }
 
-const tmdbBackdrop = (path: string) =>
-  `https://image.tmdb.org/t/p/w780${path}`
-
-function mediaSrc(path: string) {
-  if (path.startsWith('/brand/')) return path
-  return tmdbBackdrop(path)
-}
-
-/** Six moods — cinematic tiles (TMDB backdrops verified via API). */
+/** Six moods — open-film art + app/sport stills (CC BY Blender Foundation where noted). */
 const MOODS: Mood[] = [
   {
     id: 'movies',
     label: 'Movies',
-    line: 'Blockbusters & more',
+    line: 'Open films & more',
     accent: 'flame',
-    backdrop: '/eZ239CUp1d6OryZEBPnO2n87gMG.jpg', // Dune: Part Two
+    backdrop: '/brand/open-films/big-buck-bunny.jpg',
   },
   {
     id: 'series',
     label: 'Series',
-    line: 'Binge-worthy',
+    line: 'Episodes & arcs',
     accent: 'brand',
-    backdrop: '/6Tb87q9Tog30F5AAHh1gyDT2Vve.jpg', // Shōgun
+    backdrop: '/brand/open-films/sintel.jpg',
   },
   {
     id: 'anime',
     label: 'Anime',
-    line: 'Worlds to explore',
+    line: 'Animated worlds',
     accent: 'flame',
-    backdrop: '/3GQKYh6Trm8pxd2AypovoYQf4Ay.jpg', // Demon Slayer
+    backdrop: '/brand/open-films/sprite-fright.jpg',
   },
   {
     id: 'asian',
     label: 'Asian Drama',
     line: 'Stories that hit',
     accent: 'brand',
-    backdrop: '/2meX1nMdScFOoV4370rqHWKmXhY.jpg', // Squid Game
+    backdrop: '/brand/open-films/tears-of-steel.jpg',
   },
   {
     id: 'iptv',
@@ -84,7 +76,7 @@ function MoodTile({ mood, index }: { mood: Mood; index: number }) {
       )}
     >
       <img
-        src={mediaSrc(mood.backdrop)}
+        src={mood.backdrop}
         alt=""
         aria-hidden
         className="absolute inset-0 h-full w-full object-cover"

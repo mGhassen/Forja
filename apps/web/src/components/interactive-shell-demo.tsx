@@ -1,31 +1,36 @@
-import { type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-/** Freely licensed Blender Foundation open-movie posters (CC BY). See /brand/open-films/ATTRIBUTION.txt */
+/** Freely licensed Blender Foundation open movies (CC BY). See /brand/open-films/ATTRIBUTION.txt */
 const OPEN_FILMS = [
   {
-    src: '/brand/open-films/big-buck-bunny.jpg',
+    poster: '/brand/open-films/big-buck-bunny.jpg',
+    hero: '/brand/open-films/heroes/big-buck-bunny-hero.jpg',
     label: 'Big Buck Bunny',
   },
   {
-    src: '/brand/open-films/sintel.jpg',
+    poster: '/brand/open-films/sintel.jpg',
+    hero: '/brand/open-films/heroes/sintel-hero.jpg',
     label: 'Sintel',
   },
   {
-    src: '/brand/open-films/tears-of-steel.jpg',
+    poster: '/brand/open-films/tears-of-steel.jpg',
+    hero: '/brand/open-films/heroes/tears-of-steel-hero.jpg',
     label: 'Tears of Steel',
   },
   {
-    src: '/brand/open-films/sprite-fright.jpg',
+    poster: '/brand/open-films/sprite-fright.jpg',
+    hero: '/brand/open-films/heroes/sprite-fright-hero.jpg',
     label: 'Sprite Fright',
   },
   {
-    src: '/brand/open-films/cosmos-laundromat.jpg',
+    poster: '/brand/open-films/cosmos-laundromat.jpg',
+    hero: '/brand/open-films/heroes/cosmos-laundromat-hero.jpg',
     label: 'Cosmos Laundromat',
   },
 ] as const
 
-const HERO_ART = OPEN_FILMS[1] // Sintel — strong portrait hero
+const HERO_CYCLE_MS = 4500
 
 function Icon({
   name,
@@ -70,6 +75,27 @@ const NAV = [
 ]
 
 function ShellScreen() {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const onChange = () => setReduced(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    if (reduced) return
+    const id = window.setInterval(() => {
+      setActiveIndex((i) => (i + 1) % OPEN_FILMS.length)
+    }, HERO_CYCLE_MS)
+    return () => window.clearInterval(id)
+  }, [reduced])
+
+  const hero = OPEN_FILMS[activeIndex]!
+
   return (
     <div className="flex h-full min-h-0 bg-[#0B0A0A] text-[#EDE6DA]">
       <aside className="flex w-9 shrink-0 flex-col items-center border-r border-white/[0.06] py-2 sm:w-10">
@@ -107,14 +133,27 @@ function ShellScreen() {
       </aside>
 
       <div className="relative min-w-0 flex-1 overflow-hidden">
-        <img
-          src={HERO_ART.src}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-[70%_20%]"
-        />
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className={cn(
+              'flex h-full',
+              reduced ? '' : 'transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            )}
+            style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+          >
+            {OPEN_FILMS.map((film) => (
+              <img
+                key={film.hero}
+                src={film.hero}
+                alt=""
+                className="h-full min-w-full shrink-0 object-cover object-center"
+              />
+            ))}
+          </div>
+        </div>
         <div
           aria-hidden
-          className="absolute inset-0"
+          className="absolute inset-0 z-[1]"
           style={{
             background:
               'linear-gradient(90deg, #0B0A0A 0%, rgba(11,10,10,0.9) 32%, rgba(11,10,10,0.4) 58%, transparent 100%), linear-gradient(0deg, #0B0A0A 0%, transparent 38%), linear-gradient(180deg, rgba(11,10,10,0.55) 0%, transparent 28%)',
@@ -136,9 +175,15 @@ function ShellScreen() {
           </span>
         </div>
 
-        <div className="relative z-[1] flex h-full max-w-[58%] flex-col justify-end px-2.5 pb-[4.75rem] pt-10 sm:max-w-[55%] sm:px-3.5 sm:pb-[5.5rem]">
-          <h3 className="font-disp text-[clamp(14px,2.4vw,22px)] uppercase leading-[0.95] tracking-tight">
-            {HERO_ART.label}
+        <div className="relative z-[2] flex h-full max-w-[58%] flex-col justify-end px-2.5 pb-[4.75rem] pt-10 sm:max-w-[55%] sm:px-3.5 sm:pb-[5.5rem]">
+          <h3
+            key={hero.hero}
+            className={cn(
+              'font-disp text-[clamp(14px,2.4vw,22px)] uppercase leading-[0.95] tracking-tight',
+              !reduced && 'animate-now-title',
+            )}
+          >
+            {hero.label}
           </h3>
           <p className="mt-1 text-[8px] text-white/65 sm:text-[9px]">
             Open movie · Blender Foundation
@@ -156,26 +201,38 @@ function ShellScreen() {
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-[1] px-2 pb-2 sm:px-3 sm:pb-2.5">
+        <div className="absolute inset-x-0 bottom-0 z-[2] px-2 pb-2 sm:px-3 sm:pb-2.5">
           <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45">
             Featured
           </p>
           <div className="flex gap-1.5 overflow-hidden">
-            {OPEN_FILMS.map((item) => (
-              <div
-                key={item.src}
-                className="relative aspect-[2/3] w-[18%] min-w-[2.4rem] overflow-hidden rounded-md ring-1 ring-white/10"
-              >
-                <img
-                  src={item.src}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <span className="absolute inset-x-0 bottom-0 bg-black/55 px-0.5 py-0.5 text-center text-[5px] font-semibold uppercase leading-tight tracking-wide text-white/85 sm:text-[6px]">
-                  {item.label}
-                </span>
-              </div>
-            ))}
+            {OPEN_FILMS.map((item, i) => {
+              const selected = i === activeIndex
+              return (
+                <button
+                  key={item.poster}
+                  type="button"
+                  aria-label={`Show ${item.label}`}
+                  aria-current={selected ? 'true' : undefined}
+                  onClick={() => setActiveIndex(i)}
+                  className={cn(
+                    'relative aspect-[2/3] w-[18%] min-w-[2.4rem] overflow-hidden rounded-md ring-1 transition duration-300',
+                    selected
+                      ? 'z-[1] scale-[1.06] ring-[#1CE783]/80'
+                      : 'ring-white/10 opacity-75 hover:opacity-100',
+                  )}
+                >
+                  <img
+                    src={item.poster}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 bg-black/55 px-0.5 py-0.5 text-center text-[5px] font-semibold uppercase leading-tight tracking-wide text-white/85 sm:text-[6px]">
+                    {item.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>

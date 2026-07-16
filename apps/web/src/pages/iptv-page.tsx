@@ -37,17 +37,16 @@ const PLAYER_POWERS = [
   },
 ]
 
-const tmdbPoster = (path: string) => `https://image.tmdb.org/t/p/w342${path}`
-
+/** CC BY Blender Foundation open movies + generic sport stills — no TMDB commercial art. */
 const MODES = [
   {
     k: 'Live',
     v: 'Sports, news, and channels that never sleep.',
     accent: 'flame' as const,
     posters: [
-      '/95BDrWmcfJDEa2WCfjmLgi67jhi.jpg',
-      '/dR1Ju50iudrOh3YgfwkAU1g2HZe.jpg',
-      '/cvsXj3I9Q2iyyIo95AecSd1tad7.jpg',
+      '/brand/hubs/sport/football.jpg',
+      '/brand/hubs/sport/basketball.jpg',
+      '/brand/hubs/sport/tennis.jpg',
     ],
   },
   {
@@ -55,9 +54,9 @@ const MODES = [
     v: 'Film night from the same player as the match.',
     accent: 'brand' as const,
     posters: [
-      '/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
-      '/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
-      '/H6vke7zGiuLsz4v4RPeReb9rsv.jpg',
+      '/brand/open-films/big-buck-bunny.jpg',
+      '/brand/open-films/cosmos-laundromat.jpg',
+      '/brand/open-films/sprite-fright.jpg',
     ],
   },
   {
@@ -65,9 +64,9 @@ const MODES = [
     v: 'Seasons ready when the live night ends.',
     accent: 'flame' as const,
     posters: [
-      '/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg',
-      '/c15BtJxCXMrISLVmysdsnZUPQft.jpg',
-      '/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg',
+      '/brand/open-films/sintel.jpg',
+      '/brand/open-films/tears-of-steel.jpg',
+      '/brand/open-films/cosmos-laundromat.jpg',
     ],
   },
 ]
@@ -298,7 +297,7 @@ export function IptvPage() {
                           style={{ transitionDelay: `${pi * 45}ms` }}
                         >
                           <img
-                            src={tmdbPoster(path)}
+                            src={path}
                             alt=""
                             aria-hidden
                             className="aspect-[2/3] w-full rounded-md object-cover shadow-lg transition duration-500 group-hover:brightness-110"

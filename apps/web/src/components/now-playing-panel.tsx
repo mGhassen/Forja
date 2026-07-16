@@ -2,38 +2,35 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
-const tmdb = (path: string, size: 'w342' | 'w780' = 'w342') =>
-  `https://image.tmdb.org/t/p/${size}${path}`
-
-/** Verified TMDB paths — same set as the hero TV mock */
+/** CC BY Blender Foundation open movies — no TMDB commercial art. */
 const REEL = [
   {
-    id: 'dune2',
-    title: 'Dune: Part Two',
-    tag: 'Film',
-    poster: '/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
-    backdrop: '/eZ239CUp1d6OryZEBPnO2n87gMG.jpg',
+    id: 'sintel',
+    title: 'Sintel',
+    tag: 'Open film',
+    poster: '/brand/open-films/sintel.jpg',
+    backdrop: '/brand/open-films/sintel.jpg',
   },
   {
-    id: 'shogun',
-    title: 'Shōgun',
-    tag: 'Series',
-    poster: '/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg',
-    backdrop: '/6Tb87q9Tog30F5AAHh1gyDT2Vve.jpg',
+    id: 'bbb',
+    title: 'Big Buck Bunny',
+    tag: 'Open film',
+    poster: '/brand/open-films/big-buck-bunny.jpg',
+    backdrop: '/brand/open-films/big-buck-bunny.jpg',
   },
   {
-    id: 'fallout',
-    title: 'Fallout',
-    tag: 'Series',
-    poster: '/c15BtJxCXMrISLVmysdsnZUPQft.jpg',
-    backdrop: '/coaPCIqQBPUZsOnJcWZxhaORcDT.jpg',
+    id: 'tos',
+    title: 'Tears of Steel',
+    tag: 'Open film',
+    poster: '/brand/open-films/tears-of-steel.jpg',
+    backdrop: '/brand/open-films/tears-of-steel.jpg',
   },
   {
-    id: 'challengers',
-    title: 'Challengers',
-    tag: 'Film',
-    poster: '/H6vke7zGiuLsz4v4RPeReb9rsv.jpg',
-    backdrop: '/tq8COKsI99Bivjd4CZIYVGoKcIx.jpg',
+    id: 'cosmos',
+    title: 'Cosmos Laundromat',
+    tag: 'Open film',
+    poster: '/brand/open-films/cosmos-laundromat.jpg',
+    backdrop: '/brand/open-films/cosmos-laundromat.jpg',
   },
 ] as const
 
@@ -72,7 +69,7 @@ export function NowPlayingPanel({ className }: { className?: string }) {
           {REEL.map((item, i) => (
             <img
               key={item.id}
-              src={tmdb(item.backdrop, 'w780')}
+              src={item.backdrop}
               alt=""
               aria-hidden
               className={cn(
@@ -88,13 +85,13 @@ export function NowPlayingPanel({ className }: { className?: string }) {
           {/* Poster stack */}
           <div className="relative mx-auto h-[220px] w-[128px] shrink-0 sm:mx-0 sm:h-[320px] sm:w-[188px] lg:h-[360px] lg:w-[210px]">
             <img
-              src={tmdb(prev.poster)}
+              src={prev.poster}
               alt=""
               aria-hidden
               className="absolute top-4 left-0 hidden h-[85%] w-[85%] -rotate-6 rounded-xl object-cover opacity-35 shadow-lg sm:block"
             />
             <img
-              src={tmdb(next.poster)}
+              src={next.poster}
               alt=""
               aria-hidden
               className="absolute top-4 right-0 hidden h-[85%] w-[85%] rotate-6 rounded-xl object-cover opacity-35 shadow-lg sm:block"
@@ -102,7 +99,7 @@ export function NowPlayingPanel({ className }: { className?: string }) {
             {REEL.map((item, i) => (
               <img
                 key={item.id}
-                src={tmdb(item.poster)}
+                src={item.poster}
                 alt={item.title}
                 className={cn(
                   'absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl ring-1 ring-white/10 transition-all duration-500',

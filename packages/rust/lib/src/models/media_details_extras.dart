@@ -1,5 +1,6 @@
 import 'movie.dart';
 import 'media_trailer.dart';
+import 'watch_provider.dart';
 
 /// TMDB fields beyond [Movie] for details screens.
 class MediaDetailsExtras {
@@ -54,8 +55,14 @@ class MediaDetailsExtras {
 }
 
 class RichMediaDetails {
-  const RichMediaDetails({required this.movie, required this.extras});
+  const RichMediaDetails({
+    required this.movie,
+    required this.extras,
+    this.watchProviders = const [],
+  });
 
   final Movie movie;
   final MediaDetailsExtras extras;
+  /// TMDB flatrate / free / ads providers for the user's region.
+  final List<WatchProvider> watchProviders;
 }

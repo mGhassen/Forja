@@ -2,31 +2,7 @@ import 'dart:convert';
 
 import 'package:rust/rust.dart';
 import '../models/media_details_extras.dart';
-
-class WatchProvider {
-  const WatchProvider({
-    required this.id,
-    required this.name,
-    required this.logoPath,
-  });
-
-  final int id;
-  final String name;
-  final String logoPath;
-
-  String get logoUrl => 'https://image.tmdb.org/t/p/w92$logoPath';
-
-  /// Higher-res tile for top-bar cards (fills the card).
-  String get logoCardUrl => 'https://image.tmdb.org/t/p/w300$logoPath';
-
-  factory WatchProvider.fromJson(Map<String, dynamic> json) {
-    return WatchProvider(
-      id: json['provider_id'] as int,
-      name: json['provider_name'] as String? ?? '',
-      logoPath: json['logo_path'] as String? ?? '',
-    );
-  }
-}
+import '../models/watch_provider.dart';
 
 class TmdbApi {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
@@ -401,9 +377,37 @@ class TmdbApi {
   }
 
   static const _richAppendMovie =
-      'videos,credits,keywords,recommendations,release_dates,external_ids,images';
+      'videos,credits,keywords,recommendations,release_dates,external_ids,images,watch/providers';
   static const _richAppendTv =
-      'videos,credits,keywords,recommendations,content_ratings,external_ids,images';
+      'videos,credits,keywords,recommendations,content_ratings,external_ids,images,watch/providers';
+
+  static List<WatchProvider> parseWatchProviders(
+    Map<String, dynamic> json, {
+    String region = 'US',
+  }) {
+    final root = json['watch/providers'];
+    if (root is! Map<String, dynamic>) return const [];
+
+    final results = root['results'];
+    if (results is! Map<String, dynamic> || results.isEmpty) return const [];
+
+    var regionData = results[region];
+    regionData ??= results.values.first;
+    if (regionData is! Map<String, dynamic>) return const [];
+
+    final seen = <int>{};
+    final providers = <WatchProvider>[];
+    for (final key in ['flatrate', 'free', 'ads']) {
+      final list = regionData[key] as List? ?? [];
+      for (final raw in list) {
+        if (raw is! Map<String, dynamic>) continue;
+        final provider = WatchProvider.fromJson(raw);
+        if (provider.logoPath.isEmpty) continue;
+        if (seen.add(provider.id)) providers.add(provider);
+      }
+    }
+    return providers;
+  }
 
   static String? parseTrailerYoutubeKey(Map<String, dynamic> json) {
     final trailers = parseTrailers(json);
@@ -730,6 +734,7 @@ class TmdbApi {
     return RichMediaDetails(
       movie: _movieFromRichJson(json, mediaType: 'movie'),
       extras: parseMediaExtras(json, mediaType: 'movie'),
+      watchProviders: parseWatchProviders(json),
     );
   }
 
@@ -738,6 +743,7 @@ class TmdbApi {
     return RichMediaDetails(
       movie: _movieFromRichJson(json, mediaType: 'tv'),
       extras: parseMediaExtras(json, mediaType: 'tv'),
+      watchProviders: parseWatchProviders(json),
     );
   }
 
