@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
   Copy,
+  Download,
   Pencil,
   Plus,
   Search,
   Share2,
   Star,
   Trash2,
+  Upload,
   Users,
   X,
 } from 'lucide-react'
@@ -21,6 +23,14 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SettingsSection } from '@/components/settings-section'
 import { useUserSetting } from '@/hooks/use-user-setting'
+import {
+  downloadTextFile,
+  iptvPortalsCsvFilename,
+  mergePortalsFromCsv,
+  parsePortalsCsv,
+  portalsToCsv,
+  type MergePortalsCsvLogEntry,
+} from '@/lib/iptv-portal-csv'
 import {
   createPortalShare,
   formatShareCode,
@@ -184,8 +194,13 @@ export function AccountSettingsIptvPage() {
   const [sharingKey, setSharingKey] = useState<string | null>(null)
   const [m3uForm, setM3uForm] = useState({ name: '', sourceUrl: '' })
   const [savedFlash, setSavedFlash] = useState(false)
+  const [csvLog, setCsvLog] = useState<MergePortalsCsvLogEntry[] | null>(null)
+  const [csvLogSummary, setCsvLogSummary] = useState<string | null>(null)
+  const [csvError, setCsvError] = useState<string | null>(null)
+  const [csvImportBusy, setCsvImportBusy] = useState(false)
   const [portalPage, setPortalPage] = useState(1)
   const [m3uPage, setM3uPage] = useState(1)
+  const csvInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setDraft(emptyIptvPayload())
@@ -195,6 +210,9 @@ export function AccountSettingsIptvPage() {
     setEditingKey(null)
     setPortalPage(1)
     setM3uPage(1)
+    setCsvLog(null)
+    setCsvLogSummary(null)
+    setCsvError(null)
   }, [profileId])
 
   useEffect(() => {
@@ -378,6 +396,57 @@ export function AccountSettingsIptvPage() {
     }
   }
 
+  const exportPortalsCsv = () => {
+    if (sortedPortals.length === 0) return
+    setCsvError(null)
+    const csv = portalsToCsv(sortedPortals, favorites)
+    downloadTextFile(iptvPortalsCsvFilename(), csv)
+  }
+
+  const importPortalsCsv = async (file: File | null) => {
+    if (!file) return
+    setCsvImportBusy(true)
+    setCsvError(null)
+    setCsvLog(null)
+    setCsvLogSummary(null)
+    try {
+      const text = await file.text()
+      const parsed = parsePortalsCsv(text)
+      const merged = mergePortalsFromCsv(
+        draft.portals,
+        draft.favoriteKeys ?? [],
+        parsed.portals,
+      )
+      setDraft((prev) => ({
+        ...prev,
+        portals: merged.portals,
+        favoriteKeys: merged.favoriteKeys,
+      }))
+      const parts = [
+        merged.added > 0 ? `${merged.added} added` : null,
+        merged.skippedExisting > 0
+          ? `${merged.skippedExisting} already present`
+          : null,
+        parsed.skipped > 0 ? `${parsed.skipped} invalid` : null,
+      ].filter(Boolean)
+      setCsvLog(merged.log)
+      setCsvLogSummary(
+        parts.length > 0
+          ? `${parts.join(' · ')} — Save to sync.`
+          : 'No changes — Save to sync.',
+      )
+    } catch (error) {
+      setCsvError(
+        error instanceof Error ? error.message : 'Could not import CSV',
+      )
+      setCsvLog(null)
+      setCsvLogSummary(null)
+    } finally {
+      setCsvImportBusy(false)
+      if (csvInputRef.current) csvInputRef.current.value = ''
+    }
+  }
+
   const copyShare = async (portal: IptvPortalRow) => {
     const key = portalKey(portal)
     setSharingKey(key)
@@ -465,7 +534,7 @@ export function AccountSettingsIptvPage() {
     >
       <SettingsSection
         label="Xtream portals"
-        description="Favorites stay on top. Search filters name, URL, and username."
+        description="Favorites stay on top. Search filters name, URL, and username. Import / Export CSV includes passwords."
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative min-w-0 flex-1">
@@ -478,6 +547,42 @@ export function AccountSettingsIptvPage() {
               className="pl-9"
             />
           </div>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null
+              void importPortalsCsv(file)
+            }}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={csvImportBusy}
+            onClick={() => csvInputRef.current?.click()}
+            title="Import portals from a CSV file (adds only portals not already in your list)"
+          >
+            <Upload className="mr-2 size-4" />
+            {csvImportBusy ? 'Importing…' : 'Import CSV'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={sortedPortals.length === 0}
+            onClick={exportPortalsCsv}
+            title={
+              sortedPortals.length === 0
+                ? 'Add portals before exporting'
+                : 'Download all portals as CSV (includes passwords)'
+            }
+          >
+            <Download className="mr-2 size-4" />
+            Export CSV
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -493,6 +598,76 @@ export function AccountSettingsIptvPage() {
             {addOpen ? 'Close' : 'Add'}
           </Button>
         </div>
+
+        {csvError ? (
+          <div
+            role="alert"
+            className="mb-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+          >
+            {csvError}
+          </div>
+        ) : null}
+
+        {csvLog ? (
+          <div
+            role="status"
+            aria-label="CSV import log"
+            className="mb-3 rounded-md border border-forja-border bg-forja-elevated/60"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-forja-border px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-forja-muted">
+                  Import log
+                </p>
+                {csvLogSummary ? (
+                  <p className="truncate text-sm text-forja-green">{csvLogSummary}</p>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 shrink-0 p-0"
+                aria-label="Close import log"
+                onClick={() => {
+                  setCsvLog(null)
+                  setCsvLogSummary(null)
+                }}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            <ul className="max-h-48 overflow-y-auto px-3 py-2 font-mono text-xs leading-relaxed">
+              {csvLog.map((entry, index) => (
+                <li
+                  key={`${entry.status}-${entry.url}-${entry.username}-${index}`}
+                  className={cn(
+                    'flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-0.5',
+                    entry.status === 'added'
+                      ? 'text-forja-green'
+                      : 'text-forja-muted',
+                  )}
+                >
+                  <span className="shrink-0 tabular-nums text-white/30">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="shrink-0 uppercase tracking-wide">
+                    {entry.status === 'added' ? 'added' : 'skip'}
+                  </span>
+                  <span className="min-w-0 truncate font-sans text-[13px] text-white/90">
+                    {entry.label}
+                  </span>
+                  <span className="min-w-0 truncate text-white/35">
+                    {entry.username}@{entry.url}
+                  </span>
+                  {entry.status === 'already_present' ? (
+                    <span className="text-amber-400/90">already present</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <p className="mb-2 text-xs text-forja-muted">
           {filteredPortals.length}

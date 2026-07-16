@@ -50,7 +50,10 @@ Not synced — device-specific or sensitive:
 - Select the active profile from the app account panel or web settings header
 - Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from
   the web (share codes match the app peer-code flow). Portal rows match the app
-  panel (expiry, name, URL, seats); lists paginate every 10 items
+  panel (expiry, name, URL, seats); lists paginate every 10 items. **Import CSV** /
+  **Export CSV** move portals (including passwords) as a spreadsheet-friendly file —
+  import adds only portals that are not already in your list (shown in an import log);
+  then **Save** to sync.
 - Change playback prefs and provider order from the web
 - Manage Stremio addon URLs from the web
 - Sign out (local settings stay on the device)
