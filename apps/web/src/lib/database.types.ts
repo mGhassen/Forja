@@ -12,20 +12,49 @@ export type Database = {
       user_settings: {
         Row: {
           user_id: string
+          profile_id: string
           domain: string
           payload: Json
           updated_at: string
         }
         Insert: {
           user_id: string
+          profile_id: string
           domain: string
           payload: Json
           updated_at?: string
         }
         Update: {
           user_id?: string
+          profile_id?: string
           domain?: string
           payload?: Json
+          updated_at?: string
+        }
+      }
+      profiles: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          color?: string
+          created_at?: string
           updated_at?: string
         }
       }
@@ -126,4 +155,5 @@ export type Database = {
 export type Release = Database['public']['Tables']['releases']['Row']
 export type ReleaseAsset = Database['public']['Tables']['release_assets']['Row']
 export type UserSetting = Database['public']['Tables']['user_settings']['Row']
+export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Announcement = Database['public']['Tables']['announcements']['Row']

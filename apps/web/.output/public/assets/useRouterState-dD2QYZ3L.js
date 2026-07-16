@@ -1,0 +1,1 @@
+import{a as e,n as t,r as n}from"./useMatch-CcToMSxM.js";function r(r){let i=e({warn:r?.router===void 0}),a=r?.router||i;return n(a.stores.__store,t(r,a))}export{r as t};

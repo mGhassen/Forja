@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **0 / 4** acceptance (slice 2 mobile) |
-| **Current slice** | Slice 1d TV desktop visual parity shipped in code — leanback manual smoke blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **0 / 4** acceptance (slice 2 mobile) |
+| **Current slice** | Slice 1e shared card play motion shipped in code; slice 1d leanback manual smoke still blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -75,6 +75,14 @@
 | 24 | R28-A24 | No `usesTvDensity` / `ShellProfile.tv` visual layout branches in in-scope tabs, details, player sources panels | ✅ |
 | 25 | R28-A25 | TV `ShellInputPolicy` unchanged — focus rings, D-pad coordinator, hero Play autofocus | ✅ |
 | 26 | R28-A26 | Manual leanback smoke — all tabs + details + player sources at desktop sizing | ⬜ |
+
+---
+
+## Acceptance (slice 1e — shared card play motion)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 27 | R28-A27 | Shared card play controls enlarge and float upward on desktop hover / TV focus, including compact IPTV list rows | ✅ |
 
 ---
 

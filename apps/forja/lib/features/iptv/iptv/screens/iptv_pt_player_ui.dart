@@ -73,24 +73,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     return safeBottom + barPad + barHeight + seekbar + 12;
   }
 
-  Future<void> _applyAutoAudio() async {
-    if (_s._exoBackend) return;
-    try {
-      final settings = SettingsService();
-      final audioLang = await settings.getPreferredAudioLanguage();
-      final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
-      final best = pickBestAudioTrack(
-        audioTracks: _s._player!.state.tracks.audio,
-        preferredAudioLang: audioLang,
-        avoidUnsupportedAudio: avoidUnsupported,
-      );
-      if (best == null) return;
-      await _s._player!.setAudioTrack(best);
-    } catch (e) {
-      debugPrint('[IPTV] auto audio select failed: $e');
-    }
-  }
-
   void _showStatsMenu(BuildContext anchorContext) {
     if (_s._exoBackend || _s._player == null) return;
     _scheduleHideControls();
@@ -116,8 +98,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   void _scheduleHideControls() {
     _s._hideControlsTimer?.cancel();
     if (_s._guideVisible || _s._searchVisible) return;
-    _s._hideControlsTimer =
-        Timer(const Duration(seconds: 4), () {
+    _s._hideControlsTimer = Timer(const Duration(seconds: 4), () {
       if (!mounted) return;
       setState(() => _s._controlsVisible = false);
     });
@@ -151,18 +132,14 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ShellScopeBuilder(
-      builder: (context, _) => _buildPlayer(context),
-    );
+    return ShellScopeBuilder(builder: (context, _) => _buildPlayer(context));
   }
 
   Widget _buildPlayer(BuildContext context) {
     if (!_s._playerReady) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white54),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Colors.white54)),
       );
     }
 
@@ -174,7 +151,8 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: PlayerTvKeyScope(
-        enabled: iptvUseTvFocus(context) && !_s._guideVisible && !_s._searchVisible,
+        enabled:
+            iptvUseTvFocus(context) && !_s._guideVisible && !_s._searchVisible,
         focusNode: _s._playerTvKeyFocus,
         showControls: _s._controlsVisible,
         onBack: () {
@@ -217,92 +195,96 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         },
         onToggleControls: _toggleControls,
         child: MouseRegion(
-        onHover: (_) => _onPlayerMouseMove(),
-        cursor: (_s._controlsVisible ||
-                _s._guideVisible ||
-                _s._searchVisible)
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.none,
-        child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _toggleControls,
-        // Double-click / double-tap video → toggle fullscreen (same as films).
-        onDoubleTap: () {
-          if (_s._guideVisible || _s._searchVisible) return;
-          unawaited(_s._toggleFullscreen());
-        },
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Video — fill the stack like the main player (Center can leave
-            // a zero-sized surface on Android when Impeller composites siblings).
-            Positioned.fill(
-              child: _s._exoBackend
-                  ? ExoPlayerView(viewId: _s._exoViewId!)
-                  : Video(
-                key: ValueKey(_s._videoEpoch),
-                controller: _s._controller!,
-                fit: BoxFit.contain,
-                fill: Colors.black,
-                controls: NoVideoControls,
-              ),
-            ),
-            // Reconnect/buffering banner
-            if (_s._buffering || _s._statusBanner != null) _buildBanner(),
-            // Top bar + bottom controls (below guide when open)
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 220),
-              opacity: _s._controlsVisible ? 1 : 0,
-              child: ExcludeFocus(
-                excluding: iptvUseTvFocus(context) &&
-                    (!_s._controlsVisible || _s._guideVisible || _s._searchVisible),
-                child: IgnorePointer(
-                ignoring: !_s._controlsVisible || _s._guideVisible || _s._searchVisible,
-                child: _buildOverlay(compact),
-              ),
-              ),
-            ),
-            if (_s._searchVisible && widget.channelGuide != null)
-              IptvChannelSearchOverlay(
-                guide: widget.channelGuide!,
-                currentChannelId: _s._currentChannelId,
-                onChannelSelected: _onSearchChannelSelected,
-                onClose: () => setState(() {
-                  _s._searchVisible = false;
-                  _scheduleHideControls();
-                }),
-              ),
-            if (_s._guideVisible && widget.channelGuide != null)
-              IptvChannelGuidePanel(
-                guide: widget.channelGuide!,
-                selectedGroupId: _s._selectedGroupId,
-                currentChannelId: _s._currentChannelId,
-                onGroupSelected: (id) {
-                  setState(() => _s._selectedGroupId = id);
-                },
-                onChannelSelected: _s._switchChannel,
-                onClose: () => setState(() => _s._guideVisible = false),
-              ),
-            if (epgFuture != null)
-              Positioned(
-                right: 16,
-                bottom: _floatingEpgBottomInset(context, compact),
-                child: AnimatedOpacity(
+          onHover: (_) => _onPlayerMouseMove(),
+          cursor: (_s._controlsVisible || _s._guideVisible || _s._searchVisible)
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.none,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleControls,
+            // Double-click / double-tap video → toggle fullscreen (same as films).
+            onDoubleTap: () {
+              if (_s._guideVisible || _s._searchVisible) return;
+              unawaited(_s._toggleFullscreen());
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Video — fill the stack like the main player (Center can leave
+                // a zero-sized surface on Android when Impeller composites siblings).
+                Positioned.fill(
+                  child: _s._exoBackend
+                      ? ExoPlayerView(viewId: _s._exoViewId!)
+                      : Video(
+                          key: ValueKey(_s._videoEpoch),
+                          controller: _s._controller!,
+                          fit: BoxFit.contain,
+                          fill: Colors.black,
+                          controls: NoVideoControls,
+                        ),
+                ),
+                // Reconnect/buffering banner
+                if (_s._buffering || _s._statusBanner != null) _buildBanner(),
+                // Top bar + bottom controls (below guide when open)
+                AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
                   opacity: _s._controlsVisible ? 1 : 0,
-                  child: IgnorePointer(
-                    ignoring: !_s._controlsVisible,
-                    child: IptvFloatingEpg(
-                      key: ValueKey(_s._currentChannelId),
-                      future: epgFuture,
-                      maxWidth: compact ? 440 : 540,
+                  child: ExcludeFocus(
+                    excluding:
+                        iptvUseTvFocus(context) &&
+                        (!_s._controlsVisible ||
+                            _s._guideVisible ||
+                            _s._searchVisible),
+                    child: IgnorePointer(
+                      ignoring:
+                          !_s._controlsVisible ||
+                          _s._guideVisible ||
+                          _s._searchVisible,
+                      child: _buildOverlay(compact),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-      ),
+                if (_s._searchVisible && widget.channelGuide != null)
+                  IptvChannelSearchOverlay(
+                    guide: widget.channelGuide!,
+                    currentChannelId: _s._currentChannelId,
+                    onChannelSelected: _onSearchChannelSelected,
+                    onClose: () => setState(() {
+                      _s._searchVisible = false;
+                      _scheduleHideControls();
+                    }),
+                  ),
+                if (_s._guideVisible && widget.channelGuide != null)
+                  IptvChannelGuidePanel(
+                    guide: widget.channelGuide!,
+                    selectedGroupId: _s._selectedGroupId,
+                    currentChannelId: _s._currentChannelId,
+                    onGroupSelected: (id) {
+                      setState(() => _s._selectedGroupId = id);
+                    },
+                    onChannelSelected: _s._switchChannel,
+                    onClose: () => setState(() => _s._guideVisible = false),
+                  ),
+                if (epgFuture != null)
+                  Positioned(
+                    right: 16,
+                    bottom: _floatingEpgBottomInset(context, compact),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 220),
+                      opacity: _s._controlsVisible ? 1 : 0,
+                      child: IgnorePointer(
+                        ignoring: !_s._controlsVisible,
+                        child: IptvFloatingEpg(
+                          key: ValueKey(_s._currentChannelId),
+                          future: epgFuture,
+                          maxWidth: compact ? 440 : 540,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -319,7 +301,9 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: IptvShellStyle.accent.withValues(alpha: 0.4)),
+            border: Border.all(
+              color: IptvShellStyle.accent.withValues(alpha: 0.4),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -368,8 +352,10 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
-            _buildBottomChannelLogo(compact),
-            if (_s._isVod) _buildSeekbar(compact),
+            if (_s._isVod)
+              _buildSeekbar(compact)
+            else
+              _buildLiveChannelLogo(compact),
             _buildBottomBar(compact),
           ],
         ),
@@ -463,23 +449,28 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   // ───────────────────────────────────────────────────────────────────────
   //  VOD SEEKBAR — only shown when duration > 0 (Xtream movies / series)
   // ───────────────────────────────────────────────────────────────────────
-  Widget _buildBottomChannelLogo(bool compact) {
+  Widget _buildChannelLogo(bool compact) {
     if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
-    final size = compact ? 44.0 : 56.0;
+    final size = compact ? 56.0 : 72.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        _s._logoUrl!,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  Widget _buildLiveChannelLogo(bool compact) {
+    if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.bottomLeft,
       child: Padding(
         padding: EdgeInsets.fromLTRB(compact ? 16 : 24, 0, 0, 8),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            _s._logoUrl!,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const SizedBox.shrink(),
-          ),
-        ),
+        child: _buildChannelLogo(compact),
       ),
     );
   }
@@ -499,36 +490,25 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
       ),
       child: Row(
         children: [
-          // Current time
-          SizedBox(
-            width: compact ? 84 : 100,
-            child: Text(
-              _IptvPtPlayerScreenState._fmtDur(shownPos),
-              style: GoogleFonts.spaceMono(
-                color: Colors.white,
-                fontSize: compact ? 12 : 13,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                shadows: const [
-                  Shadow(blurRadius: 6, color: Colors.black87),
-                ],
-              ),
-            ),
-          ),
+          if ((_s._logoUrl ?? '').isNotEmpty) ...[
+            _buildChannelLogo(compact),
+            SizedBox(width: compact ? 10 : 16),
+          ],
           // Slider
           Expanded(
             child: SliderTheme(
               data: IptvShellStyle.sliderTheme(context).copyWith(
                 activeTrackColor: ForjaShellColors.brandGreen,
                 thumbColor: ForjaShellColors.brandGreen,
-                overlayColor:
-                    ForjaShellColors.brandGreen.withValues(alpha: 0.2),
+                overlayColor: ForjaShellColors.brandGreen.withValues(
+                  alpha: 0.2,
+                ),
                 trackHeight: 3.5,
                 thumbShape: const RoundSliderThumbShape(
                   enabledThumbRadius: 7,
                   elevation: 3,
                 ),
-                overlayShape:
-                    const RoundSliderOverlayShape(overlayRadius: 16),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                 trackShape: const RoundedRectSliderTrackShape(),
               ),
               child: Slider(
@@ -559,6 +539,20 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               ),
             ),
           ),
+          // Current time
+          SizedBox(
+            width: compact ? 84 : 100,
+            child: Text(
+              _IptvPtPlayerScreenState._fmtDur(shownPos),
+              textAlign: TextAlign.right,
+              style: GoogleFonts.spaceMono(
+                color: Colors.white,
+                fontSize: compact ? 12 : 13,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -566,18 +560,23 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   Widget _buildBottomBar(bool compact) {
     const rowId = 'iptv-player-controls';
-    final expectedCount = 3 // play, replay, mute
-        + (_s._exoBackend ? 0 : 1) // stats
-        + (widget.channelGuide != null ? 2 : 0)
-        + (_s._sources.length > 1 ? 1 : 0)
-        + 1; // fullscreen
+    final expectedCount =
+        3 // play, replay, mute
+        +
+        (_s._exoBackend ? 0 : 1) // stats
+        +
+        (widget.channelGuide != null ? 2 : 0) +
+        (_s._sources.length > 1 ? 1 : 0) +
+        1; // fullscreen
     iptvSyncRow(rowId: rowId, sortOrder: 1, itemCount: expectedCount);
     var i = 0;
-    final upToTop = () => iptvFocusRowItem('iptv-player-top', 0);
+    void upToTop() => iptvFocusRowItem('iptv-player-top', 0);
 
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: compact ? 16 : 24, vertical: compact ? 12 : 18),
+        horizontal: compact ? 16 : 24,
+        vertical: compact ? 12 : 18,
+      ),
       child: Row(
         children: [
           IptvRoundIcon(
@@ -628,14 +627,15 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                   icon: _s._muted || _s._volume == 0
                       ? Icons.volume_off_rounded
                       : (_s._volume < 40
-                          ? Icons.volume_down_rounded
-                          : Icons.volume_up_rounded),
+                            ? Icons.volume_down_rounded
+                            : Icons.volume_up_rounded),
                   tvRowId: rowId,
                   tvItemIndex: i++,
                   onTap: _toggleMute,
                   onLongPress: () {
                     setState(
-                        () => _s._showVolumeSlider = !_s._showVolumeSlider);
+                      () => _s._showVolumeSlider = !_s._showVolumeSlider,
+                    );
                     if (_s._showVolumeSlider) {
                       _s._hideVolumeTimer?.cancel();
                     } else {
@@ -659,7 +659,8 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                             inactiveTrackColor: Colors.white24,
                             trackHeight: 3,
                             thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 7),
+                              enabledThumbRadius: 7,
+                            ),
                           ),
                           child: Slider(
                             value: _s._volume.clamp(0.0, 100.0),
@@ -794,14 +795,18 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                     final active = i == _s._sourceIdx;
                     return ListTile(
                       leading: Icon(
-                        active ? Icons.radio_button_checked : Icons.radio_button_off,
+                        active
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
                         color: active ? IptvShellStyle.accent : Colors.white54,
                       ),
                       title: Text(
                         s.label,
                         style: GoogleFonts.plusJakartaSans(
                           color: Colors.white,
-                          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: active
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                         ),
                       ),
                       subtitle: Text(

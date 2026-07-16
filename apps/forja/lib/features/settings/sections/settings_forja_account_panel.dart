@@ -18,6 +18,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   bool _busy = false;
   String? _error;
   int _domains = 0;
+  List<SyncProfile> _profiles = const [];
+  String? _activeProfileId;
 
   @override
   void initState() {
@@ -35,12 +37,41 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   Future<void> _refreshRemote() async {
     await ForjaSupabase.ensureInitialized();
     if (!SyncService.instance.isSignedIn) {
-      if (mounted) setState(() => _domains = 0);
+      if (mounted) {
+        setState(() {
+          _domains = 0;
+          _profiles = const [];
+          _activeProfileId = null;
+        });
+      }
       return;
     }
+    final profiles = await SyncService.instance.listProfiles();
+    final activeProfile = await SyncService.instance.activeProfile();
     final remote = await SyncService.instance.pullSettings();
     if (!mounted) return;
-    setState(() => _domains = remote?.length ?? 0);
+    setState(() {
+      _profiles = profiles;
+      _activeProfileId = activeProfile?.id;
+      _domains = remote?.length ?? 0;
+    });
+  }
+
+  Future<void> _selectProfile(String profileId) async {
+    if (profileId == _activeProfileId || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    await SyncDomainBridge.instance.prepareProfileSwitch();
+    final selected = await SyncService.instance.selectProfile(profileId);
+    if (selected) {
+      await SyncDomainBridge.instance.pullAndMergeAll();
+      if (mounted) ForjaToast.success('Profile switched');
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    await _refreshRemote();
   }
 
   Future<void> _signIn() async {
@@ -89,7 +120,11 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   Future<void> _signOut() async {
     await SyncService.instance.signOut();
     if (!mounted) return;
-    setState(() => _domains = 0);
+    setState(() {
+      _domains = 0;
+      _profiles = const [];
+      _activeProfileId = null;
+    });
     ForjaToast.info('Signed out');
   }
 
@@ -122,6 +157,27 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                   : '$_domains synced domain${_domains == 1 ? '' : 's'}',
             ),
           ),
+          if (_profiles.isNotEmpty)
+            DropdownButtonFormField<String>(
+              initialValue: _activeProfileId,
+              decoration: const InputDecoration(
+                labelText: 'Active profile',
+                isDense: true,
+              ),
+              items: [
+                for (final profile in _profiles)
+                  DropdownMenuItem(
+                    value: profile.id,
+                    child: Text(profile.name),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) {
+                      if (value != null) _selectProfile(value);
+                    },
+            ),
+          if (_profiles.isNotEmpty) const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(

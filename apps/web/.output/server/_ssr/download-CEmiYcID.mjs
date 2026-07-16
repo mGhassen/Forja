@@ -1,9 +1,9 @@
 import { r as __toESM } from "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { a as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
+import { i as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
 import { n as supabase, r as supabaseConfigured } from "./use-auth-xp43OQr8.mjs";
-import { n as SiteHeader, r as cn } from "./site-header-CQxqjJmj.mjs";
 import { n as useQuery } from "../_libs/tanstack__react-query.mjs";
+import { n as SiteHeader, r as cn } from "./site-header-CQxqjJmj.mjs";
 import { r as SiteFooter } from "./legal-shell-CuLzYo6R.mjs";
 import { t as Reveal } from "./reveal-C110PiPA.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/download-CEmiYcID.js

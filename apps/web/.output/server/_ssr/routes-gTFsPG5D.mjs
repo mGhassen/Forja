@@ -1,6 +1,6 @@
 import { r as __toESM } from "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { a as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
+import { i as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
 import { f as Link } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as SiteHeader, r as cn } from "./site-header-CQxqjJmj.mjs";
 import { r as SiteFooter } from "./legal-shell-CuLzYo6R.mjs";

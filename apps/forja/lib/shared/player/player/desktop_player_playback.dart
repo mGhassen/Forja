@@ -1,6 +1,7 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerPlayback
+    on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(
@@ -122,9 +123,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
           );
           if (_fallbackAborted(runGen)) return false;
           if (!reachable) {
-            debugPrint(
-              '[Player] Source $i failed reachability: $catalogUrl',
-            );
+            debugPrint('[Player] Source $i failed reachability: $catalogUrl');
             _s._statusController.upsert(
               'source-$i',
               source.title,
@@ -216,7 +215,8 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
           final dur = _s._player.state.duration;
-          final nearCredits = dur.inSeconds >= 90 &&
+          final nearCredits =
+              dur.inSeconds >= 90 &&
               seekAfterOpen >= dur - const Duration(seconds: 15);
           if (!nearCredits) {
             await _s._player.seek(seekAfterOpen);
@@ -233,9 +233,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         _s._statusController.complete();
         _s._markSourceActive(i);
         _s._syncPanelAfterPlaybackConfirmed();
-        unawaited(
-          _s._recordStreamPlaySuccess(_s._currentProvider ?? ''),
-        );
+        unawaited(_s._recordStreamPlaySuccess(_s._currentProvider ?? ''));
         widget.onPlaybackStarted?.call();
         return true;
       } catch (e) {
@@ -320,9 +318,9 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
             if (!_fallbackAborted(initGen) &&
                 hit != null &&
                 hit.streamSources.isNotEmpty) {
-              final fresh = dedupeStreamSources(hit.streamSources)
-                  .where((s) => !isUnplayableCachedStreamUrl(s.url))
-                  .toList();
+              final fresh = dedupeStreamSources(
+                hit.streamSources,
+              ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
               if (fresh.isEmpty) {
                 _s._markProviderLoadFailed(pid);
               } else {
@@ -365,8 +363,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
           );
           if (!recovered && !_fallbackAborted(initGen)) {
             await _failPlaybackNoFailover(
-              message:
-                  'Could not find any working stream from any provider.',
+              message: 'Could not find any working stream from any provider.',
             );
           }
         }
@@ -375,8 +372,8 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         // Never hand a raw magnet to mpv (treated as a relative file under tmp).
         var openUrl = widget.mediaPath;
         if (isTorrentStreamUrl(openUrl)) {
-          final magnet = (widget.magnetLink != null &&
-                  widget.magnetLink!.isNotEmpty)
+          final magnet =
+              (widget.magnetLink != null && widget.magnetLink!.isNotEmpty)
               ? widget.magnetLink!
               : openUrl;
           final settings = SettingsService();
@@ -512,9 +509,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       return false;
     }
 
-    debugPrint(
-      '[Player] Dead sources — full Auto re-resolve like first Play',
-    );
+    debugPrint('[Player] Dead sources — full Auto re-resolve like first Play');
     PlaybackEngine.cancelAllPending();
     _s._statusController.upsert(
       'reresolve',
@@ -540,16 +535,13 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
           _ => StatusRouletteKind.loading,
         };
         _s._statusController.upsert('provider-$providerId', label, kind: kind);
-        _s._syncProbeStatus(
-          providerId,
-          switch (status) {
-            'success' => StreamProviderProbeStatus.success,
-            'failed' => StreamProviderProbeStatus.failed,
-            'skipped' => StreamProviderProbeStatus.skippedOnTv,
-            'trying' => StreamProviderProbeStatus.trying,
-            _ => StreamProviderProbeStatus.pending,
-          },
-        );
+        _s._syncProbeStatus(providerId, switch (status) {
+          'success' => StreamProviderProbeStatus.success,
+          'failed' => StreamProviderProbeStatus.failed,
+          'skipped' => StreamProviderProbeStatus.skippedOnTv,
+          'trying' => StreamProviderProbeStatus.trying,
+          _ => StreamProviderProbeStatus.pending,
+        });
       },
       onHitsUpdated: (hits) {
         if (_fallbackAborted(chainGen)) return;
@@ -566,9 +558,9 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       return false;
     }
 
-    final fresh = dedupeStreamSources(hit.streamSources)
-        .where((s) => !isUnplayableCachedStreamUrl(s.url))
-        .toList();
+    final fresh = dedupeStreamSources(
+      hit.streamSources,
+    ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
     if (fresh.isEmpty) {
       _s._statusController.complete();
       return false;
@@ -603,7 +595,6 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
     if (pid != null && pid.isNotEmpty) {
       _s._markProviderLoadFailed(pid);
     }
-    notifyNoServerAvailable(_s._statusController);
     _s._finalizeProbeStatusesAfterPlayback();
     setState(() {
       _s._hasError = true;
@@ -615,7 +606,6 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
 
   Future<void> _autoFallbackToNextProvider() async {
     if (widget.providers == null || widget.providers!.isEmpty) {
-      notifyNoServerAvailable(_s._statusController);
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
@@ -641,7 +631,6 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
     }
 
     if (mounted && !_fallbackAborted(chainGen)) {
-      notifyNoServerAvailable(_s._statusController);
       _s._finalizeProbeStatusesAfterPlayback();
       setState(() {
         _s._hasError = true;
@@ -712,9 +701,9 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       if (_fallbackAborted(gen)) return false;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         final resolvedSources = sources != null && sources.isNotEmpty
-            ? dedupeStreamSources(sources)
-                .where((s) => !isUnplayableCachedStreamUrl(s.url))
-                .toList()
+            ? dedupeStreamSources(
+                sources,
+              ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList()
             : [
                 StreamSource(
                   url: streamUrl,

@@ -392,6 +392,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       var preferred = SourceEngine.auto;
       KissKhStream? stream;
       String? winningHost;
+      var sawRateLimit = false;
 
       while (mounted && !_cancelled) {
         _switchingManualMirror = false;
@@ -517,6 +518,13 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         winningHost = null;
         for (final host in healthyOrder) {
           if (!mounted || _cancelled || _switchingManualMirror) break;
+          if (sawRateLimit) {
+            // Same client IP — hopping .nl → .ovh → .do only deepens the ban.
+            debugPrint(
+              '[AsianDrama] skipping remaining mirrors after KissKH rate limit',
+            );
+            break;
+          }
           _applyProbeStatus(host, StreamProviderProbeStatus.trying);
           _setPhase('Opening ${KissKhService.mirrorLabel(host)}…');
 
@@ -526,11 +534,17 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
             episodeId: episode.id,
             episodeNumber: episode.number,
             forcedBaseUrl: KissKhService.baseUrlForHost(host),
-            timeout: const Duration(seconds: 12),
+            // Rate-limit cool-down needs headroom beyond the silent ~10s fail.
+            timeout: const Duration(seconds: 45),
             isCancelled: () =>
                 _cancelled || _switchingManualMirror,
             onProgress: (phase, detail) {
               if (!mounted || _switchingManualMirror) return;
+              if (phase == 'rate_limit') {
+                sawRateLimit = true;
+                _setPhase(detail);
+                return;
+              }
               if (phase == 'init' ||
                   phase == 'loaded' ||
                   phase == 'retry' ||
@@ -574,9 +588,15 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         setState(() {
           _failedAll = true;
           _isUpcoming = false;
-          _setPhase('No stream available');
-          _statusLine =
-              'No healthy KissKH mirror returned a stream for this episode.';
+          if (sawRateLimit) {
+            _setPhase('KissKH rate limited');
+            _statusLine =
+                'KissKH asked us to slow down. Wait about a minute, then try Play again.';
+          } else {
+            _setPhase('No stream available');
+            _statusLine =
+                'No healthy KissKH mirror returned a stream for this episode.';
+          }
         });
         return;
       }

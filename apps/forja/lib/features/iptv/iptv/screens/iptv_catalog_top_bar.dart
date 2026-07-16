@@ -577,7 +577,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         ? playerSourceStatusColor(PlayerSourceStatus.active)
         : health == false
             ? playerSourceStatusColor(PlayerSourceStatus.failed)
-            : playerSourceStatusColor(PlayerSourceStatus.ready);
+            : playerSourceStatusColor(PlayerSourceStatus.unchecked);
     return Container(
       width: 8,
       height: 8,

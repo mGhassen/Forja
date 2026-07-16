@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 17** fix · **0 / 2** device smoke |
+| **Progress** | **18 / 18** fix · **0 / 3** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -36,6 +36,7 @@
 | 15 | I45-T15 | Fix probe hang: no OS-thread fan-out around shared Tokio `block_on`; Dart `Future.wait` + `probe_one` | ✅ |
 | 16 | I45-T16 | Probe deadline + per-mirror Dart timeout so one hung worker cannot block auto mirror pick | ✅ |
 | 17 | I45-T17 | Pinned extract: one hard-nav recovery then fail over (~10s) instead of burning full timeout per silent mirror | ✅ |
+| 18 | I45-T18 | Detect KissKH "Too many request." rate limit — cool down + Retry; do not hard-nav / hop mirrors on same IP | ✅ |
 
 ---
 
@@ -45,6 +46,7 @@
 |--:|----|-------------|--------|
 | 1 | I45-A01 | Backrooms (and a TVSeries title) resolve to `xhr hit` without stuck “Waiting for stream key…” on cold open | ⬜ |
 | 2 | I45-A02 | With the active KissKh domain unavailable, catalog and episode extract select another compatible mirror and preserve matching IDs | ⬜ |
+| 3 | I45-A03 | When KissKH shows "Too many request.", Forja backs off (no mirror hop storm) and surfaces a clear rate-limit message | ⬜ |
 
 ---
 
@@ -94,3 +96,16 @@ ignored once extract starts.
 **Shipped (I45-T17):** pinned/sequential extract hard-navigates once at 5s; if the
 Episode API is still silent at 10s, complete empty and let the loader try the
 next healthy mirror (was ~16s per dead host).
+
+### Rate limit (2026-07-16)
+
+Live macOS + browser verification: KissKH episode pages render
+**"Too many request."** / Retry when the client IP is throttled. Hooks install
+(`intercept ready`) but the SPA never calls `/api/DramaList/Episode/…`, so
+logs show silent Episode API → hard-nav → fail over across `.nl` / `.ovh` /
+`.do` — each hop shares the same IP and deepens the ban. A normal browser tab
+that is not under the ban still plays.
+
+**Shipped (I45-T18):** WebView detects the rate-limit copy; cools down and
+clicks Retry instead of hard-nav; Asian Drama stops hopping mirrors after a
+rate-limit signal and shows an explicit “slow down / try again” message.

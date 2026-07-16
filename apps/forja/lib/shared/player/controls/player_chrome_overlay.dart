@@ -38,8 +38,7 @@ bool playerChromeFocusActive(
 bool playerChromeTvFocused({
   required bool tvFocusable,
   required bool focused,
-}) =>
-    tvFocusable && focused;
+}) => tvFocusable && focused;
 
 Color playerChromeIconColor({
   required bool enabled,
@@ -115,39 +114,36 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
   bool _focused = false;
 
   bool get _highlight => playerChromeFocusActive(
-        context,
-        tvFocusable: widget.tvFocusable,
-        hovered: _hovered,
-        focused: _focused,
-      );
+    context,
+    tvFocusable: widget.tvFocusable,
+    hovered: _hovered,
+    focused: _focused,
+  );
 
-  bool get _tvFocused => playerChromeTvFocused(
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused =>
+      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
 
   Color get _iconColor => playerChromeIconColor(
-        enabled: true,
-        active: widget.active,
-        highlight: _highlight,
-        tvFocused: _tvFocused,
-      );
+    enabled: true,
+    active: widget.active,
+    highlight: _highlight,
+    tvFocused: _tvFocused,
+  );
 
   Color get _labelColor => _iconColor;
 
   Color get _backgroundColor => playerChromeBackgroundColor(
-        active: widget.active,
-        highlight: _highlight,
-        tvFocused: _tvFocused,
-      );
+    active: widget.active,
+    highlight: _highlight,
+    tvFocused: _tvFocused,
+  );
 
   @override
   Widget build(BuildContext context) {
     final onTap = widget.onPressedWithContext != null
         ? () => widget.onPressedWithContext!(context)
         : widget.onPressed;
-    final borderRadius =
-        widget.label == null ? widget.size / 2 : 8.0;
+    final borderRadius = widget.label == null ? widget.size / 2 : 8.0;
     final shape = playerChromeButtonShape(
       isCircle: widget.label == null,
       tvFocused: _tvFocused,
@@ -240,16 +236,14 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
   bool _focused = false;
 
   bool get _highlight => playerChromeFocusActive(
-        context,
-        tvFocusable: widget.tvFocusable,
-        hovered: _hovered,
-        focused: _focused,
-      );
+    context,
+    tvFocusable: widget.tvFocusable,
+    hovered: _hovered,
+    focused: _focused,
+  );
 
-  bool get _tvFocused => playerChromeTvFocused(
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused =>
+      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +251,11 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
         ? () => widget.onPressedWithContext!(context)
         : null;
     final fgAlpha = widget.enabled
-        ? (_tvFocused ? 1.0 : _highlight ? 0.95 : 0.88)
+        ? (_tvFocused
+              ? 1.0
+              : _highlight
+              ? 0.95
+              : 0.88)
         : 0.4;
     final iconColor = _tvFocused
         ? ForjaShellColors.brandGreen
@@ -302,8 +300,9 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                           ? ForjaShellColors.brandGreen
                           : Colors.white.withValues(alpha: fgAlpha),
                       fontSize: 12,
-                      fontWeight:
-                          _tvFocused ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: _tvFocused
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                     ),
                   ),
                 ),
@@ -364,17 +363,15 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _tvFocused => playerChromeTvFocused(
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused =>
+      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
 
   bool get _highlight => playerChromeFocusActive(
-        context,
-        tvFocusable: widget.tvFocusable,
-        hovered: _hovered,
-        focused: _focused,
-      );
+    context,
+    tvFocusable: widget.tvFocusable,
+    hovered: _hovered,
+    focused: _focused,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -401,10 +398,7 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
               SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: fg,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2, color: fg),
               )
             else
               Text(
@@ -507,72 +501,89 @@ class PlayerTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
-      child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PlayerFlatIconButton(
-              icon: Icons.arrow_back_rounded,
-              onPressed: onBack,
-              size: 44,
-              tvFocusable: tvFocusable,
-            ),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final titleInset = constraints.maxWidth >= 600 ? 152.0 : 96.0;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
+          child: SizedBox(
+            width: double.infinity,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Stack(
+                alignment: Alignment.topCenter,
                 children: [
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: titleInset),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (_episodeLine != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _episodeLine!,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ForjaShellColors.cinematic.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        if (_hasStatusMessage) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            statusMessage!,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.72),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        if (statusActions != null) ...[
+                          const SizedBox(height: 8),
+                          statusActions!,
+                        ],
+                      ],
                     ),
                   ),
-                  if (_episodeLine != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      _episodeLine!,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textSecondary,
-                        fontSize: 12,
-                      ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: PlayerFlatIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onPressed: onBack,
+                      size: 44,
+                      tvFocusable: tvFocusable,
                     ),
-                  ],
-                  if (_hasStatusMessage) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      statusMessage!,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.72),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                  if (statusActions != null) ...[
-                    const SizedBox(height: 8),
-                    statusActions!,
-                  ],
+                  ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: trailing ?? const SizedBox(width: 44, height: 44),
+                  ),
                 ],
               ),
             ),
-            if (trailing != null)
-              trailing!
-            else
-              const SizedBox(width: 44),
-          ],
-        ),
+          ),
+        );
+      },
     );
   }
 }
@@ -710,7 +721,11 @@ void _showCastFeedback(
     StatusRouletteKind.loading => ForjaToastKind.info,
     StatusRouletteKind.info => ForjaToastKind.info,
   };
-  ForjaToast.show(message, kind: toastKind, duration: const Duration(seconds: 3));
+  ForjaToast.show(
+    message,
+    kind: toastKind,
+    duration: const Duration(seconds: 3),
+  );
 }
 
 String _castTargetLabel(CastTarget target) =>
@@ -723,14 +738,8 @@ Future<CastTarget?> _pickCastTarget(BuildContext context) async {
       context: context,
       position: const RelativeRect.fromLTRB(9999, 56, 16, 0),
       items: const [
-        PopupMenuItem(
-          value: CastTarget.airplay,
-          child: Text('AirPlay'),
-        ),
-        PopupMenuItem(
-          value: CastTarget.chromecast,
-          child: Text('Chromecast'),
-        ),
+        PopupMenuItem(value: CastTarget.airplay, child: Text('AirPlay')),
+        PopupMenuItem(value: CastTarget.chromecast, child: Text('Chromecast')),
       ],
     );
   }
@@ -840,8 +849,4 @@ Future<void> showPlayerCastPicker(
   );
 }
 
-
-
-
 /// Inline volume control: mute button + horizontal slider in the player row (IPTV-style).
-

@@ -181,6 +181,8 @@ class KissKhExtractor {
     late String openUrl;
     var mirrorIndex = 0;
     var recoveryInFlight = false;
+    var rateLimited = false;
+    var rateLimitRetries = 0;
     Timer? recoveryTimer;
     Timer? nudgeTimer;
     final pinBase =
@@ -276,6 +278,31 @@ class KissKhExtractor {
           if (s.startsWith('"') && s.endsWith('"')) {
             s = s.substring(1, s.length - 1).replaceAll(r'\"', '"');
           }
+          if (s == 'KKH_RATE_LIMIT' || s.startsWith('KKH_RATE_LIMIT')) {
+            if (!rateLimited) {
+              rateLimited = true;
+              rateLimitRetries = 0;
+              debugPrint(
+                '[KissKhExtractor] KissKH rate limit on $baseUrl — '
+                'backing off (no hard-nav / mirror hop)',
+              );
+            }
+            onProgress?.call(
+              'rate_limit',
+              'KissKH rate limited — cooling down…',
+            );
+            return;
+          }
+          if (s == 'KKH_RATE_CLEAR' || s.startsWith('KKH_RATE_CLEAR')) {
+            if (rateLimited) {
+              rateLimited = false;
+              rateLimitRetries = 0;
+              debugPrint(
+                '[KissKhExtractor] rate limit cleared on $baseUrl',
+              );
+            }
+            return;
+          }
           if (s.startsWith('KKH_VIDEO:')) {
             try {
               final raw = jsonDecode(s.substring('KKH_VIDEO:'.length));
@@ -329,10 +356,14 @@ class KissKhExtractor {
       if (cancelled()) return null;
 
       // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
-      // long after load-stop. When not pinned, hop mirrors every 8s. When
-      // pinned (sequential probe / Sources), hard-reload once; if still silent
-      // on the next tick, fail this host so Asian Drama can try the next
-      // mirror instead of burning the full timeout on a dead stream key.
+      // long after load-stop.
+      //
+      // Rate limit ("Too many request."): stay on this host, click Retry after
+      // a cool-down — hard-nav + mirror hop share one IP and make it worse.
+      //
+      // Silent (no rate limit): when not pinned, hop mirrors every 8s. When
+      // pinned, hard-reload once; if still silent on the next tick, fail so
+      // Asian Drama can try the next mirror.
       final recoveryEvery =
           pinned ? const Duration(seconds: 5) : const Duration(seconds: 8);
       recoveryTimer = Timer.periodic(recoveryEvery, (timer) {
@@ -341,6 +372,49 @@ class KissKhExtractor {
         if (c == null || c.isCompleted) return;
         final ctrl = _controller;
         if (ctrl == null) return;
+
+        if (rateLimited) {
+          rateLimitRetries++;
+          // Cool down ~10s between Retry clicks; give up after ~40s so the
+          // loader can show a clear rate-limit message (do not hop mirrors).
+          if (rateLimitRetries > 8) {
+            debugPrint(
+              '[KissKhExtractor] rate limited on $baseUrl after '
+              '${rateLimitRetries * recoveryEvery.inSeconds}s — stop',
+            );
+            onProgress?.call(
+              'rate_limit',
+              'KissKH rate limited — try again in a minute',
+            );
+            if (!c.isCompleted) c.complete(<String, dynamic>{});
+            return;
+          }
+          if (rateLimitRetries.isOdd) {
+            // Odd ticks: wait (cool-down). Even ticks: click Retry.
+            onProgress?.call(
+              'rate_limit',
+              'KissKH rate limited — cooling down…',
+            );
+            return;
+          }
+          recoveryInFlight = true;
+          debugPrint(
+            '[KissKhExtractor] rate-limit Retry click on $baseUrl '
+            '(attempt ${rateLimitRetries ~/ 2})',
+          );
+          onProgress?.call('rate_limit', 'KissKH rate limited — retrying…');
+          unawaited(
+            ctrl
+                .evaluateJavascript(
+                  source:
+                      'window.__kkhClickRetry && window.__kkhClickRetry(); true;',
+                )
+                .whenComplete(() {
+              recoveryInFlight = false;
+            }),
+          );
+          return;
+        }
 
         if (pinned && timer.tick >= 2) {
           debugPrint(
@@ -804,14 +878,47 @@ class KissKhExtractor {
   }
   window.__kkhNudgePlay = nudgePlay;
 
+  function isRateLimited() {
+    try {
+      var t = (document.body && document.body.innerText) || '';
+      return /too many request/i.test(t);
+    } catch (e) { return false; }
+  }
+  function clickRetry() {
+    if (!isRateLimited()) return false;
+    try {
+      var nodes = document.querySelectorAll('button');
+      for (var i = 0; i < nodes.length; i++) {
+        var label = (nodes[i].textContent || '').trim().toLowerCase();
+        if (label !== 'retry') continue;
+        nodes[i].click();
+        log('rate-limit retry click');
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  window.__kkhClickRetry = clickRetry;
+
   window.__kkhInstallHooks = installHooks;
   installHooks();
   if (!window.__kkhHookInterval) {
     var n = 0;
     window.__kkhHookInterval = setInterval(function () {
       installHooks();
-      nudgePlay();
-      if (++n > 60) {
+      if (isRateLimited()) {
+        if (!window.__kkhRateLimitArmed) {
+          window.__kkhRateLimitArmed = true;
+          console.log('KKH_RATE_LIMIT');
+        }
+      } else if (window.__kkhRateLimitArmed) {
+        window.__kkhRateLimitArmed = false;
+        console.log('KKH_RATE_CLEAR');
+        nudgePlay();
+      } else {
+        nudgePlay();
+      }
+      if (++n > 120) {
         clearInterval(window.__kkhHookInterval);
         window.__kkhHookInterval = null;
       }

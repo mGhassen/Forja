@@ -1,57 +1,76 @@
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { LogOut, Settings, UserRound, Users } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/hooks/use-auth'
+import { useProfiles } from '@/hooks/use-profiles'
 import { RequireAuth } from '@/components/require-auth'
 
 export function AccountPage() {
   const { user, signOut } = useAuth()
+  const { profiles, activeProfile } = useProfiles()
   const navigate = useNavigate()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+
+  if (pathname !== '/account' && pathname !== '/account/') {
+    return <Outlet />
+  }
 
   return (
     <RequireAuth>
       <div className="min-h-screen">
         <SiteHeader solid />
-        <main className="mx-auto max-w-2xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
-          <p className="font-display text-sm uppercase tracking-[0.3em] text-forja-green">
-            Account
-          </p>
-          <h1 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">Forja account</h1>
-          <Card className="mt-10">
-            <CardHeader>
-              <CardTitle>Logged in</CardTitle>
-              <CardDescription>{user?.email}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-forja-muted">
-                Manage IPTV portals, playback prefs, provider order, and Stremio addons
-                from the web — the app pulls them when you sign in.
-              </p>
-              <Separator />
-              <div className="flex flex-wrap gap-3">
-                <Button asChild>
-                  <Link to="/account/settings">Remote settings</Link>
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={async () => {
-                    await signOut()
-                    void navigate({ to: '/' })
-                  }}
-                >
-                  Log out
-                </Button>
+        <main className="mx-auto max-w-4xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
+          <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Account</h1>
+          <div className="mt-8 border-t border-forja-border">
+            <div className="flex min-h-20 items-center gap-4 border-b border-forja-border px-0.5 py-4">
+              <UserRound className="size-6 text-forja-green" />
+              <div>
+                <p className="font-semibold">Forja account</p>
+                <p className="mt-0.5 text-sm text-forja-muted">{user?.email}</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            <Link
+              to="/account/profiles"
+              className="flex min-h-20 items-center gap-4 border-b border-forja-border px-0.5 py-4 hover:bg-white/2.5"
+            >
+              <Users className="size-6 text-forja-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">Profiles</p>
+                <p className="mt-0.5 text-sm text-forja-muted">
+                  {activeProfile?.name ?? 'Loading'} · {profiles.length}{' '}
+                  {profiles.length === 1 ? 'profile' : 'profiles'}
+                </p>
+              </div>
+              <span className="text-forja-green">→</span>
+            </Link>
+
+            <Link
+              to="/account/settings"
+              className="flex min-h-20 items-center gap-4 border-b border-forja-border px-0.5 py-4 hover:bg-white/2.5"
+            >
+              <Settings className="size-6 text-forja-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">Remote settings</p>
+                <p className="mt-0.5 text-sm text-forja-muted">
+                  IPTV, playback, providers, and Stremio addons
+                </p>
+              </div>
+              <span className="text-forja-green">→</span>
+            </Link>
+
+            <button
+              type="button"
+              className="flex min-h-20 w-full items-center gap-4 border-b border-forja-border px-0.5 py-4 text-left hover:bg-white/2.5"
+              onClick={async () => {
+                await signOut()
+                void navigate({ to: '/' })
+              }}
+            >
+              <LogOut className="size-6 text-forja-muted" />
+              <span className="font-semibold">Log out</span>
+            </button>
+          </div>
         </main>
       </div>
     </RequireAuth>

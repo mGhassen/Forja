@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { ProviderOrderList } from '@/components/provider-order-list'
+import { SettingsSection } from '@/components/settings-section'
 import { useUserSetting } from '@/hooks/use-user-setting'
 import {
   emptyProvidersPayload,
@@ -17,11 +11,14 @@ import {
 } from '@/lib/sync-domains'
 
 export function AccountSettingsProvidersPage() {
-  const { data, isLoading, save, isSaving, saveError } = useUserSetting<ProvidersPayload>(
-    SYNC_DOMAINS.providers,
-  )
+  const { data, profileId, isLoading, save, isSaving, saveError } =
+    useUserSetting<ProvidersPayload>(SYNC_DOMAINS.providers)
   const [draft, setDraft] = useState(emptyProvidersPayload())
   const [savedFlash, setSavedFlash] = useState(false)
+
+  useEffect(() => {
+    setDraft(emptyProvidersPayload())
+  }, [profileId])
 
   useEffect(() => {
     if (!data) return
@@ -54,12 +51,10 @@ export function AccountSettingsProvidersPage() {
         </div>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>Web streaming</CardTitle>
-          <CardDescription>Embed and extractor providers for movies and TV.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <SettingsSection
+        label="Web streaming"
+        description="Embed and extractor providers for movies and TV."
+      >
           <ProviderOrderList
             items={draft.stream_provider_order ?? []}
             disabled={isLoading}
@@ -67,15 +62,9 @@ export function AccountSettingsProvidersPage() {
               setDraft((prev) => ({ ...prev, stream_provider_order }))
             }
           />
-        </CardContent>
-      </Card>
+      </SettingsSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Anime</CardTitle>
-          <CardDescription>Mirror try-order for the Anime tab.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <SettingsSection label="Anime" description="Mirror try-order for the Anime tab.">
           <ProviderOrderList
             items={draft.anime_provider_order ?? []}
             disabled={isLoading}
@@ -83,15 +72,9 @@ export function AccountSettingsProvidersPage() {
               setDraft((prev) => ({ ...prev, anime_provider_order }))
             }
           />
-        </CardContent>
-      </Card>
+      </SettingsSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Asian drama</CardTitle>
-          <CardDescription>KissKH-compatible hosts.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <SettingsSection label="Asian drama" description="KissKH-compatible hosts.">
           <ProviderOrderList
             items={draft.asian_drama_provider_order ?? []}
             disabled={isLoading}
@@ -99,8 +82,7 @@ export function AccountSettingsProvidersPage() {
               setDraft((prev) => ({ ...prev, asian_drama_provider_order }))
             }
           />
-        </CardContent>
-      </Card>
+      </SettingsSection>
     </AccountSettingsShell>
   )
 }

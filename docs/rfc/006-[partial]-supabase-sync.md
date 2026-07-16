@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 1** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) |
-| **Current slice** | Web portal — SyncService wired; domain allowlist deferred |
+| **Progress** | **2 / 2** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **6 / 6** acceptance (profiles slice) |
+| **Current slice** | Account profiles shipped — per-key timestamp merge and domain allowlist remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -20,6 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R06-C01 | SyncService (`sync_service.dart`) | ✅ |
+| 2 | R06-C02 | Account profiles with profile-scoped settings | ✅ |
 
 ---
 
@@ -46,6 +47,19 @@
 
 ---
 
+## Acceptance (profiles slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A10 | Each account can create, rename, select, and delete multiple profiles | ✅ |
+| 2 | R06-A11 | Every settings domain belongs to exactly one profile | ✅ |
+| 3 | R06-A12 | Existing account settings migrate into a default profile without data loss | ✅ |
+| 4 | R06-A13 | Profile selection is local to each web/app device | ✅ |
+| 5 | R06-A14 | Flutter sync reads and writes only the selected profile | ✅ |
+| 6 | R06-A15 | RLS prevents access to profiles and profile settings owned by another account | ✅ |
+
+---
+
 ## Summary
 
 Optional account to backup and restore settings across devices. Offline-first — no auth required to use Forja.
@@ -64,12 +78,19 @@ Optional account to backup and restore settings across devices. Offline-first �
 ## Schema
 
 ```sql
+create table profiles (
+  id uuid primary key,
+  user_id uuid references auth.users not null,
+  name text not null
+);
+
 create table user_settings (
   user_id uuid references auth.users not null,
+  profile_id uuid references profiles not null,
   domain text not null,
   payload jsonb not null,
   updated_at timestamptz not null default now(),
-  primary key (user_id, domain)
+  primary key (profile_id, domain)
 );
 
 alter table user_settings enable row level security;
@@ -94,6 +115,9 @@ create policy "own rows" on user_settings
 On login: pull remote → merge with local per domain; conflict = latest `updated_at` wins per key.
 
 On change: debounced push (5s) when signed in.
+
+Profile selection is stored locally on each device. Switching a profile on one
+device does not switch other signed-in devices.
 
 ## Client API (to implement)
 

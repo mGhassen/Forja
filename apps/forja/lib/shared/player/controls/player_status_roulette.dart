@@ -102,7 +102,9 @@ class PlayerStatusController extends ChangeNotifier {
   }
 }
 
-List<StatusRouletteEntry> statusEntriesFromProbes(List<StreamProviderProbe> probes) {
+List<StatusRouletteEntry> statusEntriesFromProbes(
+  List<StreamProviderProbe> probes,
+) {
   return probes
       .where((probe) => probe.status != StreamProviderProbeStatus.pending)
       .map(
@@ -164,15 +166,6 @@ double statusNotificationTop(BuildContext context) {
   return top + 44 + 6 + 4;
 }
 
-void notifyNoServerAvailable(PlayerStatusController controller) {
-  controller.upsert(
-    'no-server',
-    'No server available',
-    kind: StatusRouletteKind.failed,
-    dismissAfter: const Duration(seconds: 3),
-  );
-}
-
 class PlayerStatusOverlay extends StatelessWidget {
   const PlayerStatusOverlay({
     super.key,
@@ -204,14 +197,12 @@ class PlayerStatusOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget buildOverlay(bool buffering) {
       final rouletteEntries = _rouletteEntries(buffering);
-      final notificationEntries =
-          statusNotificationEntries(controller.entries);
+      final notificationEntries = statusNotificationEntries(controller.entries);
       if (rouletteEntries.isEmpty && notificationEntries.isEmpty) {
         return const SizedBox.shrink();
       }
 
-      final hasRouletteProgress =
-          controller.entries.any(isStatusRouletteEntry);
+      final hasRouletteProgress = controller.entries.any(isStatusRouletteEntry);
       final overlayHeader = hasRouletteProgress ? header : 'BUFFERING';
 
       return Stack(
@@ -240,9 +231,7 @@ class PlayerStatusOverlay extends StatelessWidget {
               child: IgnorePointer(
                 child: Align(
                   alignment: Alignment.topCenter,
-                  child: StatusNotificationView(
-                    entries: notificationEntries,
-                  ),
+                  child: StatusNotificationView(entries: notificationEntries),
                 ),
               ),
             ),
@@ -258,7 +247,10 @@ class PlayerStatusOverlay extends StatelessWidget {
     }
 
     return ListenableBuilder(
-      listenable: playerStatusOverlayListenable(controller, bufferingListenable),
+      listenable: playerStatusOverlayListenable(
+        controller,
+        bufferingListenable,
+      ),
       builder: (context, _) => buildOverlay(bufferingListenable!.value),
     );
   }
@@ -320,16 +312,19 @@ class StatusRouletteView extends StatelessWidget {
     if (active == null) return const SizedBox.shrink();
 
     final previous = _previousEntry;
-    final checkedCount =
-        entries.where((e) => e.kind != StatusRouletteKind.loading).length;
-    final readyCount =
-        entries.where((e) => e.kind == StatusRouletteKind.success).length;
+    final checkedCount = entries
+        .where((e) => e.kind != StatusRouletteKind.loading)
+        .length;
+    final readyCount = entries
+        .where((e) => e.kind == StatusRouletteKind.success)
+        .length;
     final totalCount = entries.length;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.end,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.end,
       children: [
         Text(
           header,
@@ -348,8 +343,7 @@ class StatusRouletteView extends StatelessWidget {
           width: 220,
           child: ClipRect(
             child: Stack(
-              alignment:
-                  centered ? Alignment.center : Alignment.centerRight,
+              alignment: centered ? Alignment.center : Alignment.centerRight,
               clipBehavior: Clip.hardEdge,
               children: [
                 if (previous != null &&
@@ -373,8 +367,9 @@ class StatusRouletteView extends StatelessWidget {
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   layoutBuilder: (current, previousChildren) => Stack(
-                    alignment:
-                        centered ? Alignment.center : Alignment.centerRight,
+                    alignment: centered
+                        ? Alignment.center
+                        : Alignment.centerRight,
                     clipBehavior: Clip.hardEdge,
                     children: [
                       ...previousChildren,
@@ -382,20 +377,20 @@ class StatusRouletteView extends StatelessWidget {
                     ],
                   ),
                   transitionBuilder: (child, animation) {
-                    final slide = Tween<Offset>(
-                      begin: const Offset(0, 0.55),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ));
+                    final slide =
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.55),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        );
                     return ClipRect(
                       child: SlideTransition(
                         position: slide,
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        ),
+                        child: FadeTransition(opacity: animation, child: child),
                       ),
                     );
                   },
@@ -413,7 +408,7 @@ class StatusRouletteView extends StatelessWidget {
         Text(
           totalCount > 0
               ? '$checkedCount / $totalCount'
-                  '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
+                    '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
               : 'Starting…',
           textAlign: centered ? TextAlign.center : TextAlign.right,
           style: TextStyle(
@@ -476,7 +471,9 @@ class _StatusRouletteRow extends StatelessWidget {
             style: TextStyle(
               color: Colors.white.withValues(alpha: alpha),
               fontSize: compact ? 12 : 15,
-              fontWeight: isLoading && !dimmed ? FontWeight.w600 : FontWeight.w500,
+              fontWeight: isLoading && !dimmed
+                  ? FontWeight.w600
+                  : FontWeight.w500,
               fontFamily: 'Poppins',
             ),
           ),

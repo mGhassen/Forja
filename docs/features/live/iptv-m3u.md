@@ -18,7 +18,7 @@ Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from
 - Play a channel in the IPTV player — on desktop, hover the volume icon to expand the volume bar (tap mutes; long-press pins the bar)
 - Change channels from the in-player guide (groups + channel list overlay)
 - Search channels from the in-player search overlay — dismiss the overlay with the borderless **Close** control in the header (circular hover highlight, no box border)
-- See the current channel logo at the bottom-left of the player, directly above the progress bar when one is available
+- See the current channel logo at the bottom-left of the player; when a progress bar is available, the logo sits immediately before it and playback time appears on its right
 - Manage multiple playlists
 - Double-click the video (desktop) to enter/exit fullscreen — same as the fullscreen button
 

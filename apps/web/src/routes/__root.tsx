@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/hooks/use-auth'
+import { ProfilesProvider } from '@/hooks/use-profiles'
 import appCss from '@/index.css?url'
 
 const queryClient = new QueryClient({
@@ -56,7 +57,9 @@ function RootComponent() {
     <RootDocument>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <Outlet />
+          <ProfilesProvider>
+            <Outlet />
+          </ProfilesProvider>
         </AuthProvider>
       </QueryClientProvider>
     </RootDocument>

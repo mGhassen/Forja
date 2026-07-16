@@ -1,8 +1,43 @@
 import type { ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
+import {
+  ArrowLeft,
+  ListOrdered,
+  PlayCircle,
+  Puzzle,
+  Radio,
+  Users,
+} from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
-import { Button } from '@/components/ui/button'
 import { RequireAuth } from '@/components/require-auth'
+import { useProfiles } from '@/hooks/use-profiles'
+
+const categories = [
+  {
+    href: '/account/settings/iptv',
+    title: 'IPTV portals',
+    subtitle: 'Xtream and M3U lists',
+    icon: Radio,
+  },
+  {
+    href: '/account/settings/playback',
+    title: 'Playback',
+    subtitle: 'Sources, quality, auto-play',
+    icon: PlayCircle,
+  },
+  {
+    href: '/account/settings/providers',
+    title: 'Provider order',
+    subtitle: 'Stream and mirror priority',
+    icon: ListOrdered,
+  },
+  {
+    href: '/account/settings/stremio',
+    title: 'Stremio addons',
+    subtitle: 'Synced manifest URLs',
+    icon: Puzzle,
+  },
+] as const
 
 type AccountSettingsShellProps = {
   title: string
@@ -21,21 +56,96 @@ export function AccountSettingsShell({
   children,
   footer,
 }: AccountSettingsShellProps) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const { profiles, activeProfile, selectProfile, loading: profilesLoading } =
+    useProfiles()
+
   return (
     <RequireAuth>
       <div className="min-h-screen">
         <SiteHeader solid />
-        <main className="mx-auto max-w-2xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
-          <Button asChild variant="ghost" size="sm" className="-ml-2 mb-6">
-            <Link to={backTo}>{backLabel}</Link>
-          </Button>
-          <p className="font-display text-sm uppercase tracking-[0.3em] text-forja-green">
-            Cloud settings
-          </p>
-          <h1 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">{title}</h1>
-          <p className="mt-4 text-forja-muted">{description}</p>
-          <div className="mt-10 space-y-6">{children}</div>
-          {footer ? <div className="mt-8">{footer}</div> : null}
+        <main className="mx-auto max-w-6xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
+          <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link
+                to={backTo}
+                className="flex size-9 items-center justify-center text-forja-muted hover:text-forja-text"
+                aria-label={backLabel.replace('← ', '')}
+              >
+                <ArrowLeft className="size-5" />
+              </Link>
+              <h1 className="font-display text-2xl tracking-tight">Settings</h1>
+            </div>
+            <div className="flex items-center gap-2 border-b border-forja-border pb-1">
+              <Users className="size-4 text-forja-green" />
+              <select
+                aria-label="Active profile"
+                className="min-w-32 bg-transparent py-1 text-sm font-semibold outline-none"
+                value={activeProfile?.id ?? ''}
+                disabled={profilesLoading || profiles.length === 0}
+                onChange={(event) => selectProfile(event.target.value)}
+              >
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+              <Link
+                to="/account/profiles"
+                className="px-1 text-xs text-forja-muted hover:text-forja-green"
+              >
+                Manage
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid min-h-[620px] border-t border-forja-border lg:grid-cols-[310px_1fr]">
+            <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
+              <nav className="grid gap-0 sm:grid-cols-2 lg:grid-cols-1">
+                {categories.map((category) => {
+                  const selected = pathname === category.href
+                  const Icon = category.icon
+                  return (
+                    <Link
+                      key={category.href}
+                      to={category.href}
+                      className={`relative flex min-h-16 items-center gap-4 border-l-[3px] px-3 py-3 ${
+                        selected
+                          ? 'border-forja-green bg-white/[0.035] text-forja-text'
+                          : 'border-transparent text-forja-muted hover:bg-white/2 hover:text-forja-text'
+                      }`}
+                    >
+                      <Icon
+                        className={`size-[22px] shrink-0 ${
+                          selected ? 'text-forja-green' : 'text-forja-muted'
+                        }`}
+                      />
+                      <span className="min-w-0">
+                        <span className={`block text-sm ${selected ? 'font-bold' : 'font-medium'}`}>
+                          {category.title}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-forja-muted">
+                          {category.subtitle}
+                        </span>
+                      </span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            </aside>
+
+            <section className="pt-7 lg:px-10 lg:pt-3">
+              <h2 className="font-display text-3xl tracking-tight">{title}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-forja-muted">{description}</p>
+              <div className="mt-9 max-w-2xl">{children}</div>
+              {footer ? (
+                <div className="sticky bottom-0 mt-8 max-w-2xl border-t border-forja-border bg-forja-bg/95 py-4 backdrop-blur">
+                  {footer}
+                </div>
+              ) : null}
+            </section>
+          </div>
         </main>
       </div>
     </RequireAuth>

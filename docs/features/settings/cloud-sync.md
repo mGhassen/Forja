@@ -6,10 +6,14 @@
 
 Cloud sync stores settings domain blobs in Supabase under your Forja account. The same account works on the web portal and in the desktop/mobile app. The app stays offline-first — you do not need an account to use Forja.
 
+Each account can have multiple profiles. Every profile has an independent set
+of synced settings. The active profile is selected separately on each browser
+or app device, so changing profiles does not switch another screen.
+
 ## How to open it
 
 - **App:** Settings → Accounts → **Forja account**
-- **Web:** sign in at `/login`, then **Account → Remote settings**
+- **Web:** sign in at `/login`, then **Account → Profiles** or **Remote settings**
 
 ## What syncs (remote settings)
 
@@ -36,12 +40,14 @@ Not synced — device-specific or sensitive:
 ## What you can do
 
 - Create an account or sign in with email and password (app or web)
+- Create, rename, select, and delete profiles on the web
+- Select the active profile from the app account panel or web settings header
 - Add, edit, or remove IPTV portals and M3U URLs from the web
 - Change playback prefs and provider order from the web
 - Manage Stremio addon URLs from the web
 - Sign out (local settings stay on the device)
 
-After saving on the web, open Forja and sign in (or stay signed in) to pull changes.
+After saving on the web, select the same profile in Forja to pull its changes.
 
 ## Setup
 
@@ -57,6 +63,8 @@ Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `apps/web/.env`.
 ## Tips
 
 - IPTV credentials are stored in your account row (HTTPS + per-user RLS). Treat your account password like any cloud secret.
+- Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.
+- Profile selection is local to each device; profile settings remain remote and account-owned.
 - Per-domain merge by timestamp is still evolving — sign in after web edits to refresh the app.
 - Local **Backup & restore** still works for a full JSON export including device-only keys.
 

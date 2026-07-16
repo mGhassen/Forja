@@ -2,15 +2,9 @@ import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SettingsSection } from '@/components/settings-section'
 import { useUserSetting } from '@/hooks/use-user-setting'
 import {
   emptyStremioPayload,
@@ -20,12 +14,15 @@ import {
 } from '@/lib/sync-domains'
 
 export function AccountSettingsStremioPage() {
-  const { data, isLoading, save, isSaving, saveError } = useUserSetting<StremioPayload>(
-    SYNC_DOMAINS.stremio,
-  )
+  const { data, profileId, isLoading, save, isSaving, saveError } =
+    useUserSetting<StremioPayload>(SYNC_DOMAINS.stremio)
   const [draft, setDraft] = useState(emptyStremioPayload())
   const [url, setUrl] = useState('')
   const [savedFlash, setSavedFlash] = useState(false)
+
+  useEffect(() => {
+    setDraft(emptyStremioPayload())
+  }, [profileId])
 
   useEffect(() => {
     if (!data) return
@@ -73,22 +70,18 @@ export function AccountSettingsStremioPage() {
         </div>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>Installed addons</CardTitle>
-          <CardDescription>
-            Paste a Stremio addon manifest URL (ends with <code>/manifest.json</code>).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsSection
+        label="Installed addons"
+        description="Paste a Stremio addon manifest URL ending with /manifest.json."
+      >
           {draft.addons.length === 0 ? (
             <p className="text-sm text-forja-muted">No addons yet.</p>
           ) : (
-            <ul className="divide-y divide-forja-border rounded-lg border border-forja-border">
+            <ul className="divide-y divide-forja-border">
               {draft.addons.map((addon) => (
                 <li
                   key={addon.baseUrl}
-                  className="flex items-start justify-between gap-3 px-3 py-3"
+                  className="flex min-h-[58px] items-center justify-between gap-3 px-0.5 py-3"
                 >
                   <div className="min-w-0">
                     <p className="font-medium">{addon.name || 'Addon'}</p>
@@ -108,7 +101,7 @@ export function AccountSettingsStremioPage() {
             </ul>
           )}
 
-          <div className="space-y-2">
+          <div className="space-y-2 py-4">
             <Label htmlFor="addon-url">Manifest URL</Label>
             <Input
               id="addon-url"
@@ -120,8 +113,7 @@ export function AccountSettingsStremioPage() {
           <Button type="button" variant="secondary" onClick={addAddon}>
             Add addon
           </Button>
-        </CardContent>
-      </Card>
+      </SettingsSection>
     </AccountSettingsShell>
   )
 }

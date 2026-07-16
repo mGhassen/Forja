@@ -201,6 +201,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       t.cancel();
     }
     _c._healthDebounce.clear();
+    _cancelAllPortalHealthTimers();
   }
 
   /// Probe a single live stream — capped concurrency, called after debounce.
@@ -262,7 +263,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   final Map<String, bool> portalHealth = {};
   final Set<String> _portalHealthInFlight = {};
   final Map<String, Timer> _portalHealthDebounce = {};
+  final Map<String, Timer> _portalHealthExpiry = {};
   static const _portalHealthDelay = Duration(milliseconds: 350);
+  /// After this, green/red dots return to gray unknown until the next probe.
+  static const _portalHealthTtl = Duration(minutes: 2);
 
   bool? portalHealthFor(String key) => portalHealth[key];
 
@@ -283,6 +287,29 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _portalHealthDebounce.remove(key);
   }
 
+  void _setPortalHealth(String key, bool ok) {
+    portalHealth[key] = ok;
+    _portalHealthExpiry[key]?.cancel();
+    _portalHealthExpiry[key] = Timer(_portalHealthTtl, () {
+      _portalHealthExpiry.remove(key);
+      if (portalHealth.remove(key) != null) {
+        notifyListeners();
+      }
+    });
+    notifyListeners();
+  }
+
+  void _cancelAllPortalHealthTimers() {
+    for (final t in _portalHealthDebounce.values) {
+      t.cancel();
+    }
+    _portalHealthDebounce.clear();
+    for (final t in _portalHealthExpiry.values) {
+      t.cancel();
+    }
+    _portalHealthExpiry.clear();
+  }
+
   Future<void> _runPortalHealthCheck(VerifiedPortal v) async {
     final key = v.key;
     if (portalHealth.containsKey(key)) return;
@@ -293,11 +320,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         v.portal,
         timeout: const Duration(seconds: 5),
       );
-      portalHealth[key] = fresh != null;
-      notifyListeners();
+      _setPortalHealth(key, fresh != null);
     } catch (_) {
-      portalHealth[key] = false;
-      notifyListeners();
+      _setPortalHealth(key, false);
     } finally {
       _portalHealthInFlight.remove(key);
       notifyListeners();

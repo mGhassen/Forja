@@ -20,14 +20,14 @@ Tap **Asian Drama** in the navigation bar.
 - In the player, **Sources** lists the same mirrors so you can switch hosts without leaving playback
 - Resume from continue watching — **same player launch as details → Resume** (saved episode list + seek position; no extra kisskh call); clear progress with the trash icon next to **Resume** on details
 - Reorder KissKH mirrors under **Settings → Playback → Server reliability → Asian Drama**
-- Hover a continue watching card (desktop) to scale it and show a brand-green play button
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button that enlarges and floats upward
 
 ## Tips
 
 - KissKH availability can vary by region and site status
 - Watch history is stored per drama in this hub
 - Forja checks the API-compatible KissKH mirrors (`.co`, `.nl`, `.ovh`, `.la`, `.do`) and keeps the first working one; unrelated sites using the KissKH name are not used
-- Stream resolve probes mirror APIs in parallel with a short deadline first (so one hung host cannot block the rest), then tries healthy hosts in your Settings order with a fresh (no HTTP cache) headless browser so KissKH can sign the stream key. A mirror that never returns a stream key is skipped after one retry so the next host can start sooner
+- Stream resolve probes mirror APIs in parallel with a short deadline first (so one hung host cannot block the rest), then tries healthy hosts in your Settings order with a fresh (no HTTP cache) headless browser so KissKH can sign the stream key. A mirror that never returns a stream key is skipped after one retry so the next host can start sooner. If KissKH rate-limits your IP (“Too many request”), Forja cools down and asks you to wait — it does not hammer every mirror
 - Playback and subtitle requests send the `Referer`/`Origin` of the mirror that produced the stream (including cached URLs on `streamingcdn` hosts)
 - **Escape** / **Cancel** during resolve or before video starts returns to details — not a stuck loading screen
 

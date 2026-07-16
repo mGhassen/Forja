@@ -19,30 +19,11 @@ class _StreamThumbPlayHint extends StatelessWidget {
             ),
           ),
         ),
-        AnimatedOpacity(
-          opacity: active ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 150),
-          child: Center(
-            child: Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: ForjaShellColors.brandGreen,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.play_arrow_rounded,
-                color: Color(0xFF111827),
-                size: 18,
-              ),
-            ),
-          ),
+        ShellCardPlayOverlay(
+          active: true,
+          visible: active,
+          diameter: 30,
+          iconSize: 18,
         ),
       ],
     );

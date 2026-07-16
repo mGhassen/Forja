@@ -344,4 +344,4 @@ var Label = import_react.forwardRef((props, forwardedRef) => {
 Label.displayName = NAME;
 var Root = Label;
 //#endregion
-export { require_jsx_runtime as a, require_react_dom as i, Primitive as n, Slot as r, Root as t };
+export { require_jsx_runtime as i, Slot as n, require_react_dom as r, Root as t };

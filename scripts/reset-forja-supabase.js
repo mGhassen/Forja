@@ -114,23 +114,23 @@ try {
   }
   console.log('✅ Database reset completed\n')
 
-  console.log('👥 Step 2: Creating test users…')
+  console.log('👥 Step 2: Creating test users + settings seed…')
   execSync('node scripts/create-forja-test-users.js', {
     stdio: 'inherit',
     cwd: rootCwd,
   })
-  console.log('✅ Test users created\n')
+  console.log('✅ Test users + settings seed ready\n')
 
   const { status } = runSupabaseStatus(webCwd)
 
   console.log('🎉 All steps completed successfully!')
   console.log('\n📋 Summary:')
   console.log('1. ✅ Database reset (migrations + seed applied)')
-  console.log('2. ✅ Test users created')
+  console.log('2. ✅ Test users + remote settings domains seeded')
 
   console.log('\n🔐 Test User Credentials:')
-  console.log('User: user@forja.local / password123')
-  console.log('Demo: demo@forja.local / password123')
+  console.log('User: user@forja.local / password123  (full IPTV + Stremio seed)')
+  console.log('Demo: demo@forja.local / password123  (lighter seed)')
 
   printLocalEnvHint(status)
 } catch (error) {

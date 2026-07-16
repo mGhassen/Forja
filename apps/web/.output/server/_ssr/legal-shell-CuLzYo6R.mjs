@@ -1,4 +1,4 @@
-import { a as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
+import { i as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
 import { f as Link } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as SiteHeader, t as BrandLogo } from "./site-header-CQxqjJmj.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/legal-shell-CuLzYo6R.js

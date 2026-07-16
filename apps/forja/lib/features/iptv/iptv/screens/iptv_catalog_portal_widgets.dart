@@ -293,7 +293,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                       ? playerSourceStatusColor(PlayerSourceStatus.active)
                       : health == false
                       ? playerSourceStatusColor(PlayerSourceStatus.failed)
-                      : playerSourceStatusColor(PlayerSourceStatus.ready),
+                      : playerSourceStatusColor(PlayerSourceStatus.unchecked),
                 ),
               ),
       ),

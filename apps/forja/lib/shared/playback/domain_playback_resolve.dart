@@ -285,7 +285,7 @@ class DomainStreamProviderResolver {
         episodeId: (ctx['episodeId'] as num).toInt(),
         episodeNumber: (ctx['episodeNumber'] as num).toDouble(),
         forcedBaseUrl: baseUrl,
-        timeout: const Duration(seconds: 12),
+        timeout: const Duration(seconds: 45),
         isCancelled: () => cancelled(),
       );
       if (cancelled() || stream == null) return null;

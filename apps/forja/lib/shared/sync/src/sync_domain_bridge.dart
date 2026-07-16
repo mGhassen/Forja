@@ -20,6 +20,15 @@ class SyncDomainBridge {
   final _settings = SettingsService();
   final Map<String, Timer> _pushTimers = {};
 
+  /// Persist the current profile before changing the device-local selection.
+  Future<void> prepareProfileSwitch() async {
+    for (final timer in _pushTimers.values) {
+      timer.cancel();
+    }
+    _pushTimers.clear();
+    await pushAllLocal();
+  }
+
   Future<void> pullAndMergeAll() async {
     if (!SyncService.instance.isSignedIn) return;
     final remote = await SyncService.instance.pullSettings();

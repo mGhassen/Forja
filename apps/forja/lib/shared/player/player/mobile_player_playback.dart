@@ -122,9 +122,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           );
           if (_fallbackAborted(runGen)) return false;
           if (!reachable) {
-            debugPrint(
-              '[Player] Source $i failed reachability: $catalogUrl',
-            );
+            debugPrint('[Player] Source $i failed reachability: $catalogUrl');
             _s._statusController.upsert(
               'source-$i',
               source.title,
@@ -221,7 +219,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
           final dur = _s._player.state.duration;
-          final nearCredits = dur.inSeconds >= 90 &&
+          final nearCredits =
+              dur.inSeconds >= 90 &&
               seekAfterOpen >= dur - const Duration(seconds: 15);
           if (!nearCredits) {
             await _s._player.seek(seekAfterOpen);
@@ -238,9 +237,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         _s._statusController.complete();
         _s._markSourceActive(i);
         _s._syncPanelAfterPlaybackConfirmed();
-        unawaited(
-          _s._recordStreamPlaySuccess(_s._currentProvider ?? ''),
-        );
+        unawaited(_s._recordStreamPlaySuccess(_s._currentProvider ?? ''));
         widget.onPlaybackStarted?.call();
         await _ensureTvPlaybackStarted();
         return true;
@@ -336,9 +333,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             if (!_fallbackAborted(initGen) &&
                 hit != null &&
                 hit.streamSources.isNotEmpty) {
-              final fresh = dedupeStreamSources(hit.streamSources)
-                  .where((s) => !isUnplayableCachedStreamUrl(s.url))
-                  .toList();
+              final fresh = dedupeStreamSources(
+                hit.streamSources,
+              ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
               if (fresh.isEmpty) {
                 _s._markProviderLoadFailed(pid);
               } else {
@@ -381,8 +378,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           );
           if (!recovered && !_fallbackAborted(initGen)) {
             await _failPlaybackNoFailover(
-              message:
-                  'Could not find any working stream from any provider.',
+              message: 'Could not find any working stream from any provider.',
             );
           }
         }
@@ -391,8 +387,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         // Never hand a raw magnet to mpv (treated as a relative file under tmp).
         var openUrl = widget.mediaPath;
         if (isTorrentStreamUrl(openUrl)) {
-          final magnet = (widget.magnetLink != null &&
-                  widget.magnetLink!.isNotEmpty)
+          final magnet =
+              (widget.magnetLink != null && widget.magnetLink!.isNotEmpty)
               ? widget.magnetLink!
               : openUrl;
           final settings = SettingsService();
@@ -529,9 +525,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       return false;
     }
 
-    debugPrint(
-      '[Player] Dead sources — full Auto re-resolve like first Play',
-    );
+    debugPrint('[Player] Dead sources — full Auto re-resolve like first Play');
     PlaybackEngine.cancelAllPending();
     _s._statusController.upsert(
       'reresolve',
@@ -557,16 +551,13 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           _ => StatusRouletteKind.loading,
         };
         _s._statusController.upsert('provider-$providerId', label, kind: kind);
-        _s._syncProbeStatus(
-          providerId,
-          switch (status) {
-            'success' => StreamProviderProbeStatus.success,
-            'failed' => StreamProviderProbeStatus.failed,
-            'skipped' => StreamProviderProbeStatus.skippedOnTv,
-            'trying' => StreamProviderProbeStatus.trying,
-            _ => StreamProviderProbeStatus.pending,
-          },
-        );
+        _s._syncProbeStatus(providerId, switch (status) {
+          'success' => StreamProviderProbeStatus.success,
+          'failed' => StreamProviderProbeStatus.failed,
+          'skipped' => StreamProviderProbeStatus.skippedOnTv,
+          'trying' => StreamProviderProbeStatus.trying,
+          _ => StreamProviderProbeStatus.pending,
+        });
       },
       onHitsUpdated: (hits) {
         if (_fallbackAborted(chainGen)) return;
@@ -583,9 +574,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       return false;
     }
 
-    final fresh = dedupeStreamSources(hit.streamSources)
-        .where((s) => !isUnplayableCachedStreamUrl(s.url))
-        .toList();
+    final fresh = dedupeStreamSources(
+      hit.streamSources,
+    ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
     if (fresh.isEmpty) {
       _s._statusController.complete();
       return false;
@@ -620,7 +611,6 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     if (pid != null && pid.isNotEmpty) {
       _s._markProviderLoadFailed(pid);
     }
-    notifyNoServerAvailable(_s._statusController);
     _s._finalizeProbeStatusesAfterPlayback();
     setState(() {
       _s._hasError = true;
@@ -632,7 +622,6 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
   Future<void> _autoFallbackToNextProvider() async {
     if (widget.providers == null || widget.providers!.isEmpty) {
-      notifyNoServerAvailable(_s._statusController);
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
@@ -658,7 +647,6 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     }
 
     if (mounted && !_fallbackAborted(chainGen)) {
-      notifyNoServerAvailable(_s._statusController);
       _s._finalizeProbeStatusesAfterPlayback();
       setState(() {
         _s._hasError = true;
@@ -729,9 +717,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       if (_fallbackAborted(gen)) return false;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         final resolvedSources = sources != null && sources.isNotEmpty
-            ? dedupeStreamSources(sources)
-                .where((s) => !isUnplayableCachedStreamUrl(s.url))
-                .toList()
+            ? dedupeStreamSources(
+                sources,
+              ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList()
             : [
                 StreamSource(
                   url: streamUrl,
@@ -829,18 +817,21 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     if (widget.builtInEngine == BuiltInPlayerEngine.mediaKit) {
       _s._playbackRecovery = PlaybackRecovery(
         player: _s._player,
-      onRetryNextSource: () {
-        if (_s._sourcePinned) return;
-        final next = _s._currentFallbackSourceIndex + 1;
-        if (_s._currentSources != null && next < _s._currentSources!.length) {
-          unawaited(_initPlayback(sourceStartIndex: next));
-        } else if (!_s._providerPinned) {
-          unawaited(_autoFallbackToNextProvider());
-        }
-      },
+        onRetryNextSource: () {
+          if (_s._sourcePinned) return;
+          final next = _s._currentFallbackSourceIndex + 1;
+          if (_s._currentSources != null && next < _s._currentSources!.length) {
+            unawaited(_initPlayback(sourceStartIndex: next));
+          } else if (!_s._providerPinned) {
+            unawaited(_autoFallbackToNextProvider());
+          }
+        },
         onForceSoftwareDecode: () async {
           if (_s._player.platform is! NativePlayer) return;
-          await (_s._player.platform as NativePlayer).setProperty('hwdec', 'no');
+          await (_s._player.platform as NativePlayer).setProperty(
+            'hwdec',
+            'no',
+          );
         },
         onRecoverAudio: _recoverAudioTrack,
       );
@@ -1146,7 +1137,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     // whitelisted to formats each platform reliably supports.
     // TV: full software path — GLES/EGL is unreliable on leanback emulators.
     await safeSet('hwdec', _s._hwDecMode.mpvValue);
-    final mediaKitSafeMode = widget.tvRemoteEnabled || _s._androidMediaKitSafeMode;
+    final mediaKitSafeMode =
+        widget.tvRemoteEnabled || _s._androidMediaKitSafeMode;
     await safeSet('vd-lavc-dr', mediaKitSafeMode ? 'no' : 'yes');
     if (mediaKitSafeMode && Platform.isAndroid) {
       // OpenSLES misconfigures on some ATV images (0 frames delivered).
@@ -1231,5 +1223,4 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     // can skip near-end positions. Do not set mpv `start` here — that jumps
     // into credits when history still has a false-finished near-end position.
   }
-
 }

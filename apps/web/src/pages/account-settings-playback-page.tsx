@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { SettingsSection } from '@/components/settings-section'
 import { SettingsToggle } from '@/components/settings-toggle'
 import { useUserSetting } from '@/hooks/use-user-setting'
 import {
@@ -20,11 +14,14 @@ import {
 } from '@/lib/sync-domains'
 
 export function AccountSettingsPlaybackPage() {
-  const { data, isLoading, save, isSaving, saveError } = useUserSetting<PreferencesPayload>(
-    SYNC_DOMAINS.preferences,
-  )
+  const { data, profileId, isLoading, save, isSaving, saveError } =
+    useUserSetting<PreferencesPayload>(SYNC_DOMAINS.preferences)
   const [draft, setDraft] = useState(emptyPreferencesPayload())
   const [savedFlash, setSavedFlash] = useState(false)
+
+  useEffect(() => {
+    setDraft(emptyPreferencesPayload())
+  }, [profileId])
 
   useEffect(() => {
     if (!data) return
@@ -61,12 +58,10 @@ export function AccountSettingsPlaybackPage() {
         </div>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>Play sources</CardTitle>
-          <CardDescription>Which backends Forja tries when you hit Play.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <SettingsSection
+        label="Play sources"
+        description="Which backends Forja tries when you hit Play."
+      >
           <SettingsToggle
             label="Direct torrent"
             description="Indexers and Nuvio scrapers from Sources."
@@ -88,14 +83,9 @@ export function AccountSettingsPlaybackPage() {
             onChange={(v) => setBool('play_source_webstreaming_enabled', v)}
             disabled={isLoading}
           />
-        </CardContent>
-      </Card>
+      </SettingsSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Player behavior</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <SettingsSection label="Player">
           <SettingsToggle
             label="Auto next episode"
             checked={draft.auto_next_episode ?? true}
@@ -124,11 +114,13 @@ export function AccountSettingsPlaybackPage() {
             disabled={isLoading}
           />
 
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="audio-lang">Preferred audio language</Label>
+          <div className="flex min-h-[66px] items-center justify-between gap-5 px-0.5 py-3">
+            <Label htmlFor="audio-lang" className="text-sm font-medium">
+              Preferred audio language
+            </Label>
             <select
               id="audio-lang"
-              className="flex h-10 w-full rounded-md border border-forja-border bg-forja-surface px-3 text-sm"
+              className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
               value={draft.preferred_audio_lang ?? 'None'}
               disabled={isLoading}
               onChange={(e) =>
@@ -143,11 +135,13 @@ export function AccountSettingsPlaybackPage() {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="max-quality">Max stream quality</Label>
+          <div className="flex min-h-[66px] items-center justify-between gap-5 px-0.5 py-3">
+            <Label htmlFor="max-quality" className="text-sm font-medium">
+              Max stream quality
+            </Label>
             <select
               id="max-quality"
-              className="flex h-10 w-full rounded-md border border-forja-border bg-forja-surface px-3 text-sm"
+              className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
               value={String(draft.max_playback_height ?? 0)}
               disabled={isLoading}
               onChange={(e) =>
@@ -164,8 +158,7 @@ export function AccountSettingsPlaybackPage() {
               ))}
             </select>
           </div>
-        </CardContent>
-      </Card>
+      </SettingsSection>
     </AccountSettingsShell>
   )
 }

@@ -2,15 +2,9 @@ import { useEffect, useState } from 'react'
 import { Star, Trash2 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SettingsSection } from '@/components/settings-section'
 import { useUserSetting } from '@/hooks/use-user-setting'
 import {
   emptyIptvPayload,
@@ -26,9 +20,8 @@ function newM3uId() {
 }
 
 export function AccountSettingsIptvPage() {
-  const { data, isLoading, save, isSaving, saveError } = useUserSetting<IptvPayload>(
-    SYNC_DOMAINS.iptv,
-  )
+  const { data, profileId, isLoading, save, isSaving, saveError } =
+    useUserSetting<IptvPayload>(SYNC_DOMAINS.iptv)
   const [draft, setDraft] = useState<IptvPayload>(emptyIptvPayload())
   const [portalForm, setPortalForm] = useState({
     url: '',
@@ -38,6 +31,10 @@ export function AccountSettingsIptvPage() {
   })
   const [m3uForm, setM3uForm] = useState({ name: '', sourceUrl: '' })
   const [savedFlash, setSavedFlash] = useState(false)
+
+  useEffect(() => {
+    setDraft(emptyIptvPayload())
+  }, [profileId])
 
   useEffect(() => {
     if (!data) return
@@ -140,25 +137,21 @@ export function AccountSettingsIptvPage() {
         </div>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>Xtream portals</CardTitle>
-          <CardDescription>
-            Panel URL plus username and password — same fields as in the IPTV tab.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsSection
+        label="Xtream portals"
+        description="Panel URL plus username and password — same fields as in the IPTV tab."
+      >
           {isLoading ? (
             <p className="text-sm text-forja-muted">Loading…</p>
           ) : draft.portals.length === 0 ? (
             <p className="text-sm text-forja-muted">No portals yet.</p>
           ) : (
-            <ul className="divide-y divide-forja-border rounded-lg border border-forja-border">
+            <ul className="divide-y divide-forja-border">
               {draft.portals.map((portal) => {
                 const key = portalKey(portal)
                 const starred = favorites.has(key)
                 return (
-                  <li key={key} className="flex items-start gap-3 px-3 py-3">
+                  <li key={key} className="flex min-h-[64px] items-center gap-3 px-0.5 py-3">
                     <button
                       type="button"
                       className="mt-0.5 text-forja-muted hover:text-forja-green"
@@ -193,7 +186,7 @@ export function AccountSettingsIptvPage() {
             </ul>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 border-t border-forja-border pt-5 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="portal-url">Panel URL</Label>
               <Input
@@ -232,25 +225,20 @@ export function AccountSettingsIptvPage() {
           <Button type="button" variant="secondary" onClick={addPortal}>
             Add portal
           </Button>
-        </CardContent>
-      </Card>
+      </SettingsSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>M3U playlists</CardTitle>
-          <CardDescription>
-            Remote playlist URLs refresh in the app. File uploads stay device-local.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SettingsSection
+        label="M3U playlists"
+        description="Remote playlist URLs refresh in the app. File uploads stay device-local."
+      >
           {(draft.m3uPlaylists ?? []).length === 0 ? (
             <p className="text-sm text-forja-muted">No M3U URLs yet.</p>
           ) : (
-            <ul className="divide-y divide-forja-border rounded-lg border border-forja-border">
+            <ul className="divide-y divide-forja-border">
               {(draft.m3uPlaylists ?? []).map((playlist) => (
                 <li
                   key={playlist.id}
-                  className="flex items-start justify-between gap-3 px-3 py-3"
+                  className="flex min-h-[64px] items-center justify-between gap-3 px-0.5 py-3"
                 >
                   <div className="min-w-0">
                     <p className="font-medium">{playlist.name}</p>
@@ -277,7 +265,7 @@ export function AccountSettingsIptvPage() {
             </ul>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 border-t border-forja-border pt-5 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="m3u-name">Name</Label>
               <Input
@@ -299,8 +287,7 @@ export function AccountSettingsIptvPage() {
           <Button type="button" variant="secondary" onClick={addM3u}>
             Add M3U URL
           </Button>
-        </CardContent>
-      </Card>
+      </SettingsSection>
     </AccountSettingsShell>
   )
 }
