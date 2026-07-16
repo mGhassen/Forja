@@ -97,6 +97,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   bool _disposed = false;
   bool _isTv = false;
   bool _routePopAllowed = false;
+  bool _exitInProgress = false;
   bool _showControls = true;
   bool _isPlaying = false;
   bool _hasError = false;
@@ -475,10 +476,12 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   }
 
   Future<void> _exit() async {
+    if (_exitInProgress || _disposed) return;
     if (dismissAnyPlayerChromeOverlay()) {
       if (_isTv) _claimPlayFocus();
       return;
     }
+    _exitInProgress = true;
     await _saveProgress();
     // Stop Exo before pop — dispose alone is unawaited and can leave audio
     // after the route is gone (issue 059).
@@ -491,14 +494,16 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   void _popPlayerRoute() {
     if (!mounted) return;
+    final nav = Navigator.of(context, rootNavigator: true);
     if (_routePopAllowed) {
-      Navigator.of(context, rootNavigator: true).pop();
+      if (nav.canPop()) nav.pop();
       return;
     }
     setState(() => _routePopAllowed = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
+      final n = Navigator.of(context, rootNavigator: true);
+      if (n.canPop()) n.pop();
     });
   }
 

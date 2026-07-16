@@ -602,7 +602,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     setState(() {
       _syncSelectedSourceToPlaySources();
       _sourcesPanelOpen = true;
-      // Filters auto-opens with Sources — ensure Nuvio providers start selected.
+      // Ensure Nuvio providers start selected when opening Sources.
       if (_panelKindFilter == 'nuvio' && _nuvioSelectedScraperIds.isEmpty) {
         _selectAllEnabledNuvioScrapers();
       }

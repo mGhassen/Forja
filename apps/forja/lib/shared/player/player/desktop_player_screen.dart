@@ -167,6 +167,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   bool _playerReady = false;
   bool _disposed = false;
   bool _playbackStopped = false;
+  /// Guards re-entrant Escape / Back while [_exitPlayer] awaits stop.
+  bool _exitInProgress = false;
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =

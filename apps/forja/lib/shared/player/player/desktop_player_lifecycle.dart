@@ -29,25 +29,43 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     // Do not pin from pinSource / preloaded sources — that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
-    _s._currentSources = widget.sources == null
-        ? null
-        : dedupeStreamSources(widget.sources!);
-    if (_s._currentProvider != null &&
-        _s._currentSources != null &&
-        _s._currentSources!.isNotEmpty) {
-      final pid = _s._currentProvider!;
-      final valid = _s._currentSources!
-          .where((s) => !isUnplayableCachedStreamUrl(s.url))
-          .toList();
-      if (valid.isNotEmpty) {
-        final cache = _s._liveProviderSourcesCache.value;
-        if (cache[pid]?.isEmpty ?? true) {
-          _s._liveProviderSourcesCache.value = {...cache, pid: valid};
-        }
-        if (valid.length != _s._currentSources!.length) {
-          _s._currentSources = valid;
+    // Torrent / Stremio Direct: never seed the webstreaming sources list with
+    // localhost stream URLs — that path skips them as "unplayable extracts"
+    // and then fails pinned failover.
+    final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
+        (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
+    if (catalogSession) {
+      _s._currentSources = null;
+    } else {
+      _s._currentSources = widget.sources == null
+          ? null
+          : dedupeStreamSources(widget.sources!);
+      if (_s._currentProvider != null &&
+          _s._currentSources != null &&
+          _s._currentSources!.isNotEmpty) {
+        final pid = _s._currentProvider!;
+        final valid = _s._currentSources!
+            .where((s) => !isUnplayableCachedStreamUrl(s.url))
+            .toList();
+        if (valid.isNotEmpty) {
+          final cache = _s._liveProviderSourcesCache.value;
+          if (cache[pid]?.isEmpty ?? true) {
+            _s._liveProviderSourcesCache.value = {...cache, pid: valid};
+          }
+          if (valid.length != _s._currentSources!.length) {
+            _s._currentSources = valid;
+          }
+        } else {
+          _s._currentSources = null;
         }
       }
+    }
+    // Episode-switch handoff set retain=true; take ownership after the outgoing
+    // player has disposed (same frame) so we don't stop our own stream.
+    if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        TorrentStreamService().retainForExternalHandoff = false;
+      });
     }
     unawaited(
       _s._playableSourcesReady = Future.wait([
@@ -149,6 +167,10 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
   }
 
   Future<void> _initPlayableSources() async {
+    if (isCatalogSourcesMode(widget.activeProvider) ||
+        (widget.magnetLink != null && widget.magnetLink!.isNotEmpty)) {
+      return;
+    }
     if (widget.sources == null || widget.sources!.isEmpty) return;
     final ranked = await PlayableSourceBridge.rankWidgetSources(
       sources: widget.sources,
@@ -168,7 +190,9 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     if (widget.providerSourcesCache != null) return;
     final movie = widget.movie;
     if (movie == null) return;
-    if (widget.magnetLink != null || widget.activeProvider == 'stremio_direct') {
+    if (widget.magnetLink != null ||
+        widget.activeProvider == 'stremio_direct' ||
+        isCatalogSourcesMode(widget.activeProvider)) {
       return;
     }
 

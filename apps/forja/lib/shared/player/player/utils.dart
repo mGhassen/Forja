@@ -490,8 +490,13 @@ void syncPlayerProgressNotifiers(
 
 bool isNaturalPlaybackEnd(PlayerState state) {
   final dur = state.duration.inMilliseconds;
-  if (dur <= 0) return false;
-  return state.position.inMilliseconds >= dur - 1000;
+  final pos = state.position.inMilliseconds;
+  // Torrent/HLS often report a tiny duration while probing. Then
+  // `pos >= dur - 1000` is true at position 0 (e.g. dur=500ms → -500) and
+  // auto-next fires — episode looks like it "started finished".
+  if (dur < 90 * 1000) return false;
+  if (pos <= 0) return false;
+  return pos >= dur - 1000;
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

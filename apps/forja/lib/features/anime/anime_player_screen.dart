@@ -1195,9 +1195,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         providerOrder: _providerOrder,
       ),
     );
-    await Future<void>.delayed(loadingOverlayFadeOutDuration);
-    // Same hand-off as Asian Drama: drop the loading route under the player
-    // so Escape/back always returns to details — never the resolve overlay.
+    await Future.any<void>([
+      Future<void>.delayed(loadingOverlayFadeOutDuration),
+      playerFuture.then<void>((_) {}),
+    ]);
+    // Drop the loading route when fade finishes or the player closes early
+    // (Escape before playback) — always return to details, never the overlay.
     if (resolverRoute != null) {
       navigator.removeRoute(resolverRoute);
     }

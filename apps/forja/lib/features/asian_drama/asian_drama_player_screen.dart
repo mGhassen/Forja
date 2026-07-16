@@ -481,6 +481,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
             continue;
           }
 
+          // Drop late probe callbacks so a slow worker cannot reset a
+          // CHECKING/UP row back to WAITING after we move on.
+          _probeGeneration++;
+
           healthyOrder = [
             for (final host in tryOrder)
               if (health.healthyHosts.contains(host)) host,
@@ -493,7 +497,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
             }
           }
           debugPrint(
-            '[AsianDrama] healthy mirrors for WebView: $healthyOrder',
+            '[AsianDrama] healthy mirrors for WebView: $healthyOrder '
+            '(API down / timed out: ${health.unhealthyHosts})',
           );
 
           if (healthyOrder.isEmpty) {
@@ -734,7 +739,12 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       onNextEpisode: hasNext ? goNext : null,
       fadeTransition: true,
     );
-    await Future<void>.delayed(loadingOverlayFadeOutDuration);
+    await Future.any<void>([
+      Future<void>.delayed(loadingOverlayFadeOutDuration),
+      playerFuture.then<void>((_) {}),
+    ]);
+    // Drop resolver as soon as fade finishes or the player closes early
+    // (Escape before playback) — never leave the loading route on details.
     if (resolverRoute != null) {
       navigator.removeRoute(resolverRoute);
     }

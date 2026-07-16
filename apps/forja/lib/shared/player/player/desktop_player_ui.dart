@@ -92,8 +92,12 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
   }
 
   Future<void> _exitPlayer() async {
+    // Escape + Back (or held Escape) can re-enter while stop awaits — second
+    // pop throws Bad state: No element / !_debugLocked.
+    if (_s._exitInProgress || _s._disposed) return;
     // First Back closes an open panel/menu; second exits (mobile parity).
     if (dismissAnyPlayerChromeOverlay()) return;
+    _s._exitInProgress = true;
     if (_s._isFullscreen) {
       await windowManager.setFullScreen(false);
       if (mounted) setState(() => _s._isFullscreen = false);
@@ -103,7 +107,10 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
     // Instant native mute/pause/ao=null — do not await hung media_kit stop
     // before popping (that left the UI stuck with audio still playing).
     await _s._stopPlaybackForExit();
-    if (mounted) Navigator.of(context).pop(_s._positionNotifier.value);
+    if (!mounted || _s._disposed) return;
+    final nav = Navigator.of(context);
+    if (!nav.canPop()) return;
+    nav.pop(_s._positionNotifier.value);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

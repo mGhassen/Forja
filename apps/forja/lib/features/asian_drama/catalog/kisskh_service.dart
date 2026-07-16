@@ -84,6 +84,14 @@ class KissKhService {
     await kisskhCatalog({'action': 'activate_base_url', 'base_url': baseUrl});
   }
 
+  /// Per-mirror Dart ceiling — Rust already uses a short HTTP timeout, but a
+  /// stuck engine worker must not block auto-select forever.
+  static const Duration probeOneTimeout = Duration(seconds: 5);
+
+  /// Wall clock for the whole fan-out. Auto extract proceeds with whatever
+  /// answered UP; unanswered hosts are treated as DOWN.
+  static const Duration probeDeadline = Duration(seconds: 5);
+
   /// Probe a single mirror API (engine worker, no nested Rust threads).
   static Future<bool> probeMirror(String hostOrId) async {
     final host = normalizeMirrorId(hostOrId);
@@ -93,21 +101,32 @@ class KissKhService {
       final decoded = await kisskhCatalog({
         'action': 'probe_one',
         'base_url': base,
-      });
+      }).timeout(probeOneTimeout);
       final ok = decoded['healthy'] == true;
       debugPrint('[KissKh] probe $base → ${ok ? 'UP' : 'DOWN'}');
       return ok;
+    } on TimeoutException {
+      debugPrint('[KissKh] probe $base → TIMEOUT');
+      return false;
     } catch (e) {
       debugPrint('[KissKh] probe $base failed: $e');
       return false;
     }
   }
 
-  /// Parallel API health check — one engine job per mirror via [Future.wait].
-  /// Do not use a single Rust fan-out of threads around shared Tokio `block_on`.
+  /// Parallel API health check — one engine job per mirror.
+  ///
+  /// Do not use a single Rust fan-out of threads around shared Tokio
+  /// `block_on`. Do not [Future.wait] without a deadline: one hung worker
+  /// (3-isolate pool) used to leave Asian Drama stuck with 0 checked and no
+  /// auto server pick until the user tapped manually.
+  ///
+  /// [probe] overrides [probeMirror] for tests.
   static Future<KissKhMirrorHealth> probeMirrors({
     List<String>? hosts,
     void Function(String host, bool healthy)? onResult,
+    Duration? deadline,
+    Future<bool> Function(String host)? probe,
   }) async {
     final order = [
       for (final raw in (hosts ?? mirrorHosts))
@@ -117,28 +136,76 @@ class KissKhService {
     for (final host in order) {
       if (!unique.contains(host)) unique.add(host);
     }
+    if (unique.isEmpty) {
+      return const KissKhMirrorHealth(
+        selected: null,
+        healthyHosts: [],
+        unhealthyHosts: [],
+      );
+    }
 
-    final entries = await Future.wait([
-      for (final host in unique)
-        probeMirror(host).then((ok) {
-          onResult?.call(host, ok);
-          return (host, ok);
-        }),
-    ]);
+    final run = probe ?? probeMirror;
+    final okByHost = <String, bool>{};
+    final pending = unique.toSet();
+    final done = Completer<KissKhMirrorHealth>();
 
-    final healthyHosts = <String>[
-      for (final e in entries)
-        if (e.$2) e.$1,
-    ];
-    final unhealthyHosts = <String>[
-      for (final e in entries)
-        if (!e.$2) e.$1,
-    ];
-    return KissKhMirrorHealth(
-      selected: healthyHosts.isEmpty ? null : healthyHosts.first,
-      healthyHosts: healthyHosts,
-      unhealthyHosts: unhealthyHosts,
+    KissKhMirrorHealth snapshot() {
+      final healthyHosts = [
+        for (final host in unique)
+          if (okByHost[host] == true) host,
+      ];
+      final unhealthyHosts = [
+        for (final host in unique)
+          if (okByHost[host] != true) host,
+      ];
+      return KissKhMirrorHealth(
+        selected: healthyHosts.isEmpty ? null : healthyHosts.first,
+        healthyHosts: healthyHosts,
+        unhealthyHosts: unhealthyHosts,
+      );
+    }
+
+    void finish() {
+      if (done.isCompleted) return;
+      done.complete(snapshot());
+    }
+
+    void record(String host, bool ok, {required bool fromDeadline}) {
+      if (done.isCompleted) {
+        // Late worker result — still notify so callers can ignore via gen.
+        onResult?.call(host, ok);
+        return;
+      }
+      if (!pending.remove(host)) {
+        onResult?.call(host, ok);
+        return;
+      }
+      okByHost[host] = ok;
+      if (fromDeadline) {
+        debugPrint(
+          '[KissKh] probe ${baseUrlForHost(host)} → DOWN (deadline)',
+        );
+      }
+      onResult?.call(host, ok);
+      if (pending.isEmpty) finish();
+    }
+
+    for (final host in unique) {
+      unawaited(run(host).then((ok) => record(host, ok, fromDeadline: false)));
+    }
+
+    final limit = deadline ?? probeDeadline;
+    unawaited(
+      Future<void>.delayed(limit).then((_) {
+        if (done.isCompleted) return;
+        for (final host in pending.toList()) {
+          record(host, false, fromDeadline: true);
+        }
+        finish();
+      }),
     );
+
+    return done.future;
   }
 
   // ─── Public API (Rust engine) ─────────────────────────────────

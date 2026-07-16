@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **15 / 15** fix · **0 / 2** device smoke |
+| **Progress** | **16 / 16** fix · **0 / 2** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,6 +34,7 @@
 | 13 | I45-T13 | Player Sources panel: expose mirrors as servers + switch via forced-base extract | ✅ |
 | 14 | I45-T14 | Parallel API URL probe before WebView — mark dead mirrors DOWN without extract | ✅ |
 | 15 | I45-T15 | Fix probe hang: no OS-thread fan-out around shared Tokio `block_on`; Dart `Future.wait` + `probe_one` | ✅ |
+| 16 | I45-T16 | Probe deadline + per-mirror Dart timeout so one hung worker cannot block auto mirror pick | ✅ |
 
 ---
 
@@ -75,3 +76,16 @@ Loading, Settings → Playback (Asian Drama), and the player Sources panel list
 each mirror (`kisskh.co` / `.nl` / `.ovh` / `.la` / `.do`) like movie servers.
 Before any WebView extract, Rust probes all mirror APIs in parallel and the
 loader marks unhealthy hosts DOWN so dead domains never burn extract time.
+
+### Probe deadline (2026-07-16)
+
+Live macOS: auto `probeMirrors` started five `probe_one` jobs; `.nl` / `.ovh` /
+`.do` returned UP while `kisskh.co` / `.la` never completed. `Future.wait` on
+the full set left the loader at 0 checked with no auto pick until a manual tap
+(`manual mirror KissKH — skipping URL probe`). Root: engine worker pool (3) +
+no Dart wall-clock — one hung job blocked healthy mirrors from entering
+WebView extract.
+
+**Shipped (I45-T16):** each `probe_one` has a Dart timeout; the fan-out completes
+after a short deadline with unanswered hosts marked DOWN; late callbacks are
+ignored once extract starts.

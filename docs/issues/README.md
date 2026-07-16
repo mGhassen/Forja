@@ -66,7 +66,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [042-[fixed]-…](fixed/042-[fixed]-provider-reliability-not-global.md) | Provider reliability not global across titles | P1 | High | fixed | Complete · 5/5 · A 4/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [043-[fixed]-…](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) | Dead cache → full Auto re-resolve like first Play | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[fixed]-…](fixed/044-[fixed]-settings-cache-data-cleaner.md) | Settings cache / data cleaner | P2 | Medium | fixed | — | — |
-| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 15/15 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 16/16 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-streamed-live-embed-white-screen.md) | Streamed live embed white screen / unlimited loading | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [048-[open]-…](048-[open]-vidsrc-sbs-iframe-playback-restricted.md) | VidSrc.sbs iframe playback restricted | P1 | High | open | 1/1 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [047-[fixed]-…](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) | Vidsrc: broken plugin request + vsembed.su host | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |

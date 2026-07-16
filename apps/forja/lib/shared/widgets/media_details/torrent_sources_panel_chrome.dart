@@ -47,7 +47,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.filterEnableBlur = true,
     /// Force-refetch the selected kind (`torrents` | `stremio` | `nuvio`).
     this.onReloadKind,
-    /// When true, Filters auto-opens beside Sources.
+    /// When false after being true, dismisses Filters if open.
     this.sourcesPanelOpen = false,
   });
 

@@ -929,7 +929,7 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
     /// Details: true (BackdropFilter). Player: false (no freeze-frame / no live blur).
     this.enableBlur = true,
 
-    /// When Sources opens, auto-present Filters; closing Sources dismisses them.
+    /// When Sources closes, dismiss Filters if they were open.
     this.sourcesPanelOpen = false,
   });
 
@@ -968,7 +968,6 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
 class _TorrentSourceSearchToolbarState
     extends State<TorrentSourceSearchToolbar> {
   OverlayEntry? _filtersEntry;
-  bool _autoOpenedForSession = false;
   bool _wasPanelOpen = false;
 
   bool get _canFilter =>
@@ -1015,28 +1014,13 @@ class _TorrentSourceSearchToolbarState
   void initState() {
     super.initState();
     _wasPanelOpen = widget.sourcesPanelOpen;
-    if (widget.sourcesPanelOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _maybeAutoOpenFilters();
-      });
-    }
   }
 
   @override
   void didUpdateWidget(covariant TorrentSourceSearchToolbar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.sourcesPanelOpen && !_wasPanelOpen) {
-      _autoOpenedForSession = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _maybeAutoOpenFilters();
-      });
-    } else if (!widget.sourcesPanelOpen && _wasPanelOpen) {
+    if (!widget.sourcesPanelOpen && _wasPanelOpen) {
       _closeFiltersOverlay();
-      _autoOpenedForSession = false;
-    } else if (widget.sourcesPanelOpen && !_autoOpenedForSession) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _maybeAutoOpenFilters();
-      });
     }
     _wasPanelOpen = widget.sourcesPanelOpen;
     if (_filtersOpen) {
@@ -1051,15 +1035,9 @@ class _TorrentSourceSearchToolbarState
 
   @override
   void dispose() {
-    _closeFiltersOverlay();
+    // Remove overlay only — never setState here (element is already unmounting).
+    _removeFiltersOverlay();
     super.dispose();
-  }
-
-  void _maybeAutoOpenFilters() {
-    if (!widget.sourcesPanelOpen || _autoOpenedForSession) return;
-    if (!_canFilter) return;
-    _autoOpenedForSession = true;
-    if (!_filtersOpen) _openFiltersSidePanel();
   }
 
   void _toggleFilters() {
@@ -1070,11 +1048,16 @@ class _TorrentSourceSearchToolbarState
     }
   }
 
-  void _closeFiltersOverlay() {
+  void _removeFiltersOverlay() {
     final entry = _filtersEntry;
     if (entry == null) return;
     _filtersEntry = null;
     entry.remove();
+  }
+
+  void _closeFiltersOverlay() {
+    if (_filtersEntry == null) return;
+    _removeFiltersOverlay();
     if (mounted) setState(() {});
   }
 

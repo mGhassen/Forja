@@ -402,61 +402,57 @@ mixin _DesktopPlayerEpisodes
         providers: widget.providers,
         activeProvider: widget.activeProvider,
         currentProvider: _s._currentProvider,
-        magnetLink: widget.magnetLink,
+        magnetLink: _s._activeMagnet ?? widget.magnetLink,
       );
       if (chain.isEmpty) {
         throw Exception('No provider available for S${season}E$episode');
       }
 
-      final hit = await PlaybackService.resolveWebstreaming(
-        movie: widget.movie!,
-        providers: {
-          for (final k in chain)
-            if (widget.providers?.containsKey(k) ?? false)
-              k: widget.providers![k]!,
-        },
-        season: season,
-        episode: episode,
-        preferredProvider: chain.first,
-        onProgress: (providerId, status) {
-          if (!mounted || !_s._isLoadingNextEp) return;
-          final label = PlayerProviderMenu.snackbarLabel(
-            providerId,
-            widget.providers?[providerId],
-          );
-          switch (status) {
-            case 'trying':
-              _setEpisodeLoadingStatus('Checking $label…');
-            case 'success':
-              _setEpisodeLoadingStatus('Found a stream on $label…');
-            case 'failed':
-            case 'skipped':
-              _setEpisodeLoadingStatus('Trying another source…');
-            default:
-              _setEpisodeLoadingStatus('Checking sources…');
-          }
-        },
-      );
-      if (hit == null || hit.streamUrl.isEmpty) {
+      EpisodeSwitchResult? resolved;
+      for (final key in chain) {
+        _setEpisodeLoadingStatus(
+          key == 'torrent'
+              ? 'Resolving torrent…'
+              : key == 'stremio_direct'
+              ? 'Checking Stremio…'
+              : 'Checking sources…',
+        );
+        resolved = await resolveEpisodeForProvider(
+          providerKey: key,
+          movie: widget.movie!,
+          season: season,
+          episode: episode,
+          providers: widget.providers,
+          magnetLink: _s._activeMagnet ?? widget.magnetLink,
+          stremioId: widget.stremioId,
+          stremioAddonBaseUrl:
+              _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
+        );
+        if (resolved != null) break;
+      }
+      if (resolved == null || resolved.streamUrl.isEmpty) {
         throw Exception('Could not find stream for S${season}E$episode');
       }
-      final resolved = EpisodeSwitchResult(
-        streamUrl: hit.streamUrl,
-        headers: hit.headers,
-        sources: hit.streamSources,
-        activeProvider: hit.providerId,
-      );
 
       if (!mounted) return;
       _setEpisodeLoadingStatus('Opening stream…');
 
       final nextTitle = '${widget.movie!.title} - S$season E$episode';
+      // Catalog torrent/Stremio: open like details Play (url + magnet), not a
+      // webstreaming sources list — localhost torrent URLs are filtered as
+      // "unplayable extracts" in the server-fallback path.
+      final catalog = isCatalogSourcesMode(resolved.activeProvider);
+      // Keep the librqbit session alive while the outgoing player disposes —
+      // otherwise pushReplacement stops the torrent the next episode just started.
+      if (resolved.magnetLink != null && resolved.magnetLink!.isNotEmpty) {
+        TorrentStreamService().retainForExternalHandoff = true;
+      }
       Navigator.of(context, rootNavigator: true).pushReplacement(
         AppRouter.slideRoute(
           (_) => PlayerScreen(
-            streamUrl: resolved.streamUrl,
+            streamUrl: resolved!.streamUrl,
             title: nextTitle,
-            headers: resolved.headers,
+            headers: catalog ? null : resolved.headers,
             movie: widget.movie,
             selectedSeason: season,
             selectedEpisode: episode,
@@ -465,8 +461,8 @@ mixin _DesktopPlayerEpisodes
             activeProvider: resolved.activeProvider,
             stremioId: widget.stremioId,
             stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-            providers: widget.providers,
-            sources: resolved.sources,
+            providers: catalog ? null : widget.providers,
+            sources: catalog ? null : resolved.sources,
           ),
         ),
       );

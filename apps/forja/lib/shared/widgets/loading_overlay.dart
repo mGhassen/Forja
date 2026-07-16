@@ -38,6 +38,9 @@ void dismissLoadingOverlayRoute(BuildContext loadingDialogContext) {
 }
 
 /// Fades the loading overlay out while the player route fades in underneath.
+///
+/// Dismisses the loading route as soon as either the fade finishes **or** the
+/// player closes — so Escape before playback never lands on a stuck overlay.
 Future<T?> crossfadeLoadingOverlayToPlayer<T>({
   required BuildContext loadingDialogContext,
   ValueNotifier<bool>? fadeOutNotifier,
@@ -47,7 +50,10 @@ Future<T?> crossfadeLoadingOverlayToPlayer<T>({
   if (beforeFade != null) await beforeFade();
   fadeOutNotifier?.value = true;
   final playerFuture = openPlayer();
-  await Future<void>.delayed(loadingOverlayFadeOutDuration);
+  await Future.any<void>([
+    Future<void>.delayed(loadingOverlayFadeOutDuration),
+    playerFuture.then<void>((_) {}),
+  ]);
   dismissLoadingOverlayRoute(loadingDialogContext);
   return playerFuture;
 }

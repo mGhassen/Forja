@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
@@ -40,5 +42,29 @@ void main() {
     );
     expect(health.isHealthy('kisskh.nl'), isTrue);
     expect(health.isHealthy('https://kisskh.co'), isFalse);
+  });
+
+  test('probeMirrors deadline marks hung hosts DOWN and keeps order', () async {
+    final health = await KissKhService.probeMirrors(
+      hosts: const ['kisskh.co', 'kisskh.nl', 'kisskh.ovh'],
+      deadline: const Duration(milliseconds: 40),
+      probe: (host) async {
+        if (host == 'kisskh.nl') {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+          return true;
+        }
+        if (host == 'kisskh.ovh') {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return true;
+        }
+        // Preferred host never answers — old Future.wait would hang forever.
+        await Completer<void>().future;
+        return true;
+      },
+    );
+
+    expect(health.healthyHosts, ['kisskh.nl', 'kisskh.ovh']);
+    expect(health.unhealthyHosts, ['kisskh.co']);
+    expect(health.selected, 'kisskh.nl');
   });
 }

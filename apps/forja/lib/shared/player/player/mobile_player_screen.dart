@@ -187,6 +187,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
   bool _routePopAllowed = false;
+  /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
+  bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   Movie? _heroMovie;
   String? _episodeOverview;

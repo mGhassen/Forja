@@ -29,25 +29,38 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     // Do not pin from pinSource / preloaded sources — that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
-    _s._currentSources = widget.sources == null
-        ? null
-        : dedupeStreamSources(widget.sources!);
-    if (_s._currentProvider != null &&
-        _s._currentSources != null &&
-        _s._currentSources!.isNotEmpty) {
-      final pid = _s._currentProvider!;
-      final valid = _s._currentSources!
-          .where((s) => !isUnplayableCachedStreamUrl(s.url))
-          .toList();
-      if (valid.isNotEmpty) {
-        final cache = _s._liveProviderSourcesCache.value;
-        if (cache[pid]?.isEmpty ?? true) {
-          _s._liveProviderSourcesCache.value = {...cache, pid: valid};
-        }
-        if (valid.length != _s._currentSources!.length) {
-          _s._currentSources = valid;
+    final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
+        (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
+    if (catalogSession) {
+      _s._currentSources = null;
+    } else {
+      _s._currentSources = widget.sources == null
+          ? null
+          : dedupeStreamSources(widget.sources!);
+      if (_s._currentProvider != null &&
+          _s._currentSources != null &&
+          _s._currentSources!.isNotEmpty) {
+        final pid = _s._currentProvider!;
+        final valid = _s._currentSources!
+            .where((s) => !isUnplayableCachedStreamUrl(s.url))
+            .toList();
+        if (valid.isNotEmpty) {
+          final cache = _s._liveProviderSourcesCache.value;
+          if (cache[pid]?.isEmpty ?? true) {
+            _s._liveProviderSourcesCache.value = {...cache, pid: valid};
+          }
+          if (valid.length != _s._currentSources!.length) {
+            _s._currentSources = valid;
+          }
+        } else {
+          _s._currentSources = null;
         }
       }
+    }
+    if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        TorrentStreamService().retainForExternalHandoff = false;
+      });
     }
     unawaited(
       _s._playableSourcesReady = Future.wait([
@@ -230,6 +243,10 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   }
 
   Future<void> _initPlayableSources() async {
+    if (isCatalogSourcesMode(widget.activeProvider) ||
+        (widget.magnetLink != null && widget.magnetLink!.isNotEmpty)) {
+      return;
+    }
     if (widget.sources == null || widget.sources!.isEmpty) return;
     final ranked = await PlayableSourceBridge.rankWidgetSources(
       sources: widget.sources,
@@ -248,7 +265,9 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     if (widget.providerSourcesCache != null) return;
     final movie = widget.movie;
     if (movie == null) return;
-    if (widget.magnetLink != null || widget.activeProvider == 'stremio_direct') {
+    if (widget.magnetLink != null ||
+        widget.activeProvider == 'stremio_direct' ||
+        isCatalogSourcesMode(widget.activeProvider)) {
       return;
     }
 
@@ -465,10 +484,12 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   /// Rotate back to portrait & restore system UI BEFORE popping,
   /// so the details page never sees stale landscape dimensions.
   Future<void> _exitPlayer() async {
+    if (_s._exitInProgress) return;
     if (dismissAnyPlayerChromeOverlay()) {
       if (widget.tvRemoteEnabled) _s._claimPlayFocus();
       return;
     }
+    _s._exitInProgress = true;
     _s._cancelPendingStreamWork();
     _saveWatchHistory();
     // Stop mpv before orientation/pop — dispose alone is fire-and-forget
@@ -487,14 +508,16 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   void _popPlayerRoute() {
     if (!mounted) return;
     final result = _s._positionNotifier.value;
+    final nav = Navigator.of(context, rootNavigator: true);
     if (_s._routePopAllowed) {
-      Navigator.of(context, rootNavigator: true).pop(result);
+      if (nav.canPop()) nav.pop(result);
       return;
     }
     setState(() => _s._routePopAllowed = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(result);
+      final n = Navigator.of(context, rootNavigator: true);
+      if (n.canPop()) n.pop(result);
     });
   }
 

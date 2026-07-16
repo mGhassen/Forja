@@ -27,7 +27,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       }
       triedUrls.add(source.url);
 
-      if (isUnplayableCachedStreamUrl(source.url)) {
+      if (isUnplayableCachedStreamUrl(source.url) &&
+          !isLocalTorrentStreamUrl(source.url)) {
         debugPrint(
           '[Player] Skipping unplayable extract at index $i: ${source.url}',
         );
@@ -277,7 +278,10 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         _s._showControls = true;
       });
 
-      if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
+      if (_s._currentSources != null &&
+          _s._currentSources!.isNotEmpty &&
+          !isCatalogSourcesMode(widget.activeProvider) &&
+          (widget.magnetLink == null || widget.magnetLink!.isEmpty)) {
         _subscribeToStreams();
         var startIndex = sourceStartIndex;
         if (sourceStartIndex == 0 && widget.pinSource) {
@@ -856,8 +860,15 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       if (_s._disposed) return;
       _s._durationNotifier.value = dur;
       if (!_s._hasInitialSeek &&
-          dur.inSeconds > 0 &&
+          dur.inSeconds >= 90 &&
           widget.startPosition != null) {
+        final target = widget.startPosition!;
+        // Don't seek into the credits — that looks like "started finished".
+        if (target.inMilliseconds <= 0 ||
+            target >= dur - const Duration(seconds: 15)) {
+          _s._hasInitialSeek = true;
+          return;
+        }
         _s._hasInitialSeek = true;
         // mpv 'start' property handles the initial seek natively (set in
         // _configureMpvProperties). Fire a deferred seek as a safety net in
@@ -865,9 +876,6 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (_s._disposed) return;
           final currentPos = _s._positionNotifier.value;
-          // Only seek if the player didn't already land near the target
-          // (i.e. the 'start' property worked).
-          final target = widget.startPosition!;
           if ((currentPos - target).abs() > const Duration(seconds: 5)) {
             _s._player.seek(target);
           }
@@ -1192,10 +1200,13 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     // Set mpv's native 'start' property so it begins playback at the saved
     // position. This is far more reliable on Android than seeking after open,
     // because the post-open seek can be silently dropped before the demuxer
-    // is fully initialised.
+    // is fully initialised. Skip zero / empty resumes.
     if (widget.startPosition != null && !_s._hasInitialSeek) {
-      final secs = widget.startPosition!.inMilliseconds / 1000.0;
-      await mpv.setProperty('start', '+${secs.toStringAsFixed(3)}');
+      final start = widget.startPosition!;
+      if (start.inMilliseconds > 0) {
+        final secs = start.inMilliseconds / 1000.0;
+        await mpv.setProperty('start', '+${secs.toStringAsFixed(3)}');
+      }
     }
   }
 

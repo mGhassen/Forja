@@ -31,9 +31,18 @@ List<String> episodeProviderChain({
   String? currentProvider,
   String? magnetLink,
 }) {
+  final current = currentProvider ?? activeProvider;
+  // Catalog torrent / Stremio sessions must not walk webstreaming providers —
+  // those maps are often still non-empty from details preload.
+  if (current == 'stremio_direct') return const ['stremio_direct'];
+  if (current == 'torrent' ||
+      (magnetLink != null &&
+          magnetLink.isNotEmpty &&
+          (current == null || current.isEmpty))) {
+    return const ['torrent'];
+  }
   if (providers != null && providers.isNotEmpty) {
     final keys = providers.keys.toList();
-    final current = currentProvider ?? activeProvider;
     if (current != null) {
       final idx = keys.indexOf(current);
       if (idx > 0) {
@@ -41,10 +50,6 @@ List<String> episodeProviderChain({
       }
     }
     return keys;
-  }
-  if (activeProvider == 'stremio_direct') return const ['stremio_direct'];
-  if (magnetLink != null && activeProvider != 'stremio_direct') {
-    return const ['torrent'];
   }
   if (activeProvider != null && activeProvider.isNotEmpty) {
     return [activeProvider];
@@ -155,6 +160,7 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
           localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
           season: season,
           episode: episode,
+          fileIdx: stremioStreamFileIdx(stream),
         );
         if (playback != null) {
           final ranked = await PlaybackSelection.rankAndDedupe(
@@ -177,6 +183,38 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   }
 
   if (providerKey == 'torrent') {
+    // Prefer the current season-pack magnet (same swarm, new fileIdx) before
+    // kicking off a fresh indexer search.
+    if (magnetLink != null && magnetLink.isNotEmpty) {
+      try {
+        final settings = SettingsService();
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: await settings.useDebridForStreams(),
+          debridService: await settings.getDebridService(),
+          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+          season: season,
+          episode: episode,
+        );
+        if (playback != null) {
+          final ranked = await PlaybackSelection.rankAndDedupe(
+            sources: [
+              PlaybackNormalize.fromTorrentUrl(playback.url).toStreamSource(),
+            ],
+            providerId: 'torrent',
+          );
+          return EpisodeSwitchResult(
+            streamUrl: ranked.first.url,
+            magnetLink: magnetLink,
+            fileIndex: playback.fileIndex,
+            sources: ranked,
+            activeProvider: 'torrent',
+          );
+        }
+      } catch (e) {
+        if (e is DebridAuthException) rethrow;
+      }
+    }
     final playback = await resolveEpisodeTorrentPlayback(
       title: movie.title,
       season: season,

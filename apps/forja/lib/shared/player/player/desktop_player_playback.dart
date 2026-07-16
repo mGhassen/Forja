@@ -27,7 +27,8 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       }
       triedUrls.add(source.url);
 
-      if (isUnplayableCachedStreamUrl(source.url)) {
+      if (isUnplayableCachedStreamUrl(source.url) &&
+          !isLocalTorrentStreamUrl(source.url)) {
         debugPrint(
           '[Player] Skipping unplayable extract at index $i: ${source.url}',
         );
@@ -261,7 +262,10 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         _s._showControls = true;
       });
 
-      if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
+      if (_s._currentSources != null &&
+          _s._currentSources!.isNotEmpty &&
+          !isCatalogSourcesMode(widget.activeProvider) &&
+          (widget.magnetLink == null || widget.magnetLink!.isEmpty)) {
         _subscribeToStreams();
         var startIndex = sourceStartIndex;
         if (sourceStartIndex == 0 && widget.pinSource) {
@@ -841,10 +845,17 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
       if (_s._disposed) return;
       _s._durationNotifier.value = dur;
       if (!_s._hasInitialSeek &&
-          dur.inSeconds > 0 &&
+          dur.inSeconds >= 90 &&
           widget.startPosition != null) {
-        _s._hasInitialSeek = true;
-        _s._player.seek(widget.startPosition!);
+        final start = widget.startPosition!;
+        // Don't seek into the credits — that looks like "started finished".
+        if (start.inMilliseconds > 0 &&
+            start < dur - const Duration(seconds: 15)) {
+          _s._hasInitialSeek = true;
+          _s._player.seek(start);
+        } else {
+          _s._hasInitialSeek = true;
+        }
       }
     });
 
@@ -1179,10 +1190,13 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
     // Set mpv's native 'start' property so it begins playback at the saved
     // position. This is more reliable than seeking after open, because the
     // post-open seek can be silently dropped before the demuxer is fully
-    // initialised.
+    // initialised. Skip near-end resumes — those look like "started finished".
     if (widget.startPosition != null && !_s._hasInitialSeek) {
-      final secs = widget.startPosition!.inMilliseconds / 1000.0;
-      await safeSet('start', '+${secs.toStringAsFixed(3)}');
+      final start = widget.startPosition!;
+      if (start.inMilliseconds > 0) {
+        final secs = start.inMilliseconds / 1000.0;
+        await safeSet('start', '+${secs.toStringAsFixed(3)}');
+      }
     }
   }
 }
