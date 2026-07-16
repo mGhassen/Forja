@@ -67,20 +67,20 @@ export function SiteFooter() {
           <div className="max-w-xl">
             <BrandLogo to="/" imgClassName="h-8 w-auto sm:h-10" />
             <p className="mt-6 font-disp text-[clamp(28px,5vw,48px)] uppercase leading-[0.92] tracking-[-0.03em]">
-              Tonight starts
+              A player built
               <br />
-              <span className="font-serif-i normal-case text-flame">here.</span>
+              <span className="font-serif-i normal-case text-flame">to stream.</span>
             </p>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Free movies, series, live sport, and TV — on your desk, couch, or big
-              screen.
+              Free media player for streaming playback — on your desk, couch, or big
+              screen. Forja does not host media files.
             </p>
             <Link
               to="/download"
               data-hover=""
               className="btn-magnet mt-8 inline-flex items-center justify-center rounded-full px-7 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.28)]"
             >
-              Download Forja
+              Get the app
             </Link>
           </div>
 
@@ -92,12 +92,12 @@ export function SiteFooter() {
               <ul className="mt-4 space-y-3 font-mono-ui text-[12px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)]">
                 <li>
                   <Link to="/" className="transition-colors hover:text-[#EDE6DA]">
-                    Home
+                    Streaming Player
                   </Link>
                 </li>
                 <li>
                   <Link to="/iptv" className="transition-colors hover:text-[#EDE6DA]">
-                    IPTV Player
+                    Live Player
                   </Link>
                 </li>
                 <li>
@@ -137,8 +137,9 @@ export function SiteFooter() {
 
         <div className="mt-14 space-y-5 border-t border-[rgba(237,230,218,0.1)] pt-6">
           <p className="max-w-3xl text-sm leading-relaxed text-[rgba(237,230,218,0.48)] sm:text-[15px]">
-            Forja does not host, upload, or store movies or TV files. The app scrapes
-            the web and shows results — we are not the owners of that content.{' '}
+            Forja does not host, upload, or store media files. It is a player app that
+            helps you open streams and playlists you connect — we are not the owners of
+            third-party content.{' '}
             <Link
               to="/dmca"
               className="text-[rgba(237,230,218,0.72)] underline decoration-[rgba(237,230,218,0.25)] underline-offset-4 transition-colors hover:text-brand hover:decoration-brand"
@@ -147,9 +148,14 @@ export function SiteFooter() {
             </Link>
             .
           </p>
+          <p className="max-w-3xl text-[11px] leading-relaxed text-[rgba(237,230,218,0.32)] sm:text-xs">
+            Marketing stills from Blender Foundation open movies (Big Buck Bunny, Sintel,
+            Tears of Steel, Sprite Fright, Cosmos Laundromat) — used under Creative Commons
+            Attribution.
+          </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
-              © {year} Forja · Watch free
+              © {year} Forja · Streaming player
             </p>
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.28)]">
               Desk · Couch · TV

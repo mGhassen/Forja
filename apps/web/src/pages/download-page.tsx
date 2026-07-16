@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { DownloadHelp } from '@/components/download-help'
 import { SiteFooter } from '@/components/legal-shell'
+import { ReleaseNotes } from '@/components/release-notes'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
 import {
@@ -255,17 +256,17 @@ export function DownloadPage() {
       <main className="relative px-[5vw] pb-16 pt-20 sm:pb-24 sm:pt-28">
         <Reveal>
           <h1 className="font-disp max-w-[14ch] text-[clamp(40px,11vw,140px)] uppercase leading-[0.84] tracking-[-0.04em]">
-            Ready to
+            Get the
             <br />
-            <span className="text-flame">watch?</span>
+            <span className="text-flame">player.</span>
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Unlimited movies, series, anime, live sport, and TV — free, with no
-              ads. Download Forja for your screen and start watching.
+              Forja is a free media player for streaming — playback, live playlists,
+              and controls on the screen you use.
             </p>
             <p>
-              Windows, Mac, Linux, or Android TV. Same Forja everywhere.
+              Windows, Mac, Linux, or Android TV. Same player everywhere.
             </p>
           </div>
           <div className="mt-8 flex flex-wrap gap-4 font-mono-ui text-[11px] uppercase tracking-[0.14em]">
@@ -330,7 +331,7 @@ export function DownloadPage() {
         <Reveal delayMs={160}>
           <section className="relative mt-20 overflow-hidden border-t border-[rgba(237,230,218,0.14)] pt-16">
             <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-brand">
-              From download to play
+              From download to stream
             </p>
             <h2 className="mt-4 max-w-[14ch] font-disp text-[clamp(40px,8vw,88px)] uppercase leading-[0.88] tracking-[-0.04em]">
               Three steps.
@@ -352,8 +353,8 @@ export function DownloadPage() {
                 },
                 {
                   n: '03',
-                  title: 'Press play',
-                  body: 'No account wall. Watch free tonight.',
+                  title: 'Connect & play',
+                  body: 'Add your sources or playlists. Start streaming.',
                 },
               ].map((step, i) => (
                 <li
@@ -381,7 +382,7 @@ export function DownloadPage() {
                 Desk. Couch.{' '}
                 <span className="text-[#EDE6DA]">Big screen.</span>
                 <br />
-                <span className="text-brand">Same Forja.</span>
+                <span className="text-brand">Same player.</span>
               </p>
               <a
                 href="#platforms"
@@ -401,9 +402,9 @@ export function DownloadPage() {
               <summary className="font-mono-ui cursor-pointer list-none text-xs uppercase tracking-[0.18em] text-[rgba(237,230,218,0.42)] transition-colors hover:text-flame [&::-webkit-details-marker]:hidden">
                 <span className="group-open:text-brand">What&apos;s new · v{data.version}</span>
               </summary>
-              <pre className="mt-5 max-h-72 overflow-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                {data.body}
-              </pre>
+              <div className="mt-5">
+                <ReleaseNotes markdown={data.body} />
+              </div>
             </details>
           </Reveal>
         ) : null}

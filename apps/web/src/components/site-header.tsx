@@ -5,8 +5,8 @@ import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { to: '/' as const, label: 'Home', exact: true },
-  { to: '/iptv' as const, label: 'IPTV' },
+  { to: '/' as const, label: 'Streaming Player', exact: true },
+  { to: '/iptv' as const, label: 'Live Player' },
 ]
 
 function NavLink({
@@ -41,25 +41,25 @@ function NavLink({
               'min-w-0 justify-start rounded-none border-0 bg-transparent px-0 py-3 text-[clamp(2.4rem,12vw,3.75rem)] leading-[0.95] tracking-[-0.04em] shadow-none',
               'hover:translate-y-0 hover:border-0 hover:bg-transparent hover:shadow-none',
               isActive
-                ? 'text-[#1ce783]'
-                : 'text-[rgba(237,230,218,0.4)] hover:text-[#1ce783]',
+                ? 'text-forja-green'
+                : 'text-[rgba(237,230,218,0.4)] hover:text-forja-green',
             )
           : cn(
-              'min-w-[6.5rem] justify-center rounded-xl border border-transparent px-5 py-2.5 text-base tracking-tight',
-              'hover:-translate-y-0.5 hover:border-[rgba(28,231,131,0.4)] hover:bg-[rgba(28,231,131,0.16)] hover:text-[#1ce783] hover:shadow-[0_10px_28px_-12px_rgba(28,231,131,0.55)]',
+              'min-w-[7.5rem] justify-center rounded-xl border border-transparent px-4 py-2.5 text-[13px] tracking-tight sm:min-w-[9.5rem] sm:px-5 sm:text-base',
+              'hover:-translate-y-0.5 hover:border-forja-green/40 hover:bg-forja-green/15 hover:text-forja-green hover:shadow-[0_10px_28px_-12px_rgba(28,231,131,0.55)]',
               'active:translate-y-0 active:scale-[0.98]',
               isActive
-                ? 'border-[#1ce783] bg-[#1ce783] text-[#0B0A0A] shadow-[0_0_22px_rgba(28,231,131,0.4)] hover:border-[#15b86a] hover:bg-[#15b86a] hover:text-[#0B0A0A]'
+                ? 'border-forja-green bg-forja-green text-[#0B0A0A] shadow-[0_0_22px_rgba(28,231,131,0.4)] hover:border-forja-green-dim hover:bg-forja-green-dim hover:text-[#0B0A0A]'
                 : 'text-[rgba(237,230,218,0.72)]',
             ),
         className,
       )}
     >
-      <span className="relative z-[1]">{children}</span>
+      <span className="relative z-1">{children}</span>
       {!mobile && !isActive ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-1.5 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-[#1ce783] transition-all duration-200 ease-out group-hover:w-6"
+          className="pointer-events-none absolute bottom-1.5 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-forja-green transition-all duration-200 ease-out group-hover:w-6"
         />
       ) : null}
     </Link>
@@ -90,14 +90,14 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
   }, [open])
 
   const close = () => setOpen(false)
+  const accountActive = pathname.startsWith('/account')
 
   return (
     <header className="fixed inset-x-0 top-0 z-40">
-      {/* Soft fade under floating bar — not a full sticky slab */}
       <div
         aria-hidden
         className={cn(
-          'pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b to-transparent',
+          'pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b to-transparent',
           solid ? 'from-[#0B0A0A]/90' : 'from-[#0B0A0A]/70',
         )}
       />
@@ -105,17 +105,15 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
       <div className="relative mx-auto max-w-[1400px] px-[4vw] pt-3 sm:pt-4">
         <div
           className={cn(
-            'site-nav-shell flex items-center gap-3 rounded-2xl border px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3',
-            solid
-              ? 'border-[rgba(237,230,218,0.16)] bg-[#0B0A0A]/95'
-              : 'border-[rgba(237,230,218,0.14)] bg-[#121110]/88',
+            'flex items-center gap-3 rounded-2xl border border-[rgba(237,230,218,0.12)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(237,230,218,0.08),0_12px_40px_-20px_rgba(0,0,0,0.55)] backdrop-blur-md backdrop-saturate-150 sm:gap-4 sm:px-4 sm:py-3',
+            solid ? 'bg-[#0B0A0A]/45' : 'bg-[#0B0A0A]/35',
           )}
         >
           <BrandLogo imgClassName="h-7 w-auto sm:h-8" />
 
           <span
             aria-hidden
-            className="hidden h-6 w-px shrink-0 bg-[rgba(237,230,218,0.14)] md:block"
+            className="hidden h-6 w-px shrink-0 bg-forja-border md:block"
           />
 
           <nav
@@ -133,19 +131,30 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
             {!loading && user ? (
               <Link
                 to="/account"
-                activeOptions={{ exact: false }}
-                className={(state) =>
-                  cn('site-nav-ghost', state.isActive && 'is-active')
-                }
+                data-hover=""
+                className={cn(
+                  'inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200',
+                  accountActive
+                    ? 'text-forja-green'
+                    : 'text-[rgba(237,230,218,0.55)] hover:bg-forja-green/12 hover:text-forja-green',
+                )}
               >
                 Account
               </Link>
             ) : (
-              <Link to="/login" className="site-nav-ghost">
+              <Link
+                to="/login"
+                data-hover=""
+                className="inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)] transition-all duration-200 hover:bg-forja-green/12 hover:text-forja-green"
+              >
                 Log in
               </Link>
             )}
-            <Link to="/download" className="site-nav-cta">
+            <Link
+              to="/download"
+              data-hover=""
+              className="inline-flex items-center justify-center rounded-full bg-forja-green px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B0A0A] shadow-[0_0_24px_rgba(28,231,131,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forja-flame hover:shadow-[0_0_28px_rgba(255,77,28,0.35)]"
+            >
               Get Forja
             </Link>
           </div>
@@ -155,7 +164,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
             className={cn(
               'ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-[#EDE6DA] transition-colors md:hidden',
               open
-                ? 'border-brand/40 bg-brand/10 text-brand'
+                ? 'border-forja-green/40 bg-forja-green/10 text-forja-green'
                 : 'border-[rgba(237,230,218,0.16)] bg-[rgba(237,230,218,0.04)]',
             )}
             aria-expanded={open}
@@ -188,7 +197,6 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         </div>
       </div>
 
-      {/* Mobile: full-screen takeover */}
       <div
         id="mobile-nav"
         className={cn(
@@ -215,16 +223,16 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
           className="flex flex-1 flex-col justify-center gap-2 px-[6vw] pb-10"
         >
           <NavLink to="/" exact onNavigate={close} variant="mobile">
-            Home
+            Streaming Player
           </NavLink>
           <NavLink to="/iptv" onNavigate={close} variant="mobile">
-            IPTV
+            Live Player
           </NavLink>
           <NavLink
             to="/download"
             onNavigate={close}
             variant="mobile"
-            className="!text-[#ff4d1c] hover:!text-[#ff8a3d]"
+            className="text-forja-flame hover:text-forja-flame-dim"
           >
             Get Forja
           </NavLink>
@@ -239,7 +247,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
           )}
         </nav>
 
-        <p className="px-[6vw] pb-8 font-mono-ui text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
+        <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
           Free · No ads · Desk to TV
         </p>
       </div>

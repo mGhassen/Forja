@@ -16,8 +16,8 @@ export function LoginPage() {
           <span className="font-serif-i normal-case text-flame">coming soon.</span>
         </h1>
         <p className="mt-6 text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-          Web accounts are still being built. You can download Forja and watch without
-          signing in — an account will be here soon for syncing across devices.
+          Web accounts are still being built. You can download Forja and use the player
+          without signing in — an account will be here soon for syncing across devices.
         </p>
         <div className="mt-10 flex flex-wrap gap-4">
           <Link
