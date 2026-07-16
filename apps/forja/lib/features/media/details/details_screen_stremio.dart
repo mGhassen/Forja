@@ -13,16 +13,16 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       });
     } catch (_) {}
   }
+
   /// Stops in-flight torrent / Stremio / Nuvio fetches on the details tab.
   void _cancelActiveSourceFetch() {
     final changed =
         _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
     _s._torrentSearchGen++;
     _s._stremioFetchGen++;
+    _s._nuvioFetchGen++;
     Engine.cancelPendingResolve();
     NuvioService.instance.cancelPending();
-    _s._nuvioSub?.cancel();
-    _s._nuvioSub = null;
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
@@ -48,8 +48,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
         return;
       }
       if (_s._movie.mediaType == 'tv')
-        stremioId =
-            '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
+        stremioId = '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
       final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
 
       int pendingCount = _s._streamAddons.length;
@@ -130,68 +129,81 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     }
   }
 
-  /// Fetches streams from every enabled Nuvio scraper in parallel and
-  /// appends results in real time as each scraper completes — so chips and
-  /// streams light up the UI progressively instead of waiting for the
-  /// slowest provider. Re-entrant: a fresh call cancels the previous
-  /// subscription and resets the visible list. Chip toggles only filter
-  /// this combined list; they do not re-fetch.
-  Future<void> _fetchAllNuvioStreams() async {
+  List<String> get _orderedNuvioScraperIds => [
+    for (final addon in _s._nuvioAddons)
+      for (final scraper in addon.scrapers)
+        if (scraper.enabled) scraper.id,
+  ];
+
+  List<String> get _pendingNuvioScraperIds => [
+    for (final id in _orderedNuvioScraperIds)
+      if (_s._nuvioSelectedScraperIds.contains(id) &&
+          !_s._nuvioFetchedScraperIds.contains(id))
+        id,
+  ];
+
+  Future<void> _fetchNextNuvioScraper({bool reset = false}) async {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
-    // Tear down any previous in-flight stream — e.g. user switched
-    // season/episode mid-fetch.
-    await _s._nuvioSub?.cancel();
-    _s._nuvioSub = null;
+    if (_s._isNuvioFetching && !reset) return;
+    if (reset) NuvioService.instance.cancelPending();
+    final fetchedIds = reset
+        ? <String>{}
+        : Set<String>.from(_s._nuvioFetchedScraperIds);
+    final scraperId = nextNuvioScraperId(
+      orderedIds: _orderedNuvioScraperIds,
+      selectedIds: _s._nuvioSelectedScraperIds,
+      fetchedIds: fetchedIds,
+    );
+    if (scraperId == null) return;
+    final gen = ++_s._nuvioFetchGen;
     setState(() {
       _s._isNuvioFetching = true;
-      _s._nuvioStreams = [];
+      if (reset) {
+        _s._nuvioStreams = [];
+        _s._nuvioFetchedScraperIds = {};
+      }
       if (_s._selectedSourceId == 'all_nuvio') _s._errorMessage = null;
     });
     final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
-    final stream = NuvioService.instance.streamAll(
+    final batch = await NuvioService.instance.runSourcesScraper(
+      scraperId: scraperId,
       tmdbId: _s._movie.id.toString(),
       type: type,
       season: _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
       episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
     );
-    _s._nuvioSub = stream.listen(
-      (batch) {
-        if (!mounted) return;
-        if (batch.streams.isEmpty) return; // failed/empty scrapers add nothing
-        setState(() {
-          _s._nuvioStreams.addAll(
-            batch.streams.map(
-              (s) => <String, dynamic>{
-                ...s,
-                '_nuvioScraperId': batch.scraperId,
-                '_addonName': s['sourceName'] ?? batch.scraperName,
-                '_addonBaseUrl': 'nuvio:${batch.scraperId}',
-              },
-            ),
-          );
-          if (_s._selectedSourceId == 'all_nuvio') _s._errorMessage = null;
-        });
-      },
-      onError: (e) {
-        debugPrint('[DetailsScreen] Nuvio stream error: $e');
-      },
-      onDone: () {
-        _s._nuvioSub = null;
-        if (!mounted) return;
-        CatalogSourcesSessionCache.writeNuvio(
-          _s._catalogCacheKey,
-          List<Map<String, dynamic>>.from(_s._nuvioStreams),
+    if (!mounted || gen != _s._nuvioFetchGen) return;
+    if (batch == null) {
+      setState(() => _s._isNuvioFetching = false);
+      return;
+    }
+    setState(() {
+      _s._nuvioFetchedScraperIds.add(scraperId);
+      if (batch.streams.isNotEmpty) {
+        _s._nuvioStreams.addAll(
+          batch.streams.map(
+            (s) => <String, dynamic>{
+              ...s,
+              '_nuvioScraperId': batch.scraperId,
+              '_addonName': s['sourceName'] ?? batch.scraperName,
+              '_addonBaseUrl': 'nuvio:${batch.scraperId}',
+            },
+          ),
         );
-        setState(() {
-          _s._isNuvioFetching = false;
-          if (_s._selectedSourceId == 'all_nuvio' && _s._nuvioStreams.isEmpty) {
-            _s._errorMessage = 'No streams found from any Nuvio addon';
-          }
-        });
-        _s._maybeAutoPlay();
-      },
-      cancelOnError: false,
+      }
+      _s._isNuvioFetching = false;
+      if (_s._selectedSourceId == 'all_nuvio' &&
+          _s._nuvioStreams.isEmpty &&
+          _pendingNuvioScraperIds.isEmpty) {
+        _s._errorMessage = 'No streams found from selected Nuvio providers';
+      }
+    });
+    CatalogSourcesSessionCache.writeNuvio(
+      _s._catalogCacheKey,
+      List<Map<String, dynamic>>.from(_s._nuvioStreams),
+      fetchedScraperIds: _s._nuvioFetchedScraperIds,
     );
+    _s._maybeAutoPlay();
   }
 
   /// Fetches streams using the custom Stremio ID from the originating addon.
@@ -454,8 +466,9 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     }
     final addon = _s._streamAddons.firstWhere(
       (a) => a['baseUrl'] == _s._selectedSourceId,
-      orElse: () =>
-          _s._streamAddons.isNotEmpty ? _s._streamAddons.first : <String, dynamic>{},
+      orElse: () => _s._streamAddons.isNotEmpty
+          ? _s._streamAddons.first
+          : <String, dynamic>{},
     );
     if (addon.isEmpty) return;
     final gen = ++_s._stremioFetchGen;
@@ -467,8 +480,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     try {
       String stremioId = _s._movie.imdbId ?? '';
       if (_s._movie.mediaType == 'tv')
-        stremioId =
-            '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
+        stremioId = '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
       final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
       final streams = await _s._stremio.getStreams(
         baseUrl: addon['baseUrl'],

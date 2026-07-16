@@ -31,6 +31,7 @@ Tap **Anime** in the navigation bar.
 - **VidNest HiAnime** and **VidNest AnimePahe** resolve from AniList id via `new.vidnest.fun` (same decrypt as movie VidNest)
 - AllAnime **Default** tries Yt-mp4 first (direct MP4), then S-mp4 / Luf-Mp4 when those clock links still work
 - Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama) — progress shows `N / M CHECKED · K UP`; next to **Cancel**, open the layers icon for the server list and tap a source to check it manually
+- **Escape** / **Cancel** leaves during resolve or before video starts — you are not left on a blank black screen
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)
 
 ## Related

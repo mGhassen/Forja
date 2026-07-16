@@ -26,17 +26,14 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     final streams = _s._selectedSourceId == 'all_stremio'
         ? _s._allCombinedStremioStreams
         : _s._stremioStreams;
-    return streams
-        .whereType<Map<String, dynamic>>()
-        .where((s) {
-          if (_s._selectedSourceId != 'all_stremio' &&
-              _s._selectedSourceId.isNotEmpty &&
-              s['_addonBaseUrl'] != _s._selectedSourceId) {
-            return false;
-          }
-          return _matchesPanelStreamFilters(s);
-        })
-        .toList();
+    return streams.whereType<Map<String, dynamic>>().where((s) {
+      if (_s._selectedSourceId != 'all_stremio' &&
+          _s._selectedSourceId.isNotEmpty &&
+          s['_addonBaseUrl'] != _s._selectedSourceId) {
+        return false;
+      }
+      return _matchesPanelStreamFilters(s);
+    }).toList();
   }
 
   bool _nuvioStreamSelected(Map<String, dynamic> s) {
@@ -44,7 +41,9 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     if (id != null) return _s._nuvioSelectedScraperIds.contains(id);
     final base = s['_addonBaseUrl'] as String?;
     if (base != null && base.startsWith('nuvio:')) {
-      return _s._nuvioSelectedScraperIds.contains(base.substring('nuvio:'.length));
+      return _s._nuvioSelectedScraperIds.contains(
+        base.substring('nuvio:'.length),
+      );
     }
     return false;
   }
@@ -148,8 +147,8 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       _s._activeSizeFilters,
     );
   }
+
   void _resetPanelFilters() {
-    _s._resetPanelVisibleLimit();
     _s._sourceSearchQuery = '';
     _s._activeQualityFilters = {};
     _s._activeLanguageFilters = {};
@@ -176,11 +175,12 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       _s._selectedSourceId.startsWith('nuvio:') ||
       _s._selectedSourceId.startsWith('nuvio://');
 
-
   List<SourcesPanelProviderOption> _providerOptions() {
     final options = <SourcesPanelProviderOption>[];
     if (_s._panelKindFilter == 'torrents') {
-      options.add(const SourcesPanelProviderOption(id: 'forja', label: 'Forja'));
+      options.add(
+        const SourcesPanelProviderOption(id: 'forja', label: 'Forja'),
+      );
       if (_s._isJackettConfigured) {
         options.add(
           const SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
@@ -217,7 +217,6 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       setState(() {
-        _s._resetPanelVisibleLimit();
         _s._selectedSourceId = 'all_nuvio';
         if (_s._nuvioSelectedScraperIds.contains(scraperId)) {
           _s._nuvioSelectedScraperIds = Set<String>.from(
@@ -234,7 +233,6 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       return;
     }
     setState(() {
-      _s._resetPanelVisibleLimit();
       _s._selectedSourceId = id;
       _resetPanelFilters();
     });
@@ -381,7 +379,11 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
         (_panelShowsStremio && _s._isStremioFetching) ||
         (_panelShowsNuvio && _s._isNuvioFetching);
 
-    if (!_s._isSearching && !isFetching && count == 0) {
+    final remainingNuvioProviders = _panelShowsNuvio
+        ? _s._pendingNuvioScraperIds.length
+        : 0;
+    final showNuvioLoadNext = remainingNuvioProviders > 0;
+    if (!_s._isSearching && !isFetching && count == 0 && !showNuvioLoadNext) {
       String msg;
       if (rawCount > 0 &&
           (_s._sourceSearchQuery.isNotEmpty ||
@@ -418,24 +420,20 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     final showAddonName =
         _panelShowsNuvio ||
         (_panelShowsStremio && _providerOptions().length > 1);
-    final visibleCount =
-        count < _s._panelVisibleLimit ? count : _s._panelVisibleLimit;
-    final showLoadMore = visibleCount < count;
 
     return ListView.separated(
       shrinkWrap: !inPanel,
       physics: inPanel
           ? const BouncingScrollPhysics()
           : const NeverScrollableScrollPhysics(),
-      itemCount: visibleCount + (showLoadMore ? 1 : 0),
+      itemCount: count + (showNuvioLoadNext ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
-        if (showLoadMore && i == visibleCount) {
-          return SourcesLoadMoreButton(
-            remaining: count - visibleCount,
-            onPressed: () => setState(() {
-              _s._panelVisibleLimit += kSourcesListPageSize;
-            }),
+        if (showNuvioLoadNext && i == count) {
+          return SourcesLoadNextProviderButton(
+            remainingProviders: remainingNuvioProviders,
+            isLoading: _s._isNuvioFetching,
+            onPressed: _s._fetchNextNuvioScraper,
           );
         }
         if (i < torrents.length) return _torrentTileFor(torrents[i]);

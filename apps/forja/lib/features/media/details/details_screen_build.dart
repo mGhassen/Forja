@@ -180,6 +180,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
     if (seasonCount <= 0) return 0;
     return seasonCount > 1 ? 2 : 1;
   }
+
   @override
   Widget build(BuildContext context) {
     if (_s._isLoading) {
@@ -233,10 +234,8 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
     final showCollection = _s._isCollection && _s._collectionItems.isNotEmpty;
     final firstRowIsCollection = showCollection;
     final firstRowIsCast = !showCollection && showCast;
-    final firstRowIsTrailers =
-        !showCollection && !showCast && showTrailers;
-    final firstRowIsRecs =
-        !showCollection && !showCast && !showTrailers;
+    final firstRowIsTrailers = !showCollection && !showCast && showTrailers;
+    final firstRowIsRecs = !showCollection && !showCast && !showTrailers;
 
     var rowOrder = 0;
     if (showTvPicker) {
@@ -299,10 +298,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
         pageBottomChild: showTvPicker
             ? MediaDetailsBody.padContent(
                 context,
-                _s._buildTvPicker(
-                  tvRowOrderBase: 0,
-                  tvFocusUp: heroFocusUp,
-                ),
+                _s._buildTvPicker(tvRowOrderBase: 0, tvFocusUp: heroFocusUp),
               )
             : null,
       ),
@@ -334,17 +330,15 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
           episodeLabel: _s._movie.mediaType == 'tv'
               ? 'S${_s._selectedSeason.toString().padLeft(2, '0')}E${_s._selectedEpisode.toString().padLeft(2, '0')}'
               : null,
-          isFetching: _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching,
+          isFetching:
+              _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching,
           onCancelFetch: _s._cancelActiveSourceFetch,
           providerOptions: _s._providerOptions(),
           selectedSourceId: _s._selectedSourceId,
           nuvioSelectedScraperIds: _s._nuvioSelectedScraperIds,
           onProviderTap: _s._onSourceChipTap,
           searchQuery: _s._sourceSearchQuery,
-          onSearchChanged: (q) => setState(() {
-            _s._resetPanelVisibleLimit();
-            _s._sourceSearchQuery = q;
-          }),
+          onSearchChanged: (q) => setState(() => _s._sourceSearchQuery = q),
           availableQualities: _s._panelAvailableQualities,
           availableLanguages: _s._panelAvailableLanguages,
           availableTech: _s._panelAvailableTech,
@@ -353,35 +347,22 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
           activeLanguageFilters: _s._activeLanguageFilters,
           activeTechFilters: _s._activeTechFilters,
           activeSizeFilters: _s._activeSizeFilters,
-          onQualityFiltersChanged: (v) => setState(() {
-            _s._resetPanelVisibleLimit();
-            _s._activeQualityFilters = v;
-          }),
-          onLanguageFiltersChanged: (v) => setState(() {
-            _s._resetPanelVisibleLimit();
-            _s._activeLanguageFilters = v;
-          }),
-          onTechFiltersChanged: (v) => setState(() {
-            _s._resetPanelVisibleLimit();
-            _s._activeTechFilters = v;
-          }),
-          onSizeFiltersChanged: (v) => setState(() {
-            _s._resetPanelVisibleLimit();
-            _s._activeSizeFilters = v;
-          }),
+          onQualityFiltersChanged: (v) =>
+              setState(() => _s._activeQualityFilters = v),
+          onLanguageFiltersChanged: (v) =>
+              setState(() => _s._activeLanguageFilters = v),
+          onTechFiltersChanged: (v) =>
+              setState(() => _s._activeTechFilters = v),
+          onSizeFiltersChanged: (v) =>
+              setState(() => _s._activeSizeFilters = v),
           showAudioFilters: showAudio,
           activeAudioFilters: _s._activeAudioFilters,
-          onAudioFiltersChanged: (v) => setState(() {
-            _s._resetPanelVisibleLimit();
-            _s._activeAudioFilters = v;
-          }),
+          onAudioFiltersChanged: (v) =>
+              setState(() => _s._activeAudioFilters = v),
           sortPreference: showSort ? _s._sortPreference : null,
           onSortChanged: showSort
               ? (val) {
-                  setState(() {
-                    _s._resetPanelVisibleLimit();
-                    _s._sortPreference = val;
-                  });
+                  setState(() => _s._sortPreference = val);
                   _s._settings.setSortPreference(val);
                   _s._sortResults();
                 }
@@ -393,6 +374,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
             _s._isSearching,
           ),
           onReloadKind: _s._reloadPanelKind,
+          sourcesPanelOpen: _s._sourcesPanelOpen,
         ),
         const SizedBox(height: 8),
         Expanded(child: _s._buildStreamList(inPanel: true)),

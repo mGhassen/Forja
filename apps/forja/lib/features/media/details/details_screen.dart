@@ -85,7 +85,16 @@ class DetailsScreen extends StatefulWidget {
 }
 
 class _DetailsScreenState extends State<DetailsScreen>
-    with AtmosphereMixin, _DetailsScreenTorrent, _DetailsScreenStremio, _DetailsScreenWebstreaming, _DetailsScreenEpisodes, _DetailsScreenPlay, _DetailsScreenPanel, _DetailsScreenFetch, _DetailsScreenBuild {
+    with
+        AtmosphereMixin,
+        _DetailsScreenTorrent,
+        _DetailsScreenStremio,
+        _DetailsScreenWebstreaming,
+        _DetailsScreenEpisodes,
+        _DetailsScreenPlay,
+        _DetailsScreenPanel,
+        _DetailsScreenFetch,
+        _DetailsScreenBuild {
   late Movie _movie;
   bool _isLoading = true;
   final TmdbApi _api = TmdbApi();
@@ -118,7 +127,6 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   /// Panel list filter: `torrents` | `stremio` | `nuvio`.
   String _panelKindFilter = 'torrents';
-  int _panelVisibleLimit = kSourcesListPageSize;
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -134,7 +142,8 @@ class _DetailsScreenState extends State<DetailsScreen>
   List<Map<String, dynamic>> _nuvioStreams = [];
   bool _isNuvioFetching = false;
   bool _hasNuvioAddons = false;
-  StreamSubscription<NuvioScraperResult>? _nuvioSub;
+  Set<String> _nuvioFetchedScraperIds = {};
+  int _nuvioFetchGen = 0;
 
   /// Cached list of installed Nuvio addons (refreshed when the Nuvio tab
   /// is opened). Used to render the scraper filter chips.
@@ -258,11 +267,10 @@ class _DetailsScreenState extends State<DetailsScreen>
     _cancelActiveSourceFetch();
     _torrentSearchGen++;
     _stremioFetchGen++;
+    _nuvioFetchGen++;
     NuvioService.instance.cancelPending();
     Engine.cancelPendingResolve();
     DomainStreamProviderResolver.cancelAllPending();
-    _nuvioSub?.cancel();
-    _nuvioSub = null;
     _detailsHeroPlayFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
@@ -282,10 +290,6 @@ class _DetailsScreenState extends State<DetailsScreen>
     );
     if (mounted) setState(() => _lastProgress = progress);
   }
-
-
-
-
 
   void _applyPanelFilterForSavedMethod(String? method) {
     switch (method) {
@@ -311,7 +315,6 @@ class _DetailsScreenState extends State<DetailsScreen>
   bool _isDirectStreamingSavedMethod(String? method) {
     return method == 'stream' || method == 'amri' || method == 'stremio_direct';
   }
-
 
   Future<bool> _tryDirectEpisodeResumeFromHistory(
     Map<String, dynamic> progress,
@@ -371,7 +374,6 @@ class _DetailsScreenState extends State<DetailsScreen>
     }
   }
 
-
   bool get _panelShowTorrent =>
       _playSourceTorrent && _playbackProfile.builtinTorrentSearch;
 
@@ -424,10 +426,6 @@ class _DetailsScreenState extends State<DetailsScreen>
     return _streamAddons.first['baseUrl'] as String;
   }
 
-  void _resetPanelVisibleLimit() {
-    _panelVisibleLimit = kSourcesListPageSize;
-  }
-
   void _syncSelectedSourceToPlaySources() {
     _syncPanelKindFilterToPlaySources();
     if (_isCurrentSourceAllowed()) return;
@@ -446,9 +444,8 @@ class _DetailsScreenState extends State<DetailsScreen>
     _torrentSearchGen++;
     _stremioFetchGen++;
     if (_isNuvioFetching) {
+      _nuvioFetchGen++;
       NuvioService.instance.cancelPending();
-      _nuvioSub?.cancel();
-      _nuvioSub = null;
     }
     _isSearching = false;
     _isStremioFetching = false;
@@ -458,6 +455,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _allCombinedStremioStreams = [];
     _loadedAddonBaseUrls.clear();
     _nuvioStreams = [];
+    _nuvioFetchedScraperIds = {};
     _nuvioSelectedScraperIds = {};
     _errorMessage = null;
   }
@@ -477,11 +475,11 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
-        mediaId: _movie.id,
-        mediaType: _movie.mediaType,
-        season: _movie.mediaType == 'tv' ? _selectedSeason : null,
-        episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
-      );
+    mediaId: _movie.id,
+    mediaType: _movie.mediaType,
+    season: _movie.mediaType == 'tv' ? _selectedSeason : null,
+    episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
+  );
 
   void _ensurePanelSourceLoaded({bool force = false}) {
     if (_panelShowTorrent && _panelKindFilter == 'torrents') {
@@ -497,10 +495,7 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   void _ensureTorrentsPanelLoaded({bool force = false}) {
     if (force) {
-      CatalogSourcesSessionCache.invalidate(
-        _catalogCacheKey,
-        kind: 'torrents',
-      );
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
       _autoSearch();
       return;
     }
@@ -519,10 +514,7 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   void _ensureStremioPanelLoaded({bool force = false}) {
     if (force) {
-      CatalogSourcesSessionCache.invalidate(
-        _catalogCacheKey,
-        kind: 'stremio',
-      );
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
       _fetchAllStremioStreams();
       return;
     }
@@ -545,7 +537,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _fetchAllStremioStreams();
   }
 
-  /// Loads addon list, selects all scrapers, then fetches every scraper once.
+  /// Loads addon metadata, then fetches one selected scraper at a time.
   Future<void> _ensureNuvioPanelLoaded({bool force = false}) async {
     await _checkAndFetchNuvio();
     if (!mounted || !_panelShowNuvio) return;
@@ -555,23 +547,23 @@ class _DetailsScreenState extends State<DetailsScreen>
     }
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
-      await _fetchAllNuvioStreams();
+      await _fetchNextNuvioScraper(reset: true);
       return;
     }
     if (_nuvioStreams.isNotEmpty || _isNuvioFetching) return;
     final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
     if (cached != null) {
       setState(() {
-        _nuvioStreams = cached;
+        _nuvioStreams = cached.streams;
+        _nuvioFetchedScraperIds = cached.fetchedScraperIds;
         _errorMessage = null;
       });
       return;
     }
-    await _fetchAllNuvioStreams();
+    await _fetchNextNuvioScraper(reset: true);
   }
 
   void _reloadPanelKind(String kind) {
-    _resetPanelVisibleLimit();
     switch (kind) {
       case 'torrents':
         _ensureTorrentsPanelLoaded(force: true);
@@ -585,7 +577,6 @@ class _DetailsScreenState extends State<DetailsScreen>
   void _onPanelKindFilterChanged(String kind) {
     setState(() {
       _panelKindFilter = kind;
-      _resetPanelVisibleLimit();
       _errorMessage = null;
       switch (kind) {
         case 'torrents':
@@ -634,7 +625,6 @@ class _DetailsScreenState extends State<DetailsScreen>
   /// Fetches streams from ALL installed stream addons in parallel,
   /// updating the UI incrementally as each addon responds.
 
-
   // ─── safe field helpers ───────────────────────────────────────────────────
 
   List<Map<String, dynamic>> _filterStremioStreams(List<dynamic> streams) =>
@@ -642,16 +632,13 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   // ─── play methods ─────────────────────────────────────────────────────────
 
-
   // ═══════════════════════════════════════════════════════════════════════════
   //  BUILD
   // ═══════════════════════════════════════════════════════════════════════════
 
-
   // ═══════════════════════════════════════════════════════════════════════════
   //  SOURCE TOGGLE + CHIPS (sliding source panel)
   // ═══════════════════════════════════════════════════════════════════════════
-
 
   /// Opens a collection item by navigating to its detail page
   Future<void> _openCollectionItem(String id) async {

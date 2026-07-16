@@ -91,7 +91,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [067-[fixed]-…](fixed/067-[fixed]-server-panel-reload-ignores-disk-cache.md) | Server panel reload no-op from disk cache | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [069-[fixed]-…](fixed/069-[fixed]-stremio-magnet-url-opened-as-file.md) | Stremio magnet `url` opened as file / torrent switch throw | P1 | High | fixed | Complete · 4/4 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [070-[fixed]-…](fixed/070-[fixed]-sources-filters-providers-load-more.md) | Sources: no All; providers in Filters; Load more | P2 | Medium | fixed | Complete · 5/5 · A 1/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [070-[fixed]-…](fixed/070-[fixed]-sources-filters-nuvio-scraper-lazy-load.md) | Sources: no All; providers in Filters; lazy Nuvio scrapers | P2 | Medium | fixed | Complete · 8/8 · A 2/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [071-[fixed]-…](fixed/071-[fixed]-videasy-grace-discards-mirror-streams.md) | Videasy grace discarded collected mirror streams | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

@@ -39,12 +39,13 @@ class PlayerSourcesPanel {
     int? episode,
     String? currentMagnet,
     String? currentStreamUrl,
+
     /// `torrents` | `stremio` | `nuvio` — opens on the playing source kind.
     String? preferredKind,
     String? currentAddonBaseUrl,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
-        onStremioSelected,
+    onStremioSelected,
   }) {
     dismiss();
     PlayerPopupPanel.dismiss();
@@ -184,8 +185,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   List<Map<String, dynamic>> _nuvioStreams = [];
   List<NuvioAddon> _nuvioAddons = [];
   Set<String> _nuvioSelectedScraperIds = {};
-  StreamSubscription<NuvioScraperResult>? _nuvioSub;
+  Set<String> _nuvioFetchedScraperIds = {};
   bool _nuvioFetching = false;
+  int _nuvioFetchGen = 0;
 
   bool _searching = false;
   bool _stremioFetching = false;
@@ -206,7 +208,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   Set<String> _techFilters = {};
   Set<String> _audioFilters = {};
   Set<String> _sizeFilters = {};
-  int _visibleLimit = kSourcesListPageSize;
 
   bool _jackettConfigured = false;
   bool _prowlarrConfigured = false;
@@ -226,8 +227,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   void dispose() {
     _searchGen++;
     _stremioGen++;
-    _nuvioSub?.cancel();
-    _nuvioSub = null;
+    _nuvioFetchGen++;
     NuvioService.instance.cancelPending();
     Engine.cancelPendingResolve();
     _listScrollController.dispose();
@@ -356,11 +356,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _streamAddons = addons;
       _kindFilter = kind;
       _selectedSourceId = kind == 'stremio'
-          ? (addons.isNotEmpty
-              ? addons.first['baseUrl'] as String
-              : 'forja')
+          ? (addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja')
           : _sourceIdForKind(kind, addons);
-      _resetVisibleLimit();
     });
 
     // Load only the selected kind(s) — no prefetch of other categories.
@@ -368,11 +365,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
-        mediaId: widget.movie.id,
-        mediaType: widget.movie.mediaType,
-        season: widget.season,
-        episode: widget.episode,
-      );
+    mediaId: widget.movie.id,
+    mediaType: widget.movie.mediaType,
+    season: widget.season,
+    episode: widget.episode,
+  );
 
   /// Hydrate from session TTL cache or fetch — only for kinds currently shown.
   void _ensureVisibleKindsLoaded({bool force = false}) {
@@ -383,10 +380,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   void _ensureTorrentsLoaded({bool force = false}) {
     if (force) {
-      CatalogSourcesSessionCache.invalidate(
-        _catalogCacheKey,
-        kind: 'torrents',
-      );
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
       unawaited(_runTorrentSearch());
       return;
     }
@@ -406,10 +400,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   void _ensureStremioLoaded({bool force = false}) {
     if (force) {
-      CatalogSourcesSessionCache.invalidate(
-        _catalogCacheKey,
-        kind: 'stremio',
-      );
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
       unawaited(_fetchStremioStreams());
       return;
     }
@@ -436,7 +427,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   Future<void> _ensureNuvioLoaded({bool force = false}) async {
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
-      await _fetchAllNuvioStreams();
+      await _fetchNextNuvioScraper(reset: true);
       return;
     }
     if (_nuvioStreams.isNotEmpty || _nuvioFetching) return;
@@ -444,14 +435,15 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (cached != null) {
       if (!mounted) return;
       setState(() {
-        _nuvioStreams = cached;
+        _nuvioStreams = cached.streams;
+        _nuvioFetchedScraperIds = cached.fetchedScraperIds;
         _error = null;
       });
       _focusPlayingSourceIfNeeded();
       _requestScrollToCurrent();
       return;
     }
-    await _fetchAllNuvioStreams();
+    await _fetchNextNuvioScraper(reset: true);
   }
 
   void _reloadKind(String kind) {
@@ -467,9 +459,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   String _sourceIdForKind(String kind, List<Map<String, dynamic>> addons) {
     return switch (kind) {
-      'stremio' => addons.isNotEmpty
-          ? addons.first['baseUrl'] as String
-          : 'forja',
+      'stremio' =>
+        addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja',
       'nuvio' => 'all_nuvio',
       'torrents' => 'forja',
       _ => 'forja',
@@ -497,10 +488,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return _streamAddons.first['baseUrl'] as String;
   }
 
-  void _resetVisibleLimit() {
-    _visibleLimit = kSourcesListPageSize;
-  }
-
   String? _effectivePreferredKind() {
     final base = widget.currentAddonBaseUrl;
     if (base != null && base.startsWith('nuvio:')) return 'nuvio';
@@ -525,8 +512,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     bool torrentsHit() =>
         _showTorrents && _results.any((r) => _isCurrentMagnet(r.magnet));
     bool nuvioHit() => _showNuvio && _nuvioStreams.any(_isCurrentStremio);
-    bool stremioHit() =>
-        _showStremio && _stremioStreams.any(_isCurrentStremio);
+    bool stremioHit() => _showStremio && _stremioStreams.any(_isCurrentStremio);
 
     // Already visible under the active filter — only scroll.
     if (_kindFilter == 'torrents' && torrentsHit()) {
@@ -681,12 +667,12 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   Set<String> get _availableLanguages => collectLanguages(_filterNames);
   Set<String> get _availableTech => collectTechTags(_filterNames);
   Set<String> get _availableSizes => collectSizeRanges(
-        _results.map(
-          (r) => r.sizeInBytes > 0
-              ? r.sizeInBytes
-              : TorrentReleaseMetadata.parseSizeBytes(r.size),
-        ),
-      );
+    _results.map(
+      (r) => r.sizeInBytes > 0
+          ? r.sizeInBytes
+          : TorrentReleaseMetadata.parseSizeBytes(r.size),
+    ),
+  );
 
   List<SourcesPanelProviderOption> get _providerOptions {
     if (_kindFilter == 'stremio') {
@@ -703,10 +689,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         for (final a in _nuvioAddons)
           for (final s in a.scrapers)
             if (s.enabled)
-              SourcesPanelProviderOption(
-                id: 'nuvio:${s.id}',
-                label: s.name,
-              ),
+              SourcesPanelProviderOption(id: 'nuvio:${s.id}', label: s.name),
       ];
     }
     if (_kindFilter == 'torrents') {
@@ -741,11 +724,17 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       final episode = widget.episode ?? 1;
 
       if (_selectedSourceId == 'jackett') {
-        found =
-            await _searchJackett(isTv: isTv, season: season, episode: episode);
+        found = await _searchJackett(
+          isTv: isTv,
+          season: season,
+          episode: episode,
+        );
       } else if (_selectedSourceId == 'prowlarr') {
-        found =
-            await _searchProwlarr(isTv: isTv, season: season, episode: episode);
+        found = await _searchProwlarr(
+          isTv: isTv,
+          season: season,
+          episode: episode,
+        );
       } else if (isTv) {
         found = await _searchForjaTv(season: season, episode: episode);
       } else {
@@ -818,107 +807,133 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     for (final addon in _streamAddons) {
       _stremio
           .getStreams(
-        baseUrl: addon['baseUrl'] as String,
-        type: type,
-        id: stremioId,
-      )
+            baseUrl: addon['baseUrl'] as String,
+            type: type,
+            id: stremioId,
+          )
           .then((streams) {
-        if (!mounted || gen != _stremioGen) return;
-        final tagged = filterStremioStreamsForProfile(
-          streams.map((s) {
-            if (s is Map<String, dynamic>) {
-              return <String, dynamic>{
-                ...s,
-                '_addonName': addon['name'] ?? 'Unknown',
-                '_addonBaseUrl': addon['baseUrl'],
-              };
+            if (!mounted || gen != _stremioGen) return;
+            final tagged = filterStremioStreamsForProfile(
+              streams.map((s) {
+                if (s is Map<String, dynamic>) {
+                  return <String, dynamic>{
+                    ...s,
+                    '_addonName': addon['name'] ?? 'Unknown',
+                    '_addonBaseUrl': addon['baseUrl'],
+                  };
+                }
+                return <String, dynamic>{
+                  '_addonName': addon['name'],
+                  '_addonBaseUrl': addon['baseUrl'],
+                };
+              }).toList(),
+              _profile,
+            );
+            setState(() {
+              if (tagged.isNotEmpty) {
+                _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
+                if (_kindFilter == 'stremio' &&
+                    (_selectedSourceId == 'all_stremio' ||
+                        !_loadedAddonBaseUrls.contains(_selectedSourceId))) {
+                  _selectedSourceId = addon['baseUrl'] as String;
+                }
+              }
+              _stremioStreams.addAll(tagged);
+            });
+            if (tagged.isNotEmpty) {
+              _focusPlayingSourceIfNeeded();
+              _requestScrollToCurrent();
             }
-            return <String, dynamic>{
-              '_addonName': addon['name'],
-              '_addonBaseUrl': addon['baseUrl'],
-            };
-          }).toList(),
-          _profile,
-        );
-        setState(() {
-          if (tagged.isNotEmpty) {
-            _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
-            if (_kindFilter == 'stremio' &&
-                (_selectedSourceId == 'all_stremio' ||
-                    !_loadedAddonBaseUrls.contains(_selectedSourceId))) {
-              _selectedSourceId = addon['baseUrl'] as String;
-            }
-          }
-          _stremioStreams.addAll(tagged);
-        });
-        if (tagged.isNotEmpty) {
-          _focusPlayingSourceIfNeeded();
-          _requestScrollToCurrent();
-        }
-      }).catchError((_) {
-        // skip failed addon
-      }).whenComplete(completeOne);
+          })
+          .catchError((_) {
+            // skip failed addon
+          })
+          .whenComplete(completeOne);
     }
   }
 
-  Future<void> _fetchAllNuvioStreams() async {
+  List<String> get _orderedNuvioScraperIds => [
+    for (final addon in _nuvioAddons)
+      for (final scraper in addon.scrapers)
+        if (scraper.enabled) scraper.id,
+  ];
+
+  List<String> get _pendingNuvioScraperIds => [
+    for (final id in _orderedNuvioScraperIds)
+      if (_nuvioSelectedScraperIds.contains(id) &&
+          !_nuvioFetchedScraperIds.contains(id))
+        id,
+  ];
+
+  Future<void> _fetchNextNuvioScraper({bool reset = false}) async {
     if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
-    await _nuvioSub?.cancel();
-    _nuvioSub = null;
-    NuvioService.instance.cancelPending();
+    if (_nuvioFetching && !reset) return;
+    if (reset) {
+      NuvioService.instance.cancelPending();
+    }
+    final fetchedIds = reset
+        ? <String>{}
+        : Set<String>.from(_nuvioFetchedScraperIds);
+    final scraperId = nextNuvioScraperId(
+      orderedIds: _orderedNuvioScraperIds,
+      selectedIds: _nuvioSelectedScraperIds,
+      fetchedIds: fetchedIds,
+    );
+    if (scraperId == null) return;
+    final gen = ++_nuvioFetchGen;
     setState(() {
       _nuvioFetching = true;
-      _nuvioStreams = [];
+      if (reset) {
+        _nuvioStreams = [];
+        _nuvioFetchedScraperIds = {};
+      }
       _error = null;
     });
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
-    final stream = NuvioService.instance.streamAll(
+    final batch = await NuvioService.instance.runSourcesScraper(
+      scraperId: scraperId,
       tmdbId: widget.movie.id.toString(),
       type: type,
       season: widget.movie.mediaType == 'tv' ? widget.season : null,
       episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
     );
-    _nuvioSub = stream.listen(
-      (batch) {
-        if (!mounted) return;
-        if (batch.streams.isEmpty) return;
-        setState(() {
-          _nuvioStreams.addAll(
-            batch.streams.map(
-              (s) => <String, dynamic>{
-                ...s,
-                '_nuvioScraperId': batch.scraperId,
-                '_addonName': s['sourceName'] ?? batch.scraperName,
-                '_addonBaseUrl': 'nuvio:${batch.scraperId}',
-              },
-            ),
-          );
-        });
-        _focusPlayingSourceIfNeeded();
-        _requestScrollToCurrent();
-      },
-      onError: (_) {},
-      onDone: () {
-        _nuvioSub = null;
-        if (!mounted) return;
-        CatalogSourcesSessionCache.writeNuvio(_catalogCacheKey, _nuvioStreams);
-        setState(() {
-          _nuvioFetching = false;
-          if (_nuvioStreams.isEmpty && !_showsTorrents && !_showsStremio) {
-            _error = 'No streams found from any Nuvio addon';
-          }
-        });
-        _focusPlayingSourceIfNeeded();
-      },
-      cancelOnError: false,
+    if (!mounted || gen != _nuvioFetchGen) return;
+    if (batch == null) {
+      setState(() => _nuvioFetching = false);
+      return;
+    }
+    setState(() {
+      _nuvioFetchedScraperIds.add(scraperId);
+      if (batch.streams.isNotEmpty) {
+        _nuvioStreams.addAll(
+          batch.streams.map(
+            (s) => <String, dynamic>{
+              ...s,
+              '_nuvioScraperId': batch.scraperId,
+              '_addonName': s['sourceName'] ?? batch.scraperName,
+              '_addonBaseUrl': 'nuvio:${batch.scraperId}',
+            },
+          ),
+        );
+      }
+      _nuvioFetching = false;
+      if (_nuvioStreams.isEmpty && _pendingNuvioScraperIds.isEmpty) {
+        _error = 'No streams found from selected Nuvio providers';
+      }
+    });
+    CatalogSourcesSessionCache.writeNuvio(
+      _catalogCacheKey,
+      _nuvioStreams,
+      fetchedScraperIds: _nuvioFetchedScraperIds,
     );
+    _focusPlayingSourceIfNeeded();
+    _requestScrollToCurrent();
   }
 
   void _onKindChanged(String kind) {
     if (kind == _kindFilter) return;
     setState(() {
       _kindFilter = kind;
-      _resetVisibleLimit();
       _qualityFilters = {};
       _languageFilters = {};
       _techFilters = {};
@@ -948,17 +963,16 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   Future<List<TorrentResult>> _searchForjaMovie() async {
-    final query =
-        _year.isNotEmpty ? '${widget.movie.title} $_year' : widget.movie.title;
-    final results = (await Engine.searchTorrents(query))
-        .map(TorrentResult.fromJson)
-        .toList();
+    final query = _year.isNotEmpty
+        ? '${widget.movie.title} $_year'
+        : widget.movie.title;
+    final results = (await Engine.searchTorrents(
+      query,
+    )).map(TorrentResult.fromJson).toList();
     return (await Engine.filterTorrents(
       results.map((r) => r.toJson()).toList(),
       widget.movie.title,
-    ))
-        .map(TorrentResult.fromJson)
-        .toList();
+    )).map(TorrentResult.fromJson).toList();
   }
 
   Future<List<TorrentResult>> _searchForjaTv({
@@ -969,28 +983,26 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final e = episode.toString().padLeft(2, '0');
     final seasonQuery = '${widget.movie.title} S$s';
     final episodeQuery = '${widget.movie.title} S${s}E$e';
-    final seasonRaw = (await Engine.searchTorrents(seasonQuery))
-        .map(TorrentResult.fromJson)
-        .toList();
-    final episodeRaw = (await Engine.searchTorrents(episodeQuery))
-        .map(TorrentResult.fromJson)
-        .toList();
+    final seasonRaw = (await Engine.searchTorrents(
+      seasonQuery,
+    )).map(TorrentResult.fromJson).toList();
+    final episodeRaw = (await Engine.searchTorrents(
+      episodeQuery,
+    )).map(TorrentResult.fromJson).toList();
     final combined = <String, TorrentResult>{};
     for (final r in (await Engine.filterTorrents(
       episodeRaw.map((r) => r.toJson()).toList(),
       widget.movie.title,
       requiredSeason: season,
       requiredEpisode: episode,
-    ))
-        .map(TorrentResult.fromJson)) {
+    )).map(TorrentResult.fromJson)) {
       combined[r.magnet] = r;
     }
     for (final r in (await Engine.filterTorrents(
       seasonRaw.map((r) => r.toJson()).toList(),
       widget.movie.title,
       requiredSeason: season,
-    ))
-        .map(TorrentResult.fromJson)) {
+    )).map(TorrentResult.fromJson)) {
       combined[r.magnet] = r;
     }
     return combined.values.toList();
@@ -1019,15 +1031,13 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         results[0].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
-      ))
-          .map(TorrentResult.fromJson);
+      )).map(TorrentResult.fromJson);
       final episodeFiltered = (await Engine.filterTorrents(
         results[1].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
         requiredEpisode: episode,
-      ))
-          .map(TorrentResult.fromJson);
+      )).map(TorrentResult.fromJson);
       for (final r in episodeFiltered) {
         combined[r.magnet] = r;
       }
@@ -1037,15 +1047,14 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       return combined.values.toList();
     }
 
-    final query =
-        _year.isNotEmpty ? '${widget.movie.title} $_year' : widget.movie.title;
+    final query = _year.isNotEmpty
+        ? '${widget.movie.title} $_year'
+        : widget.movie.title;
     final results = await jackett.search(baseUrl, apiKey, query);
     return (await Engine.filterTorrents(
       results.map((r) => r.toJson()).toList(),
       widget.movie.title,
-    ))
-        .map(TorrentResult.fromJson)
-        .toList();
+    )).map(TorrentResult.fromJson).toList();
   }
 
   Future<List<TorrentResult>> _searchProwlarr({
@@ -1062,8 +1071,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     List<int>? indexerIds;
     final tagIds = await _settings.getProwlarrTagIds();
     if (tagIds.isNotEmpty) {
-      final resolved =
-          await prowlarr.resolveTagIndexerIds(baseUrl, apiKey, tagIds);
+      final resolved = await prowlarr.resolveTagIndexerIds(
+        baseUrl,
+        apiKey,
+        tagIds,
+      );
       if (resolved.isNotEmpty) indexerIds = resolved;
     }
 
@@ -1089,15 +1101,13 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         results[0].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
-      ))
-          .map(TorrentResult.fromJson);
+      )).map(TorrentResult.fromJson);
       final episodeFiltered = (await Engine.filterTorrents(
         results[1].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
         requiredEpisode: episode,
-      ))
-          .map(TorrentResult.fromJson);
+      )).map(TorrentResult.fromJson);
       for (final r in episodeFiltered) {
         combined[r.magnet] = r;
       }
@@ -1107,8 +1117,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       return combined.values.toList();
     }
 
-    final query =
-        _year.isNotEmpty ? '${widget.movie.title} $_year' : widget.movie.title;
+    final query = _year.isNotEmpty
+        ? '${widget.movie.title} $_year'
+        : widget.movie.title;
     final results = await prowlarr.search(
       baseUrl,
       apiKey,
@@ -1118,25 +1129,19 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return (await Engine.filterTorrents(
       results.map((r) => r.toJson()).toList(),
       widget.movie.title,
-    ))
-        .map(TorrentResult.fromJson)
-        .toList();
+    )).map(TorrentResult.fromJson).toList();
   }
 
   void _onChipTap(String id) {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       setState(() {
-        _resetVisibleLimit();
         _selectedSourceId = 'all_nuvio';
         if (_nuvioSelectedScraperIds.contains(scraperId)) {
           _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
             ..remove(scraperId);
         } else {
-          _nuvioSelectedScraperIds = {
-            ..._nuvioSelectedScraperIds,
-            scraperId,
-          };
+          _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
         }
         _error = null;
       });
@@ -1144,7 +1149,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
     if (id == _selectedSourceId) return;
     setState(() {
-      _resetVisibleLimit();
       _selectedSourceId = id;
       _qualityFilters = {};
       _languageFilters = {};
@@ -1190,11 +1194,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   @override
   Widget build(BuildContext context) {
     final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
-    final stremio =
-        _showsStremio ? _visibleStremioStreams : <Map<String, dynamic>>[];
+    final stremio = _showsStremio
+        ? _visibleStremioStreams
+        : <Map<String, dynamic>>[];
     final nuvio = _showsNuvio ? _filteredNuvio : <Map<String, dynamic>>[];
     final totalCount = torrents.length + stremio.length + nuvio.length;
-    final visibleCount = totalCount < _visibleLimit ? totalCount : _visibleLimit;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1212,8 +1216,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           onCancelFetch: () {
             _searchGen++;
             _stremioGen++;
-            _nuvioSub?.cancel();
-            _nuvioSub = null;
+            _nuvioFetchGen++;
             NuvioService.instance.cancelPending();
             setState(() {
               _searching = false;
@@ -1226,10 +1229,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           nuvioSelectedScraperIds: _nuvioSelectedScraperIds,
           onProviderTap: _onChipTap,
           searchQuery: _searchQuery,
-          onSearchChanged: (q) => setState(() {
-            _resetVisibleLimit();
-            _searchQuery = q;
-          }),
+          onSearchChanged: (q) => setState(() => _searchQuery = q),
           availableQualities: _availableQualities,
           availableLanguages: _availableLanguages,
           availableTech: _availableTech,
@@ -1238,53 +1238,33 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           activeLanguageFilters: _languageFilters,
           activeTechFilters: _techFilters,
           activeSizeFilters: _sizeFilters,
-          onQualityFiltersChanged: (v) => setState(() {
-            _resetVisibleLimit();
-            _qualityFilters = v;
-          }),
-          onLanguageFiltersChanged: (v) => setState(() {
-            _resetVisibleLimit();
-            _languageFilters = v;
-          }),
-          onTechFiltersChanged: (v) => setState(() {
-            _resetVisibleLimit();
-            _techFilters = v;
-          }),
-          onSizeFiltersChanged: (v) => setState(() {
-            _resetVisibleLimit();
-            _sizeFilters = v;
-          }),
+          onQualityFiltersChanged: (v) => setState(() => _qualityFilters = v),
+          onLanguageFiltersChanged: (v) => setState(() => _languageFilters = v),
+          onTechFiltersChanged: (v) => setState(() => _techFilters = v),
+          onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
           showAudioFilters: _showsTorrents,
           activeAudioFilters: _audioFilters,
-          onAudioFiltersChanged: (v) => setState(() {
-            _resetVisibleLimit();
-            _audioFilters = v;
-          }),
+          onAudioFiltersChanged: (v) => setState(() => _audioFilters = v),
           sortPreference: _showsTorrents ? _sortPreference : null,
           onSortChanged: _showsTorrents
               ? (val) {
-                  setState(() {
-                    _resetVisibleLimit();
-                    _sortPreference = val;
-                  });
+                  setState(() => _sortPreference = val);
                   _settings.setSortPreference(val);
                 }
               : null,
           showCacheLine: _showsTorrents && _localTorrentEngine,
-          cacheRefreshToken:
-              Object.hash(_openToken, _results.length, _searching),
+          cacheRefreshToken: Object.hash(
+            _openToken,
+            _results.length,
+            _searching,
+          ),
           filterEnableBlur: false,
           onReloadKind: _reloadKind,
+          sourcesPanelOpen: true,
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: _buildList(
-            torrents,
-            stremio,
-            nuvio,
-            visibleCount: visibleCount,
-            totalCount: totalCount,
-          ),
+          child: _buildList(torrents, stremio, nuvio, totalCount: totalCount),
         ),
       ],
     );
@@ -1308,7 +1288,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     List<TorrentResult> torrents,
     List<Map<String, dynamic>> stremio,
     List<Map<String, dynamic>> nuvio, {
-    required int visibleCount,
     required int totalCount,
   }) {
     if (_isFetching && totalCount == 0) {
@@ -1316,7 +1295,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         child: SizedBox(
           width: 28,
           height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white54,
+          ),
         ),
       );
     }
@@ -1345,7 +1327,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         ),
       );
     }
-    if (totalCount == 0) {
+    final remainingNuvioProviders = _showsNuvio
+        ? _pendingNuvioScraperIds.length
+        : 0;
+    final showNuvioLoadNext = remainingNuvioProviders > 0;
+    if (totalCount == 0 && !showNuvioLoadNext) {
       final emptyMsg = _showsNuvio && _nuvioSelectedScraperIds.isEmpty
           ? 'Select at least one provider'
           : 'No matching sources';
@@ -1360,27 +1346,25 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       );
     }
 
-    final showAddonName = _showsNuvio ||
+    final showAddonName =
+        _showsNuvio ||
         (_kindFilter == 'stremio' && _providerOptions.length > 1);
-    final showLoadMore = visibleCount < totalCount;
 
     _scheduleScrollToCurrent();
 
-    final currentIndex =
-        _currentItemIndex(torrents, stremio, nuvio: nuvio);
+    final currentIndex = _currentItemIndex(torrents, stremio, nuvio: nuvio);
 
     return ListView.separated(
       controller: _listScrollController,
       padding: const EdgeInsets.only(top: 2, bottom: 8),
-      itemCount: visibleCount + (showLoadMore ? 1 : 0),
+      itemCount: totalCount + (showNuvioLoadNext ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
-        if (showLoadMore && i == visibleCount) {
-          return SourcesLoadMoreButton(
-            remaining: totalCount - visibleCount,
-            onPressed: () => setState(() {
-              _visibleLimit += kSourcesListPageSize;
-            }),
+        if (showNuvioLoadNext && i == totalCount) {
+          return SourcesLoadNextProviderButton(
+            remainingProviders: remainingNuvioProviders,
+            isLoading: _nuvioFetching,
+            onPressed: _fetchNextNuvioScraper,
           );
         }
         if (i < torrents.length) {
@@ -1397,13 +1381,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         }
 
         final j = i - torrents.length;
-        final s = j < stremio.length
-            ? stremio[j]
-            : nuvio[j - stremio.length];
+        final s = j < stremio.length ? stremio[j] : nuvio[j - stremio.length];
         final title = (s['title'] ?? s['name'] ?? 'Unknown Stream').toString();
         final description = (s['description'] ?? '').toString();
-        final presentation =
-            stremioTilePresentation(s, isResumable: false);
+        final presentation = stremioTilePresentation(s, isResumable: false);
         final isCurrent = i == currentIndex;
         return KeyedSubtree(
           key: isCurrent ? _currentTileKey : null,

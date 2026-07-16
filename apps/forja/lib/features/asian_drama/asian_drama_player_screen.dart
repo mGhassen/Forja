@@ -127,6 +127,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   bool _handedOffLiveNotifiers = false;
   bool _switchingManualMirror = false;
   String? _pendingManualMirrorId;
+  /// Completes to abort an in-flight [KissKhService.probeMirrors] wait.
+  Completer<void>? _probeAbort;
+  /// Bumps so late [probeMirrors] onResult callbacks cannot clobber UI.
+  int _probeGeneration = 0;
   KdramaCard? _resolvedDrama;
   KdramaEpisode? _resolvedEpisode;
   List<KdramaEpisode> _resolvedEpisodes = const [];
@@ -165,8 +169,20 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
   void _requestManualMirrorCheck(String mirrorId) {
     if (_cancelled || _failedAll) return;
-    _pendingManualMirrorId = mirrorId;
+    final host = KissKhService.normalizeMirrorId(mirrorId);
+    if (!KissKhService.isMirrorHost(host)) return;
+
+    _pendingManualMirrorId = host;
     _switchingManualMirror = true;
+    _probeGeneration++;
+    _prepareProbes(preferred: host);
+    _applyProbeStatus(host, StreamProviderProbeStatus.trying);
+    _setPhase('Opening ${KissKhService.mirrorLabel(host)}…');
+
+    final abort = _probeAbort;
+    if (abort != null && !abort.isCompleted) {
+      abort.complete();
+    }
     unawaited(_extractor.cancel());
   }
 
@@ -388,77 +404,108 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
               ];
         _prepareProbes(preferred: pin);
 
-        // Parallel API URL check first — one engine job per mirror (safe).
-        // Never fan-out OS threads inside Rust around shared Tokio block_on.
-        for (final host in tryOrder) {
-          _applyProbeStatus(host, StreamProviderProbeStatus.trying);
-        }
-        _setPhase('Checking mirror URLs…');
-        debugPrint(
-          '[AsianDrama] probing ${tryOrder.length} mirrors in parallel…',
-        );
-        KissKhMirrorHealth health;
-        try {
-          health = await KissKhService.probeMirrors(
-            hosts: tryOrder,
-            onResult: (host, ok) {
-              if (!mounted || _cancelled || _switchingManualMirror) return;
-              _applyProbeStatus(
-                host,
-                ok
-                    ? StreamProviderProbeStatus.pending
-                    : StreamProviderProbeStatus.failed,
-              );
-              debugPrint(
-                '[AsianDrama] mirror ${KissKhService.mirrorLabel(host)} '
-                '→ ${ok ? 'API UP' : 'API DOWN'}',
-              );
-            },
+        // Manual pin: skip URL fan-out and open that mirror immediately.
+        // Auto: parallel API check first (leave rows WAITING so taps work).
+        late final List<String> healthyOrder;
+        if (!SourceEngine.isAuto(pin)) {
+          healthyOrder = [
+            pin,
+            ..._mirrorOrder.where((h) => h != pin),
+          ];
+          debugPrint(
+            '[AsianDrama] manual mirror ${KissKhService.mirrorLabel(pin)} '
+            '— skipping URL probe',
           );
-        } catch (e) {
-          debugPrint('[AsianDrama] mirror probe failed: $e');
-          health = const KissKhMirrorHealth(
+        } else {
+          // Never mark every host CHECKING at once — that disabled manual taps.
+          _setPhase('Checking mirror URLs…');
+          debugPrint(
+            '[AsianDrama] probing ${tryOrder.length} mirrors in parallel…',
+          );
+          final gen = ++_probeGeneration;
+          final abort = Completer<void>();
+          _probeAbort = abort;
+          KissKhMirrorHealth health = const KissKhMirrorHealth(
             selected: null,
             healthyHosts: [],
             unhealthyHosts: [],
           );
-        }
-        if (!mounted || _cancelled) return;
-        if (_switchingManualMirror) {
-          if (_pendingManualMirrorId != null) {
-            preferred = _pendingManualMirrorId!;
-            _pendingManualMirrorId = null;
+          try {
+            final probeFuture = KissKhService.probeMirrors(
+              hosts: tryOrder,
+              onResult: (host, ok) {
+                if (!mounted ||
+                    _cancelled ||
+                    gen != _probeGeneration ||
+                    _switchingManualMirror) {
+                  return;
+                }
+                _applyProbeStatus(
+                  host,
+                  ok
+                      ? StreamProviderProbeStatus.pending
+                      : StreamProviderProbeStatus.failed,
+                );
+                debugPrint(
+                  '[AsianDrama] mirror ${KissKhService.mirrorLabel(host)} '
+                  '→ ${ok ? 'API UP' : 'API DOWN'}',
+                );
+              },
+            ).then((h) {
+              health = h;
+              return h;
+            }).catchError((Object e) {
+              debugPrint('[AsianDrama] mirror probe failed: $e');
+              health = const KissKhMirrorHealth(
+                selected: null,
+                healthyHosts: [],
+                unhealthyHosts: [],
+              );
+              return health;
+            });
+            await Future.any([probeFuture, abort.future]);
+            if (!_switchingManualMirror) {
+              await probeFuture;
+            }
+          } finally {
+            if (identical(_probeAbort, abort)) {
+              _probeAbort = null;
+            }
           }
-          continue;
-        }
-
-        final healthyOrder = <String>[
-          for (final host in tryOrder)
-            if (health.healthyHosts.contains(host) ||
-                // Manual pin: still attempt extract even if API probe flaked.
-                (!SourceEngine.isAuto(pin) && host == pin))
-              host,
-        ];
-        for (final host in tryOrder) {
-          if (healthyOrder.contains(host)) {
-            _applyProbeStatus(host, StreamProviderProbeStatus.pending);
-          } else {
-            _applyProbeStatus(host, StreamProviderProbeStatus.failed);
-          }
-        }
-        debugPrint(
-          '[AsianDrama] healthy mirrors for WebView: $healthyOrder',
-        );
-
-        if (healthyOrder.isEmpty) {
-          stream = null;
-          winningHost = null;
-          if (_switchingManualMirror && _pendingManualMirrorId != null) {
-            preferred = _pendingManualMirrorId!;
-            _pendingManualMirrorId = null;
+          if (!mounted || _cancelled) return;
+          if (_switchingManualMirror) {
+            if (_pendingManualMirrorId != null) {
+              preferred = _pendingManualMirrorId!;
+              _pendingManualMirrorId = null;
+            }
             continue;
           }
-          break;
+
+          healthyOrder = [
+            for (final host in tryOrder)
+              if (health.healthyHosts.contains(host)) host,
+          ];
+          for (final host in tryOrder) {
+            if (healthyOrder.contains(host)) {
+              _applyProbeStatus(host, StreamProviderProbeStatus.pending);
+            } else {
+              _applyProbeStatus(host, StreamProviderProbeStatus.failed);
+            }
+          }
+          debugPrint(
+            '[AsianDrama] healthy mirrors for WebView: $healthyOrder',
+          );
+
+          if (healthyOrder.isEmpty) {
+            stream = null;
+            winningHost = null;
+            if (_switchingManualMirror && _pendingManualMirrorId != null) {
+              preferred = _pendingManualMirrorId!;
+              _pendingManualMirrorId = null;
+              continue;
+            }
+            break;
+          }
         }
 
         stream = null;

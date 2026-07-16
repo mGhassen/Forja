@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -143,8 +144,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   void _onFadeOutRequested() {
-    if (widget.fadeOutNotifier?.value == true && mounted) {
+    if (!mounted) return;
+    if (widget.fadeOutNotifier?.value == true) {
       _fadeOutController.reverse();
+    } else {
+      // Player closed before hand-off finished — restore the overlay so
+      // Cancel / Reload are visible again (not a blank black route).
+      _fadeOutController.forward();
     }
   }
 
@@ -196,15 +202,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   bool _canManualCheck(StreamProviderProbe probe) {
     if (widget.onManualCheckProvider == null) return false;
-    return switch (probe.status) {
-      StreamProviderProbeStatus.trying ||
-      StreamProviderProbeStatus.skippedOnTv =>
-        false,
-      StreamProviderProbeStatus.pending ||
-      StreamProviderProbeStatus.failed ||
-      StreamProviderProbeStatus.success =>
-        true,
-    };
+    // Allow tapping CHECKING rows so the user can jump to another server
+    // (or re-pin the current one) without waiting for the active probe.
+    return probe.status != StreamProviderProbeStatus.skippedOnTv;
   }
 
   String _probeStatusLabel(StreamProviderProbeStatus status) {
@@ -601,7 +601,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     final backdropUrl = _resolveBackdropUrl();
-    return FadeTransition(
+    final overlay = FadeTransition(
       opacity: _fadeOutAnimation,
       child: Material(
         color: Colors.black,
@@ -744,6 +744,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             ],
           ),
         ),
+      ),
+    );
+
+    if (widget.onCancel == null) return overlay;
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): widget.onCancel!,
+      },
+      child: Focus(
+        autofocus: true,
+        child: overlay,
       ),
     );
   }

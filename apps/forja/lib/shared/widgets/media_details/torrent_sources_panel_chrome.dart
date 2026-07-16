@@ -47,6 +47,8 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.filterEnableBlur = true,
     /// Force-refetch the selected kind (`torrents` | `stremio` | `nuvio`).
     this.onReloadKind,
+    /// When true, Filters auto-opens beside Sources.
+    this.sourcesPanelOpen = false,
   });
 
   final VoidCallback onClose;
@@ -86,6 +88,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final int? cacheRefreshToken;
   final bool showCacheLine;
   final bool filterEnableBlur;
+  final bool sourcesPanelOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +140,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           nuvioSelectedScraperIds: nuvioSelectedScraperIds,
           onProviderTap: onProviderTap,
           enableBlur: filterEnableBlur,
+          sourcesPanelOpen: sourcesPanelOpen,
         ),
         if (showCacheLine && cacheRefreshToken != null) ...[
           const SizedBox(height: 4),

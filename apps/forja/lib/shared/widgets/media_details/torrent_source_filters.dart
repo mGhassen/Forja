@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -8,30 +6,26 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
-/// How many catalog rows to show before the Sources **Load more** footer.
-const kSourcesListPageSize = 10;
-
 /// Provider / addon / scraper row for the Sources Filters panel.
 class SourcesPanelProviderOption {
-  const SourcesPanelProviderOption({
-    required this.id,
-    required this.label,
-  });
+  const SourcesPanelProviderOption({required this.id, required this.label});
 
   final String id;
   final String label;
 }
 
-/// Footer control that reveals the next [kSourcesListPageSize] matching rows.
-class SourcesLoadMoreButton extends StatelessWidget {
-  const SourcesLoadMoreButton({
+/// Fetches the next selected Nuvio scraper.
+class SourcesLoadNextProviderButton extends StatelessWidget {
+  const SourcesLoadNextProviderButton({
     super.key,
-    required this.remaining,
+    required this.remainingProviders,
     required this.onPressed,
+    this.isLoading = false,
   });
 
-  final int remaining;
+  final int remainingProviders;
   final VoidCallback onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -39,23 +33,32 @@ class SourcesLoadMoreButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: FocusableControl(
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         borderRadius: 10,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: _torrentPanelControlDecoration(active: false, radius: 10),
           alignment: Alignment.center,
-          child: Text(
-            remaining == 1
-                ? 'Load more (1 left)'
-                : 'Load more ($remaining left)',
-            style: TextStyle(
-              color: cinematic.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          child: isLoading
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: cinematic.textPrimary,
+                  ),
+                )
+              : Text(
+                  remainingProviders == 1
+                      ? 'Load next provider (1 left)'
+                      : 'Load next provider ($remainingProviders left)',
+                  style: TextStyle(
+                    color: cinematic.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
         ),
       ),
     );
@@ -63,7 +66,17 @@ class SourcesLoadMoreButton extends StatelessWidget {
 }
 
 const kTorrentAudioTags = [
-  'Atmos', 'TrueHD', 'DTS:X', 'DTS-HD', 'DTS', 'DD+', 'DD', 'AAC', '7.1', '5.1', '2.0',
+  'Atmos',
+  'TrueHD',
+  'DTS:X',
+  'DTS-HD',
+  'DTS',
+  'DD+',
+  'DD',
+  'AAC',
+  '7.1',
+  '5.1',
+  '2.0',
 ];
 
 BoxDecoration _torrentPanelTrackDecoration({double radius = 24}) {
@@ -148,7 +161,11 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
               child: Row(
                 children: [
-                  Icon(Icons.graphic_eq, size: 14, color: cinematic.textSecondary),
+                  Icon(
+                    Icons.graphic_eq,
+                    size: 14,
+                    color: cinematic.textSecondary,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -196,16 +213,23 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                     widget.onChanged(Set<String>.from(_selected));
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             tag,
                             style: GoogleFonts.plusJakartaSans(
-                              color: on ? cinematic.textPrimary : cinematic.textSecondary,
+                              color: on
+                                  ? cinematic.textPrimary
+                                  : cinematic.textSecondary,
                               fontSize: 13,
-                              fontWeight: on ? FontWeight.w600 : FontWeight.w500,
+                              fontWeight: on
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                             ),
                           ),
                         ),
@@ -251,8 +275,7 @@ class TorrentSourceKindFilter extends StatelessWidget {
         (id: 'torrents', label: 'Torrents', icon: Icons.downloading_rounded),
       if (showStremio)
         (id: 'stremio', label: 'Stremio', icon: Icons.extension_outlined),
-      if (showNuvio)
-        (id: 'nuvio', label: 'Nuvio', icon: Icons.code_rounded),
+      if (showNuvio) (id: 'nuvio', label: 'Nuvio', icon: Icons.code_rounded),
     ];
     if (options.isEmpty) return const SizedBox.shrink();
 
@@ -306,8 +329,8 @@ class TorrentSourceToggle extends StatelessWidget {
     final selected = isNuvio
         ? 'nuvio'
         : isTorrent
-            ? 'torrents'
-            : 'stremio';
+        ? 'torrents'
+        : 'stremio';
     return TorrentSourceKindFilter(
       selected: selected,
       showTorrents: showTorrent,
@@ -349,9 +372,14 @@ class _SourceTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 14,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
-          color: selected ? ForjaShellColors.chipSelectedBg : Colors.transparent,
+          color: selected
+              ? ForjaShellColors.chipSelectedBg
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
@@ -364,14 +392,22 @@ class _SourceTab extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: selected ? ForjaShellColors.cinematic.textPrimary : ForjaShellColors.cinematic.textSecondary),
+              Icon(
+                icon,
+                size: 14,
+                color: selected
+                    ? ForjaShellColors.cinematic.textPrimary
+                    : ForjaShellColors.cinematic.textSecondary,
+              ),
               const SizedBox(width: 5),
               Text(
                 shortLabel,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: selected ? ForjaShellColors.cinematic.textPrimary : ForjaShellColors.cinematic.textSecondary,
+                  color: selected
+                      ? ForjaShellColors.cinematic.textPrimary
+                      : ForjaShellColors.cinematic.textSecondary,
                 ),
               ),
             ],
@@ -432,8 +468,14 @@ class TorrentSourceChips extends StatelessWidget {
                     onTap: () => onChipTap(id),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: _torrentPanelChipDecoration(selected: selected, radius: 999),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: _torrentPanelChipDecoration(
+                        selected: selected,
+                        radius: 999,
+                      ),
                       child: Text(
                         chip['label'] as String,
                         style: TextStyle(
@@ -452,7 +494,10 @@ class TorrentSourceChips extends StatelessWidget {
           ),
         ),
         if (showArrows)
-          _ScrollArrow(icon: Icons.arrow_forward_ios_rounded, onTap: onScrollForward),
+          _ScrollArrow(
+            icon: Icons.arrow_forward_ios_rounded,
+            onTap: onScrollForward,
+          ),
       ],
     );
   }
@@ -491,7 +536,11 @@ class TorrentSourceResultsHeader extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              Icon(Icons.download_rounded, color: ForjaShellColors.cinematic.textSecondary, size: 16),
+              Icon(
+                Icons.download_rounded,
+                color: ForjaShellColors.cinematic.textSecondary,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -524,7 +573,8 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     style: TextStyle(
-                      color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.7),
+                      color: ForjaShellColors.cinematic.textSecondary
+                          .withValues(alpha: 0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -544,7 +594,10 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                 TextButton(
                   onPressed: onCancelFetch,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -568,7 +621,10 @@ class TorrentSourceResultsHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: _torrentPanelControlDecoration(active: false),
                   child: DropdownButton<String>(
                     value: sortPreference,
@@ -584,14 +640,19 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                       color: ForjaShellColors.cinematic.textPrimary,
                       fontSize: 11,
                     ),
-                    items: [
-                      'Seeders (High to Low)',
-                      'Seeders (Low to High)',
-                      'Quality (High to Low)',
-                      'Quality (Low to High)',
-                      'Size (High to Low)',
-                      'Size (Low to High)',
-                    ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    items:
+                        [
+                              'Seeders (High to Low)',
+                              'Seeders (Low to High)',
+                              'Quality (High to Low)',
+                              'Quality (Low to High)',
+                              'Size (High to Low)',
+                              'Size (Low to High)',
+                            ]
+                            .map(
+                              (s) => DropdownMenuItem(value: s, child: Text(s)),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       if (val != null) onSortChanged(val);
                     },
@@ -624,9 +685,15 @@ class _AudioFilterButton extends StatelessWidget {
     final active = activeFilters.isNotEmpty;
     return GestureDetector(
       onTapDown: (details) async {
-        final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+        final overlay =
+            Overlay.of(context).context.findRenderObject() as RenderBox;
         final position = RelativeRect.fromRect(
-          Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1),
+          Rect.fromLTWH(
+            details.globalPosition.dx,
+            details.globalPosition.dy,
+            1,
+            1,
+          ),
           Offset.zero & overlay.size,
         );
         await showMenu(
@@ -695,7 +762,9 @@ class _ScrollArrow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Icon(
           icon,
-          color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.7),
+          color: ForjaShellColors.cinematic.textSecondary.withValues(
+            alpha: 0.7,
+          ),
           size: 16,
         ),
       ),
@@ -709,7 +778,8 @@ class TorrentCacheStorageLine extends StatefulWidget {
   final int refreshToken;
 
   @override
-  State<TorrentCacheStorageLine> createState() => _TorrentCacheStorageLineState();
+  State<TorrentCacheStorageLine> createState() =>
+      _TorrentCacheStorageLineState();
 }
 
 class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
@@ -744,7 +814,10 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
       await _load();
     } catch (_) {
       if (mounted) {
-        ForjaToast.error('Could not clear stream cache', duration: const Duration(seconds: 2));
+        ForjaToast.error(
+          'Could not clear stream cache',
+          duration: const Duration(seconds: 2),
+        );
       }
     } finally {
       if (mounted) setState(() => _clearing = false);
@@ -812,7 +885,7 @@ String _languageChipLabel(String code) {
   return '$flag ${code.toUpperCase()}';
 }
 
-class TorrentSourceSearchToolbar extends StatelessWidget {
+class TorrentSourceSearchToolbar extends StatefulWidget {
   const TorrentSourceSearchToolbar({
     super.key,
     required this.searchQuery,
@@ -839,8 +912,12 @@ class TorrentSourceSearchToolbar extends StatelessWidget {
     this.selectedProviderId,
     this.nuvioSelectedScraperIds = const {},
     this.onProviderTap,
+
     /// Details: true (BackdropFilter). Player: false (no freeze-frame / no live blur).
     this.enableBlur = true,
+
+    /// When Sources opens, auto-present Filters; closing Sources dismisses them.
+    this.sourcesPanelOpen = false,
   });
 
   final String searchQuery;
@@ -868,104 +945,200 @@ class TorrentSourceSearchToolbar extends StatelessWidget {
   final Set<String> nuvioSelectedScraperIds;
   final ValueChanged<String>? onProviderTap;
   final bool enableBlur;
+  final bool sourcesPanelOpen;
+
+  @override
+  State<TorrentSourceSearchToolbar> createState() =>
+      _TorrentSourceSearchToolbarState();
+}
+
+class _TorrentSourceSearchToolbarState
+    extends State<TorrentSourceSearchToolbar> {
+  OverlayEntry? _filtersEntry;
+  bool _autoOpenedForSession = false;
+  bool _wasPanelOpen = false;
+
+  bool get _canFilter =>
+      widget.showFilters &&
+      (widget.availableQualities.isNotEmpty ||
+          widget.availableLanguages.isNotEmpty ||
+          widget.availableTech.isNotEmpty ||
+          widget.availableSizeRanges.isNotEmpty ||
+          widget.showAudioFilters ||
+          widget.sortPreference != null ||
+          widget.providerOptions.isNotEmpty);
 
   int get _providerActiveCount {
-    if (providerOptions.isEmpty || onProviderTap == null) return 0;
-    final nuvio = providerOptions.where((p) => p.id.startsWith('nuvio:'));
-    if (nuvio.isNotEmpty) return nuvioSelectedScraperIds.length;
-    if (selectedProviderId == null || selectedProviderId!.isEmpty) return 0;
+    if (widget.providerOptions.isEmpty || widget.onProviderTap == null) {
+      return 0;
+    }
+    final nuvio = widget.providerOptions.where(
+      (p) => p.id.startsWith('nuvio:'),
+    );
+    if (nuvio.isNotEmpty) return widget.nuvioSelectedScraperIds.length;
+    if (widget.selectedProviderId == null ||
+        widget.selectedProviderId!.isEmpty) {
+      return 0;
+    }
     return 1;
   }
 
   int get _activeCount =>
-      activeQualityFilters.length +
-      activeLanguageFilters.length +
-      activeTechFilters.length +
-      activeAudioFilters.length +
-      activeSizeFilters.length +
+      widget.activeQualityFilters.length +
+      widget.activeLanguageFilters.length +
+      widget.activeTechFilters.length +
+      widget.activeAudioFilters.length +
+      widget.activeSizeFilters.length +
       _providerActiveCount;
 
-  Future<void> _openFilters(BuildContext context) async {
-    await _openFiltersSidePanel(context);
+  bool get _filtersOpen => _filtersEntry != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _wasPanelOpen = widget.sourcesPanelOpen;
+    if (widget.sourcesPanelOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybeAutoOpenFilters();
+      });
+    }
   }
 
-  Future<void> _openFiltersSidePanel(BuildContext context) async {
+  @override
+  void didUpdateWidget(covariant TorrentSourceSearchToolbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.sourcesPanelOpen && !_wasPanelOpen) {
+      _autoOpenedForSession = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybeAutoOpenFilters();
+      });
+    } else if (!widget.sourcesPanelOpen && _wasPanelOpen) {
+      _closeFiltersOverlay();
+      _autoOpenedForSession = false;
+    } else if (widget.sourcesPanelOpen && !_autoOpenedForSession) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybeAutoOpenFilters();
+      });
+    }
+    _wasPanelOpen = widget.sourcesPanelOpen;
+    if (_filtersOpen) {
+      _filtersEntry!.markNeedsBuild();
+    }
+  }
+
+  @override
+  void dispose() {
+    _closeFiltersOverlay();
+    super.dispose();
+  }
+
+  void _maybeAutoOpenFilters() {
+    if (!widget.sourcesPanelOpen || _autoOpenedForSession) return;
+    if (!_canFilter) return;
+    _autoOpenedForSession = true;
+    if (!_filtersOpen) _openFiltersSidePanel();
+  }
+
+  void _toggleFilters() {
+    if (_filtersOpen) {
+      _closeFiltersOverlay();
+    } else {
+      _openFiltersSidePanel();
+    }
+  }
+
+  void _closeFiltersOverlay() {
+    final entry = _filtersEntry;
+    if (entry == null) return;
+    _filtersEntry = null;
+    entry.remove();
+    if (mounted) setState(() {});
+  }
+
+  void _openFiltersSidePanel() {
+    if (_filtersEntry != null) return;
     final overlay = Overlay.of(context, rootOverlay: true);
     late OverlayEntry entry;
-    final completer = Completer<void>();
 
     void close() {
+      if (_filtersEntry == entry) {
+        _filtersEntry = null;
+      }
       entry.remove();
-      if (!completer.isCompleted) completer.complete();
+      if (mounted) setState(() {});
     }
 
     entry = OverlayEntry(
       builder: (ctx) => _TorrentFiltersSidePanel(
-        enableBlur: enableBlur,
+        enableBlur: widget.enableBlur,
         onClose: close,
         child: _TorrentSourceFilterSheet(
-          availableQualities: availableQualities,
-          availableLanguages: availableLanguages,
-          availableTech: availableTech,
-          availableSizeRanges: availableSizeRanges,
-          activeQualityFilters: activeQualityFilters,
-          activeLanguageFilters: activeLanguageFilters,
-          activeTechFilters: activeTechFilters,
-          activeAudioFilters: activeAudioFilters,
-          activeSizeFilters: activeSizeFilters,
-          showAudioFilters: showAudioFilters,
-          sortPreference: sortPreference,
-          providerOptions: providerOptions,
-          selectedProviderId: selectedProviderId,
-          nuvioSelectedScraperIds: nuvioSelectedScraperIds,
-          onProviderTap: onProviderTap,
-          onQualityFiltersChanged: onQualityFiltersChanged,
-          onLanguageFiltersChanged: onLanguageFiltersChanged,
-          onTechFiltersChanged: onTechFiltersChanged,
-          onAudioFiltersChanged: onAudioFiltersChanged,
-          onSizeFiltersChanged: onSizeFiltersChanged,
-          onSortChanged: onSortChanged,
+          availableQualities: widget.availableQualities,
+          availableLanguages: widget.availableLanguages,
+          availableTech: widget.availableTech,
+          availableSizeRanges: widget.availableSizeRanges,
+          activeQualityFilters: widget.activeQualityFilters,
+          activeLanguageFilters: widget.activeLanguageFilters,
+          activeTechFilters: widget.activeTechFilters,
+          activeAudioFilters: widget.activeAudioFilters,
+          activeSizeFilters: widget.activeSizeFilters,
+          showAudioFilters: widget.showAudioFilters,
+          sortPreference: widget.sortPreference,
+          providerOptions: widget.providerOptions,
+          selectedProviderId: widget.selectedProviderId,
+          nuvioSelectedScraperIds: widget.nuvioSelectedScraperIds,
+          onProviderTap: widget.onProviderTap,
+          onQualityFiltersChanged: widget.onQualityFiltersChanged,
+          onLanguageFiltersChanged: widget.onLanguageFiltersChanged,
+          onTechFiltersChanged: widget.onTechFiltersChanged,
+          onAudioFiltersChanged: widget.onAudioFiltersChanged,
+          onSizeFiltersChanged: widget.onSizeFiltersChanged,
+          onSortChanged: widget.onSortChanged,
           onClearAll: () {
-            onQualityFiltersChanged({});
-            onLanguageFiltersChanged({});
-            onTechFiltersChanged({});
-            onAudioFiltersChanged?.call({});
-            onSizeFiltersChanged?.call({});
+            widget.onQualityFiltersChanged({});
+            widget.onLanguageFiltersChanged({});
+            widget.onTechFiltersChanged({});
+            widget.onAudioFiltersChanged?.call({});
+            widget.onSizeFiltersChanged?.call({});
           },
           onRequestClose: close,
         ),
       ),
     );
+    _filtersEntry = entry;
     overlay.insert(entry);
-    await completer.future;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final canFilter = showFilters &&
-        (availableQualities.isNotEmpty ||
-            availableLanguages.isNotEmpty ||
-            availableTech.isNotEmpty ||
-            availableSizeRanges.isNotEmpty ||
-            showAudioFilters ||
-            sortPreference != null ||
-            providerOptions.isNotEmpty);
-
     return Row(
       children: [
-        Expanded(child: _SearchField(query: searchQuery, onChanged: onSearchChanged)),
-        if (canFilter) ...[
+        Expanded(
+          child: _SearchField(
+            query: widget.searchQuery,
+            onChanged: widget.onSearchChanged,
+          ),
+        ),
+        if (_canFilter) ...[
           const SizedBox(width: 8),
           FocusableControl(
-            onTap: () => _openFilters(context),
+            onTap: _toggleFilters,
             borderRadius: 10,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: _torrentPanelControlDecoration(active: _activeCount > 0, radius: 10),
+              decoration: _torrentPanelControlDecoration(
+                active: _activeCount > 0 || _filtersOpen,
+                radius: 10,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.tune_rounded, size: 18, color: ForjaShellColors.cinematic.textPrimary),
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 18,
+                    color: ForjaShellColors.cinematic.textPrimary,
+                  ),
                   if (_activeCount > 0) ...[
                     const SizedBox(width: 6),
                     Text(
@@ -1025,17 +1198,26 @@ class _SearchFieldState extends State<_SearchField> {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
-          Icon(Icons.search_rounded, size: 18, color: ForjaShellColors.cinematic.textSecondary),
+          Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: ForjaShellColors.cinematic.textSecondary,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _controller,
               onChanged: widget.onChanged,
-              style: TextStyle(color: ForjaShellColors.cinematic.textPrimary, fontSize: 13),
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textPrimary,
+                fontSize: 13,
+              ),
               decoration: InputDecoration(
                 hintText: 'Search',
                 hintStyle: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.7),
+                  color: ForjaShellColors.cinematic.textSecondary.withValues(
+                    alpha: 0.7,
+                  ),
                   fontSize: 13,
                 ),
                 border: InputBorder.none,
@@ -1108,7 +1290,8 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final VoidCallback? onRequestClose;
 
   @override
-  State<_TorrentSourceFilterSheet> createState() => _TorrentSourceFilterSheetState();
+  State<_TorrentSourceFilterSheet> createState() =>
+      _TorrentSourceFilterSheetState();
 }
 
 class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
@@ -1141,8 +1324,9 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       _selectedProviderId = widget.selectedProviderId;
     }
     if (oldWidget.nuvioSelectedScraperIds != widget.nuvioSelectedScraperIds) {
-      _nuvioSelectedScraperIds =
-          Set<String>.from(widget.nuvioSelectedScraperIds);
+      _nuvioSelectedScraperIds = Set<String>.from(
+        widget.nuvioSelectedScraperIds,
+      );
     }
   }
 
@@ -1206,7 +1390,10 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                       Navigator.pop(context);
                     }
                   },
-                  child: Text('Clear', style: TextStyle(color: cinematic.textSecondary)),
+                  child: Text(
+                    'Clear',
+                    style: TextStyle(color: cinematic.textSecondary),
+                  ),
                 ),
                 if (widget.onRequestClose != null) ...[
                   const SizedBox(width: 4),
@@ -1245,25 +1432,33 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                   'Quality (Low to High)',
                   'Size (High to Low)',
                   'Size (Low to High)',
-                ].map((s) => _sheetChip(
-                      label: s,
-                      selected: _sort == s,
-                      onTap: () {
-                        setState(() => _sort = s);
-                        widget.onSortChanged!(s);
-                      },
-                    )),
+                ].map(
+                  (s) => _sheetChip(
+                    label: s,
+                    selected: _sort == s,
+                    onTap: () {
+                      setState(() => _sort = s);
+                      widget.onSortChanged!(s);
+                    },
+                  ),
+                ),
               ),
             if (widget.availableQualities.isNotEmpty)
               _sheetSection(
                 'Quality',
                 TorrentReleaseMetadata.qualityFilters
                     .where(widget.availableQualities.contains)
-                    .map((q) => _sheetChip(
-                          label: q,
-                          selected: _quality.contains(q),
-                          onTap: () => _toggle(_quality, q, widget.onQualityFiltersChanged),
-                        )),
+                    .map(
+                      (q) => _sheetChip(
+                        label: q,
+                        selected: _quality.contains(q),
+                        onTap: () => _toggle(
+                          _quality,
+                          q,
+                          widget.onQualityFiltersChanged,
+                        ),
+                      ),
+                    ),
               ),
             if (widget.availableSizeRanges.isNotEmpty &&
                 widget.onSizeFiltersChanged != null)
@@ -1271,41 +1466,55 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                 'Size',
                 TorrentReleaseMetadata.sizeFilters
                     .where(widget.availableSizeRanges.contains)
-                    .map((s) => _sheetChip(
-                          label: s,
-                          selected: _size.contains(s),
-                          onTap: () =>
-                              _toggle(_size, s, widget.onSizeFiltersChanged!),
-                        )),
+                    .map(
+                      (s) => _sheetChip(
+                        label: s,
+                        selected: _size.contains(s),
+                        onTap: () =>
+                            _toggle(_size, s, widget.onSizeFiltersChanged!),
+                      ),
+                    ),
               ),
             if (widget.availableLanguages.isNotEmpty)
               _sheetSection(
                 'Language',
-                (widget.availableLanguages.toList()..sort()).map((code) => _sheetChip(
-                      label: _languageChipLabel(code),
-                      selected: _language.contains(code),
-                      onTap: () => _toggle(_language, code, widget.onLanguageFiltersChanged),
-                    )),
+                (widget.availableLanguages.toList()..sort()).map(
+                  (code) => _sheetChip(
+                    label: _languageChipLabel(code),
+                    selected: _language.contains(code),
+                    onTap: () => _toggle(
+                      _language,
+                      code,
+                      widget.onLanguageFiltersChanged,
+                    ),
+                  ),
+                ),
               ),
             if (widget.availableTech.isNotEmpty)
               _sheetSection(
                 'Tech',
                 TorrentReleaseMetadata.techFilters
                     .where(widget.availableTech.contains)
-                    .map((t) => _sheetChip(
-                          label: t,
-                          selected: _tech.contains(t),
-                          onTap: () => _toggle(_tech, t, widget.onTechFiltersChanged),
-                        )),
+                    .map(
+                      (t) => _sheetChip(
+                        label: t,
+                        selected: _tech.contains(t),
+                        onTap: () =>
+                            _toggle(_tech, t, widget.onTechFiltersChanged),
+                      ),
+                    ),
               ),
             if (widget.showAudioFilters && widget.onAudioFiltersChanged != null)
               _sheetSection(
                 'Audio',
-                kTorrentAudioTags.map((tag) => _sheetChip(
-                      label: tag,
-                      selected: _audio.contains(tag),
-                      onTap: () => _toggle(_audio, tag, widget.onAudioFiltersChanged!),
-                    )),
+                kTorrentAudioTags.map(
+                  (tag) => _sheetChip(
+                    label: tag,
+                    selected: _audio.contains(tag),
+                    onTap: () =>
+                        _toggle(_audio, tag, widget.onAudioFiltersChanged!),
+                  ),
+                ),
               ),
           ],
         ),
@@ -1403,13 +1612,16 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Positioned.fill(
+        // Dim only the page left of Filters — keep Sources interactive.
+        Positioned(
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: sourcesW + filterW,
           child: GestureDetector(
             onTap: widget.onClose,
             behavior: HitTestBehavior.opaque,
-            child: ColoredBox(
-              color: Colors.black.withValues(alpha: 0.12),
-            ),
+            child: ColoredBox(color: Colors.black.withValues(alpha: 0.12)),
           ),
         ),
         // Slot flush to Sources' left edge; clip so the panel only ever
@@ -1427,21 +1639,18 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
               child: ForjaFrostedPanel(
                 // Details: BackdropFilter. Player: translucent shell (no frame).
                 enableBlur: widget.enableBlur,
+                // Only a left border — the right edge butts flush against the
+                // Sources panel (which draws its own left border) so the two
+                // read as one continuous surface, not two floating cards.
                 border: Border(
                   left: BorderSide(
-                    color: ForjaShellColors.cinematic.borderSubtle,
-                  ),
-                  right: BorderSide(
                     color: ForjaShellColors.cinematic.borderSubtle,
                   ),
                 ),
                 child: SafeArea(
                   left: false,
                   right: false,
-                  child: Padding(
-                    padding: padding,
-                    child: widget.child,
-                  ),
+                  child: Padding(padding: padding, child: widget.child),
                 ),
               ),
             ),

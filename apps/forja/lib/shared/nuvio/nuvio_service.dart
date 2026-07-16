@@ -29,42 +29,41 @@ class NuvioScraper {
   });
 
   factory NuvioScraper.fromJson(Map<String, dynamic> j) => NuvioScraper(
-        id: j['id'] as String,
-        name: (j['name'] as String?) ?? j['id'] as String,
-        description: j['description'] as String?,
-        author: j['author'] as String?,
-        filename: (j['filename'] as String?) ?? '',
-        supportedTypes:
-            ((j['supportedTypes'] as List?) ?? const ['movie', 'tv'])
-                .map((e) => e.toString())
-                .toList(),
-        contentLanguage: ((j['contentLanguage'] as List?) ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        enabled: (j['enabled'] as bool?) ?? true,
-      );
+    id: j['id'] as String,
+    name: (j['name'] as String?) ?? j['id'] as String,
+    description: j['description'] as String?,
+    author: j['author'] as String?,
+    filename: (j['filename'] as String?) ?? '',
+    supportedTypes: ((j['supportedTypes'] as List?) ?? const ['movie', 'tv'])
+        .map((e) => e.toString())
+        .toList(),
+    contentLanguage: ((j['contentLanguage'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    enabled: (j['enabled'] as bool?) ?? true,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'description': description,
-        'author': author,
-        'filename': filename,
-        'supportedTypes': supportedTypes,
-        'contentLanguage': contentLanguage,
-        'enabled': enabled,
-      };
+    'id': id,
+    'name': name,
+    'description': description,
+    'author': author,
+    'filename': filename,
+    'supportedTypes': supportedTypes,
+    'contentLanguage': contentLanguage,
+    'enabled': enabled,
+  };
 
   NuvioScraper copyWith({bool? enabled}) => NuvioScraper(
-        id: id,
-        name: name,
-        description: description,
-        author: author,
-        filename: filename,
-        supportedTypes: supportedTypes,
-        contentLanguage: contentLanguage,
-        enabled: enabled ?? this.enabled,
-      );
+    id: id,
+    name: name,
+    description: description,
+    author: author,
+    filename: filename,
+    supportedTypes: supportedTypes,
+    contentLanguage: contentLanguage,
+    enabled: enabled ?? this.enabled,
+  );
 }
 
 class NuvioAddon {
@@ -81,20 +80,20 @@ class NuvioAddon {
   });
 
   Map<String, dynamic> toJson() => {
-        'manifestUrl': manifestUrl,
-        'name': name,
-        'version': version,
-        'scrapers': scrapers.map((s) => s.toJson()).toList(),
-      };
+    'manifestUrl': manifestUrl,
+    'name': name,
+    'version': version,
+    'scrapers': scrapers.map((s) => s.toJson()).toList(),
+  };
 
   factory NuvioAddon.fromJson(Map<String, dynamic> j) => NuvioAddon(
-        manifestUrl: j['manifestUrl'] as String,
-        name: (j['name'] as String?) ?? 'Nuvio Addon',
-        version: (j['version'] as String?) ?? '1.0.0',
-        scrapers: ((j['scrapers'] as List?) ?? [])
-            .map((e) => NuvioScraper.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    manifestUrl: j['manifestUrl'] as String,
+    name: (j['name'] as String?) ?? 'Nuvio Addon',
+    version: (j['version'] as String?) ?? '1.0.0',
+    scrapers: ((j['scrapers'] as List?) ?? [])
+        .map((e) => NuvioScraper.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// Per-scraper batch emitted by [NuvioService.streamAll].
@@ -109,9 +108,20 @@ class NuvioScraperResult {
   });
 }
 
+String? nextNuvioScraperId({
+  required Iterable<String> orderedIds,
+  required Set<String> selectedIds,
+  required Set<String> fetchedIds,
+}) {
+  for (final id in orderedIds) {
+    if (selectedIds.contains(id) && !fetchedIds.contains(id)) return id;
+  }
+  return null;
+}
+
 class NuvioStreamResult {
-  final String name;        // provider display name (e.g. "SFlix (Global)")
-  final String title;       // verbose title (e.g. "SFlix - 1080p")
+  final String name; // provider display name (e.g. "SFlix (Global)")
+  final String title; // verbose title (e.g. "SFlix - 1080p")
   final String url;
   final String? quality;
   final Map<String, String> headers;
@@ -151,7 +161,8 @@ class NuvioService {
 
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
-  static const String _bundledCleanupKey = 'nuvio_bundled_autoinstall_cleanup_v1';
+  static const String _bundledCleanupKey =
+      'nuvio_bundled_autoinstall_cleanup_v1';
   static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
 
   /// Manifest URLs that ship with the app. Scrapers are exposed in the
@@ -206,7 +217,9 @@ class NuvioService {
             _prefsKey,
             jsonEncode(list.map((e) => e.toJson()).toList()),
           );
-        } catch (_) {/* leave storage alone if parse fails */}
+        } catch (_) {
+          /* leave storage alone if parse fails */
+        }
       }
       await prefs.setBool(_bundledCleanupKey, true);
     }
@@ -242,9 +255,7 @@ class NuvioService {
   /// Addons with at least one enabled scraper — for Sources panel chrome.
   Future<List<NuvioAddon>> listSourcesPanelAddons() async {
     final addons = await listScrapingAddons();
-    return addons
-        .where((a) => a.scrapers.any((s) => s.enabled))
-        .toList();
+    return addons.where((a) => a.scrapers.any((s) => s.enabled)).toList();
   }
 
   /// In-memory virtual copy of the bundled manifest, lazily fetched. Used
@@ -449,14 +460,16 @@ class NuvioService {
   Future<void> refreshAllInstalled() async {
     final addons = await listAddons();
     if (addons.isEmpty) return;
-    await Future.wait(addons.map((a) async {
-      try {
-        await refreshFromUrl(a.manifestUrl);
-        debugPrint('[NuvioService] refreshed ${a.manifestUrl}');
-      } catch (e) {
-        debugPrint('[NuvioService] refresh failed (${a.manifestUrl}): $e');
-      }
-    }));
+    await Future.wait(
+      addons.map((a) async {
+        try {
+          await refreshFromUrl(a.manifestUrl);
+          debugPrint('[NuvioService] refreshed ${a.manifestUrl}');
+        } catch (e) {
+          debugPrint('[NuvioService] refresh failed (${a.manifestUrl}): $e');
+        }
+      }),
+    );
     // Also drop the in-memory virtual bundled copy so the next streaming
     // request re-fetches the latest version.
     _bundledVirtual = null;
@@ -545,14 +558,23 @@ class NuvioService {
               continue;
             }
             tasks.add(() async {
-              final streams =
-                  await _runOne(addon, s, tmdbId, type, season, episode, gen);
+              final streams = await _runOne(
+                addon,
+                s,
+                tmdbId,
+                type,
+                season,
+                episode,
+                gen,
+              );
               if (gen != _scraperGeneration || ctrl.isClosed) return;
-              ctrl.add(NuvioScraperResult(
-                scraperId: s.id,
-                scraperName: s.name,
-                streams: streams,
-              ));
+              ctrl.add(
+                NuvioScraperResult(
+                  scraperId: s.id,
+                  scraperName: s.name,
+                  streams: streams,
+                ),
+              );
             }());
           }
         }
@@ -566,6 +588,51 @@ class NuvioService {
       }
     }();
     return ctrl.stream;
+  }
+
+  /// Runs one Sources-panel scraper. Callers choose the next scraper so the
+  /// panel can fetch providers lazily instead of starting every scraper.
+  Future<NuvioScraperResult?> runSourcesScraper({
+    required String scraperId,
+    required String tmdbId,
+    required String type,
+    int? season,
+    int? episode,
+  }) async {
+    final gen = _scraperGeneration;
+    final addons = await listScrapingAddons();
+    if (gen != _scraperGeneration) return null;
+
+    for (final addon in addons) {
+      for (final scraper in addon.scrapers) {
+        if (scraper.id != scraperId || !scraper.enabled) continue;
+        if (scraper.supportedTypes.isNotEmpty &&
+            !scraper.supportedTypes.contains(type) &&
+            !(type == 'tv' && scraper.supportedTypes.contains('series'))) {
+          return NuvioScraperResult(
+            scraperId: scraper.id,
+            scraperName: scraper.name,
+            streams: const [],
+          );
+        }
+        final streams = await _runOne(
+          addon,
+          scraper,
+          tmdbId,
+          type,
+          season,
+          episode,
+          gen,
+        );
+        if (gen != _scraperGeneration) return null;
+        return NuvioScraperResult(
+          scraperId: scraper.id,
+          scraperName: scraper.name,
+          streams: streams,
+        );
+      }
+    }
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> _runOne(
@@ -595,36 +662,40 @@ class NuvioService {
         isCancelled: () => gen != _scraperGeneration,
       );
       if (gen != _scraperGeneration) return [];
-      return raw.map((m) {
-        final headers = <String, String>{};
-        final h = m['headers'];
-        if (h is Map) {
-          h.forEach((k, v) => headers[k.toString()] = v.toString());
-        }
-        final subs = <Map<String, String>>[];
-        final sl = m['subtitles'];
-        if (sl is List) {
-          for (final sub in sl) {
-            if (sub is Map) {
-              subs.add({
-                'url': sub['url']?.toString() ?? '',
-                'lang': sub['lang']?.toString() ??
-                    sub['label']?.toString() ??
-                    'Unknown',
-              });
+      return raw
+          .map((m) {
+            final headers = <String, String>{};
+            final h = m['headers'];
+            if (h is Map) {
+              h.forEach((k, v) => headers[k.toString()] = v.toString());
             }
-          }
-        }
-        final out = NuvioStreamResult(
-          name: (m['name'] ?? s.name).toString(),
-          title: (m['title'] ?? m['name'] ?? s.name).toString(),
-          url: (m['url'] ?? '').toString(),
-          quality: m['quality']?.toString(),
-          headers: headers,
-          subtitles: subs,
-        );
-        return out.toStremioStream(sourceLabel: s.name);
-      }).where((m) => (m['url'] as String?)?.isNotEmpty == true).toList();
+            final subs = <Map<String, String>>[];
+            final sl = m['subtitles'];
+            if (sl is List) {
+              for (final sub in sl) {
+                if (sub is Map) {
+                  subs.add({
+                    'url': sub['url']?.toString() ?? '',
+                    'lang':
+                        sub['lang']?.toString() ??
+                        sub['label']?.toString() ??
+                        'Unknown',
+                  });
+                }
+              }
+            }
+            final out = NuvioStreamResult(
+              name: (m['name'] ?? s.name).toString(),
+              title: (m['title'] ?? m['name'] ?? s.name).toString(),
+              url: (m['url'] ?? '').toString(),
+              quality: m['quality']?.toString(),
+              headers: headers,
+              subtitles: subs,
+            );
+            return out.toStremioStream(sourceLabel: s.name);
+          })
+          .where((m) => (m['url'] as String?)?.isNotEmpty == true)
+          .toList();
     } catch (e) {
       debugPrint('[NuvioService] ${s.id} failed: $e');
       return [];
@@ -692,21 +763,24 @@ class NuvioService {
             if (sub is Map) {
               subs.add({
                 'url': sub['url']?.toString() ?? '',
-                'lang': sub['lang']?.toString() ??
+                'lang':
+                    sub['lang']?.toString() ??
                     sub['label']?.toString() ??
                     'Unknown',
               });
             }
           }
         }
-        out.add(NuvioStreamResult(
-          name: (m['name'] ?? target.name).toString(),
-          title: (m['title'] ?? m['name'] ?? target.name).toString(),
-          url: url,
-          quality: m['quality']?.toString(),
-          headers: headers,
-          subtitles: subs,
-        ));
+        out.add(
+          NuvioStreamResult(
+            name: (m['name'] ?? target.name).toString(),
+            title: (m['title'] ?? m['name'] ?? target.name).toString(),
+            url: url,
+            quality: m['quality']?.toString(),
+            headers: headers,
+            subtitles: subs,
+          ),
+        );
       }
       return out;
     } catch (e) {

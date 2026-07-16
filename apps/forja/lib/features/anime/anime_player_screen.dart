@@ -1108,6 +1108,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     _fadeOutNotifier.value = true;
     var playbackStarted = false;
+    var sourcesExhausted = false;
     _initProbes(_sortEmbedsByProviderOrder(_allEmbeds, _providerOrder));
     for (final h in hits) {
       _markProbeStatus(
@@ -1185,6 +1186,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         }
       },
       onAllSourcesExhausted: () {
+        sourcesExhausted = true;
         _fadeOutNotifier.value = false;
         if (navigator.canPop()) navigator.pop();
       },
@@ -1208,8 +1210,14 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       providerSourcesCache!.dispose();
     }
     if (!playbackStarted && mounted) {
-      _fadeOutNotifier.value = false;
-      if (!shouldRecheck) {
+      if (shouldRecheck) {
+        _fadeOutNotifier.value = false;
+        await _handleStaleSavedStreams();
+        return;
+      }
+      if (sourcesExhausted) {
+        // Keep resolver so the user can reload — restore faded overlay first.
+        _fadeOutNotifier.value = false;
         setState(() {
           _awaitingManualRecheck = true;
           _failedAll = false;
@@ -1217,10 +1225,14 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _setPhase('Playback failed');
         _setStatusLine('Tap reload to try again');
         _probeNotifier.value = const [];
+        return;
       }
-    }
-    if (shouldRecheck && mounted) {
-      await _handleStaleSavedStreams();
+      // User backed out before playback started — leave entirely instead of
+      // trapping them on an invisible black resolver route.
+      _cancelled = true;
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
     }
   }
 

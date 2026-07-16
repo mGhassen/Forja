@@ -111,8 +111,18 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
   // ─────────────────────────────────────────────────────────────────────────
 
   bool _handleKeyEvent(KeyEvent event) {
-    if (!_s._playerReady) return false;
     if (event is! KeyDownEvent) return false;
+
+    // Allow leaving while the player shell is still initializing (black
+    // spinner). Other shortcuts wait until controls are ready.
+    if (!_s._playerReady) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        unawaited(_exitPlayer());
+        return true;
+      }
+      return false;
+    }
+
     _onMouseMove();
 
     final key = event.logicalKey;

@@ -15,7 +15,14 @@ class CatalogSourcesSessionCache {
   static final _stremio =
       <String, ({DateTime at, List<Map<String, dynamic>> streams})>{};
   static final _nuvio =
-      <String, ({DateTime at, List<Map<String, dynamic>> streams})>{};
+      <
+        String,
+        ({
+          DateTime at,
+          List<Map<String, dynamic>> streams,
+          Set<String> fetchedScraperIds,
+        })
+      >{};
 
   /// Stable key — TV always uses 1-based season/episode.
   static String cacheKey({
@@ -53,9 +60,7 @@ class CatalogSourcesSessionCache {
       _stremio.remove(key);
       return null;
     }
-    return [
-      for (final s in entry.streams) Map<String, dynamic>.from(s),
-    ];
+    return [for (final s in entry.streams) Map<String, dynamic>.from(s)];
   }
 
   static void writeStremio(String key, List<Map<String, dynamic>> streams) {
@@ -66,22 +71,29 @@ class CatalogSourcesSessionCache {
     _trim(_stremio);
   }
 
-  static List<Map<String, dynamic>>? readNuvio(String key) {
+  static ({List<Map<String, dynamic>> streams, Set<String> fetchedScraperIds})?
+  readNuvio(String key) {
     final entry = _nuvio[key];
     if (entry == null) return null;
     if (DateTime.now().difference(entry.at) > ttl) {
       _nuvio.remove(key);
       return null;
     }
-    return [
-      for (final s in entry.streams) Map<String, dynamic>.from(s),
-    ];
+    return (
+      streams: [for (final s in entry.streams) Map<String, dynamic>.from(s)],
+      fetchedScraperIds: Set<String>.from(entry.fetchedScraperIds),
+    );
   }
 
-  static void writeNuvio(String key, List<Map<String, dynamic>> streams) {
+  static void writeNuvio(
+    String key,
+    List<Map<String, dynamic>> streams, {
+    required Set<String> fetchedScraperIds,
+  }) {
     _nuvio[key] = (
       at: DateTime.now(),
       streams: [for (final s in streams) Map<String, dynamic>.from(s)],
+      fetchedScraperIds: Set<String>.from(fetchedScraperIds),
     );
     _trim(_nuvio);
   }
