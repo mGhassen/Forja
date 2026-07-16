@@ -59,7 +59,9 @@ Same project URL/anon key are used by Flutter via `--dart-define=SUPABASE_URL` /
 | `/` | Public landing |
 | `/iptv` | IPTV player story — free, no ads |
 | `/download` | Public — latest mirrored release |
-| `/login`, `/signup` | Auth |
+| `/terms` | Terms of use |
+| `/dmca` | DMCA / copyright notice |
+| `/login`, `/signup` | Coming soon (auth in progress) |
 | `/account` | Authenticated |
 | `/account/settings` | Authenticated — sync domain status |
 

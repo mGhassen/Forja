@@ -79,15 +79,15 @@ function MoodTile({ mood, index }: { mood: Mood; index: number }) {
     <article
       className={cn(
         'group relative isolate aspect-[5/4] overflow-hidden rounded-2xl border border-white/[0.1] bg-[#121110] sm:aspect-[4/3] lg:aspect-[5/4]',
-        'shadow-[0_28px_70px_-28px_rgba(0,0,0,0.9)] transition duration-500',
-        'hover:border-white/20 hover:shadow-[0_36px_90px_-24px_rgba(0,0,0,0.95)]',
+        'hover-lift hover-zoom shadow-[0_28px_70px_-28px_rgba(0,0,0,0.9)]',
+        'hover:border-white/20',
       )}
     >
       <img
         src={mediaSrc(mood.backdrop)}
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+        className="absolute inset-0 h-full w-full object-cover"
         loading={index < 2 ? 'eager' : 'lazy'}
         decoding="async"
       />

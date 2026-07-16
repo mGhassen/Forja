@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PlatformDownloadButtons } from '@/components/platform-download-buttons'
+import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
 const tmdb = (path: string, size: 'w342' | 'w780' = 'w342') =>
@@ -163,7 +163,13 @@ export function NowPlayingPanel({ className }: { className?: string }) {
         </div>
       </div>
 
-      <PlatformDownloadButtons variant="links" className="mt-5" />
+      <Link
+        to="/download"
+        data-hover=""
+        className="font-mono-ui mt-5 inline-block text-[11px] uppercase tracking-[0.16em] text-brand transition-colors hover:text-flame"
+      >
+        Download Forja
+      </Link>
     </div>
   )
 }

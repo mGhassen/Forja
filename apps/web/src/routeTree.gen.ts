@@ -9,14 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IptvRouteImport } from './routes/iptv'
 import { Route as DownloadRouteImport } from './routes/download'
+import { Route as DmcaRouteImport } from './routes/dmca'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -35,6 +42,11 @@ const IptvRoute = IptvRouteImport.update({
 const DownloadRoute = DownloadRouteImport.update({
   id: '/download',
   path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DmcaRoute = DmcaRouteImport.update({
+  id: '/dmca',
+  path: '/dmca',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -56,29 +68,35 @@ const AccountSettingsRoute = AccountSettingsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
+  '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/account/settings': typeof AccountSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
+  '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/account/settings': typeof AccountSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
+  '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/account/settings': typeof AccountSettingsRoute
 }
 export interface FileRouteTypes {
@@ -86,42 +104,57 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/dmca'
     | '/download'
     | '/iptv'
     | '/login'
     | '/signup'
+    | '/terms'
     | '/account/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/account'
+    | '/dmca'
     | '/download'
     | '/iptv'
     | '/login'
     | '/signup'
+    | '/terms'
     | '/account/settings'
   id:
     | '__root__'
     | '/'
     | '/account'
+    | '/dmca'
     | '/download'
     | '/iptv'
     | '/login'
     | '/signup'
+    | '/terms'
     | '/account/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRouteWithChildren
+  DmcaRoute: typeof DmcaRoute
   DownloadRoute: typeof DownloadRoute
   IptvRoute: typeof IptvRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -148,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/download'
       fullPath: '/download'
       preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dmca': {
+      id: '/dmca'
+      path: '/dmca'
+      fullPath: '/dmca'
+      preLoaderRoute: typeof DmcaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -188,10 +228,12 @@ const AccountRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRouteWithChildren,
+  DmcaRoute: DmcaRoute,
   DownloadRoute: DownloadRoute,
   IptvRoute: IptvRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

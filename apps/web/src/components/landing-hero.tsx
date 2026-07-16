@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { HeroTvMock } from '@/components/interactive-shell-demo'
+import { Reveal } from '@/components/reveal'
 
 /**
  * Marketing hero — headline, one line, Download CTA, product mock.
@@ -16,8 +17,8 @@ export function LandingHero() {
         }}
       />
 
-      <div className="relative z-[2] mx-auto grid w-full max-w-[1500px] items-center gap-8 px-[5vw] pb-10 pt-5 sm:pb-12 sm:pt-6 lg:grid-cols-[0.9fr_1.2fr] lg:gap-10 lg:pb-16 lg:pt-8">
-        <div className="max-w-xl">
+      <div className="relative z-[2] mx-auto grid w-full max-w-[1500px] items-center gap-8 px-[5vw] pb-12 pt-6 sm:pb-16 sm:pt-10 lg:grid-cols-[0.9fr_1.2fr] lg:gap-10 lg:pb-24 lg:pt-14">
+        <div className="hero-enter max-w-xl">
           <h1 className="font-disp text-[clamp(34px,9vw,72px)] uppercase leading-[0.9] tracking-[-0.04em]">
             <span className="inline sm:whitespace-nowrap">Tonight starts</span>
             <br />
@@ -40,7 +41,11 @@ export function LandingHero() {
           </Link>
         </div>
 
-        <HeroTvMock className="w-full max-w-[760px] justify-self-center lg:justify-self-end" />
+        <Reveal variant="right" delayMs={120} className="w-full max-w-[760px] justify-self-center lg:justify-self-end">
+          <div className="animate-float">
+            <HeroTvMock className="w-full" />
+          </div>
+        </Reveal>
       </div>
     </header>
   )

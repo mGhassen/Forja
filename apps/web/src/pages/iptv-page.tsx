@@ -1,40 +1,38 @@
 import { Link } from '@tanstack/react-router'
-import { BrandLogo } from '@/components/brand-logo'
-import { CustomCursor } from '@/components/custom-cursor'
-import { PlatformDownloadButtons } from '@/components/platform-download-buttons'
+import { SiteFooter } from '@/components/legal-shell'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
 
-/** Player capabilities — from live IPTV feature docs (user-facing). */
+/** One capability per card — independent hooks, not a feature dump. */
 const PLAYER_POWERS = [
   {
     title: 'Channel guide',
-    copy: 'Flip groups and channels without leaving the picture — the guide lives inside the player.',
+    copy: 'Flip groups without leaving the picture. The guide lives inside the stream.',
     accent: 'flame' as const,
   },
   {
     title: 'Find anything fast',
-    copy: 'Search by name or category while you watch. Close it and you’re back in the stream.',
+    copy: 'Search by name or category while you watch. Close it — you’re back in.',
     accent: 'brand' as const,
   },
   {
     title: 'What’s on now',
-    copy: 'See what’s playing and what’s next — with progress — when your list provides a guide.',
+    copy: 'See what’s playing and what’s next — with progress — when your list has a guide.',
     accent: 'flame' as const,
   },
   {
     title: 'Live, films & series',
-    copy: 'One player for live channels, movie night, and full seasons — switch the mood, keep the screen.',
+    copy: 'Kickoff, then a film, then a season. Same screen. Different night.',
     accent: 'brand' as const,
   },
   {
     title: 'Audio & subtitles',
-    copy: 'Pick the track you need and load captions when the stream supports them.',
+    copy: 'Pick the track you need. Load captions when the stream supports them.',
     accent: 'flame' as const,
   },
   {
     title: 'Your list. Your rules.',
-    copy: 'Bring the channels you already have. Favorites stay on top. Add once — watch every night.',
+    copy: 'Bring the channels you already have. Favorites stay on top.',
     accent: 'brand' as const,
   },
 ]
@@ -86,13 +84,34 @@ const MARQUEE = [
   'No ads',
 ] as const
 
+function DownloadCta({
+  className,
+  children = 'Download Forja',
+}: {
+  className?: string
+  children?: string
+}) {
+  return (
+    <Link
+      to="/download"
+      data-hover=""
+      className={
+        className ??
+        'btn-magnet inline-flex items-center justify-center rounded-full px-9 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] shadow-[0_0_32px_rgba(28,231,131,0.35)] will-change-transform sm:px-10 sm:text-[15px]'
+      }
+    >
+      {children}
+    </Link>
+  )
+}
+
 export function IptvPage() {
   return (
     <div className="film-grain relative bg-[#0B0A0A] text-[#EDE6DA]">
-      <CustomCursor />
       <SiteHeader />
 
       <main className="relative pt-16 sm:pt-24">
+        {/* 1 — Opening: the live player story */}
         <header className="relative overflow-hidden px-[5vw] pb-12 pt-6 sm:pb-16 sm:pt-10 lg:pb-24 lg:pt-14">
           <div
             aria-hidden
@@ -120,9 +139,7 @@ export function IptvPage() {
               </h1>
 
               <div className="mt-6 max-w-lg space-y-4 font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-                <p>
-                  Guide. Search. What’s on now.
-                </p>
+                <p>Guide. Search. What’s on now.</p>
                 <p>
                   <span className="text-[#EDE6DA]">
                     Movies &amp; series in the same player — free, no ads.
@@ -131,21 +148,21 @@ export function IptvPage() {
               </div>
 
               <div className="mt-9">
-                <PlatformDownloadButtons variant="pills" />
+                <DownloadCta className="btn-magnet inline-flex w-full items-center justify-center rounded-full px-9 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] shadow-[0_0_32px_rgba(28,231,131,0.35)] sm:w-auto sm:px-10 sm:text-[15px]" />
               </div>
             </div>
 
             <div className="relative" id="proof">
               <img
-                src="/brand/forja-iptv-player.png"
-                alt="Forja IPTV Player — live stream with progress and control desk"
+                src="/brand/forja-iptv-live.jpg"
+                alt="Forja IPTV Player — live channels and categories"
                 width={1024}
-                height={636}
+                height={637}
                 className="h-auto w-full rounded-lg border border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)]"
                 decoding="async"
               />
               <p className="font-mono-ui mt-4 text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
-                IPTV Player · progress · audio · subtitles · fullscreen
+                IPTV Player · live · films · series
               </p>
             </div>
           </div>
@@ -164,7 +181,7 @@ export function IptvPage() {
           </div>
         </div>
 
-        {/* Player benefits */}
+        {/* 2 — Why the player wins (capabilities only) */}
         <section className="px-[5vw] py-16 sm:py-28">
           <Reveal>
             <h2 className="max-w-[16ch] font-disp text-[clamp(32px,5vw,64px)] uppercase leading-[0.95] tracking-[-0.03em]">
@@ -179,8 +196,8 @@ export function IptvPage() {
 
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {PLAYER_POWERS.map((p, i) => (
-              <Reveal key={p.title} delayMs={(i % 3) * 70}>
-                <article className="h-full rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#121110] p-7 transition-colors hover:border-brand/35">
+              <Reveal key={p.title} delayMs={(i % 3) * 90} variant="scale">
+                <article className="hover-lift h-full rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#121110] p-7 transition-colors hover:border-brand/35">
                   <p
                     className={`font-mono-ui text-[10px] uppercase tracking-[0.2em] ${
                       p.accent === 'flame' ? 'text-flame' : 'text-brand'
@@ -200,7 +217,7 @@ export function IptvPage() {
           </div>
         </section>
 
-        {/* Player on screen — full bleed with control desk */}
+        {/* 3 — On-screen control desk */}
         <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
           <Reveal>
             <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.95] tracking-[-0.03em]">
@@ -211,20 +228,24 @@ export function IptvPage() {
             <p className="mt-5 max-w-2xl font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.5)]">
               Progress. Pause. Volume. Subtitles. Audio.
               <br />
-              <span className="text-[#EDE6DA]">The desk sits at the bottom — until you need it.</span>
+              <span className="text-[#EDE6DA]">
+                The desk sits at the bottom — until you need it.
+              </span>
             </p>
           </Reveal>
           <Reveal delayMs={80}>
             <figure className="mx-auto mt-10 max-w-[1200px] sm:mt-14">
-              <img
-                src="/brand/forja-iptv-player.png"
-                alt="Forja IPTV player controls — green seek bar and bottom desk with pause, volume, subtitles, audio, and fullscreen"
-                width={1024}
-                height={636}
-                className="h-auto w-full rounded-xl border border-white/10 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)]"
-                loading="lazy"
-                decoding="async"
-              />
+              <div className="hover-zoom rounded-xl">
+                <img
+                  src="/brand/forja-iptv-player.png"
+                  alt="Forja IPTV player — seek bar and bottom control desk"
+                  width={1024}
+                  height={636}
+                  className="h-auto w-full rounded-xl border border-white/10 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)]"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
               <figcaption className="font-mono-ui mt-4 text-center text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
                 Live player · control desk
               </figcaption>
@@ -232,7 +253,7 @@ export function IptvPage() {
           </Reveal>
         </section>
 
-        {/* Catalog through the player */}
+        {/* 4 — Three moods / shelves */}
         <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
           <Reveal>
             <h2 className="font-disp text-[clamp(28px,4.5vw,52px)] uppercase tracking-[-0.03em]">
@@ -250,7 +271,7 @@ export function IptvPage() {
               <Reveal key={mode.k} delayMs={i * 110}>
                 <article
                   data-hover=""
-                  className="group relative h-full overflow-hidden rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#121110] transition duration-500 hover:-translate-y-1.5 hover:border-brand/40 hover:shadow-[0_28px_60px_-28px_rgba(0,0,0,0.85)]"
+                  className="group hover-lift relative h-full overflow-hidden rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#121110] transition duration-500 hover:border-brand/40"
                 >
                   <div className="relative flex h-44 items-end justify-center gap-2 overflow-hidden bg-[#0B0A0A] px-5 pt-8 sm:h-52">
                     <div
@@ -303,43 +324,46 @@ export function IptvPage() {
           </div>
         </section>
 
-        {/* Desk — catalog UI full width at bottom */}
+        {/* 5 — The desk: portals + catalog (no platform list) */}
         <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
           <div className="mx-auto max-w-[1400px]">
             <Reveal>
               <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.95]">
-                Desk or couch.
+                Your portals.
                 <br />
-                <span className="text-flame">Same player.</span>
+                <span className="text-flame">Your night.</span>
               </h2>
-              <div className="mt-5 max-w-xl space-y-3 font-disp text-[clamp(18px,2.2vw,26px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.55)]">
-                <p>Windows. Mac. Linux.</p>
-                <p>
-                  <span className="text-[#EDE6DA]">Android TV for the living room.</span>
-                </p>
-              </div>
-              <PlatformDownloadButtons variant="row" className="mt-8 max-w-md" />
+              <p className="mt-5 max-w-xl font-disp text-[clamp(18px,2.2vw,26px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.55)]">
+                Add a list once. Browse Live, Movies, Series.
+                <br />
+                <span className="text-[#EDE6DA]">
+                  Favorites on top. Categories that actually make sense.
+                </span>
+              </p>
             </Reveal>
             <Reveal delayMs={80}>
-              <figure className="mt-10 sm:mt-14">
-                <img
-                  src="/brand/forja-iptv-desk.png"
-                  alt="Forja IPTV desk — Live, Movies, and Series catalog with portals"
-                  width={1024}
-                  height={638}
-                  className="h-auto w-full rounded-xl border border-white/10 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)]"
-                  loading="lazy"
-                  decoding="async"
-                />
+              <figure className="mx-auto mt-10 max-w-[720px] sm:mt-14">
+                <div className="hover-zoom rounded-xl">
+                  <img
+                    src="/brand/forja-iptv-desk.png"
+                    alt="Forja IPTV desk — Live, Movies, and Series catalog with portals"
+                    width={1024}
+                    height={638}
+                    className="h-auto w-full rounded-xl border border-white/10 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)]"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
                 <figcaption className="font-mono-ui mt-4 text-center text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
-                  IPTV desk · live · movies · series · portals
+                  Desk · portals · live · movies · series
                 </figcaption>
               </figure>
             </Reveal>
           </div>
         </section>
 
-        <section className="px-[5vw] py-28 text-center">
+        {/* 6 — Single close CTA — platforms live on /download only */}
+        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-20 text-center sm:py-28">
           <Reveal>
             <h2 className="font-disp text-[clamp(40px,8vw,96px)] uppercase leading-[0.9] tracking-[-0.04em]">
               Press play
@@ -347,12 +371,12 @@ export function IptvPage() {
               <span className="text-flame">on live.</span>
             </h2>
             <p className="mx-auto mt-6 max-w-lg font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.5)]">
-              Download Forja.
+              Free. No ads.
               <br />
               <span className="text-[#EDE6DA]">The IPTV Player is waiting.</span>
             </p>
-            <div className="mt-10 flex flex-col items-center gap-6">
-              <PlatformDownloadButtons variant="pills" className="justify-center" />
+            <div className="mt-10 flex flex-col items-center gap-5">
+              <DownloadCta />
               <Link
                 to="/"
                 className="font-mono-ui inline-flex items-center px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.4)] transition-colors hover:text-[#EDE6DA]"
@@ -363,15 +387,7 @@ export function IptvPage() {
           </Reveal>
         </section>
 
-        <footer className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-8">
-          <div className="font-mono-ui flex flex-wrap items-center justify-between gap-4 text-[11px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.35)]">
-            <BrandLogo to="/" imgClassName="h-5 w-auto" />
-            <span>IPTV Player · Free · No ads</span>
-            <Link to="/download" className="hover:text-brand">
-              Downloads
-            </Link>
-          </div>
-        </footer>
+        <SiteFooter />
       </main>
     </div>
   )

@@ -1,6 +1,6 @@
 import { r as __toESM } from "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { a as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
+import { i as require_jsx_runtime } from "../_libs/@radix-ui/react-primitive+[...].mjs";
 import { t as createClient } from "../_libs/supabase__supabase-js.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/use-auth-BFtWcVvU.js
 var import_react = /* @__PURE__ */ __toESM(require_react());

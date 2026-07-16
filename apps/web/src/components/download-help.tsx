@@ -2,7 +2,12 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Reveal } from '@/components/reveal'
 import { cn } from '@/lib/utils'
 
-const FAQ = [
+const FAQ: {
+  q: string
+  a: string
+  guideHref?: string
+  guideLabel?: string
+}[] = [
   {
     q: 'What is Forja?',
     a: 'Forja is a free app for movies, series, anime, live sport, and live TV — everything in one place so you can relax and watch. Download it for your computer or living-room TV. This site is for getting the app and your account.',
@@ -21,19 +26,27 @@ const FAQ = [
   },
   {
     q: 'Windows says the app is unrecognized / blocked',
-    a: 'Windows often warns on apps it hasn’t seen a lot. That’s caution, not a verdict. If you got Forja from this page, use More info → Run anyway (steps below).',
+    a: 'Windows often warns on apps it hasn’t seen a lot. That’s caution, not a verdict. If you got Forja from this page, use More info → Run anyway.',
+    guideHref: '#windows-smartscreen',
+    guideLabel: 'See the photo steps for Windows',
   },
   {
     q: 'Windows shows a red “unsafe” / blocked screen',
     a: 'That’s Microsoft Defender being stricter than the usual blue SmartScreen. If you downloaded Forja from this page, open More information and continue — or restore the file from Windows Security → Virus & threat protection → Protection history if it was quarantined.',
+    guideHref: '#windows-smartscreen',
+    guideLabel: 'See the photo steps for Windows',
   },
   {
     q: 'Mac says Apple could not verify the app',
-    a: 'Mac does this for apps outside the App Store. Open Forja once, then allow it in System Settings → Privacy & Security → Open Anyway. Steps are below.',
+    a: 'Mac does this for apps outside the App Store. Open Forja once, then allow it in System Settings → Privacy & Security → Open Anyway.',
+    guideHref: '#macos-gatekeeper',
+    guideLabel: 'See the photo steps for Mac',
   },
   {
     q: 'Antivirus quarantined the download',
     a: 'Restore or allow the file, then open it again from this downloads page. Only install Forja from here.',
+    guideHref: '#windows-smartscreen',
+    guideLabel: 'See the Windows photo guide',
   },
   {
     q: 'Anything I should know?',
@@ -44,7 +57,10 @@ const FAQ = [
 type Shot = {
   src: string
   alt: string
-  caption: string
+  /** Short step label under the image */
+  title: string
+  /** Simple plain-language explanation */
+  body: string
   /** Intrinsic pixels — cards share height; width follows aspect. */
   w: number
   h: number
@@ -54,35 +70,40 @@ const WINDOWS_SHOTS: Shot[] = [
   {
     src: '/brand/help/windows-01-protected.png',
     alt: 'Windows SmartScreen — Windows protected your PC',
-    caption: '01 — Windows shows “protected your PC”.',
+    title: 'Step 1 — Windows stopped the open',
+    body: 'You may see “Windows protected your PC.” This is common for new apps. It does not mean Forja is bad. Stay on this screen and go to the next step.',
     w: 1098,
     h: 1035,
   },
   {
     src: '/brand/help/windows-02-more-info.png',
     alt: 'Windows SmartScreen — click More info',
-    caption: '02 — Click More info under the message.',
+    title: 'Step 2 — Click More info',
+    body: 'Under the warning message, click More info. Windows will show you more choices so you can keep going.',
     w: 538,
     h: 514,
   },
   {
     src: '/brand/help/windows-03-run-anyway.jpg',
     alt: 'Windows SmartScreen — Run anyway',
-    caption: '03 — Click Run anyway to continue.',
+    title: 'Step 3 — Click Run anyway',
+    body: 'Now click Run anyway. Forja will start. You only need to do this the first time.',
     w: 1106,
     h: 1046,
   },
   {
     src: '/brand/help/windows-04-on-desktop.jpg',
     alt: 'Windows SmartScreen dialog on the desktop',
-    caption: '04 — Same warning on the desktop — More info is there.',
+    title: 'Step 4 — Same warning on the desktop',
+    body: 'If the warning appears on your desktop instead, it is the same thing. Click More info, then Run anyway.',
     w: 1280,
     h: 720,
   },
   {
     src: '/brand/help/windows-05-red-unsafe.png',
     alt: 'Microsoft Defender red screen — reported as unsafe',
-    caption: '05 — Red “unsafe” screen? Open More information, then continue only if you got Forja from this page.',
+    title: 'Step 5 — Red “unsafe” screen',
+    body: 'Sometimes Windows shows a red screen instead of blue. Click More information, then continue — only if you downloaded Forja from this page.',
     w: 1258,
     h: 835,
   },
@@ -92,28 +113,32 @@ const MACOS_SHOTS: Shot[] = [
   {
     src: '/brand/help/macos-blocked-dialog.png',
     alt: 'macOS — Apple could not verify this app',
-    caption: '01 — Choose Done (not Move to Trash).',
+    title: 'Step 1 — Mac blocks the first open',
+    body: 'Mac may say it could not verify the app. That is normal outside the App Store. Click Done. Do not move Forja to the Trash.',
     w: 520,
     h: 464,
   },
   {
     src: '/brand/help/macos-privacy-settings-top.png',
     alt: 'macOS System Settings — Privacy & Security',
-    caption: '02 — Open System Settings → Privacy & Security.',
+    title: 'Step 2 — Open Privacy & Security',
+    body: 'Open System Settings, then go to Privacy & Security. You will allow Forja here.',
     w: 1200,
     h: 700,
   },
   {
     src: '/brand/help/macos-open-anyway-closeup.png',
     alt: 'macOS Privacy & Security — Open Anyway',
-    caption: '03 — Scroll to Security → Open Anyway.',
+    title: 'Step 3 — Find Open Anyway',
+    body: 'Scroll down to the Security section. You should see a message about Forja with an Open Anyway button.',
     w: 1200,
     h: 700,
   },
   {
     src: '/brand/help/macos-privacy-open-anyway.png',
     alt: 'macOS Privacy & Security full panel with Open Anyway',
-    caption: '04 — Confirm Open Anyway, then enter your password.',
+    title: 'Step 4 — Allow Forja once',
+    body: 'Click Open Anyway, confirm, then type your Mac password (or use Touch ID). After that, Forja opens normally.',
     w: 1430,
     h: 1226,
   },
@@ -178,8 +203,13 @@ function ShotLightbox({
             className="max-h-[min(78vh,760px)] w-auto max-w-full object-contain"
           />
         </div>
-        <figcaption className="mt-4 text-center font-mono-ui text-xs uppercase tracking-[0.12em] text-[rgba(237,230,218,0.65)] sm:text-sm">
-          {shot.caption}
+        <figcaption className="mt-4 space-y-2 text-center">
+          <p className="font-disp text-lg uppercase tracking-tight text-[#EDE6DA] sm:text-xl">
+            {shot.title}
+          </p>
+          <p className="mx-auto max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.65)] sm:text-lg">
+            {shot.body}
+          </p>
         </figcaption>
       </figure>
     </div>
@@ -277,7 +307,7 @@ function ShotSlider({
         role="region"
         aria-labelledby={labelId}
         className="flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ height: SHOT_MEDIA_H + 72 }}
+        style={{ height: SHOT_MEDIA_H + 168 }}
       >
         {shots.map((shot, i) => {
           const cardW = shotCardWidth(shot)
@@ -310,10 +340,15 @@ function ShotSlider({
                   draggable={false}
                 />
               </div>
-              <div className="mt-auto flex h-[4.5rem] items-center justify-between gap-4 border-t border-[rgba(237,230,218,0.1)] px-5 sm:px-6">
-                <span className="font-mono-ui text-[11px] uppercase leading-snug tracking-[0.1em] text-[rgba(237,230,218,0.55)] sm:text-xs">
-                  {shot.caption}
-                </span>
+              <div className="mt-auto flex min-h-[10.5rem] flex-col justify-between gap-3 border-t border-[rgba(237,230,218,0.1)] px-5 py-4 sm:min-h-[11rem] sm:px-6 sm:py-5">
+                <div className="space-y-2">
+                  <p className="font-disp text-base uppercase leading-tight tracking-tight text-[#EDE6DA] sm:text-lg">
+                    {shot.title}
+                  </p>
+                  <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.62)] normal-case sm:text-[15px] sm:leading-relaxed">
+                    {shot.body}
+                  </p>
+                </div>
                 <span
                   className={cn(
                     'shrink-0 font-mono-ui text-[10px] uppercase tracking-[0.14em]',
@@ -380,9 +415,19 @@ export function DownloadHelp() {
                     <span className="hidden group-open:inline">Close</span>
                   </span>
                 </summary>
-                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[rgba(237,230,218,0.52)] sm:text-base">
-                  {item.a}
-                </p>
+                <div className="mt-3 max-w-3xl space-y-3">
+                  <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.52)] sm:text-base">
+                    {item.a}
+                  </p>
+                  {item.guideHref ? (
+                    <a
+                      href={item.guideHref}
+                      className="font-mono-ui inline-flex text-[12px] uppercase tracking-[0.14em] text-brand transition-colors hover:text-flame sm:text-[13px]"
+                    >
+                      {item.guideLabel ?? 'See the photo steps'} →
+                    </a>
+                  ) : null}
+                </div>
               </details>
             </Reveal>
           ))}
@@ -394,37 +439,33 @@ export function DownloadHelp() {
           <h2 className="font-disp max-w-[18ch] text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
             When Windows blocks the download
           </h2>
-          <div className="mt-5 max-w-2xl space-y-3 leading-relaxed text-[rgba(237,230,218,0.5)]">
+          <div className="mt-5 max-w-2xl space-y-3 text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
             <p>
-              Windows sometimes shows <em className="text-[#EDE6DA] not-italic">Windows
-              protected your PC</em> (blue) for apps it hasn’t seen much yet. That doesn’t mean
-              Forja is unsafe — Windows is just being careful.
+              Windows sometimes shows a warning the first time you open Forja. That is
+              normal for new apps — it does not mean Forja is unsafe.
             </p>
             <p>
-              Occasionally you’ll get a <em className="text-[#EDE6DA] not-italic">red</em>{' '}
-              Defender screen instead. Same idea — if you downloaded from this page, open{' '}
-              <span className="text-[#EDE6DA]">More information</span> and continue.
-            </p>
-            <p>
-              Slide through the shots below and you’re in.
+              Follow the steps below. Use the photos as a guide. Click a photo to make it
+              bigger.
             </p>
           </div>
         </Reveal>
 
-        <ol className="mt-10 space-y-4 font-mono-ui text-[11px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)]">
+        <ol className="mt-10 max-w-2xl space-y-5 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
           <li>
-            <span className="text-flame">01</span> — Open the Forja download. If Windows
-            warns you (blue or red), click <span className="text-brand">More info</span> /{' '}
-            <span className="text-brand">More information</span>.
+            <span className="font-semibold text-flame">1.</span> Open the Forja file you
+            downloaded. If Windows shows a warning, click{' '}
+            <span className="text-[#EDE6DA]">More info</span>.
           </li>
           <li>
-            <span className="text-flame">02</span> — Then click{' '}
-            <span className="text-brand">Run anyway</span> (or continue past the red screen).
+            <span className="font-semibold text-flame">2.</span> Click{' '}
+            <span className="text-[#EDE6DA]">Run anyway</span> (or continue on the red
+            screen if that is what you see).
           </li>
           <li>
-            <span className="text-flame">03</span> — Still stuck? Right-click the file →
-            Properties → check <span className="text-brand">Unblock</span> → Apply → OK,
-            then open it again. If Defender quarantined it, restore it from Protection history.
+            <span className="font-semibold text-flame">3.</span> Still stuck? Right-click
+            the file → Properties → check <span className="text-[#EDE6DA]">Unblock</span>{' '}
+            → Apply → OK, then open it again.
           </li>
         </ol>
 
@@ -436,41 +477,33 @@ export function DownloadHelp() {
           <h2 className="font-disp max-w-[18ch] text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
             When Mac won’t open Forja
           </h2>
-          <div className="mt-5 max-w-2xl space-y-3 leading-relaxed text-[rgba(237,230,218,0.5)]">
+          <div className="mt-5 max-w-2xl space-y-3 text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
             <p>
-              Mac may say <em className="text-[#EDE6DA] not-italic">Apple could not
-              verify this app</em> the first time. That’s normal for apps outside the
-              App Store. Open the download, put Forja in Applications, then allow it
-              once.
+              Mac may say it could not verify the app the first time. That is normal for
+              apps that are not from the App Store.
             </p>
             <p>
-              On recent Macs, go to{' '}
-              <span className="text-[#EDE6DA]">System Settings → Privacy &amp; Security</span>
-              — <span className="text-[#EDE6DA]">Open Anyway</span> shows up after you try
-              once.
+              Put Forja in Applications, try to open it once, then allow it in{' '}
+              <span className="text-[#EDE6DA]">System Settings → Privacy &amp; Security</span>.
             </p>
           </div>
         </Reveal>
 
-        <ol className="mt-10 space-y-4 font-mono-ui text-[11px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)]">
+        <ol className="mt-10 max-w-2xl space-y-5 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
           <li>
-            <span className="text-brand">01</span> — Open Forja from Applications. When
-            the block dialog appears, choose <span className="text-flame">Done</span>{' '}
-            (do not Move to Trash).
+            <span className="font-semibold text-brand">1.</span> Open Forja. When the
+            block dialog appears, click <span className="text-[#EDE6DA]">Done</span> — not
+            Move to Trash.
           </li>
           <li>
-            <span className="text-brand">02</span> — Open{' '}
-            <span className="text-flame">System Settings → Privacy &amp; Security</span>.
-            Scroll to Security.
+            <span className="font-semibold text-brand">2.</span> Open{' '}
+            <span className="text-[#EDE6DA]">System Settings → Privacy &amp; Security</span>{' '}
+            and scroll to Security.
           </li>
           <li>
-            <span className="text-brand">03</span> — Click{' '}
-            <span className="text-flame">Open Anyway</span> next to the Forja message,
-            confirm, and enter your Mac password or use Touch ID if asked.
-          </li>
-          <li>
-            <span className="text-brand">04</span> — Optional shortcut: in Finder,
-            Control-click Forja → Open → Open (works on many macOS versions).
+            <span className="font-semibold text-brand">3.</span> Click{' '}
+            <span className="text-[#EDE6DA]">Open Anyway</span>, confirm, and enter your
+            password if asked. Forja will open after that.
           </li>
         </ol>
 

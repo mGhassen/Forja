@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { Link } from '@tanstack/react-router'
-import { CustomCursor } from '@/components/custom-cursor'
 import { DownloadHelp } from '@/components/download-help'
+import { SiteFooter } from '@/components/legal-shell'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
 import {
@@ -251,7 +250,6 @@ export function DownloadPage() {
 
   return (
     <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
-      <CustomCursor />
       <SiteHeader />
 
       <main className="relative px-[5vw] pb-16 pt-20 sm:pb-24 sm:pt-28">
@@ -292,9 +290,9 @@ export function DownloadPage() {
           </div>
         </Reveal>
 
-        <Reveal delayMs={80}>
-          <div className="mt-12 flex flex-wrap items-end justify-between gap-4 border-y border-[rgba(237,230,218,0.14)] py-5">
-            <div>
+        {(isLoading || isError || (!isLoading && !isError && !data)) && (
+          <Reveal delayMs={80}>
+            <div className="mt-12 border-y border-[rgba(237,230,218,0.14)] py-5">
               {isLoading && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.16em] text-[rgba(237,230,218,0.42)]">
                   Checking latest…
@@ -306,21 +304,6 @@ export function DownloadPage() {
                   {error instanceof Error ? ` — ${error.message}` : ''}
                 </p>
               )}
-              {!isLoading && !isError && data && (
-                <>
-                  <p className="font-disp text-3xl uppercase tracking-tight sm:text-4xl">
-                    v{data.version}
-                  </p>
-                  <p className="font-mono-ui mt-1 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)]">
-                    Fresh as of{' '}
-                    {new Date(data.published_at).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </p>
-                </>
-              )}
               {!isLoading && !isError && !data && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)]">
                   {supabaseConfigured
@@ -329,11 +312,11 @@ export function DownloadPage() {
                 </p>
               )}
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
+        )}
 
         <Reveal delayMs={120}>
-          <div className="mt-14">
+          <div id="platforms" className="mt-14 scroll-mt-28">
             <PlatformPicker
               platforms={SHOWCASE_PLATFORMS}
               selectedId={selectedId}
@@ -345,42 +328,69 @@ export function DownloadPage() {
         </Reveal>
 
         <Reveal delayMs={160}>
-          <div className="mt-16 grid gap-10 border-t border-[rgba(237,230,218,0.14)] pt-12 lg:grid-cols-2">
-            <div>
-              <div className="space-y-3 text-[rgba(237,230,218,0.5)]">
-                <p className="font-serif-i text-xl text-[#EDE6DA] sm:text-2xl">
-                  Android TV for the big screen and the remote.
-                </p>
-                <p className="leading-relaxed">
-                  Same movies, series, live TV, and sport as on your computer — made
-                  for the couch. If two downloads are listed, pick the one for your TV
-                  box; either way you&apos;re watching Forja.
-                </p>
-              </div>
-            </div>
-            <div>
-              <div className="space-y-3 leading-relaxed text-[rgba(237,230,218,0.5)]">
-                <p>
-                  An account is optional. Download Forja and watch — no sign-up wall.
-                </p>
-                <p>
-                  If you want one later for preferences across devices, it&apos;s there
-                  when you need it.
-                </p>
-              </div>
-              <div className="mt-5 flex flex-wrap gap-4 font-mono-ui text-xs uppercase tracking-[0.12em]">
-                <Link to="/signup" className="text-brand hover:text-flame hover:underline">
-                  Account
-                </Link>
-                <Link
-                  to="/"
-                  className="text-[rgba(237,230,218,0.42)] transition-colors hover:text-[#EDE6DA]"
+          <section className="relative mt-20 overflow-hidden border-t border-[rgba(237,230,218,0.14)] pt-16">
+            <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-brand">
+              From download to play
+            </p>
+            <h2 className="mt-4 max-w-[14ch] font-disp text-[clamp(40px,8vw,88px)] uppercase leading-[0.88] tracking-[-0.04em]">
+              Three steps.
+              <br />
+              <span className="font-serif-i normal-case text-flame">Zero drama.</span>
+            </h2>
+
+            <ol className="mt-14 grid gap-0 border-y border-[rgba(237,230,218,0.14)] md:grid-cols-3">
+              {[
+                {
+                  n: '01',
+                  title: 'Pick your screen',
+                  body: 'Windows, Mac, Linux, or the TV. One click.',
+                },
+                {
+                  n: '02',
+                  title: 'Install & open',
+                  body: "First launch takes a minute. Then you're set.",
+                },
+                {
+                  n: '03',
+                  title: 'Press play',
+                  body: 'No account wall. Watch free tonight.',
+                },
+              ].map((step, i) => (
+                <li
+                  key={step.n}
+                  className={cn(
+                    'hover-lift group relative px-0 py-10 md:px-8 md:py-12',
+                    i < 2 && 'border-b border-[rgba(237,230,218,0.14)] md:border-b-0 md:border-r',
+                  )}
                 >
-                  Home
-                </Link>
-              </div>
+                  <span className="font-mono-ui text-xs tracking-[0.18em] text-flame transition-colors group-hover:text-brand">
+                    {step.n}
+                  </span>
+                  <p className="mt-4 font-disp text-[clamp(26px,3.5vw,40px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                    {step.title}
+                  </p>
+                  <p className="mt-3 max-w-[28ch] text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
+                    {step.body}
+                  </p>
+                </li>
+              ))}
+            </ol>
+
+            <div className="mt-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <p className="max-w-xl font-disp text-[clamp(22px,3.2vw,36px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.72)]">
+                Desk. Couch.{' '}
+                <span className="text-[#EDE6DA]">Big screen.</span>
+                <br />
+                <span className="text-brand">Same Forja.</span>
+              </p>
+              <a
+                href="#platforms"
+                className="link-draw font-mono-ui shrink-0 text-[11px] uppercase tracking-[0.16em] text-flame transition-colors hover:text-brand"
+              >
+                Back to downloads ↑
+              </a>
             </div>
-          </div>
+          </section>
         </Reveal>
 
         <DownloadHelp />
@@ -398,6 +408,7 @@ export function DownloadPage() {
           </Reveal>
         ) : null}
       </main>
+      <SiteFooter />
     </div>
   )
 }

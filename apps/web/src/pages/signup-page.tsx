@@ -1,93 +1,41 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
+import { SiteFooter } from '@/components/legal-shell'
 import { SiteHeader } from '@/components/site-header'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useAuth } from '@/hooks/use-auth'
 
 export function SignupPage() {
-  const { signUp } = useAuth()
-  const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    setPending(true)
-    setError(null)
-    setMessage(null)
-    const result = await signUp(email.trim(), password)
-    setPending(false)
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-    setMessage('Account ready. Confirm by email if asked, then log in.')
-    void navigate({ to: '/account' })
-  }
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
       <SiteHeader solid />
-      <main className="mx-auto flex max-w-md flex-col px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-            <CardDescription>
-              Optional — syncs settings across Forja devices.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={onSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-300">{error}</p>}
-              {message && <p className="text-sm text-forja-green">{message}</p>}
-              <Button type="submit" className="w-full" disabled={pending}>
-                {pending ? 'Saving…' : 'Continue'}
-              </Button>
-            </form>
-            <p className="mt-4 text-center text-sm text-forja-muted">
-              Already registered?{' '}
-              <Link to="/login" className="text-forja-green hover:underline">
-                Log in
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+      <main className="mx-auto flex max-w-lg flex-col px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
+        <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
+          In progress
+        </p>
+        <h1 className="mt-4 font-disp text-[clamp(36px,8vw,56px)] uppercase leading-[0.92] tracking-[-0.03em]">
+          Account
+          <br />
+          <span className="font-serif-i normal-case text-flame">coming soon.</span>
+        </h1>
+        <p className="mt-6 text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+          Sign-up on the web is not ready yet. Download Forja and watch without an
+          account — web login will land soon.
+        </p>
+        <div className="mt-10 flex flex-wrap gap-4">
+          <Link
+            to="/download"
+            data-hover=""
+            className="btn-magnet inline-flex items-center rounded-full px-8 py-3.5 font-mono-ui text-xs font-bold uppercase tracking-[0.1em]"
+          >
+            Download Forja
+          </Link>
+          <Link
+            to="/"
+            className="font-mono-ui inline-flex items-center px-2 py-3.5 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)] transition-colors hover:text-[#EDE6DA]"
+          >
+            Home
+          </Link>
+        </div>
       </main>
+      <SiteFooter />
     </div>
   )
 }

@@ -1,30 +1,29 @@
 import { useRef, type MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { BrandLogo } from '@/components/brand-logo'
-import { CustomCursor } from '@/components/custom-cursor'
 import { LandingHero } from '@/components/landing-hero'
 import { LibraryHubs } from '@/components/library-hubs'
 import { NowPlayingPanel } from '@/components/now-playing-panel'
 import { Reveal } from '@/components/reveal'
+import { SiteFooter } from '@/components/legal-shell'
 import { SiteHeader } from '@/components/site-header'
 
-/** Four different nights — not four ways to say “watch everywhere”. */
+/** Four clear use cases — plain language. */
 const NIGHTS = [
   {
-    k: 'The premiere',
-    v: 'Lights down. Big screen energy. A film that owns the room.',
+    k: 'Movies',
+    v: 'Pick a film and watch it full screen. No ads in the middle.',
   },
   {
-    k: 'The binge',
-    v: 'One more episode turns into three. You don’t fight it.',
+    k: 'Series',
+    v: 'Binge episodes one after another. Next episode is ready when you are.',
   },
   {
-    k: 'The roar',
-    v: 'Kickoff. Overtime. The whole house on the edge of the seat.',
+    k: 'Live sport',
+    v: 'Football, basketball, and more — watch the match as it happens.',
   },
   {
-    k: 'The after-hours',
-    v: 'Channels still humming when the city goes quiet.',
+    k: 'Live TV',
+    v: 'News and channels anytime. Add your own IPTV list and press play.',
   },
 ]
 
@@ -64,7 +63,6 @@ export function LandingPage() {
 
   return (
     <div className="film-grain relative bg-[#0B0A0A] text-[#EDE6DA]">
-      <CustomCursor />
       <SiteHeader />
 
       <LandingHero />
@@ -76,28 +74,26 @@ export function LandingPage() {
       >
         <div className="mx-auto max-w-[1400px] px-[5vw] pt-14 pb-4 lg:pt-16">
           <Reveal>
-            <h2 className="max-w-[16ch] font-disp text-[clamp(36px,6vw,64px)] uppercase leading-[0.92] tracking-[-0.03em]">
-              Four kinds of
+            <h2 className="max-w-[18ch] font-disp text-[clamp(36px,6vw,64px)] uppercase leading-[0.92] tracking-[-0.03em]">
+              What you can
               <br />
-              <span className="text-flame">night.</span>
+              <span className="text-flame">watch.</span>
             </h2>
-            <p className="mt-6 font-disp text-[clamp(20px,2.8vw,32px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-              Forja follows the mood —
-              <br />
-              <span className="text-[#EDE6DA]">not the other way around.</span>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+              Forja is one free app for movies, series, live sport, and live TV.
             </p>
           </Reveal>
         </div>
         <div className="mx-auto grid max-w-[1400px] lg:grid-cols-2 xl:grid-cols-4">
           {NIGHTS.map((d, i) => (
-            <Reveal key={d.k} delayMs={i * 70}>
+            <Reveal key={d.k} delayMs={i * 80} variant={i % 2 === 0 ? 'left' : 'right'}>
               <div
-                className={`h-full border-[rgba(237,230,218,0.14)] px-[5vw] py-10 lg:border-r lg:px-8 lg:py-12 ${i === NIGHTS.length - 1 ? 'lg:border-r-0' : ''} ${i >= 2 ? 'xl:border-t-0' : ''}`}
+                className={`hover-lift h-full border-[rgba(237,230,218,0.14)] px-[5vw] py-10 lg:border-r lg:px-8 lg:py-12 ${i === NIGHTS.length - 1 ? 'lg:border-r-0' : ''} ${i >= 2 ? 'xl:border-t-0' : ''}`}
               >
                 <h3 className="font-disp text-[clamp(22px,2.8vw,32px)] uppercase leading-tight tracking-tight">
                   {d.k}
                 </h3>
-                <p className="mt-3 font-disp text-lg uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.5)] sm:text-xl">
+                <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
                   {d.v}
                 </p>
               </div>
@@ -124,17 +120,19 @@ export function LandingPage() {
       {/* Beat 3 — discovery / home */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
         <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
-          <Reveal>
-            <img
-              src="/brand/forja-home-hero.jpg"
-              alt="Forja home — cinematic hero and featured shelves"
-              width={1024}
-              height={643}
-              className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
-              decoding="async"
-            />
+          <Reveal variant="left">
+            <div className="hover-zoom rounded-lg">
+              <img
+                src="/brand/forja-home-hero.jpg"
+                alt="Forja home — cinematic hero and featured shelves"
+                width={1024}
+                height={643}
+                className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
+                decoding="async"
+              />
+            </div>
           </Reveal>
-          <Reveal delayMs={60}>
+          <Reveal delayMs={80} variant="right">
             <h2 className="font-disp text-[clamp(36px,5.5vw,64px)] uppercase leading-[0.9] tracking-[-0.04em]">
               Sit down.
               <br />
@@ -159,7 +157,7 @@ export function LandingPage() {
       {/* Beat 4 — live only */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
         <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
-          <Reveal delayMs={60} className="lg:order-1">
+          <Reveal delayMs={60} variant="left" className="lg:order-1">
             <h2 className="font-disp text-[clamp(36px,5.5vw,64px)] uppercase leading-[0.9] tracking-[-0.04em]">
               When the world
               <br />
@@ -177,20 +175,22 @@ export function LandingPage() {
             </ul>
             <Link
               to="/iptv"
-              className="font-mono-ui mt-10 inline-block text-[11px] uppercase tracking-[0.16em] text-brand transition-colors hover:text-flame"
+              className="link-draw font-mono-ui mt-10 inline-block text-[11px] uppercase tracking-[0.16em] text-brand transition-colors hover:text-flame"
             >
               Explore IPTV Player
             </Link>
           </Reveal>
-          <Reveal className="lg:order-2">
-            <img
-              src="/brand/forja-iptv-live.jpg"
-              alt="Forja IPTV — live channels and categories"
-              width={1024}
-              height={637}
-              className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
-              decoding="async"
-            />
+          <Reveal variant="right" className="lg:order-2">
+            <div className="hover-zoom rounded-lg">
+              <img
+                src="/brand/forja-iptv-live.jpg"
+                alt="Forja IPTV — live channels and categories"
+                width={1024}
+                height={637}
+                className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
+                decoding="async"
+              />
+            </div>
           </Reveal>
         </div>
       </section>
@@ -239,7 +239,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Beat 7 — platforms ONLY here */}
+      {/* Beat 7 — screens, not a platform checklist */}
       <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh] text-center">
         <Reveal>
           <div className="font-disp text-[clamp(48px,12vw,140px)] uppercase leading-[0.9] tracking-[-0.04em]">
@@ -249,9 +249,6 @@ export function LandingPage() {
             Desk. Living room.
             <br />
             <span className="text-[#EDE6DA]">Same night. Same Forja.</span>
-          </p>
-          <p className="font-mono-ui mt-8 text-[clamp(12px,1.5vw,15px)] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.42)]">
-            Windows · macOS · Linux · Android TV
           </p>
         </Reveal>
       </section>
@@ -291,21 +288,7 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      <footer className="overflow-hidden pt-[6vh]">
-        <div className="flex flex-col items-center gap-8 px-[5vw] pb-4">
-          <BrandLogo
-            to="/"
-            imgClassName="h-14 w-auto drop-shadow-[0_0_28px_rgba(28,231,131,0.4)] sm:h-20"
-          />
-        </div>
-        <div className="font-mono-ui mt-[2vh] flex flex-wrap justify-between gap-4 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[26px] text-xs uppercase tracking-[0.1em] text-[rgba(237,230,218,0.42)]">
-          <span>Forja</span>
-          <Link to="/download" className="transition-colors hover:text-brand">
-            Downloads
-          </Link>
-          <span>© {new Date().getFullYear()}</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
