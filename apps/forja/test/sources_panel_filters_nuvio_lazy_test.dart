@@ -62,7 +62,73 @@ void main() {
         2,
       );
     });
+  });
 
+  group('promoteStremioProviderId', () {
+    const torrentio = 'https://torrentio.strem.fun';
+    const yts = 'https://ytztvio.example';
+    const order = [torrentio, yts];
+
+    test('moves off empty first addon onto one with streams', () {
+      expect(
+        promoteStremioProviderId(
+          currentId: torrentio,
+          addonBaseUrlsInOrder: order,
+          loadedIds: {yts},
+          completedIds: {torrentio, yts},
+          fetching: false,
+          userPicked: false,
+        ),
+        yts,
+      );
+    });
+
+    test('waits for preferred addon while still fetching', () {
+      expect(
+        promoteStremioProviderId(
+          currentId: torrentio,
+          preferredId: torrentio,
+          addonBaseUrlsInOrder: order,
+          loadedIds: {yts},
+          completedIds: {yts},
+          fetching: true,
+          userPicked: false,
+        ),
+        isNull,
+      );
+    });
+
+    test('falls back when preferred finished empty', () {
+      expect(
+        promoteStremioProviderId(
+          currentId: torrentio,
+          preferredId: torrentio,
+          addonBaseUrlsInOrder: order,
+          loadedIds: {yts},
+          completedIds: {torrentio, yts},
+          fetching: false,
+          userPicked: false,
+        ),
+        yts,
+      );
+    });
+
+    test('respects manual provider pick', () {
+      expect(
+        promoteStremioProviderId(
+          currentId: torrentio,
+          addonBaseUrlsInOrder: order,
+          loadedIds: {yts},
+          completedIds: {torrentio, yts},
+          fetching: false,
+          userPicked: true,
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('Nuvio load-next button', () {
     testWidgets('labels the next network provider count', (tester) async {
       var pressed = false;
       await tester.pumpWidget(

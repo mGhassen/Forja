@@ -342,41 +342,82 @@ impl TorrentEngine {
             inner.http_port
         };
 
-        let prepared = self.prepare_magnet(magnet).await?;
-        let file_idx = select_file_index(
-            &prepared.files,
-            season,
-            episode,
-            preferred_idx.map(|v| v as usize),
-        )
-        .ok_or("No suitable video file found")?;
+        // Keep the current swarm while the new magnet resolves so the player
+        // can keep reading its localhost URL (background switch UX).
+        let previous = {
+            let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
+            match (
+                inner.active.clone(),
+                extract_info_hash(magnet).map(|h| h.to_ascii_lowercase()),
+            ) {
+                (Some(active), Some(h)) if active.info_hash.eq_ignore_ascii_case(&h) => None,
+                (Some(active), _) => Some(active),
+                _ => None,
+            }
+        };
 
+        let prepared = self.prepare_magnet(magnet).await?;
         let api = {
             let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
             inner.api.clone().ok_or("Torrent engine not started")?
         };
 
+        let file_idx = match select_file_index(
+            &prepared.files,
+            season,
+            episode,
+            preferred_idx.map(|v| v as usize),
+        ) {
+            Some(idx) => idx,
+            None => {
+                self.restore_active_after_failed_switch(
+                    &api,
+                    prepared.torrent_id,
+                    previous,
+                )
+                .await;
+                return Err("No suitable video file found".into());
+            }
+        };
+
         // Download only the selected file — otherwise peers fill random pieces
         // and the stream head stays empty while mpv probes.
         let only_files = HashSet::from([file_idx]);
-        api.api_torrent_action_update_only_files(
-            TorrentIdOrHash::Id(prepared.torrent_id),
-            &only_files,
-        )
-        .await
-        .map_err(|e| e.to_string())?;
+        if let Err(e) = api
+            .api_torrent_action_update_only_files(
+                TorrentIdOrHash::Id(prepared.torrent_id),
+                &only_files,
+            )
+            .await
+        {
+            self.restore_active_after_failed_switch(&api, prepared.torrent_id, previous)
+                .await;
+            return Err(e.to_string());
+        }
 
         // Block until the first bytes of the file are actually available.
         // Returning the URL at metadata-ready lets mpv open an empty stream
         // and die with "Failed to recognize file format".
-        wait_for_stream_head(
+        if let Err(e) = wait_for_stream_head(
             &api,
             prepared.torrent_id,
             file_idx,
             STREAM_HEAD_BYTES,
             STREAM_HEAD_TIMEOUT,
         )
-        .await?;
+        .await
+        {
+            self.restore_active_after_failed_switch(&api, prepared.torrent_id, previous)
+                .await;
+            return Err(e);
+        }
+
+        // New stream is ready — drop the previous swarm (player will replace).
+        if let Some(prev) = previous {
+            let _ = api
+                .api_torrent_action_forget(TorrentIdOrHash::Id(prev.id))
+                .await;
+        }
 
         let file_name = prepared
             .files
@@ -400,7 +441,6 @@ impl TorrentEngine {
     async fn prepare_magnet(&self, magnet: &str) -> Result<PreparedTorrent, String> {
         self.prepare_add(
             AddTorrent::from_url(magnet),
-            extract_info_hash(magnet),
             MAGNET_ADD_TIMEOUT,
             format!(
                 "Timed out resolving magnet (no metadata/peers in {}s)",
@@ -414,7 +454,6 @@ impl TorrentEngine {
     async fn prepare_torrent_bytes(&self, bytes: Vec<u8>) -> Result<PreparedTorrent, String> {
         self.prepare_add(
             AddTorrent::from_bytes(bytes),
-            None,
             TORRENT_INIT_TIMEOUT,
             format!(
                 "Timed out adding torrent file ({}s)",
@@ -424,10 +463,14 @@ impl TorrentEngine {
         .await
     }
 
+    /// Adds a magnet/torrent without forgetting the previous swarm.
+    ///
+    /// Mid-playback switches keep the old HTTP stream alive until
+    /// [Self::stream_magnet] confirms the new file head, then drops the
+    /// previous id. Forgetting early freezes mpv on a dead localhost URL.
     async fn prepare_add(
         &self,
         add: AddTorrent<'_>,
-        new_hash: Option<String>,
         add_timeout: Duration,
         add_timeout_msg: String,
     ) -> Result<PreparedTorrent, String> {
@@ -438,29 +481,6 @@ impl TorrentEngine {
             }
             inner.api.clone().unwrap()
         };
-
-        let forget_id = {
-            let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
-            if let Some(active) = inner.active.clone() {
-                let switch = match new_hash.as_deref() {
-                    Some(h) => h != active.info_hash.as_str(),
-                    None => true,
-                };
-                if switch {
-                    inner.active = None;
-                    Some(active.id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        };
-        if let Some(id) = forget_id {
-            let _ = api
-                .api_torrent_action_forget(TorrentIdOrHash::Id(id))
-                .await;
-        }
 
         let session = {
             let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
@@ -519,6 +539,20 @@ impl TorrentEngine {
             info_hash: details.info_hash,
             files,
         })
+    }
+
+    async fn restore_active_after_failed_switch(
+        &self,
+        api: &Api,
+        failed_id: usize,
+        previous: Option<ActiveTorrent>,
+    ) {
+        let _ = api
+            .api_torrent_action_forget(TorrentIdOrHash::Id(failed_id))
+            .await;
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.active = previous;
+        }
     }
 
     pub fn start(&self, magnet: &str) -> Result<(), String> {

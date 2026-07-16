@@ -34,6 +34,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Scraper scripts are cached locally after first use
 - Refreshing an addon merges new scrapers while keeping your enabled/disabled choices
 - **Webstreaming** (green **Play**) uses VidLink, WebStreamr, Videasy, etc. — not Nuvio
+- Playing a Nuvio HTTP link from **Sources** must show video — if only audio starts (or the picture stays black), Forja fails that row so you can pick another instead of sitting on a blank screen
 
 ## Related
 

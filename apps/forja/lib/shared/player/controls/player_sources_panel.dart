@@ -187,6 +187,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   List<Map<String, dynamic>> _stremioStreams = [];
   List<Map<String, dynamic>> _streamAddons = [];
   final Set<String> _loadedAddonBaseUrls = {};
+  final Set<String> _completedAddonBaseUrls = {};
 
   List<Map<String, dynamic>> _nuvioStreams = [];
   List<NuvioAddon> _nuvioAddons = [];
@@ -205,6 +206,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
   /// back to the playing source (e.g. Torrents magnet → Nuvio click).
   bool _userPickedKind = false;
+  /// Once the user picks a Stremio addon in Filters → Providers, do not auto
+  /// move off an empty/failed addon (Torrentio 403) onto one with results.
+  bool _userPickedStremioProvider = false;
 
   bool _showTorrents = true;
   bool _showStremio = false;
@@ -341,15 +345,33 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return null;
   }
 
+  List<String> get _stremioAddonBaseUrlsInOrder => [
+    for (final a in _streamAddons)
+      if (a['baseUrl'] is String) a['baseUrl'] as String,
+  ];
+
+  /// Move Filters → Providers off an empty addon when another has streams
+  /// (e.g. Torrentio Cloudflare 403, YTS OK). Respects a manual provider tap.
+  void _syncStremioProviderSelection() {
+    if (_kindFilter != 'stremio') return;
+    final next = promoteStremioProviderId(
+      currentId: _selectedSourceId,
+      preferredId: _preferredStremioAddonBaseUrl(),
+      addonBaseUrlsInOrder: _stremioAddonBaseUrlsInOrder,
+      loadedIds: _loadedAddonBaseUrls,
+      completedIds: _completedAddonBaseUrls,
+      fetching: _stremioFetching,
+      userPicked: _userPickedStremioProvider,
+    );
+    if (next != null) _selectedSourceId = next;
+  }
+
   /// Ensure the filtered Stremio / Nuvio list includes the playing row.
   void _selectPlayingProviderIfNeeded() {
     if (_kindFilter == 'stremio') {
-      final addon = _preferredStremioAddonBaseUrl();
-      if (addon != null &&
-          addon != _selectedSourceId &&
-          _selectedSourceId != 'all_stremio') {
-        _selectedSourceId = addon;
-      }
+      // Prefer the playing addon only when it already has rows — otherwise
+      // [promoteStremioProviderId] keeps the list stuck on Torrentio 403.
+      _syncStremioProviderSelection();
       return;
     }
     if (_kindFilter != 'nuvio') return;
@@ -543,7 +565,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
             for (final s in cached)
               if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
           });
+        _completedAddonBaseUrls
+          ..clear()
+          ..addAll(_loadedAddonBaseUrls);
         _error = null;
+        _syncStremioProviderSelection();
       });
       _focusPlayingSourceIfNeeded();
       _requestScrollToCurrent();
@@ -599,6 +625,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _stremioFetching = false;
       _stremioStreams = [];
       _loadedAddonBaseUrls.clear();
+      _completedAddonBaseUrls.clear();
     }
     if (keepKind != 'nuvio' && _nuvioFetching) {
       _nuvioFetchGen++;
@@ -955,6 +982,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _stremioFetching = true;
       _stremioStreams = [];
       _loadedAddonBaseUrls.clear();
+      _completedAddonBaseUrls.clear();
       _error = null;
     });
 
@@ -975,6 +1003,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         );
         setState(() {
           _stremioFetching = false;
+          _syncStremioProviderSelection();
           if (_stremioStreams.isEmpty && !_showsTorrents) {
             _error = 'No streams found from any addon';
           }
@@ -983,9 +1012,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
 
     for (final addon in _streamAddons) {
+      final baseUrl = addon['baseUrl'] as String;
       _stremio
           .getStreams(
-            baseUrl: addon['baseUrl'] as String,
+            baseUrl: baseUrl,
             type: type,
             id: stremioId,
           )
@@ -997,35 +1027,23 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
                   return <String, dynamic>{
                     ...s,
                     '_addonName': addon['name'] ?? 'Unknown',
-                    '_addonBaseUrl': addon['baseUrl'],
+                    '_addonBaseUrl': baseUrl,
                   };
                 }
                 return <String, dynamic>{
                   '_addonName': addon['name'],
-                  '_addonBaseUrl': addon['baseUrl'],
+                  '_addonBaseUrl': baseUrl,
                 };
               }).toList(),
               _profile,
             );
             setState(() {
+              _completedAddonBaseUrls.add(baseUrl);
               if (tagged.isNotEmpty) {
-                _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
-                if (_kindFilter == 'stremio') {
-                  final preferred = _preferredStremioAddonBaseUrl();
-                  if (preferred != null &&
-                      _loadedAddonBaseUrls.contains(preferred)) {
-                    // Pin to the playing addon once it has streams.
-                    _selectedSourceId = preferred;
-                  } else if (preferred == null &&
-                      (_selectedSourceId == 'all_stremio' ||
-                          !_loadedAddonBaseUrls.contains(_selectedSourceId))) {
-                    // No playing addon — first addon with results wins.
-                    _selectedSourceId = addon['baseUrl'] as String;
-                  }
-                  // If preferred is set but not loaded yet, keep waiting.
-                }
+                _loadedAddonBaseUrls.add(baseUrl);
               }
               _stremioStreams.addAll(tagged);
+              _syncStremioProviderSelection();
             });
             if (tagged.isNotEmpty) {
               _focusPlayingSourceIfNeeded();
@@ -1033,7 +1051,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
             }
           })
           .catchError((_) {
-            // skip failed addon
+            if (!mounted || gen != _stremioGen) return;
+            setState(() {
+              _completedAddonBaseUrls.add(baseUrl);
+              _syncStremioProviderSelection();
+            });
           })
           .whenComplete(completeOne);
     }
@@ -1130,8 +1152,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _sizeFilters = {};
       _searchQuery = '';
       if (kind == 'stremio') {
+        _userPickedStremioProvider = false;
         _selectedSourceId =
             _preferredStremioAddonBaseUrl() ?? _defaultStremioSourceId();
+        _syncStremioProviderSelection();
       } else if (kind == 'nuvio') {
         _selectedSourceId = 'all_nuvio';
         _selectPlayingProviderIfNeeded();
@@ -1336,6 +1360,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (id == _selectedSourceId) return;
     setState(() {
       _selectedSourceId = id;
+      if (_kindFilter == 'stremio') _userPickedStremioProvider = true;
       _qualityFilters = {};
       _languageFilters = {};
       _techFilters = {};

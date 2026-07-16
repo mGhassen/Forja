@@ -92,7 +92,16 @@ class StremioService {
         final response = await _rustGet(uri, timeout: timeout);
         if (response.statusCode == 200) return response;
         lastResponse = response;
-        if (response.statusCode == 404) break;
+        // Do not retry missing content or hard client blocks (Cloudflare 403
+        // on torrentio.strem.fun, etc.) — backoff only wastes panel time.
+        if (response.statusCode == 404 ||
+            response.statusCode == 401 ||
+            response.statusCode == 403 ||
+            (response.statusCode >= 400 &&
+                response.statusCode < 500 &&
+                response.statusCode != 429)) {
+          break;
+        }
       } catch (e) {
         lastError = e;
       }

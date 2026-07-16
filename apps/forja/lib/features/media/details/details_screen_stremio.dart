@@ -44,6 +44,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       _s._errorMessage = null;
       _s._allCombinedStremioStreams = [];
       _s._loadedAddonBaseUrls.clear();
+      _s._completedAddonBaseUrls.clear();
       if (_s._selectedSourceId == 'all_stremio') _s._stremioStreams = [];
     });
     try {
@@ -70,9 +71,9 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
           );
           setState(() {
             _s._isStremioFetching = false;
-            if (_s._isTorrentSource) _applyStremioFilter();
-            if (_s._allCombinedStremioStreams.isEmpty &&
-                _s._selectedSourceId == 'all_stremio') {
+            _s._syncStremioProviderSelection();
+            _applyStremioFilter();
+            if (_s._allCombinedStremioStreams.isEmpty) {
               _s._errorMessage = 'No streams found from any addon';
             }
           });
@@ -86,8 +87,9 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       }
 
       for (final addon in _s._streamAddons) {
+        final baseUrl = addon['baseUrl'] as String;
         _s._stremio
-            .getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId)
+            .getStreams(baseUrl: baseUrl, type: type, id: stremioId)
             .then((streams) {
               if (!mounted || gen != _s._stremioFetchGen) return;
               final tagged = _s._filterStremioStreams(
@@ -96,31 +98,33 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
                     return <String, dynamic>{
                       ...s,
                       '_addonName': addon['name'] ?? 'Unknown',
-                      '_addonBaseUrl': addon['baseUrl'],
+                      '_addonBaseUrl': baseUrl,
                     };
                   }
                   return <String, dynamic>{
                     '_addonName': addon['name'],
-                    '_addonBaseUrl': addon['baseUrl'],
+                    '_addonBaseUrl': baseUrl,
                   };
                 }).toList(),
               );
 
               setState(() {
-                // Only show chip if addon returned results
+                _s._completedAddonBaseUrls.add(baseUrl);
                 if (tagged.isNotEmpty) {
-                  _s._loadedAddonBaseUrls.add(addon['baseUrl'] as String);
+                  _s._loadedAddonBaseUrls.add(baseUrl);
                 }
-                // Append below existing results
                 _s._allCombinedStremioStreams.addAll(tagged);
-                if (_s._selectedSourceId == 'all_stremio' ||
-                    _s._selectedSourceId == addon['baseUrl']) {
-                  _applyStremioFilter();
-                }
+                _s._syncStremioProviderSelection();
+                _applyStremioFilter();
               });
             })
             .catchError((_) {
-              // No-op: don't show chip for errored addons
+              if (!mounted || gen != _s._stremioFetchGen) return;
+              setState(() {
+                _s._completedAddonBaseUrls.add(baseUrl);
+                _s._syncStremioProviderSelection();
+                _applyStremioFilter();
+              });
             })
             .whenComplete(() {
               completeOne();

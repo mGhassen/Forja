@@ -94,6 +94,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [070-[fixed]-…](fixed/070-[fixed]-sources-filters-nuvio-scraper-lazy-load.md) | Sources: no All; providers in Filters; lazy Nuvio scrapers | P2 | Medium | fixed | Complete · 8/8 · A 2/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [071-[fixed]-…](fixed/071-[fixed]-videasy-grace-discards-mirror-streams.md) | Videasy grace discarded collected mirror streams | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [072-[fixed]-…](fixed/072-[fixed]-torrent-early-eof-false-completed-autonext.md) | Local torrent early EOF false completed / auto-next | P1 | High | fixed | Complete · 9/9 · A 4/6 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [073-[fixed]-…](fixed/073-[fixed]-stremio-provider-filter-stuck-on-failed-addon.md) | Stremio Filters stuck on failed addon (Torrentio 403) | P1 | High | fixed | Complete · 4/4 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

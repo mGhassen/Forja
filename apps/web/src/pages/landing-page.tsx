@@ -7,8 +7,8 @@ import { Reveal } from '@/components/reveal'
 import { SiteFooter } from '@/components/legal-shell'
 import { SiteHeader } from '@/components/site-header'
 
-/** Categories - only place on the landing page that lists what you can watch. */
-const USE_CASES = [
+/** Four clear use cases - plain language. */
+const NIGHTS = [
   {
     k: 'Movies',
     v: 'Pick a film. Watch it full screen.',
@@ -67,7 +67,7 @@ export function LandingPage() {
 
       <LandingHero />
 
-      {/* Categories only */}
+      {/* Beat 2 - moods of a night */}
       <section
         id="why"
         className="border-y border-[rgba(237,230,218,0.14)] bg-[#0f0e0d]"
@@ -79,13 +79,16 @@ export function LandingPage() {
               <br />
               <span className="text-flame">watch.</span>
             </h2>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+              Forja is one free app for movies, series, live sport, and live TV.
+            </p>
           </Reveal>
         </div>
         <div className="mx-auto grid max-w-[1400px] lg:grid-cols-2 xl:grid-cols-4">
-          {USE_CASES.map((d, i) => (
+          {NIGHTS.map((d, i) => (
             <Reveal key={d.k} delayMs={i * 80} variant={i % 2 === 0 ? 'left' : 'right'}>
               <div
-                className={`hover-lift h-full border-[rgba(237,230,218,0.14)] px-[5vw] py-10 lg:border-r lg:px-8 lg:py-12 ${i === USE_CASES.length - 1 ? 'lg:border-r-0' : ''} ${i >= 2 ? 'xl:border-t-0' : ''}`}
+                className={`hover-lift h-full border-[rgba(237,230,218,0.14)] px-[5vw] py-10 lg:border-r lg:px-8 lg:py-12 ${i === NIGHTS.length - 1 ? 'lg:border-r-0' : ''} ${i >= 2 ? 'xl:border-t-0' : ''}`}
               >
                 <h3 className="font-disp text-[clamp(22px,2.8vw,32px)] uppercase leading-tight tracking-tight">
                   {d.k}
@@ -114,14 +117,14 @@ export function LandingPage() {
         </div>
       </div>
 
-      {/* Home UI */}
+      {/* Beat 3 - discovery / home */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
         <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <Reveal variant="left">
             <div className="hover-zoom rounded-lg">
               <img
                 src="/brand/forja-home-hero.jpg"
-                alt="Forja home - featured title and shelves"
+                alt="Forja home - cinematic hero and featured shelves"
                 width={1024}
                 height={643}
                 className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
@@ -131,42 +134,44 @@ export function LandingPage() {
           </Reveal>
           <Reveal delayMs={80} variant="right">
             <h2 className="font-disp text-[clamp(36px,5.5vw,64px)] uppercase leading-[0.9] tracking-[-0.04em]">
-              Home
+              Sit down.
               <br />
-              <span className="text-flame">layout.</span>
+              <span className="text-flame">Something&apos;s waiting.</span>
             </h2>
             <ul className="mt-8 space-y-3 font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-[1.05] tracking-[-0.02em] text-[rgba(237,230,218,0.72)]">
               <li>
-                Featured title <span className="text-brand">up front</span>
+                A hero that <span className="text-brand">pulls you in</span>
               </li>
               <li>
-                Continue watching <span className="text-flame">shelves</span>
+                Shelves that feel <span className="text-flame">personal</span>
               </li>
               <li>
-                New releases and <span className="text-[#EDE6DA]">your list</span>
+                New titles. <span className="text-[#EDE6DA]">Old favorites.</span>
               </li>
+              <li>No hunting. Just the night ahead.</li>
             </ul>
           </Reveal>
         </div>
       </section>
 
-      {/* IPTV-specific teaser - not another category list */}
+      {/* Beat 4 - live only */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
         <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <Reveal delayMs={60} variant="left" className="lg:order-1">
             <h2 className="font-disp text-[clamp(36px,5.5vw,64px)] uppercase leading-[0.9] tracking-[-0.04em]">
-              IPTV
+              When the world
               <br />
-              <span className="text-brand">controls.</span>
+              <span className="text-brand">watches together.</span>
             </h2>
             <ul className="mt-8 space-y-3 font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-[1.05] tracking-[-0.02em] text-[rgba(237,230,218,0.72)]">
               <li>
-                Channel <span className="text-flame">guide</span>
+                Kickoff. <span className="text-flame">Overtime.</span>
               </li>
               <li>
-                Search while you <span className="text-[#EDE6DA]">watch</span>
+                Channels that never <span className="text-[#EDE6DA]">sleep</span>
               </li>
-              <li>What&apos;s on now from your list</li>
+              <li>News. Sport. The night still live.</li>
+              <li>Feel the moment as it happens.</li>
             </ul>
             <Link
               to="/iptv"
@@ -190,43 +195,43 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Anime + Asian Drama (not covered above) */}
+      {/* Beat 5 - worlds / catalog */}
       <LibraryHubs />
 
-      {/* Sources + free - no category re-list */}
+      {/* Beat 6 - feeling, not platforms */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh]">
         <div className="mx-auto flex max-w-[1100px] flex-col gap-12">
           <Reveal>
             <h2 className="font-disp text-[clamp(40px,7vw,84px)] uppercase leading-[0.9] tracking-[-0.03em]">
-              Your sources.
+              Nights that
               <br />
-              <span className="font-serif-i normal-case text-flame">Your call.</span>
+              <span className="font-serif-i normal-case text-flame">belong to you.</span>
             </h2>
           </Reveal>
           <Reveal delayMs={80}>
             <ul className="space-y-8">
               <li>
                 <p className="font-disp text-[clamp(28px,4vw,44px)] uppercase leading-none text-[#EDE6DA]">
-                  Playlists you connect
+                  One player
                 </p>
                 <p className="mt-2 font-disp text-xl uppercase tracking-tight text-[rgba(237,230,218,0.45)] sm:text-2xl">
-                  Xtream, M3U, and other providers you already use.
+                  Movies, series, sport, and live TV in one place.
                 </p>
               </li>
               <li>
                 <p className="font-disp text-[clamp(28px,4vw,44px)] uppercase leading-none text-[#EDE6DA]">
-                  Free download
+                  No decision fatigue
                 </p>
                 <p className="mt-2 font-disp text-xl uppercase tracking-tight text-[rgba(237,230,218,0.45)] sm:text-2xl">
-                  No subscription. No paid plan.
+                  Open Forja. The night finds you.
                 </p>
               </li>
               <li>
                 <p className="font-disp text-[clamp(28px,4vw,44px)] uppercase leading-none text-[#EDE6DA]">
-                  Optional account
+                  No small print
                 </p>
                 <p className="mt-2 font-disp text-xl uppercase tracking-tight text-[rgba(237,230,218,0.45)] sm:text-2xl">
-                  Sign in only if you want settings synced.
+                  Free means free. Stay as long as you want.
                 </p>
               </li>
             </ul>
@@ -234,19 +239,37 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Download CTA */}
+      {/* Beat 7 - screens, not a platform checklist */}
+      <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh] text-center">
+        <Reveal>
+          <div className="font-disp text-[clamp(48px,12vw,140px)] uppercase leading-[0.9] tracking-[-0.04em]">
+            Your screens.
+          </div>
+          <p className="mx-auto mt-8 max-w-3xl font-disp text-[clamp(22px,3.5vw,40px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
+            Desk. Living room.
+            <br />
+            <span className="text-[#EDE6DA]">Same night. Same Forja.</span>
+          </p>
+        </Reveal>
+      </section>
+
+      {/* Beat 8 - close */}
       <section
         id="drop"
         className="grid grid-cols-1 items-center gap-10 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh] md:grid-cols-[0.95fr_1.15fr] md:gap-14 lg:gap-16"
       >
         <Reveal>
           <h2 className="font-disp text-[clamp(40px,10vw,110px)] uppercase leading-[0.85] tracking-[-0.04em]">
-            Get
+            Don&apos;t wait
             <br />
-            <span className="text-brand">Forja.</span>
+            <span className="text-brand">for the night.</span>
           </h2>
           <p className="mt-6 max-w-lg font-disp text-[clamp(18px,3vw,36px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)] sm:mt-8">
-            <span className="text-[#EDE6DA]">Free for Windows, Mac, Linux, and Android TV.</span>
+            Download Forja.
+            <br />
+            Press play.
+            <br />
+            <span className="text-[#EDE6DA]">It&apos;s already free.</span>
           </p>
           <Link
             ref={magnetRef}
@@ -256,7 +279,7 @@ export function LandingPage() {
             onMouseLeave={onMagnetLeave}
             className="btn-magnet mt-7 inline-flex w-full items-center justify-center rounded-full px-8 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] will-change-transform sm:mt-8 sm:w-auto sm:px-[34px] sm:py-5 sm:text-[15px]"
           >
-            Download
+            Get Forja
           </Link>
         </Reveal>
 

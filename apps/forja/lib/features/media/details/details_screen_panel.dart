@@ -234,6 +234,9 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     }
     setState(() {
       _s._selectedSourceId = id;
+      if (_s._panelKindFilter == 'stremio') {
+        _s._userPickedStremioProvider = true;
+      }
       _resetPanelFilters();
     });
     if (id == 'forja') {

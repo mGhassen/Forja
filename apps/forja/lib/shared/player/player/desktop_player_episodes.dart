@@ -551,6 +551,22 @@ mixin _DesktopPlayerEpisodes
   }
 
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
+    final settings = SettingsService();
+    final useDebrid = await settings.useDebridForStreams();
+    final debridService = await settings.getDebridService();
+    final precheck = classifyStremioStream(
+      stream,
+      PlatformPlayback.capabilities,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
+    // Magnets / infoHash need engine resolve — keep current video + loading
+    // card, replace the player only when the new stream is ready.
+    if (precheck == null) {
+      await _switchStremioMagnetSource(stream);
+      return;
+    }
+
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
     final switchGen = ++_s._fallbackGen;
@@ -622,6 +638,29 @@ mixin _DesktopPlayerEpisodes
         return;
       }
 
+      // Catalog switches must show a frame — buffer/audio alone leaves a
+      // black picture (common on Nuvio HLS when GPU decode stalls).
+      final decoded = await confirmOpenedStreamVideoDecode(
+        _s._player,
+        openUrl: openedUrl,
+        headers: resolved.headers,
+        force: true,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!decoded) {
+        debugPrint(
+          '[Player] ${catalogStreamKindLabel(stream)} switch opened without video: $openedUrl',
+        );
+        await _s._player.stop();
+        _s._statusController.upsert(
+          statusId,
+          title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        return;
+      }
+
       setState(() {
         _s._currentUrl = resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;
@@ -655,10 +694,88 @@ mixin _DesktopPlayerEpisodes
     }
   }
 
+  /// Stremio/Torrentio magnet — same UX as [_switchTorrentSource]: keep the
+  /// current player running with a bottom-right card until the new stream is
+  /// ready, then open a fresh player.
+  Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
+    if (_s._isLoadingNextEp) return;
+    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
+        .toString();
+    _beginEpisodeLoading(
+      label: title,
+      status: 'Starting Local Torrent Engine…',
+    );
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+
+    try {
+      final settings = SettingsService();
+      final useDebrid = await settings.useDebridForStreams();
+      final debridService = await settings.getDebridService();
+      _setEpisodeLoadingStatus(
+        playbackResolveLabel(
+          useDebrid: useDebrid,
+          debridService: debridService,
+        ),
+      );
+
+      final resolved = await resolveStremioStream(
+        stream: stream,
+        profile: PlatformPlayback.capabilities,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+      );
+      if (!mounted) return;
+      if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
+        final msg = resolved is StremioResolveFailure && resolved.message.isNotEmpty
+            ? resolved.message
+            : 'Failed to resolve stream';
+        debugPrint(
+          '[Player] ${catalogStreamKindLabel(stream)} switch failed: $msg',
+        );
+        await _failEpisodeLoading(msg);
+        return;
+      }
+
+      _setEpisodeLoadingStatus('Opening stream…');
+      TorrentStreamService().retainForExternalHandoff = true;
+
+      final season = widget.selectedSeason;
+      final episode = widget.selectedEpisode;
+      final nextTitle = widget.movie != null && season != null && episode != null
+          ? '${widget.movie!.title} - S$season E$episode'
+          : widget.title;
+      final base = stream['_addonBaseUrl']?.toString();
+      final magnet = resolved.magnetLink;
+
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        AppRouter.slideRoute(
+          (_) => PlayerScreen(
+            streamUrl: resolved.streamUrl,
+            title: nextTitle,
+            movie: widget.movie,
+            selectedSeason: season,
+            selectedEpisode: episode,
+            magnetLink: magnet,
+            fileIndex: resolved.fileIndex,
+            headers: resolved.headers.isEmpty ? null : resolved.headers,
+            activeProvider: 'stremio_direct',
+            stremioId: widget.stremioId,
+            stremioAddonBaseUrl: base ?? widget.stremioAddonBaseUrl,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      await _failEpisodeLoading('Failed to resolve stream');
+    }
+  }
+
   Future<void> _switchTorrentSource(TorrentResult result) async {
     if (_s._isLoadingNextEp) return;
-    // Full reload path (same as episode switch): loading card + fresh player.
-    // In-place stop/open freezes macOS when librqbit + mpv are mid-teardown.
+    // Keep current video playing with the loading card while the new magnet
+    // resolves in the background. Only replace the player when the stream is
+    // ready — never tear down the active swarm first (that freezes mpv).
     _beginEpisodeLoading(
       label: result.name,
       status: 'Starting Local Torrent Engine…',
@@ -667,13 +784,6 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
 
     try {
-      // Drop the previous swarm so the new magnet is a clean start.
-      TorrentStreamService().retainForExternalHandoff = false;
-      final prev = _s._activeMagnet ?? widget.magnetLink;
-      if (prev != null && prev.isNotEmpty) {
-        TorrentStreamService().removeTorrent(prev);
-      }
-
       final settings = SettingsService();
       final useDebrid = await settings.useDebridForStreams();
       final debridService = await settings.getDebridService();

@@ -30,6 +30,7 @@ Stremio addons are manifest-based extensions. Forja supports installing the same
 - Not every addon implements catalog, stream, and search — check the addon's manifest resources
 - Community addon lists change frequently — verify manifests are trustworthy
 - **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android, Forja plays these via the local torrent engine or debrid. On **web** and future TV builds (`constrained` profile), only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden
+- If **Torrentio** fails (Cloudflare / HTTP 403) while another stream addon works, Sources **Filters → Providers** switches to the addon that returned streams — pick Torrentio again only if you want to retry that addon alone
 
 ## Platform playback
 

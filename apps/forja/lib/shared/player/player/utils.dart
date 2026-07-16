@@ -484,13 +484,17 @@ Future<bool> waitForVideoDecode(
 ///
 /// When GPU decode stalls (seen on some Windows `auto-safe` setups), retry once
 /// with `hwdec=no` before failing over to the next source.
+///
+/// Set [force] for in-player Stremio/Nuvio switches: progressive HTTP can report
+/// duration/buffer while only audio demuxes — without a frame the UI stays black.
 Future<bool> confirmOpenedStreamVideoDecode(
   Player player, {
   required String openUrl,
   Map<String, String>? headers,
   String? type,
+  bool force = false,
 }) async {
-  if (!sourceRequiresVideoDecode(openUrl, type: type)) return true;
+  if (!force && !sourceRequiresVideoDecode(openUrl, type: type)) return true;
   final openTimeout = isLocalTorrentStreamUrl(openUrl)
       ? const Duration(seconds: 90)
       : const Duration(seconds: 25);

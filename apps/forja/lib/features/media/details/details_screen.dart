@@ -138,6 +138,12 @@ class _DetailsScreenState extends State<DetailsScreen>
   /// Tracks which addon baseUrls have returned results (for dynamic chip display).
   final Set<String> _loadedAddonBaseUrls = {};
 
+  /// Addons that finished a stream fetch (success or empty/error) this round.
+  final Set<String> _completedAddonBaseUrls = {};
+
+  /// Manual Filters → Providers tap — do not auto-leave an empty addon.
+  bool _userPickedStremioProvider = false;
+
   // Nuvio addon results — kept independent from Stremio addons so the UI
   // can show them under their own tab.
   List<Map<String, dynamic>> _nuvioStreams = [];
@@ -421,6 +427,26 @@ class _DetailsScreenState extends State<DetailsScreen>
     return _streamAddons.first['baseUrl'] as String;
   }
 
+  List<String> get _stremioAddonBaseUrlsInOrder => [
+    for (final a in _streamAddons)
+      if (a['baseUrl'] is String) a['baseUrl'] as String,
+  ];
+
+  /// Move Filters → Providers off a failed/empty addon when another has rows.
+  void _syncStremioProviderSelection() {
+    if (_panelKindFilter != 'stremio') return;
+    final next = promoteStremioProviderId(
+      currentId: _selectedSourceId,
+      preferredId: null,
+      addonBaseUrlsInOrder: _stremioAddonBaseUrlsInOrder,
+      loadedIds: _loadedAddonBaseUrls,
+      completedIds: _completedAddonBaseUrls,
+      fetching: _isStremioFetching,
+      userPicked: _userPickedStremioProvider,
+    );
+    if (next != null) _selectedSourceId = next;
+  }
+
   void _syncSelectedSourceToPlaySources() {
     _syncPanelKindFilterToPlaySources();
     if (_isCurrentSourceAllowed()) return;
@@ -449,6 +475,8 @@ class _DetailsScreenState extends State<DetailsScreen>
     _stremioStreams = [];
     _allCombinedStremioStreams = [];
     _loadedAddonBaseUrls.clear();
+    _completedAddonBaseUrls.clear();
+    _userPickedStremioProvider = false;
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
     _nuvioSelectedScraperIds = {};
@@ -512,7 +540,11 @@ class _DetailsScreenState extends State<DetailsScreen>
             for (final s in cached)
               if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
           });
+        _completedAddonBaseUrls
+          ..clear()
+          ..addAll(_loadedAddonBaseUrls);
         _errorMessage = null;
+        _syncStremioProviderSelection();
         _applyStremioFilter();
       });
       return;
@@ -571,6 +603,7 @@ class _DetailsScreenState extends State<DetailsScreen>
       _allCombinedStremioStreams = [];
       _stremioStreams = [];
       _loadedAddonBaseUrls.clear();
+      _completedAddonBaseUrls.clear();
     }
     if (keepKind != 'nuvio' && _isNuvioFetching) {
       _nuvioFetchGen++;
@@ -590,7 +623,9 @@ class _DetailsScreenState extends State<DetailsScreen>
         case 'torrents':
           _selectedSourceId = 'forja';
         case 'stremio':
+          _userPickedStremioProvider = false;
           _selectedSourceId = _defaultStremioSourceId();
+          _syncStremioProviderSelection();
           _applyStremioFilter();
         case 'nuvio':
           _selectedSourceId = 'all_nuvio';
