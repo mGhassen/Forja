@@ -1,4 +1,4 @@
-/** Sync domain payloads — must match Flutter `SyncDomainBridge` export/import. */
+/** Sync domain payloads - must match Flutter `SyncDomainBridge` export/import. */
 
 export const SYNC_DOMAINS = {
   iptv: 'iptv',
@@ -152,7 +152,7 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   {
     domain: SYNC_DOMAINS.iptv,
     title: 'IPTV portals',
-    description: 'Xtream portals and M3U playlists — synced to every signed-in device.',
+    description: 'Xtream portals and M3U playlists - synced to every signed-in device.',
     href: '/account/settings/iptv',
   },
   {

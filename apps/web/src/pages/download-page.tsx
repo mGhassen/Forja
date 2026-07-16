@@ -262,7 +262,7 @@ export function DownloadPage() {
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Forja is a free media player for streaming — playback, live playlists,
+              Forja is a free media player for streaming - playback, live playlists,
               and controls on the screen you use.
             </p>
             <p>
@@ -302,13 +302,13 @@ export function DownloadPage() {
               {isError && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.12em] text-red-300">
                   Downloads are taking a break
-                  {error instanceof Error ? ` — ${error.message}` : ''}
+                  {error instanceof Error ? ` - ${error.message}` : ''}
                 </p>
               )}
               {!isLoading && !isError && !data && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)]">
                   {supabaseConfigured
-                    ? 'Nothing to grab yet — check back soon'
+                    ? 'Nothing to grab yet - check back soon'
                     : 'Downloads are not ready on this site yet'}
                 </p>
               )}

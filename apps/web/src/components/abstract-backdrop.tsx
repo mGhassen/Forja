@@ -16,7 +16,7 @@ const TONES: Record<Tone, string> = {
     'radial-gradient(ellipse 70% 55% at 0% 100%, rgba(255,77,28,0.3), transparent 55%), radial-gradient(ellipse 45% 40% at 70% 20%, rgba(255,138,61,0.14), transparent 50%), linear-gradient(200deg, #12100e 0%, #0B0A0A 100%)',
 }
 
-/** Abstract brand atmosphere — no film/series artwork. */
+/** Abstract brand atmosphere - no film/series artwork. */
 export function AbstractBackdrop({
   tone = 'mixed',
   className,

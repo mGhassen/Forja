@@ -6,13 +6,13 @@ type Mood = {
   label: string
   line: string
   accent: 'brand' | 'flame'
-  /** Full-bleed visual — /brand/... only (open films, app shots, sport stills). */
+  /** Full-bleed visual - /brand/... only (open films, app shots, sport stills). */
   backdrop: string
   /** Optional logo chips for Live TV */
   logos?: { src: string; alt: string }[]
 }
 
-/** Six moods — open-film art + app/sport stills (CC BY Blender Foundation where noted). */
+/** Six moods - open-film art + app/sport stills (CC BY Blender Foundation where noted). */
 const MOODS: Mood[] = [
   {
     id: 'movies',

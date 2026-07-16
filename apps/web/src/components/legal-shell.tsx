@@ -72,7 +72,7 @@ export function SiteFooter() {
               <span className="font-serif-i normal-case text-flame">to stream.</span>
             </p>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Free media player for streaming playback — on your desk, couch, or big
+              Free media player for streaming playback - on your desk, couch, or big
               screen. Forja does not host media files.
             </p>
             <Link
@@ -138,7 +138,7 @@ export function SiteFooter() {
         <div className="mt-14 space-y-5 border-t border-[rgba(237,230,218,0.1)] pt-6">
           <p className="max-w-3xl text-sm leading-relaxed text-[rgba(237,230,218,0.48)] sm:text-[15px]">
             Forja does not host, upload, or store media files. It is a player app that
-            helps you open streams and playlists you connect — we are not the owners of
+            helps you open streams and playlists you connect - we are not the owners of
             third-party content.{' '}
             <Link
               to="/dmca"
@@ -150,7 +150,7 @@ export function SiteFooter() {
           </p>
           <p className="max-w-3xl text-[11px] leading-relaxed text-[rgba(237,230,218,0.32)] sm:text-xs">
             Marketing stills from Blender Foundation open movies (Big Buck Bunny, Sintel,
-            Tears of Steel, Sprite Fright, Cosmos Laundromat) — used under Creative Commons
+            Tears of Steel, Sprite Fright, Cosmos Laundromat) - used under Creative Commons
             Attribution.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

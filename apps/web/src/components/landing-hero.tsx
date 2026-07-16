@@ -3,7 +3,7 @@ import { HeroTvMock } from '@/components/interactive-shell-demo'
 import { Reveal } from '@/components/reveal'
 
 /**
- * Marketing hero — player app pitch, Download CTA, product mock.
+ * Marketing hero - player app pitch, Download CTA, product mock.
  */
 export function LandingHero() {
   return (

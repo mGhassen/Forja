@@ -7,11 +7,11 @@ type AppShellPreviewProps = {
   caption?: string
 }
 
-/** Raw app screenshot — no fake OS chrome. */
+/** Raw app screenshot - no fake OS chrome. */
 export function AppShellPreview({
   className = '',
   src = '/brand/forja-home-hero.jpg',
-  alt = 'Forja — home with cinematic hero and featured shelves',
+  alt = 'Forja - home with cinematic hero and featured shelves',
   caption = 'Windows · macOS · Linux · Android TV',
 }: AppShellPreviewProps) {
   return (

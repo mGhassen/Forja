@@ -4,6 +4,6 @@ import { DmcaPage } from '@/pages/dmca-page'
 export const Route = createFileRoute('/dmca')({
   component: DmcaPage,
   head: () => ({
-    meta: [{ title: 'DMCA & copyright — Forja' }],
+    meta: [{ title: 'DMCA & copyright - Forja' }],
   }),
 })

@@ -30,7 +30,7 @@ export const Route = createRootRoute({
       {
         name: 'description',
         content:
-          'Forja — free media player for streaming. Playback, live playlists, and controls on Windows, macOS, Linux, and Android TV.',
+          'Forja - free media player for streaming. Playback, live playlists, and controls on Windows, macOS, Linux, and Android TV.',
       },
       { title: 'Forja' },
     ],

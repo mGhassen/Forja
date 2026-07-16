@@ -20,7 +20,7 @@ const BEATS = [
   {
     n: '01',
     title: 'One player',
-    line: 'Movies, series, anime, live TV — same controls, same calm.',
+    line: 'Movies, series, anime, live TV - same controls, same calm.',
     accent: 'brand' as const,
   },
   {
@@ -32,7 +32,7 @@ const BEATS = [
   {
     n: '03',
     title: 'Every screen',
-    line: 'Desk, couch, TV — pick up where you left off when you sign in.',
+    line: 'Desk, couch, TV - pick up where you left off when you sign in.',
     accent: 'brand' as const,
   },
 ]
@@ -43,7 +43,7 @@ const MARQUEE = [
   'Live lists',
   'Subtitles',
   'Desk to TV',
-  'No ads',
+  'Sync',
 ]
 
 const CYCLE_MS = 3200
@@ -103,7 +103,7 @@ function LoginStoryPanel() {
         </h1>
 
         <p className="mt-6 max-w-md font-disp text-[clamp(17px,2.4vw,26px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-          Forja is a player — not a catalog pitch.
+          One player. Your sources. Every screen.
           <br />
           <span className="text-[#EDE6DA]">Sign in to sync settings across your screens.</span>
         </p>
@@ -143,33 +143,6 @@ function LoginStoryPanel() {
             </span>
           ))}
         </div>
-      </div>
-
-      <div className="login-scanline relative z-[1] mt-8 hidden max-w-sm overflow-hidden rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#0f0e0d] p-5 lg:block">
-        <div className="flex items-center gap-3">
-          <div className="animate-play-pulse flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-forja-green text-[#0B0A0A]">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
-              Now playing
-            </p>
-            <p className="font-disp truncate text-lg uppercase tracking-tight">Your night</p>
-          </div>
-        </div>
-        <div className="mt-4 h-1 overflow-hidden rounded-full bg-[rgba(237,230,218,0.12)]">
-          <div
-            className={cn(
-              'h-full rounded-full bg-flame',
-              reduced ? 'w-2/3' : 'animate-stream-progress',
-            )}
-          />
-        </div>
-        <p className="font-mono-ui mt-3 text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)]">
-          Free · No ads · Player first
-        </p>
       </div>
     </section>
   )
@@ -214,7 +187,7 @@ function LoginForm() {
               Log in
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Your player settings, synced. Download stays free — account is optional.
+              Your player settings, synced. Download stays free - account is optional.
             </CardDescription>
           </CardHeader>
 
@@ -222,7 +195,7 @@ function LoginForm() {
             <form onSubmit={onSubmit} className="space-y-5">
               {!configured ? (
                 <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Web sign-in is not open yet. Download Forja — you can watch without an
+                  Web sign-in is not open yet. Download Forja - you can watch without an
                   account.
                 </p>
               ) : null}

@@ -7,23 +7,23 @@ import { Reveal } from '@/components/reveal'
 import { SiteFooter } from '@/components/legal-shell'
 import { SiteHeader } from '@/components/site-header'
 
-/** Four clear use cases — plain language. */
+/** Four clear use cases - plain language. */
 const NIGHTS = [
   {
     k: 'Movies',
-    v: 'Pick a film and watch it full screen. No ads in the middle.',
+    v: 'Pick a film. Watch it full screen.',
   },
   {
     k: 'Series',
-    v: 'Binge episodes one after another. Next episode is ready when you are.',
+    v: 'Start a series. Keep the episodes rolling.',
   },
   {
     k: 'Live sport',
-    v: 'Football, basketball, and more — watch the match as it happens.',
+    v: 'Pick a match. Watch it as it happens.',
   },
   {
     k: 'Live TV',
-    v: 'News and channels anytime. Add your own IPTV list and press play.',
+    v: 'Add your list. Tune in to any channel.',
   },
 ]
 
@@ -67,7 +67,7 @@ export function LandingPage() {
 
       <LandingHero />
 
-      {/* Beat 2 — moods of a night */}
+      {/* Beat 2 - moods of a night */}
       <section
         id="why"
         className="border-y border-[rgba(237,230,218,0.14)] bg-[#0f0e0d]"
@@ -117,14 +117,14 @@ export function LandingPage() {
         </div>
       </div>
 
-      {/* Beat 3 — discovery / home */}
+      {/* Beat 3 - discovery / home */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
         <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <Reveal variant="left">
             <div className="hover-zoom rounded-lg">
               <img
                 src="/brand/forja-home-hero.jpg"
-                alt="Forja home — cinematic hero and featured shelves"
+                alt="Forja home - cinematic hero and featured shelves"
                 width={1024}
                 height={643}
                 className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
@@ -154,7 +154,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Beat 4 — live only */}
+      {/* Beat 4 - live only */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh]">
         <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <Reveal delayMs={60} variant="left" className="lg:order-1">
@@ -171,7 +171,7 @@ export function LandingPage() {
                 Channels that never <span className="text-[#EDE6DA]">sleep</span>
               </li>
               <li>News. Sport. The night still live.</li>
-              <li>Feel the moment — not a commercial break.</li>
+              <li>Feel the moment as it happens.</li>
             </ul>
             <Link
               to="/iptv"
@@ -184,7 +184,7 @@ export function LandingPage() {
             <div className="hover-zoom rounded-lg">
               <img
                 src="/brand/forja-iptv-live.jpg"
-                alt="Forja IPTV — live channels and categories"
+                alt="Forja IPTV - live channels and categories"
                 width={1024}
                 height={637}
                 className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
@@ -195,10 +195,10 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Beat 5 — worlds / catalog */}
+      {/* Beat 5 - worlds / catalog */}
       <LibraryHubs />
 
-      {/* Beat 6 — feeling, not platforms */}
+      {/* Beat 6 - feeling, not platforms */}
       <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh]">
         <div className="mx-auto flex max-w-[1100px] flex-col gap-12">
           <Reveal>
@@ -212,10 +212,10 @@ export function LandingPage() {
             <ul className="space-y-8">
               <li>
                 <p className="font-disp text-[clamp(28px,4vw,44px)] uppercase leading-none text-[#EDE6DA]">
-                  No interruptions
+                  One player
                 </p>
                 <p className="mt-2 font-disp text-xl uppercase tracking-tight text-[rgba(237,230,218,0.45)] sm:text-2xl">
-                  The story stays on the screen — not behind an ad.
+                  Movies, series, sport, and live TV in one place.
                 </p>
               </li>
               <li>
@@ -239,7 +239,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Beat 7 — screens, not a platform checklist */}
+      {/* Beat 7 - screens, not a platform checklist */}
       <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh] text-center">
         <Reveal>
           <div className="font-disp text-[clamp(48px,12vw,140px)] uppercase leading-[0.9] tracking-[-0.04em]">
@@ -253,7 +253,7 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      {/* Beat 8 — close */}
+      {/* Beat 8 - close */}
       <section
         id="drop"
         className="grid grid-cols-1 items-center gap-10 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh] md:grid-cols-[0.95fr_1.15fr] md:gap-14 lg:gap-16"

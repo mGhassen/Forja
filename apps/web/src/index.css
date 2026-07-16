@@ -7,7 +7,7 @@
   --color-forja-border: rgba(237, 230, 218, 0.14);
   --color-forja-text: #ede6da;
   --color-forja-muted: rgba(237, 230, 218, 0.42);
-  /* Brand green (logo) + cinema flame — used together */
+  /* Brand green (logo) + cinema flame - used together */
   --color-forja-green: #1ce783;
   --color-forja-green-dim: #15b86a;
   --color-forja-flame: #ff4d1c;
@@ -53,7 +53,7 @@
     outline-offset: 4px;
   }
 
-  /* Clickable affordance — always show pointer + clear press */
+  /* Clickable affordance - always show pointer + clear press */
   a,
   button,
   summary,
@@ -99,7 +99,7 @@
   }
 }
 
-/* ——— landing film grain ——— */
+/* --- landing film grain --- */
 .film-grain::after {
   content: "";
   pointer-events: none;
@@ -117,9 +117,9 @@
   }
 }
 
-/* Custom cursor removed — it hid the system pointer and killed click affordance. */
+/* Custom cursor removed - it hid the system pointer and killed click affordance. */
 
-/* ——— type helpers ——— */
+/* ---  type helpers ---  */
 .font-disp {
   font-family: var(--font-display);
   font-weight: 800;
@@ -178,7 +178,7 @@
   color: transparent;
 }
 
-/* ——— marquee ——— */
+/* ---  marquee ---  */
 @keyframes forja-marquee {
   to {
     transform: translateX(-50%);
@@ -206,7 +206,7 @@
   animation: forja-scroll-grow 2.2s ease-in-out infinite;
 }
 
-/* ——— now playing (CTA) ——— */
+/* ---  now playing (CTA) ---  */
 @keyframes forja-stream-progress {
   from {
     transform: scaleX(0);
@@ -267,7 +267,7 @@
   animation: forja-now-title 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-/* ——— reveal (section-by-section) ——— */
+/* ---  reveal (section-by-section) ---  */
 .reveal {
   opacity: 0;
   transition:
@@ -334,7 +334,7 @@
   }
 }
 
-/* Cards / tiles — hover lift */
+/* Cards / tiles - hover lift */
 .hover-lift {
   transition:
     transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
@@ -388,7 +388,7 @@
   animation: forja-float 5.5s ease-in-out infinite;
 }
 
-/* Login — cycling headline word */
+/* Login - cycling headline word */
 @keyframes forja-word-in {
   from {
     opacity: 0;
@@ -445,7 +445,7 @@
   animation: forja-scanline 4.5s linear infinite;
 }
 
-/* ——— index hover ——— */
+/* ---  index hover ---  */
 .index-list.hovering .irow {
   opacity: 0.32;
 }

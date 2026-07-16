@@ -17,7 +17,7 @@ export function SignupPage() {
         </h1>
         <p className="mt-6 text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
           Sign-up on the web is not ready yet. Download Forja and use the player without
-          an account — web login will land soon.
+          an account - web login will land soon.
         </p>
         <div className="mt-10 flex flex-wrap gap-4">
           <Link

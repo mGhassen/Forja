@@ -10,11 +10,11 @@ const FAQ: {
 }[] = [
   {
     q: 'What is Forja?',
-    a: 'Forja is a free app for movies, series, anime, live sport, and live TV — everything in one place so you can relax and watch. Download it for your computer or living-room TV. This site is for getting the app and your account.',
+    a: 'Forja is a free app for movies, series, anime, live sport, and live TV - everything in one place so you can relax and watch. Download it for your computer or living-room TV. This site is for getting the app and your account.',
   },
   {
     q: 'Which download should I pick?',
-    a: 'Choose the screen you watch on: Windows for PC, macOS for Mac, Linux if that’s your computer, Android TV for the living room. Forja picks a good default when it can — then you just download and open.',
+    a: 'Choose the screen you watch on: Windows for PC, macOS for Mac, Linux if that’s your computer, Android TV for the living room. Forja picks a good default when it can - then you just download and open.',
   },
   {
     q: 'Will it run on my machine?',
@@ -32,7 +32,7 @@ const FAQ: {
   },
   {
     q: 'Windows shows a red “unsafe” / blocked screen',
-    a: 'That’s Microsoft Defender being stricter than the usual blue SmartScreen. If you downloaded Forja from this page, open More information and continue — or restore the file from Windows Security → Virus & threat protection → Protection history if it was quarantined.',
+    a: 'That’s Microsoft Defender being stricter than the usual blue SmartScreen. If you downloaded Forja from this page, open More information and continue - or restore the file from Windows Security → Virus & threat protection → Protection history if it was quarantined.',
     guideHref: '#windows-smartscreen',
     guideLabel: 'See the photo steps for Windows',
   },
@@ -61,7 +61,7 @@ type Shot = {
   title: string
   /** Simple plain-language explanation */
   body: string
-  /** Intrinsic pixels — cards share height; width follows aspect. */
+  /** Intrinsic pixels - cards share height; width follows aspect. */
   w: number
   h: number
 }
@@ -69,24 +69,24 @@ type Shot = {
 const WINDOWS_SHOTS: Shot[] = [
   {
     src: '/brand/help/windows-01-protected.png',
-    alt: 'Windows SmartScreen — Windows protected your PC',
-    title: 'Step 1 — Windows stopped the open',
+    alt: 'Windows SmartScreen - Windows protected your PC',
+    title: 'Step 1 - Windows stopped the open',
     body: 'You may see “Windows protected your PC.” This is common for new apps. It does not mean Forja is bad. Stay on this screen and go to the next step.',
     w: 1098,
     h: 1035,
   },
   {
     src: '/brand/help/windows-02-more-info.png',
-    alt: 'Windows SmartScreen — click More info',
-    title: 'Step 2 — Click More info',
+    alt: 'Windows SmartScreen - click More info',
+    title: 'Step 2 - Click More info',
     body: 'Under the warning message, click More info. Windows will show you more choices so you can keep going.',
     w: 538,
     h: 514,
   },
   {
     src: '/brand/help/windows-03-run-anyway.jpg',
-    alt: 'Windows SmartScreen — Run anyway',
-    title: 'Step 3 — Click Run anyway',
+    alt: 'Windows SmartScreen - Run anyway',
+    title: 'Step 3 - Click Run anyway',
     body: 'Now click Run anyway. Forja will start. You only need to do this the first time.',
     w: 1106,
     h: 1046,
@@ -94,16 +94,16 @@ const WINDOWS_SHOTS: Shot[] = [
   {
     src: '/brand/help/windows-04-on-desktop.jpg',
     alt: 'Windows SmartScreen dialog on the desktop',
-    title: 'Step 4 — Same warning on the desktop',
+    title: 'Step 4 - Same warning on the desktop',
     body: 'If the warning appears on your desktop instead, it is the same thing. Click More info, then Run anyway.',
     w: 1280,
     h: 720,
   },
   {
     src: '/brand/help/windows-05-red-unsafe.png',
-    alt: 'Microsoft Defender red screen — reported as unsafe',
-    title: 'Step 5 — Red “unsafe” screen',
-    body: 'Sometimes Windows shows a red screen instead of blue. Click More information, then continue — only if you downloaded Forja from this page.',
+    alt: 'Microsoft Defender red screen - reported as unsafe',
+    title: 'Step 5 - Red “unsafe” screen',
+    body: 'Sometimes Windows shows a red screen instead of blue. Click More information, then continue - only if you downloaded Forja from this page.',
     w: 1258,
     h: 835,
   },
@@ -112,24 +112,24 @@ const WINDOWS_SHOTS: Shot[] = [
 const MACOS_SHOTS: Shot[] = [
   {
     src: '/brand/help/macos-blocked-dialog.png',
-    alt: 'macOS — Apple could not verify this app',
-    title: 'Step 1 — Mac blocks the first open',
+    alt: 'macOS - Apple could not verify this app',
+    title: 'Step 1 - Mac blocks the first open',
     body: 'Mac may say it could not verify the app. That is normal outside the App Store. Click Done. Do not move Forja to the Trash.',
     w: 520,
     h: 464,
   },
   {
     src: '/brand/help/macos-privacy-settings-top.png',
-    alt: 'macOS System Settings — Privacy & Security',
-    title: 'Step 2 — Open Privacy & Security',
+    alt: 'macOS System Settings - Privacy & Security',
+    title: 'Step 2 - Open Privacy & Security',
     body: 'Open System Settings, then go to Privacy & Security. You will allow Forja here.',
     w: 1200,
     h: 700,
   },
   {
     src: '/brand/help/macos-open-anyway-closeup.png',
-    alt: 'macOS Privacy & Security — Open Anyway',
-    title: 'Step 3 — Find Open Anyway',
+    alt: 'macOS Privacy & Security - Open Anyway',
+    title: 'Step 3 - Find Open Anyway',
     body: 'Scroll down to the Security section. You should see a message about Forja with an Open Anyway button.',
     w: 1200,
     h: 700,
@@ -137,7 +137,7 @@ const MACOS_SHOTS: Shot[] = [
   {
     src: '/brand/help/macos-privacy-open-anyway.png',
     alt: 'macOS Privacy & Security full panel with Open Anyway',
-    title: 'Step 4 — Allow Forja once',
+    title: 'Step 4 - Allow Forja once',
     body: 'Click Open Anyway, confirm, then type your Mac password (or use Touch ID). After that, Forja opens normally.',
     w: 1430,
     h: 1226,
@@ -216,7 +216,7 @@ function ShotLightbox({
   )
 }
 
-/** One big card at a time — slide between steps; click to enlarge. */
+/** One big card at a time - slide between steps; click to enlarge. */
 function ShotSlider({
   shots,
   accent = 'flame',
@@ -442,7 +442,7 @@ export function DownloadHelp() {
           <div className="mt-5 max-w-2xl space-y-3 text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
             <p>
               Windows sometimes shows a warning the first time you open Forja. That is
-              normal for new apps — it does not mean Forja is unsafe.
+              normal for new apps - it does not mean Forja is unsafe.
             </p>
             <p>
               Follow the steps below. Use the photos as a guide. Click a photo to make it
@@ -492,7 +492,7 @@ export function DownloadHelp() {
         <ol className="mt-10 max-w-2xl space-y-5 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
           <li>
             <span className="font-semibold text-brand">1.</span> Open Forja. When the
-            block dialog appears, click <span className="text-[#EDE6DA]">Done</span> — not
+            block dialog appears, click <span className="text-[#EDE6DA]">Done</span> - not
             Move to Trash.
           </li>
           <li>

@@ -120,14 +120,14 @@ export function AccountSettingsIptvPage() {
   return (
     <AccountSettingsShell
       title="IPTV portals"
-      description="Xtream-Codes portals and M3U playlist URLs. The app pulls these on sign-in — credentials are stored in your account (HTTPS + row-level access only)."
+      description="Xtream-Codes portals and M3U playlist URLs. The app pulls these on sign-in - credentials are stored in your account (HTTPS + row-level access only)."
       footer={
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
             {isSaving ? 'Saving…' : 'Save changes'}
           </Button>
           {savedFlash ? (
-            <span className="text-sm text-forja-green">Saved — open Forja to sync.</span>
+            <span className="text-sm text-forja-green">Saved - open Forja to sync.</span>
           ) : null}
           {saveError ? (
             <span className="text-sm text-red-300">
@@ -139,7 +139,7 @@ export function AccountSettingsIptvPage() {
     >
       <SettingsSection
         label="Xtream portals"
-        description="Panel URL plus username and password — same fields as in the IPTV tab."
+        description="Panel URL plus username and password - same fields as in the IPTV tab."
       >
           {isLoading ? (
             <p className="text-sm text-forja-muted">Loading…</p>

@@ -19,7 +19,7 @@ Tap **Anime** in the navigation bar.
 - Open details with episodes — tap an episode to select it; **Play** / **Resume** starts that episode. On **TV**, **Play** / **Resume** is focused when the page opens; **↑** from hero actions closes details; **←** from the leftmost hero action moves focus to the shell nav rail; **↑** from episodes or **More Like This** returns focus to **Play**
 - Toggle **SUB** / **DUB** before playback
 - Resume from continue watching — fetches fresh catalog data and scans all providers (not a stale one-source cache); clear progress with the trash icon next to **Resume** on details
-- Hover a continue watching card (desktop) to scale it and show a brand-green play button that enlarges and floats upward
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button that floats upward while its play icon pulses slowly
 - Play in the anime player — launches once ~4 sources work (Settings order), then keeps finding more in the background so the in-player **Source** panel fills while you watch. Each server row shows **SUB** or **DUB** (purple / amber badge), IPTV-style status glyphs (**...** / spinner / dot / play / failed), and you can tap several unloaded servers in parallel to fetch streams without leaving the panel
 - Track watch history per series (sub/dub preference)
 

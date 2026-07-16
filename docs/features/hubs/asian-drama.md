@@ -20,7 +20,7 @@ Tap **Asian Drama** in the navigation bar.
 - In the player, **Sources** lists the same mirrors so you can switch hosts without leaving playback
 - Resume from continue watching — **same player launch as details → Resume** (saved episode list + seek position; no extra kisskh call); clear progress with the trash icon next to **Resume** on details
 - Reorder KissKH mirrors under **Settings → Playback → Server reliability → Asian Drama**
-- Hover a continue watching card (desktop) to scale it and show a brand-green play button that enlarges and floats upward
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button that floats upward while its play icon pulses slowly
 
 ## Tips
 

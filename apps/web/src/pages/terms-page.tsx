@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { LegalPage, LegalSection } from '@/components/legal-shell'
 
 /**
- * Terms — aggregator / media-client framing inspired by public
+ * Terms - aggregator / media-client framing inspired by public
  * FMHY-style “index, not host” and BingeBox-style “we don’t store content” notices.
  */
 export function TermsPage() {
@@ -27,7 +27,7 @@ export function TermsPage() {
           Forja is a media <strong className="font-semibold text-[#EDE6DA]">client and
           browser</strong>. It searches publicly available sources on the web, shows
           results (titles, links, streams, metadata), and lets you open them in a
-          player. Think of it as a finder — not a library of files we own.
+          player. Think of it as a finder - not a library of files we own.
         </p>
         <p>
           Forja does <strong className="font-semibold text-[#EDE6DA]">not</strong> claim
@@ -54,7 +54,7 @@ export function TermsPage() {
         <p>
           Catalog posters, titles, and descriptions often come from third-party
           metadata providers (for example TMDB) or from the sources you choose to
-          browse. Live TV / IPTV uses playlists and portals <em>you</em> add — Forja
+          browse. Live TV / IPTV uses playlists and portals <em>you</em> add - Forja
           does not invent those channels.
         </p>
       </LegalSection>
@@ -67,7 +67,7 @@ export function TermsPage() {
         </p>
         <p>
           Forja is provided as a tool. Misuse of third-party sites or streams is your
-          choice and your risk — not something Forja authorizes or controls.
+          choice and your risk - not something Forja authorizes or controls.
         </p>
       </LegalSection>
 
@@ -83,7 +83,7 @@ export function TermsPage() {
       <LegalSection title="Accounts & this website">
         <p>
           Optional cloud accounts (when available) are for settings sync and similar
-          convenience features — not for storing media libraries of copyrighted works.
+          convenience features - not for storing media libraries of copyrighted works.
           Download pages only distribute the Forja application builds we publish.
         </p>
       </LegalSection>

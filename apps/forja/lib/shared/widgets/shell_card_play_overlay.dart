@@ -3,7 +3,7 @@ import 'package:forja/shared/design/design.dart';
 
 /// Centered play control for catalog / continue-watching cards.
 /// Fades in on hover/focus; active state uses brand green and floats upward.
-class ShellCardPlayOverlay extends StatelessWidget {
+class ShellCardPlayOverlay extends StatefulWidget {
   const ShellCardPlayOverlay({
     super.key,
     required this.active,
@@ -23,8 +23,92 @@ class ShellCardPlayOverlay extends StatelessWidget {
   static const double cardHoverScale = 1.05;
 
   @override
+  State<ShellCardPlayOverlay> createState() => _ShellCardPlayOverlayState();
+}
+
+class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulse;
+
+  bool get _pulseEnabled =>
+      widget.active &&
+      widget.visible &&
+      !(MediaQuery.maybeOf(context)?.disableAnimations ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    );
+    _pulse = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 1.12,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 8,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.12,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 8,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 1.07,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 6,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.07,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 8,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_pulseController);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncPulse();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShellCardPlayOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPulse();
+  }
+
+  void _syncPulse() {
+    if (_pulseEnabled) {
+      if (!_pulseController.isAnimating) {
+        _pulseController.repeat();
+      }
+    } else {
+      _pulseController
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final lifted = active && visible;
+    final lifted = widget.active && widget.visible;
     final button = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
       duration: const Duration(milliseconds: 200),
@@ -34,24 +118,24 @@ class ShellCardPlayOverlay extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         child: AnimatedOpacity(
-          opacity: visible ? 1.0 : 0.0,
+          opacity: widget.visible ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 200),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
-            width: diameter,
-            height: diameter,
+            width: widget.diameter,
+            height: widget.diameter,
             decoration: BoxDecoration(
-              color: active
+              color: widget.active
                   ? ForjaShellColors.brandGreen
                   : Colors.black.withValues(alpha: 0.42),
               shape: BoxShape.circle,
               border: Border.all(
-                color: active
+                color: widget.active
                     ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
                     : Colors.white.withValues(alpha: 0.24),
               ),
-              boxShadow: active
+              boxShadow: widget.active
                   ? [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.35),
@@ -61,10 +145,14 @@ class ShellCardPlayOverlay extends StatelessWidget {
                     ]
                   : null,
             ),
-            child: Icon(
-              Icons.play_arrow_rounded,
-              color: active ? const Color(0xFF111827) : Colors.white,
-              size: iconSize,
+            child: ScaleTransition(
+              key: const ValueKey('shell-card-play-pulse'),
+              scale: _pulse,
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: widget.active ? const Color(0xFF111827) : Colors.white,
+                size: widget.iconSize,
+              ),
             ),
           ),
         ),
@@ -72,11 +160,11 @@ class ShellCardPlayOverlay extends StatelessWidget {
     );
 
     final centered = Center(
-      child: onTap != null
+      child: widget.onTap != null
           ? MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: onTap,
+                onTap: widget.onTap,
                 behavior: HitTestBehavior.opaque,
                 child: button,
               ),
@@ -85,7 +173,7 @@ class ShellCardPlayOverlay extends StatelessWidget {
     );
 
     return Positioned.fill(
-      child: onTap == null ? IgnorePointer(child: centered) : centered,
+      child: widget.onTap == null ? IgnorePointer(child: centered) : centered,
     );
   }
 }

@@ -9,7 +9,7 @@ type BrandLogoProps = {
   to?: '/' | string | null
 }
 
-/** Full Forja wordmark SVG only — no F-mark asset. */
+/** Full Forja wordmark SVG only - no F-mark asset. */
 export function BrandLogo({
   tone = 'brand',
   className,

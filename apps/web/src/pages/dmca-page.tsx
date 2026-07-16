@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { LegalPage, LegalSection } from '@/components/legal-shell'
 
 /**
- * DMCA / copyright notice — same “we don’t host files” posture as common
+ * DMCA / copyright notice - same “we don’t host files” posture as common
  * media-client / directory disclaimers (e.g. BingeBox-style: no storage on our
  * servers; third-party APIs/sources we don’t control).
  */
@@ -37,7 +37,7 @@ export function DmcaPage() {
         </p>
         <p>
           In short: <strong className="font-semibold text-[#EDE6DA]">we don’t save your
-          movies for you on our servers</strong> — we help you find and play what is
+          movies for you on our servers</strong> - we help you find and play what is
           already published elsewhere. Ownership stays with the rights holders.
         </p>
       </LegalSection>
@@ -55,7 +55,7 @@ export function DmcaPage() {
           </li>
           <li>
             Metadata (posters, titles, overviews) may come from providers such as TMDB
-            or from the sources themselves — not from a Forja-owned media archive.
+            or from the sources themselves - not from a Forja-owned media archive.
           </li>
         </ul>
       </LegalSection>

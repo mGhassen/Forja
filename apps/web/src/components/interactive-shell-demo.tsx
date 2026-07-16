@@ -189,7 +189,7 @@ function ShellScreen() {
             Open movie · Blender Foundation
           </p>
           <p className="mt-2 line-clamp-2 text-[8px] leading-snug text-white/50 sm:text-[9px]">
-            A calm shell for streaming — connect playlists and press play.
+            A calm shell for streaming - connect playlists and press play.
           </p>
           <div className="mt-3 flex gap-2">
             <span className="rounded-full bg-[#1CE783] px-2.5 py-1 text-[8px] font-bold uppercase tracking-wider text-[#0B0A0A]">
@@ -252,7 +252,7 @@ function TvBezel({ children }: { children: ReactNode }) {
   )
 }
 
-/** TV mock of Forja Home for the landing hero — CC BY open-film posters. */
+/** TV mock of Forja Home for the landing hero - CC BY open-film posters. */
 export function HeroTvMock({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>

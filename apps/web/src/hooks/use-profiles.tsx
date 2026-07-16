@@ -10,6 +10,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 import type { Profile } from '@/lib/database.types'
+import {
+  PROFILE_AVATARS,
+  type ProfileAvatarKey,
+} from '@/components/profile-avatar'
 
 const PROFILE_COLORS = [
   '#1ce783',
@@ -26,8 +30,12 @@ type ProfilesContextValue = {
   loading: boolean
   error: Error | null
   selectProfile: (profileId: string) => void
-  createProfile: (name: string) => Promise<Profile>
+  createProfile: (name: string, avatarKey?: ProfileAvatarKey) => Promise<Profile>
   renameProfile: (profileId: string, name: string) => Promise<void>
+  updateProfileAvatar: (
+    profileId: string,
+    avatarKey: ProfileAvatarKey,
+  ) => Promise<void>
   deleteProfile: (profileId: string) => Promise<void>
   creating: boolean
 }
@@ -81,13 +89,21 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   }
 
   const createMutation = useMutation({
-    mutationFn: async (name: string): Promise<Profile> => {
+    mutationFn: async ({
+      name,
+      avatarKey,
+    }: {
+      name: string
+      avatarKey?: ProfileAvatarKey
+    }): Promise<Profile> => {
       const cleanName = name.trim()
       if (!user || !cleanName) throw new Error('Enter a profile name')
       const color = PROFILE_COLORS[profiles.length % PROFILE_COLORS.length]
+      const avatar_key =
+        avatarKey ?? PROFILE_AVATARS[profiles.length % PROFILE_AVATARS.length].key
       const { data, error } = await supabase
         .from('profiles')
-        .insert({ user_id: user.id, name: cleanName, color })
+        .insert({ user_id: user.id, name: cleanName, color, avatar_key })
         .select('*')
         .single()
       if (error) throw error
@@ -107,6 +123,30 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase
         .from('profiles')
         .update({ name: cleanName, updated_at: new Date().toISOString() })
+        .eq('id', profileId)
+        .eq('user_id', user.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['profiles', user?.id] })
+    },
+  })
+
+  const avatarMutation = useMutation({
+    mutationFn: async ({
+      profileId,
+      avatarKey,
+    }: {
+      profileId: string
+      avatarKey: ProfileAvatarKey
+    }) => {
+      if (!user) return
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          avatar_key: avatarKey,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', profileId)
         .eq('user_id', user.id)
       if (error) throw error
@@ -152,9 +192,14 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
             ? new Error('Failed to load profiles')
             : null,
       selectProfile,
-      createProfile: createMutation.mutateAsync,
+      createProfile: async (name, avatarKey) => {
+        return createMutation.mutateAsync({ name, avatarKey })
+      },
       renameProfile: async (profileId, name) => {
         await renameMutation.mutateAsync({ profileId, name })
+      },
+      updateProfileAvatar: async (profileId, avatarKey) => {
+        await avatarMutation.mutateAsync({ profileId, avatarKey })
       },
       deleteProfile: deleteMutation.mutateAsync,
       creating: createMutation.isPending,
@@ -167,6 +212,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
       createMutation.mutateAsync,
       createMutation.isPending,
       renameMutation.mutateAsync,
+      avatarMutation.mutateAsync,
       deleteMutation.mutateAsync,
     ],
   )

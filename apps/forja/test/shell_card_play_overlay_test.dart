@@ -28,8 +28,10 @@ Widget _overlayHarness({
   );
 }
 
+Finder get _playPulse => find.byKey(const ValueKey('shell-card-play-pulse'));
+
 void main() {
-  testWidgets('active visible play control scales and floats upward', (
+  testWidgets('active visible play control floats and pulses slowly', (
     tester,
   ) async {
     await tester.pumpWidget(_overlayHarness(active: false, visible: true));
@@ -47,6 +49,11 @@ void main() {
       tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
       const Offset(0, -0.1),
     );
+
+    await tester.pump(const Duration(milliseconds: 100));
+    final pulse = tester.widget<ScaleTransition>(_playPulse);
+    expect(pulse.scale.value, greaterThan(1));
+    expect(pulse.scale.value, lessThanOrEqualTo(1.12));
   });
 
   testWidgets('hidden play control stays at rest and supports compact sizing', (
@@ -65,6 +72,7 @@ void main() {
       tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
       0,
     );
+    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
     expect(tester.getSize(find.byType(AnimatedContainer)), const Size(30, 30));
     expect(tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).size, 18);
   });

@@ -53,14 +53,14 @@ export function AccountSettingsStremioPage() {
   return (
     <AccountSettingsShell
       title="Stremio addons"
-      description="Manifest URLs for Stremio addons. The app installs these on sync — same list as Settings → Sources."
+      description="Manifest URLs for Stremio addons. The app installs these on sync - same list as Settings → Sources."
       footer={
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
             {isSaving ? 'Saving…' : 'Save changes'}
           </Button>
           {savedFlash ? (
-            <span className="text-sm text-forja-green">Saved — open Forja to sync.</span>
+            <span className="text-sm text-forja-green">Saved - open Forja to sync.</span>
           ) : null}
           {saveError ? (
             <span className="text-sm text-red-300">

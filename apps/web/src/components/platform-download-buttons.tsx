@@ -132,7 +132,7 @@ export function PlatformDownloadButtons({
       {SHOWCASE_PLATFORMS.map((p) => {
         const asset = byId[p.id]
         const hot = emphasize === p.id
-        // Landing CTAs: solid brand fill for every platform — download file or /download.
+        // Landing CTAs: solid brand fill for every platform - download file or /download.
         const classNames = cn(
           'btn-magnet inline-flex min-h-11 flex-1 items-center justify-center rounded-full px-4 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] shadow-[0_0_28px_rgba(28,231,131,0.28)] transition-all will-change-transform sm:min-h-0 sm:flex-none sm:px-7 sm:py-4 sm:text-[13px]',
           hot && 'scale-[1.04] shadow-[0_0_40px_rgba(28,231,131,0.45)]',

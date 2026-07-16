@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) {
       if (import.meta.env.DEV) {
         console.warn(
-          '[auth] Sign-in unavailable — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env',
+          '[auth] Sign-in unavailable - set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env',
         )
       }
       return { error: AUTH_UNAVAILABLE_MESSAGE }
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) {
       if (import.meta.env.DEV) {
         console.warn(
-          '[auth] Sign-up unavailable — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env',
+          '[auth] Sign-up unavailable - set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env',
         )
       }
       return { error: AUTH_UNAVAILABLE_MESSAGE }

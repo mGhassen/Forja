@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
-/** CC BY Blender Foundation open movies — no TMDB commercial art. */
+/** CC BY Blender Foundation open movies - no TMDB commercial art. */
 const REEL = [
   {
     id: 'sintel',
@@ -36,7 +36,7 @@ const REEL = [
 
 const CYCLE_MS = 4200
 
-/** Animated “now playing” stack — replaces dry CTA stats. */
+/** Animated “now playing” stack - replaces dry CTA stats. */
 export function NowPlayingPanel({ className }: { className?: string }) {
   const [index, setIndex] = useState(0)
   const [reduced, setReduced] = useState(false)
@@ -153,7 +153,7 @@ export function NowPlayingPanel({ className }: { className?: string }) {
               </div>
               <div className="font-mono-ui mt-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.38)] sm:text-xs">
                 <span>Free</span>
-                <span>No ads</span>
+                <span>Desk to TV</span>
               </div>
             </div>
           </div>
