@@ -222,12 +222,17 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
           aria-label="Primary"
           className="flex flex-1 flex-col justify-center gap-2 px-[6vw] pb-10"
         >
-          <NavLink to="/" exact onNavigate={close} variant="mobile">
-            Streaming Player
-          </NavLink>
-          <NavLink to="/iptv" onNavigate={close} variant="mobile">
-            Live Player
-          </NavLink>
+          {LINKS.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              exact={link.exact}
+              onNavigate={close}
+              variant="mobile"
+            >
+              {link.label}
+            </NavLink>
+          ))}
           <NavLink
             to="/download"
             onNavigate={close}

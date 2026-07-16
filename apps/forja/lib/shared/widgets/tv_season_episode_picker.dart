@@ -29,6 +29,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     required this.onSeasonSelected,
     required this.onEpisodeSelected,
     required this.onToggleWatched,
+    this.onEpisodePlay,
     this.onEpisodeFocused,
     this.seasonPosters = const {},
     this.episodeProgress = const {},
@@ -51,6 +52,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final SeasonSelectCallback onSeasonSelected;
   final EpisodeSelectCallback onEpisodeSelected;
   final EpisodeWatchedToggle onToggleWatched;
+  final EpisodeSelectCallback? onEpisodePlay;
   final EpisodeSelectCallback? onEpisodeFocused;
   final Map<int, String> seasonPosters;
   final Map<String, Map<String, dynamic>> episodeProgress;
@@ -317,6 +319,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                     _scrollToSelectedEpisode();
                   });
                 },
+          onPlay: airDate.notShippedYet || widget.onEpisodePlay == null
+              ? null
+              : () => widget.onEpisodePlay!(epNum),
           onFocusChange: widget.onEpisodeFocused == null
               ? null
               : (focused) {
@@ -606,6 +611,7 @@ class _EpisodeCard extends StatefulWidget {
     required this.positionMs,
     required this.durationMs,
     this.onTap,
+    this.onPlay,
     required this.onToggleWatched,
     this.onFocusChange,
     this.onLeftEdge,
@@ -626,6 +632,7 @@ class _EpisodeCard extends StatefulWidget {
   final int positionMs;
   final int durationMs;
   final VoidCallback? onTap;
+  final VoidCallback? onPlay;
   final VoidCallback onToggleWatched;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
@@ -679,7 +686,9 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       focused: _focused,
     );
     final enabled = widget.onTap != null;
-    final showPlayOverlay = enabled && (active || widget.selected);
+    final playEnabled = widget.onPlay != null;
+    final showPlayOverlay =
+        (playEnabled || enabled) && (active || widget.selected);
     final tvFocus = policy.useFocusableMoodChips;
     final scale = tvFocus
         ? 1.0
@@ -792,6 +801,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                         ShellCardPlayOverlay(
                           active: active,
                           visible: showPlayOverlay,
+                          onTap: playEnabled ? widget.onPlay : null,
                         ),
                       ],
                     ),

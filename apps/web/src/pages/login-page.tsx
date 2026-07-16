@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth, AUTH_UNAVAILABLE_MESSAGE } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
 const WORDS = ['stream', 'sync', 'live', 'play'] as const
@@ -219,63 +219,54 @@ function LoginForm() {
           </CardHeader>
 
           <CardContent>
-            {!configured ? (
-              <div className="space-y-4">
-                <p className="rounded-lg border border-flame/30 bg-flame/10 px-4 py-3 text-sm leading-relaxed text-[rgba(237,230,218,0.72)]">
-                  Supabase is not configured on this site yet. Set{' '}
-                  <code className="font-mono-ui text-xs text-forja-green">VITE_SUPABASE_URL</code>{' '}
-                  and{' '}
-                  <code className="font-mono-ui text-xs text-forja-green">
-                    VITE_SUPABASE_ANON_KEY
-                  </code>{' '}
-                  in <code className="font-mono-ui text-xs">apps/web/.env</code>, or download and
-                  play without an account.
+            <form onSubmit={onSubmit} className="space-y-5">
+              {!configured ? (
+                <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
+                  Web sign-in is not open yet. Download Forja — you can watch without an
+                  account.
                 </p>
-                <Link
-                  to="/download"
-                  data-hover=""
-                  className="btn-magnet inline-flex w-full items-center justify-center rounded-full px-6 py-3.5 font-mono-ui text-xs font-bold uppercase tracking-[0.1em]"
-                >
-                  Download Forja
-                </Link>
+              ) : null}
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required={configured}
+                  disabled={!configured}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                />
               </div>
-            ) : (
-              <form onSubmit={onSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A]"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required={configured}
+                  disabled={!configured}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                />
+              </div>
 
-                {error ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
-                  >
-                    {error}
-                  </p>
-                ) : null}
+              {error ? (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                >
+                  {error === AUTH_UNAVAILABLE_MESSAGE
+                    ? 'Sign-in is not available right now. Download Forja and play without an account.'
+                    : error}
+                </p>
+              ) : null}
 
+              {configured ? (
                 <Button
                   type="submit"
                   disabled={submitting || loading}
@@ -283,8 +274,16 @@ function LoginForm() {
                 >
                   {submitting ? 'Signing in…' : 'Sign in'}
                 </Button>
-              </form>
-            )}
+              ) : (
+                <Link
+                  to="/download"
+                  data-hover=""
+                  className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                >
+                  Download Forja
+                </Link>
+              )}
+            </form>
 
             <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">

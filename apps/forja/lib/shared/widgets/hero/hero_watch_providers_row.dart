@@ -13,7 +13,7 @@ class HeroWatchProvidersRow extends StatelessWidget {
   final List<WatchProvider> providers;
   final int maxVisible;
 
-  static const double tileSize = 22;
+  static const double tileSize = 40;
   static const double tileGap = 8;
   static const double rowHeight = tileSize;
 

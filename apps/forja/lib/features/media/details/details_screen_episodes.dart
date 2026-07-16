@@ -52,6 +52,28 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
     _highlightEpisode(episode);
     await _s._checkHistory();
   }
+
+  Future<void> _onEpisodePlay(int episode) async {
+    if (_s._selectedEpisode != episode) {
+      _highlightEpisode(episode);
+    }
+    await _s._checkHistory();
+    if (!mounted) return;
+
+    final progress = _s._lastProgress;
+    if (progress != null && hasSavedEpisodePlayback(progress)) {
+      if (await _s._tryDirectEpisodeResumeFromHistory(progress)) return;
+    }
+
+    if (_s._playSourceWebstreaming) {
+      unawaited(_s._playWebstreamingFromDetails());
+      return;
+    }
+
+    if (_s._hasPanelPlaySources) {
+      _s._openSourcesPanel();
+    }
+  }
   void _onSeasonSelected(int season) {
     if (widget.stremioItem != null &&
         _s._seasonData != null &&
@@ -102,6 +124,7 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
       customEpisodesBySeason: customEpisodes,
       onSeasonSelected: _onSeasonSelected,
       onEpisodeSelected: _onEpisodeSelected,
+      onEpisodePlay: _onEpisodePlay,
       onEpisodeFocused: _highlightEpisode,
       onToggleWatched: _toggleEpisodeWatched,
       tvTabId: MediaDetailsTv.tabId,

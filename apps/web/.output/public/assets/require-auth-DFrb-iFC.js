@@ -1,0 +1,1 @@
+import{D as e,S as t,n}from"./index-CTf7QJhE.js";var r=e();function i({children:e}){let{user:i,loading:a}=n();return a?(0,r.jsx)(`div`,{className:`flex min-h-screen items-center justify-center text-forja-muted`,children:`Loading…`}):i?e:(0,r.jsx)(t,{to:`/login`})}export{i as t};

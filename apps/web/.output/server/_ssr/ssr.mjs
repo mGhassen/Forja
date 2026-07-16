@@ -1,6 +1,6 @@
 import "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { i as require_jsx_runtime } from "../_libs/@radix-ui/react-primitive+[...].mjs";
+import { a as require_jsx_runtime } from "../_libs/@radix-ui/react-label+[...].mjs";
 import { n as defineHandlerCallback, o as RouterProvider, t as renderRouterToStream } from "../_libs/@tanstack/react-router+[...].mjs";
 import { PassThrough, Readable } from "node:stream";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -3469,7 +3469,7 @@ var defaultSerovalPlugins = [
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-D8lZE21_.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-Cjgb9czJ.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -5138,7 +5138,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-pHnD7kXj.mjs"),
+		import("./router-CmuvYPJ0.mjs"),
 		import("./start-Bj88XjFu.mjs"),
 		import("./empty-plugin-adapters-2JVUa-C1.mjs")
 	]);

@@ -49,10 +49,7 @@ const MOODS: Mood[] = [
     accent: 'flame',
     backdrop: '/brand/forja-iptv-live.jpg',
     logos: [
-      { src: '/brand/hubs/tv/cnn.svg', alt: 'CNN' },
-      { src: '/brand/hubs/tv/hbo.svg', alt: 'HBO' },
       { src: '/brand/hubs/tv/fox.svg', alt: 'FOX' },
-      { src: '/brand/hubs/tv/sky.svg', alt: 'Sky' },
       { src: '/brand/hubs/tv/nbc.svg', alt: 'NBC' },
       { src: '/brand/hubs/tv/cbs.svg', alt: 'CBS' },
     ],

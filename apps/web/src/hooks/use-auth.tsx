@@ -10,6 +10,10 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 
+/** Never expose env keys, paths, or backend names to end users. */
+export const AUTH_UNAVAILABLE_MESSAGE =
+  "Sign-in isn't available right now. Download Forja and play without an account."
+
 type AuthContextValue = {
   session: Session | null
   user: User | null
@@ -53,7 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabaseConfigured) {
-      return { error: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' }
+      if (import.meta.env.DEV) {
+        console.warn(
+          '[auth] Sign-in unavailable — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env',
+        )
+      }
+      return { error: AUTH_UNAVAILABLE_MESSAGE }
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error: error?.message ?? null }
@@ -61,7 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string) => {
     if (!supabaseConfigured) {
-      return { error: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' }
+      if (import.meta.env.DEV) {
+        console.warn(
+          '[auth] Sign-up unavailable — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env',
+        )
+      }
+      return { error: AUTH_UNAVAILABLE_MESSAGE }
     }
     const { error } = await supabase.auth.signUp({ email, password })
     return { error: error?.message ?? null }
