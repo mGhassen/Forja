@@ -5,6 +5,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
@@ -64,9 +65,16 @@ class LoadingOverlay extends StatefulWidget {
   final ValueNotifier<String>? messageNotifier;
   final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
   final ValueNotifier<bool>? fadeOutNotifier;
+
+  /// When non-null, the overlay swaps the progress strip for a failure panel.
+  final ValueNotifier<ResolveFailure?>? failureNotifier;
   final String? subtitle;
   final String? recheckBanner;
+
+  /// Mid-resolve reload strip (anime stale cache). Prefer friendly labels.
   final bool showReloadButton;
+  final String reloadLabel;
+  final String reloadHint;
   final VoidCallback? onReload;
   final VoidCallback? onCancel;
 
@@ -81,9 +89,12 @@ class LoadingOverlay extends StatefulWidget {
     this.messageNotifier,
     this.providerProbesNotifier,
     this.fadeOutNotifier,
+    this.failureNotifier,
     this.subtitle,
     this.recheckBanner,
     this.showReloadButton = false,
+    this.reloadLabel = 'Search again',
+    this.reloadHint = 'That saved link is no longer working',
     this.onReload,
     this.onCancel,
     this.onManualCheckProvider,
@@ -105,9 +116,12 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   late String _message;
   List<StreamProviderProbe> _probes = const [];
   bool _providerListOpen = false;
+  ResolveFailure? _failure;
 
   double get _logoBottomReserve =>
       _providerListOpen ? _statusStripReserve + 200 : _statusStripReserve;
+
+  bool get _showingFailure => _failure != null;
 
   @override
   void initState() {
@@ -115,9 +129,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     _message = widget.messageNotifier?.value ??
         widget.message?.toUpperCase() ??
         'STARTING STREAM';
+    _failure = widget.failureNotifier?.value;
     widget.messageNotifier?.addListener(_onMessageChanged);
     widget.providerProbesNotifier?.addListener(_onProbesChanged);
     widget.fadeOutNotifier?.addListener(_onFadeOutRequested);
+    widget.failureNotifier?.addListener(_onFailureChanged);
     _probes = widget.providerProbesNotifier?.value ?? const [];
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -135,6 +151,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       parent: _fadeOutController,
       curve: Curves.easeOut,
     );
+    if (_showingFailure) {
+      _pulseController.stop();
+    }
   }
 
   void _onMessageChanged() {
@@ -148,6 +167,17 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     final next = widget.providerProbesNotifier?.value;
     if (next != null && mounted) {
       setState(() => _probes = next);
+    }
+  }
+
+  void _onFailureChanged() {
+    if (!mounted) return;
+    final next = widget.failureNotifier?.value;
+    setState(() => _failure = next);
+    if (next != null) {
+      _pulseController.stop();
+    } else if (!_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
     }
   }
 
@@ -167,6 +197,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     widget.messageNotifier?.removeListener(_onMessageChanged);
     widget.providerProbesNotifier?.removeListener(_onProbesChanged);
     widget.fadeOutNotifier?.removeListener(_onFadeOutRequested);
+    widget.failureNotifier?.removeListener(_onFailureChanged);
     _pulseController.dispose();
     _fadeOutController.dispose();
     super.dispose();
@@ -455,13 +486,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       children: [
         if (widget.recheckBanner != null) ...[
           Text(
-            widget.recheckBanner!.toUpperCase(),
+            widget.recheckBanner!,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.amber.shade200.withValues(alpha: 0.95),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.5,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
               fontFamily: 'Poppins',
             ),
           ),
@@ -469,25 +500,30 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         ],
         if (widget.showReloadButton) ...[
           Text(
-            'SAVED STREAM UNAVAILABLE',
+            widget.reloadHint,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2,
+              color: Colors.white.withValues(alpha: 0.62),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
               fontFamily: 'Poppins',
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: widget.onReload,
             icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('RELOAD'),
+            label: Text(widget.reloadLabel),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
               side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+              textStyle: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -674,18 +710,23 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_showProviderProbes)
+                      if (_showingFailure)
+                        ResolveFailurePanel(
+                          failure: _failure!,
+                          compact: true,
+                        )
+                      else if (_showProviderProbes)
                         _probeProgressFooter()
                       else ...[
                         if (widget.recheckBanner != null) ...[
                           Text(
-                            widget.recheckBanner!.toUpperCase(),
+                            widget.recheckBanner!,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.amber.shade200.withValues(alpha: 0.95),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2.5,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
                               fontFamily: 'Poppins',
                             ),
                           ),
@@ -693,21 +734,21 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                         ],
                         if (widget.showReloadButton) ...[
                           Text(
-                            'SAVED STREAM UNAVAILABLE',
+                            widget.reloadHint,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 2,
+                              color: Colors.white.withValues(alpha: 0.62),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
                               fontFamily: 'Poppins',
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           OutlinedButton.icon(
                             onPressed: widget.onReload,
                             icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: const Text('RELOAD'),
+                            label: Text(widget.reloadLabel),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
                               side: BorderSide(
@@ -716,6 +757,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 22,
                                 vertical: 10,
+                              ),
+                              textStyle: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
                               ),
                             ),
                           ),
@@ -750,7 +796,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                           ),
                         ],
                       ],
-                      if (widget.onCancel != null) ...[
+                      if (!_showingFailure && widget.onCancel != null) ...[
                         SizedBox(height: _showProviderProbes ? 20 : 24),
                         _cancelActionRow(),
                       ],
@@ -764,11 +810,14 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       ),
     );
 
-    if (widget.onCancel == null) return overlay;
+    final escapeAction = _showingFailure
+        ? (_failure?.onSecondary ?? _failure?.onPrimary ?? widget.onCancel)
+        : widget.onCancel;
+    if (escapeAction == null) return overlay;
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): widget.onCancel!,
+        const SingleActivator(LogicalKeyboardKey.escape): escapeAction,
       },
       child: Focus(
         autofocus: true,

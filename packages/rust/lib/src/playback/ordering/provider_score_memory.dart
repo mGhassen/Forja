@@ -336,10 +336,8 @@ abstract final class ProviderScoreMemory {
     return const _HealthQuery(score: 0);
   }
 
-  static int _rawTotalFor(String key) =>
+  static int _totalFor(String key) =>
       (_server[key] ?? 0) + (_stream[key] ?? 0);
-
-  static int _totalFor(String key) => _rawTotalFor(key).clamp(0, 1 << 30);
 }
 
 class _HealthQuery {

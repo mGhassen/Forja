@@ -333,7 +333,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
               providers: providers,
               providerId: pid,
               season: widget.selectedSeason ?? 1,
-              episode: widget.selectedEpisode ?? 1,
+              episode: widget.hubEpisodeNumber?.toInt() ??
+                  widget.selectedEpisode ??
+                  1,
               isCancelled: () => _fallbackAborted(initGen),
             );
             if (!_fallbackAborted(initGen) &&

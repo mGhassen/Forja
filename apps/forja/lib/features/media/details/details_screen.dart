@@ -18,6 +18,7 @@ import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/features/media/stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';

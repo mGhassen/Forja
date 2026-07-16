@@ -151,7 +151,7 @@ impl ProviderHealthStore {
         *self.all_provider_totals().get(&norm).unwrap_or(&0)
     }
 
-    /// Provider id → sum of that provider's title scores (floored totals).
+    /// Provider id → sum of that provider's title scores (negatives included).
     pub fn all_provider_totals(&self) -> HashMap<String, i32> {
         self.ensure_loaded();
         let g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
@@ -231,8 +231,7 @@ impl ProviderHealthStore {
 }
 
 fn total_for(g: &HealthState, key: &str) -> i32 {
-    ((g.server.get(key).copied().unwrap_or(0) + g.stream.get(key).copied().unwrap_or(0)).max(0))
-        as i32
+    g.server.get(key).copied().unwrap_or(0) + g.stream.get(key).copied().unwrap_or(0)
 }
 
 /// Extract provider id from a memory key (`movie:550:vixsrc`, `tv:1:s1e2:nuvio:x`, …).
@@ -441,6 +440,28 @@ mod tests {
         assert_eq!(store.global_score_for("vixsrc"), 8);
         assert_eq!(store.global_score_for("vidlink"), 2);
         assert_eq!(store.global_score_for("videasy"), 0);
+    }
+
+    #[test]
+    fn negative_title_totals_reduce_global_score() {
+        let store = ProviderHealthStore::new();
+        store.reset_for_test();
+        // Prior titles: +4 +4 +4 +4 +4 +2 = +22
+        for tmdb in [1, 2, 3, 4, 5] {
+            let key = format!("movie:{tmdb}:megaplay");
+            store.record_server_up(&key);
+            store.record_stream_up(&key);
+        }
+        store.record_server_up("movie:6:megaplay");
+        assert_eq!(store.global_score_for("megaplay"), 22);
+
+        // This title fails server + stream → −4; Σ must become 18.
+        store.record_server_failure("movie:7:megaplay");
+        store.record_stream_fail("movie:7:megaplay");
+        assert_eq!(store.score_for("movie:7:megaplay"), -4);
+        assert_eq!(store.server_verdict_for("movie:7:megaplay"), Some(-2));
+        assert_eq!(store.stream_verdict_for("movie:7:megaplay"), Some(-2));
+        assert_eq!(store.global_score_for("megaplay"), 18);
     }
 
     #[test]

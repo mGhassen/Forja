@@ -252,6 +252,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
     if (!mounted) return;
     _s._streamCancelled = false;
     final fadeOutNotifier = ValueNotifier(false);
+    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
     BuildContext? loadingDialogContext;
     final loadingMessage = stremioResolveLoadingMessage(
       profile: _s._playbackProfile,
@@ -266,6 +267,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
           movie: _s._movie,
           message: loadingMessage,
           fadeOutNotifier: fadeOutNotifier,
+          failureNotifier: failureNotifier,
           subtitle: playbackSourceHint(
             useDebrid: useDebrid,
             debridService: debridService,
@@ -289,6 +291,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
 
     if (_s._streamCancelled) {
       fadeOutNotifier.dispose();
+      failureNotifier.dispose();
       return;
     }
 
@@ -315,18 +318,63 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
           ),
         );
       }
+    } else if (resolved is StremioResolveFailure &&
+        resolved.error != StremioPlaybackError.cancelled &&
+        mounted &&
+        loadingDialogContext != null &&
+        loadingDialogContext!.mounted) {
+      final action = Completer<void>();
+      failureNotifier.value = ResolveFailure(
+        title: 'Couldn’t start playback',
+        detail: _friendlyResolveDetail(resolved.message),
+        primaryLabel: 'Close',
+        primaryIcon: Icons.close_rounded,
+        onPrimary: () {
+          if (!action.isCompleted) action.complete();
+        },
+      );
+      await action.future;
+      if (loadingDialogContext != null &&
+          loadingDialogContext!.mounted &&
+          Navigator.of(loadingDialogContext!).canPop()) {
+        Navigator.of(loadingDialogContext!).pop();
+      }
     } else if (loadingDialogContext != null &&
         loadingDialogContext!.mounted &&
         Navigator.of(loadingDialogContext!).canPop()) {
       Navigator.of(loadingDialogContext!).pop();
     }
     fadeOutNotifier.dispose();
+    failureNotifier.dispose();
+  }
 
-    if (resolved is StremioResolveFailure &&
-        resolved.error != StremioPlaybackError.cancelled &&
-        mounted) {
-      ForjaToast.info(resolved.message);
+  String _friendlyResolveDetail(String raw) {
+    final m = raw.trim();
+    if (m.isEmpty) {
+      return 'We couldn’t open this stream. Try another source.';
     }
+    final lower = m.toLowerCase();
+    if (lower.contains('torrent file')) {
+      return 'This release is a torrent file, not a magnet. Pick a magnet link instead.';
+    }
+    if (lower.contains('unsupported')) {
+      return 'This stream type isn’t supported here. Try another source.';
+    }
+    if (lower.contains('debrid') && lower.contains('login')) {
+      return 'Debrid sign-in failed. Check your API key in Settings, or turn off Debrid and try the local engine.';
+    }
+    if (lower.contains('debrid')) {
+      return 'Debrid couldn’t resolve this link. Try another source, or check Settings → Debrid.';
+    }
+    if (lower.contains('magnet')) {
+      return 'We couldn’t resolve a magnet for this torrent. Try another release.';
+    }
+    if (lower.contains('failed to resolve') ||
+        lower.contains('failed to start') ||
+        lower.contains('torrent stream failed')) {
+      return 'We couldn’t open this stream. Try another source.';
+    }
+    return m;
   }
 
   /// Handles a Stremio externalUrl: stremio:///detail, stremio:///search, or web URLs.
@@ -402,6 +450,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
     );
     final fadeOutNotifier = ValueNotifier(false);
+    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
     BuildContext? loadingDialogContext;
     var cleanedUp = false;
     final sourceHint = playbackSourceHint(
@@ -414,6 +463,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       cleanedUp = true;
       overlayMessage.dispose();
       fadeOutNotifier.dispose();
+      failureNotifier.dispose();
     }
 
     void popLoading() {
@@ -424,13 +474,26 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       }
     }
 
-    void fail(String message) {
+    Future<void> fail(String message) async {
       debugPrint('[Torrent] $message');
+      if (!mounted || _s._streamCancelled) {
+        popLoading();
+        cleanupNotifiers();
+        return;
+      }
+      final action = Completer<void>();
+      failureNotifier.value = ResolveFailure(
+        title: 'Couldn’t start playback',
+        detail: _friendlyResolveDetail(message),
+        primaryLabel: 'Close',
+        primaryIcon: Icons.close_rounded,
+        onPrimary: () {
+          if (!action.isCompleted) action.complete();
+        },
+      );
+      await action.future;
       popLoading();
       cleanupNotifiers();
-      if (mounted && !_s._streamCancelled) {
-        ForjaToast.error(message);
-      }
     }
 
     // Show loading BEFORE closing Sources — closing the panel mid-tap disposes
@@ -444,6 +507,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
           movie: _s._movie,
           messageNotifier: overlayMessage,
           fadeOutNotifier: fadeOutNotifier,
+          failureNotifier: failureNotifier,
           subtitle: sourceHint,
           onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
         );
@@ -477,12 +541,12 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         if (resolved.isMagnet) {
           magnetLink = resolved.link;
         } else if (resolved.torrentBytes != null) {
-          fail(
+          await fail(
             'Torrent file downloads not yet supported. Please use magnet links.',
           );
           return;
         } else {
-          fail('Could not resolve a magnet link for this torrent.');
+          await fail('Could not resolve a magnet link for this torrent.');
           return;
         }
       }
@@ -513,7 +577,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         return;
       }
       if (playback == null || playback.url.isEmpty) {
-        fail('Torrent stream failed to start.');
+        await fail('Torrent stream failed to start.');
         return;
       }
       resolvedUrl = playback.url;
@@ -529,7 +593,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       final message = e is DebridAuthException
           ? e.toString()
           : debridUserMessage(e, debridService);
-      fail(message);
+      await fail(message);
       return;
     }
 
@@ -541,7 +605,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
 
     final dialogContext = loadingDialogContext;
     if (dialogContext == null) {
-      fail('Torrent stream failed to start.');
+      await fail('Torrent stream failed to start.');
       return;
     }
 

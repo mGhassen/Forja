@@ -46,6 +46,27 @@ void main() {
       expect(ProviderScoreMemory.globalScoreFor('vidlink'), 0);
     });
 
+    test('negative title totals reduce global score', () async {
+      for (final id in [1, 2, 3, 4, 5]) {
+        final scope = ProviderScoreScope.movie(tmdbId: id);
+        await ProviderScoreMemory.recordServerUp(scope, 'megaplay');
+        await ProviderScoreMemory.recordStreamUp(scope, 'megaplay');
+      }
+      await ProviderScoreMemory.recordServerUp(
+        ProviderScoreScope.movie(tmdbId: 6),
+        'megaplay',
+      );
+      expect(ProviderScoreMemory.globalScoreFor('megaplay'), 22);
+
+      final fail = ProviderScoreScope.movie(tmdbId: 7);
+      await ProviderScoreMemory.recordServerFailure(fail, 'megaplay');
+      await ProviderScoreMemory.recordStreamFail(fail, 'megaplay');
+      expect(ProviderScoreMemory.scoreFor(fail, 'megaplay'), -4);
+      expect(ProviderScoreMemory.serverVerdictFor(fail, 'megaplay'), -2);
+      expect(ProviderScoreMemory.streamVerdictFor(fail, 'megaplay'), -2);
+      expect(ProviderScoreMemory.globalScoreFor('megaplay'), 18);
+    });
+
     test('tv scores are per season and episode', () async {
       final otherEp = ProviderScoreScope.tv(
         tmdbId: 1399,

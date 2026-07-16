@@ -229,6 +229,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
       {},
     );
     final fadeOutNotifier = ValueNotifier(false);
+    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
     var liveNotifiersDisposed = false;
     BuildContext? loadingDialogContext;
     var switchingManualProvider = false;
@@ -259,6 +260,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
           movie: _s._movie,
           providerProbesNotifier: probeNotifier,
           fadeOutNotifier: fadeOutNotifier,
+          failureNotifier: failureNotifier,
           onCancel: () {
             _s._webstreamingOnlyExtractionCancelled = true;
             switchingManualProvider = false;
@@ -276,6 +278,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
       dismissLoading();
       _s._isWebstreamingOnlyExtracting = false;
       fadeOutNotifier.dispose();
+      failureNotifier.dispose();
       liveNotifiersDisposed = true;
       probeNotifier.dispose();
       sourcesListNotifier.dispose();
@@ -535,8 +538,28 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
       }
 
       if (!found && mounted && !_s._webstreamingOnlyExtractionCancelled) {
+        final action = Completer<bool>();
+        failureNotifier.value = ResolveFailure(
+          title: 'Couldn’t start playback',
+          detail:
+              'None of the servers returned a working stream right now.',
+          primaryLabel: 'Try again',
+          onPrimary: () {
+            if (!action.isCompleted) action.complete(true);
+          },
+          secondaryLabel: 'Close',
+          onSecondary: () {
+            if (!action.isCompleted) action.complete(false);
+          },
+        );
+        final retry = await action.future;
         dismissLoading();
-        ForjaToast.error('Failed to find a working stream.');
+        if (retry && mounted) {
+          // Restart after the overlay is gone so probes/notifiers are fresh.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) unawaited(_startWebstreamingOnlyPlayback());
+          });
+        }
       }
     } finally {
       if (mounted) {
@@ -545,6 +568,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         _s._isWebstreamingOnlyExtracting = false;
       }
       fadeOutNotifier.dispose();
+      failureNotifier.dispose();
       if (!liveNotifiersDisposed) {
         sourcesListNotifier.dispose();
         providerSourcesCache.dispose();

@@ -2,7 +2,6 @@
 
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -17,6 +16,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
@@ -653,8 +653,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _failedAll = false;
       });
       _probeNotifier.value = const [];
-      _setPhase('Streams unavailable');
-      _setStatusLine('Tap reload to search again');
+      _setPhase('Still searching…');
+      _setStatusLine('Saved link expired — search again');
       return;
     }
 
@@ -811,7 +811,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final pair = _currentPair;
     if (pair.isEmpty) {
       setState(() => _failedAll = true);
-      _setPhase('No streams available');
+      _setPhase('No streams found');
+      _setStatusLine(
+        'We couldn’t find a working source for this episode.',
+      );
       return;
     }
 
@@ -966,14 +969,16 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     providerSourcesCache.dispose();
     if (_autoRecheckUsed >= 1) {
       setState(() => _awaitingManualRecheck = true);
-      _setPhase('No streams available');
-      _setStatusLine('Tap reload to search again');
+      _setPhase('Still searching…');
+      _setStatusLine('No working source yet — search again');
       _probeNotifier.value = const [];
       return;
     }
     setState(() => _failedAll = true);
-    _setPhase('No streams available');
-    setState(() => _statusLine = '');
+    _setPhase('No streams found');
+    _setStatusLine(
+      'We couldn’t find a working source for this episode.',
+    );
   }
 
   /// Prefer Settings → Anime provider order — saved source still wins when present.
@@ -1098,7 +1103,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     if (!mounted || _cancelled) return;
     final navigator = Navigator.of(context, rootNavigator: true);
-    final resolverRoute = ModalRoute.of(context);
 
     Future<void> openEpisode(int epNumber) async {
       final hostContext = context;
@@ -1189,11 +1193,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _autoRecheckUsed = 0;
         _awaitingManualRecheck = false;
         _launchedFromSavedOrCache = false;
-        // Resolver is usually already removed after the fade-out; only
-        // clean up if it is somehow still under the player.
-        if (resolverRoute != null && mounted) {
-          navigator.removeRoute(resolverRoute);
-        }
       },
       onAllSourcesExhausted: () {
         if (mounted) _fadeOutNotifier.value = false;
@@ -1203,7 +1202,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       onReloadStreams: () async {
         await _dropAllStreamCaches();
         await _ensureEmbedsReady();
-        if (!mounted || _cancelled) return null;
+        // Stay usable while the player sits on top of this route — do not
+        // treat dispose/_cancelled from a premature removeRoute.
+        if (!mounted) return null;
         return reloadAnimeEpisodeStreams(
           service: _service,
           allEmbeds: List<AnimeEmbed>.from(_allEmbeds),
@@ -1213,15 +1214,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         );
       },
     );
-    await Future.any<void>([
-      Future<void>.delayed(loadingOverlayFadeOutDuration),
-      playerFuture.then<void>((_) {}),
-    ]);
-    // Drop the loading route when fade finishes or the player closes early
-    // (Escape before playback) — always return to details, never the overlay.
-    if (resolverRoute != null) {
-      navigator.removeRoute(resolverRoute);
-    }
+    // Keep this route under the player for the whole session. Removing it on
+    // fade/playback-start disposed Source cache notifiers and cancelled
+    // onReloadStreams — dead-cache recovery and server taps broke.
     await playerFuture;
     // Cache resume that never confirmed playback left a dead URL on disk —
     // drop so the next Play re-resolves like green Play (movie I43).
@@ -1236,85 +1231,22 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     } else {
       providerSourcesCache!.dispose();
     }
+    // Player closed — leave the loading shell and return to details.
+    if (mounted && navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
-  Widget _buildFailure(AppThemePreset theme) {
-    final backdropUrl = widget.anime.bannerOrCover;
-    return Material(
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (backdropUrl.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: backdropUrl,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => const ColoredBox(color: Colors.black),
-              errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
-            )
-          else
-            const ColoredBox(color: Colors.black),
-          Container(color: Colors.black.withValues(alpha: 0.72)),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline,
-                        color: theme.primaryColor, size: 56),
-                    const SizedBox(height: 14),
-                    Text(
-                      _messageNotifier.value,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (_statusLine.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _statusLine,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    OutlinedButton.icon(
-                      onPressed: _retryResolve,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try again'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 22, vertical: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        'Back',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+  Widget _buildFailure(AppThemePreset _) {
+    return ResolveFailureScaffold(
+      backdropUrl: widget.anime.bannerOrCover,
+      failure: ResolveFailure(
+        title: _messageNotifier.value,
+        detail: _statusLine.isNotEmpty ? _statusLine : null,
+        primaryLabel: 'Try again',
+        onPrimary: _retryResolve,
+        secondaryLabel: 'Close',
+        onSecondary: () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -1342,8 +1274,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           subtitle: episodeLabel,
           recheckBanner: _awaitingManualRecheck
               ? null
-              : (_autoRecheckUsed > 0 ? 'Rechecking sources…' : null),
+              : (_autoRecheckUsed > 0 ? 'Checking sources again…' : null),
           showReloadButton: _awaitingManualRecheck,
+          reloadLabel: 'Search again',
+          reloadHint: 'That saved link is no longer working',
           onReload: _manualRecheck,
           onCancel: () {
             _cancelled = true;

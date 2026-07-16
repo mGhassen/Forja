@@ -510,6 +510,14 @@ class KissKhExtractor {
       if (streamUrl == null) {
         final embed = _thirdPartyEmbedUrl(api);
         final rejected = (api['Video'] ?? api['video'] ?? '').toString().trim();
+        // Episode listed but not unlocked — kisskh embeds a tickcounter widget.
+        if (_isCountdownPlaceholder(rejected)) {
+          debugPrint(
+            '[KissKhExtractor] countdown placeholder (not unlocked): $rejected',
+          );
+          onProgress?.call('countdown', 'Not available yet');
+          return null;
+        }
         if (rejected.isNotEmpty) {
           debugPrint(
             '[KissKhExtractor] Rejected Video URL: $rejected'
@@ -641,6 +649,14 @@ class KissKhExtractor {
     if (url.startsWith('//')) url = 'https:$url';
     if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
     return url;
+  }
+
+  /// KissKH often puts a tickcounter countdown in `Video` until the ep unlocks.
+  static bool _isCountdownPlaceholder(String raw) {
+    final lower = raw.trim().toLowerCase();
+    if (lower.isEmpty) return false;
+    return lower.contains('tickcounter.com') ||
+        lower.contains('/widget/countdown');
   }
 
   static bool _looksLikePlayableStream(String raw) {

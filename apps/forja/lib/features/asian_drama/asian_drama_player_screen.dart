@@ -5,7 +5,6 @@
 
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
@@ -13,6 +12,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
@@ -203,11 +203,19 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     final release = det.releaseDate.trim();
     if (release.isNotEmpty) {
       final label = KissKhService.formatReleaseDateLabel(release);
-      return 'Marked Upcoming on kisskh — expected $label. '
-          'The site shows a countdown until streams unlock.';
+      return 'This title isn’t published yet. Streams usually unlock around $label.';
     }
-    return 'Marked Upcoming on kisskh. '
-        'The site shows a countdown until streams unlock.';
+    return 'This title isn’t published yet. Check back when the countdown ends.';
+  }
+
+  /// Episode row exists but kisskh still serves a countdown widget (not unlocked).
+  String _countdownStatusLine(KdramaDetails det) {
+    final release = det.releaseDate.trim();
+    if (release.isNotEmpty) {
+      final label = KissKhService.formatReleaseDateLabel(release);
+      return 'This episode isn’t unlocked yet. Try again around $label.';
+    }
+    return 'This episode isn’t unlocked yet. Check back when the countdown ends.';
   }
 
   /// Loads drama details (status gate) and resolves the episode row.
@@ -341,7 +349,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           _failedAll = true;
           _isUpcoming = false;
           _setPhase('Episode not found');
-          _statusLine = 'Could not resolve this episode on kisskh.';
+          _statusLine =
+              'We couldn’t match this episode. Go back and pick another one.';
         });
         return;
       }
@@ -358,6 +367,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       if (!mounted) return;
       final activeHost = KissKhService.activeMirrorHost;
       var sawRateLimit = false;
+      var sawCountdown = false;
       _prepareActiveHost();
       _applyProbeStatus(activeHost, StreamProviderProbeStatus.trying);
       _setPhase('Opening ${KissKhService.mirrorLabel(activeHost)}…');
@@ -377,10 +387,12 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         onProgress: (phase, detail) {
           if (!mounted) return;
           if (phase == 'rate_limit') sawRateLimit = true;
+          if (phase == 'countdown') sawCountdown = true;
           if (phase == 'init' ||
               phase == 'loaded' ||
               phase == 'retry' ||
               phase == 'rate_limit' ||
+              phase == 'countdown' ||
               phase == 'embed' ||
               phase == 'subs') {
             _setPhase(detail);
@@ -393,16 +405,20 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         _applyProbeStatus(activeHost, StreamProviderProbeStatus.failed);
         setState(() {
           _failedAll = true;
-          _isUpcoming = false;
-          if (sawRateLimit) {
-            _setPhase('KissKH rate limited');
+          if (sawCountdown) {
+            _isUpcoming = true;
+            _setPhase('Not available yet');
+            _statusLine = _countdownStatusLine(ctx.details);
+          } else if (sawRateLimit) {
+            _isUpcoming = false;
+            _setPhase('Taking a short break');
             _statusLine =
-                'KissKH asked us to slow down. Wait about a minute, then try Play again.';
+                'The server asked us to slow down. Wait about a minute, then try again.';
           } else {
-            _setPhase('No stream available');
+            _isUpcoming = false;
+            _setPhase('Couldn’t find a stream');
             _statusLine =
-                '${KissKhService.mirrorLabel(activeHost)} did not return a stream. '
-                'Other mirrors are on hold to avoid a rate-limit ban.';
+                'Nothing playable came back for this episode. Try again in a bit.';
           }
         });
         return;
@@ -418,9 +434,11 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       setState(() {
         _failedAll = true;
         _isUpcoming = false;
-        _setPhase('Resolver crashed');
-        _statusLine = '$e';
+        _setPhase('Something went wrong');
+        _statusLine =
+            'Playback couldn’t start. Try again, or come back later.';
       });
+      debugPrint('[AsianDrama] resolve failed: $e');
     }
   }
 
@@ -468,7 +486,6 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
-    final resolverRoute = ModalRoute.of(context);
 
     Future<void> goNext() async {
       var ep = nextFromList;
@@ -571,112 +588,42 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       onNextEpisode: hasNext ? goNext : null,
       fadeTransition: true,
     );
-    await Future.any<void>([
-      Future<void>.delayed(loadingOverlayFadeOutDuration),
-      playerFuture.then<void>((_) {}),
-    ]);
-    // Drop resolver as soon as fade finishes or the player closes early
-    // (Escape before playback) — never leave the loading route on details.
-    if (resolverRoute != null) {
-      navigator.removeRoute(resolverRoute);
-    }
+    // Keep this route under the player for the whole session. Removing it on
+    // fade disposed Source cache notifiers while the player was still open.
     await playerFuture;
     _probeNotifier.dispose();
     _providerSourcesCache.dispose();
+    if (mounted && navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
-  Widget _buildFailure(AppThemePreset theme) {
-    final backdropUrl = widget.drama.cover;
+  void _retryFromFailure() {
+    setState(() {
+      _failedAll = false;
+      _isUpcoming = false;
+      _setPhase('Checking availability…');
+      _statusLine = '';
+      _probeNotifier.value = const [];
+    });
+    _bootstrap();
+  }
+
+  Widget _buildFailure(AppThemePreset _) {
     final upcoming = _isUpcoming;
-    return Material(
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (backdropUrl.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: backdropUrl,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => const ColoredBox(color: Colors.black),
-              errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
-            )
-          else
-            const ColoredBox(color: Colors.black),
-          Container(color: Colors.black.withValues(alpha: 0.72)),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      upcoming ? Icons.schedule : Icons.error_outline,
-                      color: theme.primaryColor,
-                      size: 56,
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      _messageNotifier.value,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (_statusLine.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _statusLine,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _failedAll = false;
-                          _isUpcoming = false;
-                          _setPhase('Checking availability…');
-                          _statusLine = '';
-                          _probeNotifier.value = const [];
-                        });
-                        _bootstrap();
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: Text(upcoming ? 'Check again' : 'Try again'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        'Back',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+    final waiting = upcoming ||
+        _messageNotifier.value == 'Taking a short break' ||
+        _messageNotifier.value == 'Not available yet';
+    return ResolveFailureScaffold(
+      backdropUrl: widget.drama.cover,
+      failure: ResolveFailure(
+        title: _messageNotifier.value,
+        detail: _statusLine.isNotEmpty ? _statusLine : null,
+        tone: waiting ? ResolveFailureTone.waiting : ResolveFailureTone.error,
+        primaryLabel: upcoming ? 'Check again' : 'Try again',
+        onPrimary: _retryFromFailure,
+        secondaryLabel: 'Close',
+        onSecondary: () => Navigator.of(context).pop(),
       ),
     );
   }

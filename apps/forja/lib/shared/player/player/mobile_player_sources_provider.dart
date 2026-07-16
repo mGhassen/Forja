@@ -40,7 +40,9 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
         providers: widget.providers!,
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
-        episode: widget.selectedEpisode ?? 1,
+        episode: widget.hubEpisodeNumber?.toInt() ??
+            widget.selectedEpisode ??
+            1,
         isCancelled: () =>
             _s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen,
         bypassDiskCache: forceRefresh,
