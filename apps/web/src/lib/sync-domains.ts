@@ -14,10 +14,25 @@ export type IptvPortalRow = {
   username: string
   password: string
   source?: string
+  /** User-chosen portal name (matches Flutter `VerifiedPortal.label`). */
+  label?: string
+  /** Xtream account name from the provider (Flutter `VerifiedPortal.name`). */
   name?: string
   expiry?: string
   max?: string
   active?: string
+}
+
+/** Prefer user label, then provider name, then username. */
+export function portalDisplayLabel(
+  portal: Pick<IptvPortalRow, 'label' | 'name' | 'username'>,
+): string {
+  const label = portal.label?.trim()
+  if (label) return label
+  const name = portal.name?.trim()
+  if (name) return name
+  const user = portal.username?.trim()
+  return user || 'Portal'
 }
 
 export type M3uChannelRow = {

@@ -69,6 +69,8 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
   return _PortalExpiryTone(color: color, label: '$prefix $label');
 }
 
+enum _PortalImportPhase { shareCode, namePortal }
+
 class _PortalFormDialog extends StatefulWidget {
   const _PortalFormDialog({required this.ctrl, this.existing});
 
@@ -95,11 +97,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   double get _codeFontSize => _tv ? 17.0 : (_compact ? 20.0 : 26.0);
 
+  late final TextEditingController _labelCtrl;
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
   late final TextEditingController _passCtrl;
   late final TextEditingController _pasteCtrl;
   late final FocusNode _pasteFocus;
+  late final FocusNode _labelFocus;
   late final FocusNode _urlFocus;
   late final FocusNode _userFocus;
   late final FocusNode _passFocus;
@@ -110,6 +114,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _obscurePassword = true;
   bool _importingShareCode = false;
   bool _showManualForm = false;
+  _PortalImportPhase _importPhase = _PortalImportPhase.shareCode;
   String? _shareCodeError;
   String? _lastImportedCode;
   bool _expandFocused = false;
@@ -117,6 +122,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _pasteEditing = false;
 
   bool get _editing => widget.existing != null;
+
+  bool get _namingImported =>
+      !_editing && _importPhase == _PortalImportPhase.namePortal;
 
   ShellTvFocusMeta get _pasteTvMeta => const ShellTvFocusMeta(
         tabId: 'iptv',
@@ -148,11 +156,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   void initState() {
     super.initState();
     final e = widget.existing;
+    _labelCtrl = TextEditingController(text: e?.label ?? '');
     _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
     _userCtrl = TextEditingController(text: e?.portal.username ?? '');
     _passCtrl = TextEditingController(text: e?.portal.password ?? '');
     _pasteCtrl = TextEditingController();
     _pasteFocus = FocusNode(debugLabel: 'iptv-share-paste');
+    _labelFocus = FocusNode(debugLabel: 'iptv-portal-label');
     _urlFocus = FocusNode(debugLabel: 'iptv-portal-url');
     _userFocus = FocusNode(debugLabel: 'iptv-portal-user');
     _passFocus = FocusNode(debugLabel: 'iptv-portal-pass');
@@ -176,12 +186,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       _registerPasteTvNode();
       if (iptvUseTvFocus(context)) {
         if (_editing) {
-          _urlFocus.requestFocus();
+          _labelFocus.requestFocus();
         } else {
           _focusDialogItem(1);
         }
       } else if (_editing) {
-        _urlFocus.requestFocus();
+        _labelFocus.requestFocus();
       } else {
         _pasteFocus.requestFocus();
       }
@@ -189,7 +199,10 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   KeyEventResult _handlePasteKey(FocusNode node, KeyEvent event) {
-    if (mounted && iptvUseTvFocus(context) && !_editing) {
+    if (mounted &&
+        iptvUseTvFocus(context) &&
+        !_editing &&
+        !_namingImported) {
       if (!_pasteEditing) {
         final arrow = shellTvHandleRowArrows(
           event: event,
@@ -219,26 +232,35 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   int get _dialogTvItemCount {
-    if (_editing) return 5;
-    if (_showManualForm) return 7;
+    if (_namingImported) return 3;
+    if (_editing) return 6;
+    if (_showManualForm) return 8;
     return 2;
   }
 
   int get _dialogOkIndex {
-    if (_editing) return 3;
-    return _showManualForm ? 5 : 2;
+    if (_namingImported) return 1;
+    if (_editing) return 4;
+    return _showManualForm ? 6 : 2;
   }
 
   int get _dialogCancelIndex {
-    if (_editing) return 4;
-    return _showManualForm ? 6 : 3;
+    if (_namingImported) return 2;
+    if (_editing) return 5;
+    return _showManualForm ? 7 : 3;
   }
 
   void _focusDialogItem(int index) {
     if (!mounted || !iptvUseTvFocus(context)) return;
     final clamped = index.clamp(0, _dialogTvItemCount - 1);
+    if (_namingImported) {
+      final nodes = [_labelFocus, _submitFocus, _cancelFocus];
+      nodes[clamped].requestFocus();
+      return;
+    }
     if (_editing) {
       final nodes = [
+        _labelFocus,
         _urlFocus,
         _userFocus,
         _passFocus,
@@ -263,12 +285,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       case 1:
         _expandFocus.requestFocus();
       case 2:
-        _urlFocus.requestFocus();
+        _labelFocus.requestFocus();
       case 3:
-        _userFocus.requestFocus();
+        _urlFocus.requestFocus();
       case 4:
-        _passFocus.requestFocus();
+        _userFocus.requestFocus();
       case 5:
+        _passFocus.requestFocus();
+      case 6:
         _submitFocus.requestFocus();
       default:
         _cancelFocus.requestFocus();
@@ -279,11 +303,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   void dispose() {
     _unregisterPasteTvNode();
     _pasteFocus.onKeyEvent = _pasteKeyHandler;
+    _labelCtrl.dispose();
     _urlCtrl.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
     _pasteCtrl.dispose();
     _pasteFocus.dispose();
+    _labelFocus.dispose();
     _urlFocus.dispose();
     _userFocus.dispose();
     _passFocus.dispose();
@@ -322,7 +348,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   void _toggleManualForm() {
-    if (_importingShareCode) return;
+    if (_importingShareCode || _namingImported) return;
     final opening = !_showManualForm;
     setState(() => _showManualForm = !_showManualForm);
     if (opening) {
@@ -330,7 +356,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         if (mounted && iptvUseTvFocus(context)) {
           _focusDialogItem(2);
         } else if (mounted) {
-          _urlFocus.requestFocus();
+          _labelFocus.requestFocus();
         }
       });
     } else {
@@ -379,10 +405,16 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       _urlCtrl.text = portal.url;
       _userCtrl.text = portal.username;
       _passCtrl.text = portal.password;
+      _labelCtrl.clear();
       _lastImportedCode = code;
-      setState(() => _importingShareCode = false);
-      // Keep the portals panel open and scroll to the newly added portal.
-      await _submit(closePanel: false);
+      setState(() {
+        _importingShareCode = false;
+        _importPhase = _PortalImportPhase.namePortal;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _labelFocus.requestFocus();
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -392,20 +424,44 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
   }
 
+  void _cancelNamePortal() {
+    if (widget.ctrl.isAdding) return;
+    setState(() {
+      _importPhase = _PortalImportPhase.shareCode;
+      _labelCtrl.clear();
+      _urlCtrl.clear();
+      _userCtrl.clear();
+      _passCtrl.clear();
+      _lastImportedCode = null;
+      _shareCodeError = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (iptvUseTvFocus(context)) {
+        _focusDialogItem(0);
+      } else {
+        _pasteFocus.requestFocus();
+      }
+    });
+  }
+
   Future<void> _submit({bool closePanel = true}) async {
     final ctrl = widget.ctrl;
+    final label = _labelCtrl.text;
     if (_editing) {
       await ctrl.updatePortal(
         existing: widget.existing!,
         url: _urlCtrl.text,
         username: _userCtrl.text,
         password: _passCtrl.text,
+        label: label,
       );
     } else {
       await ctrl.addManual(
         url: _urlCtrl.text,
         username: _userCtrl.text,
         password: _passCtrl.text,
+        label: label,
         closePanel: closePanel,
       );
     }
@@ -415,6 +471,10 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   void _cancel() {
+    if (_namingImported) {
+      _cancelNamePortal();
+      return;
+    }
     widget.ctrl.dismissAddDialog();
     Navigator.of(context).pop();
   }
@@ -482,10 +542,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     } else {
       iptvSyncRow(rowId: 'iptv-portal-dialog', sortOrder: 50, itemCount: 0);
     }
-    final urlIndex = _editing ? 0 : (_showManualForm ? 2 : -1);
-    final userIndex = _editing ? 1 : (_showManualForm ? 3 : -1);
-    final passIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
-    final shareOnlyCollapsed = !_editing && !_showManualForm;
+    final labelIndex = _namingImported
+        ? 0
+        : (_editing ? 0 : (_showManualForm ? 2 : -1));
+    final urlIndex = _editing ? 1 : (_showManualForm ? 3 : -1);
+    final userIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
+    final passIndex = _editing ? 3 : (_showManualForm ? 5 : -1);
+    final shareOnlyCollapsed =
+        !_editing && !_showManualForm && !_namingImported;
     final gapAfterTitle = _tv ? 8.0 : (_compact ? 14.0 : 22.0);
     final gapBetweenFields = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeManual = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
@@ -500,7 +564,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                 24,
                 shareOnlyCollapsed ? 12 : 20,
                 16,
-                _editing || _showManualForm ? 24 : 20,
+                _editing || _showManualForm || _namingImported ? 24 : 20,
               );
     final screenH = MediaQuery.sizeOf(context).height;
     final maxHeight = _tv
@@ -509,9 +573,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             MediaQuery.viewInsetsOf(context).bottom -
             (_compact ? 32.0 : 64.0);
     final dialogMaxWidth = _tv ? 360.0 : 440.0;
-    final titleLabel = _editing ? 'Edit Portal' : 'Add Portal';
+    final titleLabel = _namingImported
+        ? 'Portal name'
+        : (_editing ? 'Edit Portal' : 'Add Portal');
     final expandBtnSize = _tv ? 34.0 : 38.0;
     final expandOverlap = expandBtnSize / 2;
+    final showExpandToggle = !_editing && !_namingImported;
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, _) => Dialog(
@@ -527,201 +594,309 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             alignment: Alignment.bottomCenter,
             children: [
               Padding(
-                padding: EdgeInsets.only(bottom: !_editing ? expandOverlap : 0),
+                padding: EdgeInsets.only(
+                  bottom: showExpandToggle ? expandOverlap : 0,
+                ),
                 child: DecoratedBox(
                   decoration: IptvShellStyle.dialogSurface(),
                   child: Padding(
                     padding: surfacePadding,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (shareOnlyCollapsed) ...[
-                          SizedBox(
-                            height: collapsedBodyHeight,
-                            child: Stack(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: Column(
+                        key: ValueKey<String>(
+                          _namingImported
+                              ? 'name'
+                              : (shareOnlyCollapsed ? 'share' : 'manual'),
+                        ),
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_namingImported) ...[
+                            Row(
                               children: [
-                                Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Share code',
-                                        style: IptvShellStyle.overlayTitle
-                                            .copyWith(
-                                          fontSize: _tv ? 17 : 19,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        height: _tv
-                                            ? 12
-                                            : (_compact ? 14 : 18),
-                                      ),
-                                      _shareCodeSection(),
-                                    ],
+                                Expanded(
+                                  child: Text(
+                                    titleLabel,
+                                    style: IptvShellStyle.overlayTitle.copyWith(
+                                      fontSize: _tv ? 17 : 19,
+                                    ),
                                   ),
                                 ),
-                                Positioned(
-                                  top: 0,
-                                  right: 0,
-                                  child: _portalDialogCloseButton(
-                                    onTap: ctrl.isAdding ? null : _cancel,
-                                  ),
+                                _portalDialogCloseButton(
+                                  onTap: ctrl.isAdding ? null : _cancel,
                                 ),
                               ],
                             ),
-                          ),
-                        ] else ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  titleLabel,
-                                  style: IptvShellStyle.overlayTitle.copyWith(
-                                    fontSize: _tv ? 17 : 19,
-                                  ),
-                                ),
-                              ),
-                              _portalDialogCloseButton(
-                                onTap: ctrl.isAdding ? null : _cancel,
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: gapAfterTitle),
-                          Flexible(
-                            fit: FlexFit.loose,
-                            child: SingleChildScrollView(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (!_editing) _shareCodeSection(),
-                                  AnimatedSize(
-                                    duration: const Duration(milliseconds: 280),
-                                    curve: Curves.easeOutCubic,
-                                    alignment: Alignment.topCenter,
-                                    clipBehavior: Clip.hardEdge,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (!_editing)
-                                          SizedBox(height: gapBeforeManual),
-                                        _portalField(
-                                          _urlCtrl,
-                                          'URL',
-                                          hint:
-                                              'http://portal.example.com:8080',
-                                          focusNode: _urlFocus,
-                                          dialogIndex: urlIndex,
-                                        ),
-                                        SizedBox(height: gapBetweenFields),
-                                        _portalField(
-                                          _userCtrl,
-                                          'Username',
-                                          hint: 'username',
-                                          focusNode: _userFocus,
-                                          dialogIndex: userIndex,
-                                        ),
-                                        SizedBox(height: gapBetweenFields),
-                                        _portalField(
-                                          _passCtrl,
-                                          'Password',
-                                          hint: 'password',
-                                          obscure: _obscurePassword,
-                                          focusNode: _passFocus,
-                                          dialogIndex: passIndex,
-                                          suffix: ForjaPlainIcon(
-                                            icon: _obscurePassword
-                                                ? Icons.visibility_outlined
-                                                : Icons
-                                                    .visibility_off_outlined,
-                                            tooltip: _obscurePassword
-                                                ? 'Show password'
-                                                : 'Hide password',
-                                            color: IptvShellStyle.iconMuted,
-                                            size: 20,
-                                            onTap: () => setState(
-                                              () => _obscurePassword =
-                                                  !_obscurePassword,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (ctrl.addError != null) ...[
-                                    SizedBox(
-                                      height: _tv ? 6 : (_compact ? 8 : 12),
-                                    ),
-                                    Text(
-                                      ctrl.addError!,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: IptvShellStyle.liveBadge,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                            SizedBox(height: gapAfterTitle),
+                            _portalField(
+                              _labelCtrl,
+                              'Portal name',
+                              hint: 'My provider',
+                              focusNode: _labelFocus,
+                              dialogIndex: labelIndex,
                             ),
-                          ),
-                        ],
-                        if (!ctrl.isAdding && (_editing || _showManualForm)) ...[
-                          SizedBox(height: gapBeforeActions),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              _portalDialogActionIcon(
-                                icon: Icons.check_rounded,
-                                color: ForjaShellColors.brandGreen,
-                                tooltip: _editing ? 'Save' : 'Add',
-                                focusNode: _submitFocus,
-                                tvItemIndex: _dialogOkIndex,
-                                onTap: _submit,
-                              ),
-                              const SizedBox(width: 4),
-                              _portalDialogActionIcon(
-                                icon: Icons.close_rounded,
-                                color: IptvShellStyle.textSecondary,
-                                tooltip: 'Cancel',
-                                focusNode: _cancelFocus,
-                                tvItemIndex: _dialogCancelIndex,
-                                onTap: _cancel,
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (ctrl.isAdding) ...[
-                          SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
+                            if (ctrl.addError != null) ...[
                               SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: IptvShellStyle.textPrimary,
-                                ),
+                                height: _tv ? 6 : (_compact ? 8 : 12),
                               ),
-                              const SizedBox(width: 8),
                               Text(
-                                _editing ? 'Saving…' : 'Adding portal…',
+                                ctrl.addError!,
                                 style: GoogleFonts.plusJakartaSans(
-                                  color: IptvShellStyle.textSecondary,
+                                  color: IptvShellStyle.liveBadge,
                                   fontSize: 12,
                                 ),
                               ),
                             ],
-                          ),
+                            if (!ctrl.isAdding) ...[
+                              SizedBox(height: gapBeforeActions),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  _portalDialogActionIcon(
+                                    icon: Icons.check_rounded,
+                                    color: ForjaShellColors.brandGreen,
+                                    tooltip: 'Add',
+                                    focusNode: _submitFocus,
+                                    tvItemIndex: _dialogOkIndex,
+                                    onTap: () => _submit(closePanel: false),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  _portalDialogActionIcon(
+                                    icon: Icons.close_rounded,
+                                    color: IptvShellStyle.textSecondary,
+                                    tooltip: 'Cancel',
+                                    focusNode: _cancelFocus,
+                                    tvItemIndex: _dialogCancelIndex,
+                                    onTap: _cancel,
+                                  ),
+                                ],
+                              ),
+                            ],
+                            if (ctrl.isAdding) ...[
+                              SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: IptvShellStyle.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Adding portal…',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: IptvShellStyle.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ] else if (shareOnlyCollapsed) ...[
+                            SizedBox(
+                              height: collapsedBodyHeight,
+                              child: Stack(
+                                children: [
+                                  Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Share code',
+                                          style: IptvShellStyle.overlayTitle
+                                              .copyWith(
+                                            fontSize: _tv ? 17 : 19,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          height: _tv
+                                              ? 12
+                                              : (_compact ? 14 : 18),
+                                        ),
+                                        _shareCodeSection(),
+                                      ],
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: _portalDialogCloseButton(
+                                      onTap: ctrl.isAdding ? null : _cancel,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    titleLabel,
+                                    style: IptvShellStyle.overlayTitle.copyWith(
+                                      fontSize: _tv ? 17 : 19,
+                                    ),
+                                  ),
+                                ),
+                                _portalDialogCloseButton(
+                                  onTap: ctrl.isAdding ? null : _cancel,
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: gapAfterTitle),
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (!_editing) _shareCodeSection(),
+                                    AnimatedSize(
+                                      duration:
+                                          const Duration(milliseconds: 280),
+                                      curve: Curves.easeOutCubic,
+                                      alignment: Alignment.topCenter,
+                                      clipBehavior: Clip.hardEdge,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          if (!_editing)
+                                            SizedBox(height: gapBeforeManual),
+                                          _portalField(
+                                            _labelCtrl,
+                                            'Portal name',
+                                            hint: 'My provider',
+                                            focusNode: _labelFocus,
+                                            dialogIndex: labelIndex,
+                                          ),
+                                          SizedBox(height: gapBetweenFields),
+                                          _portalField(
+                                            _urlCtrl,
+                                            'URL',
+                                            hint:
+                                                'http://portal.example.com:8080',
+                                            focusNode: _urlFocus,
+                                            dialogIndex: urlIndex,
+                                          ),
+                                          SizedBox(height: gapBetweenFields),
+                                          _portalField(
+                                            _userCtrl,
+                                            'Username',
+                                            hint: 'username',
+                                            focusNode: _userFocus,
+                                            dialogIndex: userIndex,
+                                          ),
+                                          SizedBox(height: gapBetweenFields),
+                                          _portalField(
+                                            _passCtrl,
+                                            'Password',
+                                            hint: 'password',
+                                            obscure: _obscurePassword,
+                                            focusNode: _passFocus,
+                                            dialogIndex: passIndex,
+                                            suffix: ForjaPlainIcon(
+                                              icon: _obscurePassword
+                                                  ? Icons.visibility_outlined
+                                                  : Icons
+                                                      .visibility_off_outlined,
+                                              tooltip: _obscurePassword
+                                                  ? 'Show password'
+                                                  : 'Hide password',
+                                              color: IptvShellStyle.iconMuted,
+                                              size: 20,
+                                              onTap: () => setState(
+                                                () => _obscurePassword =
+                                                    !_obscurePassword,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (ctrl.addError != null) ...[
+                                      SizedBox(
+                                        height: _tv ? 6 : (_compact ? 8 : 12),
+                                      ),
+                                      Text(
+                                        ctrl.addError!,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          color: IptvShellStyle.liveBadge,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (!ctrl.isAdding &&
+                              !_namingImported &&
+                              (_editing || _showManualForm)) ...[
+                            SizedBox(height: gapBeforeActions),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                _portalDialogActionIcon(
+                                  icon: Icons.check_rounded,
+                                  color: ForjaShellColors.brandGreen,
+                                  tooltip: _editing ? 'Save' : 'Add',
+                                  focusNode: _submitFocus,
+                                  tvItemIndex: _dialogOkIndex,
+                                  onTap: _submit,
+                                ),
+                                const SizedBox(width: 4),
+                                _portalDialogActionIcon(
+                                  icon: Icons.close_rounded,
+                                  color: IptvShellStyle.textSecondary,
+                                  tooltip: 'Cancel',
+                                  focusNode: _cancelFocus,
+                                  tvItemIndex: _dialogCancelIndex,
+                                  onTap: _cancel,
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (ctrl.isAdding && !_namingImported) ...[
+                            SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: IptvShellStyle.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _editing ? 'Saving…' : 'Adding portal…',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: IptvShellStyle.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-              if (!_editing)
+              if (showExpandToggle)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -892,7 +1067,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Adding portal…',
+                'Loading share code…',
                 style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 12),
               ),
             ],

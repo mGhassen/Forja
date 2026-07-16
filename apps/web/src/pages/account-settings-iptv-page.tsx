@@ -30,6 +30,7 @@ import {
 } from '@/lib/iptv-portal-share'
 import {
   emptyIptvPayload,
+  portalDisplayLabel,
   portalKey,
   SYNC_DOMAINS,
   type IptvPayload,
@@ -176,7 +177,7 @@ export function AccountSettingsIptvPage() {
     url: '',
     username: '',
     password: '',
-    name: '',
+    label: '',
   })
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [shareFlash, setShareFlash] = useState<Record<string, string>>({})
@@ -224,8 +225,8 @@ export function AccountSettingsIptvPage() {
       const aFav = favorites.has(portalKey(a)) ? 0 : 1
       const bFav = favorites.has(portalKey(b)) ? 0 : 1
       if (aFav !== bFav) return aFav - bFav
-      const aName = (a.name || a.url).toLowerCase()
-      const bName = (b.name || b.url).toLowerCase()
+      const aName = portalDisplayLabel(a).toLowerCase()
+      const bName = portalDisplayLabel(b).toLowerCase()
       return aName.localeCompare(bName)
     })
     return list
@@ -235,7 +236,13 @@ export function AccountSettingsIptvPage() {
     const q = portalQuery.trim().toLowerCase()
     if (!q) return sortedPortals
     return sortedPortals.filter((portal) => {
-      const hay = [portal.name, portal.url, portal.username, portal.source]
+      const hay = [
+        portal.label,
+        portal.name,
+        portal.url,
+        portal.username,
+        portal.source,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -297,18 +304,22 @@ export function AccountSettingsIptvPage() {
     const username = portalForm.username.trim()
     const password = portalForm.password
     if (!url || !username || !password) return
+    const existing = editingKey
+      ? draft.portals.find((p) => portalKey(p) === editingKey)
+      : undefined
     const row: IptvPortalRow = {
       url,
       username,
       password,
-      name: portalForm.name.trim() || url,
-      source: 'web',
-      expiry: '',
-      max: '1',
-      active: '0',
+      label: portalForm.label.trim(),
+      name: existing?.name ?? '',
+      source: existing?.source || 'web',
+      expiry: existing?.expiry ?? '',
+      max: existing?.max ?? '1',
+      active: existing?.active ?? '0',
     }
     upsertPortal(row, editingKey)
-    setPortalForm({ url: '', username: '', password: '', name: '' })
+    setPortalForm({ url: '', username: '', password: '', label: '' })
     setEditingKey(null)
     setAddOpen(false)
     setAddMode('share')
@@ -320,7 +331,7 @@ export function AccountSettingsIptvPage() {
       url: portal.url,
       username: portal.username,
       password: portal.password,
-      name: portal.name ?? '',
+      label: portal.label?.trim() || '',
     })
     setAddMode('manual')
     setAddOpen(true)
@@ -335,7 +346,7 @@ export function AccountSettingsIptvPage() {
     }))
     if (editingKey === key) {
       setEditingKey(null)
-      setPortalForm({ url: '', username: '', password: '', name: '' })
+      setPortalForm({ url: '', username: '', password: '', label: '' })
     }
   }
 
@@ -475,7 +486,7 @@ export function AccountSettingsIptvPage() {
               setAddMode('share')
               setEditingKey(null)
               setShareError(null)
-              setPortalForm({ url: '', username: '', password: '', name: '' })
+              setPortalForm({ url: '', username: '', password: '', label: '' })
             }}
           >
             {addOpen ? <X className="mr-2 size-4" /> : <Plus className="mr-2 size-4" />}
@@ -577,12 +588,13 @@ export function AccountSettingsIptvPage() {
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="portal-name">Display name (optional)</Label>
+                    <Label htmlFor="portal-name">Portal name (optional)</Label>
                     <Input
                       id="portal-name"
-                      value={portalForm.name}
+                      value={portalForm.label}
+                      placeholder="My provider"
                       onChange={(e) =>
-                        setPortalForm((f) => ({ ...f, name: e.target.value }))
+                        setPortalForm((f) => ({ ...f, label: e.target.value }))
                       }
                     />
                   </div>
@@ -616,7 +628,7 @@ export function AccountSettingsIptvPage() {
                 const key = portalKey(portal)
                 const starred = favorites.has(key)
                 const shownCode = shareFlash[key]
-                const title = portal.name || portal.username || 'Portal'
+                const title = portalDisplayLabel(portal)
                 const expiry = portalExpiryTone(portal.expiry)
                 const seats = seatsTone(portal.active, portal.max)
 

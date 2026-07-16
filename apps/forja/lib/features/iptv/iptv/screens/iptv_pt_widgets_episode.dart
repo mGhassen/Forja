@@ -107,7 +107,7 @@ class _EpisodeTile extends StatelessWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => IptvPtPlayerScreen(
-                sources: [IptvPlaySource(url: url, label: p.name)],
+                sources: [IptvPlaySource(url: url, label: p.displayLabel)],
                 title: 'Ep ${episode.episode} · ${episode.title}',
                 subtitle: 'Season ${episode.season}',
                 logoUrl: episode.image,

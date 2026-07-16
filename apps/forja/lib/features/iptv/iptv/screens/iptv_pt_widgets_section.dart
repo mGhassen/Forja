@@ -11,7 +11,7 @@ class _SectionPickView extends StatelessWidget {
       child: Column(
         children: [
           _PtAppBar(
-            title: ctrl.activePortal?.name ?? 'Portal',
+            title: ctrl.activePortal?.displayLabel ?? 'Portal',
             subtitle: _redactUrl(ctrl.activePortal?.portal.url),
             onBack: ctrl.back,
           ),

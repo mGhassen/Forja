@@ -165,7 +165,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return widget.ctrl.verified;
     return widget.ctrl.verified.where((v) {
-      return v.name.toLowerCase().contains(q) ||
+      return v.displayLabel.toLowerCase().contains(q) ||
+          v.label.toLowerCase().contains(q) ||
+          v.name.toLowerCase().contains(q) ||
           v.portal.url.toLowerCase().contains(q) ||
           v.portal.username.toLowerCase().contains(q);
     }).toList();

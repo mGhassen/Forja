@@ -141,7 +141,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   /// Addons that finished a stream fetch (success or empty/error) this round.
   final Set<String> _completedAddonBaseUrls = {};
 
-  /// Manual Filters → Providers tap — do not auto-leave an empty addon.
+  /// Manual Stremio provider chip tap — do not auto-leave an empty addon.
   bool _userPickedStremioProvider = false;
 
   // Nuvio addon results — kept independent from Stremio addons so the UI
@@ -157,7 +157,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   List<NuvioAddon> _nuvioAddons = [];
 
   /// Enabled Nuvio scraper ids currently included in the results filter.
-  /// Starts empty — user picks scrapers under Filters → Providers.
+  /// Starts empty — user picks scrapers from the provider chips under Nuvio.
   Set<String> _nuvioSelectedScraperIds = {};
 
   // Direct webstreaming providers (videasy, webstreamr, …) — no global mode toggle.
@@ -432,7 +432,7 @@ class _DetailsScreenState extends State<DetailsScreen>
       if (a['baseUrl'] is String) a['baseUrl'] as String,
   ];
 
-  /// Move Filters → Providers off a failed/empty addon when another has rows.
+  /// Move Stremio provider chip off a failed/empty addon when another has rows.
   void _syncStremioProviderSelection() {
     if (_panelKindFilter != 'stremio') return;
     final next = promoteStremioProviderId(

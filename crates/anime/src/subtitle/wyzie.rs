@@ -2,9 +2,18 @@ use serde_json::{json, Value};
 
 use crate::http;
 
-const WYZIE_KEY: &str = "wyzie-0321082ab89b43b9834233ee524cc725";
+/// Wyzie API key from `WYZIE_API_KEY` (repo `.env` or CI env) at compile time.
+const WYZIE_KEY: &str = match option_env!("WYZIE_API_KEY") {
+    Some(k) => k,
+    None => "",
+};
 
 pub fn fetch(tmdb_id: i64, season: Option<i32>, episode: Option<i32>) -> Result<Vec<Value>, String> {
+    if WYZIE_KEY.is_empty() {
+        return Err(
+            "WYZIE_API_KEY missing — copy .env.example to .env and rebuild Rust".into(),
+        );
+    }
     let mut url = format!("https://sub.wyzie.io/search?id={tmdb_id}&key={WYZIE_KEY}");
     if let (Some(s), Some(e)) = (season, episode) {
         url.push_str(&format!("&season={s}&episode={e}"));

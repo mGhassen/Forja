@@ -36,6 +36,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/catalog/tmdb_user_region.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 
 bool _appShutdownStarted = false;
@@ -59,6 +60,7 @@ Future<void> _shutdownMediaKitPlayers() async {
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  initTmdbUserRegion();
   EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
   MyListService().syncAddHandler = syncMyListAddToTrackers;
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;

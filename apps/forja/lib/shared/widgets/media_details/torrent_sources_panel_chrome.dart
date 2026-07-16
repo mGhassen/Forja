@@ -4,7 +4,7 @@ import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 
 /// Compact top chrome for the Sources panel:
-/// title + count · kind tabs · search/filters (providers live in Filters).
+/// title + count · kind tabs · provider chips · search/filters.
 class TorrentSourcesPanelChrome extends StatelessWidget {
   const TorrentSourcesPanelChrome({
     super.key,
@@ -93,6 +93,8 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const gap = 8.0;
+    final showProviders =
+        providerOptions.isNotEmpty && onProviderTap != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,6 +115,15 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onChanged: onKindChanged,
           onReloadKind: isFetching ? null : onReloadKind,
         ),
+        if (showProviders) ...[
+          SizedBox(height: gap),
+          TorrentSourceChips(
+            options: providerOptions,
+            selectedSourceId: selectedSourceId ?? '',
+            nuvioSelectedScraperIds: nuvioSelectedScraperIds,
+            onChipTap: onProviderTap!,
+          ),
+        ],
         SizedBox(height: gap),
         TorrentSourceSearchToolbar(
           searchQuery: searchQuery,
@@ -135,10 +146,6 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onSizeFiltersChanged: onSizeFiltersChanged,
           sortPreference: sortPreference,
           onSortChanged: onSortChanged,
-          providerOptions: providerOptions,
-          selectedProviderId: selectedSourceId,
-          nuvioSelectedScraperIds: nuvioSelectedScraperIds,
-          onProviderTap: onProviderTap,
           enableBlur: filterEnableBlur,
           sourcesPanelOpen: sourcesPanelOpen,
         ),

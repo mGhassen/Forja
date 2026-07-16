@@ -253,7 +253,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
     if (q.isNotEmpty) {
       list = list.where((h) {
         return h.stream.name.toLowerCase().contains(q) ||
-            h.portal.name.toLowerCase().contains(q);
+            h.portal.displayLabel.toLowerCase().contains(q);
       }).toList();
     }
     return list;
@@ -746,8 +746,7 @@ class _ChannelHitCard extends StatelessWidget {
   }
 
   static String _portalLabel(VerifiedPortal v) {
-    final n = v.name.trim();
-    if (n.isEmpty) return _redactUrl(v.portal.url);
+    final n = v.displayLabel;
     if (n.startsWith('http://') || n.startsWith('https://')) {
       return _redactUrl(n);
     }

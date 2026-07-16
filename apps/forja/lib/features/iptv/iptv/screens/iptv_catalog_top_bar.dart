@@ -104,9 +104,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   String get _portalLabel {
     final p = ctrl.activePortal;
     if (p == null) return 'Portals';
-    final n = p.name.trim();
-    if (n.isNotEmpty) return n;
-    return p.portal.url;
+    return p.displayLabel;
   }
 
   void _focusDownFromShelf() {

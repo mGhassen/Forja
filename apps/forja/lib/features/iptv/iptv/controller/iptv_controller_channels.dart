@@ -107,7 +107,7 @@ mixin _IptvControllerChannels on ChangeNotifier {
               portalUrl: h.portal.portal.url,
               portalUser: h.portal.portal.username,
               portalPass: h.portal.portal.password,
-              portalName: h.portal.name,
+              portalName: h.portal.displayLabel,
               streamId: h.stream.streamId,
               streamName: h.stream.name,
               streamIcon: h.stream.icon,

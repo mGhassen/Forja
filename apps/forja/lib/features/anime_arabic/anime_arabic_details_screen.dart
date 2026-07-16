@@ -281,6 +281,10 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                       onEpisodeSelected: (ep) {
                         setState(() => _selectedEpisode = ep);
                       },
+                      onEpisodePlay: (ep) {
+                        setState(() => _selectedEpisode = ep);
+                        _playSelected(d);
+                      },
                       onToggleWatched: (_, _) {},
                       tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
                       tvSeasonRowId: 'seasons',

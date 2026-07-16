@@ -314,9 +314,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         final showNewChrome = isNew && !_reveal && !_showShareCode;
         final health = ctrl.portalHealthFor(v.key);
         final checking = ctrl.isPortalHealthChecking(v.key);
-        final title = v.name.trim().isEmpty
-            ? (v.portal.username.trim().isEmpty ? 'Portal' : v.portal.username)
-            : v.name.trim();
+        final title = v.displayLabel;
 
         if (_reveal) {
           iptvSyncRow(

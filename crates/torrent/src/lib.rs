@@ -35,6 +35,10 @@ const STREAM_HEAD_TIMEOUT: Duration = Duration::from_secs(180);
 /// (librqbit has no separate metadata step). An 8s cap made healthy but slow
 /// swarms fail while desktop clients (PlayTorr / qBittorrent) still worked.
 const MAGNET_ADD_TIMEOUT: Duration = Duration::from_secs(90);
+/// A metadata cache avoids depending solely on DHT peers that support
+/// `ut_metadata`. The downloaded metainfo is hash-validated before use.
+const METADATA_CACHE_TIMEOUT: Duration = Duration::from_secs(12);
+const METADATA_CACHE_BASE_URL: &str = "https://itorrents.net/torrent";
 const TORRENT_INIT_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -439,15 +443,47 @@ impl TorrentEngine {
     }
 
     async fn prepare_magnet(&self, magnet: &str) -> Result<PreparedTorrent, String> {
-        self.prepare_add(
-            AddTorrent::from_url(magnet),
-            MAGNET_ADD_TIMEOUT,
-            format!(
-                "Timed out resolving magnet (no metadata/peers in {}s)",
-                MAGNET_ADD_TIMEOUT.as_secs()
-            ),
-        )
-        .await
+        let expected_hash = extract_info_hash(magnet)
+            .filter(|hash| hash.len() == 40)
+            .map(|hash| hash.to_ascii_lowercase());
+        let mut cache_error = None;
+
+        if let Some(hash) = expected_hash.as_deref() {
+            let cache_url = metadata_cache_url(hash);
+            match self
+                .prepare_add(
+                    AddTorrent::from_url(&cache_url),
+                    METADATA_CACHE_TIMEOUT,
+                    format!(
+                        "Timed out fetching cached torrent metadata ({}s)",
+                        METADATA_CACHE_TIMEOUT.as_secs()
+                    ),
+                    Some(hash),
+                )
+                .await
+            {
+                Ok(prepared) => return Ok(prepared),
+                Err(error) => cache_error = Some(error),
+            }
+        }
+
+        let magnet_result = self
+            .prepare_add(
+                AddTorrent::from_url(magnet),
+                MAGNET_ADD_TIMEOUT,
+                format!(
+                    "Timed out resolving magnet (no metadata/peers in {}s)",
+                    MAGNET_ADD_TIMEOUT.as_secs()
+                ),
+                expected_hash.as_deref(),
+            )
+            .await;
+        match (magnet_result, cache_error) {
+            (Err(magnet_error), Some(cache_error)) => Err(format!(
+                "{magnet_error}; metadata cache fallback failed: {cache_error}"
+            )),
+            (result, _) => result,
+        }
     }
 
     #[cfg(test)]
@@ -459,6 +495,7 @@ impl TorrentEngine {
                 "Timed out adding torrent file ({}s)",
                 TORRENT_INIT_TIMEOUT.as_secs()
             ),
+            None,
         )
         .await
     }
@@ -473,6 +510,7 @@ impl TorrentEngine {
         add: AddTorrent<'_>,
         add_timeout: Duration,
         add_timeout_msg: String,
+        expected_info_hash: Option<&str>,
     ) -> Result<PreparedTorrent, String> {
         let api = {
             let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
@@ -524,6 +562,17 @@ impl TorrentEngine {
         let details = api
             .api_torrent_details(TorrentIdOrHash::Id(torrent_id))
             .map_err(|e| e.to_string())?;
+        if let Some(expected) = expected_info_hash.filter(|expected| {
+            !details.info_hash.eq_ignore_ascii_case(expected)
+        }) {
+            let _ = api
+                .api_torrent_action_forget(TorrentIdOrHash::Id(torrent_id))
+                .await;
+            return Err(format!(
+                "Torrent metadata info hash mismatch (expected {expected}, got {})",
+                details.info_hash
+            ));
+        }
         let files = details.files.ok_or("No files in torrent")?;
 
         {
@@ -831,6 +880,13 @@ fn extract_info_hash(magnet: &str) -> Option<String> {
     Some(hash.to_lowercase())
 }
 
+fn metadata_cache_url(info_hash: &str) -> String {
+    format!(
+        "{METADATA_CACHE_BASE_URL}/{}.torrent",
+        info_hash.to_ascii_uppercase()
+    )
+}
+
 fn pick_largest(files: &[TorrentDetailsResponseFile], indices: &[usize]) -> usize {
     indices
         .iter()
@@ -926,6 +982,14 @@ mod tests {
     }
 
     #[test]
+    fn builds_uppercase_metadata_cache_url() {
+        assert_eq!(
+            metadata_cache_url("dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c"),
+            "https://itorrents.net/torrent/DD8255ECDC7CA55FB0BBF81323D87062DB1F6D1C.torrent"
+        );
+    }
+
+    #[test]
     fn engine_starts_on_loopback() {
         let engine = TorrentEngine::new();
         let port = engine.start_engine(0).expect("start_engine");
@@ -935,12 +999,31 @@ mod tests {
         assert_eq!(engine.engine_port(), 0);
     }
 
+    /// Live network smoke: info hash → validated cached `.torrent` metadata.
+    #[test]
+    #[ignore = "network: public torrent metadata cache"]
+    fn metadata_cache_resolves_public_torrent() {
+        let hash = "dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c";
+        let engine = TorrentEngine::new();
+        engine.start_engine(0).expect("start_engine");
+        let result = engine.runtime.block_on(engine.prepare_add(
+            AddTorrent::from_url(&metadata_cache_url(hash)),
+            METADATA_CACHE_TIMEOUT,
+            "metadata cache timeout".into(),
+            Some(hash),
+        ));
+        let prepared = result.unwrap_or_else(|error| panic!("metadata cache failed: {error}"));
+        assert_eq!(prepared.info_hash, hash);
+        assert!(!prepared.files.is_empty());
+        engine.stop_engine();
+    }
+
     /// Live network smoke: public-domain Big Buck Bunny magnet → stream head bytes.
     /// Run: cargo test -p torrent stream_head_from_public_magnet -- --ignored --nocapture
     #[test]
     #[ignore = "network: live magnet swarm"]
     fn stream_head_from_public_magnet() {
-        let magnet = "magnet:?xt=urn:btih:dd8255ecdd7faa5fb887f54fb303487061a6e1f6\
+        let magnet = "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c\
 &dn=Big+Buck+Bunny\
 &tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337\
 &tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce\

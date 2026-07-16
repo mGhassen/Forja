@@ -4,6 +4,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 
+class _RealHttpOverrides extends HttpOverrides {
+  HttpClient createRealClient() => super.createHttpClient(null);
+}
+
 /// Magnet → librqbit → localhost URL → HTTP range fetch (shared desktop/mobile E2E).
 Future<void> runMagnetStreamE2e(String magnet) async {
   RustLib.instance.torrentSetPeerLimit(50);
@@ -22,7 +26,9 @@ Future<void> runMagnetStreamE2e(String magnet) async {
   expect(url, isNotEmpty);
   expect(url, startsWith('http://127.0.0.1:'));
 
-  final client = HttpClient();
+  // flutter_test installs an HttpOverrides client that returns HTTP 400 for
+  // every request. This E2E must reach the real loopback axum server.
+  final client = _RealHttpOverrides().createRealClient();
   try {
     final req = await client.getUrl(Uri.parse(url!));
     req.headers.set('Range', 'bytes=0-1023');
@@ -37,7 +43,7 @@ Future<void> runMagnetStreamE2e(String magnet) async {
 
 /// Default test magnet (Big Buck Bunny, public domain) when TORRENT_MAGNET unset.
 const kDefaultTorrentE2eMagnet =
-    'magnet:?xt=urn:btih:dd8255ecdd7faa5fb887f54fb303487061a6e1f6&dn=Big+Buck+Bunny';
+    'magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny';
 
 String? torrentE2eMagnet() {
   if (Platform.environment['TORRENT_E2E'] != '1') return null;
@@ -46,5 +52,4 @@ String? torrentE2eMagnet() {
   return kDefaultTorrentE2eMagnet;
 }
 
-bool get isMobilePlatform =>
-    Platform.isAndroid || Platform.isIOS;
+bool get isMobilePlatform => Platform.isAndroid || Platform.isIOS;

@@ -321,6 +321,10 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               onEpisodeSelected: (ep) {
                 setState(() => _selectedEpisode = ep);
               },
+              onEpisodePlay: (ep) {
+                setState(() => _selectedEpisode = ep);
+                _playSelected();
+              },
               onToggleWatched: (_, _) {},
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',

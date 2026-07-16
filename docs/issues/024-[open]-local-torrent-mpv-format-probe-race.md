@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **5 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@
 | 3 | I24-T03 | Manual smoke: Stremio/Torrentio magnet → Local Torrent Engine plays (desktop) | ⬜ |
 | 4 | I24-T04 | `waitForMediaOpen`: local torrent readiness requires decoded video (not buffer/moov alone) | ✅ |
 | 5 | I24-T05 | Engine: TCP listen + sandbox DHT persist; 180s head wait; accept ≥16 KiB partial head; richer timeout stats | ✅ |
+| 6 | I24-T06 | Engine: hash-validated torrent metadata cache fallback + corrected public magnet E2E fixture | ✅ |
 
 ---
 
@@ -55,7 +56,17 @@ Healthy magnets that worked in qBittorrent / PlayTorr still failed in Forja with
 3. **Hard 60s / 256 KiB abort** — raised to 180s / prefer 64 KiB, and accept ≥16 KiB partial head so mpv can keep pulling
 4. **Default public trackers + DHT bootstraps** that answer on this network
 
-**Verified (2026-07-16):** `stream_head_from_bbb_torrent_file` — Big Buck Bunny `.torrent` → stream URL + HTTP `206` / 1024 bytes in <1s.  
-**Not verified here:** live magnet metadata for BBB (`stream_head_from_public_magnet` / Flutter `TORRENT_E2E`) — peers connect but often lack `ut_metadata` on that swarm; user's HOTD log had already passed metadata and failed at stream-head.
+### Follow-up (I24-T06)
+
+The public magnet E2E fixture used the wrong Big Buck Bunny info hash, so it could never retrieve matching metadata. The fixture now uses the canonical hash. Magnet startup also tries a short iTorrents `.torrent` metadata-cache lookup before DHT/tracker metadata discovery; the engine computes the returned metainfo hash and rejects it unless it exactly matches the requested magnet. Video bytes still come from peers.
+
+**Verified (2026-07-16):**
+
+- `metadata_cache_resolves_public_torrent` — info hash → validated `.torrent` metadata
+- `stream_head_from_public_magnet` — corrected Big Buck Bunny magnet → localhost stream URL + HTTP `206` / 1024 bytes
+- `stream_head_from_bbb_torrent_file` — Big Buck Bunny `.torrent` → stream URL + HTTP `206` / 1024 bytes
+- Flutter `engine_smoke_test` with `TORRENT_E2E=1` — FFI magnet resolve → real localhost HTTP range response (the helper now bypasses `flutter_test`'s synthetic HTTP 400 client)
+
+**Not verified here:** an actual decoded mpv frame through the Flutter desktop player.
 
 Manual smoke (`I24-T03`, `I24-A01`–`A02`) still required on a real indexer magnet.

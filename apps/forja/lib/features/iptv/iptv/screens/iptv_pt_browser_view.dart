@@ -216,7 +216,7 @@ class _BrowserViewState extends State<_BrowserView> {
         if (!widget.embedded)
           _PtAppBar(
             title: _sectionTitle,
-            subtitle: ctrl.activePortal?.name,
+            subtitle: ctrl.activePortal?.displayLabel,
             onBack: ctrl.back,
             actions: [
               IptvIconAction(
@@ -592,7 +592,7 @@ class _BrowserViewState extends State<_BrowserView> {
         builder: (_) => IptvPtPlayerScreen.singleStream(
           url: url,
           stream: s,
-          portalName: p.name,
+          portalName: p.displayLabel,
           channelGuide: channelGuide,
         ),
       ),

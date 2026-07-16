@@ -1,5 +1,5 @@
-//! Shared by `tmdb` / `webstreamr` `build.rs` — load repo-root `.env` into
-//! `cargo:rustc-env` so `option_env!("TMDB_*")` works without committing keys.
+//! Shared by `tmdb` / `webstreamr` / `anime` `build.rs` — load repo-root `.env`
+//! into `cargo:rustc-env` so `option_env!("…")` works without committing keys.
 //!
 //! Priority: process env (CI secrets) wins over `.env` file values.
 
@@ -8,9 +8,9 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const KEYS: &[&str] = &["TMDB_API_KEY", "TMDB_READ_ACCESS_TOKEN"];
+const KEYS: &[&str] = &["TMDB_API_KEY", "TMDB_READ_ACCESS_TOKEN", "WYZIE_API_KEY"];
 
-pub fn emit_tmdb_env() {
+pub fn emit_dotenv_env() {
     for key in KEYS {
         println!("cargo:rerun-if-env-changed={key}");
     }

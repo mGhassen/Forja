@@ -185,7 +185,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     final freshManual = <VerifiedPortal>[];
     for (final v in manual) {
       final fresh = await IptvClient.verifyOrNull(v.portal);
-      if (fresh != null) freshManual.add(fresh);
+      if (fresh != null) freshManual.add(fresh.withLabel(v.label));
     }
     _c.verified = _c._sortPortals([...freshManual, ...scrapedKept]);
     _c._verifiedKeys
@@ -263,6 +263,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     required String url,
     required String username,
     required String password,
+    String label = '',
   }) async {
     final cleanUrl = normalizeUrl(url);
     if (cleanUrl.isEmpty || username.isEmpty || password.isEmpty) {
@@ -285,13 +286,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
       notifyListeners();
       return;
     }
-    final v = await IptvClient.verifyOrNull(p);
+    final verified = await IptvClient.verifyOrNull(p);
     _c.isAdding = false;
-    if (v == null) {
+    if (verified == null) {
       _c.addError = 'Login failed — wrong credentials or dead portal.';
       notifyListeners();
       return;
     }
+    final v = verified.withLabel(label);
     final wasActive = _c.activePortal?.key == existing.key;
     _c._invalidatePortalCatalogCache(existing.key);
     final next = _c.verified
@@ -329,6 +331,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     required String url,
     required String username,
     required String password,
+    String label = '',
     bool closePanel = true,
   }) async {
     final cleanUrl = normalizeUrl(url);
@@ -352,13 +355,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
       notifyListeners();
       return;
     }
-    final v = await IptvClient.verifyOrNull(p);
+    final verified = await IptvClient.verifyOrNull(p);
     _c.isAdding = false;
-    if (v == null) {
+    if (verified == null) {
       _c.addError = 'Login failed — wrong credentials or dead portal.';
       notifyListeners();
       return;
     }
+    final v = verified.withLabel(label);
     _c._registerPortalAdded(v.key);
     _c.verified = _c._sortPortals([v, ..._c.verified]);
     _c._verifiedKeys.add(v.credKey);
@@ -490,6 +494,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
               password: v.portal.password,
               source: 'Manual',
             ),
+            label: v.label,
             name: v.name,
             expiry: v.expiry,
             maxConnections: v.maxConnections,

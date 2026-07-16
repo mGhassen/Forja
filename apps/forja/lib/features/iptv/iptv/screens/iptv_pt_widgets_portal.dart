@@ -524,8 +524,7 @@ class _PortalCard extends StatelessWidget {
   /// Show a friendly name; if the portal had no name we fall back to a
   /// redacted form of its URL so we never leak host paths in the UI.
   static String _displayName(VerifiedPortal v) {
-    final n = v.name.trim();
-    if (n.isEmpty) return _redactUrl(v.portal.url);
+    final n = v.displayLabel;
     if (n.startsWith('http://') || n.startsWith('https://')) {
       return _redactUrl(n);
     }

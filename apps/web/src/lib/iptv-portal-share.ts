@@ -106,6 +106,7 @@ async function decryptPortal(
       username,
       password,
       source: 'Shared',
+      label: '',
       name: username || url,
       expiry: '',
       max: '1',

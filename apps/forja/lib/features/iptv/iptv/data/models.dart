@@ -39,6 +39,8 @@ class IptvPortal {
 /// Portal that successfully authenticated against /player_api.php.
 class VerifiedPortal {
   final IptvPortal portal;
+  /// User-chosen display name (optional). Empty falls back via [displayLabel].
+  final String label;
   final String name;
   final String expiry;
   final String maxConnections;
@@ -46,6 +48,7 @@ class VerifiedPortal {
 
   const VerifiedPortal({
     required this.portal,
+    this.label = '',
     required this.name,
     required this.expiry,
     required this.maxConnections,
@@ -54,6 +57,25 @@ class VerifiedPortal {
 
   String get key => portal.key;
   String get credKey => portal.credKey;
+
+  /// Prefer user [label], then Xtream [name], then username.
+  String get displayLabel {
+    final l = label.trim();
+    if (l.isNotEmpty) return l;
+    final n = name.trim();
+    if (n.isNotEmpty) return n;
+    final u = portal.username.trim();
+    return u.isEmpty ? 'Portal' : u;
+  }
+
+  VerifiedPortal withLabel(String label) => VerifiedPortal(
+        portal: portal,
+        label: label.trim(),
+        name: name,
+        expiry: expiry,
+        maxConnections: maxConnections,
+        activeConnections: activeConnections,
+      );
 }
 
 class IptvCategory {

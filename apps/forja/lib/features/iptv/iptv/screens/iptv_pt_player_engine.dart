@@ -772,7 +772,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     String label;
     if (ch.xtreamStream != null && guide.xtreamPortal != null) {
       url = IptvClient.streamUrl(guide.xtreamPortal!.portal, ch.xtreamStream!);
-      label = guide.xtreamPortal!.name;
+      label = guide.xtreamPortal!.displayLabel;
     } else if (ch.playUrl != null && ch.playUrl!.isNotEmpty) {
       url = ch.playUrl!;
       label = _s._sources.isNotEmpty ? _s._sources.first.label : 'M3U';

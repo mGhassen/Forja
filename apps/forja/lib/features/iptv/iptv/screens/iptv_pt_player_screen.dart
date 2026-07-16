@@ -94,9 +94,7 @@ class IptvPtPlayerScreen extends StatefulWidget {
         .map(
           (e) => IptvPlaySource(
             url: e.value.streamUrl,
-            label: e.value.portal.name.isNotEmpty
-                ? e.value.portal.name
-                : 'Source ${e.key + 1}',
+            label: e.value.portal.displayLabel,
           ),
         )
         .toList(),

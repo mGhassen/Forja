@@ -206,7 +206,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
   /// back to the playing source (e.g. Torrents magnet → Nuvio click).
   bool _userPickedKind = false;
-  /// Once the user picks a Stremio addon in Filters → Providers, do not auto
+  /// Once the user picks a Stremio addon chip, do not auto
   /// move off an empty/failed addon (Torrentio 403) onto one with results.
   bool _userPickedStremioProvider = false;
 
@@ -350,7 +350,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       if (a['baseUrl'] is String) a['baseUrl'] as String,
   ];
 
-  /// Move Filters → Providers off an empty addon when another has streams
+  /// Move Stremio provider chip off an empty addon when another has streams
   /// (e.g. Torrentio Cloudflare 403, YTS OK). Respects a manual provider tap.
   void _syncStremioProviderSelection() {
     if (_kindFilter != 'stremio') return;
@@ -495,7 +495,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _showStremio = hasStremio;
       _showNuvio = hasNuvio;
       _nuvioAddons = nuvioAddons;
-      // Filters → Providers starts empty; user picks scrapers.
+      // Provider chips start empty; user picks scrapers.
       _nuvioSelectedScraperIds = {};
       _streamAddons = addons;
       _kindFilter = kind;

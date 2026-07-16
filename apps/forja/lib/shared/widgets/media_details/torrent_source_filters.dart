@@ -19,18 +19,18 @@ int nuvioProviderFilterActiveCount({
   return selectedCount;
 }
 
-/// Picks a Stremio Filters → Providers id that actually has streams.
+/// Picks a Stremio provider chip id that actually has streams.
 ///
 /// Returns `null` when [currentId] should stay (preferred still loading, or
 /// current already has results). Callers apply the returned id.
 ///
 /// When the default/first addon (e.g. Torrentio) 403s and another addon (e.g.
-/// YTS) returns rows, this moves the filter off the empty provider so the list
-/// is not stuck blank while other addons succeeded.
+/// YTS) returns rows, this moves the selection off the empty provider so the
+/// list is not stuck blank while other addons succeeded.
 ///
 /// [userPicked] is ignored when the current id has no streams and another
-/// addon does — otherwise tapping a dead provider (or the badge “1” filter)
-/// permanently hides working addons.
+/// addon does — otherwise tapping a dead provider permanently hides working
+/// addons.
 String? promoteStremioProviderId({
   required String currentId,
   String? preferredId,
@@ -57,7 +57,7 @@ String? promoteStremioProviderId({
   return null;
 }
 
-/// Provider / addon / scraper row for the Sources Filters panel.
+/// Provider / addon / scraper chip for the Sources panel (under kind tabs).
 class SourcesPanelProviderOption {
   const SourcesPanelProviderOption({required this.id, required this.label});
 
@@ -469,87 +469,126 @@ class _SourceTab extends StatelessWidget {
   }
 }
 
-class TorrentSourceChips extends StatelessWidget {
+/// Horizontal addon / scraper / indexer chips under Sources kind tabs.
+class TorrentSourceChips extends StatefulWidget {
   const TorrentSourceChips({
     super.key,
-    required this.chips,
+    required this.options,
     required this.selectedSourceId,
     required this.nuvioSelectedScraperIds,
-    required this.scrollController,
     required this.onChipTap,
-    required this.onScrollBack,
-    required this.onScrollForward,
   });
 
-  final List<Map<String, dynamic>> chips;
+  final List<SourcesPanelProviderOption> options;
   final String selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
-  final ScrollController scrollController;
   final ValueChanged<String> onChipTap;
-  final VoidCallback onScrollBack;
-  final VoidCallback onScrollForward;
+
+  @override
+  State<TorrentSourceChips> createState() => _TorrentSourceChipsState();
+}
+
+class _TorrentSourceChipsState extends State<TorrentSourceChips> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _scrollBy(double delta) {
+    if (!_scroll.hasClients) return;
+    final target = (_scroll.offset + delta).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (chips.isEmpty) return const SizedBox.shrink();
-    final showArrows = chips.length > 3;
+    if (widget.options.isEmpty) return const SizedBox.shrink();
+    final showArrows = widget.options.length > 3;
 
     return Row(
       children: [
         if (showArrows)
-          _ScrollArrow(icon: Icons.arrow_back_ios_rounded, onTap: onScrollBack),
+          _ScrollArrow(
+            icon: Icons.arrow_back_ios_rounded,
+            onTap: () => _scrollBy(-120),
+          ),
         Expanded(
           child: SingleChildScrollView(
-            controller: scrollController,
+            controller: _scroll,
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: chips.map((chip) {
-                final id = chip['id'] as String;
-                final bool selected;
-                if (id.startsWith('nuvio:')) {
-                  selected = nuvioSelectedScraperIds.contains(
-                    id.substring('nuvio:'.length),
-                  );
-                } else {
-                  selected = selectedSourceId == id;
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onTap: () => onChipTap(id),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: _torrentPanelChipDecoration(
-                        selected: selected,
-                        radius: 999,
-                      ),
-                      child: Text(
-                        chip['label'] as String,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: selected
-                              ? ForjaShellColors.cinematic.textPrimary
-                              : ForjaShellColors.cinematic.textSecondary,
-                        ),
-                      ),
+              children: [
+                for (final option in widget.options)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _ProviderChip(
+                      label: option.label,
+                      selected: option.id.startsWith('nuvio:')
+                          ? widget.nuvioSelectedScraperIds.contains(
+                              option.id.substring('nuvio:'.length),
+                            )
+                          : widget.selectedSourceId == option.id,
+                      onTap: () => widget.onChipTap(option.id),
                     ),
                   ),
-                );
-              }).toList(),
+              ],
             ),
           ),
         ),
         if (showArrows)
           _ScrollArrow(
             icon: Icons.arrow_forward_ios_rounded,
-            onTap: onScrollForward,
+            onTap: () => _scrollBy(120),
           ),
       ],
+    );
+  }
+}
+
+class _ProviderChip extends StatelessWidget {
+  const _ProviderChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: 999,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: _torrentPanelChipDecoration(
+          selected: selected,
+          radius: 999,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected
+                ? ForjaShellColors.cinematic.textPrimary
+                : ForjaShellColors.cinematic.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -959,10 +998,6 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
     this.onSizeFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
-    this.providerOptions = const [],
-    this.selectedProviderId,
-    this.nuvioSelectedScraperIds = const {},
-    this.onProviderTap,
 
     /// Details: true (BackdropFilter). Player: false (no freeze-frame / no live blur).
     this.enableBlur = true,
@@ -991,10 +1026,6 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
-  final List<SourcesPanelProviderOption> providerOptions;
-  final String? selectedProviderId;
-  final Set<String> nuvioSelectedScraperIds;
-  final ValueChanged<String>? onProviderTap;
   final bool enableBlur;
   final bool sourcesPanelOpen;
 
@@ -1015,34 +1046,14 @@ class _TorrentSourceSearchToolbarState
           widget.availableTech.isNotEmpty ||
           widget.availableSizeRanges.isNotEmpty ||
           widget.showAudioFilters ||
-          widget.sortPreference != null ||
-          widget.providerOptions.isNotEmpty);
-
-  int get _providerActiveCount {
-    if (widget.providerOptions.isEmpty || widget.onProviderTap == null) {
-      return 0;
-    }
-    final nuvio = widget.providerOptions
-        .where((p) => p.id.startsWith('nuvio:'))
-        .toList();
-    if (nuvio.isNotEmpty) {
-      return nuvioProviderFilterActiveCount(
-        selectedCount: widget.nuvioSelectedScraperIds.length,
-        totalEnabled: nuvio.length,
-      );
-    }
-    // Torrents / Stremio providers are a required radio (always one selected),
-    // not a filter chip — never badge them as an active filter.
-    return 0;
-  }
+          widget.sortPreference != null);
 
   int get _activeCount =>
       widget.activeQualityFilters.length +
       widget.activeLanguageFilters.length +
       widget.activeTechFilters.length +
       widget.activeAudioFilters.length +
-      widget.activeSizeFilters.length +
-      _providerActiveCount;
+      widget.activeSizeFilters.length;
 
   bool get _filtersOpen => _filtersEntry != null;
 
@@ -1126,10 +1137,6 @@ class _TorrentSourceSearchToolbarState
           activeSizeFilters: widget.activeSizeFilters,
           showAudioFilters: widget.showAudioFilters,
           sortPreference: widget.sortPreference,
-          providerOptions: widget.providerOptions,
-          selectedProviderId: widget.selectedProviderId,
-          nuvioSelectedScraperIds: widget.nuvioSelectedScraperIds,
-          onProviderTap: widget.onProviderTap,
           onQualityFiltersChanged: widget.onQualityFiltersChanged,
           onLanguageFiltersChanged: widget.onLanguageFiltersChanged,
           onTechFiltersChanged: widget.onTechFiltersChanged,
@@ -1300,10 +1307,6 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.onSortChanged,
     this.onAudioFiltersChanged,
     this.onSizeFiltersChanged,
-    this.providerOptions = const [],
-    this.selectedProviderId,
-    this.nuvioSelectedScraperIds = const {},
-    this.onProviderTap,
     this.onRequestClose,
   });
 
@@ -1324,10 +1327,6 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final ValueChanged<Set<String>>? onAudioFiltersChanged;
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final ValueChanged<String>? onSortChanged;
-  final List<SourcesPanelProviderOption> providerOptions;
-  final String? selectedProviderId;
-  final Set<String> nuvioSelectedScraperIds;
-  final ValueChanged<String>? onProviderTap;
   final VoidCallback onClearAll;
   final VoidCallback? onRequestClose;
 
@@ -1343,8 +1342,6 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   late Set<String> _audio;
   late Set<String> _size;
   late String? _sort;
-  late String? _selectedProviderId;
-  late Set<String> _nuvioSelectedScraperIds;
 
   @override
   void initState() {
@@ -1355,18 +1352,6 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     _audio = Set<String>.from(widget.activeAudioFilters);
     _size = Set<String>.from(widget.activeSizeFilters);
     _sort = widget.sortPreference;
-    _selectedProviderId = widget.selectedProviderId;
-    _nuvioSelectedScraperIds = Set<String>.from(widget.nuvioSelectedScraperIds);
-  }
-
-  @override
-  void didUpdateWidget(covariant _TorrentSourceFilterSheet oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedProviderId != widget.selectedProviderId) {
-      _selectedProviderId = widget.selectedProviderId;
-    }
-    // Always sync — OverlayEntry may rebuild a frame late after select-all.
-    _nuvioSelectedScraperIds = Set<String>.from(widget.nuvioSelectedScraperIds);
   }
 
   void _toggle(Set<String> set, String value, void Function(Set<String>) emit) {
@@ -1378,26 +1363,6 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       }
       emit(Set<String>.from(set));
     });
-  }
-
-  void _onProviderTap(String id) {
-    setState(() {
-      if (id.startsWith('nuvio:')) {
-        final scraperId = id.substring('nuvio:'.length);
-        if (_nuvioSelectedScraperIds.contains(scraperId)) {
-          _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
-            ..remove(scraperId);
-        } else {
-          _nuvioSelectedScraperIds = {
-            ..._nuvioSelectedScraperIds,
-            scraperId,
-          };
-        }
-      } else {
-        _selectedProviderId = id;
-      }
-    });
-    widget.onProviderTap?.call(id);
   }
 
   @override
@@ -1448,23 +1413,6 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
               ],
             ),
             const SizedBox(height: 8),
-            if (widget.providerOptions.isNotEmpty &&
-                widget.onProviderTap != null)
-              _sheetSection(
-                'Providers',
-                widget.providerOptions.map((option) {
-                  final selected = option.id.startsWith('nuvio:')
-                      ? _nuvioSelectedScraperIds.contains(
-                          option.id.substring('nuvio:'.length),
-                        )
-                      : _selectedProviderId == option.id;
-                  return _sheetChip(
-                    label: option.label,
-                    selected: selected,
-                    onTap: () => _onProviderTap(option.id),
-                  );
-                }),
-              ),
             if (widget.sortPreference != null && widget.onSortChanged != null)
               _sheetSection(
                 'Sort',
