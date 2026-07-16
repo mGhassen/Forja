@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 
 Future<T?> showLoadingOverlayDialog<T>(
@@ -334,11 +336,20 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               ),
             );
             if (!canTap) return row;
-            return InkWell(
-              onTap: () => widget.onManualCheckProvider!(probe.id),
-              borderRadius: BorderRadius.circular(8),
-              hoverColor: Colors.white.withValues(alpha: 0.06),
-              child: row,
+            // Local Material so InkWell hover/splash paints on the row
+            // (ancestor Material is behind the opaque list panel fill).
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => widget.onManualCheckProvider!(probe.id),
+                  borderRadius: BorderRadius.circular(8),
+                  hoverColor: ForjaShellColors.inkHover,
+                  splashColor: ForjaShellColors.inkSplash,
+                  child: row,
+                ),
+              ),
             );
           },
         ),
