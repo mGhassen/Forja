@@ -102,7 +102,9 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         accent: const Color(0xFFEAB308),
       );
     }
-    if (key.contains('24/7') || key.contains('stream')) {
+    if (key.contains('24/7') ||
+        key.contains('24-7') ||
+        key.contains('stream')) {
       return (icon: Icons.live_tv_rounded, accent: const Color(0xFF8B5CF6));
     }
     if (key.contains('misc')) {

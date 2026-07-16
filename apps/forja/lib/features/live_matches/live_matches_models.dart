@@ -116,49 +116,24 @@ class _CdnSportEvent {
 ///
 /// PPV uses Title Case (`American Football`); Streamed uses kebab slugs
 /// (`american-football`); CDN uses bucket names (`Soccer`, `NFL`).
-String _normalizeSportId(String raw) {
-  var s = raw.trim().toLowerCase().replaceAll(RegExp(r'[/_\s]+'), '-');
-  s = s.replaceAll(RegExp(r'-+'), '-');
-  if (s.endsWith('-')) s = s.substring(0, s.length - 1);
-  const aliases = <String, String>{
-    'motorsports': 'motor-sports',
-    'motor-sport': 'motor-sports',
-    'miscellaneous': 'other',
-    'misc': 'other',
-    'soccer': 'football',
-    'afl': 'australian-football',
-    'nfl': 'american-football',
-    'nba': 'basketball',
-    'nhl': 'hockey',
-    '24-7-streams': '24-7',
-    '24-7-stream': '24-7',
-  };
-  return aliases[s] ?? s;
-}
+String _normalizeSportId(String raw) => normalizeLiveSportId(raw);
 
-String _sportDisplayName(String raw, String normalizedId) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return normalizedId;
-  // Prefer human labels (PPV Title Case / Streamed sports API names).
-  if (trimmed.contains(RegExp(r'\s')) || trimmed != trimmed.toLowerCase()) {
-    return trimmed;
-  }
-  return normalizedId
-      .split('-')
-      .where((w) => w.isNotEmpty)
-      .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
-      .join(' ');
-}
+String _sportDisplayName(String raw, String normalizedId) =>
+    liveSportDisplayName(raw, normalizedId);
 
-bool _sportIdsMatch(String raw, String filterId) {
-  if (filterId == 'all' || filterId.isEmpty) return true;
-  final normalized = _normalizeSportId(raw);
-  if (normalized.isEmpty) return false;
-  return normalized == _normalizeSportId(filterId);
-}
+bool _is247Item({required String category, required bool isAlwaysOn}) =>
+    isLive247Item(category: category, isAlwaysOn: isAlwaysOn);
 
-/// 24/7 always-on streams — only shown when the 24/7 sport chip is selected.
-bool _is247Sport(String raw) => _normalizeSportId(raw) == '24-7';
+bool _includeInSportFilter({
+  required String category,
+  required bool isAlwaysOn,
+  required String sportFilter,
+}) =>
+    includeLiveMatchInSportFilter(
+      category: category,
+      isAlwaysOn: isAlwaysOn,
+      sportFilter: sportFilter,
+    );
 
 class _DamiTvStream {
   final String id;

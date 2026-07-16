@@ -1,0 +1,66 @@
+// Sport-chip id normalization and 24/7 / always-on filtering for Live Matches.
+//
+// Streamed tags always-on channels with a sport slug (`cricket`, `tennis`) and
+// `date: 0`; the website groups those under **24/7**. PPV uses category
+// `24/7 Streams`. Both must land on the same chip.
+
+/// Canonical sport chip id across PPV / Streamed / CDN label variants.
+String normalizeLiveSportId(String raw) {
+  var s = raw.trim().toLowerCase().replaceAll(RegExp(r'[/_\s]+'), '-');
+  s = s.replaceAll(RegExp(r'-+'), '-');
+  if (s.endsWith('-')) s = s.substring(0, s.length - 1);
+  const aliases = <String, String>{
+    'motorsports': 'motor-sports',
+    'motor-sport': 'motor-sports',
+    'miscellaneous': 'other',
+    'misc': 'other',
+    'soccer': 'football',
+    'afl': 'australian-football',
+    'nfl': 'american-football',
+    'nba': 'basketball',
+    'nhl': 'hockey',
+    '24-7-streams': '24-7',
+    '24-7-stream': '24-7',
+  };
+  return aliases[s] ?? s;
+}
+
+String liveSportDisplayName(String raw, String normalizedId) {
+  if (normalizedId == '24-7') return '24/7';
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return normalizedId;
+  if (trimmed.contains(RegExp(r'\s')) || trimmed != trimmed.toLowerCase()) {
+    return trimmed;
+  }
+  return normalizedId
+      .split('-')
+      .where((w) => w.isNotEmpty)
+      .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+      .join(' ');
+}
+
+bool liveSportIdsMatch(String raw, String filterId) {
+  if (filterId == 'all' || filterId.isEmpty) return true;
+  final normalized = normalizeLiveSportId(raw);
+  if (normalized.isEmpty) return false;
+  return normalized == normalizeLiveSportId(filterId);
+}
+
+bool isLive247Sport(String raw) => normalizeLiveSportId(raw) == '24-7';
+
+/// PPV `24/7 Streams` category **or** always-on (`date` / start+end unset).
+bool isLive247Item({required String category, required bool isAlwaysOn}) =>
+    isAlwaysOn || isLive247Sport(category);
+
+/// Hide 24/7 / always-on from All and other sports; show only on the 24/7 chip.
+bool includeLiveMatchInSportFilter({
+  required String category,
+  required bool isAlwaysOn,
+  required String sportFilter,
+}) {
+  final showing247 = normalizeLiveSportId(sportFilter) == '24-7';
+  if (isLive247Item(category: category, isAlwaysOn: isAlwaysOn)) {
+    return showing247;
+  }
+  return liveSportIdsMatch(category, sportFilter);
+}

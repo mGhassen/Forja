@@ -196,11 +196,19 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
       }
 
+      void addMatchCat(String category, {required bool isAlwaysOn}) {
+        if (_is247Item(category: category, isAlwaysOn: isAlwaysOn)) {
+          addCat('24/7');
+        } else {
+          addCat(category);
+        }
+      }
+
       for (final s in ppvStreams) {
-        addCat(s.categoryName);
+        addMatchCat(s.categoryName, isAlwaysOn: s.isAlwaysOn);
       }
       for (final m in streamedMatches) {
-        addCat(m.category);
+        addMatchCat(m.category, isAlwaysOn: m.isAlwaysOn);
       }
       for (final e in cdnSports) {
         // Unified chips are sport-level; CDN tournaments stay for CDN-only mode.
@@ -232,9 +240,15 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       final seenCats = <String>{};
       final cats = <_Sport>[];
       for (final s in streams) {
-        if (s.categoryName.isNotEmpty && seenCats.add(s.categoryName)) {
-          cats.add(_Sport(id: s.categoryName, name: s.categoryName));
-        }
+        final raw = _is247Item(
+              category: s.categoryName,
+              isAlwaysOn: s.isAlwaysOn,
+            )
+            ? '24/7'
+            : s.categoryName;
+        final id = _normalizeSportId(raw);
+        if (id.isEmpty || !seenCats.add(id)) continue;
+        cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
       }
       if (mounted) {
         final oldCtrl = _s._tabController;
@@ -273,17 +287,28 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       final sports = results[0] as List<_Sport>;
       final matches = results[1] as List<_StreamedMatch>;
 
-      final catsInMatches = matches.map((m) => m.category).toSet();
-      var cats = sports.where((s) => catsInMatches.contains(s.id)).toList();
+      // Always-on Streamed rows keep a sport slug (`cricket`) but belong on
+      // the 24/7 chip — only scheduled matches feed sport chips from the API.
+      final scheduledCats = matches
+          .where((m) => !m.isAlwaysOn)
+          .map((m) => m.category)
+          .toSet();
+      var cats = sports.where((s) => scheduledCats.contains(s.id)).toList();
       if (cats.isEmpty) {
         final seen = <String>{};
         cats = [];
         for (final m in matches) {
+          if (m.isAlwaysOn) continue;
           if (m.category.isNotEmpty && seen.add(m.category)) {
             cats.add(_Sport(id: m.category, name: m.categoryLabel));
           }
         }
       }
+      if (matches.any((m) => m.isAlwaysOn) &&
+          !cats.any((c) => _normalizeSportId(c.id) == '24-7')) {
+        cats = [...cats, const _Sport(id: '24-7', name: '24/7')];
+      }
+      cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
       if (mounted) {
         final oldCtrl = _s._tabController;
@@ -360,24 +385,27 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
-  /// True when the 24/7 chip is selected (normalized id).
-  bool get _showing247 => _normalizeSportId(_s._sportFilter) == '24-7';
-
-  /// Hide 24/7 streams from All / other sports; show them only on the 24/7 chip.
-  bool _includeSportCategory(String raw) {
-    if (_is247Sport(raw)) return _showing247;
-    return _sportIdsMatch(raw, _s._sportFilter);
-  }
-
   List<_DamiTvStream> get _filteredDamiTv => _sortDamiTvLiveFirst(
     _s._damiTvStreams
-        .where((s) => _includeSportCategory(s.categoryName))
+        .where(
+          (s) => _includeInSportFilter(
+            category: s.categoryName,
+            isAlwaysOn: s.isAlwaysOn,
+            sportFilter: _s._sportFilter,
+          ),
+        )
         .toList(),
   );
 
   List<_StreamedMatch> get _filteredStreamed => _sortStreamedLiveFirst(
     _s._streamedMatches
-        .where((m) => _includeSportCategory(m.category))
+        .where(
+          (m) => _includeInSportFilter(
+            category: m.category,
+            isAlwaysOn: m.isAlwaysOn,
+            sportFilter: _s._sportFilter,
+          ),
+        )
         .toList(),
   );
 
@@ -385,7 +413,11 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     _s._cdnSports.where((s) {
       // All-servers uses sport buckets; CDN-only still filters by tournament.
       if (_s._server == _LiveMatchesServer.all) {
-        return _includeSportCategory(s.sport);
+        return _includeInSportFilter(
+          category: s.sport,
+          isAlwaysOn: false,
+          sportFilter: _s._sportFilter,
+        );
       }
       if (_s._sportFilter == 'all') {
         // CDN-only: tournaments are not the 24/7 sport chip — keep all.

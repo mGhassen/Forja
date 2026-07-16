@@ -1022,7 +1022,12 @@ class _TorrentSourceSearchToolbarState
     }
     _wasPanelOpen = widget.sourcesPanelOpen;
     if (_filtersOpen) {
-      _filtersEntry!.markNeedsBuild();
+      // OverlayEntry is not an ancestor of this widget — markNeedsBuild during
+      // didUpdateWidget (parent rebuild) trips "setState during build".
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _filtersEntry == null) return;
+        _filtersEntry!.markNeedsBuild();
+      });
     }
   }
 
