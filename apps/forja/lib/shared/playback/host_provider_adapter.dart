@@ -219,13 +219,25 @@ abstract final class HostProviderAdapter {
     );
   }
 
-  static void cancelAllPending() {
+  /// Abort every in-flight host / Nuvio / KissKh extract.
+  ///
+  /// This is the shared cancel used by webstreaming, Sources panels, and
+  /// leave-title paths. Call sites must not special-case Nuvio.
+  ///
+  /// When [cancelEngineJobs] is false (user picked a torrent/Stremio row and
+  /// resolve is about to start, or the player is tearing down), skip
+  /// [Engine.cancelPendingResolve] so magnet / torrentStream jobs stay alive.
+  /// Provider cancelPending() only bumps generations — they must not cancel
+  /// Engine jobs themselves.
+  static void cancelAllPending({bool cancelEngineJobs = true}) {
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
     VideasyExtractor.cancelPending();
     VidnestExtractor.cancelPending();
     NuvioService.instance.cancelPending();
-    Engine.cancelPendingResolve();
+    if (cancelEngineJobs) {
+      Engine.cancelPendingResolve();
+    }
     unawaited(_extractor.cancel());
     unawaited(KissKhExtractor.cancelAllPending());
   }

@@ -474,7 +474,9 @@ Future<void> resumePlaybackFromHistory(
   try {
     final method = item['method'] as String;
     final movie = movieFromWatchHistory(item);
-    final startPos = Duration(milliseconds: item['position'] as int);
+    // ≥90% (incl. false early-EOF “finished”) must restart from 0 — raw
+    // position seeks into credits and looks like play is broken.
+    final startPos = resumeStartPositionFromProgress(item);
 
     switch (method) {
       case 'torrent':

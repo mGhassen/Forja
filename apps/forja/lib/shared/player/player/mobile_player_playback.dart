@@ -220,8 +220,14 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           buffered: _s._bufferedNotifier,
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
-          await _s._player.seek(seekAfterOpen);
-          if (_fallbackAborted(runGen)) return false;
+          final dur = _s._player.state.duration;
+          final nearCredits = dur.inSeconds >= 90 &&
+              seekAfterOpen >= dur - const Duration(seconds: 15);
+          if (!nearCredits) {
+            await _s._player.seek(seekAfterOpen);
+            if (_fallbackAborted(runGen)) return false;
+          }
+          _s._hasInitialSeek = true;
         }
         _s._detectHlsQualities(openUrl, srcHeaders);
         setState(() {
@@ -844,6 +850,13 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       if (_s._disposed) return;
       _s._positionNotifier.value = pos;
 
+      final dur = _s._durationNotifier.value;
+      if (!_s._hadMidPlayback &&
+          isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
+        _s._hadMidPlayback = true;
+        _s._abortiveCompletedLatched = false;
+      }
+
       // Near-end detection for next episode button (clears if seeked back /
       // duration corrects after a bogus early report).
       if (_s._isNextEpisodeAvailable) {
@@ -1003,6 +1016,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     _s._completedSub = _s._player.stream.completed.listen((completed) {
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
+      if (_s._abortiveCompletedLatched) return;
       final confirmedAt = _s._playbackConfirmedAt;
       final confirmedFor = confirmedAt == null
           ? Duration.zero
@@ -1010,6 +1024,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       if (isNaturalPlaybackEnd(
         _s._player.state,
         confirmedFor: confirmedFor,
+        hadMidPlayback: _s._hadMidPlayback,
       )) {
         final autoNext = SettingsService.autoNextEpisodeNotifier.value;
         if (autoNext &&
@@ -1022,9 +1037,11 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         }
         return;
       }
+      _s._abortiveCompletedLatched = true;
       debugPrint(
         '[Player] Ignoring abortive completed '
-        '(confirmedFor=${confirmedFor.inSeconds}s)',
+        '(confirmedFor=${confirmedFor.inSeconds}s '
+        'mid=${_s._hadMidPlayback})',
       );
       // Abortive early end — stop; do not hop to the next source.
       if (mounted) setState(() => _s._showControls = true);
@@ -1210,18 +1227,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       alreadyResolved: true,
     );
 
-    // ── Resume Position ──────────────────────────────────────────────────
-    // Set mpv's native 'start' property so it begins playback at the saved
-    // position. This is far more reliable on Android than seeking after open,
-    // because the post-open seek can be silently dropped before the demuxer
-    // is fully initialised. Skip zero / empty resumes.
-    if (widget.startPosition != null && !_s._hasInitialSeek) {
-      final start = widget.startPosition!;
-      if (start.inMilliseconds > 0) {
-        final secs = start.inMilliseconds / 1000.0;
-        await mpv.setProperty('start', '+${secs.toStringAsFixed(3)}');
-      }
-    }
+    // Resume seeks happen after open (seekAfterOpen / duration listener) so we
+    // can skip near-end positions. Do not set mpv `start` here — that jumps
+    // into credits when history still has a false-finished near-end position.
   }
 
 }

@@ -45,7 +45,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [023-[fixed]-…](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) | packages/api delete | P2 | Medium | fixed | 4/4 | [0.3.2](../backlog/done/0.3.2-[done].md) |
-| [024-[open]-…](024-[open]-local-torrent-mpv-format-probe-race.md) | Local torrent mpv format probe race | P1 | High | open | 2/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [024-[open]-…](024-[open]-local-torrent-mpv-format-probe-race.md) | Local torrent mpv format probe race | P1 | High | open | 3/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [025-[open]-…](025-[open]-android-tv-leanback-smoke-unverified.md) | Android TV leanback smoke unverified | P1 | High | open | 5/13 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [026-[open]-…](026-[open]-lan-stream-playback-bearer-token.md) | LAN stream Bearer not sent to player | P1 | High | open | 0/2 · 0/2 | — |
 | [027-[draft]-…](027-[draft]-lan-server-client-manual-qa.md) | RFC-022 LAN manual QA matrix | P2 | Medium | draft | 0/10 | — |
@@ -86,14 +86,14 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [062-[fixed]-…](fixed/062-[fixed]-windows-quit-freeze-unbounded-mpv-teardown.md) | Windows quit freezes (unbounded mpv teardown) | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [063-[fixed]-…](fixed/063-[fixed]-iptv-catalog-scrape-extract-still-dart.md) | IPTV catalog scrape extract still Dart | P2 | Medium | fixed | Complete · 4/4 · 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [064-[fixed]-…](fixed/064-[fixed]-stremio-nuvio-player-sources-panel-missing.md) | Stremio/Nuvio player Sources panel missing | P2 | Medium | fixed | Complete · 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [065-[open]-…](065-[open]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | open | 7/7 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [065-[open]-…](065-[open]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | open | 8/8 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [066-[open]-…](066-[open]-canonical-settings-persistence.md) | Canonical settings persistence (KV file + secure secrets) | P1 | High | open | 7/7 · A 4/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [067-[fixed]-…](fixed/067-[fixed]-server-panel-reload-ignores-disk-cache.md) | Server panel reload no-op from disk cache | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 9/9 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [069-[fixed]-…](fixed/069-[fixed]-stremio-magnet-url-opened-as-file.md) | Stremio magnet `url` opened as file / torrent switch throw | P1 | High | fixed | Complete · 4/4 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [070-[fixed]-…](fixed/070-[fixed]-sources-filters-nuvio-scraper-lazy-load.md) | Sources: no All; providers in Filters; lazy Nuvio scrapers | P2 | Medium | fixed | Complete · 8/8 · A 2/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [071-[fixed]-…](fixed/071-[fixed]-videasy-grace-discards-mirror-streams.md) | Videasy grace discarded collected mirror streams | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [072-[fixed]-…](fixed/072-[fixed]-torrent-early-eof-false-completed-autonext.md) | Local torrent early EOF false completed / auto-next | P1 | High | fixed | Complete · 4/4 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [072-[fixed]-…](fixed/072-[fixed]-torrent-early-eof-false-completed-autonext.md) | Local torrent early EOF false completed / auto-next | P1 | High | fixed | Complete · 9/9 · A 4/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

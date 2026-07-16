@@ -265,7 +265,9 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     PlayerHubEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
-    DomainStreamProviderResolver.cancelAllPending();
+    // Do not cancel Engine jobs — leaving the player must not abort a
+    // torrentStream / magnet resolve started from details underneath.
+    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
   }
 
   void _markProviderLoadFailed(String providerId) {
@@ -450,10 +452,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     final providers = widget.providers;
     if (movie != null && providers != null && providers.isNotEmpty) {
       final gen = ++_s._fallbackGen;
-      WebStreamrService().cancelPending();
-      VidsrcExtractor.cancelPending();
-    VideasyExtractor.cancelPending();
-      NuvioService.instance.cancelPending();
+      DomainStreamProviderResolver.cancelAllPending();
       final hit = await PlayerSourceResolve.resolveAutoForMovie(
         movie: movie,
         providers: providers,
@@ -675,10 +674,6 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
 
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
-      WebStreamrService().cancelPending();
-      VidsrcExtractor.cancelPending();
-      VideasyExtractor.cancelPending();
-      NuvioService.instance.cancelPending();
       DomainStreamProviderResolver.cancelAllPending();
       _s._statusController.clear();
       _s._markPlaybackConfirmed(false);

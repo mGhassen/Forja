@@ -12,7 +12,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 ## What you can do
 
-- Open the **Portals** panel (top bar, after a portal is active) to add, scrape, search, favorite, or switch providers — until then use **Open portal** in the empty state
+- Open the **Portals** panel from the top-bar portal control (status dot + portal name; hover/focus expands left to show connection seats `used/max`) — after a portal is active — to add, scrape, search, favorite, or switch providers; until then use **Open portal** in the empty state
 - Switch **Live**, **Movies**, and **Series** from section chips in the top bar once a portal is active — the full top bar (shelf, search, portals) is hidden until you pick a provider
 - Catalog is **cached in-session** per portal/section — switching chips reuses the last fetch
 - Hover (or focus) the **selected** section chip (**Live** / **Movies** / **Series**) to reveal **Reload** and force a fresh catalog fetch for that shelf
@@ -21,7 +21,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
 - Favorite portals in the Portals panel (star icon) — pinned to the top with **gold** title text matching the star; below them, the most recently scraped or added portals appear first (with a **NEW** badge on session-fresh rows until you hover or focus them — styling only, position stays put)
-- Portal rows show the subscription **end date** on the first line (green · yellow · amber · red by time left) and **connection seats** (`used/max`) under the status dot (green when free capacity, amber when full); hover/focus reveals row actions (**copy share code / edit / delete**) without moving the status column or star off-center
+- Portal rows show the subscription **end date** on the first line (green · yellow · amber · red by time left) and **connection seats** (`used/max`) under the server URL (blue when free capacity, gray when full); hover/focus reveals row actions (**copy share code / edit / delete**) without moving the status icon or star off-center
 - **Copy share code** transforms the row into the 8-character code (copied automatically); click the row again to restore portal details. Normal row click still selects the portal when the code is not shown
 - Play in the IPTV player screen — on **Android TV** playback uses the native ExoPlayer engine (reliable video surface); other platforms use MediaKit (libmpv). With controls visible, D-pad **←/→** moves between chrome buttons (back, play, mute, guide, fullscreen, …); **↑** from the transport row returns to **back**; **↓** from **back** returns to **play**; **OK** activates the focused control. When controls are hidden, **←/→** seek (VOD) and **↑/↓** adjust volume. On desktop, hover the volume icon to expand the volume bar (tap mutes; long-press pins the bar)
 - Change live channels from the in-player channel guide (groups + channel list overlay) — on **Android TV**, **↑/↓** move the highlight, **←/→** switch between groups and channels (wide layout) or open the channel list (narrow); **Right** on the channel list stays in the panel (does not return to the video); **OK** / **Select** picks the focused group or tunes the focused channel; **Back** returns to groups (narrow) or closes the guide

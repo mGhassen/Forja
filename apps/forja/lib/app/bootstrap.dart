@@ -36,6 +36,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/supabase/forja_supabase.dart';
 
 bool _appShutdownStarted = false;
 
@@ -63,6 +64,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
+  await ForjaSupabase.ensureInitialized();
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
   }
@@ -357,11 +359,15 @@ class SplashScreen extends StatefulWidget {
 /// failures (common when four calls race at splash).
 Future<List<Movie>> _bootTmdbFetch(
   String label,
-  Future<List<Movie>> Function() fetch,
-) async {
+  Future<List<Movie>> Function() fetch, {
+  void Function(String status)? onRetryStatus,
+}) async {
   const attempts = 3;
   Object? lastError;
   for (var i = 0; i < attempts; i++) {
+    if (i > 0) {
+      onRetryStatus?.call('Retrying $label (${i + 1}/$attempts)…');
+    }
     try {
       final list = await fetch();
       if (list.isNotEmpty) return list;
@@ -381,11 +387,9 @@ Future<List<Movie>> _bootTmdbFetch(
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  /// Minimum time the splash overlay stays visible. Engine starts almost
-  /// instantly, so we hold the splash a bit longer to let MainScreen /
-  /// HomeScreen build, layout, paint and prefetch in the background. That
-  /// way, when the overlay slides away, the first frames of the real UI are
-  /// already warm and scrolling is smooth instead of janky.
+  /// Hold the splash at least this long so MainScreen / Home can warm up.
+  /// Also the hard cap — if boot work is still running past this, dismiss
+  /// and toast; catalog/services keep loading in the background.
   static Duration get _minSplashDuration => kDebugMode
       ? const Duration(milliseconds: 800)
       : const Duration(seconds: 8);
@@ -398,12 +402,28 @@ class _SplashScreenState extends State<SplashScreen> {
   /// True while the splash overlay should still be drawn on top.
   bool _showOverlay = true;
 
+  /// Live boot step shown above the version on the splash.
+  final ValueNotifier<String> _bootStatus = ValueNotifier<String>(
+    'Starting…',
+  );
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _initEngine();
     });
+  }
+
+  @override
+  void dispose() {
+    _bootStatus.dispose();
+    super.dispose();
+  }
+
+  void _setBootStatus(String status) {
+    if (!mounted) return;
+    _bootStatus.value = status;
   }
 
   void _skipSplash() {
@@ -447,45 +467,74 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
-  void _dismissSplash() {
+  void _dismissSplash({bool showSlowBootToast = false}) {
     if (!mounted || !_showOverlay) return;
     setState(() => _showOverlay = false);
     _notifySplashDismissed();
+    if (showSlowBootToast) {
+      ForjaToast.warning(
+        'Loading catalog services is taking longer than expected.',
+        duration: const Duration(seconds: 4),
+      );
+    }
   }
 
-  Future<void> _initEngine() async {
-    debugPrint('═══════════════════════════════════════════════════════════');
-    debugPrint('[Boot] Starting engine initialization...');
-    debugPrint('═══════════════════════════════════════════════════════════');
-
-    // Start the minimum-display timer in parallel with all init work so
-    // the splash never flashes by too quickly even when the engine is hot.
+  /// Dismiss when the min splash timer elapses. If [bootFuture] is still
+  /// running, show the slow-boot toast; otherwise wait out any remaining
+  /// min time after boot finishes early.
+  Future<void> _dismissWhenReady(Future<void> bootFuture) async {
     final minSplashFuture = Future<void>.delayed(_minSplashDuration);
+    final bootFinishedFirst = await Future.any<bool>([
+      bootFuture.then((_) => true),
+      minSplashFuture.then((_) => false),
+    ]);
 
-    debugPrint('[Boot] Step 1: Checking network connectivity...');
-    final connectivityResult = await Connectivity().checkConnectivity();
-    final isOffline = connectivityResult.contains(ConnectivityResult.none);
-    debugPrint('[Boot] Network status: ${isOffline ? "OFFLINE" : "ONLINE"}');
+    if (!mounted) return;
 
-    if (isOffline) {
-      debugPrint('[Boot] Device is offline, initializing local services only');
-      debugPrint('[Boot] Initializing MusicPlayer...');
-      await MusicPlayerService().init().catchError((e) {
-        debugPrint('[Boot] ✗ MusicPlayer error: $e');
-        return null;
-      });
-      debugPrint('[Boot] ✓ Local services initialized');
+    if (bootFinishedFirst) {
+      _setBootStatus('Almost ready…');
+      debugPrint(
+        '[Boot] Step 4: Waiting for minimum splash time so the '
+        'pre-built MainScreen / HomeScreen finishes its first paints...',
+      );
       await minSplashFuture;
-      if (mounted) {
-        debugPrint('[Boot] Dismissing splash (offline mode)');
-        _dismissSplash();
-      }
-      return;
+      if (!mounted) return;
+      debugPrint(
+        '[Boot] Step 5: Dismissing splash overlay (MainScreen '
+        'already mounted underneath)',
+      );
+      _dismissSplash();
+    } else {
+      debugPrint(
+        '[Boot] Step 4: Min splash elapsed — boot still running; '
+        'dismissing overlay and continuing in background',
+      );
+      _dismissSplash(showSlowBootToast: true);
+      await bootFuture;
     }
 
+    if (!mounted) return;
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('[Boot] ✓✓✓ ENGINE INITIALIZATION COMPLETE ✓✓✓');
+    debugPrint('═══════════════════════════════════════════════════════════');
+  }
+
+  Future<void> _initOfflineBoot() async {
+    debugPrint('[Boot] Device is offline, initializing local services only');
+    _setBootStatus('Starting music player…');
+    debugPrint('[Boot] Initializing MusicPlayer...');
+    await MusicPlayerService().init().catchError((e) {
+      debugPrint('[Boot] ✗ MusicPlayer error: $e');
+      return null;
+    });
+    debugPrint('[Boot] ✓ Local services initialized');
+  }
+
+  Future<void> _initOnlineBoot() async {
     debugPrint('[Boot] Step 2: Initializing splash-critical services...');
     final api = TmdbApi();
 
+    _setBootStatus('Loading catalog & services…');
     debugPrint('[Boot]   - Starting LocalServer...');
     debugPrint('[Boot]   - Initializing MusicPlayer...');
     debugPrint(
@@ -499,10 +548,26 @@ class _SplashScreenState extends State<SplashScreen> {
       MusicPlayerService().init().catchError((e) {
         debugPrint('[Boot] ✗ MusicPlayer error: $e');
       }),
-      _bootTmdbFetch('trending', api.getTrending),
-      _bootTmdbFetch('popular', api.getPopular),
-      _bootTmdbFetch('top rated', api.getTopRated),
-      _bootTmdbFetch('now playing', api.getNowPlaying),
+      _bootTmdbFetch(
+        'trending',
+        api.getTrending,
+        onRetryStatus: _setBootStatus,
+      ),
+      _bootTmdbFetch(
+        'popular',
+        api.getPopular,
+        onRetryStatus: _setBootStatus,
+      ),
+      _bootTmdbFetch(
+        'top rated',
+        api.getTopRated,
+        onRetryStatus: _setBootStatus,
+      ),
+      _bootTmdbFetch(
+        'now playing',
+        api.getNowPlaying,
+        onRetryStatus: _setBootStatus,
+      ),
     ]);
 
     var trendingList = results[2] as List<Movie>;
@@ -541,23 +606,23 @@ class _SplashScreenState extends State<SplashScreen> {
     debugPrint(
       '[Boot]   TMDB Now Playing: ${nowPlayingList.isNotEmpty ? "✓ ${nowPlayingList.length} items" : "✗ Empty"}',
     );
+    _setBootStatus('Catalog ready');
+  }
 
-    debugPrint(
-      '[Boot] Step 4: Waiting for minimum splash time so the '
-      'pre-built MainScreen / HomeScreen finishes its first paints...',
-    );
-    await minSplashFuture;
+  Future<void> _initEngine() async {
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('[Boot] Starting engine initialization...');
+    debugPrint('═══════════════════════════════════════════════════════════');
 
-    if (mounted) {
-      debugPrint(
-        '[Boot] Step 5: Dismissing splash overlay (MainScreen '
-        'already mounted underneath)',
-      );
-      _dismissSplash();
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('[Boot] ✓✓✓ ENGINE INITIALIZATION COMPLETE ✓✓✓');
-      debugPrint('═══════════════════════════════════════════════════════════');
-    }
+    _setBootStatus('Checking network…');
+    debugPrint('[Boot] Step 1: Checking network connectivity...');
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final isOffline = connectivityResult.contains(ConnectivityResult.none);
+    debugPrint('[Boot] Network status: ${isOffline ? "OFFLINE" : "ONLINE"}');
+
+    final bootFuture =
+        isOffline ? _initOfflineBoot() : _initOnlineBoot();
+    await _dismissWhenReady(bootFuture);
   }
 
   @override
@@ -589,7 +654,12 @@ class _SplashScreenState extends State<SplashScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _skipSplash,
-          child: const SplashOverlayContent(),
+          child: ValueListenableBuilder<String>(
+            valueListenable: _bootStatus,
+            builder: (context, status, _) {
+              return SplashOverlayContent(statusLabel: status);
+            },
+          ),
         ),
       ),
     );

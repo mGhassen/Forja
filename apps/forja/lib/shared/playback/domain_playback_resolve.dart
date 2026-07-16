@@ -310,10 +310,13 @@ class DomainStreamProviderResolver {
     MiruroPipeSession.instance.cancelPending();
   }
 
-  static void cancelAllPending() {
-    PlaybackEngine.cancelAllPending();
+  /// Full Sources cancel: host providers + Nuvio + KissKh + Miruro + Engine.
+  ///
+  /// One entry point for panel switch / panel close / leave title. Do not call
+  /// [NuvioService.cancelPending] from UI — it is invoked here.
+  static void cancelAllPending({bool cancelEngineJobs = true}) {
+    PlaybackEngine.cancelAllPending(cancelEngineJobs: cancelEngineJobs);
     MiruroPipeSession.instance.cancelPending();
-    unawaited(KissKhExtractor.cancelAllPending());
   }
 }
 

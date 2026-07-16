@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
@@ -24,16 +26,14 @@ class PlayerSourcesPanel {
   /// Closes the Sources overlay.
   ///
   /// When [cancelEngine] is true (user closed the panel), abort in-flight
-  /// engine jobs (torrent search / Stremio HTTP). When false (user picked a
-  /// source), only stop Nuvio scrapers — the upcoming magnet resolve must not
-  /// be cancelled. [dispose] must never call [Engine.cancelPendingResolve]:
-  /// it runs a frame after [dismiss] and would kill the fresh torrent job.
+  /// Engine jobs (torrent search / Stremio HTTP). When false (user picked a
+  /// source), stop scrapers/hosts only — the upcoming magnet resolve must not
+  /// be cancelled. [dispose] must never cancel Engine jobs: it runs a frame
+  /// after [dismiss] and would kill the fresh torrent job.
   static void dismiss({bool cancelEngine = true}) {
-    // Cancel Nuvio before unmount — do not wait for Overlay dispose.
-    NuvioService.instance.cancelPending();
-    if (cancelEngine) {
-      Engine.cancelPendingResolve();
-    }
+    DomainStreamProviderResolver.cancelAllPending(
+      cancelEngineJobs: cancelEngine,
+    );
     _entry?.remove();
     _entry = null;
     _completer?.complete();
@@ -203,6 +203,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   int _stremioGen = 0;
   String? _error;
   bool _pendingScrollToCurrent = true;
+  int _scrollToCurrentAttempts = 0;
+  /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
+  /// back to the playing source (e.g. Torrents magnet → Nuvio click).
+  bool _userPickedKind = false;
 
   bool _showTorrents = true;
   bool _showStremio = false;
@@ -236,10 +240,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     _searchGen++;
     _stremioGen++;
     _nuvioFetchGen++;
-    // Nuvio only — never Engine.cancelPendingResolve here. [dismiss] already
-    // cancelled on user close; on source pick, resolve starts before this
-    // dispose and must keep its torrentStream job alive.
-    NuvioService.instance.cancelPending();
+    // Shared cancel without Engine — [dismiss] already cancelled on user
+    // close; on source pick, resolve starts before this dispose and must keep
+    // its torrentStream job alive.
+    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     _listScrollController.dispose();
     super.dispose();
   }
@@ -259,14 +263,31 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return raw != null && raw.isNotEmpty && magnet.toLowerCase() == raw;
   }
 
+  /// Local-engine magnet session (incl. Stremio/Torrentio magnets).
+  /// Sources panel ownership is the Torrents tab, not Stremio/Nuvio mirrors.
+  bool _isPlayingLocalTorrentMagnet() {
+    final magnet = widget.currentMagnet;
+    if (magnet == null || magnet.isEmpty) return false;
+    final url = widget.currentStreamUrl;
+    if (url != null && url.isNotEmpty) {
+      return isLocalTorrentStreamUrl(url);
+    }
+    return magnet.toLowerCase().startsWith('magnet:');
+  }
+
   bool _isCurrentStremio(Map<String, dynamic> stream) {
     final playUrl = widget.currentStreamUrl;
     if (playUrl != null && playUrl.isNotEmpty) {
       final url = stream['url']?.toString();
       if (url != null && url.isNotEmpty && url == playUrl) return true;
+      // Local torrent URL: Torrents tab owns the "playing" highlight via
+      // infoHash. Do not mark Torrentio/Stremio/Nuvio rows as current.
+      if (isLocalTorrentStreamUrl(playUrl)) return false;
     }
     final current = _infoHashOf(widget.currentMagnet);
     if (current == null) return false;
+    // Magnet-only session without a local stream URL yet — still Torrents.
+    if (_isPlayingLocalTorrentMagnet()) return false;
     final hash = stream['infoHash']?.toString();
     if (hash != null && hash.isNotEmpty) {
       return _infoHashOf(hash) == current;
@@ -298,22 +319,119 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   void _requestScrollToCurrent() {
     _pendingScrollToCurrent = true;
+    _scrollToCurrentAttempts = 0;
     _scheduleScrollToCurrent();
+  }
+
+  /// Playing Stremio addon baseUrl when known (caller + matched stream).
+  String? _preferredStremioAddonBaseUrl([
+    List<Map<String, dynamic>>? addons,
+  ]) {
+    final list = addons ?? _streamAddons;
+    final base = widget.currentAddonBaseUrl;
+    if (base != null &&
+        base.isNotEmpty &&
+        !base.startsWith('nuvio:') &&
+        list.any((a) => a['baseUrl'] == base)) {
+      return base;
+    }
+    for (final s in _stremioStreams) {
+      if (!_isCurrentStremio(s)) continue;
+      final url = s['_addonBaseUrl']?.toString();
+      if (url != null && url.isNotEmpty) return url;
+    }
+    return null;
+  }
+
+  /// Ensure the filtered Stremio / Nuvio list includes the playing row.
+  void _selectPlayingProviderIfNeeded() {
+    if (_kindFilter == 'stremio') {
+      final addon = _preferredStremioAddonBaseUrl();
+      if (addon != null &&
+          addon != _selectedSourceId &&
+          _selectedSourceId != 'all_stremio') {
+        _selectedSourceId = addon;
+      }
+      return;
+    }
+    if (_kindFilter != 'nuvio') return;
+    final base = widget.currentAddonBaseUrl;
+    String? scraperId;
+    if (base != null && base.startsWith('nuvio:')) {
+      scraperId = base.substring('nuvio:'.length);
+    } else {
+      for (final s in _nuvioStreams) {
+        if (!_isCurrentStremio(s)) continue;
+        final id = s['_nuvioScraperId'] as String?;
+        if (id != null && id.isNotEmpty) {
+          scraperId = id;
+          break;
+        }
+        final sBase = s['_addonBaseUrl']?.toString();
+        if (sBase != null && sBase.startsWith('nuvio:')) {
+          scraperId = sBase.substring('nuvio:'.length);
+          break;
+        }
+      }
+    }
+    if (scraperId == null || scraperId.isEmpty) return;
+    if (_nuvioSelectedScraperIds.contains(scraperId)) return;
+    _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
   }
 
   void _scheduleScrollToCurrent() {
     if (!_pendingScrollToCurrent) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_pendingScrollToCurrent) return;
+
+      // Prefer precise ensureVisible when the tile is already mounted.
       final ctx = _currentTileKey.currentContext;
-      if (ctx == null) return;
-      _pendingScrollToCurrent = false;
-      Scrollable.ensureVisible(
-        ctx,
-        alignment: 0.15,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
+      if (ctx != null) {
+        _pendingScrollToCurrent = false;
+        _scrollToCurrentAttempts = 0;
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.15,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+        return;
+      }
+
+      if (!_listScrollController.hasClients) return;
+
+      final torrents =
+          _showsTorrents ? _filteredTorrents : const <TorrentResult>[];
+      final stremio = _showsStremio
+          ? _visibleStremioStreams
+          : const <Map<String, dynamic>>[];
+      final nuvio =
+          _showsNuvio ? _filteredNuvio : const <Map<String, dynamic>>[];
+      final index = _currentItemIndex(torrents, stremio, nuvio: nuvio);
+      // Lists still loading / wrong provider filter — keep pending.
+      if (index == null) return;
+
+      // Lazy ListView has not built the off-screen tile yet — jump by index
+      // so the next frame mounts it and ensureVisible can finish.
+      _scrollToCurrentAttempts++;
+      if (_scrollToCurrentAttempts > 10) {
+        _pendingScrollToCurrent = false;
+        return;
+      }
+      const stride = 98.0; // ~tile height + separator
+      final maxExtent = _listScrollController.position.maxScrollExtent;
+      final target = (index * stride).clamp(0.0, maxExtent);
+      if ((_listScrollController.offset - target).abs() < 1.0) {
+        // Estimate put us here but the tile still is not built — nudge once.
+        final nudged = (target + 160.0).clamp(0.0, maxExtent);
+        if ((nudged - target).abs() < 1.0) {
+          _pendingScrollToCurrent = false;
+          return;
+        }
+        _listScrollController.jumpTo(nudged);
+        return;
+      }
+      _listScrollController.jumpTo(target);
     });
   }
 
@@ -361,9 +479,13 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _nuvioSelectedScraperIds = {};
       _streamAddons = addons;
       _kindFilter = kind;
-      _selectedSourceId = kind == 'stremio'
-          ? (addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja')
-          : _sourceIdForKind(kind, addons);
+      _selectedSourceId = _sourceIdForKind(kind, addons);
+      if (kind == 'nuvio') {
+        final base = widget.currentAddonBaseUrl;
+        if (base != null && base.startsWith('nuvio:')) {
+          _nuvioSelectedScraperIds = {base.substring('nuvio:'.length)};
+        }
+      }
     });
 
     // Load only the selected kind(s) — no prefetch of other categories.
@@ -385,6 +507,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   void _ensureTorrentsLoaded({bool force = false}) {
+    if (!_showsTorrents) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
       unawaited(_runTorrentSearch());
@@ -405,6 +528,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   void _ensureStremioLoaded({bool force = false}) {
+    if (!_showsStremio) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
       unawaited(_fetchStremioStreams());
@@ -431,6 +555,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   Future<void> _ensureNuvioLoaded({bool force = false}) async {
+    if (!_showsNuvio) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
       await _fetchNextNuvioScraper(reset: true);
@@ -453,6 +578,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   void _reloadKind(String kind) {
+    if (kind != _kindFilter) return;
     switch (kind) {
       case 'torrents':
         _ensureTorrentsLoaded(force: true);
@@ -463,22 +589,49 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
   }
 
+  /// Stop in-flight work for kinds that are no longer selected.
+  void _abortHiddenKindFetches(String keepKind) {
+    if (keepKind != 'torrents' && _searching) {
+      _searchGen++;
+      _searching = false;
+      _results = [];
+    }
+    if (keepKind != 'stremio' && _stremioFetching) {
+      _stremioGen++;
+      _stremioFetching = false;
+      _stremioStreams = [];
+      _loadedAddonBaseUrls.clear();
+    }
+    if (keepKind != 'nuvio' && _nuvioFetching) {
+      _nuvioFetchGen++;
+      _nuvioFetching = false;
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      _nuvioStreams = [];
+      _nuvioFetchedScraperIds = {};
+    }
+  }
+
   String _sourceIdForKind(String kind, List<Map<String, dynamic>> addons) {
     return switch (kind) {
       'stremio' =>
-        addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja',
+        _preferredStremioAddonBaseUrl(addons) ??
+            (addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja'),
       'nuvio' => 'all_nuvio',
       'torrents' => 'forja',
       _ => 'forja',
     };
   }
 
-  /// Prefer Torrents when available; never open on a merged All kind.
+  /// Prefer caller's kind when available; else Torrents → Nuvio → Stremio.
   String _resolveInitialKind({
     required bool hasTorrent,
     required bool hasStremio,
     required bool hasNuvio,
   }) {
+    final preferred = _effectivePreferredKind();
+    if (preferred == 'torrents' && hasTorrent) return 'torrents';
+    if (preferred == 'nuvio' && hasNuvio) return 'nuvio';
+    if (preferred == 'stremio' && hasStremio) return 'stremio';
     if (hasTorrent) return 'torrents';
     if (hasNuvio) return 'nuvio';
     if (hasStremio) return 'stremio';
@@ -495,6 +648,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   String? _effectivePreferredKind() {
+    // Local magnet playback owns Torrents even when the magnet came from
+    // Stremio/Torrentio (preferredKind stays 'stremio' on the player).
+    if (_isPlayingLocalTorrentMagnet()) return 'torrents';
     final base = widget.currentAddonBaseUrl;
     if (base != null && base.startsWith('nuvio:')) return 'nuvio';
     final preferred = widget.preferredKind;
@@ -504,7 +660,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       return preferred;
     }
     final magnet = widget.currentMagnet;
-    if (magnet != null && magnet.isNotEmpty && preferred != 'stremio') {
+    if (magnet != null && magnet.isNotEmpty) {
       return 'torrents';
     }
     return preferred;
@@ -512,6 +668,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   /// After lists update, scroll the playing source into view when it is
   /// already under the active kind; otherwise switch to the kind that has it.
+  ///
+  /// After a manual kind tap ([_userPickedKind]), only scroll/select provider
+  /// within the current tab — never yank Torrents ↔ Stremio ↔ Nuvio.
   void _focusPlayingSourceIfNeeded() {
     if (!mounted) return;
 
@@ -520,30 +679,49 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     bool nuvioHit() => _showNuvio && _nuvioStreams.any(_isCurrentStremio);
     bool stremioHit() => _showStremio && _stremioStreams.any(_isCurrentStremio);
 
-    // Already visible under the active filter — only scroll.
-    if (_kindFilter == 'torrents' && torrentsHit()) {
+    void finishOnKind(String kind, {required bool allowKindSwitch}) {
+      final needsKind = allowKindSwitch && _kindFilter != kind;
+      final beforeAddon = _selectedSourceId;
+      final beforeNuvio = Set<String>.from(_nuvioSelectedScraperIds);
+      if (needsKind) {
+        _kindFilter = kind;
+        _selectedSourceId = _sourceIdForKind(kind, _streamAddons);
+      }
+      _selectPlayingProviderIfNeeded();
+      final providerChanged = beforeAddon != _selectedSourceId ||
+          beforeNuvio.length != _nuvioSelectedScraperIds.length ||
+          !beforeNuvio.containsAll(_nuvioSelectedScraperIds);
+      if (needsKind || providerChanged) {
+        setState(() {});
+        if (needsKind) _ensureVisibleKindsLoaded();
+      }
       _requestScrollToCurrent();
-      return;
     }
-    if (_kindFilter == 'nuvio' && nuvioHit()) {
-      _requestScrollToCurrent();
-      return;
-    }
-    if (_kindFilter == 'stremio' && stremioHit()) {
-      _requestScrollToCurrent();
+
+    // Manual kind: stay on the tab the user opened.
+    if (_userPickedKind) {
+      if (_kindFilter == 'torrents' && torrentsHit()) {
+        finishOnKind('torrents', allowKindSwitch: false);
+      } else if (_kindFilter == 'nuvio' && nuvioHit()) {
+        finishOnKind('nuvio', allowKindSwitch: false);
+      } else if (_kindFilter == 'stremio' && stremioHit()) {
+        finishOnKind('stremio', allowKindSwitch: false);
+      }
       return;
     }
 
-    void go(String kind) {
-      if (_kindFilter == kind) {
-        _requestScrollToCurrent();
-        return;
-      }
-      setState(() {
-        _kindFilter = kind;
-        _selectedSourceId = _sourceIdForKind(kind, _streamAddons);
-      });
-      _requestScrollToCurrent();
+    // Already visible under the active filter — select provider + scroll.
+    if (_kindFilter == 'torrents' && torrentsHit()) {
+      finishOnKind('torrents', allowKindSwitch: true);
+      return;
+    }
+    if (_kindFilter == 'nuvio' && nuvioHit()) {
+      finishOnKind('nuvio', allowKindSwitch: true);
+      return;
+    }
+    if (_kindFilter == 'stremio' && stremioHit()) {
+      finishOnKind('stremio', allowKindSwitch: true);
+      return;
     }
 
     // Prefer the caller's kind when it already has the playing row.
@@ -552,34 +730,38 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final preferred = _effectivePreferredKind();
     if (preferred == 'nuvio' && _showNuvio) {
       if (nuvioHit()) {
-        go('nuvio');
+        finishOnKind('nuvio', allowKindSwitch: true);
         return;
       }
       if (_nuvioFetching) return;
     }
     if (preferred == 'stremio' && _showStremio) {
       if (stremioHit()) {
-        go('stremio');
+        finishOnKind('stremio', allowKindSwitch: true);
         return;
       }
       if (_stremioFetching) return;
     }
     if (preferred == 'torrents' && _showTorrents) {
       if (torrentsHit()) {
-        go('torrents');
+        finishOnKind('torrents', allowKindSwitch: true);
         return;
       }
       if (_searching) return;
+      // Keep Torrents even when the playing magnet is not in indexer results
+      // (common for Stremio/Torrentio magnets streamed via local engine).
+      finishOnKind('torrents', allowKindSwitch: true);
+      return;
     }
 
     // Discovery order: Nuvio before Stremio/Torrents so a Torrentio mirror of
     // the same infoHash does not steal a Nuvio / Stremio Direct session.
     if (nuvioHit()) {
-      go('nuvio');
+      finishOnKind('nuvio', allowKindSwitch: true);
     } else if (stremioHit()) {
-      go('stremio');
+      finishOnKind('stremio', allowKindSwitch: true);
     } else if (torrentsHit()) {
-      go('torrents');
+      finishOnKind('torrents', allowKindSwitch: true);
     }
   }
 
@@ -759,6 +941,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   Future<void> _fetchStremioStreams() async {
+    if (!_showsStremio) return;
     if (_streamAddons.isEmpty) return;
     final imdb = widget.movie.imdbId ?? '';
     if (imdb.isEmpty) {
@@ -829,10 +1012,19 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
             setState(() {
               if (tagged.isNotEmpty) {
                 _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
-                if (_kindFilter == 'stremio' &&
-                    (_selectedSourceId == 'all_stremio' ||
-                        !_loadedAddonBaseUrls.contains(_selectedSourceId))) {
-                  _selectedSourceId = addon['baseUrl'] as String;
+                if (_kindFilter == 'stremio') {
+                  final preferred = _preferredStremioAddonBaseUrl();
+                  if (preferred != null &&
+                      _loadedAddonBaseUrls.contains(preferred)) {
+                    // Pin to the playing addon once it has streams.
+                    _selectedSourceId = preferred;
+                  } else if (preferred == null &&
+                      (_selectedSourceId == 'all_stremio' ||
+                          !_loadedAddonBaseUrls.contains(_selectedSourceId))) {
+                    // No playing addon — first addon with results wins.
+                    _selectedSourceId = addon['baseUrl'] as String;
+                  }
+                  // If preferred is set but not loaded yet, keep waiting.
                 }
               }
               _stremioStreams.addAll(tagged);
@@ -866,7 +1058,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
     if (_nuvioFetching && !reset) return;
     if (reset) {
-      NuvioService.instance.cancelPending();
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     }
     final fetchedIds = reset
         ? <String>{}
@@ -929,7 +1121,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   void _onKindChanged(String kind) {
     if (kind == _kindFilter) return;
+    _userPickedKind = true;
     setState(() {
+      _abortHiddenKindFetches(kind);
       _kindFilter = kind;
       _qualityFilters = {};
       _languageFilters = {};
@@ -938,9 +1132,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _sizeFilters = {};
       _searchQuery = '';
       if (kind == 'stremio') {
-        _selectedSourceId = _defaultStremioSourceId();
+        _selectedSourceId =
+            _preferredStremioAddonBaseUrl() ?? _defaultStremioSourceId();
       } else if (kind == 'nuvio') {
         _selectedSourceId = 'all_nuvio';
+        _selectPlayingProviderIfNeeded();
       } else if (kind == 'torrents') {
         _selectedSourceId = 'forja';
       }
@@ -1209,7 +1405,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
             _searchGen++;
             _stremioGen++;
             _nuvioFetchGen++;
-            NuvioService.instance.cancelPending();
+            DomainStreamProviderResolver.cancelAllPending();
             setState(() {
               _searching = false;
               _stremioFetching = false;

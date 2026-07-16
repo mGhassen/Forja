@@ -247,9 +247,13 @@ class SplashOverlayContent extends StatelessWidget {
   const SplashOverlayContent({
     super.key,
     this.slogan = splashSlogan,
+    this.statusLabel,
   });
 
   final String slogan;
+
+  /// Current boot step — shown above the version at the bottom of the splash.
+  final String? statusLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +264,13 @@ class SplashOverlayContent extends StatelessWidget {
       letterSpacing: 2,
       color: logoColors.base.withValues(alpha: 0.5),
       fontWeight: FontWeight.bold,
+    );
+    final statusStyle = GoogleFonts.plusJakartaSans(
+      fontSize: 12,
+      letterSpacing: 0.4,
+      color: logoColors.base.withValues(alpha: 0.65),
+      decoration: TextDecoration.none,
+      fontWeight: FontWeight.w500,
     );
 
     return SelectionContainer.disabled(
@@ -272,6 +283,7 @@ class SplashOverlayContent extends StatelessWidget {
                 _maxLogoHeight,
                 constraints.maxHeight * 0.38,
               );
+              final status = statusLabel?.trim() ?? '';
               return Stack(
                 fit: StackFit.expand,
                 children: [
@@ -315,15 +327,28 @@ class SplashOverlayContent extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    left: 0,
-                    right: 0,
+                    left: 24,
+                    right: 24,
                     bottom: MediaQuery.paddingOf(context).bottom + 24,
-                    child: Center(
-                      child: AppVersionLabel(
-                        style: versionStyle.copyWith(
-                          decoration: TextDecoration.none,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (status.isNotEmpty) ...[
+                          Text(
+                            status,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: statusStyle,
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        AppVersionLabel(
+                          style: versionStyle.copyWith(
+                            decoration: TextDecoration.none,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],

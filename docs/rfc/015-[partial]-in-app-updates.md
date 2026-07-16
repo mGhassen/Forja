@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — sticky background progress toast, cached-installer reuse, macOS/Windows close-before-install, and clickable failure fallback shipped; skip version, SHA256, CI assets remain |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror) |
+| **Current slice** | Supabase release mirror shipped in code — deploy Edge Function to populate tables |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -72,9 +72,19 @@
 
 ---
 
+## Acceptance (Supabase release mirror)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A23 | Edge Function mirrors GitHub Releases into `releases` / `release_assets` | ✅ |
+| 2 | R15-A24 | `AppUpdaterService` prefers Supabase latest release for platform asset | ✅ |
+| 3 | R15-A25 | Fallback to GitHub Releases API when Supabase empty or errors | ✅ |
+
+---
+
 ## Summary
 
-Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. No separate update server — releases are the source of truth.
+Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. GitHub remains the publish source of truth; [RFC-034](034-[partial]-web-portal-landing.md) mirrors releases into Supabase for the web `/download` page and as the preferred in-app check path.
 
 ## Goals
 

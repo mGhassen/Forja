@@ -14,21 +14,20 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     } catch (_) {}
   }
 
-  /// Stops in-flight torrent / Stremio / Nuvio fetches on the details tab.
+  /// Stops in-flight torrent / Stremio / Nuvio / webstreaming fetches.
   ///
   /// When [cancelEngineJobs] is false (closing Sources to start playback),
-  /// only bump fetch generations and abort Nuvio — do not cancel engine jobs,
-  /// so the magnet resolve that starts next is not aborted.
+  /// generations still bump so late UI updates are ignored, but Engine resolve
+  /// jobs stay alive for the magnet / stream that starts next.
   void _cancelActiveSourceFetch({bool cancelEngineJobs = true}) {
     final changed =
         _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
     _s._torrentSearchGen++;
     _s._stremioFetchGen++;
     _s._nuvioFetchGen++;
-    if (cancelEngineJobs) {
-      Engine.cancelPendingResolve();
-    }
-    NuvioService.instance.cancelPending();
+    DomainStreamProviderResolver.cancelAllPending(
+      cancelEngineJobs: cancelEngineJobs,
+    );
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
@@ -36,6 +35,8 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   }
 
   Future<void> _fetchAllStremioStreams() async {
+    // Lazy: never hit Stremio addons unless the Stremio kind is open.
+    if (_s._sourcesPanelOpen && _s._panelKindFilter != 'stremio') return;
     if (_s._streamAddons.isEmpty) return;
     final gen = ++_s._stremioFetchGen;
     setState(() {
@@ -151,7 +152,9 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   Future<void> _fetchNextNuvioScraper({bool reset = false}) async {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
     if (_s._isNuvioFetching && !reset) return;
-    if (reset) NuvioService.instance.cancelPending();
+    if (reset) {
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    }
     final fetchedIds = reset
         ? <String>{}
         : Set<String>.from(_s._nuvioFetchedScraperIds);

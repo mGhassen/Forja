@@ -55,6 +55,8 @@ permissions:
 env:
   FLUTTER_CHANNEL: stable
   APP_DIR: apps/forja
+  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+  TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
 jobs:
   resolve_version:

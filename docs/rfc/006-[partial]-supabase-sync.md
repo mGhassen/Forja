@@ -1,17 +1,15 @@
 # RFC-006: Supabase settings sync
 
 **Version:** v1.2  
-**Status:** stub  
-**Target version:** v2 (Diwan & mer)  
+**Status:** partial  
 **Area:** `apps/forja/lib/shared/sync/src/sync_service.dart`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **0 / 1** components · **0 / 4** acceptance (v1.2 slice) |
-| **Current slice** | v1.2 — optional auth + settings sync |
-| **Backlog** | v2 |
+| **Progress** | **1 / 1** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) |
+| **Current slice** | Web portal — SyncService wired; domain allowlist deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -21,10 +19,32 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R06-C01 | SyncService (`sync_service.dart`) | ⬜ |
+| 1 | R06-C01 | SyncService (`sync_service.dart`) | ✅ |
 
 ---
 
+## Acceptance (v1.2 slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A01 | Email/password sign-in from Settings → Account | ✅ |
+| 2 | R06-A02 | Push/pull settings blobs when signed in | ✅ |
+| 3 | R06-A03 | Merge by latest `updated_at` per domain | ⬜ |
+| 4 | R06-A04 | Sign-out clears remote session; local data retained | ✅ |
+
+---
+
+## Acceptance (web portal slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A05 | `supabase_flutter` client init from dart-defines | ✅ |
+| 2 | R06-A06 | Real Auth signIn / signOut against shared Supabase project | ✅ |
+| 3 | R06-A07 | `pushSettings` / `pullSettings` against `user_settings` | ✅ |
+| 4 | R06-A08 | Same schema/RLS as `apps/web` account portal | ✅ |
+| 5 | R06-A09 | Concrete sync domain allowlist | ⏭️ |
+
+---
 
 ## Summary
 

@@ -16,9 +16,10 @@ class WebStreamrService {
   int _resolveGeneration = 0;
 
   /// Ignore results from in-flight resolves (e.g. user tapped Cancel).
+  /// Does not cancel other Engine jobs (torrentStream, search, …) — that is
+  /// [Engine.cancelPendingResolve] via [HostProviderAdapter.cancelAllPending].
   void cancelPending() {
     _resolveGeneration++;
-    Engine.cancelPendingResolve();
   }
 
   static Future<void> init() async {

@@ -33,7 +33,9 @@ class _SplashPreviewScreenState extends State<SplashPreviewScreen> {
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.of(context).pop(),
-        child: const SplashOverlayContent(),
+        child: const SplashOverlayContent(
+          statusLabel: 'Loading catalog & services…',
+        ),
       ),
     );
   }

@@ -16,7 +16,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 
 - Start playback while the torrent still buffers
 - Select which file to play in multi-file torrents
-- Switch torrents / Stremio / Nuvio streams mid-playback via the link (magnet) button — opens the same right-side **Sources** panel as media details (**Torrents / Stremio / Nuvio**, Filters → Providers, search, source cards). **Filters** stays closed until you tap the tune control. Opens on **Torrents** when available (else Nuvio, then Stremio); results cached ~30 minutes; each category chip has a **reload** icon for a fresh fetch. Torrents and Stremio show every fetched row. Nuvio starts one selected scraper; **Load next provider** runs one more. Closing the panel stops any still-running category fetch. The link control also appears for **Stremio Direct / Nuvio** sessions even when the stream has no magnet (direct HTTP). Picking a result resolves and reloads in-player. The layers **Source** server picker stays hidden during catalog Sources playback (magnet or Stremio Direct)
+- Switch torrents / Stremio / Nuvio streams mid-playback via the link (magnet) button — opens the same right-side **Sources** panel as media details (**Torrents / Stremio / Nuvio**, Filters → Providers, search, source cards). **Filters** stays closed until you tap the tune control. Opens on **Torrents** when you are playing a local magnet (including magnets that came from Stremio/Torrentio), otherwise Torrents when available (else Nuvio, then Stremio); results cached ~30 minutes; the **selected** category chip has a **reload** icon for a fresh fetch; switching away cancels an in-flight load for the previous kind. Torrents and Stremio show every fetched row. Nuvio starts one selected scraper; **Load next provider** runs one more. Closing the panel stops any still-running category fetch. The link control also appears for **Stremio Direct / Nuvio** sessions even when the stream has no magnet (direct HTTP). Picking another **torrent** shows the loading card, resolves the magnet from scratch, and opens a fresh player. Stremio/Nuvio picks resolve and reload in-player. The layers **Source** server picker stays hidden during catalog Sources playback (magnet or Stremio Direct)
 - On desktop, optionally show a live torrent stats card (Settings → Torrent stats, off by default) above the seek bar while controls are visible: download/upload speed, live peers, downloaded size / %, ETA. When Skip Intro or Next Episode is showing, the card lifts above those buttons
 - Adjust cache type and size in Settings for smoother streaming
 
@@ -30,7 +30,8 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 ## Tips
 
 - More seeders = smoother start; sort torrents by seeders in Settings
-- First play of a magnet waits for the file head before video starts — dead swarms time out instead of flashing a format error
+- First play of a magnet waits for the file head **and** a real video frame before playback is confirmed — dead or incomplete swarms time out with an error instead of freezing on a black screen
+- Magnet metadata (DHT/trackers) can take up to about a minute before Forja gives up — slower than opening the same link in a desktop torrent client is normal on cold DHT, especially right after switching torrents
 - Stremio/Torrentio magnet links are always resolved through the torrent engine or debrid — they are never opened as a local file path. Season-pack rows use the addon’s file index so the matching episode starts
 - Closing Sources to pick a torrent does not abort the magnet resolve that is about to start
 - Disk cache helps on low-RAM devices for large files

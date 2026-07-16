@@ -395,6 +395,14 @@ bool isLocalTorrentStreamUrl(String url) {
   return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
 }
 
+/// Catalog stream kind for logs — Nuvio vs Stremio from stream metadata.
+String catalogStreamKindLabel(Map<String, dynamic> stream) {
+  if (stream['_nuvioScraperId'] != null) return 'Nuvio';
+  final base = stream['_addonBaseUrl']?.toString();
+  if (base != null && base.startsWith('nuvio:')) return 'Nuvio';
+  return 'Stremio';
+}
+
 bool isTransientTorrentProbeError(String err) {
   final lower = err.toLowerCase();
   return lower.contains('failed to recognize file format') ||
@@ -502,10 +510,17 @@ void syncPlayerProgressNotifiers(
 /// Local torrents demux a real duration then hit EOF within seconds.
 const kMinConfirmedPlaybackForNaturalEnd = Duration(seconds: 45);
 
+/// True when [positionMs] is clearly in the body of a long title (not open/EOF).
+bool isMidEpisodePlayback(int positionMs, int durationMs) {
+  if (durationMs < 90 * 1000) return false;
+  return positionMs >= 30 * 1000 && positionMs <= durationMs - 90 * 1000;
+}
+
 bool isNaturalPlaybackEnd(
   PlayerState state, {
   Duration? confirmedFor,
   Duration minConfirmed = kMinConfirmedPlaybackForNaturalEnd,
+  bool? hadMidPlayback,
 }) {
   final dur = state.duration.inMilliseconds;
   final pos = state.position.inMilliseconds;
@@ -516,6 +531,9 @@ bool isNaturalPlaybackEnd(
   if (pos <= 0) return false;
   // Early EOF with a real moov duration: position jumps to end immediately.
   if (confirmedFor != null && confirmedFor < minConfirmed) return false;
+  // Sitting at EOF for minutes must not become "natural" after the grace
+  // window — require evidence the user actually watched the middle.
+  if (hadMidPlayback == false) return false;
   return pos >= dur - 1000;
 }
 
@@ -547,11 +565,22 @@ Future<void> resetPlayerForOpen(Player player) async {
   }
 }
 
+/// Ready check for [waitForMediaOpen].
+///
+/// Local torrent HTTP can report buffer / moov duration / playing while the
+/// first pieces are empty — that used to mark playback confirmed and leave a
+/// black stuck player. Require a decoded video frame for those URLs.
+bool isOpenReadyForStream(PlayerState state, {required bool localTorrent}) {
+  if (localTorrent) return hasDecodedVideo(state);
+  return isMediaOpenReady(state);
+}
+
 /// Returns true once mpv reports playable media, false on fatal open error or
 /// [timeout].
 ///
 /// Pass [streamUrl] for local torrent streams so early demux probe failures
-/// are ignored until the timeout — pieces may still be filling.
+/// are ignored until the timeout — pieces may still be filling — and so
+/// readiness requires a decoded video frame (not buffer alone).
 Future<bool> waitForMediaOpen(
   Player player, {
   Duration timeout = const Duration(seconds: 25),
@@ -560,7 +589,7 @@ Future<bool> waitForMediaOpen(
   final completer = Completer<bool>();
   final subs = <StreamSubscription<dynamic>>[];
   var settled = false;
-  final tolerateProbe =
+  final localTorrent =
       streamUrl != null && isLocalTorrentStreamUrl(streamUrl);
 
   void settle(bool ok) {
@@ -573,14 +602,16 @@ Future<bool> waitForMediaOpen(
   }
 
   void probe() {
-    if (isMediaOpenReady(player.state)) settle(true);
+    if (isOpenReadyForStream(player.state, localTorrent: localTorrent)) {
+      settle(true);
+    }
   }
 
   subs.addAll([
     player.stream.error.listen((err) {
       final fatal = isFatalPlayerOpenError(err) || isOpenHttpFailure(err);
       if (!fatal) return;
-      if (tolerateProbe && isTransientTorrentProbeError(err)) {
+      if (localTorrent && isTransientTorrentProbeError(err)) {
         debugPrint('[Player] Transient torrent probe error (waiting): $err');
         return;
       }
@@ -596,11 +627,14 @@ Future<bool> waitForMediaOpen(
     player.stream.bufferingPercentage.listen((_) => probe()),
   ]);
 
+  probe();
+
   try {
     return await completer.future.timeout(
       timeout,
       onTimeout: () {
-        final ok = isMediaOpenReady(player.state);
+        final ok =
+            isOpenReadyForStream(player.state, localTorrent: localTorrent);
         settle(ok);
         return ok;
       },

@@ -30,7 +30,7 @@ Older SharedPreferences copies of those settings are imported once into that fil
 - Import is destructive to current settings — confirm before proceeding
 - Clearing **Stream cache** / **IPTV portal cache** does **not** clear settings or tokens
 - IPTV channel catalogs, My List, and continue-watching rows are not part of this settings file
-- Complements (does not replace) future [cloud sync](../coming-soon/cloud-sync.md)
+- Complements (does not replace) [cloud sync](cloud-sync.md)
 
 ## Related
 

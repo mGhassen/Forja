@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 3** acceptance (manual smoke ⬜) |
+| **Progress** | **8 / 8** fix · **0 / 3** acceptance (manual smoke ⬜) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 5 | I65-T05 | Details Cancel also calls `Engine.cancelPendingResolve` for torrent/Stremio | ✅ |
 | 6 | I65-T06 | Gate `NuvioFetchStart` on `_acceptingFetches` so orphaned JS cannot restart HTTP after abort/timeout | ✅ |
 | 7 | I65-T07 | Player Sources `dismiss()` cancels Nuvio/Engine before Overlay unmount | ✅ |
+| 8 | I65-T08 | One shared cancel (`DomainStreamProviderResolver.cancelAllPending`) for panel switch/close/leave — no UI Nuvio-only calls | ✅ |
 
 ---
 
@@ -46,5 +47,7 @@ Leaving a stream or details title left Nuvio scrapers (e.g. Xpass) and KissKh ex
 
 **Follow-up (2026-07-16):** Closing the **player** Sources panel still left Xpass/HindMovie logs going. `abortPendingWork` bumped fetch generation so in-flight HTTP died, but orphaned QuickJS Promise chains called `NuvioFetchStart` again with the **new** generation and kept loading. Player `dismiss()` also waited for Overlay dispose (next frame) before cancel. Fixed by refusing new fetches when not accepting work, and cancelling immediately in `PlayerSourcesPanel.dismiss()`.
 
+**Follow-up (unify cancel):** UI no longer special-cases Nuvio. Details panel Cancel / leave, player Sources dismiss, and provider switches all call `DomainStreamProviderResolver.cancelAllPending({cancelEngineJobs})`, which routes through `PlaybackEngine` → `HostProviderAdapter` (webstreaming hosts + Nuvio + KissKh + optional Engine). Miruro is cancelled on the domain resolver. Same product rule as webstreaming: switch load or close panel → stop the old load.
+
 **Symptom fix:** abort on leave + honor cancel in `streamAll` + refuse post-abort FetchStart.  
-**Root fix:** same — generation-checked scrapers + HTTP client recreate + fetch gate + eager panel dismiss cancel.
+**Root fix:** same — generation-checked scrapers + HTTP client recreate + fetch gate + eager panel dismiss cancel + one shared cancel entry point.

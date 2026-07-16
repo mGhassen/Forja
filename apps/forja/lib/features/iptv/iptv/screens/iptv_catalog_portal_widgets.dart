@@ -139,9 +139,7 @@ class _PortalHoverTile extends StatefulWidget {
 class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
   static const _statusSlot = 18.0;
-  /// Wide enough for typical `active/max` seat labels (e.g. `12/12`).
-  static const _statusColW = 28.0;
-  static const _rowH = 66.0;
+  static const _rowH = 98.0;
 
   bool _lineHover = false;
   bool _focused = false;
@@ -302,50 +300,6 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     );
   }
 
-  /// Status glyph with `used/max` seats stacked under it (old portal card parity).
-  Widget _statusWithSeats({
-    required bool isActive,
-    required bool checking,
-    required bool? health,
-    required String active,
-    required String max,
-  }) {
-    final seats = '${active.trim().isEmpty ? '0' : active}'
-        '/${max.trim().isEmpty ? '?' : max}';
-    final activeN = int.tryParse(active);
-    final maxN = int.tryParse(max);
-    final full = activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
-    return SizedBox(
-      width: _statusColW,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          isActive
-              ? _activePortalStatusGlyph(
-                  _activePortalStatus(checking: checking, health: health),
-                )
-              : _idlePortalHealthDot(checking: checking, health: health),
-          const SizedBox(height: 3),
-          Text(
-            seats,
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              color: full
-                  ? const Color(0xFFFBBF24)
-                  : const Color(0xFF22C55E),
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              height: 1,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
@@ -435,23 +389,27 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
+                          horizontal: 12,
+                          vertical: 10,
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Align(
                               alignment: Alignment.center,
-                              child: _statusWithSeats(
-                                isActive: isActive,
-                                checking: checking,
-                                health: health,
-                                active: v.activeConnections,
-                                max: v.maxConnections,
-                              ),
+                              child: isActive
+                                  ? _activePortalStatusGlyph(
+                                      _activePortalStatus(
+                                        checking: checking,
+                                        health: health,
+                                      ),
+                                    )
+                                  : _idlePortalHealthDot(
+                                      checking: checking,
+                                      health: health,
+                                    ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: _showShareCode || _sharing
                                   ? _shareCodeLine()
@@ -463,7 +421,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         _expiryLine(v.expiry),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: 6),
                                         Row(
                                           children: [
                                             if (showNewChrome) ...[
@@ -491,12 +449,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                           showNewChrome
                                                       ? FontWeight.w600
                                                       : FontWeight.w500,
-                                                  height: 1.1,
+                                                  height: 1.25,
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
+                                        const SizedBox(height: 3),
                                         Text(
                                           v.portal.url,
                                           maxLines: 1,
@@ -506,8 +465,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                 ? Colors.white54
                                                 : Colors.white38,
                                             fontSize: 11,
-                                            height: 1.1,
+                                            height: 1.25,
                                           ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        _seatsLine(
+                                          active: v.activeConnections,
+                                          max: v.maxConnections,
                                         ),
                                       ],
                                     ),
@@ -675,7 +639,36 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
               color: tone.color,
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              height: 1.1,
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _seatsLine({required String active, required String max}) {
+    final used = active.trim().isEmpty ? '0' : active.trim();
+    final cap = max.trim().isEmpty ? '?' : max.trim();
+    final activeN = int.tryParse(used);
+    final maxN = int.tryParse(cap);
+    final full = activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
+    // Blue = free capacity · gray = full (avoid expiry green/amber).
+    final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
+    return Row(
+      children: [
+        Icon(Icons.people_rounded, size: 12, color: color),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            '$used/$cap',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
             ),
           ),
         ),

@@ -142,7 +142,7 @@ class _MediaDetailsTorrentActionRowState
     var n = 0;
     if (widget.showPlayStreaming && canPlay) n++;
     if (widget.showPlay && canPlay) n++;
-    if (widget.hasResume && widget.onClearProgress != null) n++;
+    if (widget.onClearProgress != null) n++;
     if (widget.trailers.isNotEmpty) n++;
     n += _iconGroupSlotCount();
     return n;
@@ -237,7 +237,7 @@ class _MediaDetailsTorrentActionRowState
       if (attachNextPlayFocus && canPlay) attachNextPlayFocus = false;
     }
 
-    if (widget.hasResume && widget.onClearProgress != null) {
+    if (widget.onClearProgress != null) {
       final idx = tvIndex++;
       children.addAll([
         HeroPillIconGroup(

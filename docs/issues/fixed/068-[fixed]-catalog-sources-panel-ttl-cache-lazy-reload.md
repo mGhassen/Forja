@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **Complete · 9 / 9** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,9 @@
 | 4 | I68-T04 | Per-kind reload control forces network refetch for that category | ✅ |
 | 5 | I68-T05 | Default kind is a single category (not All) when multiple kinds enabled | ✅ |
 | 6 | I68-T06 | Closing Sources cancels in-flight Torrents / Stremio / Nuvio fetches | ✅ |
+| 7 | I68-T07 | Switching kind aborts in-flight fetch for the previous kind (no background finish/cache) | ✅ |
+| 8 | I68-T08 | Reload icon only on the selected kind chip (not on hidden kinds) | ✅ |
+| 9 | I68-T09 | Fetching/cancel chrome reflects only the open kind | ✅ |
 
 ---
 
@@ -36,6 +39,7 @@
 | 2 | I68-A02 | Close and reopen Sources within 30 minutes → same kind shows cached rows without a new search | ⬜ |
 | 3 | I68-A03 | Reload on Torrents / Stremio / Nuvio refetches that kind only | ⬜ |
 | 4 | I68-A04 | Close Sources while a category is still loading → fetch stops (no more results after close) | ⬜ |
+| 5 | I68-A05 | Start Stremio load then switch to Torrents → Stremio HTTP stops; Torrents is the only active fetch | ⬜ |
 
 ---
 
@@ -43,4 +47,4 @@
 
 Opening the right-side **Sources** panel (media details or player) re-fetched Torrents, Stremio, and Nuvio every time — including prefetch of kinds that were not selected. That is too much scraper traffic for one panel open.
 
-**Fix:** in-memory session cache with a 30-minute TTL per title/episode and kind (`CatalogSourcesSessionCache`); fetch only the selected kind on open/switch; refresh icon on each kind chip bypasses cache for that category only. Default open kind is a single category (Torrents when available), not **All**.
+**Fix:** in-memory session cache with a 30-minute TTL per title/episode and kind (`CatalogSourcesSessionCache`); fetch only the selected kind on open/switch; refresh icon on the **selected** kind chip bypasses cache for that category only. Default open kind is a single category (Torrents when available), not **All**. Switching away from a kind mid-fetch aborts that kind so it cannot finish or warm the cache in the background.

@@ -293,11 +293,19 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _isInitPlaybackRunning = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
+  /// True once position was observed in the episode body this open.
+  bool _hadMidPlayback = false;
+  /// Latch abortive EOF so repeating `completed` events do not spam / auto-next.
+  bool _abortiveCompletedLatched = false;
   late final Future<void> _playableSourcesReady;
 
   void _markPlaybackConfirmed(bool confirmed) {
     _playbackConfirmed = confirmed;
     _playbackConfirmedAt = confirmed ? DateTime.now() : null;
+    if (!confirmed) {
+      _hadMidPlayback = false;
+      _abortiveCompletedLatched = false;
+    }
   }
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;

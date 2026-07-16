@@ -11,6 +11,7 @@ import 'package:forja/features/my_list/lists_screen.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
 import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
+import 'package:forja/features/settings/sections/settings_forja_account_panel.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
@@ -86,6 +87,10 @@ class SettingsAccountsPageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SettingsGroup(
+          label: 'Forja account',
+          children: const [SettingsForjaAccountPanel()],
+        ),
         SettingsGroup(
           label: 'Trakt',
           children: const [SettingsTraktPanel()],

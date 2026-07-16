@@ -27,6 +27,12 @@ use tokio_util::io::ReaderStream;
 const STREAM_HEAD_BYTES: u64 = 256 * 1024;
 const STREAM_HEAD_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// `session.add_torrent` for a magnet **includes DHT/tracker metadata resolve**
+/// (librqbit has no separate metadata step). An 8s cap made healthy but slow
+/// swarms fail while desktop clients (PlayTorr / qBittorrent) still worked.
+const MAGNET_ADD_TIMEOUT: Duration = Duration::from_secs(60);
+const TORRENT_INIT_TIMEOUT: Duration = Duration::from_secs(30);
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TorrentStatus {
     pub name: String,
@@ -386,11 +392,16 @@ impl TorrentEngine {
             ..Default::default()
         };
         let response = tokio::time::timeout(
-            Duration::from_secs(8),
+            MAGNET_ADD_TIMEOUT,
             session.add_torrent(AddTorrent::from_url(magnet), Some(add_opts)),
         )
         .await
-        .map_err(|_| "Timed out adding torrent".to_string())?
+        .map_err(|_| {
+            format!(
+                "Timed out resolving magnet (no metadata/peers in {}s)",
+                MAGNET_ADD_TIMEOUT.as_secs()
+            )
+        })?
         .map_err(|e| e.to_string())?;
 
         let handle = match response {
@@ -401,9 +412,14 @@ impl TorrentEngine {
             }
         };
 
-        tokio::time::timeout(Duration::from_secs(30), handle.wait_until_initialized())
+        tokio::time::timeout(TORRENT_INIT_TIMEOUT, handle.wait_until_initialized())
             .await
-            .map_err(|_| "Metadata timeout".to_string())?
+            .map_err(|_| {
+                format!(
+                    "Timed out initializing torrent storage ({}s)",
+                    TORRENT_INIT_TIMEOUT.as_secs()
+                )
+            })?
             .map_err(|e| e.to_string())?;
 
         let torrent_id = handle.id();

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja can check GitHub Releases for newer builds when the app starts and lets you check manually from Settings. Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
+Forja can check for newer builds when the app starts and lets you check manually from Settings. The preferred source is the Supabase `releases` mirror (shared with the web `/download` page); if that is empty or unavailable, the app falls back to GitHub Releases. Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
 
 ## How to open it
 
@@ -33,8 +33,10 @@ Forja can check GitHub Releases for newer builds when the app starts and lets yo
 - macOS releases publish `Forja-{version}-macos-arm64.dmg`; the updater prefers the host arch and falls back to any macOS `.dmg`
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
 - Download latest builds from [GitHub Releases](https://github.com/mGhassen/Forja/releases) if in-app update fails or no platform asset is attached
+- After a GitHub release, run the `sync-github-releases` Edge Function (see `apps/web/supabase/README.md`) so the web download page and in-app checker see the same assets
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats
 
 ## Related
 
 - [Platforms](../getting-started/platforms.md)
+- [Cloud sync](cloud-sync.md)

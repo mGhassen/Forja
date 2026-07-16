@@ -119,6 +119,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Trakt](accounts/trakt.md)
 - [Simkl](accounts/simkl.md)
 - [MDBList](accounts/mdblist.md)
+- [Cloud sync](settings/cloud-sync.md) — Forja account (Supabase)
 
 ---
 
@@ -132,13 +133,13 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Backup & restore](settings/backup-restore.md)
 - [Navigation bar](settings/navigation-bar.md)
 - [App updates](settings/app-updates.md)
+- [Cloud sync](settings/cloud-sync.md)
 
 ---
 
 ## Coming soon
 
 - [Casting](coming-soon/casting.md)
-- [Cloud sync](coming-soon/cloud-sync.md)
 
 ---
 

@@ -27,6 +27,7 @@ Automatic at end of episode (when Auto next is on) or via the next-episode promp
 - Loop mode skips Auto next so the same episode repeats
 - The floating **Next Episode** chip only appears near the end; it hides again if you seek back
 - A torrent that never actually starts (early EOF before video) does not count as finished — Auto next will not hop
+- If TMDB is briefly unreachable while looking up the next episode, playback keeps going; skip-next may stay hidden until lookup succeeds again
 
 ## Related
 

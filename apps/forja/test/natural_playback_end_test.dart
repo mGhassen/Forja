@@ -35,6 +35,7 @@ void main() {
         isNaturalPlaybackEnd(
           state(posMs: 3_599_500, durMs: 3_600_000),
           confirmedFor: const Duration(minutes: 50),
+          hadMidPlayback: true,
         ),
         isTrue,
       );
@@ -45,6 +46,17 @@ void main() {
         isNaturalPlaybackEnd(
           state(posMs: 3_938_142, durMs: 3_938_142),
           confirmedFor: const Duration(seconds: 3),
+        ),
+        isFalse,
+      );
+    });
+
+    test('false when stuck at EOF without mid-episode playback even after grace', () {
+      expect(
+        isNaturalPlaybackEnd(
+          state(posMs: 3_938_142, durMs: 3_938_142),
+          confirmedFor: const Duration(minutes: 2),
+          hadMidPlayback: false,
         ),
         isFalse,
       );
@@ -102,6 +114,54 @@ void main() {
       expect(
         sourceRequiresVideoDecode('https://cdn.example/video.mp4'),
         isFalse,
+      );
+    });
+  });
+
+  group('isOpenReadyForStream', () {
+    PlayerState state({
+      int? videoW,
+      int? videoH,
+      int bufferMs = 0,
+      int durationMs = 0,
+      int positionMs = 0,
+      bool playing = false,
+      double bufferingPercentage = 0,
+    }) {
+      return PlayerState().copyWith(
+        videoParams: VideoParams(w: videoW, h: videoH),
+        buffer: Duration(milliseconds: bufferMs),
+        duration: Duration(milliseconds: durationMs),
+        position: Duration(milliseconds: positionMs),
+        playing: playing,
+        bufferingPercentage: bufferingPercentage,
+      );
+    }
+
+    test('local torrent ignores buffer/duration without decoded video', () {
+      expect(
+        isOpenReadyForStream(
+          state(bufferMs: 5000, durationMs: 3_600_000, playing: true),
+          localTorrent: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('local torrent ready only after decoded video', () {
+      expect(
+        isOpenReadyForStream(
+          state(videoW: 1920, videoH: 1080),
+          localTorrent: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('non-torrent still treats buffer as ready', () {
+      expect(
+        isOpenReadyForStream(state(bufferMs: 1000), localTorrent: false),
+        isTrue,
       );
     });
   });

@@ -410,7 +410,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 
   Widget _buildPortalButton(BuildContext context, {bool compact = false}) {
     final selected = ctrl.portalPanelOpen;
-    final hasPortal = ctrl.activePortal != null;
+    final portal = ctrl.activePortal;
+    final hasPortal = portal != null;
     final active = iptvFocusActive(
       context,
       hovered: _portalToolHovered,
@@ -418,94 +419,187 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     );
     final tvFocused = iptvTvFocused(context, focused: _portalToolFocused);
     final showHighlight = selected || active;
-    return iptvTap(
-      context: context,
-      onTap: widget.onTogglePanel,
-      borderRadius: _kShelfTabRadius,
-      tvZone: ShellTvZone.topBar,
-      tvRowId: 'iptv-top-tools',
-      tvItemIndex: 1,
-      onDownEdge: _focusDownFromPortalTool,
-      onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
-      onRightEdge: selected
-          ? () => iptvFocusRowItem('portals', 0)
-          : null,
-      onFocusChange: (focused) => setState(() => _portalToolFocused = focused),
-      onHoverChange: (hovered) => setState(() => _portalToolHovered = hovered),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        height: _kShelfTabHeight,
-        constraints: BoxConstraints(maxWidth: compact ? 44 : 180),
-        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
-        decoration: BoxDecoration(
-          color: tvFocused
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-              : showHighlight
-                  ? Colors.white.withValues(alpha: selected ? 0.14 : 0.10)
-                  : Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(_kShelfTabRadius),
-          border: Border.all(
+    final revealSeats =
+        hasPortal && (_portalToolHovered || _portalToolFocused);
+    final health =
+        portal == null ? null : ctrl.portalHealthFor(portal.key);
+    final checking =
+        portal != null && ctrl.isPortalHealthChecking(portal.key);
+
+    // Idle ~240; hover grows left (~+48 for seats). Compact stays icon-sized.
+    final maxW = compact
+        ? (revealSeats ? 96.0 : 44.0)
+        : (revealSeats ? 288.0 : 240.0);
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: iptvTap(
+        context: context,
+        onTap: widget.onTogglePanel,
+        borderRadius: _kShelfTabRadius,
+        tvZone: ShellTvZone.topBar,
+        tvRowId: 'iptv-top-tools',
+        tvItemIndex: 1,
+        onDownEdge: _focusDownFromPortalTool,
+        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
+        onRightEdge: selected
+            ? () => iptvFocusRowItem('portals', 0)
+            : null,
+        onFocusChange: (focused) {
+          setState(() => _portalToolFocused = focused);
+          final p = ctrl.activePortal;
+          if (p == null) return;
+          if (focused) {
+            ctrl.schedulePortalHealthCheck(p);
+          } else if (!_portalToolHovered) {
+            ctrl.cancelPortalHealthCheck(p.key);
+          }
+        },
+        onHoverChange: (hovered) {
+          setState(() => _portalToolHovered = hovered);
+          final p = ctrl.activePortal;
+          if (p == null) return;
+          if (hovered) {
+            ctrl.schedulePortalHealthCheck(p);
+          } else if (!_portalToolFocused) {
+            ctrl.cancelPortalHealthCheck(p.key);
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          height: _kShelfTabHeight,
+          constraints: BoxConstraints(maxWidth: maxW),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
+          decoration: BoxDecoration(
             color: tvFocused
-                ? ForjaShellColors.brandGreen
-                : !hasPortal
-                    ? IptvShellStyle.accent.withValues(alpha: 0.65)
-                    : Colors.white
-                        .withValues(alpha: showHighlight ? 0.28 : 0.10),
-            width: tvFocused ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              hasPortal ? Icons.dns_rounded : Icons.add_link_rounded,
-              size: 16,
-              color: hasPortal
-                  ? iptvFocusFg(
-                      Colors.white,
-                      active: active,
-                      tvFocused: tvFocused,
-                    )
-                  : iptvFocusFg(
-                      IptvShellStyle.accent,
-                      active: active,
-                      tvFocused: tvFocused,
-                    ),
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+                : showHighlight
+                    ? Colors.white.withValues(alpha: selected ? 0.14 : 0.10)
+                    : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(_kShelfTabRadius),
+            border: Border.all(
+              color: tvFocused
+                  ? ForjaShellColors.brandGreen
+                  : !hasPortal
+                      ? IptvShellStyle.accent.withValues(alpha: 0.65)
+                      : Colors.white
+                          .withValues(alpha: showHighlight ? 0.28 : 0.10),
+              width: tvFocused ? 1.5 : 1,
             ),
-            if (!compact) ...[
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  _portalLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: iptvFocusFg(
-                      Colors.white,
-                      active: active,
-                      tvFocused: tvFocused,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (portal != null)
+                ClipRect(
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.centerRight,
+                    widthFactor: revealSeats ? 1 : 0,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: compact ? 6 : 8),
+                      child: _portalButtonSeats(
+                        active: portal.activeConnections,
+                        max: portal.maxConnections,
+                      ),
                     ),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              const SizedBox(width: 2),
-              Icon(
-                selected
-                    ? Icons.expand_less_rounded
-                    : Icons.expand_more_rounded,
-                size: 16,
-                color: iptvFocusFg(
-                  Colors.white60,
-                  active: active,
-                  tvFocused: tvFocused,
+              portal != null
+                  ? _portalButtonStatusDot(
+                      checking: checking,
+                      health: health,
+                    )
+                  : Icon(
+                      Icons.add_link_rounded,
+                      size: 16,
+                      color: iptvFocusFg(
+                        IptvShellStyle.accent,
+                        active: active,
+                        tvFocused: tvFocused,
+                      ),
+                    ),
+              if (!compact) ...[
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    _portalLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: iptvFocusFg(
+                        Colors.white,
+                        active: active,
+                        tvFocused: tvFocused,
+                      ),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 2),
+                Icon(
+                  selected
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                  size: 16,
+                  color: iptvFocusFg(
+                    Colors.white60,
+                    active: active,
+                    tvFocused: tvFocused,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _portalButtonStatusDot({
+    required bool checking,
+    required bool? health,
+  }) {
+    if (checking) {
+      return const SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          color: Colors.white54,
+        ),
+      );
+    }
+    final color = health == true
+        ? playerSourceStatusColor(PlayerSourceStatus.active)
+        : health == false
+            ? playerSourceStatusColor(PlayerSourceStatus.failed)
+            : playerSourceStatusColor(PlayerSourceStatus.ready);
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+
+  Widget _portalButtonSeats({required String active, required String max}) {
+    final used = active.trim().isEmpty ? '0' : active.trim();
+    final cap = max.trim().isEmpty ? '?' : max.trim();
+    final activeN = int.tryParse(used);
+    final maxN = int.tryParse(cap);
+    final full = activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
+    final color = full ? const Color(0xFFFBBF24) : const Color(0xFF22C55E);
+    return Text(
+      '$used/$cap',
+      maxLines: 1,
+      style: GoogleFonts.plusJakartaSans(
+        color: color,
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        height: 1,
       ),
     );
   }

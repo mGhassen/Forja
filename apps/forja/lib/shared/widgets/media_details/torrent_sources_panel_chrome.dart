@@ -4,7 +4,7 @@ import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 
 /// Compact top chrome for the Sources panel:
-/// title + count · kind chips · search/filters (providers live in Filters).
+/// title + count · kind tabs · search/filters (providers live in Filters).
 class TorrentSourcesPanelChrome extends StatelessWidget {
   const TorrentSourcesPanelChrome({
     super.key,
@@ -105,7 +105,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onClose: onClose,
         ),
         SizedBox(height: gap),
-        _KindChips(
+        _KindTabs(
           selected: kindFilter,
           showTorrents: showTorrents,
           showStremio: showStremio,
@@ -251,8 +251,8 @@ class _TitleRow extends StatelessWidget {
   }
 }
 
-class _KindChips extends StatelessWidget {
-  const _KindChips({
+class _KindTabs extends StatelessWidget {
+  const _KindTabs({
     required this.selected,
     required this.showTorrents,
     required this.showStremio,
@@ -270,132 +270,177 @@ class _KindChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = <({String id, String label, Widget? icon})>[
+    final cinematic = ForjaShellColors.cinematic;
+    final options = <({String id, String label, IconData? iconData, Widget? icon})>[
       if (showTorrents)
         (
           id: 'torrents',
           label: 'Torrents',
-          icon: const HeroMagnetIcon(size: 13),
+          iconData: null,
+          icon: const HeroMagnetIcon(size: 14),
         ),
       if (showStremio)
         (
           id: 'stremio',
           label: 'Stremio',
-          icon: Icon(
-            Icons.extension_outlined,
-            size: 13,
-            color: selected == 'stremio'
-                ? ForjaShellColors.cinematic.textPrimary
-                : ForjaShellColors.cinematic.textSecondary,
-          ),
+          iconData: Icons.extension_outlined,
+          icon: null,
         ),
       if (showNuvio)
         (
           id: 'nuvio',
           label: 'Nuvio',
-          icon: Icon(
-            Icons.code_rounded,
-            size: 13,
-            color: selected == 'nuvio'
-                ? ForjaShellColors.cinematic.textPrimary
-                : ForjaShellColors.cinematic.textSecondary,
-          ),
+          iconData: Icons.code_rounded,
+          icon: null,
         ),
     ];
     if (options.isEmpty) return const SizedBox.shrink();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < options.length; i++) ...[
-            if (i > 0) const SizedBox(width: 6),
-            _KindChip(
-              label: options[i].label,
-              icon: options[i].icon,
-              selected: selected == options[i].id,
-              onTap: () => onChanged(options[i].id),
-              onReload: onReloadKind == null
-                  ? null
-                  : () => onReloadKind!(options[i].id),
-            ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: cinematic.borderSubtle.withValues(alpha: 0.7),
+            width: 1,
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final option in options)
+              _KindTab(
+                label: option.label,
+                icon: option.icon,
+                iconData: option.iconData,
+                selected: selected == option.id,
+                onTap: () => onChanged(option.id),
+                // Reload only the opened kind — never prefetch a hidden category.
+                onReload: onReloadKind == null || selected != option.id
+                    ? null
+                    : () => onReloadKind!(option.id),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _KindChip extends StatelessWidget {
-  const _KindChip({
+class _KindTab extends StatefulWidget {
+  const _KindTab({
     required this.label,
     required this.selected,
     required this.onTap,
     this.icon,
+    this.iconData,
     this.onReload,
   });
 
   final String label;
   final Widget? icon;
+  final IconData? iconData;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback? onReload;
 
   @override
+  State<_KindTab> createState() => _KindTabState();
+}
+
+class _KindTabState extends State<_KindTab> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected
-              ? ForjaShellColors.chipSelectedBg
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected
-                ? ForjaShellColors.chipSelectedBorder
-                : ForjaShellColors.cinematic.borderSubtle,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              IconTheme(
-                data: IconThemeData(
-                  size: 13,
-                  color: selected ? cinematic.textPrimary : cinematic.textSecondary,
-                ),
-                child: icon!,
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? cinematic.textPrimary : cinematic.textSecondary,
+    final selected = widget.selected;
+    final emphasize = selected || _hovered;
+    final color = selected
+        ? cinematic.textPrimary
+        : (_hovered
+            ? cinematic.textPrimary.withValues(alpha: 0.88)
+            : cinematic.textSecondary);
+    final indicatorColor = selected
+        ? ForjaShellColors.sectionAccent
+        : (_hovered
+            ? cinematic.textSecondary.withValues(alpha: 0.55)
+            : Colors.transparent);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+          transform: Matrix4.translationValues(0, _hovered && !selected ? -0.5 : 0, 0),
+          transformAlignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: indicatorColor,
+                width: selected ? 2.0 : 1.5,
               ),
             ),
-            if (onReload != null) ...[
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: onReload,
-                behavior: HitTestBehavior.opaque,
-                child: Icon(
-                  Icons.refresh_rounded,
-                  size: 14,
-                  color: selected
-                      ? cinematic.textPrimary
-                      : cinematic.textSecondary,
-                ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                letterSpacing: selected ? -0.1 : 0,
+                color: color,
+                height: 1.1,
               ),
-            ],
-          ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon != null || widget.iconData != null) ...[
+                    AnimatedScale(
+                      scale: emphasize ? 1.06 : 1.0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: IconTheme(
+                        data: IconThemeData(size: 14, color: color),
+                        child: widget.icon ??
+                            Icon(widget.iconData, size: 14, color: color),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                  ],
+                  Text(widget.label),
+                  if (widget.onReload != null) ...[
+                    const SizedBox(width: 8),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: widget.onReload,
+                        behavior: HitTestBehavior.opaque,
+                        child: AnimatedOpacity(
+                          opacity: _hovered || selected ? 1 : 0.7,
+                          duration: const Duration(milliseconds: 160),
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            size: 14,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

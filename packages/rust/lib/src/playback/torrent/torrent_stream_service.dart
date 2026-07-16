@@ -192,6 +192,7 @@ class TorrentStreamService {
     if (!RustLib.isInitialized) return null;
 
     try {
+      _log('Submitting torrentStream job…');
       final json = await EngineJobs.run(EngineAsyncJob.torrentStream, {
         'magnet': magnetLink,
         'season': season ?? -1,
@@ -199,13 +200,18 @@ class TorrentStreamService {
         'file_idx': fileIdx ?? -1,
       });
       final parsed = jsonDecode(json) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) return null;
+      final err = parsed['error'];
+      if (err != null) {
+        _log('torrentStream failed: $err');
+        return null;
+      }
       final url = parsed['url'];
       if (url is String && url.isNotEmpty) {
         if (hash != null) _rustActiveHash = hash;
         _log('Stream started (Rust): $url');
         return url;
       }
+      _log('torrentStream returned no url: $json');
     } catch (e) {
       _log('Rust streamTorrent error: $e');
     }

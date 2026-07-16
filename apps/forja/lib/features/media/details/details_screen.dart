@@ -28,6 +28,7 @@ import 'package:forja/shared/widgets/media_details/media_details_torrent_action_
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
@@ -188,7 +189,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   void _dismissStreamLoadingDialog(BuildContext dialogContext) {
     _streamCancelled = true;
     Engine.cancelPendingResolve();
-    Navigator.of(dialogContext).pop();
+    dismissLoadingOverlayRoute(dialogContext);
   }
 
   String? _trailerKey;
@@ -261,15 +262,9 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   @override
   void dispose() {
-    // Leave the title → stop every in-flight source check (Nuvio/Xpass,
-    // Stremio, torrents, KissKh, embeds). Subscription cancel alone is not
-    // enough — scrapers kept fetching after the route was gone.
-    //
-    // [_cancelActiveSourceFetch] already bumps gens + cancels Nuvio/Engine.
-    // [DomainStreamProviderResolver.cancelAllPending] covers KissKh / Miruro
-    // and HostProviderAdapter (which cancels Nuvio again — abort is idle-quiet).
+    // Leave the title → stop every in-flight source fetch (panel owner gone).
+    // Generations + shared cancel; no provider-specific calls.
     _cancelActiveSourceFetch();
-    DomainStreamProviderResolver.cancelAllPending();
     _detailsHeroPlayFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
@@ -444,7 +439,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _stremioFetchGen++;
     if (_isNuvioFetching) {
       _nuvioFetchGen++;
-      NuvioService.instance.cancelPending();
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     }
     _isSearching = false;
     _isStremioFetching = false;
@@ -479,6 +474,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _ensureTorrentsPanelLoaded({bool force = false}) {
+    if (_panelKindFilter != 'torrents') return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
       _autoSearch();
@@ -498,6 +494,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _ensureStremioPanelLoaded({bool force = false}) {
+    if (_panelKindFilter != 'stremio') return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
       _fetchAllStremioStreams();
@@ -547,6 +544,8 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _reloadPanelKind(String kind) {
+    // Reload only the opened kind — never prefetch a hidden category.
+    if (kind != _panelKindFilter) return;
     switch (kind) {
       case 'torrents':
         _ensureTorrentsPanelLoaded(force: true);
@@ -557,8 +556,33 @@ class _DetailsScreenState extends State<DetailsScreen>
     }
   }
 
+  /// Stop in-flight work for kinds that are no longer selected so they cannot
+  /// finish/cache in the background. Incomplete rows are dropped.
+  void _abortHiddenKindFetches(String keepKind) {
+    if (keepKind != 'torrents' && _isSearching) {
+      _torrentSearchGen++;
+      _isSearching = false;
+      _allTorrentResults = [];
+    }
+    if (keepKind != 'stremio' && _isStremioFetching) {
+      _stremioFetchGen++;
+      _isStremioFetching = false;
+      _allCombinedStremioStreams = [];
+      _stremioStreams = [];
+      _loadedAddonBaseUrls.clear();
+    }
+    if (keepKind != 'nuvio' && _isNuvioFetching) {
+      _nuvioFetchGen++;
+      _isNuvioFetching = false;
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      _nuvioStreams = [];
+      _nuvioFetchedScraperIds = {};
+    }
+  }
+
   void _onPanelKindFilterChanged(String kind) {
     setState(() {
+      _abortHiddenKindFetches(kind);
       _panelKindFilter = kind;
       _errorMessage = null;
       switch (kind) {

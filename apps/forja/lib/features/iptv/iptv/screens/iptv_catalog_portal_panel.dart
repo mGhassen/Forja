@@ -17,7 +17,7 @@ class IptvPortalPanel extends StatefulWidget {
 }
 
 class _IptvPortalPanelState extends State<IptvPortalPanel> {
-  static const _portalRowHeight = 66.0;
+  static const _portalRowHeight = 98.0;
 
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();

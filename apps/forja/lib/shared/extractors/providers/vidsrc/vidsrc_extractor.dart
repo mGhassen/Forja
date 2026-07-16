@@ -9,9 +9,9 @@ class VidsrcExtractor {
   static int _resolveGeneration = 0;
 
   /// Ignore in-flight resolves (e.g. user tapped Cancel during provider race).
+  /// Does not cancel other Engine jobs — see [HostProviderAdapter.cancelAllPending].
   static void cancelPending() {
     _resolveGeneration++;
-    Engine.cancelPendingResolve();
   }
 
   static String buildEmbedUrl({

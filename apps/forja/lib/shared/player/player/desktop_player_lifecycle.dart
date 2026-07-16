@@ -6,12 +6,13 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
   String? _initialCatalogSourceKind() {
     final base = widget.stremioAddonBaseUrl;
     if (base != null && base.startsWith('nuvio:')) return 'nuvio';
-    final provider = widget.activeProvider;
-    if (provider == 'torrent') return 'torrents';
-    if (provider == 'stremio_direct') return 'stremio';
+    // Local magnet session → Torrents tab (even if opened via Stremio/Torrentio).
     if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) {
       return 'torrents';
     }
+    final provider = widget.activeProvider;
+    if (provider == 'torrent') return 'torrents';
+    if (provider == 'stremio_direct') return 'stremio';
     return null;
   }
 
@@ -438,6 +439,10 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     if (_s._historySaved && !isBgPause) return;
     final pos = _s._positionNotifier.value.inMilliseconds;
     final dur = _s._durationNotifier.value.inMilliseconds;
+
+    // Nothing to save yet (open/buffering) — stay quiet; macOS fires
+    // inactive/lifecycle often and used to spam this path.
+    if (pos <= 10000 || dur <= 0) return;
 
     if (!shouldPersistWatchProgress(
       positionMs: pos,

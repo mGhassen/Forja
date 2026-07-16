@@ -87,10 +87,6 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
     unawaited(SettingsService().setPlayerAutoServer(false));
 
     final gen = ++_s._fallbackGen;
-    WebStreamrService().cancelPending();
-    VidsrcExtractor.cancelPending();
-    VideasyExtractor.cancelPending();
-    NuvioService.instance.cancelPending();
     DomainStreamProviderResolver.cancelAllPending();
     _s._statusController.clear();
     _s._markPlaybackConfirmed(false);

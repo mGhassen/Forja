@@ -188,14 +188,14 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
     Map<String, dynamic> stream, {
     Duration? startPosition,
   }) async {
+    final kind = catalogStreamKindLabel(stream);
     debugPrint(
-      '[Details] play Stremio/Nuvio stream '
+      '[Details] play $kind stream '
       'infoHash=${stream['infoHash']} fileIdx=${stream['fileIdx']} '
       'url=${stream['url']}',
     );
-    if (mounted && _s._sourcesPanelOpen) {
-      _s._closeSourcesPanel(cancelEngineJobs: false);
-    }
+    // Do not close Sources yet — closing mid-tap races the gesture arena
+    // (pointer_router) and can cancel the resolve that starts next.
     final stremioId = widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
     final stremioAddonBaseUrl =
         stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
@@ -211,6 +211,9 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
     );
 
     if (precheck is StremioExternalLink) {
+      if (mounted && _s._sourcesPanelOpen) {
+        _s._closeSourcesPanel(cancelEngineJobs: false);
+      }
       await _handleExternalUrl(
         precheck.externalUrl,
         addonBaseUrl: stremioAddonBaseUrl,
@@ -227,6 +230,9 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
 
     if (precheck is StremioPlayable) {
       if (!mounted) return;
+      if (_s._sourcesPanelOpen) {
+        _s._closeSourcesPanel(cancelEngineJobs: false);
+      }
       await AppRouter.openPlayer(
         context,
         streamUrl: precheck.streamUrl,
@@ -268,6 +274,9 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         );
       },
     );
+    if (mounted && _s._sourcesPanelOpen) {
+      _s._closeSourcesPanel(cancelEngineJobs: false);
+    }
 
     final resolved = await resolveStremioStream(
       stream: stream,
@@ -381,114 +390,112 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
 
   void _playTorrent(TorrentResult result, {Duration? startPosition}) async {
     debugPrint('[Details] play torrent title=${result.name}');
-    if (mounted && _s._sourcesPanelOpen) {
-      _s._closeSourcesPanel(cancelEngineJobs: false);
-    }
+    // Reset before any await so a stale cancel from a prior overlay cannot
+    // abort this play after settings load.
+    _s._streamCancelled = false;
+
     final useDebrid = await _s._settings.useDebridForStreams();
     final debridService = await _s._settings.getDebridService();
-    if (!mounted) return;
+    if (!mounted || _s._streamCancelled) return;
 
-    _s._streamCancelled = false;
     final overlayMessage = ValueNotifier<String>(
       playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
     );
     final fadeOutNotifier = ValueNotifier(false);
     BuildContext? loadingDialogContext;
+    var cleanedUp = false;
     final sourceHint = playbackSourceHint(
       useDebrid: useDebrid,
       debridService: debridService,
     );
 
-    void showLoading({
-      String? message,
-      ValueNotifier<String>? messageNotifier,
-    }) {
-      showLoadingOverlayDialog(
-        context,
-        builder: (dialogContext) {
-          loadingDialogContext = dialogContext;
-          return LoadingOverlay(
-            movie: _s._movie,
-            message: message,
-            messageNotifier: messageNotifier,
-            fadeOutNotifier: fadeOutNotifier,
-            subtitle: sourceHint,
-            onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
-          );
-        },
-      );
+    void cleanupNotifiers() {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      overlayMessage.dispose();
+      fadeOutNotifier.dispose();
     }
 
     void popLoading() {
       final ctx = loadingDialogContext;
+      loadingDialogContext = null;
       if (ctx != null && ctx.mounted) {
         dismissLoadingOverlayRoute(ctx);
       }
-      loadingDialogContext = null;
     }
 
-    void abortPlayback() {
+    void fail(String message) {
+      debugPrint('[Torrent] $message');
       popLoading();
-      fadeOutNotifier.dispose();
+      cleanupNotifiers();
+      if (mounted && !_s._streamCancelled) {
+        ForjaToast.error(message);
+      }
     }
 
-    showLoading(messageNotifier: overlayMessage);
+    // Show loading BEFORE closing Sources — closing the panel mid-tap disposes
+    // gesture routes under the pointer (pointer_router asserts) and can dismiss
+    // the new overlay / cancel the resolve with no logs.
+    showLoadingOverlayDialog(
+      context,
+      builder: (dialogContext) {
+        loadingDialogContext = dialogContext;
+        return LoadingOverlay(
+          movie: _s._movie,
+          messageNotifier: overlayMessage,
+          fadeOutNotifier: fadeOutNotifier,
+          subtitle: sourceHint,
+          onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
+        );
+      },
+    );
 
-    String? url;
-    String? magnetLink = result.magnet;
+    if (mounted && _s._sourcesPanelOpen) {
+      _s._closeSourcesPanel(cancelEngineJobs: false);
+    }
+    // Let the loading route paint before heavy resolve work.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || _s._streamCancelled) {
+      popLoading();
+      cleanupNotifiers();
+      return;
+    }
+
+    String? resolvedUrl;
+    var magnetLink = result.magnet;
     int? resolvedFileIndex;
 
     try {
       if (!magnetLink.startsWith('magnet:')) {
-        if (!mounted || _s._streamCancelled) {
-          abortPlayback();
+        overlayMessage.value = 'Resolving download link...';
+        final resolved = await _s._linkResolver.resolve(magnetLink);
+        if (_s._streamCancelled) {
+          popLoading();
+          cleanupNotifiers();
           return;
         }
-        popLoading();
-        showLoading(message: 'Resolving download link...');
-        try {
-          final resolved = await _s._linkResolver.resolve(magnetLink);
-          if (_s._streamCancelled) {
-            abortPlayback();
-            return;
-          }
-          if (resolved.isMagnet) {
-            magnetLink = resolved.link;
-          } else if (resolved.torrentBytes != null) {
-            if (!mounted) {
-              abortPlayback();
-              return;
-            }
-            abortPlayback();
-            ForjaToast.info(
-              'Torrent file downloads not yet supported. Please use magnet links.',
-            );
-            return;
-          }
-        } catch (e) {
-          if (_s._streamCancelled) {
-            abortPlayback();
-            return;
-          }
-          if (!mounted) {
-            abortPlayback();
-            return;
-          }
-          abortPlayback();
-          ForjaToast.error(e.toString());
+        if (resolved.isMagnet) {
+          magnetLink = resolved.link;
+        } else if (resolved.torrentBytes != null) {
+          fail(
+            'Torrent file downloads not yet supported. Please use magnet links.',
+          );
+          return;
+        } else {
+          fail('Could not resolve a magnet link for this torrent.');
           return;
         }
-        if (!mounted || _s._streamCancelled) {
-          abortPlayback();
-          return;
-        }
-        popLoading();
-        showLoading(messageNotifier: overlayMessage);
       }
 
       overlayMessage.value = playbackResolveLabel(
         useDebrid: useDebrid,
         debridService: debridService,
+      );
+
+      debugPrint(
+        '[Torrent] resolving magnet '
+        'debrid=$useDebrid service=$debridService '
+        'localEngine=${_s._playbackProfile.localTorrentEngine}',
       );
 
       final isTv = _s._movie.mediaType == 'tv';
@@ -501,53 +508,62 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         episode: isTv ? _s._selectedEpisode : null,
       );
       if (_s._streamCancelled) {
-        abortPlayback();
+        popLoading();
+        cleanupNotifiers();
         return;
       }
-      if (playback != null) {
-        url = playback.url;
-        resolvedFileIndex = playback.fileIndex;
-        debugPrint('[Torrent] Playing via ${playback.sourceLabel}');
+      if (playback == null || playback.url.isEmpty) {
+        fail('Torrent stream failed to start.');
+        return;
       }
-    } catch (e) {
-      debugPrint('Stream error: $e');
-      if (mounted && !_s._streamCancelled) {
-        final message = e is DebridAuthException
-            ? e.toString()
-            : debridUserMessage(e, debridService);
-        ForjaToast.info(message);
+      resolvedUrl = playback.url;
+      resolvedFileIndex = playback.fileIndex;
+      debugPrint('[Torrent] Playing via ${playback.sourceLabel}');
+    } catch (e, st) {
+      debugPrint('[Torrent] Stream error: $e\n$st');
+      if (_s._streamCancelled) {
+        popLoading();
+        cleanupNotifiers();
+        return;
       }
-    } finally {
-      overlayMessage.dispose();
+      final message = e is DebridAuthException
+          ? e.toString()
+          : debridUserMessage(e, debridService);
+      fail(message);
+      return;
     }
 
     if (!mounted || _s._streamCancelled) {
-      abortPlayback();
+      popLoading();
+      cleanupNotifiers();
       return;
     }
 
     final dialogContext = loadingDialogContext;
-    if (url != null && dialogContext != null) {
-      await crossfadeLoadingOverlayToPlayer(
-        loadingDialogContext: dialogContext,
-        fadeOutNotifier: fadeOutNotifier,
-        openPlayer: () => AppRouter.openPlayer(
-          context,
-          streamUrl: url!,
-          title: _s._movie.title,
-          magnetLink: magnetLink,
-          movie: _s._movie,
-          selectedSeason: _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
-          selectedEpisode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
-          fileIndex: resolvedFileIndex,
-          startPosition: startPosition,
-          activeProvider: 'torrent',
-          fadeTransition: true,
-        ),
-      );
-    } else {
-      popLoading();
+    if (dialogContext == null) {
+      fail('Torrent stream failed to start.');
+      return;
     }
-    fadeOutNotifier.dispose();
+
+    await crossfadeLoadingOverlayToPlayer(
+      loadingDialogContext: dialogContext,
+      fadeOutNotifier: fadeOutNotifier,
+      openPlayer: () => AppRouter.openPlayer(
+        context,
+        streamUrl: resolvedUrl!,
+        title: _s._movie.title,
+        magnetLink: magnetLink,
+        movie: _s._movie,
+        selectedSeason:
+            _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
+        selectedEpisode:
+            _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
+        fileIndex: resolvedFileIndex,
+        startPosition: startPosition,
+        activeProvider: 'torrent',
+        fadeTransition: true,
+      ),
+    );
+    cleanupNotifiers();
   }
 }

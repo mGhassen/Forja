@@ -3,7 +3,16 @@ use crate::types::MediaType;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
-const FALLBACK_V3_API_KEY: &str = "c3515fdc674ea2bd7b514f4bc3616a4a";
+/// From repo `.env` / CI (`TMDB_API_KEY`) at compile time — never commit real values.
+const FALLBACK_V3_API_KEY: &str = match option_env!("TMDB_API_KEY") {
+    Some(k) => k,
+    None => "",
+};
+/// Prefer Bearer when set (`TMDB_READ_ACCESS_TOKEN`); else fall back to v3 API key.
+const FALLBACK_READ_ACCESS_TOKEN: &str = match option_env!("TMDB_READ_ACCESS_TOKEN") {
+    Some(t) => t,
+    None => "",
+};
 const TMDB_BASE: &str = "https://api.themoviedb.org/3";
 
 static IMDB_TO_TMDB: LazyLock<Mutex<HashMap<String, i64>>> =
@@ -29,9 +38,18 @@ pub struct TmdbNameYear {
 fn tmdb_headers(token: Option<&str>) -> (HashMap<String, String>, HashMap<String, String>) {
     let mut headers = HashMap::from([("Content-Type".into(), "application/json".into())]);
     let mut query = HashMap::new();
-    if let Some(token) = token.filter(|t| !t.is_empty()) {
+    let bearer = token
+        .filter(|t| !t.is_empty())
+        .or_else(|| {
+            if FALLBACK_READ_ACCESS_TOKEN.is_empty() {
+                None
+            } else {
+                Some(FALLBACK_READ_ACCESS_TOKEN)
+            }
+        });
+    if let Some(token) = bearer {
         headers.insert("Authorization".into(), format!("Bearer {token}"));
-    } else {
+    } else if !FALLBACK_V3_API_KEY.is_empty() {
         query.insert("api_key".into(), FALLBACK_V3_API_KEY.into());
     }
     (headers, query)

@@ -78,9 +78,12 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
   }
 
   Widget _buildHeroActionRow() {
+    final progress = _s._lastProgress;
+    final pos = progress?['position'] as int? ?? 0;
+    final dur = progress?['duration'] as int? ?? 0;
     final hasResume =
-        _s._lastProgress != null &&
-        ((_s._lastProgress!['position'] as int? ?? 0) > 0);
+        progress != null && WatchProgressBar.isResumable(pos, dur);
+    final hasClearableProgress = progress != null && pos > 0;
     final showPlay = _s._hasPanelPlaySources;
     final policy = ShellScope.inputPolicyOf(context);
     if (policy.heroPlayAutoFocus &&
@@ -101,7 +104,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       showPlayStreaming: _s._playSourceWebstreaming,
       isStreamingExtracting: _s._isWebstreamingOnlyExtracting,
       onOpenSources: _s._openSourcesPanel,
-      onClearProgress: hasResume ? _clearProgress : null,
+      onClearProgress: hasClearableProgress ? _clearProgress : null,
       onPlayStreaming: _s._onPlayStreamingPressed,
       onDownload: _s._openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
@@ -330,8 +333,9 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
           episodeLabel: _s._movie.mediaType == 'tv'
               ? 'S${_s._selectedSeason.toString().padLeft(2, '0')}E${_s._selectedEpisode.toString().padLeft(2, '0')}'
               : null,
-          isFetching:
-              _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching,
+          isFetching: (_s._panelKindFilter == 'torrents' && _s._isSearching) ||
+              (_s._panelKindFilter == 'stremio' && _s._isStremioFetching) ||
+              (_s._panelKindFilter == 'nuvio' && _s._isNuvioFetching),
           onCancelFetch: _s._cancelActiveSourceFetch,
           providerOptions: _s._providerOptions(),
           selectedSourceId: _s._selectedSourceId,

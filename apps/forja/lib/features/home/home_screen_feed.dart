@@ -253,23 +253,23 @@ mixin _HomeScreenFeed on State<HomeScreen> {
           standard: () => _s._api.discoverMovies(
             watchProviderId: providerId,
             sortBy: 'vote_average.desc',
-            minRating: 7,
+            minRating: 0,
           ),
           genres: genres.movie,
           watchProviderId: providerId,
           sortBy: 'vote_average.desc',
-          minRating: 7,
+          minRating: 0,
         ),
         tvFetch: () => _fetchTv(
           standard: () => _s._api.discoverTvShows(
             watchProviderId: providerId,
             sortBy: 'vote_average.desc',
-            minRating: 7,
+            minRating: 0,
           ),
           genres: genres.tv,
           watchProviderId: providerId,
           sortBy: 'vote_average.desc',
-          minRating: 7,
+          minRating: 0,
         ),
       );
       _s._nowPlayingFuture = _fetchMediaFiltered(

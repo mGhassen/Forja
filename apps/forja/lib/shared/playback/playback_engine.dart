@@ -236,7 +236,10 @@ abstract final class PlaybackEngine {
     );
   }
 
-  static void cancelAllPending() => HostProviderAdapter.cancelAllPending();
+  /// Shared cancel for pending source resolves (webstreaming hosts, Nuvio,
+  /// KissKh, optional Engine jobs). Prefer this over provider-specific cancels.
+  static void cancelAllPending({bool cancelEngineJobs = true}) =>
+      HostProviderAdapter.cancelAllPending(cancelEngineJobs: cancelEngineJobs);
 }
 
 class PlaybackResolveHit {
