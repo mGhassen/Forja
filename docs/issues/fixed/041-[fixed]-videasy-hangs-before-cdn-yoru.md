@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** fix · **3 / 3** acceptance |
+| **Progress** | **Complete · 4 / 4** fix · **2 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -46,5 +46,6 @@ Forja raced **neon2 first** with a 60s fetch timeout. neon2 often hangs with 0 b
 
 ## Related
 
-- [stream-providers](../features/sources/stream-providers.md)
-- [RFC-032](../rfc/032-[open]-rust-resolver-engine.md) R32-A09 (native Videasy port — still open)
+- [071](071-[fixed]-videasy-grace-discards-mirror-streams.md) — fixed grace expiry discarding the mirrors it had collected
+- [stream-providers](../../features/sources/stream-providers.md)
+- [RFC-032](../../rfc/032-[open]-rust-resolver-engine.md) R32-A09 (native Videasy port — still open)

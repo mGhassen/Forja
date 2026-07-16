@@ -165,6 +165,18 @@ pub fn catalog_json(request_json: &str) -> String {
                 "mirrors": mirrors,
             }))
         }
+        "probe_one" => match http::probe_one(&req.base_url) {
+            Ok((base_url, healthy)) => {
+                if healthy {
+                    let _ = http::activate_base_url(&base_url);
+                }
+                catalog::ok_json(&json!({
+                    "base_url": base_url,
+                    "healthy": healthy,
+                }))
+            }
+            Err(e) => catalog::error_json(&e),
+        },
         "activate_base_url" => match http::activate_base_url(&req.base_url) {
             Ok(base_url) => catalog::ok_json(&json!({ "base_url": base_url })),
             Err(e) => catalog::error_json(&e),

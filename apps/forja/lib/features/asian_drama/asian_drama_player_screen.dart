@@ -388,14 +388,33 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
               ];
         _prepareProbes(preferred: pin);
 
-        // Parallel API URL check first — mark DOWN without opening WebViews.
+        // Parallel API URL check first — one engine job per mirror (safe).
+        // Never fan-out OS threads inside Rust around shared Tokio block_on.
         for (final host in tryOrder) {
           _applyProbeStatus(host, StreamProviderProbeStatus.trying);
         }
         _setPhase('Checking mirror URLs…');
+        debugPrint(
+          '[AsianDrama] probing ${tryOrder.length} mirrors in parallel…',
+        );
         KissKhMirrorHealth health;
         try {
-          health = await KissKhService.probeMirrors();
+          health = await KissKhService.probeMirrors(
+            hosts: tryOrder,
+            onResult: (host, ok) {
+              if (!mounted || _cancelled || _switchingManualMirror) return;
+              _applyProbeStatus(
+                host,
+                ok
+                    ? StreamProviderProbeStatus.pending
+                    : StreamProviderProbeStatus.failed,
+              );
+              debugPrint(
+                '[AsianDrama] mirror ${KissKhService.mirrorLabel(host)} '
+                '→ ${ok ? 'API UP' : 'API DOWN'}',
+              );
+            },
+          );
         } catch (e) {
           debugPrint('[AsianDrama] mirror probe failed: $e');
           health = const KissKhMirrorHealth(
@@ -427,6 +446,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
             _applyProbeStatus(host, StreamProviderProbeStatus.failed);
           }
         }
+        debugPrint(
+          '[AsianDrama] healthy mirrors for WebView: $healthyOrder',
+        );
 
         if (healthyOrder.isEmpty) {
           stream = null;

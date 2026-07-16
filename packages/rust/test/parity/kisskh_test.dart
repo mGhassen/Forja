@@ -34,6 +34,15 @@ void main() {
     expect(url, contains('ep=42'));
   });
 
+  test('kisskhCatalogJson probe_one rejects unknown mirrors', () {
+    final rejected = jsonDecode(
+      RustLib.instance.kisskhCatalogJson(
+        '{"action":"probe_one","base_url":"https://kisskh.buzz"}',
+      ),
+    ) as Map<String, dynamic>;
+    expect(rejected['error'], contains('Unsupported KissKh mirror'));
+  });
+
   test('kisskhCatalogJson probe_mirrors returns mirror rows', () {
     final raw = RustLib.instance.kisskhCatalogJson('{"action":"probe_mirrors"}');
     final map = jsonDecode(raw) as Map<String, dynamic>;

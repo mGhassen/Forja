@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** fix · **0 / 2** device smoke |
+| **Progress** | **15 / 15** fix · **0 / 2** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,6 +33,7 @@
 | 12 | I45-T12 | Settings → Playback: persist reorderable KissKH mirror list | ✅ |
 | 13 | I45-T13 | Player Sources panel: expose mirrors as servers + switch via forced-base extract | ✅ |
 | 14 | I45-T14 | Parallel API URL probe before WebView — mark dead mirrors DOWN without extract | ✅ |
+| 15 | I45-T15 | Fix probe hang: no OS-thread fan-out around shared Tokio `block_on`; Dart `Future.wait` + `probe_one` | ✅ |
 
 ---
 

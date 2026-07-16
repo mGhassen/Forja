@@ -84,38 +84,58 @@ class KissKhService {
     await kisskhCatalog({'action': 'activate_base_url', 'base_url': baseUrl});
   }
 
-  /// Parallel API health check for every verified mirror (no WebView).
-  /// Use before extract so dead hosts are marked DOWN without a 16s wait.
-  static Future<KissKhMirrorHealth> probeMirrors() async {
-    final decoded = await kisskhCatalog({'action': 'probe_mirrors'});
-    final raw = decoded['mirrors'] as List<dynamic>? ?? const [];
-    final healthyHosts = <String>[];
-    final unhealthyHosts = <String>[];
-    for (final row in raw) {
-      if (row is! Map) continue;
-      final map = Map<String, dynamic>.from(row);
-      final base = (map['base_url'] as String? ?? '').trim();
-      if (base.isEmpty) continue;
-      final host = hostFromBaseUrl(base);
-      if (!isMirrorHost(host)) continue;
-      if (map['healthy'] == true) {
-        healthyHosts.add(host);
-      } else {
-        unhealthyHosts.add(host);
-      }
+  /// Probe a single mirror API (engine worker, no nested Rust threads).
+  static Future<bool> probeMirror(String hostOrId) async {
+    final host = normalizeMirrorId(hostOrId);
+    final base = baseUrlForHost(host);
+    debugPrint('[KissKh] probe $base …');
+    try {
+      final decoded = await kisskhCatalog({
+        'action': 'probe_one',
+        'base_url': base,
+      });
+      final ok = decoded['healthy'] == true;
+      debugPrint('[KissKh] probe $base → ${ok ? 'UP' : 'DOWN'}');
+      return ok;
+    } catch (e) {
+      debugPrint('[KissKh] probe $base failed: $e');
+      return false;
     }
-    // Ensure catalog hosts missing from Rust still appear somewhere.
-    for (final host in mirrorHosts) {
-      if (!healthyHosts.contains(host) && !unhealthyHosts.contains(host)) {
-        unhealthyHosts.add(host);
-      }
+  }
+
+  /// Parallel API health check — one engine job per mirror via [Future.wait].
+  /// Do not use a single Rust fan-out of threads around shared Tokio `block_on`.
+  static Future<KissKhMirrorHealth> probeMirrors({
+    List<String>? hosts,
+    void Function(String host, bool healthy)? onResult,
+  }) async {
+    final order = [
+      for (final raw in (hosts ?? mirrorHosts))
+        if (isMirrorHost(raw)) normalizeMirrorId(raw),
+    ];
+    final unique = <String>[];
+    for (final host in order) {
+      if (!unique.contains(host)) unique.add(host);
     }
-    final selectedRaw = (decoded['base_url'] as String? ?? '').trim();
-    final selected = selectedRaw.isEmpty
-        ? (healthyHosts.isEmpty ? null : healthyHosts.first)
-        : hostFromBaseUrl(selectedRaw);
+
+    final entries = await Future.wait([
+      for (final host in unique)
+        probeMirror(host).then((ok) {
+          onResult?.call(host, ok);
+          return (host, ok);
+        }),
+    ]);
+
+    final healthyHosts = <String>[
+      for (final e in entries)
+        if (e.$2) e.$1,
+    ];
+    final unhealthyHosts = <String>[
+      for (final e in entries)
+        if (!e.$2) e.$1,
+    ];
     return KissKhMirrorHealth(
-      selected: selected,
+      selected: healthyHosts.isEmpty ? null : healthyHosts.first,
       healthyHosts: healthyHosts,
       unhealthyHosts: unhealthyHosts,
     );

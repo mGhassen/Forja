@@ -396,6 +396,7 @@ class VideasyExtractor {
     var nextIndex = 0;
     var inFlight = 0;
     var stopLaunching = false;
+    var graceExpired = false;
     final done = Completer<void>();
     Timer? grace;
 
@@ -410,6 +411,7 @@ class VideasyExtractor {
       if (grace != null) return;
       // Allow a short window for sibling mirrors, then stop hung probes.
       grace = Timer(const Duration(seconds: 8), () {
+        graceExpired = true;
         _stopInFlightRequests(gen);
         finish();
       });
@@ -455,7 +457,11 @@ class VideasyExtractor {
     pump();
     await done.future;
 
-    if (cancelled() || hits.isEmpty) {
+    if (_shouldDiscardCollectedHits(
+      hasHits: hits.isNotEmpty,
+      cancelled: cancelled(),
+      graceExpired: graceExpired,
+    )) {
       if (hits.isEmpty) onLog('[Videasy] No sources from any mirror');
       return null;
     }
@@ -493,6 +499,28 @@ class VideasyExtractor {
     _sharedClient?.close();
     _sharedClient = null;
   }
+
+  static bool _shouldDiscardCollectedHits({
+    required bool hasHits,
+    required bool cancelled,
+    required bool graceExpired,
+  }) {
+    if (!hasHits) return true;
+    // Grace expiry deliberately bumps the generation to abort hung mirror
+    // requests. It must not discard mirrors collected before that cutoff.
+    return cancelled && !graceExpired;
+  }
+
+  @visibleForTesting
+  static bool shouldDiscardCollectedHitsForTest({
+    required bool hasHits,
+    required bool cancelled,
+    required bool graceExpired,
+  }) => _shouldDiscardCollectedHits(
+    hasHits: hasHits,
+    cancelled: cancelled,
+    graceExpired: graceExpired,
+  );
 
   Future<ExtractedMedia?> _probeProvider({
     required _VideasyDecryptHost crypto,

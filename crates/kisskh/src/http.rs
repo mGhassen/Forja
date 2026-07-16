@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::mpsc;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -17,7 +16,6 @@ pub const MIRROR_BASE_URLS: &[&str] = &[
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
      (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const CACHE_TTL: Duration = Duration::from_secs(600);
-const MIRROR_PROBE_TIMEOUT: Duration = Duration::from_secs(6);
 
 struct CacheEntry {
     body: String,
@@ -174,55 +172,39 @@ fn is_json_body(body: &str) -> bool {
 
 fn probe_base(base: &str) -> bool {
     let url = format!("{base}/api/DramaList/Show");
-    fetch(base, &url, 5, 1)
+    // Short timeout — health gate only; never nest threads that call
+    // anime::request_json (shared Tokio Runtime::block_on deadlocks).
+    fetch(base, &url, 3, 1)
         .map(|body| is_compatible_probe_body(&body))
         .unwrap_or(false)
 }
 
-/// Probe every verified mirror in parallel. Each result is `(base_url, healthy)`.
-/// Mirrors that do not answer within [MIRROR_PROBE_TIMEOUT] are reported down.
+/// Probe one verified mirror on the calling thread.
+pub fn probe_one(base: &str) -> Result<(String, bool), String> {
+    let normalized = base.trim().trim_end_matches('/');
+    if !MIRROR_BASE_URLS.contains(&normalized) {
+        return Err(format!("Unsupported KissKh mirror: {normalized}"));
+    }
+    Ok((normalized.to_string(), probe_base(normalized)))
+}
+
+/// Probe every verified mirror on the calling thread (no OS-thread fan-out).
+/// Parallelism belongs in Dart (`Future.wait` of `probe_one`) so each job
+/// owns a single `block_on` on an engine worker isolate.
 pub fn probe_mirrors() -> Vec<(String, bool)> {
-    let (sender, receiver) = mpsc::channel();
-    for &base in MIRROR_BASE_URLS {
-        let sender = sender.clone();
-        std::thread::spawn(move || {
-            let ok = probe_base(base);
-            let _ = sender.send((base.to_string(), ok));
-        });
-    }
-    drop(sender);
-
-    let deadline = Instant::now() + MIRROR_PROBE_TIMEOUT;
-    let mut seen: HashMap<String, bool> = HashMap::new();
-    loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
-            break;
-        }
-        match receiver.recv_timeout(remaining) {
-            Ok((base, ok)) => {
-                seen.insert(base, ok);
-                if seen.len() >= MIRROR_BASE_URLS.len() {
-                    break;
-                }
-            }
-            Err(_) => break,
-        }
-    }
-
     MIRROR_BASE_URLS
         .iter()
         .map(|base| {
             let url = (*base).to_string();
-            let ok = seen.get(&url).copied().unwrap_or(false);
+            let ok = probe_base(base);
             (url, ok)
         })
         .collect()
 }
 
-/// Race API-compatible mirrors and keep the first valid response as the sticky
-/// base. Only the five domains verified to expose the same Angular API and IDs
-/// are candidates; similarly named WordPress clones are deliberately excluded.
+/// Pick the first healthy mirror as sticky. Sequential on purpose — spawning
+/// threads that each `block_on` the shared anime Tokio runtime deadlocks and
+/// freezes the loading overlay on CHECKING forever.
 pub fn select_base_url() -> Result<String, String> {
     if let Ok(guard) = active_base().lock() {
         if let Some(base) = guard.as_ref() {
@@ -239,22 +221,13 @@ pub fn select_base_url() -> Result<String, String> {
         }
     }
 
-    let (sender, receiver) = mpsc::channel();
     for &base in MIRROR_BASE_URLS {
-        let sender = sender.clone();
-        std::thread::spawn(move || {
-            if probe_base(base) {
-                let _ = sender.send(base.to_string());
-            }
-        });
+        if probe_base(base) {
+            set_active_base(base);
+            return Ok(base.to_string());
+        }
     }
-    drop(sender);
-
-    let selected = receiver
-        .recv_timeout(MIRROR_PROBE_TIMEOUT)
-        .map_err(|_| "No compatible KissKh mirror responded".to_string())?;
-    set_active_base(&selected);
-    Ok(selected)
+    Err("No compatible KissKh mirror responded".to_string())
 }
 
 /// Fetch a KissKh API path with sticky-domain failover. A failed active mirror

@@ -60,4 +60,37 @@ void main() {
     expect(VideasyExtractor.yearFromReleaseDate('1999-10-15'), '1999');
     expect(VideasyExtractor.yearFromReleaseDate(''), isNull);
   });
+
+  test('grace cutoff keeps streams collected from responsive mirrors', () {
+    expect(
+      VideasyExtractor.shouldDiscardCollectedHitsForTest(
+        hasHits: true,
+        cancelled: true,
+        graceExpired: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('external cancellation still discards collected mirror streams', () {
+    expect(
+      VideasyExtractor.shouldDiscardCollectedHitsForTest(
+        hasHits: true,
+        cancelled: true,
+        graceExpired: false,
+      ),
+      isTrue,
+    );
+  });
+
+  test('grace cutoff cannot manufacture a result without mirror streams', () {
+    expect(
+      VideasyExtractor.shouldDiscardCollectedHitsForTest(
+        hasHits: false,
+        cancelled: true,
+        graceExpired: true,
+      ),
+      isTrue,
+    );
+  });
 }
