@@ -53,5 +53,9 @@ Healthy magnets that worked in qBittorrent / PlayTorr still failed in Forja with
 1. **No TCP listen** — session was outgoing-only (`listen: None`), so many swarms never delivered pieces
 2. **Cold DHT every boot** — persistence disabled for sandbox; now dumped under `{temp}/torrent/dht_state.json`
 3. **Hard 60s / 256 KiB abort** — raised to 180s / prefer 64 KiB, and accept ≥16 KiB partial head so mpv can keep pulling
+4. **Default public trackers + DHT bootstraps** that answer on this network
 
-Manual smoke (`I24-T03`, `I24-A01`–`A02`) still required.
+**Verified (2026-07-16):** `stream_head_from_bbb_torrent_file` — Big Buck Bunny `.torrent` → stream URL + HTTP `206` / 1024 bytes in <1s.  
+**Not verified here:** live magnet metadata for BBB (`stream_head_from_public_magnet` / Flutter `TORRENT_E2E`) — peers connect but often lack `ut_metadata` on that swarm; user's HOTD log had already passed metadata and failed at stream-head.
+
+Manual smoke (`I24-T03`, `I24-A01`–`A02`) still required on a real indexer magnet.

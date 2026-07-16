@@ -145,6 +145,14 @@ impl TorrentEngine {
                     dump_interval: Some(Duration::from_secs(60)),
                     config_filename: Some(dht_path),
                 }),
+                // Default bootstraps include dead hosts (router.bittorrent.com).
+                // Pin nodes that answer UDP from this network.
+                bootstrap_addrs: Some(vec![
+                    "dht.transmissionbt.com:6881".into(),
+                    "dht.libtorrent.org:25401".into(),
+                    "router.bittorrent.com:6881".into(),
+                    "dht.aelitis.com:6881".into(),
+                ]),
                 ..Default::default()
             }),
             // Outgoing-only was the main gap vs qBittorrent / PlayTorr: many
@@ -402,6 +410,7 @@ impl TorrentEngine {
         .await
     }
 
+    #[cfg(test)]
     async fn prepare_torrent_bytes(&self, bytes: Vec<u8>) -> Result<PreparedTorrent, String> {
         self.prepare_add(
             AddTorrent::from_bytes(bytes),
