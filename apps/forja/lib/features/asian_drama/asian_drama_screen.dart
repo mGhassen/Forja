@@ -347,7 +347,10 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                               if (_loading)
                                 ...homeHubLoadingSlivers(
                                   context,
-                                  heroShimmer: homeCinematicHeroShimmer(context),
+                                  heroShimmer: homeCinematicHeroShimmer(
+                                    context,
+                                    pageBottomBleed: true,
+                                  ),
                                   rows: kHomeHubAsianDramaLoadingRows,
                                 )
                               else ...[

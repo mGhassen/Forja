@@ -264,12 +264,11 @@ class _DetailsScreenState extends State<DetailsScreen>
     // Leave the title → stop every in-flight source check (Nuvio/Xpass,
     // Stremio, torrents, KissKh, embeds). Subscription cancel alone is not
     // enough — scrapers kept fetching after the route was gone.
+    //
+    // [_cancelActiveSourceFetch] already bumps gens + cancels Nuvio/Engine.
+    // [DomainStreamProviderResolver.cancelAllPending] covers KissKh / Miruro
+    // and HostProviderAdapter (which cancels Nuvio again — abort is idle-quiet).
     _cancelActiveSourceFetch();
-    _torrentSearchGen++;
-    _stremioFetchGen++;
-    _nuvioFetchGen++;
-    NuvioService.instance.cancelPending();
-    Engine.cancelPendingResolve();
     DomainStreamProviderResolver.cancelAllPending();
     _detailsHeroPlayFocus.dispose();
     _detailsScrollController.dispose();

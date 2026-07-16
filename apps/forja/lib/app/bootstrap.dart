@@ -353,6 +353,33 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
+/// Boot TMDB lists — retry a few times on transient "error sending request"
+/// failures (common when four calls race at splash).
+Future<List<Movie>> _bootTmdbFetch(
+  String label,
+  Future<List<Movie>> Function() fetch,
+) async {
+  const attempts = 3;
+  Object? lastError;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      final list = await fetch();
+      if (list.isNotEmpty) return list;
+      lastError = 'empty results';
+    } catch (e) {
+      lastError = e;
+      debugPrint('[Boot] ✗ TMDB $label attempt ${i + 1}/$attempts: $e');
+    }
+    if (i < attempts - 1) {
+      await Future<void>.delayed(Duration(milliseconds: 350 * (i + 1)));
+    }
+  }
+  debugPrint(
+    '[Boot] ✗ TMDB $label failed after $attempts attempts: $lastError',
+  );
+  return const <Movie>[];
+}
+
 class _SplashScreenState extends State<SplashScreen> {
   /// Minimum time the splash overlay stays visible. Engine starts almost
   /// instantly, so we hold the splash a bit longer to let MainScreen /
@@ -472,28 +499,25 @@ class _SplashScreenState extends State<SplashScreen> {
       MusicPlayerService().init().catchError((e) {
         debugPrint('[Boot] ✗ MusicPlayer error: $e');
       }),
-      api.getTrending().catchError((e) {
-        debugPrint('[Boot] ✗ TMDB trending error: $e');
-        return <Movie>[];
-      }),
-      api.getPopular().catchError((e) {
-        debugPrint('[Boot] ✗ TMDB popular error: $e');
-        return <Movie>[];
-      }),
-      api.getTopRated().catchError((e) {
-        debugPrint('[Boot] ✗ TMDB top rated error: $e');
-        return <Movie>[];
-      }),
-      api.getNowPlaying().catchError((e) {
-        debugPrint('[Boot] ✗ TMDB now playing error: $e');
-        return <Movie>[];
-      }),
+      _bootTmdbFetch('trending', api.getTrending),
+      _bootTmdbFetch('popular', api.getPopular),
+      _bootTmdbFetch('top rated', api.getTopRated),
+      _bootTmdbFetch('now playing', api.getNowPlaying),
     ]);
 
-    final trendingList = results[2] as List<Movie>;
+    var trendingList = results[2] as List<Movie>;
     final popularList = results[3] as List<Movie>;
     final topRatedList = results[4] as List<Movie>;
     final nowPlayingList = results[5] as List<Movie>;
+
+    // Hero uses trending — if that one call kept failing, seed from popular
+    // so Home is not an empty shimmer after splash.
+    if (trendingList.isEmpty && popularList.isNotEmpty) {
+      debugPrint(
+        '[Boot] TMDB trending empty after retries — using popular for hero',
+      );
+      trendingList = popularList;
+    }
 
     BootCache.setTmdb(
       trendingList: trendingList,

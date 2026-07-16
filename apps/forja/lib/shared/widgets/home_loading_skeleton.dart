@@ -193,21 +193,20 @@ double homeCinematicHeroBodyHeight(
   return MediaQuery.sizeOf(context).height * shellHeroHeightFraction(context);
 }
 
-Widget homeCinematicHeroShimmer(BuildContext context) {
+Widget homeCinematicHeroShimmer(
+  BuildContext context, {
+  bool pageBottomBleed = false,
+}) {
   final compact = !ShellScope.metricsOf(context).usesTvDensity &&
       MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
-  final pageBottomBleed = !compact && _usesShellHomeLayoutForShimmer(context);
   final height = homeCinematicHeroBodyHeight(
         context,
         compact: compact,
-        pageBottomBleed: pageBottomBleed,
+        pageBottomBleed: pageBottomBleed && !compact,
       ) +
       MediaQuery.paddingOf(context).top;
   return homeHubHeroShimmer(height: height);
 }
-
-bool _usesShellHomeLayoutForShimmer(BuildContext context) =>
-    ShellScope.profileOf(context) != ShellProfile.mobile;
 
 Widget homeHubHeroShimmer({required double height}) {
   return homeLoadingShimmer(

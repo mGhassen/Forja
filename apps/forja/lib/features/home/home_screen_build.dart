@@ -108,6 +108,20 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                   isFirstAfterHero: false,
                 ),
 
+              // Narrow desktop (< full cinematic): Featured as a normal row.
+              if (usesShellHome && !fullHero)
+                _homeRowSliver(
+                  HomeMovieSection(
+                    title: 'Featured This Month',
+                    future: _s._featuredThisMonthFuture,
+                    onMovieTap: _s._openDetails,
+                    compactTop: true,
+                    tvRowId: 'featured',
+                    tvRowOrder: 0,
+                  ),
+                  isFirstAfterHero: true,
+                ),
+
               if (usesShellHome)
                 _homeRowSliver(
                   HomeMovieSection(
@@ -118,7 +132,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                     tvRowId: 'popular',
                     tvRowOrder: 1,
                   ),
-                  isFirstAfterHero: featuredSection == null,
+                  isFirstAfterHero: featuredSection == null && fullHero,
                 ),
 
               if (usesShellHome)

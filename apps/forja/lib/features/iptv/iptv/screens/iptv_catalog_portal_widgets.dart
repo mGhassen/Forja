@@ -139,6 +139,8 @@ class _PortalHoverTile extends StatefulWidget {
 class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
   static const _statusSlot = 18.0;
+  /// Wide enough for typical `active/max` seat labels (e.g. `12/12`).
+  static const _statusColW = 28.0;
   static const _rowH = 66.0;
 
   bool _lineHover = false;
@@ -300,6 +302,50 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     );
   }
 
+  /// Status glyph with `used/max` seats stacked under it (old portal card parity).
+  Widget _statusWithSeats({
+    required bool isActive,
+    required bool checking,
+    required bool? health,
+    required String active,
+    required String max,
+  }) {
+    final seats = '${active.trim().isEmpty ? '0' : active}'
+        '/${max.trim().isEmpty ? '?' : max}';
+    final activeN = int.tryParse(active);
+    final maxN = int.tryParse(max);
+    final full = activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
+    return SizedBox(
+      width: _statusColW,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          isActive
+              ? _activePortalStatusGlyph(
+                  _activePortalStatus(checking: checking, health: health),
+                )
+              : _idlePortalHealthDot(checking: checking, health: health),
+          const SizedBox(height: 3),
+          Text(
+            seats,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              color: full
+                  ? const Color(0xFFFBBF24)
+                  : const Color(0xFF22C55E),
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              height: 1,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
@@ -397,17 +443,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           children: [
                             Align(
                               alignment: Alignment.center,
-                              child: isActive
-                                  ? _activePortalStatusGlyph(
-                                      _activePortalStatus(
-                                        checking: checking,
-                                        health: health,
-                                      ),
-                                    )
-                                  : _idlePortalHealthDot(
-                                      checking: checking,
-                                      health: health,
-                                    ),
+                              child: _statusWithSeats(
+                                isActive: isActive,
+                                checking: checking,
+                                health: health,
+                                active: v.activeConnections,
+                                max: v.maxConnections,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(

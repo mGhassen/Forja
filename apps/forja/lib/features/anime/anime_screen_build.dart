@@ -100,7 +100,10 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                             ConnectionState.waiting ||
                                         !snap.hasData ||
                                         snap.data!.isEmpty) {
-                                      return homeCinematicHeroShimmer(context);
+                                      return homeCinematicHeroShimmer(
+                                        context,
+                                        pageBottomBleed: trendingOnHero,
+                                      );
                                     }
                                     return HubCinematicHero(
                                       slides: _heroSlides(

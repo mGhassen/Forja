@@ -231,7 +231,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   Widget build(BuildContext context) {
     final slides = widget.slides;
     if (slides.isEmpty) {
-      return homeCinematicHeroShimmer(context);
+      return homeCinematicHeroShimmer(
+        context,
+        pageBottomBleed: widget.pageBottomChild != null,
+      );
     }
 
     final policy = ShellScope.inputPolicyOf(context);

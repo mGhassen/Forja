@@ -501,6 +501,10 @@ class NuvioRuntime {
   /// captures empty, and recreate the HTTP client so open requests abort.
   /// Called from [NuvioService.cancelPending] when the user leaves a title.
   void abortPendingWork() {
+    final hadWork = _acceptingFetches ||
+        _activeGetStreams > 0 ||
+        _activeTimers.isNotEmpty ||
+        _pendingResults.isNotEmpty;
     _acceptingFetches = false;
     _fetchGeneration++;
     _fetchGens.clear();
@@ -518,7 +522,12 @@ class NuvioRuntime {
       _http.close();
     } catch (_) {}
     _http = http.Client();
-    debugPrint('[NuvioRuntime] abortPendingWork');
+    // Leave-path cancel is wired from several layers (details dispose, domain
+    // resolver, HostProviderAdapter) — only log when something was actually
+    // running so idle tab switches stay quiet.
+    if (hadWork) {
+      debugPrint('[NuvioRuntime] abortPendingWork');
+    }
   }
 
   void dispose() {
