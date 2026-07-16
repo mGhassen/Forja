@@ -158,7 +158,7 @@ function LoginForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      void navigate({ to: '/account' })
+      void navigate({ to: '/account/profiles' })
     }
   }, [loading, user, navigate])
 
@@ -172,7 +172,7 @@ function LoginForm() {
       setError(signInError)
       return
     }
-    void navigate({ to: '/account' })
+    void navigate({ to: '/account/profiles' })
   }
 
   return (

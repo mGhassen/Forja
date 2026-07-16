@@ -14,9 +14,13 @@ import 'package:rust/rust.dart';
 
 class KissKhService {
   static const String primaryBaseUrl = 'https://kisskh.co';
+  static const String activeMirrorHost = 'kisskh.nl';
 
-  /// API-compatible KissKH hosts (same drama IDs). Used for Settings order,
-  /// loading probes, and the player Sources panel — not HTML clones.
+  /// API-compatible KissKH hosts retained for future reactivation.
+  ///
+  /// Playback deliberately uses only [activeMirrorHost]. Automatically probing
+  /// or failing over across these aliases can trigger KissKH's shared-IP rate
+  /// limit because all hosts count against the same client.
   static const List<String> mirrorHosts = <String>[
     'kisskh.co',
     'kisskh.nl',
@@ -27,8 +31,11 @@ class KissKhService {
 
   /// Settings / player catalog: id → display label.
   static Map<String, String> get settingsCatalog => {
-        for (final host in mirrorHosts) host: mirrorLabel(host),
-      };
+    for (final host in mirrorHosts) host: mirrorLabel(host),
+  };
+
+  static Set<String> get disabledMirrorHosts =>
+      mirrorHosts.where((host) => host != activeMirrorHost).toSet();
 
   static String mirrorLabel(String hostOrId) {
     final host = normalizeMirrorId(hostOrId);
@@ -56,8 +63,7 @@ class KissKhService {
     return 'https://$host';
   }
 
-  static String hostFromBaseUrl(String baseUrl) =>
-      normalizeMirrorId(baseUrl);
+  static String hostFromBaseUrl(String baseUrl) => normalizeMirrorId(baseUrl);
 
   /// Ask the Rust catalog engine to race API-compatible mirrors. The returned
   /// order keeps the first healthy mirror first and excludes unrelated sites
@@ -182,9 +188,7 @@ class KissKhService {
       }
       okByHost[host] = ok;
       if (fromDeadline) {
-        debugPrint(
-          '[KissKh] probe ${baseUrlForHost(host)} → DOWN (deadline)',
-        );
+        debugPrint('[KissKh] probe ${baseUrlForHost(host)} → DOWN (deadline)');
       }
       onResult?.call(host, ok);
       if (pending.isEmpty) finish();
@@ -215,10 +219,7 @@ class KissKhService {
   }
 
   Future<List<KdramaCard>> search(String query) async {
-    final decoded = await kisskhCatalog({
-      'action': 'search',
-      'query': query,
-    });
+    final decoded = await kisskhCatalog({'action': 'search', 'query': query});
     return _parseCards(decoded['cards']);
   }
 
@@ -260,10 +261,7 @@ class KissKhService {
   }
 
   Future<KdramaDetails> getDetails(int id) async {
-    final decoded = await kisskhCatalog({
-      'action': 'details',
-      'id': id,
-    });
+    final decoded = await kisskhCatalog({'action': 'details', 'id': id});
     return KdramaDetails.fromEngineJson(decoded);
   }
 
@@ -278,7 +276,9 @@ class KissKhService {
   }
 
   /// Hero synopsis — list endpoints omit description; fetch from drama details.
-  Future<List<KdramaCard>> enrichCardDescriptions(List<KdramaCard> cards) async {
+  Future<List<KdramaCard>> enrichCardDescriptions(
+    List<KdramaCard> cards,
+  ) async {
     if (cards.isEmpty) return cards;
     final decoded = await kisskhCatalog({
       'action': 'enrich_card_descriptions',
@@ -328,8 +328,18 @@ class KissKhService {
       return raw.substring(0, 10);
     }
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[month - 1]} $day, ${parts[0]}';
   }
@@ -441,8 +451,9 @@ class KissKhService {
     final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
     final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
     if (posMs <= 5000) return null;
-    final clamped =
-        (durMs > 0 && posMs > durMs - 30000) ? (durMs - 30000) : posMs;
+    final clamped = (durMs > 0 && posMs > durMs - 30000)
+        ? (durMs - 30000)
+        : posMs;
     return Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
   }
 
@@ -542,8 +553,10 @@ class KdramaCard {
   final String? label;
   final int episodesCount;
   final String? year;
+
   /// Raw kisskh type: `TVSeries`, `Movie`, `Anime`, `Hollywood`.
   final String? type;
+
   /// Synopsis from details enrich — list endpoints omit this.
   final String description;
 
@@ -574,15 +587,15 @@ class KdramaCard {
   }
 
   Map<String, dynamic> toEngineJson() => {
-        'id': id,
-        'title': title,
-        'cover': cover,
-        if (label != null) 'label': label,
-        'episodes_count': episodesCount,
-        if (year != null) 'year': year,
-        if (type != null) 'type': type,
-        if (description.isNotEmpty) 'description': description,
-      };
+    'id': id,
+    'title': title,
+    'cover': cover,
+    if (label != null) 'label': label,
+    'episodes_count': episodesCount,
+    if (year != null) 'year': year,
+    if (type != null) 'type': type,
+    if (description.isNotEmpty) 'description': description,
+  };
 
   KdramaCard copyWith({
     int? id,
@@ -678,14 +691,14 @@ class KdramaHomeFeed {
   }
 
   Map<String, dynamic> toEngineJson() => {
-        'spotlight': spotlight.map((c) => c.toEngineJson()).toList(),
-        'latest': latest.map((c) => c.toEngineJson()).toList(),
-        'most_viewed': mostViewed.map((c) => c.toEngineJson()).toList(),
-        'trending': trending.map((c) => c.toEngineJson()).toList(),
-        'top_rated': topRated.map((c) => c.toEngineJson()).toList(),
-        'upcoming': upcoming.map((c) => c.toEngineJson()).toList(),
-        'anime': anime.map((c) => c.toEngineJson()).toList(),
-      };
+    'spotlight': spotlight.map((c) => c.toEngineJson()).toList(),
+    'latest': latest.map((c) => c.toEngineJson()).toList(),
+    'most_viewed': mostViewed.map((c) => c.toEngineJson()).toList(),
+    'trending': trending.map((c) => c.toEngineJson()).toList(),
+    'top_rated': topRated.map((c) => c.toEngineJson()).toList(),
+    'upcoming': upcoming.map((c) => c.toEngineJson()).toList(),
+    'anime': anime.map((c) => c.toEngineJson()).toList(),
+  };
 
   /// Merge enriched cards (by id) into every feed row.
   KdramaHomeFeed withCardsReplaced(List<KdramaCard> updates) {
@@ -754,15 +767,15 @@ class KdramaDetails {
   String? get year => KissKhService.yearFromRelease(releaseDate);
 
   KdramaCard toCard() => KdramaCard(
-        id: id,
-        title: title,
-        cover: cover,
-        label: label,
-        episodesCount: episodesCount,
-        year: year,
-        type: type.isEmpty ? null : type,
-        description: description,
-      );
+    id: id,
+    title: title,
+    cover: cover,
+    label: label,
+    episodesCount: episodesCount,
+    year: year,
+    type: type.isEmpty ? null : type,
+    description: description,
+  );
 
   /// Match a watch-history entry to a live episode row (number first — stable
   /// across kisskh API id churn; id is a secondary hint).
@@ -783,11 +796,7 @@ class KdramaEpisode {
   final double number;
   final int sub;
 
-  const KdramaEpisode({
-    required this.id,
-    required this.number,
-    this.sub = 0,
-  });
+  const KdramaEpisode({required this.id, required this.number, this.sub = 0});
 
   factory KdramaEpisode.fromEngineJson(Map<String, dynamic> json) {
     return KdramaEpisode(
@@ -835,17 +844,37 @@ class KdramaExplorePage {
 /// integer codes consumed by `KissKhService.explore(...)`.
 class KissKhExploreFilters {
   static const List<String> types = [
-    'All', 'TV Series', 'Movie', 'Anime', 'Hollywood',
+    'All',
+    'TV Series',
+    'Movie',
+    'Anime',
+    'Hollywood',
   ];
   static const List<String> subtitles = [
-    'All', 'English', 'Khmer', 'Indonesian', 'Malay', 'Thai', 'Arabic',
+    'All',
+    'English',
+    'Khmer',
+    'Indonesian',
+    'Malay',
+    'Thai',
+    'Arabic',
   ];
   static const List<String> countries = [
-    'All', 'South Korea', 'Chinese', 'United States', 'Thailand',
-    'Philippine', 'Japanese', 'Hong Kong', 'Taiwan',
+    'All',
+    'South Korea',
+    'Chinese',
+    'United States',
+    'Thailand',
+    'Philippine',
+    'Japanese',
+    'Hong Kong',
+    'Taiwan',
   ];
   static const List<String> statuses = [
-    'All', 'Ongoing', 'Completed', 'Upcoming',
+    'All',
+    'Ongoing',
+    'Completed',
+    'Upcoming',
   ];
   static const List<String> orders = [
     // index 0 unused — the API uses 1-based ordering codes.

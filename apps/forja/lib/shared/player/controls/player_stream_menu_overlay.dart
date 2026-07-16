@@ -70,7 +70,9 @@ class _StreamMenuOverlay extends StatefulWidget {
 }
 
 class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
-  bool _open = false;
+  /// Start open so the first paint includes the opaque scrim (anime / drama
+  /// Source menu). Delayed open left the seek bar live under the overlay.
+  bool _open = true;
   final Set<String> _loadingProviders = {};
   /// Providers whose stream branch is collapsed (loaded but hidden).
   final Set<String> _collapsedProviders = {};
@@ -86,11 +88,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   void initState() {
     super.initState();
     ProviderScoreMemory.revision.addListener(_onScoreRevision);
-    // Show scrim immediately so the seek bar under this OverlayEntry cannot
-    // steal taps while settings / score memory load.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_open) setState(() => _open = true);
-    });
+    playerChromeCancelSeekScrubs();
     unawaited(_bootstrap());
   }
 

@@ -12,7 +12,9 @@ void main() {
   });
 
   group('ProviderScoringPanel', () {
-    testWidgets('shows tabbed panel with score and tries labels', (tester) async {
+    testWidgets('shows tabbed panel with score and tries labels', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -29,8 +31,12 @@ void main() {
                 animeOrder: const ['miruro:bee'],
                 onAnimeOrderChanged: (_) {},
                 onAnimeOrderReset: () {},
-                asianDramaCatalog: const {'kisskh': 'KissKH'},
-                asianDramaOrder: const ['kisskh'],
+                asianDramaCatalog: const {
+                  'kisskh.nl': 'kisskh.nl',
+                  'kisskh.co': 'KissKH',
+                },
+                asianDramaOrder: const ['kisskh.nl', 'kisskh.co'],
+                disabledAsianDramaProviders: const {'kisskh.co'},
                 onAsianDramaOrderChanged: (_) {},
                 onAsianDramaOrderReset: () {},
               ),
@@ -54,10 +60,14 @@ void main() {
 
       await tester.tap(find.text('Asian Drama'));
       await tester.pumpAndSettle();
+      expect(find.text('kisskh.nl'), findsOneWidget);
       expect(find.text('KissKH'), findsOneWidget);
+      expect(find.text('On hold'), findsOneWidget);
     });
 
-    testWidgets('tries badge uses auto-try position not effective rank', (tester) async {
+    testWidgets('tries badge uses auto-try position not effective rank', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -76,6 +86,7 @@ void main() {
                 onAnimeOrderReset: () {},
                 asianDramaCatalog: const {'kisskh': 'KissKH'},
                 asianDramaOrder: const ['kisskh'],
+                disabledAsianDramaProviders: const {},
                 onAsianDramaOrderChanged: (_) {},
                 onAsianDramaOrderReset: () {},
               ),

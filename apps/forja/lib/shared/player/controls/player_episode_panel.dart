@@ -603,14 +603,12 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
 }
 
 class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
-  bool _open = false;
+  final bool _open = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _open = true);
-    });
+    playerChromeCancelSeekScrubs();
   }
 
   @override

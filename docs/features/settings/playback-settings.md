@@ -19,7 +19,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as the **Auto next** switch in the player Episodes panel top bar
 - Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip; also available in the in-player **Settings** menu
 - Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
-- Reorder **Server reliability** (Movies / Series / Anime / Asian Drama tabs): drag preference; **Score** is live reliability; **Tries** is Auto check order
+- Reorder **Server reliability** for Movies, Series, and Anime: drag preference; **Score** is live reliability; **Tries** is Auto check order. Asian Drama currently keeps one KissKH host enabled and shows the others **On hold**
 - Set **Max stream quality** to cap automatic selection (Auto, 4K, 1080p, 720p, …)
 
 Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URLs, images, scores, continue watching).
@@ -27,7 +27,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 ## Tips
 
 - Play source toggles: green **Play** (play icon) uses **Webstreaming** extractors only; white link **Play** / **Sources** use **Direct torrent** (Forja + **Nuvio** tab) and **Stremio** (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel uses **Torrents / Stremio / Nuvio** when those play sources are available (providers under **Filters**).
-- **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag to prefer a server. **Score** rises when that server works across titles you play. **Tries** (1st, 2nd, …) is the order Auto tries them. Asian Drama lists the verified **KissKH mirrors** (`.co`, `.nl`, `.ovh`, `.la`, `.do`). In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
+- **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag to prefer a server where ordering is enabled. **Score** rises when that server works across titles you play. **Tries** (1st, 2nd, …) is the order Auto tries them. Asian Drama enables only `kisskh.nl`; `.co`, `.ovh`, `.la`, and `.do` remain visible as **On hold** and cannot be reordered, preventing automatic mirror checks from triggering KissKH's shared-IP rate limit. In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
 - **Max stream quality** caps what the playback engine picks automatically (device probe still applies under Auto)
 - Anime uses the same resolve + Rust scoring pipeline as movies; saved source pin still wins when set
 - External player is chosen per stream from the in-player **Player** menu — playback always starts in the built-in player

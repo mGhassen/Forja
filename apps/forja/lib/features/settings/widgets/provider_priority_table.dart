@@ -16,6 +16,7 @@ class ProviderScoringPanel extends StatefulWidget {
     required this.onAnimeOrderReset,
     required this.asianDramaCatalog,
     required this.asianDramaOrder,
+    required this.disabledAsianDramaProviders,
     required this.onAsianDramaOrderChanged,
     required this.onAsianDramaOrderReset,
   });
@@ -32,6 +33,7 @@ class ProviderScoringPanel extends StatefulWidget {
 
   final Map<String, String> asianDramaCatalog;
   final List<String> asianDramaOrder;
+  final Set<String> disabledAsianDramaProviders;
   final ValueChanged<List<String>> onAsianDramaOrderChanged;
   final VoidCallback onAsianDramaOrderReset;
 
@@ -62,23 +64,23 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
   }
 
   SourceDomain get _domain => switch (_tab) {
-        _ScoringTab.movies => SourceDomain.movies,
-        _ScoringTab.series => SourceDomain.series,
-        _ScoringTab.anime => SourceDomain.anime,
-        _ScoringTab.asianDrama => SourceDomain.asianDrama,
-      };
+    _ScoringTab.movies => SourceDomain.movies,
+    _ScoringTab.series => SourceDomain.series,
+    _ScoringTab.anime => SourceDomain.anime,
+    _ScoringTab.asianDrama => SourceDomain.asianDrama,
+  };
 
   Map<String, String> get _catalog => switch (_tab) {
-        _ScoringTab.anime => widget.animeCatalog,
-        _ScoringTab.asianDrama => widget.asianDramaCatalog,
-        _ => widget.streamCatalog,
-      };
+    _ScoringTab.anime => widget.animeCatalog,
+    _ScoringTab.asianDrama => widget.asianDramaCatalog,
+    _ => widget.streamCatalog,
+  };
 
   List<String> get _savedOrder => switch (_tab) {
-        _ScoringTab.anime => widget.animeOrder,
-        _ScoringTab.asianDrama => widget.asianDramaOrder,
-        _ => widget.streamOrder,
-      };
+    _ScoringTab.anime => widget.animeOrder,
+    _ScoringTab.asianDrama => widget.asianDramaOrder,
+    _ => widget.streamOrder,
+  };
 
   void _onOrderChanged(List<String> next) {
     switch (_tab) {
@@ -93,10 +95,10 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
   }
 
   VoidCallback get _onOrderReset => switch (_tab) {
-        _ScoringTab.anime => widget.onAnimeOrderReset,
-        _ScoringTab.asianDrama => widget.onAsianDramaOrderReset,
-        _ => widget.onStreamOrderReset,
-      };
+    _ScoringTab.anime => widget.onAnimeOrderReset,
+    _ScoringTab.asianDrama => widget.onAsianDramaOrderReset,
+    _ => widget.onStreamOrderReset,
+  };
 
   List<String> get _order {
     final saved = _savedOrder;
@@ -112,9 +114,15 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
     return out;
   }
 
+  Set<String> get _disabledProviders => switch (_tab) {
+    _ScoringTab.asianDrama => widget.disabledAsianDramaProviders,
+    _ => const <String>{},
+  };
+
   @override
   Widget build(BuildContext context) {
     final order = _order;
+    final disabledProviders = _disabledProviders;
     final preview = SourceEngine.orderProviders(
       domain: _domain,
       candidateIds: order,
@@ -133,24 +141,21 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
         children: [
           Text(
             'Server reliability',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
             'Score rises when a server works across the titles you play. '
             'Auto tries servers in the Tries order — drag to prefer one.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: ForjaShellColors.textSecondary,
-                  height: 1.35,
-                ),
+              color: ForjaShellColors.textSecondary,
+              height: 1.35,
+            ),
           ),
           const SizedBox(height: 14),
-          _TabStrip(
-            tab: _tab,
-            onChanged: (t) => setState(() => _tab = t),
-          ),
+          _TabStrip(tab: _tab, onChanged: (t) => setState(() => _tab = t)),
           const SizedBox(height: 12),
           _ColumnLegend(),
           const SizedBox(height: 4),
@@ -160,6 +165,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
             buildDefaultDragHandles: false,
             itemCount: order.length,
             onReorderItem: (oldIndex, newIndex) {
+              if (_tab == _ScoringTab.asianDrama) return;
               final next = List<String>.from(order);
               final item = next.removeAt(oldIndex);
               next.insert(newIndex, item);
@@ -167,28 +173,42 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
             },
             itemBuilder: (context, index) {
               final id = order[index];
+              final disabled = disabledProviders.contains(id);
               final row = rowById[id];
-              final score = row?.reliabilityScore ??
+              final score =
+                  row?.reliabilityScore ??
                   ProviderScoreMemory.globalScoreFor(id);
-              final tries = row?.supported == true
-                  ? tryPositionById[id]
-                  : null;
+              final tries = row?.supported == true ? tryPositionById[id] : null;
               return _ServerRow(
                 key: ValueKey('${_tab.name}-$id'),
                 index: index,
                 name: _catalog[id] ?? id,
                 score: score,
-                tries: tries,
+                tries: disabled ? null : tries,
+                disabled: disabled,
+                reorderable: _tab != _ScoringTab.asianDrama,
               );
             },
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: _onOrderReset,
-              child: const Text('Reset order'),
+          if (_tab != _ScoringTab.asianDrama)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _onOrderReset,
+                child: const Text('Reset order'),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(left: 4, top: 10),
+              child: Text(
+                'One KissKH host is enabled to avoid shared-IP rate limits. '
+                'Other mirrors are on hold.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: ForjaShellColors.textSecondary,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -247,10 +267,10 @@ class _ColumnLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: ForjaShellColors.textSecondary,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
-        );
+      color: ForjaShellColors.textSecondary,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       child: Row(
@@ -278,12 +298,16 @@ class _ServerRow extends StatelessWidget {
     required this.name,
     required this.score,
     required this.tries,
+    required this.disabled,
+    required this.reorderable,
   });
 
   final int index;
   final String name;
   final int score;
   final int? tries;
+  final bool disabled;
+  final bool reorderable;
 
   @override
   Widget build(BuildContext context) {
@@ -293,29 +317,63 @@ class _ServerRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
-            ReorderableDragStartListener(
-              index: index,
-              child: SizedBox(
+            if (!reorderable)
+              SizedBox(
                 width: 28,
                 height: 36,
                 child: Icon(
-                  Icons.drag_indicator_rounded,
-                  size: 18,
-                  color: ForjaShellColors.iconMuted,
+                  disabled
+                      ? Icons.pause_circle_outline_rounded
+                      : Icons.check_circle_outline_rounded,
+                  size: 17,
+                  color: disabled
+                      ? ForjaShellColors.iconMuted
+                      : const Color(0xFF7DDEA0),
+                ),
+              )
+            else
+              ReorderableDragStartListener(
+                index: index,
+                child: SizedBox(
+                  width: 28,
+                  height: 36,
+                  child: Icon(
+                    Icons.drag_indicator_rounded,
+                    size: 18,
+                    color: ForjaShellColors.iconMuted,
+                  ),
                 ),
               ),
-            ),
             Expanded(
-              child: Text(
-                name,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      name,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: disabled ? ForjaShellColors.textSecondary : null,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
+                  ),
+                  if (disabled) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'On hold',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: ForjaShellColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             SizedBox(
               width: 72,
-              child: Center(child: _ScorePill(score: score)),
+              child: disabled
+                  ? const SizedBox.shrink()
+                  : Center(child: _ScorePill(score: score)),
             ),
             SizedBox(
               width: 64,
@@ -343,8 +401,8 @@ class _ScorePill extends StatelessWidget {
     final fg = strong
         ? const Color(0xFF7DDEA0)
         : mid
-            ? Colors.white.withValues(alpha: 0.9)
-            : ForjaShellColors.textSecondary;
+        ? Colors.white.withValues(alpha: 0.9)
+        : ForjaShellColors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -377,20 +435,26 @@ class _TriesBadge extends StatelessWidget {
     if (tries == null) {
       return Text(
         '—',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: ForjaShellColors.textSecondary,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: ForjaShellColors.textSecondary),
       );
     }
-    final label = tries == 1 ? '1st' : tries == 2 ? '2nd' : tries == 3 ? '3rd' : '#$tries';
+    final label = tries == 1
+        ? '1st'
+        : tries == 2
+        ? '2nd'
+        : tries == 3
+        ? '3rd'
+        : '#$tries';
     return Text(
       label,
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: tries == 1
-                ? const Color(0xFF7DDEA0)
-                : ForjaShellColors.textPrimary,
-          ),
+        fontWeight: FontWeight.w800,
+        color: tries == 1
+            ? const Color(0xFF7DDEA0)
+            : ForjaShellColors.textPrimary,
+      ),
     );
   }
 }

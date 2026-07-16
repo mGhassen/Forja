@@ -46,6 +46,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
   Offset? _downGlobal;
   bool _movedEnoughToScrub = false;
   bool _globalRouteAttached = false;
+  bool _overlayClearScheduled = false;
 
   double get _playFrac {
     final total = widget.duration.inMilliseconds.toDouble();
@@ -64,6 +65,9 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     final total = widget.duration.inMilliseconds.toDouble();
     return Duration(milliseconds: (_hoverFrac * total).round());
   }
+
+  bool get _scrubLive =>
+      _isDragging || _hovering || _activePointer != null;
 
   @override
   void initState() {
@@ -84,8 +88,24 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
   /// Menus open above the bar and would keep the thumb magnetized — drop scrub.
   void _cancelScrubFromOverlay() {
     if (!mounted) return;
-    if (!_isDragging && !_hovering && _activePointer == null) return;
+    if (!_scrubLive) return;
     _endScrub(commit: false, clearHover: true);
+  }
+
+  void _scheduleOverlayClearIfNeeded() {
+    if (!playerChromeOverlayBlocksSeek() || !_scrubLive) {
+      _overlayClearScheduled = false;
+      return;
+    }
+    if (_overlayClearScheduled) return;
+    _overlayClearScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _overlayClearScheduled = false;
+      if (!mounted) return;
+      if (playerChromeOverlayBlocksSeek() && _scrubLive) {
+        _endScrub(commit: false, clearHover: true);
+      }
+    });
   }
 
   void _schedulePreview() {
@@ -191,7 +211,9 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
         final total = widget.duration.inMilliseconds.toDouble();
         widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
       }
-      widget.onDragEnd?.call();
+      try {
+        widget.onDragEnd?.call();
+      } catch (_) {}
     }
     if (!mounted) return;
     setState(() {
@@ -219,6 +241,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleOverlayClearIfNeeded();
     final active = _hovering || _isDragging;
 
     return MouseRegion(

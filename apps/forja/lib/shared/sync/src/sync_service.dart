@@ -8,11 +8,13 @@ class SyncProfile {
     required this.id,
     required this.name,
     required this.color,
+    required this.avatarKey,
   });
 
   final String id;
   final String name;
   final String color;
+  final String avatarKey;
 }
 
 class SyncService {
@@ -81,7 +83,7 @@ class SyncService {
     try {
       final rows = await client
           .from('profiles')
-          .select('id, name, color, created_at')
+          .select('id, name, color, avatar_key, created_at')
           .eq('user_id', userId)
           .order('created_at');
       return [
@@ -90,6 +92,7 @@ class SyncService {
             id: (raw as Map)['id'] as String,
             name: raw['name'] as String? ?? 'Profile',
             color: raw['color'] as String? ?? '#1ce783',
+            avatarKey: raw['avatar_key'] as String? ?? 'forge',
           ),
       ];
     } catch (e) {

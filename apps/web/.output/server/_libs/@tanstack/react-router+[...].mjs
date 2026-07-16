@@ -1,6 +1,6 @@
 import { n as __require, r as __toESM, t as __commonJSMin } from "../../_runtime.mjs";
-import { n as require_react } from "../@radix-ui/react-compose-refs+[...].mjs";
-import { i as require_jsx_runtime, r as require_react_dom } from "../@radix-ui/react-label+[...].mjs";
+import { l as require_react_dom, u as require_react } from "../@floating-ui/react-dom+[...].mjs";
+import { s as require_jsx_runtime } from "../@radix-ui/react-arrow+[...].mjs";
 import { n as parseHref } from "../tanstack__history.mjs";
 import { PassThrough, Readable } from "node:stream";
 import { ReadableStream as ReadableStream$1 } from "node:stream/web";

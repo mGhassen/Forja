@@ -209,11 +209,18 @@ async function ensureProfiles(admin, userId, variant) {
   const desired =
     variant === 'full'
       ? [
-          { name: 'Home', color: '#1ce783', settings: 'full' },
-          { name: 'Kids', color: '#ff4d1c', settings: 'light' },
-          { name: 'Guest', color: '#5aa9ff', settings: 'light' },
+          { name: 'Home', color: '#1ce783', avatar_key: 'forge', settings: 'full' },
+          { name: 'Kids', color: '#ff4d1c', avatar_key: 'flame', settings: 'light' },
+          { name: 'Guest', color: '#5aa9ff', avatar_key: 'orbit', settings: 'light' },
         ]
-      : [{ name: 'Demo', color: '#c084fc', settings: 'light' }]
+      : [
+          {
+            name: 'Demo',
+            color: '#c084fc',
+            avatar_key: 'pixel',
+            settings: 'light',
+          },
+        ]
 
   const { data: current, error: loadError } = await admin
     .from('profiles')
@@ -227,7 +234,11 @@ async function ensureProfiles(admin, userId, variant) {
     const first = desired[0]
     const { data, error } = await admin
       .from('profiles')
-      .update({ name: first.name, color: first.color })
+      .update({
+        name: first.name,
+        color: first.color,
+        avatar_key: first.avatar_key,
+      })
       .eq('id', profiles[0].id)
       .select('*')
       .single()
@@ -236,10 +247,26 @@ async function ensureProfiles(admin, userId, variant) {
   }
 
   for (const item of desired) {
-    if (profiles.some((profile) => profile.name === item.name)) continue
+    const existing = profiles.find((profile) => profile.name === item.name)
+    if (existing) {
+      const { data, error } = await admin
+        .from('profiles')
+        .update({ color: item.color, avatar_key: item.avatar_key })
+        .eq('id', existing.id)
+        .select('*')
+        .single()
+      if (error) throw error
+      Object.assign(existing, data)
+      continue
+    }
     const { data, error } = await admin
       .from('profiles')
-      .insert({ user_id: userId, name: item.name, color: item.color })
+      .insert({
+        user_id: userId,
+        name: item.name,
+        color: item.color,
+        avatar_key: item.avatar_key,
+      })
       .select('*')
       .single()
     if (error) throw error

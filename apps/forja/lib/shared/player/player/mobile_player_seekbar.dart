@@ -51,6 +51,24 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
   double _fracFromLocal(double dx) => (dx / _trackWidth).clamp(0.0, 1.0);
 
   @override
+  void initState() {
+    super.initState();
+    playerChromeRegisterSeekScrubCancel(_cancelScrubFromOverlay);
+  }
+
+  @override
+  void dispose() {
+    playerChromeUnregisterSeekScrubCancel(_cancelScrubFromOverlay);
+    super.dispose();
+  }
+
+  void _cancelScrubFromOverlay() {
+    if (!mounted || !_isDragging) return;
+    setState(() => _isDragging = false);
+    widget.onDragEnd();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -64,6 +82,10 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
       },
       onHorizontalDragUpdate: (d) {
         if (!_isDragging) return;
+        if (playerChromeOverlayBlocksSeek()) {
+          _cancelScrubFromOverlay();
+          return;
+        }
         setState(() {
           _dragFrac = _fracFromLocal(d.localPosition.dx);
         });

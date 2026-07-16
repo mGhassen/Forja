@@ -443,11 +443,16 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                       ),
                 ),
                 const SizedBox(height: 10),
-                // Full-width absorber so empty space between left/right
-                // transport clusters cannot fall through to the seek bar.
+                // Full-width opaque hit target so empty space between left/right
+                // clusters (and the wide anime/drama Source chip) cannot start a
+                // seek scrub on the bar above.
                 Material(
                   type: MaterialType.transparency,
-                  child: Row(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Listener(
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
@@ -565,6 +570,8 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                     ),
                   ],
                 ),
+                    ),
+                  ),
                 ),
               ],
             ),

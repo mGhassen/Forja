@@ -116,14 +116,12 @@ class _PlayerSourcesOverlay extends StatefulWidget {
 }
 
 class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
-  bool _open = false;
+  final bool _open = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _open = true);
-    });
+    playerChromeCancelSeekScrubs();
   }
 
   @override

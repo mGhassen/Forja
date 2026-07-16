@@ -26,9 +26,11 @@ class SettingsService {
   /// `true` = do not skip (dev testing). `false` = skip WebView sniffers on TV.
   static bool allowAndroidTvHeadlessWebViewExtractors = true;
 
-  PlatformDefaults get _defaults => PlatformDefaults.forProfile(_platformProfile);
+  PlatformDefaults get _defaults =>
+      PlatformDefaults.forProfile(_platformProfile);
 
-  static const String _platformDefaultsSeededKey = 'platform_defaults_seeded_v1';
+  static const String _platformDefaultsSeededKey =
+      'platform_defaults_seeded_v1';
   static const String _settingsSchemaKey = 'settings_schema_v2';
 
   static final ValueNotifier<int> addonChangeNotifier = ValueNotifier<int>(0);
@@ -59,7 +61,8 @@ class SettingsService {
   static const String _subBoldKey = 'sub_bold';
   static const String _subBottomPaddingKey = 'sub_bottom_padding';
   static const String _subFontKey = 'sub_font';
-  static const String _showTorrentStatsOverlayKey = 'show_torrent_stats_overlay';
+  static const String _showTorrentStatsOverlayKey =
+      'show_torrent_stats_overlay';
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
   static const String _playerAutoServerKey = 'player_auto_server';
@@ -70,7 +73,8 @@ class SettingsService {
   static const String _autoNextEpisodeKey = 'auto_next_episode';
   static const String _legacyAutoNextKey = 'forja_auto_next';
   static const String _autoSkipIntroKey = 'auto_skip_intro';
-  static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';  static const String _maxPlaybackHeightKey = 'max_playback_height';
+  static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
+  static const String _maxPlaybackHeightKey = 'max_playback_height';
 
   /// Headless WebView sniff: iframe-wrap embed URLs vs load them directly.
   static final ValueNotifier<bool> playerWebViewUseEmbedNotifier =
@@ -93,14 +97,16 @@ class SettingsService {
     return height > 0 ? '${height}p' : 'Auto';
   }
 
-  static final ValueNotifier<bool> iptvEpgEnabledNotifier =
-      ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> iptvEpgEnabledNotifier = ValueNotifier<bool>(
+    true,
+  );
 
   /// Prefetch / live-sync for player episode panel + Settings.
   static final ValueNotifier<bool> autoNextEpisodeNotifier =
       ValueNotifier<bool>(true);
-  static final ValueNotifier<bool> autoSkipIntroNotifier =
-      ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> autoSkipIntroNotifier = ValueNotifier<bool>(
+    false,
+  );
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -200,10 +206,7 @@ class SettingsService {
       kvSetInt(_maxPlaybackHeightKey, height);
 
   Future<double> getSubSize({bool isDesktop = false}) async =>
-      kvGetDouble(
-        _subSizeKey,
-        fallback: isDesktop ? 44.0 : _defaults.subSize,
-      );
+      kvGetDouble(_subSizeKey, fallback: isDesktop ? 44.0 : _defaults.subSize);
 
   Future<void> setSubSize(double v) async => kvSetDouble(_subSizeKey, v);
 
@@ -235,11 +238,10 @@ class SettingsService {
 
   /// Desktop player: show live torrent stats card over the seek bar.
   /// Default off.
-  Future<bool> getShowTorrentStatsOverlay() async =>
-      kvGetBool(
-        _showTorrentStatsOverlayKey,
-        fallback: _defaults.showTorrentStatsOverlay,
-      );
+  Future<bool> getShowTorrentStatsOverlay() async => kvGetBool(
+    _showTorrentStatsOverlayKey,
+    fallback: _defaults.showTorrentStatsOverlay,
+  );
 
   Future<void> setShowTorrentStatsOverlay(bool v) async =>
       kvSetBool(_showTorrentStatsOverlayKey, v);
@@ -280,11 +282,10 @@ class SettingsService {
   Future<void> setPlaySourceStremioEnabled(bool enabled) async =>
       kvSetBool(_playSourceStremioKey, enabled);
 
-  Future<bool> isPlaySourceWebstreamingEnabled() async =>
-      kvGetBool(
-        _playSourceWebstreamingKey,
-        fallback: _defaults.playSourceWebstreaming,
-      );
+  Future<bool> isPlaySourceWebstreamingEnabled() async => kvGetBool(
+    _playSourceWebstreamingKey,
+    fallback: _defaults.playSourceWebstreaming,
+  );
 
   Future<void> setPlaySourceWebstreamingEnabled(bool enabled) async =>
       kvSetBool(_playSourceWebstreamingKey, enabled);
@@ -311,8 +312,10 @@ class SettingsService {
   ];
 
   Future<List<String>> getStreamProviderOrder() async {
-    final saved =
-        await kvGetStringList(_streamProviderOrderKey, fallback: const []);
+    final saved = await kvGetStringList(
+      _streamProviderOrderKey,
+      fallback: const [],
+    );
     if (saved.isEmpty) {
       return List<String>.from(defaultStreamProviderOrder);
     }
@@ -378,8 +381,10 @@ class SettingsService {
   ];
 
   Future<List<String>> getAnimeProviderOrder() async {
-    final saved =
-        await kvGetStringList(_animeProviderOrderKey, fallback: const []);
+    final saved = await kvGetStringList(
+      _animeProviderOrderKey,
+      fallback: const [],
+    );
     if (saved.isEmpty) {
       return List<String>.from(defaultAnimeProviderOrder);
     }
@@ -392,31 +397,14 @@ class SettingsService {
   static const String _asianDramaProviderOrderKey =
       'asian_drama_provider_order';
 
-  /// Default Asian Drama mirror try-order (KissKH API-compatible hosts).
+  /// Asian Drama is intentionally single-host. KissKH aliases share the
+  /// client's rate limit, so probing/failover across them can cause a ban.
   static const List<String> defaultAsianDramaProviderOrder = <String>[
-    'kisskh.co',
     'kisskh.nl',
-    'kisskh.ovh',
-    'kisskh.la',
-    'kisskh.do',
   ];
 
   Future<List<String>> getAsianDramaProviderOrder() async {
-    final saved = await kvGetStringList(
-      _asianDramaProviderOrderKey,
-      fallback: const [],
-    );
-    final normalized = <String>[
-      for (final raw in saved)
-        if (raw.trim().isNotEmpty)
-          raw.trim().toLowerCase() == 'kisskh'
-              ? 'kisskh.co'
-              : raw.trim().toLowerCase(),
-    ];
-    if (normalized.isEmpty) {
-      return List<String>.from(defaultAsianDramaProviderOrder);
-    }
-    return mergeProviderOrder(normalized, defaultAsianDramaProviderOrder);
+    return List<String>.from(defaultAsianDramaProviderOrder);
   }
 
   Future<void> setAsianDramaProviderOrder(List<String> order) async =>
@@ -457,8 +445,7 @@ class SettingsService {
   Future<void> setBuiltInPlayerEngine(BuiltInPlayerEngine engine) async =>
       kvSetString(_builtInPlayerEngineKey, engine.storageKey);
 
-  Future<String?> getJackettBaseUrl() async =>
-      kvGetString(_jackettBaseUrlKey);
+  Future<String?> getJackettBaseUrl() async => kvGetString(_jackettBaseUrlKey);
 
   Future<void> setJackettBaseUrl(String url) async {
     final normalized = url.trimRight().replaceAll(RegExp(r'/+$'), '');
@@ -526,19 +513,20 @@ class SettingsService {
   }
 
   Future<List<int>> getProwlarrTagIds() async {
-    final stored =
-        await kvGetStringList(_prowlarrTagIdsKey, fallback: const []);
+    final stored = await kvGetStringList(
+      _prowlarrTagIdsKey,
+      fallback: const [],
+    );
     return stored
         .map((s) => int.tryParse(s) ?? -1)
         .where((id) => id >= 0)
         .toList();
   }
 
-  Future<void> setProwlarrTagIds(List<int> tagIds) async =>
-      kvSetStringList(
-        _prowlarrTagIdsKey,
-        tagIds.map((id) => id.toString()).toList(),
-      );
+  Future<void> setProwlarrTagIds(List<int> tagIds) async => kvSetStringList(
+    _prowlarrTagIdsKey,
+    tagIds.map((id) => id.toString()).toList(),
+  );
 
   Future<String> getTorrentCacheType() async =>
       await kvGetString(_torrentCacheTypeKey) ?? 'ram';
@@ -602,9 +590,33 @@ class SettingsService {
 
   /// Prior Android TV defaults — migrate to [PlatformDefaults.androidTvNavIds].
   static const List<List<String>> _legacyAndroidTvNavOrders = [
-    ['home', 'search', 'anime', 'asian_drama', 'iptv', 'live_matches', 'mylist'],
-    ['home', 'search', 'asian_drama', 'anime', 'iptv', 'live_matches', 'mylist'],
-    ['search', 'home', 'anime', 'asian_drama', 'iptv', 'live_matches', 'mylist'],
+    [
+      'home',
+      'search',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ],
+    [
+      'home',
+      'search',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ],
+    [
+      'search',
+      'home',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ],
   ];
 
   static bool _isLegacyAndroidTvNav(List<String> ids) {
@@ -639,9 +651,7 @@ class SettingsService {
       return ids[0] == 'home' && ids[1] == 'search';
     }
     if (ids.length == 3) {
-      return ids[0] == 'home' &&
-          ids[1] == 'search' &&
-          ids[2] == 'mylist';
+      return ids[0] == 'home' && ids[1] == 'search' && ids[2] == 'mylist';
     }
     return false;
   }
@@ -687,7 +697,8 @@ class SettingsService {
     await ensureCanonicalSettingsMigrated();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;
 
-    final hasExistingConfig = await kvHasKey(_navbarConfigKey) ||
+    final hasExistingConfig =
+        await kvHasKey(_navbarConfigKey) ||
         await kvHasKey(_navbarShell080Key) ||
         await kvHasKey(_navbarShell081Key);
 
@@ -806,12 +817,12 @@ class SettingsService {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
       return List<String>.from(_defaults.visibleNavIds);
     }
-    final raw =
-        await kvGetStringList(_navbarConfigKey, fallback: const []);
+    final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
     final filtered = raw.where((id) => allNavIds.contains(id)).toList();
-    final known =
-        (await kvGetStringList(_navbarKnownIdsKey, fallback: const []))
-            .toSet();
+    final known = (await kvGetStringList(
+      _navbarKnownIdsKey,
+      fallback: const [],
+    )).toSet();
     final newlyAdded = <String>[];
     for (var i = 0; i < allNavIds.length; i++) {
       final id = allNavIds[i];
@@ -866,8 +877,10 @@ class SettingsService {
     const secure = FlutterSecureStorage();
     final prefsMap = <String, dynamic>{};
 
-    prefsMap[_streamingModeKey] =
-        await kvGetBool(_streamingModeKey, fallback: false);
+    prefsMap[_streamingModeKey] = await kvGetBool(
+      _streamingModeKey,
+      fallback: false,
+    );
     prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
     prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentEnabled();
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioEnabled();
@@ -884,18 +897,26 @@ class SettingsService {
       final v = await kvGetString(key);
       if (v != null && v.isNotEmpty) prefsMap[key] = v;
     }
-    prefsMap[_torrentRamCacheMbKey] =
-        await kvGetInt(_torrentRamCacheMbKey, fallback: 200);
-    prefsMap[_torrentConnectionsLimitKey] =
-        await kvGetInt(_torrentConnectionsLimitKey, fallback: 200);
-    prefsMap[_navbarConfigKey] =
-        await kvGetStringList(_navbarConfigKey, fallback: const []);
+    prefsMap[_torrentRamCacheMbKey] = await kvGetInt(
+      _torrentRamCacheMbKey,
+      fallback: 200,
+    );
+    prefsMap[_torrentConnectionsLimitKey] = await kvGetInt(
+      _torrentConnectionsLimitKey,
+      fallback: 200,
+    );
+    prefsMap[_navbarConfigKey] = await kvGetStringList(
+      _navbarConfigKey,
+      fallback: const [],
+    );
     final defaultTab = await kvGetString(_defaultNavTabKey);
     if (defaultTab != null) {
       prefsMap[_defaultNavTabKey] = defaultTab;
     }
-    prefsMap[_prowlarrTagIdsKey] =
-        await kvGetStringList(_prowlarrTagIdsKey, fallback: const []);
+    prefsMap[_prowlarrTagIdsKey] = await kvGetStringList(
+      _prowlarrTagIdsKey,
+      fallback: const [],
+    );
     final stremio = await getStremioAddons();
     if (stremio.isNotEmpty) {
       prefsMap[_stremioAddonsKey] = stremio.map(jsonEncode).toList();
@@ -984,7 +1005,10 @@ class SettingsService {
       }
     }
     if (prefsMap.containsKey(_torrentRamCacheMbKey)) {
-      await kvSetInt(_torrentRamCacheMbKey, prefsMap[_torrentRamCacheMbKey] as int);
+      await kvSetInt(
+        _torrentRamCacheMbKey,
+        prefsMap[_torrentRamCacheMbKey] as int,
+      );
     }
     if (prefsMap.containsKey(_torrentConnectionsLimitKey)) {
       await kvSetInt(

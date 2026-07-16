@@ -6,14 +6,16 @@
 
 Cloud sync stores settings domain blobs in Supabase under your Forja account. The same account works on the web portal and in the desktop/mobile app. The app stays offline-first — you do not need an account to use Forja.
 
-Each account can have multiple profiles. Every profile has an independent set
-of synced settings. The active profile is selected separately on each browser
-or app device, so changing profiles does not switch another screen.
+Each account can have multiple profiles with their own avatar. Every profile
+has an independent set of synced settings. The active profile is selected
+separately on each browser or app device, so changing profiles does not switch
+another screen.
 
 ## How to open it
 
 - **App:** Settings → Accounts → **Forja account**
-- **Web:** sign in at `/login`, then **Account → Profiles** or **Remote settings**
+- **Web:** sign in at `/login`, choose an avatar on **Who's watching?**, then
+  open **Account → Profiles** or **Remote settings**
 
 ## What syncs (remote settings)
 
@@ -23,7 +25,7 @@ These domains can be edited on the web or in the app; the app pulls them on sign
 |--------|------------------|
 | **IPTV** | Xtream portals (URL, user, pass, favorites) and M3U playlist URLs |
 | **Playback** | Play source toggles, auto next/skip intro, IPTV EPG, preferred audio, max quality |
-| **Provider order** | Web stream, anime mirror, and Asian drama try-order |
+| **Provider order** | Film and series, Anime, and Asian drama host order (tabs on the web settings page) |
 | **Stremio** | Installed addon manifest URLs |
 
 ## What stays local
@@ -40,9 +42,12 @@ Not synced — device-specific or sensitive:
 ## What you can do
 
 - Create an account or sign in with email and password (app or web)
-- Create, rename, select, and delete profiles on the web
+- Choose a profile after web sign-in using the Netflix-style avatar screen
+- Create, rename, and delete profiles on the web, with 30 avatars organized
+  into Characters, Creatures, Space, and Retro categories
 - Select the active profile from the app account panel or web settings header
-- Add, edit, or remove IPTV portals and M3U URLs from the web
+- Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from
+  the web (share codes match the app peer-code flow)
 - Change playback prefs and provider order from the web
 - Manage Stremio addon URLs from the web
 - Sign out (local settings stay on the device)
@@ -63,6 +68,8 @@ Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `apps/web/.env`.
 ## Tips
 
 - IPTV credentials are stored in your account row (HTTPS + per-user RLS). Treat your account password like any cloud secret.
+- Portal **share codes** are a separate peer handoff (encrypted ciphertext on
+  rentry) — they are not stored in your sync payload.
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.
 - Profile selection is local to each device; profile settings remain remote and account-owned.
 - Per-domain merge by timestamp is still evolving — sign in after web edits to refresh the app.

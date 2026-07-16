@@ -17,6 +17,7 @@ import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DmcaRouteImport } from './routes/dmca'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
 import { Route as AccountProfilesRouteImport } from './routes/account.profiles'
 import { Route as AccountSettingsStremioRouteImport } from './routes/account.settings.stremio'
@@ -64,6 +65,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
+  id: '/api/iptv-share',
+  path: '/api/iptv-share',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountSettingsRoute = AccountSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
+  '/api/iptv-share': typeof ApiIptvShareRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
+  '/api/iptv-share': typeof ApiIptvShareRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
+  '/api/iptv-share': typeof ApiIptvShareRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/account/profiles'
     | '/account/settings'
+    | '/api/iptv-share'
     | '/account/settings/iptv'
     | '/account/settings/playback'
     | '/account/settings/providers'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/account/profiles'
     | '/account/settings'
+    | '/api/iptv-share'
     | '/account/settings/iptv'
     | '/account/settings/playback'
     | '/account/settings/providers'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/account/profiles'
     | '/account/settings'
+    | '/api/iptv-share'
     | '/account/settings/iptv'
     | '/account/settings/playback'
     | '/account/settings/providers'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
+  ApiIptvShareRoute: typeof ApiIptvShareRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/iptv-share': {
+      id: '/api/iptv-share'
+      path: '/api/iptv-share'
+      fullPath: '/api/iptv-share'
+      preLoaderRoute: typeof ApiIptvShareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account/settings': {
@@ -350,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
+  ApiIptvShareRoute: ApiIptvShareRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

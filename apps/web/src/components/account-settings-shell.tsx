@@ -2,15 +2,25 @@ import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
+  Check,
+  ChevronDown,
   ListOrdered,
   PlayCircle,
   Puzzle,
   Radio,
-  Users,
 } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { RequireAuth } from '@/components/require-auth'
 import { useProfiles } from '@/hooks/use-profiles'
+import { ProfileAvatar } from '@/components/profile-avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const categories = [
   {
@@ -28,7 +38,7 @@ const categories = [
   {
     href: '/account/settings/providers',
     title: 'Provider order',
-    subtitle: 'Stream and mirror priority',
+    subtitle: 'Film, anime, and Asian drama',
     icon: ListOrdered,
   },
   {
@@ -76,31 +86,62 @@ export function AccountSettingsShell({
               </Link>
               <h1 className="font-display text-2xl tracking-tight">Settings</h1>
             </div>
-            <div className="flex items-center gap-2 border-b border-forja-border pb-1">
-              <Users className="size-4 text-forja-green" />
-              <select
-                aria-label="Active profile"
-                className="min-w-32 bg-transparent py-1 text-sm font-semibold outline-none"
-                value={activeProfile?.id ?? ''}
-                disabled={profilesLoading || profiles.length === 0}
-                onChange={(event) => selectProfile(event.target.value)}
-              >
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.name}
-                  </option>
-                ))}
-              </select>
-              <Link
-                to="/account/profiles"
-                className="px-1 text-xs text-forja-muted hover:text-forja-green"
-              >
-                Manage
-              </Link>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="Active profile"
+                  disabled={profilesLoading || profiles.length === 0}
+                  className="inline-flex items-center gap-2 rounded-md border border-forja-border bg-forja-elevated px-2.5 py-1.5 text-sm font-semibold outline-none transition hover:border-forja-green/40 focus-visible:ring-2 focus-visible:ring-forja-green/60 disabled:opacity-50"
+                >
+                  {activeProfile ? (
+                    <ProfileAvatar
+                      avatarKey={activeProfile.avatar_key}
+                      name={activeProfile.name}
+                      className="size-7"
+                    />
+                  ) : null}
+                  <span className="max-w-36 truncate">
+                    {activeProfile?.name ?? 'Profile'}
+                  </span>
+                  <ChevronDown className="size-4 text-forja-muted" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Switch profile</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {profiles.map((profile) => {
+                    const selected = profile.id === activeProfile?.id
+                    return (
+                      <DropdownMenuItem
+                        key={profile.id}
+                        onSelect={() => selectProfile(profile.id)}
+                        className="gap-3 py-2"
+                      >
+                        <ProfileAvatar
+                          avatarKey={profile.avatar_key}
+                          name={profile.name}
+                          className="size-8 shrink-0"
+                        />
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {profile.name}
+                        </span>
+                        {selected ? (
+                          <Check className="size-4 shrink-0 text-forja-green" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/account/profiles" className="cursor-pointer">
+                      Manage profiles
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
-          <div className="grid min-h-[620px] border-t border-forja-border lg:grid-cols-[310px_1fr]">
+          <div className="grid min-h-[620px] lg:grid-cols-[310px_1fr]">
             <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
               <nav className="grid gap-0 sm:grid-cols-2 lg:grid-cols-1">
                 {categories.map((category) => {
@@ -140,7 +181,7 @@ export function AccountSettingsShell({
               <p className="mt-2 max-w-2xl text-sm leading-6 text-forja-muted">{description}</p>
               <div className="mt-9 max-w-2xl">{children}</div>
               {footer ? (
-                <div className="sticky bottom-0 mt-8 max-w-2xl border-t border-forja-border bg-forja-bg/95 py-4 backdrop-blur">
+                <div className="sticky bottom-0 mt-8 max-w-2xl bg-forja-bg/95 py-4 backdrop-blur">
                   {footer}
                 </div>
               ) : null}

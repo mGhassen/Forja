@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 18** fix · **0 / 3** device smoke |
+| **Progress** | **19 / 19** fix · **0 / 4** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -37,6 +37,7 @@
 | 16 | I45-T16 | Probe deadline + per-mirror Dart timeout so one hung worker cannot block auto mirror pick | ✅ |
 | 17 | I45-T17 | Pinned extract: one hard-nav recovery then fail over (~10s) instead of burning full timeout per silent mirror | ✅ |
 | 18 | I45-T18 | Detect KissKH "Too many request." rate limit — cool down + Retry; do not hard-nav / hop mirrors on same IP | ✅ |
+| 19 | I45-T19 | Disable mirror probes/failover; pin playback to `kisskh.nl`; show all other mirrors on hold in Settings | ✅ |
 
 ---
 
@@ -47,6 +48,7 @@
 | 1 | I45-A01 | Backrooms (and a TVSeries title) resolve to `xhr hit` without stuck “Waiting for stream key…” on cold open | ⬜ |
 | 2 | I45-A02 | With the active KissKh domain unavailable, catalog and episode extract select another compatible mirror and preserve matching IDs | ⬜ |
 | 3 | I45-A03 | When KissKH shows "Too many request.", Forja backs off (no mirror hop storm) and surfaces a clear rate-limit message | ⬜ |
+| 4 | I45-A04 | Play opens only `kisskh.nl` with no preflight mirror requests; Settings shows `.co` / `.ovh` / `.la` / `.do` disabled | ⬜ |
 
 ---
 
@@ -109,3 +111,8 @@ that is not under the ban still plays.
 **Shipped (I45-T18):** WebView detects the rate-limit copy; cools down and
 clicks Retry instead of hard-nav; Asian Drama stops hopping mirrors after a
 rate-limit signal and shows an explicit “slow down / try again” message.
+
+**Shipped (I45-T19):** automatic mirror probing and playback failover are
+disabled. Playback opens only `kisskh.nl`; the player exposes only that source.
+Settings retains the other verified aliases as disabled “On hold” rows so they
+can be reactivated deliberately later without generating preflight traffic.

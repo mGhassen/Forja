@@ -140,11 +140,29 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
   FocusNode get _focusNode => widget.focusNode ?? _ownedFocusNode;
 
   @override
+  void initState() {
+    super.initState();
+    playerChromeRegisterSeekScrubCancel(_cancelScrubFromOverlay);
+  }
+
+  @override
   void dispose() {
+    playerChromeUnregisterSeekScrubCancel(_cancelScrubFromOverlay);
     if (widget.focusNode == null) {
       _ownedFocusNode.dispose();
     }
     super.dispose();
+  }
+
+  void _cancelScrubFromOverlay() {
+    if (!mounted) return;
+    if (!_isDragging && !_isHovering) return;
+    final wasDragging = _isDragging;
+    setState(() {
+      _isDragging = false;
+      _isHovering = false;
+    });
+    if (wasDragging) widget.onDragEnd?.call();
   }
 
   void _seekByStep(int direction) {
@@ -205,9 +223,13 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final track = MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
+          onEnter: (_) {
+            if (playerChromeOverlayBlocksSeek()) return;
+            setState(() => _isHovering = true);
+          },
           onExit: (_) => setState(() => _isHovering = false),
           onHover: (details) {
+            if (playerChromeOverlayBlocksSeek() || _isDragging) return;
             setState(() {
               double dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
               _hoverValue = (dx / constraints.maxWidth) * safeTotal;
@@ -226,6 +248,10 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
             },
             onHorizontalDragUpdate: (details) {
               if (!_isDragging) return;
+              if (playerChromeOverlayBlocksSeek()) {
+                _cancelScrubFromOverlay();
+                return;
+              }
               setState(() {
                 double dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
                 _dragValue = (dx / constraints.maxWidth) * safeTotal;

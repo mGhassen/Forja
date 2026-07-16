@@ -22,7 +22,7 @@ export function SettingsSection({
       {description ? (
         <p className="mb-3 ml-6 text-xs leading-5 text-forja-muted">{description}</p>
       ) : null}
-      <div className="divide-y divide-forja-border">{children}</div>
+      <div className="space-y-1">{children}</div>
     </section>
   )
 }

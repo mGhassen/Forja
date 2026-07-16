@@ -11,481 +11,488 @@ var headers = ((m) => function headersRouteRule(event) {
 //#endregion
 //#region #nitro/virtual/public-assets-data
 var public_assets_data_default = {
-	"/icons.svg": {
-		"type": "image/svg+xml",
-		"etag": "\"13a7-+Yl6wl4T3p6mAdLxrF2TU9++/No\"",
-		"mtime": "2026-07-16T19:11:04.326Z",
-		"size": 5031,
-		"path": "../public/icons.svg"
-	},
-	"/assets/account.settings-DuhBYmQw.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"168-mPCp9Ejc5gQFC27+9O6i+cauyyc\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 360,
-		"path": "../public/assets/account.settings-DuhBYmQw.js"
-	},
-	"/assets/account.settings.playback-BJqLhBR_.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"111e-r8BZYVaLWyYK8jkre19EtBy6sl0\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 4382,
-		"path": "../public/assets/account.settings.playback-BJqLhBR_.js"
-	},
-	"/assets/arrow-left-C5eU-WxK.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"a1-Kr978zvvB1AlZEi/TQgSuorALFI\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 161,
-		"path": "../public/assets/arrow-left-C5eU-WxK.js"
-	},
-	"/assets/account-ZAhYyJHV.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"ca7-6sblpy9y2xuH038QgCzTNtrNJvw\"",
-		"mtime": "2026-07-16T19:11:03.979Z",
-		"size": 3239,
-		"path": "../public/assets/account-ZAhYyJHV.js"
-	},
-	"/assets/account.settings.stremio-CLiCNcXV.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"9e5-9D7oj0So5U9bnQucP6kg9xLapqs\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 2533,
-		"path": "../public/assets/account.settings.stremio-CLiCNcXV.js"
-	},
-	"/assets/button-DGZk17KR.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"f1f-/jhDsXQAP4Ec4IKaZb+ECA9jhcI\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 3871,
-		"path": "../public/assets/button-DGZk17KR.js"
-	},
-	"/assets/download-D3I6yYxn.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"7773-sK/kLVY3Nt3aLNexIB/Ulj5jBkA\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 30579,
-		"path": "../public/assets/download-D3I6yYxn.js"
-	},
-	"/assets/index-DSWeXeu8.css": {
-		"type": "text/css; charset=utf-8",
-		"etag": "\"12986-J0whgT7kYHROLOI+x8z6MQPisqU\"",
-		"mtime": "2026-07-16T19:11:03.984Z",
-		"size": 76166,
-		"path": "../public/assets/index-DSWeXeu8.css"
-	},
-	"/assets/iptv-B9u3H1NC.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"2f96-tGBfil7shOq5+rrGf7i4BaPjt6c\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 12182,
-		"path": "../public/assets/iptv-B9u3H1NC.js"
-	},
-	"/assets/label-DV-3ptEx.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"3bd-J1Nk18xZUwX0inB/vBn16ycs+Ak\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 957,
-		"path": "../public/assets/label-DV-3ptEx.js"
-	},
-	"/assets/legal-shell-DgPlSO61.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"14e6-Pct9mMhsQOZMq+DClnXDV8BCmPw\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 5350,
-		"path": "../public/assets/legal-shell-DgPlSO61.js"
-	},
-	"/assets/account.settings.iptv-E7f5gCF5.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"1a62-fKusnfzXv0rRJtWnxm31RHWhCG8\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 6754,
-		"path": "../public/assets/account.settings.iptv-E7f5gCF5.js"
-	},
-	"/assets/input-CH-WIxgr.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"20c-WsrfPkALgKj3yZ5JRiUCKqxG1Jc\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 524,
-		"path": "../public/assets/input-CH-WIxgr.js"
-	},
-	"/assets/login-B8I7ItIx.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"2535-XUIS52jdDGIgY7ZLMePKZbEueAY\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 9525,
-		"path": "../public/assets/login-B8I7ItIx.js"
-	},
-	"/assets/require-auth-DIBNmGQ9.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"678-ug0X6HQt0TKU97NuNcMDRms7PwM\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 1656,
-		"path": "../public/assets/require-auth-DIBNmGQ9.js"
-	},
-	"/assets/reveal--fzjaaHB.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"2b9-yF2FiEBv77dOPEqL6MYnabTKd2c\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 697,
-		"path": "../public/assets/reveal--fzjaaHB.js"
-	},
-	"/assets/routes-0Neea8aS.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"682c-uc7RaoeW3C+NxCDM/kmGY3VFoYU\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 26668,
-		"path": "../public/assets/routes-0Neea8aS.js"
-	},
-	"/assets/signup-BiEQWuZO.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"60c-YcLjBIi5VomcNlzO60r33HVjGX4\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 1548,
-		"path": "../public/assets/signup-BiEQWuZO.js"
-	},
-	"/assets/account.settings.providers-DwVU9crM.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"b22-yWqSpQLHXMwaU/TPYygQe1wLSoc\"",
-		"mtime": "2026-07-16T19:11:03.980Z",
-		"size": 2850,
-		"path": "../public/assets/account.settings.providers-DwVU9crM.js"
-	},
-	"/assets/index-B0UYbSTO.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"830e3-M9yfp1aJXOdx7CuA2WI66dVJrPI\"",
-		"mtime": "2026-07-16T19:11:03.979Z",
-		"size": 536803,
-		"path": "../public/assets/index-B0UYbSTO.js"
-	},
-	"/assets/site-header-DIvQc1RT.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"866c-15UHzaw3ELiZdqNh3mdqVKnJdmE\"",
-		"mtime": "2026-07-16T19:11:03.982Z",
-		"size": 34412,
-		"path": "../public/assets/site-header-DIvQc1RT.js"
-	},
 	"/favicon.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"2532-P1u486agW3ymimJYHS3VvIiBLK8\"",
-		"mtime": "2026-07-16T19:11:04.326Z",
+		"mtime": "2026-07-16T19:42:00.447Z",
 		"size": 9522,
 		"path": "../public/favicon.svg"
 	},
-	"/assets/dmca-DvpNWY3x.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"107d-wzAGwziNrA24GSIh7tfQufsO/X0\"",
-		"mtime": "2026-07-16T19:11:03.981Z",
-		"size": 4221,
-		"path": "../public/assets/dmca-DvpNWY3x.js"
+	"/icons.svg": {
+		"type": "image/svg+xml",
+		"etag": "\"13a7-+Yl6wl4T3p6mAdLxrF2TU9++/No\"",
+		"mtime": "2026-07-16T19:42:00.448Z",
+		"size": 5031,
+		"path": "../public/icons.svg"
 	},
-	"/assets/account.profiles-hPqYwDGD.js": {
+	"/assets/account-B0Q5MLmu.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"13fb-jM5t2IGzqf+drcowS+Lc9hekBCA\"",
-		"mtime": "2026-07-16T19:11:03.979Z",
-		"size": 5115,
-		"path": "../public/assets/account.profiles-hPqYwDGD.js"
+		"etag": "\"cf1-J2yUIXb+qDLCig6AJ0q4tL/Wz4o\"",
+		"mtime": "2026-07-16T19:41:59.225Z",
+		"size": 3313,
+		"path": "../public/assets/account-B0Q5MLmu.js"
 	},
-	"/assets/terms-Dux-xPra.js": {
+	"/assets/account.settings-BVhLaHJg.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"ebd-JMNOGbNOysPKMIIKZp7T8yUmjpg\"",
-		"mtime": "2026-07-16T19:11:03.983Z",
-		"size": 3773,
-		"path": "../public/assets/terms-Dux-xPra.js"
+		"etag": "\"168-a/xMhB/ujy2hNgZ6XPUa+Sbnt1U\"",
+		"mtime": "2026-07-16T19:41:59.225Z",
+		"size": 360,
+		"path": "../public/assets/account.settings-BVhLaHJg.js"
 	},
-	"/assets/sync-domains-CJ59McdJ.js": {
+	"/assets/account.profiles-CrT6FIBs.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"1e21-KYF8rwYE+mB8lcjfh4kNzXlF2ZU\"",
-		"mtime": "2026-07-16T19:11:03.983Z",
-		"size": 7713,
-		"path": "../public/assets/sync-domains-CJ59McdJ.js"
+		"etag": "\"1870-mCs4soVmOJxfggSZdkwExwbiR0g\"",
+		"mtime": "2026-07-16T19:41:59.225Z",
+		"size": 6256,
+		"path": "../public/assets/account.profiles-CrT6FIBs.js"
 	},
-	"/assets/trash-2-C-bIGUDO.js": {
+	"/assets/account.settings.playback-C96n7gYK.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"144-nuZ9upwGjjm+YSpUOpIGWKKyqpA\"",
-		"mtime": "2026-07-16T19:11:03.983Z",
-		"size": 324,
-		"path": "../public/assets/trash-2-C-bIGUDO.js"
+		"etag": "\"1148-DAuM53kbPg+7gCg3eLIZgJgOk6E\"",
+		"mtime": "2026-07-16T19:41:59.225Z",
+		"size": 4424,
+		"path": "../public/assets/account.settings.playback-C96n7gYK.js"
 	},
-	"/assets/useRouterState-dD2QYZ3L.js": {
+	"/assets/account.settings.iptv-CNfGQJRn.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"aa-hugmp+59vWB6h+F+XC4SIzXxFDQ\"",
-		"mtime": "2026-07-16T19:11:03.983Z",
-		"size": 170,
-		"path": "../public/assets/useRouterState-dD2QYZ3L.js"
+		"etag": "\"3aba-r9xrCxROGI21iqNDR893Wg+4NQA\"",
+		"mtime": "2026-07-16T19:41:59.225Z",
+		"size": 15034,
+		"path": "../public/assets/account.settings.iptv-CNfGQJRn.js"
 	},
-	"/assets/user-round-CqcS9fDp.js": {
+	"/assets/account.settings.stremio-ClO-20FB.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"b2-66/fjidEwJo9FU4VO0B+g9qdr7s\"",
-		"mtime": "2026-07-16T19:11:03.983Z",
-		"size": 178,
-		"path": "../public/assets/user-round-CqcS9fDp.js"
+		"etag": "\"a0d-MExdFISpxe5JLiuqwikBP31e9fU\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 2573,
+		"path": "../public/assets/account.settings.stremio-ClO-20FB.js"
 	},
-	"/assets/users-ClPeFYVH.js": {
+	"/assets/check-DHiYhY6l.js": {
 		"type": "text/javascript; charset=utf-8",
-		"etag": "\"12e-gcetto/XC4kJCHXrjA3P0CiMOiM\"",
-		"mtime": "2026-07-16T19:11:03.984Z",
-		"size": 302,
-		"path": "../public/assets/users-ClPeFYVH.js"
+		"etag": "\"e1-AB98K1GaqQXD6Z4f0NSBTIzBqZ0\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 225,
+		"path": "../public/assets/check-DHiYhY6l.js"
+	},
+	"/assets/dist-DSDlrMpl.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"254-3f5zw93QhKzluvb5ejJUoz9mXkg\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 596,
+		"path": "../public/assets/dist-DSDlrMpl.js"
+	},
+	"/assets/dmca-xo0DxdtY.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"1079-eSp2coF+ui0KBHN3tXXeuDXo/Og\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 4217,
+		"path": "../public/assets/dmca-xo0DxdtY.js"
+	},
+	"/assets/download-CMih7WuD.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"7740-1aLOwDJHnK1Ngz1vZ+aufhqp4fg\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 30528,
+		"path": "../public/assets/download-CMih7WuD.js"
+	},
+	"/assets/index-C1KAwdvk.css": {
+		"type": "text/css; charset=utf-8",
+		"etag": "\"13c72-881zS5lRE9VRssXIIAxAZcA6lUQ\"",
+		"mtime": "2026-07-16T19:41:59.229Z",
+		"size": 81010,
+		"path": "../public/assets/index-C1KAwdvk.css"
+	},
+	"/assets/input-C5eHm51y.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"20b-ZmwpQ91mO/gPBOYpu3d/zUxhbVc\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 523,
+		"path": "../public/assets/input-C5eHm51y.js"
+	},
+	"/assets/iptv-Cr7z0sUc.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"2f44-DBTrAc52nPCc5NJVZ8AMWO4njoQ\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 12100,
+		"path": "../public/assets/iptv-Cr7z0sUc.js"
+	},
+	"/assets/legal-shell-CoI1dt1J.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"14e0-XcjSSCTOWVoAE8EouR8KnrCvJEk\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 5344,
+		"path": "../public/assets/legal-shell-CoI1dt1J.js"
+	},
+	"/assets/label-CXEzijqo.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"228-/I460Vr144gD6ASLoMi5Q7Mwom8\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 552,
+		"path": "../public/assets/label-CXEzijqo.js"
+	},
+	"/assets/login-Cbg9xDjJ.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"2093-U4ca6Ax4FVk3s9I9tFuuMV/52WA\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 8339,
+		"path": "../public/assets/login-Cbg9xDjJ.js"
+	},
+	"/assets/plus-DT9uVglY.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"8e-2699HpUMrWr4mvMPpYlDKUqRV3M\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 142,
+		"path": "../public/assets/plus-DT9uVglY.js"
+	},
+	"/assets/reveal-BZQ6Oztx.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"2b8-6fSPWmVwaztmxGCLR2V746Y8doU\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 696,
+		"path": "../public/assets/reveal-BZQ6Oztx.js"
+	},
+	"/assets/require-auth-Bmje4rPu.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"142-rXHWl4GCApzGGfMsUnT4Ax/0zSY\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 322,
+		"path": "../public/assets/require-auth-Bmje4rPu.js"
+	},
+	"/assets/account.settings.providers-Z6NSO4Hx.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"e22-KF/rcWh7e92839P894wHXZ4rTAs\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 3618,
+		"path": "../public/assets/account.settings.providers-Z6NSO4Hx.js"
+	},
+	"/assets/button-DqIoWOZ_.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"f20-CRhCvlnXeNhS5yovWEopcL2dQ1w\"",
+		"mtime": "2026-07-16T19:41:59.226Z",
+		"size": 3872,
+		"path": "../public/assets/button-DqIoWOZ_.js"
+	},
+	"/assets/routes-B1MQo2XB.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"67a9-pQyMCdlKX1rD28+DUxqn7wMYqR4\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 26537,
+		"path": "../public/assets/routes-B1MQo2XB.js"
+	},
+	"/assets/index-CJS6mZTu.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"8d23e-cNbz3oLO4bjrJ5yY2B0R+FGOBps\"",
+		"mtime": "2026-07-16T19:41:59.225Z",
+		"size": 578110,
+		"path": "../public/assets/index-CJS6mZTu.js"
+	},
+	"/assets/settings-section-kHgxTLUN.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"22f-PJeYkr1JGP4AnJV8PZ0RupgJcSI\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 559,
+		"path": "../public/assets/settings-section-kHgxTLUN.js"
+	},
+	"/assets/signup-Da0KX-Ik.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"60a-PBqhZWphv19rqBMlp1sxQAV0au4\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 1546,
+		"path": "../public/assets/signup-Da0KX-Ik.js"
+	},
+	"/assets/site-header-CszQEgDa.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"1bbd-wd086AP4pqWuOwO7WPchOAWBxhA\"",
+		"mtime": "2026-07-16T19:41:59.227Z",
+		"size": 7101,
+		"path": "../public/assets/site-header-CszQEgDa.js"
+	},
+	"/assets/sync-domains-CTB8bm3Q.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"14e92-PQ9Z7QJ0B2al7QWUNVGqfhIrtVY\"",
+		"mtime": "2026-07-16T19:41:59.228Z",
+		"size": 85650,
+		"path": "../public/assets/sync-domains-CTB8bm3Q.js"
+	},
+	"/assets/trash-2-ZegIVOxG.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"13d-uxP00C43oCF+NoQqSipXitmN23g\"",
+		"mtime": "2026-07-16T19:41:59.228Z",
+		"size": 317,
+		"path": "../public/assets/trash-2-ZegIVOxG.js"
+	},
+	"/assets/terms-4L2-SHg9.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"eb5-H5psx+ZuO608EL7ny9eKPK77CK0\"",
+		"mtime": "2026-07-16T19:41:59.228Z",
+		"size": 3765,
+		"path": "../public/assets/terms-4L2-SHg9.js"
 	},
 	"/assets/useMatch-CcToMSxM.js": {
 		"type": "text/javascript; charset=utf-8",
 		"etag": "\"6d97-4DNQJuKnBpctrJfHYFC3uVB/BEU\"",
-		"mtime": "2026-07-16T19:11:03.983Z",
+		"mtime": "2026-07-16T19:41:59.228Z",
 		"size": 28055,
 		"path": "../public/assets/useMatch-CcToMSxM.js"
+	},
+	"/assets/useRouterState-dD2QYZ3L.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"aa-hugmp+59vWB6h+F+XC4SIzXxFDQ\"",
+		"mtime": "2026-07-16T19:41:59.228Z",
+		"size": 170,
+		"path": "../public/assets/useRouterState-dD2QYZ3L.js"
 	},
 	"/brand/forja-home-hero.jpg": {
 		"type": "image/jpeg",
 		"etag": "\"1d200-L0+Oz9HhdCpAp22rWckVFZgcmF0\"",
-		"mtime": "2026-07-16T19:11:04.298Z",
+		"mtime": "2026-07-16T19:42:00.377Z",
 		"size": 119296,
 		"path": "../public/brand/forja-home-hero.jpg"
-	},
-	"/brand/forja-iptv-live.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"242fa-VRunXGeKGlrqDyndnFDdGDB3IqM\"",
-		"mtime": "2026-07-16T19:11:04.301Z",
-		"size": 148218,
-		"path": "../public/brand/forja-iptv-live.jpg"
 	},
 	"/brand/logo-dark.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"623-o1Ih6F3W8f02vYigcZnwJkqjztE\"",
-		"mtime": "2026-07-16T19:11:04.297Z",
+		"mtime": "2026-07-16T19:42:00.380Z",
 		"size": 1571,
 		"path": "../public/brand/logo-dark.svg"
 	},
 	"/brand/forja-iptv-desk.png": {
 		"type": "image/png",
 		"etag": "\"21af3-bnH1Edco6A+mnCLhYuopw3UNeUo\"",
-		"mtime": "2026-07-16T19:11:04.300Z",
+		"mtime": "2026-07-16T19:42:00.381Z",
 		"size": 137971,
 		"path": "../public/brand/forja-iptv-desk.png"
 	},
 	"/brand/logo-light.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"623-UE2GWyGrSadl1OAEPjm5EqQDdm8\"",
-		"mtime": "2026-07-16T19:11:04.297Z",
+		"mtime": "2026-07-16T19:42:00.380Z",
 		"size": 1571,
 		"path": "../public/brand/logo-light.svg"
+	},
+	"/brand/forja-iptv-live.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"242fa-VRunXGeKGlrqDyndnFDdGDB3IqM\"",
+		"mtime": "2026-07-16T19:42:00.390Z",
+		"size": 148218,
+		"path": "../public/brand/forja-iptv-live.jpg"
 	},
 	"/brand/help/macos-blocked-dialog.png": {
 		"type": "image/png",
 		"etag": "\"4234-ETu0ipjh2/XmNE3rGNv6w/dufp8\"",
-		"mtime": "2026-07-16T19:11:04.297Z",
+		"mtime": "2026-07-16T19:42:00.363Z",
 		"size": 16948,
 		"path": "../public/brand/help/macos-blocked-dialog.png"
 	},
 	"/brand/forja-iptv-player.png": {
 		"type": "image/png",
 		"etag": "\"329e7-c/HMqC+n4Jp7FG1tZXnfHta3w/w\"",
-		"mtime": "2026-07-16T19:11:04.300Z",
+		"mtime": "2026-07-16T19:42:00.380Z",
 		"size": 207335,
 		"path": "../public/brand/forja-iptv-player.png"
-	},
-	"/brand/help/windows-01-protected.png": {
-		"type": "image/png",
-		"etag": "\"8e2a-SpbOVK5Mey9lOts+NEEJckGzQ8E\"",
-		"mtime": "2026-07-16T19:11:04.304Z",
-		"size": 36394,
-		"path": "../public/brand/help/windows-01-protected.png"
 	},
 	"/brand/help/macos-open-anyway-closeup.png": {
 		"type": "image/png",
 		"etag": "\"1b4fc-uRjEpWMzSGjW8a6YwWXA/v4+mog\"",
-		"mtime": "2026-07-16T19:11:04.304Z",
+		"mtime": "2026-07-16T19:42:00.387Z",
 		"size": 111868,
 		"path": "../public/brand/help/macos-open-anyway-closeup.png"
 	},
 	"/brand/help/macos-privacy-open-anyway.png": {
 		"type": "image/png",
 		"etag": "\"13580-w52cWA6uCk5Effy9vmN6J6U0smk\"",
-		"mtime": "2026-07-16T19:11:04.301Z",
+		"mtime": "2026-07-16T19:42:00.382Z",
 		"size": 79232,
 		"path": "../public/brand/help/macos-privacy-open-anyway.png"
 	},
 	"/brand/help/windows-02-more-info.png": {
 		"type": "image/png",
 		"etag": "\"55b5-5ZeYmjqvpBvc8A+DbeaTs4xTCEM\"",
-		"mtime": "2026-07-16T19:11:04.304Z",
+		"mtime": "2026-07-16T19:42:00.383Z",
 		"size": 21941,
 		"path": "../public/brand/help/windows-02-more-info.png"
+	},
+	"/brand/help/windows-01-protected.png": {
+		"type": "image/png",
+		"etag": "\"8e2a-SpbOVK5Mey9lOts+NEEJckGzQ8E\"",
+		"mtime": "2026-07-16T19:42:00.391Z",
+		"size": 36394,
+		"path": "../public/brand/help/windows-01-protected.png"
 	},
 	"/brand/help/macos-privacy-settings-top.png": {
 		"type": "image/png",
 		"etag": "\"20ade-UMf43poWGfxcQi1um7ppqpucbBY\"",
-		"mtime": "2026-07-16T19:11:04.301Z",
+		"mtime": "2026-07-16T19:42:00.390Z",
 		"size": 133854,
 		"path": "../public/brand/help/macos-privacy-settings-top.png"
-	},
-	"/brand/help/windows-03-run-anyway.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"12091-AALsao5OU43TsYsOoJagkdi8oEU\"",
-		"mtime": "2026-07-16T19:11:04.302Z",
-		"size": 73873,
-		"path": "../public/brand/help/windows-03-run-anyway.jpg"
-	},
-	"/brand/open-films/big-buck-bunny.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"ea1c-RJKu639IVTbZwVNOaOVb22Jj9mg\"",
-		"mtime": "2026-07-16T19:11:04.310Z",
-		"size": 59932,
-		"path": "../public/brand/open-films/big-buck-bunny.jpg"
-	},
-	"/brand/open-films/ATTRIBUTION.txt": {
-		"type": "text/plain; charset=utf-8",
-		"etag": "\"393-xPruSu6qRlhGu+TAtC5Ewf2eRQ8\"",
-		"mtime": "2026-07-16T19:11:04.296Z",
-		"size": 915,
-		"path": "../public/brand/open-films/ATTRIBUTION.txt"
-	},
-	"/brand/help/windows-05-red-unsafe.png": {
-		"type": "image/png",
-		"etag": "\"1363e-x3DL0x7BPVf8VDKT/lNw937VqtI\"",
-		"mtime": "2026-07-16T19:11:04.310Z",
-		"size": 79422,
-		"path": "../public/brand/help/windows-05-red-unsafe.png"
 	},
 	"/brand/help/windows-04-on-desktop.jpg": {
 		"type": "image/jpeg",
 		"etag": "\"10063-Z44z7pPn+b6ftqouM1y7QnZasPo\"",
-		"mtime": "2026-07-16T19:11:04.306Z",
+		"mtime": "2026-07-16T19:42:00.389Z",
 		"size": 65635,
 		"path": "../public/brand/help/windows-04-on-desktop.jpg"
 	},
-	"/brand/open-films/cosmos-laundromat.jpg": {
+	"/brand/help/windows-05-red-unsafe.png": {
+		"type": "image/png",
+		"etag": "\"1363e-x3DL0x7BPVf8VDKT/lNw937VqtI\"",
+		"mtime": "2026-07-16T19:42:00.414Z",
+		"size": 79422,
+		"path": "../public/brand/help/windows-05-red-unsafe.png"
+	},
+	"/brand/help/windows-03-run-anyway.jpg": {
 		"type": "image/jpeg",
-		"etag": "\"30f02-FE+8w6lMr2TCfsXtx02x77pFj9o\"",
-		"mtime": "2026-07-16T19:11:04.311Z",
-		"size": 200450,
-		"path": "../public/brand/open-films/cosmos-laundromat.jpg"
+		"etag": "\"12091-AALsao5OU43TsYsOoJagkdi8oEU\"",
+		"mtime": "2026-07-16T19:42:00.387Z",
+		"size": 73873,
+		"path": "../public/brand/help/windows-03-run-anyway.jpg"
+	},
+	"/brand/open-films/ATTRIBUTION.txt": {
+		"type": "text/plain; charset=utf-8",
+		"etag": "\"393-xPruSu6qRlhGu+TAtC5Ewf2eRQ8\"",
+		"mtime": "2026-07-16T19:42:00.368Z",
+		"size": 915,
+		"path": "../public/brand/open-films/ATTRIBUTION.txt"
+	},
+	"/brand/open-films/big-buck-bunny.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"ea1c-RJKu639IVTbZwVNOaOVb22Jj9mg\"",
+		"mtime": "2026-07-16T19:42:00.392Z",
+		"size": 59932,
+		"path": "../public/brand/open-films/big-buck-bunny.jpg"
 	},
 	"/brand/open-films/sintel.jpg": {
 		"type": "image/jpeg",
 		"etag": "\"401f4-Y8JbpchdsJvC82z77RyJhPAMB0A\"",
-		"mtime": "2026-07-16T19:11:04.313Z",
+		"mtime": "2026-07-16T19:42:00.418Z",
 		"size": 262644,
 		"path": "../public/brand/open-films/sintel.jpg"
 	},
-	"/brand/open-films/sprite-fright.jpg": {
+	"/brand/open-films/cosmos-laundromat.jpg": {
 		"type": "image/jpeg",
-		"etag": "\"39f14-koYWpeks1jRbq4TSnLa/nnB8vNw\"",
-		"mtime": "2026-07-16T19:11:04.314Z",
-		"size": 237332,
-		"path": "../public/brand/open-films/sprite-fright.jpg"
+		"etag": "\"30f02-FE+8w6lMr2TCfsXtx02x77pFj9o\"",
+		"mtime": "2026-07-16T19:42:00.418Z",
+		"size": 200450,
+		"path": "../public/brand/open-films/cosmos-laundromat.jpg"
+	},
+	"/brand/open-films/tears-of-steel.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"20900-zDdyo5RecJkH+9VrLP2tmg1jFgw\"",
+		"mtime": "2026-07-16T19:42:00.427Z",
+		"size": 133376,
+		"path": "../public/brand/open-films/tears-of-steel.jpg"
 	},
 	"/brand/hubs/tv/cbs.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"1e4-AGhT51/0TlhHxScPHImbHAdUvVE\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
+		"mtime": "2026-07-16T19:42:00.432Z",
 		"size": 484,
 		"path": "../public/brand/hubs/tv/cbs.svg"
 	},
 	"/brand/hubs/tv/cnn.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"5e8-q6GRN+oI8JdOGOGqeNsBRNllCCI\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
+		"mtime": "2026-07-16T19:42:00.443Z",
 		"size": 1512,
 		"path": "../public/brand/hubs/tv/cnn.svg"
-	},
-	"/brand/open-films/tears-of-steel.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"20900-zDdyo5RecJkH+9VrLP2tmg1jFgw\"",
-		"mtime": "2026-07-16T19:11:04.314Z",
-		"size": 133376,
-		"path": "../public/brand/open-films/tears-of-steel.jpg"
-	},
-	"/brand/hubs/tv/fox.svg": {
-		"type": "image/svg+xml",
-		"etag": "\"1d2-at+SHOWApDfW1BXkm22BV8W+Ioo\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
-		"size": 466,
-		"path": "../public/brand/hubs/tv/fox.svg"
 	},
 	"/brand/hubs/tv/hbo.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"309-pqV4IzE3FtqrNYdzbDK+0fot5L0\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
+		"mtime": "2026-07-16T19:42:00.447Z",
 		"size": 777,
 		"path": "../public/brand/hubs/tv/hbo.svg"
 	},
 	"/brand/hubs/tv/nbc.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"425-pAgrUtyFWNid0iUExBTA3aOdGf0\"",
-		"mtime": "2026-07-16T19:11:04.326Z",
+		"mtime": "2026-07-16T19:42:00.447Z",
 		"size": 1061,
 		"path": "../public/brand/hubs/tv/nbc.svg"
 	},
 	"/brand/hubs/tv/sky.svg": {
 		"type": "image/svg+xml",
 		"etag": "\"416-0yi3whBAwbvz05E/VcP+UIj3ES0\"",
-		"mtime": "2026-07-16T19:11:04.326Z",
+		"mtime": "2026-07-16T19:42:00.447Z",
 		"size": 1046,
 		"path": "../public/brand/hubs/tv/sky.svg"
-	},
-	"/brand/open-films/heroes/sintel-hero.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"13a2b-05X9ixqlMQsH9Ltv0Qv2JgtVFjY\"",
-		"mtime": "2026-07-16T19:11:04.318Z",
-		"size": 80427,
-		"path": "../public/brand/open-films/heroes/sintel-hero.jpg"
-	},
-	"/brand/open-films/heroes/cosmos-laundromat-hero.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"31149-bY1Lk1yErAAF6Oxv3ap35bmdZjY\"",
-		"mtime": "2026-07-16T19:11:04.320Z",
-		"size": 201033,
-		"path": "../public/brand/open-films/heroes/cosmos-laundromat-hero.jpg"
 	},
 	"/brand/hubs/sport/basketball.jpg": {
 		"type": "image/jpeg",
 		"etag": "\"a963-khkeFZ4+DAwun0r7EB5dyNJh4Lc\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
+		"mtime": "2026-07-16T19:42:00.438Z",
 		"size": 43363,
 		"path": "../public/brand/hubs/sport/basketball.jpg"
-	},
-	"/brand/open-films/heroes/big-buck-bunny-hero.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"4e17f-lU3IkVnLsrEZ9w3oKmX+eGpg1vM\"",
-		"mtime": "2026-07-16T19:11:04.300Z",
-		"size": 319871,
-		"path": "../public/brand/open-films/heroes/big-buck-bunny-hero.jpg"
-	},
-	"/brand/open-films/heroes/sprite-fright-hero.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"4a3c9-xsz23TXZsi0RkktQSH82lw3h74s\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
-		"size": 304073,
-		"path": "../public/brand/open-films/heroes/sprite-fright-hero.jpg"
 	},
 	"/brand/hubs/sport/football.jpg": {
 		"type": "image/jpeg",
 		"etag": "\"fd7d-jNk5DatZs4RNlhyG1H/d+qRinCs\"",
-		"mtime": "2026-07-16T19:11:04.326Z",
+		"mtime": "2026-07-16T19:42:00.442Z",
 		"size": 64893,
 		"path": "../public/brand/hubs/sport/football.jpg"
-	},
-	"/brand/open-films/heroes/tears-of-steel-hero.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"3ac39-dEFQSuCa+Pnc+pjRT7rEenyxJT0\"",
-		"mtime": "2026-07-16T19:11:04.320Z",
-		"size": 240697,
-		"path": "../public/brand/open-films/heroes/tears-of-steel-hero.jpg"
-	},
-	"/brand/hubs/sport/racing.jpg": {
-		"type": "image/jpeg",
-		"etag": "\"13a2f-QqmneUjZh+5YdFrEcm0KQCH8jUs\"",
-		"mtime": "2026-07-16T19:11:04.325Z",
-		"size": 80431,
-		"path": "../public/brand/hubs/sport/racing.jpg"
 	},
 	"/brand/hubs/sport/tennis.jpg": {
 		"type": "image/jpeg",
 		"etag": "\"141bc-kIDMETjdQlwHQ/HaXGKtY3vRorE\"",
-		"mtime": "2026-07-16T19:11:04.328Z",
+		"mtime": "2026-07-16T19:42:00.447Z",
 		"size": 82364,
 		"path": "../public/brand/hubs/sport/tennis.jpg"
+	},
+	"/brand/hubs/sport/racing.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"13a2f-QqmneUjZh+5YdFrEcm0KQCH8jUs\"",
+		"mtime": "2026-07-16T19:42:00.449Z",
+		"size": 80431,
+		"path": "../public/brand/hubs/sport/racing.jpg"
+	},
+	"/brand/open-films/heroes/cosmos-laundromat-hero.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"31149-bY1Lk1yErAAF6Oxv3ap35bmdZjY\"",
+		"mtime": "2026-07-16T19:42:00.428Z",
+		"size": 201033,
+		"path": "../public/brand/open-films/heroes/cosmos-laundromat-hero.jpg"
+	},
+	"/brand/open-films/sprite-fright.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"39f14-koYWpeks1jRbq4TSnLa/nnB8vNw\"",
+		"mtime": "2026-07-16T19:42:00.415Z",
+		"size": 237332,
+		"path": "../public/brand/open-films/sprite-fright.jpg"
+	},
+	"/brand/open-films/heroes/sintel-hero.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"13a2b-05X9ixqlMQsH9Ltv0Qv2JgtVFjY\"",
+		"mtime": "2026-07-16T19:42:00.430Z",
+		"size": 80427,
+		"path": "../public/brand/open-films/heroes/sintel-hero.jpg"
+	},
+	"/brand/open-films/heroes/sprite-fright-hero.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"4a3c9-xsz23TXZsi0RkktQSH82lw3h74s\"",
+		"mtime": "2026-07-16T19:42:00.442Z",
+		"size": 304073,
+		"path": "../public/brand/open-films/heroes/sprite-fright-hero.jpg"
+	},
+	"/brand/open-films/heroes/big-buck-bunny-hero.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"4e17f-lU3IkVnLsrEZ9w3oKmX+eGpg1vM\"",
+		"mtime": "2026-07-16T19:42:00.381Z",
+		"size": 319871,
+		"path": "../public/brand/open-films/heroes/big-buck-bunny-hero.jpg"
+	},
+	"/brand/hubs/tv/fox.svg": {
+		"type": "image/svg+xml",
+		"etag": "\"1d2-at+SHOWApDfW1BXkm22BV8W+Ioo\"",
+		"mtime": "2026-07-16T19:42:00.447Z",
+		"size": 466,
+		"path": "../public/brand/hubs/tv/fox.svg"
+	},
+	"/brand/open-films/heroes/tears-of-steel-hero.jpg": {
+		"type": "image/jpeg",
+		"etag": "\"3ac39-dEFQSuCa+Pnc+pjRT7rEenyxJT0\"",
+		"mtime": "2026-07-16T19:42:00.441Z",
+		"size": 240697,
+		"path": "../public/brand/open-films/heroes/tears-of-steel-hero.jpg"
 	}
 };
 //#endregion

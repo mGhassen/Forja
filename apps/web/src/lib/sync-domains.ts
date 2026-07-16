@@ -164,7 +164,7 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   {
     domain: SYNC_DOMAINS.providers,
     title: 'Provider order',
-    description: 'Priority for web streams, anime mirrors, and Asian drama hosts.',
+    description: 'Priority for film and series, anime, and Asian drama hosts.',
     href: '/account/settings/providers',
   },
   {

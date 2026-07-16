@@ -117,6 +117,11 @@ mod tests {
     fn fetches_torrentio_streams() {
         let resp =
             fetch_get("https://torrentio.strem.fun/stream/movie/tt0114709.json", 15).unwrap();
+        // Cloudflare occasionally blocks datacenter / residential IPs with 403.
+        if resp.status == 403 && resp.body.contains("Cloudflare") {
+            eprintln!("skip fetches_torrentio_streams: Cloudflare blocked torrentio");
+            return;
+        }
         assert_eq!(resp.status, 200);
         assert!(resp.body.contains("\"streams\""));
     }

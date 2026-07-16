@@ -1,9 +1,10 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { LogOut, Settings, UserRound, Users } from 'lucide-react'
+import { LogOut, Settings, UserRound } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
 import { RequireAuth } from '@/components/require-auth'
+import { ProfileAvatar } from '@/components/profile-avatar'
 
 export function AccountPage() {
   const { user, signOut } = useAuth()
@@ -34,7 +35,13 @@ export function AccountPage() {
               to="/account/profiles"
               className="flex min-h-20 items-center gap-4 border-b border-forja-border px-0.5 py-4 hover:bg-white/2.5"
             >
-              <Users className="size-6 text-forja-muted" />
+              {activeProfile ? (
+                <ProfileAvatar
+                  avatarKey={activeProfile.avatar_key}
+                  name={activeProfile.name}
+                  className="size-10 shrink-0"
+                />
+              ) : null}
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">Profiles</p>
                 <p className="mt-0.5 text-sm text-forja-muted">

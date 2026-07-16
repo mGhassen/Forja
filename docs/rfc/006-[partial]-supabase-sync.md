@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 2** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **6 / 6** acceptance (profiles slice) |
+| **Progress** | **2 / 2** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) |
 | **Current slice** | Account profiles shipped — per-key timestamp merge and domain allowlist remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -57,6 +57,8 @@
 | 4 | R06-A13 | Profile selection is local to each web/app device | ✅ |
 | 5 | R06-A14 | Flutter sync reads and writes only the selected profile | ✅ |
 | 6 | R06-A15 | RLS prevents access to profiles and profile settings owned by another account | ✅ |
+| 7 | R06-A16 | Netflix-style profile chooser with account-owned avatar selection | ✅ |
+| 8 | R06-A17 | Avatar picker offers 30 choices grouped into categories of up to eight | ✅ |
 
 ---
 

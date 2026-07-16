@@ -15,7 +15,8 @@ class SettingsPlaybackSection extends StatefulWidget {
   const SettingsPlaybackSection({super.key});
 
   @override
-  State<SettingsPlaybackSection> createState() => _SettingsPlaybackSectionState();
+  State<SettingsPlaybackSection> createState() =>
+      _SettingsPlaybackSectionState();
 }
 
 class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
@@ -33,7 +34,6 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   String _maxPlaybackHeightLabel = 'Auto';
   List<String> _streamProviderOrder = [];
   List<String> _animeProviderOrder = [];
-  List<String> _asianDramaProviderOrder = [];
 
   @override
   void initState() {
@@ -44,12 +44,11 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   Future<void> _load() async {
     final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
-    final playSourceWebstreaming =
-        await _settings.isPlaySourceWebstreamingEnabled();
+    final playSourceWebstreaming = await _settings
+        .isPlaySourceWebstreamingEnabled();
     final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final streamOrder = await _settings.getStreamProviderOrder();
     final animeOrder = await _settings.getAnimeProviderOrder();
-    final asianDramaOrder = await _settings.getAsianDramaProviderOrder();
     final preferredAudio = await _settings.getPreferredAudioLanguage();
     final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
     final autoNextEpisode = await _settings.getAutoNextEpisode();
@@ -65,7 +64,6 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _builtInEngine = builtInEngine;
       _streamProviderOrder = streamOrder;
       _animeProviderOrder = animeOrder;
-      _asianDramaProviderOrder = asianDramaOrder;
       _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
           ? preferredAudio
           : 'None';
@@ -73,8 +71,9 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _autoNextEpisode = autoNextEpisode;
       _autoSkipIntro = autoSkipIntro;
       _iptvEpgEnabled = iptvEpgEnabled;
-      _maxPlaybackHeightLabel =
-          SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
+      _maxPlaybackHeightLabel = SettingsService.maxPlaybackHeightLabel(
+        maxPlaybackHeight,
+      );
     });
   }
 
@@ -236,10 +235,12 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       animeCatalog.keys,
     );
     final asianDramaCatalog = KissKhService.settingsCatalog;
-    final asianDramaOrder = SettingsService.mergeProviderOrder(
-      _asianDramaProviderOrder,
-      asianDramaCatalog.keys,
-    );
+    final asianDramaOrder = <String>[
+      KissKhService.activeMirrorHost,
+      ...asianDramaCatalog.keys.where(
+        (host) => host != KissKhService.activeMirrorHost,
+      ),
+    ];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -276,19 +277,9 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
         },
         asianDramaCatalog: asianDramaCatalog,
         asianDramaOrder: asianDramaOrder,
-        onAsianDramaOrderChanged: (next) async {
-          setState(() => _asianDramaProviderOrder = next);
-          await _settings.setAsianDramaProviderOrder(next);
-          scheduleProvidersSyncPush();
-        },
-        onAsianDramaOrderReset: () async {
-          final defaults = List<String>.from(
-            SettingsService.defaultAsianDramaProviderOrder,
-          );
-          await _settings.setAsianDramaProviderOrder(defaults);
-          setState(() => _asianDramaProviderOrder = defaults);
-          scheduleProvidersSyncPush();
-        },
+        disabledAsianDramaProviders: KissKhService.disabledMirrorHosts,
+        onAsianDramaOrderChanged: (_) {},
+        onAsianDramaOrderReset: () {},
       ),
     );
   }

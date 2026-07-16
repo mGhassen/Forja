@@ -1,5 +1,7 @@
-// Asian Drama (KissKH) per-episode resolver — sequential mirror probes like
-// Movies webstreaming (CHECKING / UP / DOWN), then player Sources switch.
+// Asian Drama (KissKH) per-episode resolver.
+//
+// Only one KissKH host is active. Mirror fan-out is deliberately disabled:
+// aliases share the client's rate limit, so probing/failover can cause a ban.
 
 import 'dart:async';
 
@@ -17,16 +19,16 @@ import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 Movie _hubMovieFromDrama(KdramaCard drama, {String overview = ''}) => Movie(
-      id: -drama.id,
-      title: drama.title,
-      posterPath: drama.cover,
-      backdropPath: drama.cover,
-      voteAverage: 0,
-      releaseDate: '',
-      overview: overview,
-      mediaType: 'asian_drama',
-      numberOfEpisodes: drama.episodesCount,
-    );
+  id: -drama.id,
+  title: drama.title,
+  posterPath: drama.cover,
+  backdropPath: drama.cover,
+  voteAverage: 0,
+  releaseDate: '',
+  overview: overview,
+  mediaType: 'asian_drama',
+  numberOfEpisodes: drama.episodesCount,
+);
 
 String? _dramaEpisodeThumbnail(String cover) {
   final value = cover.trim();
@@ -55,7 +57,7 @@ Map<String, dynamic> _kissKhProvidersForEpisode({
   required List<String> mirrorOrder,
 }) {
   return {
-    for (final host in mirrorOrder)
+    for (final host in mirrorOrder.take(1))
       host: <String, dynamic>{
         'dramaId': drama.id,
         'dramaTitle': drama.title,
@@ -104,40 +106,31 @@ class AsianDramaPlayerScreen extends StatefulWidget {
   });
 
   @override
-  State<AsianDramaPlayerScreen> createState() =>
-      _AsianDramaPlayerScreenState();
+  State<AsianDramaPlayerScreen> createState() => _AsianDramaPlayerScreenState();
 }
 
 class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   final KissKhService _service = KissKhService();
   final KissKhExtractor _extractor = KissKhExtractor();
-  final SettingsService _settings = SettingsService();
 
   late final ValueNotifier<String> _messageNotifier;
   late final ValueNotifier<bool> _fadeOutNotifier;
   late final ValueNotifier<List<StreamProviderProbe>> _probeNotifier;
   late final ValueNotifier<Map<String, List<StreamSource>>>
-      _providerSourcesCache;
+  _providerSourcesCache;
 
   String _statusLine = '';
   bool _failedAll = false;
+
   /// KissKh countdown / not-yet-published — skip extract, show availability copy.
   bool _isUpcoming = false;
   bool _cancelled = false;
   bool _handedOffLiveNotifiers = false;
-  bool _switchingManualMirror = false;
-  String? _pendingManualMirrorId;
-  /// Completes to abort an in-flight [KissKhService.probeMirrors] wait.
-  Completer<void>? _probeAbort;
-  /// Bumps so late [probeMirrors] onResult callbacks cannot clobber UI.
-  int _probeGeneration = 0;
   KdramaCard? _resolvedDrama;
   KdramaEpisode? _resolvedEpisode;
   List<KdramaEpisode> _resolvedEpisodes = const [];
   String _resolvedOverview = '';
-  List<String> _mirrorOrder = List<String>.from(
-    SettingsService.defaultAsianDramaProviderOrder,
-  );
+  final List<String> _mirrorOrder = const [KissKhService.activeMirrorHost];
   Map<String, dynamic> _providers = const {};
 
   @override
@@ -167,25 +160,6 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     _messageNotifier.value = message;
   }
 
-  void _requestManualMirrorCheck(String mirrorId) {
-    if (_cancelled || _failedAll) return;
-    final host = KissKhService.normalizeMirrorId(mirrorId);
-    if (!KissKhService.isMirrorHost(host)) return;
-
-    _pendingManualMirrorId = host;
-    _switchingManualMirror = true;
-    _probeGeneration++;
-    _prepareProbes(preferred: host);
-    _applyProbeStatus(host, StreamProviderProbeStatus.trying);
-    _setPhase('Opening ${KissKhService.mirrorLabel(host)}…');
-
-    final abort = _probeAbort;
-    if (abort != null && !abort.isCompleted) {
-      abort.complete();
-    }
-    unawaited(_extractor.cancel());
-  }
-
   void _applyProbeStatus(String mirrorId, StreamProviderProbeStatus status) {
     final existing = _probeNotifier.value;
     final idx = existing.indexWhere((p) => p.id == mirrorId);
@@ -207,19 +181,14 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     ];
   }
 
-  void _prepareProbes({String? preferred}) {
-    final isManual =
-        preferred != null && preferred.isNotEmpty && preferred != 'auto';
+  void _prepareActiveHost() {
     _probeNotifier.value = [
-      for (var i = 0; i < _mirrorOrder.length; i++)
-        StreamProviderProbe(
-          id: _mirrorOrder[i],
-          label: KissKhService.mirrorLabel(_mirrorOrder[i]),
-          status: StreamProviderProbeStatus.pending,
-          isPreferred: isManual
-              ? _mirrorOrder[i] == preferred
-              : i == 0,
-        ),
+      StreamProviderProbe(
+        id: KissKhService.activeMirrorHost,
+        label: KissKhService.mirrorLabel(KissKhService.activeMirrorHost),
+        status: StreamProviderProbeStatus.pending,
+        isPreferred: true,
+      ),
     ];
   }
 
@@ -243,13 +212,15 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
   /// Loads drama details (status gate) and resolves the episode row.
   Future<
-      ({
-        KdramaDetails details,
-        KdramaCard drama,
-        KdramaEpisode? episode,
-        List<KdramaEpisode> episodes,
-        bool matched,
-      })> _resolveEpisodeContext() async {
+    ({
+      KdramaDetails details,
+      KdramaCard drama,
+      KdramaEpisode? episode,
+      List<KdramaEpisode> episodes,
+      bool matched,
+    })
+  >
+  _resolveEpisodeContext() async {
     var drama = widget.drama;
     var episodes = widget.allEpisodes;
     var episode = widget.episode;
@@ -378,8 +349,6 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       final drama = ctx.drama;
       final episode = ctx.episode!;
 
-      _mirrorOrder = await _settings.getAsianDramaProviderOrder();
-      if (!mounted || _cancelled) return;
       _providers = _kissKhProvidersForEpisode(
         drama: drama,
         episode: episode,
@@ -387,204 +356,41 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       );
 
       if (!mounted) return;
-      setState(() => _setPhase('Checking mirrors…'));
-
-      var preferred = SourceEngine.auto;
-      KissKhStream? stream;
-      String? winningHost;
+      final activeHost = KissKhService.activeMirrorHost;
       var sawRateLimit = false;
+      _prepareActiveHost();
+      _applyProbeStatus(activeHost, StreamProviderProbeStatus.trying);
+      _setPhase('Opening ${KissKhService.mirrorLabel(activeHost)}…');
+      debugPrint(
+        '[AsianDrama] single-host mode: $activeHost '
+        '(mirror probes and failover disabled)',
+      );
 
-      while (mounted && !_cancelled) {
-        _switchingManualMirror = false;
-        final pin = preferred;
-        final tryOrder = SourceEngine.isAuto(pin)
-            ? _mirrorOrder
-            : <String>[
-                pin,
-                ..._mirrorOrder.where((h) => h != pin),
-              ];
-        _prepareProbes(preferred: pin);
-
-        // Manual pin: skip URL fan-out and open that mirror immediately.
-        // Auto: parallel API check first (leave rows WAITING so taps work).
-        late final List<String> healthyOrder;
-        if (!SourceEngine.isAuto(pin)) {
-          healthyOrder = [
-            pin,
-            ..._mirrorOrder.where((h) => h != pin),
-          ];
-          debugPrint(
-            '[AsianDrama] manual mirror ${KissKhService.mirrorLabel(pin)} '
-            '— skipping URL probe',
-          );
-        } else {
-          // Never mark every host CHECKING at once — that disabled manual taps.
-          _setPhase('Checking mirror URLs…');
-          debugPrint(
-            '[AsianDrama] probing ${tryOrder.length} mirrors in parallel…',
-          );
-          final gen = ++_probeGeneration;
-          final abort = Completer<void>();
-          _probeAbort = abort;
-          KissKhMirrorHealth health = const KissKhMirrorHealth(
-            selected: null,
-            healthyHosts: [],
-            unhealthyHosts: [],
-          );
-          try {
-            final probeFuture = KissKhService.probeMirrors(
-              hosts: tryOrder,
-              onResult: (host, ok) {
-                if (!mounted ||
-                    _cancelled ||
-                    gen != _probeGeneration ||
-                    _switchingManualMirror) {
-                  return;
-                }
-                _applyProbeStatus(
-                  host,
-                  ok
-                      ? StreamProviderProbeStatus.pending
-                      : StreamProviderProbeStatus.failed,
-                );
-                debugPrint(
-                  '[AsianDrama] mirror ${KissKhService.mirrorLabel(host)} '
-                  '→ ${ok ? 'API UP' : 'API DOWN'}',
-                );
-              },
-            ).then((h) {
-              health = h;
-              return h;
-            }).catchError((Object e) {
-              debugPrint('[AsianDrama] mirror probe failed: $e');
-              health = const KissKhMirrorHealth(
-                selected: null,
-                healthyHosts: [],
-                unhealthyHosts: [],
-              );
-              return health;
-            });
-            await Future.any([probeFuture, abort.future]);
-            if (!_switchingManualMirror) {
-              await probeFuture;
-            }
-          } finally {
-            if (identical(_probeAbort, abort)) {
-              _probeAbort = null;
-            }
+      final stream = await _extractor.resolve(
+        dramaId: drama.id,
+        dramaTitle: drama.title,
+        episodeId: episode.id,
+        episodeNumber: episode.number,
+        forcedBaseUrl: KissKhService.baseUrlForHost(activeHost),
+        timeout: const Duration(seconds: 45),
+        isCancelled: () => _cancelled,
+        onProgress: (phase, detail) {
+          if (!mounted) return;
+          if (phase == 'rate_limit') sawRateLimit = true;
+          if (phase == 'init' ||
+              phase == 'loaded' ||
+              phase == 'retry' ||
+              phase == 'rate_limit' ||
+              phase == 'embed' ||
+              phase == 'subs') {
+            _setPhase(detail);
           }
-          if (!mounted || _cancelled) return;
-          if (_switchingManualMirror) {
-            if (_pendingManualMirrorId != null) {
-              preferred = _pendingManualMirrorId!;
-              _pendingManualMirrorId = null;
-            }
-            continue;
-          }
-
-          // Drop late probe callbacks so a slow worker cannot reset a
-          // CHECKING/UP row back to WAITING after we move on.
-          _probeGeneration++;
-
-          healthyOrder = [
-            for (final host in tryOrder)
-              if (health.healthyHosts.contains(host)) host,
-          ];
-          for (final host in tryOrder) {
-            if (healthyOrder.contains(host)) {
-              _applyProbeStatus(host, StreamProviderProbeStatus.pending);
-            } else {
-              _applyProbeStatus(host, StreamProviderProbeStatus.failed);
-            }
-          }
-          debugPrint(
-            '[AsianDrama] healthy mirrors for WebView: $healthyOrder '
-            '(API down / timed out: ${health.unhealthyHosts})',
-          );
-
-          if (healthyOrder.isEmpty) {
-            stream = null;
-            winningHost = null;
-            if (_switchingManualMirror && _pendingManualMirrorId != null) {
-              preferred = _pendingManualMirrorId!;
-              _pendingManualMirrorId = null;
-              continue;
-            }
-            break;
-          }
-        }
-
-        stream = null;
-        winningHost = null;
-        for (final host in healthyOrder) {
-          if (!mounted || _cancelled || _switchingManualMirror) break;
-          if (sawRateLimit) {
-            // Same client IP — hopping .nl → .ovh → .do only deepens the ban.
-            debugPrint(
-              '[AsianDrama] skipping remaining mirrors after KissKH rate limit',
-            );
-            break;
-          }
-          _applyProbeStatus(host, StreamProviderProbeStatus.trying);
-          _setPhase('Opening ${KissKhService.mirrorLabel(host)}…');
-
-          final result = await _extractor.resolve(
-            dramaId: drama.id,
-            dramaTitle: drama.title,
-            episodeId: episode.id,
-            episodeNumber: episode.number,
-            forcedBaseUrl: KissKhService.baseUrlForHost(host),
-            // Rate-limit cool-down needs headroom beyond the silent ~10s fail.
-            timeout: const Duration(seconds: 45),
-            isCancelled: () =>
-                _cancelled || _switchingManualMirror,
-            onProgress: (phase, detail) {
-              if (!mounted || _switchingManualMirror) return;
-              if (phase == 'rate_limit') {
-                sawRateLimit = true;
-                _setPhase(detail);
-                return;
-              }
-              if (phase == 'init' ||
-                  phase == 'loaded' ||
-                  phase == 'retry' ||
-                  phase == 'embed' ||
-                  phase == 'subs') {
-                _setPhase(detail);
-              }
-            },
-          );
-
-          if (_cancelled) return;
-          if (_switchingManualMirror) break;
-
-          if (result != null) {
-            _applyProbeStatus(host, StreamProviderProbeStatus.success);
-            final sources = result.toSources(
-              label: KissKhService.mirrorLabel(host),
-            );
-            _providerSourcesCache.value = {
-              ..._providerSourcesCache.value,
-              host: sources,
-            };
-            stream = result;
-            winningHost = host;
-            break;
-          }
-          _applyProbeStatus(host, StreamProviderProbeStatus.failed);
-        }
-
-        if (_cancelled) return;
-        if (_switchingManualMirror && _pendingManualMirrorId != null) {
-          preferred = _pendingManualMirrorId!;
-          _pendingManualMirrorId = null;
-          continue;
-        }
-        break;
-      }
+        },
+      );
 
       if (!mounted || _cancelled) return;
-      if (stream == null || winningHost == null) {
+      if (stream == null) {
+        _applyProbeStatus(activeHost, StreamProviderProbeStatus.failed);
         setState(() {
           _failedAll = true;
           _isUpcoming = false;
@@ -595,12 +401,18 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           } else {
             _setPhase('No stream available');
             _statusLine =
-                'No healthy KissKH mirror returned a stream for this episode.';
+                '${KissKhService.mirrorLabel(activeHost)} did not return a stream. '
+                'Other mirrors are on hold to avoid a rate-limit ban.';
           }
         });
         return;
       }
-      await _launchPlayer(stream, winningHost);
+      _applyProbeStatus(activeHost, StreamProviderProbeStatus.success);
+      final sources = stream.toSources(
+        label: KissKhService.mirrorLabel(activeHost),
+      );
+      _providerSourcesCache.value = {activeHost: sources};
+      await _launchPlayer(stream, activeHost);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -844,7 +656,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
                           color: Colors.white.withValues(alpha: 0.3),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 22, vertical: 12),
+                          horizontal: 22,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -883,7 +697,6 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           providerProbesNotifier: _probeNotifier,
           fadeOutNotifier: _fadeOutNotifier,
           subtitle: episodeLabel,
-          onManualCheckProvider: _requestManualMirrorCheck,
           onCancel: () {
             _cancelled = true;
             unawaited(_extractor.cancel());
