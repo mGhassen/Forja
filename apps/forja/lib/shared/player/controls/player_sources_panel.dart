@@ -21,11 +21,19 @@ class PlayerSourcesPanel {
 
   static bool get isShowing => _entry != null;
 
-  static void dismiss() {
-    // Cancel before unmount — do not wait for Overlay dispose (next frame).
-    // Otherwise Nuvio JS keeps issuing fetches until the element drops.
+  /// Closes the Sources overlay.
+  ///
+  /// When [cancelEngine] is true (user closed the panel), abort in-flight
+  /// engine jobs (torrent search / Stremio HTTP). When false (user picked a
+  /// source), only stop Nuvio scrapers — the upcoming magnet resolve must not
+  /// be cancelled. [dispose] must never call [Engine.cancelPendingResolve]:
+  /// it runs a frame after [dismiss] and would kill the fresh torrent job.
+  static void dismiss({bool cancelEngine = true}) {
+    // Cancel Nuvio before unmount — do not wait for Overlay dispose.
     NuvioService.instance.cancelPending();
-    Engine.cancelPendingResolve();
+    if (cancelEngine) {
+      Engine.cancelPendingResolve();
+    }
     _entry?.remove();
     _entry = null;
     _completer?.complete();
@@ -228,8 +236,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     _searchGen++;
     _stremioGen++;
     _nuvioFetchGen++;
+    // Nuvio only — never Engine.cancelPendingResolve here. [dismiss] already
+    // cancelled on user close; on source pick, resolve starts before this
+    // dispose and must keep its torrentStream job alive.
     NuvioService.instance.cancelPending();
-    Engine.cancelPendingResolve();
     _listScrollController.dispose();
     super.dispose();
   }
@@ -1169,8 +1179,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       widget.onClose();
       return;
     }
-    // Close first so the player can show CHECKING SOURCES while resolving.
-    widget.onClose();
+    // Close without cancelling engine jobs — resolve starts immediately and
+    // dispose must not abort the new torrentStream (see [dismiss]).
+    PlayerSourcesPanel.dismiss(cancelEngine: false);
     await widget.onTorrentSelected(result);
   }
 
@@ -1179,8 +1190,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       widget.onClose();
       return;
     }
-    // Close first so the player can show CHECKING SOURCES while resolving.
-    widget.onClose();
+    PlayerSourcesPanel.dismiss(cancelEngine: false);
     await widget.onStremioSelected(stream);
   }
 

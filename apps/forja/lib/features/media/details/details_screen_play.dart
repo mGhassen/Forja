@@ -188,7 +188,14 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
     Map<String, dynamic> stream, {
     Duration? startPosition,
   }) async {
-    if (mounted && _s._sourcesPanelOpen) _s._closeSourcesPanel();
+    debugPrint(
+      '[Details] play Stremio/Nuvio stream '
+      'infoHash=${stream['infoHash']} fileIdx=${stream['fileIdx']} '
+      'url=${stream['url']}',
+    );
+    if (mounted && _s._sourcesPanelOpen) {
+      _s._closeSourcesPanel(cancelEngineJobs: false);
+    }
     final stremioId = widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
     final stremioAddonBaseUrl =
         stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
@@ -373,7 +380,10 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
   }
 
   void _playTorrent(TorrentResult result, {Duration? startPosition}) async {
-    if (mounted && _s._sourcesPanelOpen) _s._closeSourcesPanel();
+    debugPrint('[Details] play torrent title=${result.title}');
+    if (mounted && _s._sourcesPanelOpen) {
+      _s._closeSourcesPanel(cancelEngineJobs: false);
+    }
     final useDebrid = await _s._settings.useDebridForStreams();
     final debridService = await _s._settings.getDebridService();
     if (!mounted) return;

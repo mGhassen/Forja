@@ -48,6 +48,21 @@ void main() {
       );
     });
 
+    test('provider filter badge ignores all-selected default', () {
+      expect(
+        nuvioProviderFilterActiveCount(selectedCount: 3, totalEnabled: 3),
+        0,
+      );
+      expect(
+        nuvioProviderFilterActiveCount(selectedCount: 0, totalEnabled: 3),
+        0,
+      );
+      expect(
+        nuvioProviderFilterActiveCount(selectedCount: 2, totalEnabled: 3),
+        2,
+      );
+    });
+
     testWidgets('labels the next network provider count', (tester) async {
       var pressed = false;
       await tester.pumpWidget(

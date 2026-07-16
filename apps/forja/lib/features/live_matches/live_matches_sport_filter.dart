@@ -2,7 +2,8 @@
 //
 // Streamed tags always-on channels with a sport slug (`cricket`, `tennis`) and
 // `date: 0`; the website groups those under **24/7**. PPV uses category
-// `24/7 Streams`. Both must land on the same chip.
+// `24/7 Streams` plus an `always_live` flag (often with stale start/end times).
+// Both must land on the same chip and stay playable.
 
 /// Canonical sport chip id across PPV / Streamed / CDN label variants.
 String normalizeLiveSportId(String raw) {
@@ -47,6 +48,30 @@ bool liveSportIdsMatch(String raw, String filterId) {
 }
 
 bool isLive247Sport(String raw) => normalizeLiveSportId(raw) == '24-7';
+
+/// PPV `always_live` JSON — API sends `1`, `true`, or `"true"`.
+bool parsePpvAlwaysLive(dynamic value) {
+  if (value == true || value == 1) return true;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final s = value.trim().toLowerCase();
+    return s == '1' || s == 'true' || s == 'yes';
+  }
+  return false;
+}
+
+/// PPV 24/7 playability — ignore expired windows when always-live / 24/7.
+bool ppvStreamIsAlwaysOn({
+  required bool alwaysLive,
+  required String categoryName,
+  required int startsAt,
+  required int endsAt,
+  required bool hasIframe,
+}) {
+  if (!hasIframe) return false;
+  if (alwaysLive || isLive247Sport(categoryName)) return true;
+  return startsAt == 0 && endsAt == 0;
+}
 
 /// PPV `24/7 Streams` category **or** always-on (`date` / start+end unset).
 bool isLive247Item({required String category, required bool isAlwaysOn}) =>

@@ -150,6 +150,8 @@ class _DamiTvStream {
   final String? awayBadge;
   final int viewers;
   final String iframe;
+  /// PPV `always_live` — 24/7 channels keep stale start/end windows.
+  final bool alwaysLive;
 
   const _DamiTvStream({
     required this.id,
@@ -166,6 +168,7 @@ class _DamiTvStream {
     this.awayBadge,
     required this.viewers,
     required this.iframe,
+    this.alwaysLive = false,
   });
 
   factory _DamiTvStream.fromJson(Map<String, dynamic> j) {
@@ -200,10 +203,19 @@ class _DamiTvStream {
       awayBadge: abs((away?['badge'] ?? '').toString()),
       viewers: viewers,
       iframe: (j['iframe'] ?? '').toString(),
+      alwaysLive: parsePpvAlwaysLive(j['always_live']),
     );
   }
 
-  bool get isAlwaysOn => startsAt == 0 && endsAt == 0 && iframe.isNotEmpty;
+  /// Playable 24/7 channel — PPV often leaves expired `starts_at`/`ends_at`
+  /// while setting `always_live` (and/or category `24/7 Streams`).
+  bool get isAlwaysOn => ppvStreamIsAlwaysOn(
+    alwaysLive: alwaysLive,
+    categoryName: categoryName,
+    startsAt: startsAt,
+    endsAt: endsAt,
+    hasIframe: iframe.isNotEmpty,
+  );
 
   String get timeLabel {
     if (isAlwaysOn) return 'live';

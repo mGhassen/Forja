@@ -37,7 +37,10 @@ class TorrentSourcesPanel extends StatelessWidget {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final sources = panelWidthOf(context);
     final remaining = screenWidth - sources;
-    if (remaining < 280) return (screenWidth * 0.88).clamp(260.0, 400.0);
+    if (remaining <= 0) return 0;
+    // Never wider than the space left of Sources — a wider Filters overlay
+    // sits on top of the Sources list and steals every row tap.
+    if (remaining < 280) return remaining;
     return remaining.clamp(300.0, 420.0);
   }
 

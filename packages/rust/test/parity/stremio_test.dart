@@ -149,5 +149,12 @@ void main() {
       expect(built, startsWith('magnet:?xt=urn:btih:aaaaaaaa'));
       expect(built, contains('dn=Show'));
     });
+
+    test('stremioStreamFileIdx reads fileIdx / mapIdx', () {
+      expect(stremioStreamFileIdx({'fileIdx': 6}), 6);
+      expect(stremioStreamFileIdx({'fileIdx': '3'}), 3);
+      expect(stremioStreamFileIdx({'mapIdx': 1}), 1);
+      expect(stremioStreamFileIdx({'title': 'x'}), isNull);
+    });
   });
 }

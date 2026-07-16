@@ -1107,8 +1107,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     _fadeOutNotifier.value = true;
-    var playbackStarted = false;
-    var sourcesExhausted = false;
     _initProbes(_sortEmbedsByProviderOrder(_allEmbeds, _providerOrder));
     for (final h in hits) {
       _markProbeStatus(
@@ -1177,17 +1175,17 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       fadeTransition: true,
       sourcesListNotifier: sourcesListNotifier,
       onPlaybackStarted: () {
-        playbackStarted = true;
         _autoRecheckUsed = 0;
         _awaitingManualRecheck = false;
         _launchedFromSavedOrCache = false;
+        // Resolver is usually already removed after the fade-out; only
+        // clean up if it is somehow still under the player.
         if (resolverRoute != null && mounted) {
           navigator.removeRoute(resolverRoute);
         }
       },
       onAllSourcesExhausted: () {
-        sourcesExhausted = true;
-        _fadeOutNotifier.value = false;
+        if (mounted) _fadeOutNotifier.value = false;
         if (navigator.canPop()) navigator.pop();
       },
       onReloadStreams: () => reloadAnimeEpisodeStreams(
@@ -1198,41 +1196,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       ),
     );
     await Future<void>.delayed(loadingOverlayFadeOutDuration);
+    // Same hand-off as Asian Drama: drop the loading route under the player
+    // so Escape/back always returns to details — never the resolve overlay.
+    if (resolverRoute != null) {
+      navigator.removeRoute(resolverRoute);
+    }
     await playerFuture;
-    // Player closed — stop any leftover background embed probing immediately.
-    _haltBackgroundResolve();
-    final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
     sourcesListNotifier?.dispose();
     liveProbeNotifier.dispose();
     if (ownsProviderCache) {
       liveProviderCache.dispose();
     } else {
       providerSourcesCache!.dispose();
-    }
-    if (!playbackStarted && mounted) {
-      if (shouldRecheck) {
-        _fadeOutNotifier.value = false;
-        await _handleStaleSavedStreams();
-        return;
-      }
-      if (sourcesExhausted) {
-        // Keep resolver so the user can reload — restore faded overlay first.
-        _fadeOutNotifier.value = false;
-        setState(() {
-          _awaitingManualRecheck = true;
-          _failedAll = false;
-        });
-        _setPhase('Playback failed');
-        _setStatusLine('Tap reload to try again');
-        _probeNotifier.value = const [];
-        return;
-      }
-      // User backed out before playback started — leave entirely instead of
-      // trapping them on an invisible black resolver route.
-      _cancelled = true;
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
     }
   }
 

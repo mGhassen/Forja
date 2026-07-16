@@ -10,18 +10,29 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       setState(() {
         _s._hasNuvioAddons = addons.isNotEmpty;
         _s._nuvioAddons = addons;
+        // Default Filters → Providers to every enabled scraper as soon as the
+        // list is known (before Sources/Filters open), so chips are not empty.
+        if (_s._nuvioSelectedScraperIds.isEmpty) {
+          _s._selectAllEnabledNuvioScrapers();
+        }
       });
     } catch (_) {}
   }
 
   /// Stops in-flight torrent / Stremio / Nuvio fetches on the details tab.
-  void _cancelActiveSourceFetch() {
+  ///
+  /// When [cancelEngineJobs] is false (closing Sources to start playback),
+  /// only bump fetch generations and abort Nuvio — do not cancel engine jobs,
+  /// so the magnet resolve that starts next is not aborted.
+  void _cancelActiveSourceFetch({bool cancelEngineJobs = true}) {
     final changed =
         _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
     _s._torrentSearchGen++;
     _s._stremioFetchGen++;
     _s._nuvioFetchGen++;
-    Engine.cancelPendingResolve();
+    if (cancelEngineJobs) {
+      Engine.cancelPendingResolve();
+    }
     NuvioService.instance.cancelPending();
     _s._isSearching = false;
     _s._isStremioFetching = false;

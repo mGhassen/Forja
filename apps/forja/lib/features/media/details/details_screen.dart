@@ -456,7 +456,10 @@ class _DetailsScreenState extends State<DetailsScreen>
     _loadedAddonBaseUrls.clear();
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
-    _nuvioSelectedScraperIds = {};
+    // Keep the Nuvio Filters default (all enabled) when staying on that tab.
+    _nuvioSelectedScraperIds = _panelKindFilter == 'nuvio'
+        ? _allEnabledNuvioScraperIds()
+        : {};
     _errorMessage = null;
   }
 
@@ -599,19 +602,26 @@ class _DetailsScreenState extends State<DetailsScreen>
     setState(() {
       _syncSelectedSourceToPlaySources();
       _sourcesPanelOpen = true;
+      // Filters auto-opens with Sources — ensure Nuvio providers start selected.
+      if (_panelKindFilter == 'nuvio' && _nuvioSelectedScraperIds.isEmpty) {
+        _selectAllEnabledNuvioScrapers();
+      }
     });
     _ensurePanelSourceLoaded();
   }
 
   /// Close Sources and stop any in-flight Torrents / Stremio / Nuvio fetches.
-  void _closeSourcesPanel() {
+  ///
+  /// Pass [cancelEngineJobs]: false when closing to start playback so the
+  /// magnet resolve is not aborted by [Engine.cancelPendingResolve].
+  void _closeSourcesPanel({bool cancelEngineJobs = true}) {
     if (!_sourcesPanelOpen &&
         !_isSearching &&
         !_isStremioFetching &&
         !_isNuvioFetching) {
       return;
     }
-    _cancelActiveSourceFetch();
+    _cancelActiveSourceFetch(cancelEngineJobs: cancelEngineJobs);
     if (_sourcesPanelOpen && mounted) {
       setState(() => _sourcesPanelOpen = false);
     }

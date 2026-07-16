@@ -685,6 +685,13 @@ fn select_file_index(
 ) -> Option<usize> {
     let file_names: Vec<String> = files.iter().map(|f| f.name.clone()).collect();
 
+    // Stremio/Torrentio `fileIdx` is authoritative when present.
+    if let Some(idx) = preferred_idx {
+        if idx < files.len() && torrent_filter::is_video_file(&files[idx].name) {
+            return Some(idx);
+        }
+    }
+
     if let (Some(s), Some(e)) = (season, episode) {
         let matches: Vec<usize> = file_names
             .iter()
@@ -696,12 +703,6 @@ fn select_file_index(
             .collect();
         if !matches.is_empty() {
             return Some(pick_largest(files, &matches));
-        }
-    }
-
-    if let Some(idx) = preferred_idx {
-        if idx < files.len() && torrent_filter::is_video_file(&files[idx].name) {
-            return Some(idx);
         }
     }
 

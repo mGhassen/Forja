@@ -48,6 +48,14 @@ bool isStremioTorrentUrl(String url) {
       u.endsWith('.torrent');
 }
 
+/// Stremio `fileIdx` / legacy `mapIdx` — which file inside the torrent to play.
+int? stremioStreamFileIdx(Map<String, dynamic> stream) {
+  final raw = stream['fileIdx'] ?? stream['fileIndex'] ?? stream['mapIdx'];
+  if (raw is int) return raw;
+  if (raw is num) return raw.toInt();
+  return int.tryParse(raw?.toString() ?? '');
+}
+
 /// Builds a magnet link from a Stremio addon stream map.
 ///
 /// Prefer [infoHash] (+ trackers). If the addon only put a magnet in `url`,
@@ -202,6 +210,7 @@ Future<StremioResolveOutcome> resolveStremioStream({
   if (precheck != null) return precheck;
 
   final magnet = buildMagnetFromStremioStream(stream);
+  final fileIdx = stremioStreamFileIdx(stream);
   final loadingMessage = stremioResolveLoadingMessage(
     profile: profile,
     useDebrid: useDebrid,
@@ -216,6 +225,7 @@ Future<StremioResolveOutcome> resolveStremioStream({
       localTorrentEngine: profile.localTorrentEngine,
       season: season,
       episode: episode,
+      fileIdx: fileIdx,
     );
     if (isCancelled?.call() == true) {
       return StremioResolveFailure(

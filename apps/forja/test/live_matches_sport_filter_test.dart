@@ -93,4 +93,68 @@ void main() {
       );
     });
   });
+
+  group('ppvStreamIsAlwaysOn', () {
+    test('honors always_live even with expired start/end', () {
+      expect(
+        ppvStreamIsAlwaysOn(
+          alwaysLive: true,
+          categoryName: '24/7 Streams',
+          startsAt: 1737176400,
+          endsAt: 1740772800,
+          hasIframe: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('honors 24/7 category without always_live flag', () {
+      expect(
+        ppvStreamIsAlwaysOn(
+          alwaysLive: false,
+          categoryName: '24/7 Streams',
+          startsAt: 1737176400,
+          endsAt: 1740772800,
+          hasIframe: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('zero start/end with iframe is always-on', () {
+      expect(
+        ppvStreamIsAlwaysOn(
+          alwaysLive: false,
+          categoryName: 'Football',
+          startsAt: 0,
+          endsAt: 0,
+          hasIframe: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('scheduled non-24/7 match is not always-on', () {
+      expect(
+        ppvStreamIsAlwaysOn(
+          alwaysLive: false,
+          categoryName: 'Football',
+          startsAt: 1737176400,
+          endsAt: 1740772800,
+          hasIframe: true,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('parsePpvAlwaysLive', () {
+    test('accepts 1, true, and string forms', () {
+      expect(parsePpvAlwaysLive(1), isTrue);
+      expect(parsePpvAlwaysLive(true), isTrue);
+      expect(parsePpvAlwaysLive('true'), isTrue);
+      expect(parsePpvAlwaysLive(0), isFalse);
+      expect(parsePpvAlwaysLive(null), isFalse);
+    });
+  });
 }

@@ -6,6 +6,19 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
+/// How many Nuvio provider chips count as an active Filters badge.
+///
+/// All selected (or none) is the default / empty state — badge stays clear.
+/// A partial selection counts as filtered.
+int nuvioProviderFilterActiveCount({
+  required int selectedCount,
+  required int totalEnabled,
+}) {
+  if (totalEnabled <= 0) return 0;
+  if (selectedCount <= 0 || selectedCount >= totalEnabled) return 0;
+  return selectedCount;
+}
+
 /// Provider / addon / scraper row for the Sources Filters panel.
 class SourcesPanelProviderOption {
   const SourcesPanelProviderOption({required this.id, required this.label});
@@ -972,10 +985,15 @@ class _TorrentSourceSearchToolbarState
     if (widget.providerOptions.isEmpty || widget.onProviderTap == null) {
       return 0;
     }
-    final nuvio = widget.providerOptions.where(
-      (p) => p.id.startsWith('nuvio:'),
-    );
-    if (nuvio.isNotEmpty) return widget.nuvioSelectedScraperIds.length;
+    final nuvio = widget.providerOptions
+        .where((p) => p.id.startsWith('nuvio:'))
+        .toList();
+    if (nuvio.isNotEmpty) {
+      return nuvioProviderFilterActiveCount(
+        selectedCount: widget.nuvioSelectedScraperIds.length,
+        totalEnabled: nuvio.length,
+      );
+    }
     if (widget.selectedProviderId == null ||
         widget.selectedProviderId!.isEmpty) {
       return 0;
@@ -1328,11 +1346,8 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     if (oldWidget.selectedProviderId != widget.selectedProviderId) {
       _selectedProviderId = widget.selectedProviderId;
     }
-    if (oldWidget.nuvioSelectedScraperIds != widget.nuvioSelectedScraperIds) {
-      _nuvioSelectedScraperIds = Set<String>.from(
-        widget.nuvioSelectedScraperIds,
-      );
-    }
+    // Always sync — OverlayEntry may rebuild a frame late after select-all.
+    _nuvioSelectedScraperIds = Set<String>.from(widget.nuvioSelectedScraperIds);
   }
 
   void _toggle(Set<String> set, String value, void Function(Set<String>) emit) {
@@ -1351,9 +1366,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       if (id.startsWith('nuvio:')) {
         final scraperId = id.substring('nuvio:'.length);
         if (_nuvioSelectedScraperIds.contains(scraperId)) {
-          _nuvioSelectedScraperIds.remove(scraperId);
+          _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
+            ..remove(scraperId);
         } else {
-          _nuvioSelectedScraperIds.add(scraperId);
+          _nuvioSelectedScraperIds = {
+            ..._nuvioSelectedScraperIds,
+            scraperId,
+          };
         }
       } else {
         _selectedProviderId = id;
@@ -1614,54 +1633,60 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     final filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
     const padding = EdgeInsets.fromLTRB(20, 8, 12, 16);
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Dim only the page left of Filters — keep Sources interactive.
-        Positioned(
-          top: 0,
-          bottom: 0,
-          left: 0,
-          right: sourcesW + filterW,
-          child: GestureDetector(
-            onTap: widget.onClose,
-            behavior: HitTestBehavior.opaque,
-            child: ColoredBox(color: Colors.black.withValues(alpha: 0.12)),
+    // Occupy only the region LEFT of Sources. A full-screen Stack overlay
+    // (even with an "empty" Sources strip) can still win the gesture arena on
+    // desktop and block Torrents / Stremio / Nuvio row taps.
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: sourcesW,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: filterW,
+            child: GestureDetector(
+              onTap: widget.onClose,
+              behavior: HitTestBehavior.opaque,
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.12)),
+            ),
           ),
-        ),
-        // Slot flush to Sources' left edge; clip so the panel only ever
-        // appears by sliding out from that edge (never from off-screen).
-        Positioned(
-          top: 0,
-          bottom: 0,
-          right: sourcesW,
-          width: filterW,
-          child: ClipRect(
-            child: AnimatedSlide(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              offset: _open ? Offset.zero : const Offset(1, 0),
-              child: ForjaFrostedPanel(
-                // Details: BackdropFilter. Player: translucent shell (no frame).
-                enableBlur: widget.enableBlur,
-                // Only a left border — the right edge butts flush against the
-                // Sources panel (which draws its own left border) so the two
-                // read as one continuous surface, not two floating cards.
-                border: Border(
-                  left: BorderSide(
-                    color: ForjaShellColors.cinematic.borderSubtle,
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: filterW,
+            child: ClipRect(
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                offset: _open ? Offset.zero : const Offset(1, 0),
+                child: ForjaFrostedPanel(
+                  // Details: BackdropFilter. Player: translucent shell (no frame).
+                  enableBlur: widget.enableBlur,
+                  // Only a left border — the right edge butts flush against the
+                  // Sources panel (which draws its own left border) so the two
+                  // read as one continuous surface, not two floating cards.
+                  border: Border(
+                    left: BorderSide(
+                      color: ForjaShellColors.cinematic.borderSubtle,
+                    ),
                   ),
-                ),
-                child: SafeArea(
-                  left: false,
-                  right: false,
-                  child: Padding(padding: padding, child: widget.child),
+                  child: SafeArea(
+                    left: false,
+                    right: false,
+                    child: Padding(padding: padding, child: widget.child),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
