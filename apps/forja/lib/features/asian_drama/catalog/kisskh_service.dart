@@ -15,6 +15,50 @@ import 'package:rust/rust.dart';
 class KissKhService {
   static const String primaryBaseUrl = 'https://kisskh.co';
 
+  /// API-compatible KissKH hosts (same drama IDs). Used for Settings order,
+  /// loading probes, and the player Sources panel — not HTML clones.
+  static const List<String> mirrorHosts = <String>[
+    'kisskh.co',
+    'kisskh.nl',
+    'kisskh.ovh',
+    'kisskh.la',
+    'kisskh.do',
+  ];
+
+  /// Settings / player catalog: id → display label.
+  static Map<String, String> get settingsCatalog => {
+        for (final host in mirrorHosts) host: mirrorLabel(host),
+      };
+
+  static String mirrorLabel(String hostOrId) {
+    final host = normalizeMirrorId(hostOrId);
+    if (host == 'kisskh.co') return 'KissKH';
+    return host;
+  }
+
+  /// Map legacy `kisskh` and URLs to a mirror host id.
+  static String normalizeMirrorId(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value.isEmpty || value == 'kisskh') return 'kisskh.co';
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return Uri.tryParse(value)?.host.toLowerCase() ?? 'kisskh.co';
+    }
+    return value;
+  }
+
+  static bool isMirrorHost(String id) {
+    final host = normalizeMirrorId(id);
+    return mirrorHosts.contains(host);
+  }
+
+  static String baseUrlForHost(String hostOrId) {
+    final host = normalizeMirrorId(hostOrId);
+    return 'https://$host';
+  }
+
+  static String hostFromBaseUrl(String baseUrl) =>
+      normalizeMirrorId(baseUrl);
+
   /// Ask the Rust catalog engine to race API-compatible mirrors. The returned
   /// order keeps the first healthy mirror first and excludes unrelated sites
   /// that happen to use the KissKh name.

@@ -192,8 +192,10 @@ class TorrentSourceKindFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kindCount =
+        [showTorrents, showStremio, showNuvio].where((e) => e).length;
     final options = <({String id, String label, IconData icon})>[
-      if (showTorrents && showStremio)
+      if (kindCount >= 2)
         (id: 'all', label: 'All', icon: Icons.apps_rounded),
       if (showTorrents)
         (id: 'torrents', label: 'Torrents', icon: Icons.downloading_rounded),

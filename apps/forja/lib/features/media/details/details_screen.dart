@@ -117,7 +117,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   bool _playSourceWebstreaming = true;
 
   /// Panel list filter: `all` | `torrents` | `stremio` | `nuvio`.
-  String _panelKindFilter = 'torrents';
+  String _panelKindFilter = 'all';
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -289,15 +289,22 @@ class _DetailsScreenState extends State<DetailsScreen>
 
 
   void _applyPanelFilterForSavedMethod(String? method) {
+    // Keep All when multiple kinds are available; only pin a single chip
+    // when that is the sole enabled catalog source.
+    final multi = [
+      _panelShowTorrent,
+      _panelShowStremio,
+      _panelShowNuvio,
+    ].where((e) => e).length >= 2;
+    if (multi) {
+      _panelKindFilter = 'all';
+      return;
+    }
     switch (method) {
       case 'torrent':
-        if (_panelShowTorrent) {
-          _panelKindFilter = _panelShowStremio ? 'torrents' : 'torrents';
-        }
+        if (_panelShowTorrent) _panelKindFilter = 'torrents';
       case 'stremio_direct':
-        if (_panelShowStremio) {
-          _panelKindFilter = _panelShowTorrent ? 'stremio' : 'stremio';
-        }
+        if (_panelShowStremio) _panelKindFilter = 'stremio';
       default:
         break;
     }
@@ -378,7 +385,12 @@ class _DetailsScreenState extends State<DetailsScreen>
       _panelShowTorrent || _panelShowStremio || _panelShowNuvio;
 
   String _defaultPanelKindFilter() {
-    // Prefer a single kind so opening Sources does not fetch every category.
+    final available = [
+      _panelShowTorrent,
+      _panelShowStremio,
+      _panelShowNuvio,
+    ].where((e) => e).length;
+    if (available >= 2) return 'all';
     if (_panelShowTorrent) return 'torrents';
     if (_panelShowNuvio) return 'nuvio';
     if (_panelShowStremio) return 'stremio';
@@ -386,8 +398,13 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _syncPanelKindFilterToPlaySources() {
+    final kindCount = [
+      _panelShowTorrent,
+      _panelShowStremio,
+      _panelShowNuvio,
+    ].where((e) => e).length;
     final allowed = <String>{
-      if (_panelShowTorrent && _panelShowStremio) 'all',
+      if (kindCount >= 2) 'all',
       if (_panelShowTorrent) 'torrents',
       if (_panelShowStremio) 'stremio',
       if (_panelShowNuvio) 'nuvio',

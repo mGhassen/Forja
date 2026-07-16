@@ -23,4 +23,12 @@ void main() {
     expect(headers['Referer'], 'https://kisskh.ovh/');
     expect(headers['Origin'], 'https://kisskh.ovh');
   });
+
+  test('settings catalog lists verified KissKH mirrors', () {
+    expect(KissKhService.mirrorHosts, containsAll(['kisskh.co', 'kisskh.nl']));
+    expect(KissKhService.settingsCatalog.keys, KissKhService.mirrorHosts);
+    expect(KissKhService.normalizeMirrorId('kisskh'), 'kisskh.co');
+    expect(KissKhService.isMirrorHost('kisskh.ovh'), isTrue);
+    expect(KissKhService.isMirrorHost('kisskh.buzz'), isFalse);
+  });
 }

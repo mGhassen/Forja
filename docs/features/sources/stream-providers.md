@@ -39,7 +39,7 @@ Built-in **webstreaming** movie/series providers include Videasy, VSEmbed, VidSr
 |--------|-----------------|
 | Movies / TV | Videasy, VidLink, VidFast, 2Embed, AutoEmbed, WebStreamr, … |
 | Anime | Megaplay, Vidwish, VidNest, Miruro, AllAnime, … |
-| Asian Drama | KissKH |
+| Asian Drama | KissKH mirrors (`.co`, `.nl`, `.ovh`, `.la`, `.do`) |
 | IPTV | Xtream / M3U / Stalker (portal) |
 | Torrent | Local / debrid |
 

@@ -28,6 +28,11 @@ class StreamProviderDisplay {
     'amri': 'Amri',
     'arabic': 'Arabic',
     'kisskh': 'KissKH',
+    'kisskh.co': 'KissKH',
+    'kisskh.nl': 'kisskh.nl',
+    'kisskh.ovh': 'kisskh.ovh',
+    'kisskh.la': 'kisskh.la',
+    'kisskh.do': 'kisskh.do',
     'torrent': 'Torrent',
   };
 

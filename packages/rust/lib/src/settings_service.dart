@@ -389,6 +389,39 @@ class SettingsService {
   Future<void> setAnimeProviderOrder(List<String> order) async =>
       kvSetStringList(_animeProviderOrderKey, order);
 
+  static const String _asianDramaProviderOrderKey =
+      'asian_drama_provider_order';
+
+  /// Default Asian Drama mirror try-order (KissKH API-compatible hosts).
+  static const List<String> defaultAsianDramaProviderOrder = <String>[
+    'kisskh.co',
+    'kisskh.nl',
+    'kisskh.ovh',
+    'kisskh.la',
+    'kisskh.do',
+  ];
+
+  Future<List<String>> getAsianDramaProviderOrder() async {
+    final saved = await kvGetStringList(
+      _asianDramaProviderOrderKey,
+      fallback: const [],
+    );
+    final normalized = <String>[
+      for (final raw in saved)
+        if (raw.trim().isNotEmpty)
+          raw.trim().toLowerCase() == 'kisskh'
+              ? 'kisskh.co'
+              : raw.trim().toLowerCase(),
+    ];
+    if (normalized.isEmpty) {
+      return List<String>.from(defaultAsianDramaProviderOrder);
+    }
+    return mergeProviderOrder(normalized, defaultAsianDramaProviderOrder);
+  }
+
+  Future<void> setAsianDramaProviderOrder(List<String> order) async =>
+      kvSetStringList(_asianDramaProviderOrderKey, order);
+
   Future<String> getSortPreference() async =>
       await kvGetString(_sortPreferenceKey) ?? 'Seeders (High to Low)';
 
@@ -881,6 +914,13 @@ class SettingsService {
     if (animeOrder.isNotEmpty) {
       prefsMap[_animeProviderOrderKey] = animeOrder;
     }
+    final asianDramaOrder = await kvGetStringList(
+      _asianDramaProviderOrderKey,
+      fallback: const [],
+    );
+    if (asianDramaOrder.isNotEmpty) {
+      prefsMap[_asianDramaProviderOrderKey] = asianDramaOrder;
+    }
     final nuvioRaw = await kvGetString('nuvio_addons_v1');
     if (nuvioRaw != null && nuvioRaw.isNotEmpty) {
       prefsMap['nuvio_addons_v1'] = nuvioRaw;
@@ -987,6 +1027,12 @@ class SettingsService {
       await kvSetStringList(
         _animeProviderOrderKey,
         (prefsMap[_animeProviderOrderKey] as List).cast<String>(),
+      );
+    }
+    if (prefsMap.containsKey(_asianDramaProviderOrderKey)) {
+      await kvSetStringList(
+        _asianDramaProviderOrderKey,
+        (prefsMap[_asianDramaProviderOrderKey] as List).cast<String>(),
       );
     }
     for (final key in [

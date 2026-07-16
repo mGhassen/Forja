@@ -66,7 +66,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [042-[fixed]-…](fixed/042-[fixed]-provider-reliability-not-global.md) | Provider reliability not global across titles | P1 | High | fixed | Complete · 5/5 · A 4/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [043-[fixed]-…](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) | Dead cache → full Auto re-resolve like first Play | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[fixed]-…](fixed/044-[fixed]-settings-cache-data-cleaner.md) | Settings cache / data cleaner | P2 | Medium | fixed | — | — |
-| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 10/10 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 13/13 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-streamed-live-embed-white-screen.md) | Streamed live embed white screen / unlimited loading | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [048-[open]-…](048-[open]-vidsrc-sbs-iframe-playback-restricted.md) | VidSrc.sbs iframe playback restricted | P1 | High | open | 1/1 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [047-[fixed]-…](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) | Vidsrc: broken plugin request + vsembed.su host | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -86,7 +86,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [062-[fixed]-…](fixed/062-[fixed]-windows-quit-freeze-unbounded-mpv-teardown.md) | Windows quit freezes (unbounded mpv teardown) | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [063-[fixed]-…](fixed/063-[fixed]-iptv-catalog-scrape-extract-still-dart.md) | IPTV catalog scrape extract still Dart | P2 | Medium | fixed | Complete · 4/4 · 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [064-[fixed]-…](fixed/064-[fixed]-stremio-nuvio-player-sources-panel-missing.md) | Stremio/Nuvio player Sources panel missing | P2 | Medium | fixed | Complete · 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [065-[fixed]-…](fixed/065-[fixed]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |
+| [065-[open]-…](065-[open]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | open | 7/7 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [066-[open]-…](066-[open]-canonical-settings-persistence.md) | Canonical settings persistence (KV file + secure secrets) | P1 | High | open | 5/5 · A 4/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [067-[fixed]-…](fixed/067-[fixed]-server-panel-reload-ignores-disk-cache.md) | Server panel reload no-op from disk cache | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |

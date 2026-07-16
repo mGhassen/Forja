@@ -71,6 +71,10 @@ class NuvioRuntime {
   // dropped instead of feeding cancelled scrapers.
   int _fetchGeneration = 0;
   final Map<int, int> _fetchGens = {};
+  /// When false, [NuvioFetchStart] refuses new HTTP — stops orphaned JS
+  /// scrapers from restarting requests after cancel/timeout.
+  bool _acceptingFetches = false;
+  int _activeGetStreams = 0;
 
   // --- per-timer coordination --------------------------------------------
   int _timerSeq = 0;
@@ -221,6 +225,9 @@ class NuvioRuntime {
     // back to JS by Dart calling `__nuvioFetchResolve(id, envelope)`.
     br('NuvioFetchStart', (args) {
       try {
+        // Panel close / abort leaves scrapers' Promise chains alive on the
+        // shared QuickJS loop — refuse new HTTP so they cannot keep loading.
+        if (!_acceptingFetches || _activeGetStreams <= 0) return null;
         final m = args is Map ? args : <String, dynamic>{};
         final id = (m['id'] as num).toInt();
         final url = (m['url'] ?? '').toString();
@@ -394,6 +401,7 @@ class NuvioRuntime {
     bool Function()? isCancelled,
   }) async {
     await _ensureInit();
+    if (isCancelled?.call() == true) return [];
     if (!_loadedScraperIds.contains(scraperId)) {
       throw StateError('Scraper $scraperId not loaded');
     }
@@ -401,13 +409,16 @@ class NuvioRuntime {
     final callId = ++_callSeq;
     final completer = Completer<String>();
     _pendingResults[callId] = completer;
+    _activeGetStreams++;
+    _acceptingFetches = true;
 
-    final args = mediaType == 'movie'
-        ? '${jsonEncode(tmdbId)}, "movie", undefined, undefined'
-        : '${jsonEncode(tmdbId)}, "tv", ${season ?? 1}, ${episode ?? 1}';
-    final settingsJson = jsonEncode(scraperSettings ?? const {});
+    try {
+      final args = mediaType == 'movie'
+          ? '${jsonEncode(tmdbId)}, "movie", undefined, undefined'
+          : '${jsonEncode(tmdbId)}, "tv", ${season ?? 1}, ${episode ?? 1}';
+      final settingsJson = jsonEncode(scraperSettings ?? const {});
 
-    final invoker = '''
+      final invoker = '''
 (function(){
   globalThis.SCRAPER_ID = ${jsonEncode(scraperId)};
   globalThis.SCRAPER_SETTINGS = $settingsJson;
@@ -431,48 +442,58 @@ class NuvioRuntime {
 })();
 ''';
 
-    final r = rt.evaluate(invoker);
-    if (r.isError) {
-      _pendingResults.remove(callId);
-      debugPrint('[NuvioRuntime] invoker eval error: ${r.stringResult}');
-      return [];
-    }
-
-    // Drive the QuickJS event loop ourselves until the capture bridge
-    // resolves (or we time out).
-    final stopwatch = Stopwatch()..start();
-    while (!completer.isCompleted &&
-        stopwatch.elapsedMilliseconds < timeout.inMilliseconds) {
-      if (isCancelled?.call() == true) {
+      final r = rt.evaluate(invoker);
+      if (r.isError) {
         _pendingResults.remove(callId);
-        if (!completer.isCompleted) completer.complete('[]');
-        debugPrint('[NuvioRuntime] $scraperId cancelled');
+        debugPrint('[NuvioRuntime] invoker eval error: ${r.stringResult}');
         return [];
       }
-      try {
-        rt.executePendingJob();
-      } catch (_) {}
-      await Future<void>.delayed(const Duration(milliseconds: 8));
-    }
-    if (!completer.isCompleted) {
-      _pendingResults.remove(callId);
-      debugPrint('[NuvioRuntime] $scraperId timed out after ${timeout.inSeconds}s');
-      return [];
-    }
 
-    final body = (await completer.future).trim();
-    if (isCancelled?.call() == true) return [];
-    if (body.isEmpty || body == 'null' || body == 'undefined') return [];
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is! List) return [];
-      return decoded
-          .whereType<Map>()
-          .map((e) => e.cast<String, dynamic>())
-          .toList();
-    } catch (e) {
-      debugPrint('[NuvioRuntime] result parse failed for $scraperId: $e\n$body');
-      return [];
+      // Drive the QuickJS event loop ourselves until the capture bridge
+      // resolves (or we time out).
+      final stopwatch = Stopwatch()..start();
+      while (!completer.isCompleted &&
+          stopwatch.elapsedMilliseconds < timeout.inMilliseconds) {
+        if (isCancelled?.call() == true) {
+          _pendingResults.remove(callId);
+          if (!completer.isCompleted) completer.complete('[]');
+          debugPrint('[NuvioRuntime] $scraperId cancelled');
+          return [];
+        }
+        try {
+          rt.executePendingJob();
+        } catch (_) {}
+        await Future<void>.delayed(const Duration(milliseconds: 8));
+      }
+      if (!completer.isCompleted) {
+        _pendingResults.remove(callId);
+        if (!completer.isCompleted) completer.complete('[]');
+        debugPrint(
+            '[NuvioRuntime] $scraperId timed out after ${timeout.inSeconds}s');
+        return [];
+      }
+
+      final body = (await completer.future).trim();
+      if (isCancelled?.call() == true) return [];
+      if (body.isEmpty || body == 'null' || body == 'undefined') return [];
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is! List) return [];
+        return decoded
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
+      } catch (e) {
+        debugPrint(
+            '[NuvioRuntime] result parse failed for $scraperId: $e\n$body');
+        return [];
+      }
+    } finally {
+      _pendingResults.remove(callId);
+      _activeGetStreams = (_activeGetStreams - 1).clamp(0, 1 << 30);
+      if (_activeGetStreams <= 0) {
+        _acceptingFetches = false;
+      }
     }
   }
 
@@ -480,6 +501,7 @@ class NuvioRuntime {
   /// captures empty, and recreate the HTTP client so open requests abort.
   /// Called from [NuvioService.cancelPending] when the user leaves a title.
   void abortPendingWork() {
+    _acceptingFetches = false;
     _fetchGeneration++;
     _fetchGens.clear();
     for (final t in _activeTimers.values) {

@@ -1,5 +1,5 @@
-// Asian Drama (kisskh.co) per-episode resolver. Single WebView extraction path
-// (no multi-server fan-out) — KissKH is not raced like webstreaming providers.
+// Asian Drama (KissKH) per-episode resolver — sequential mirror probes like
+// Movies webstreaming (CHECKING / UP / DOWN), then player Sources switch.
 
 import 'dart:async';
 
@@ -11,6 +11,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
@@ -23,7 +24,7 @@ Movie _hubMovieFromDrama(KdramaCard drama, {String overview = ''}) => Movie(
       voteAverage: 0,
       releaseDate: '',
       overview: overview,
-      mediaType: 'tv',
+      mediaType: 'asian_drama',
       numberOfEpisodes: drama.episodesCount,
     );
 
@@ -46,6 +47,23 @@ List<PlayerHubEpisode> _hubEpisodesFromDrama(
         ),
       )
       .toList();
+}
+
+Map<String, dynamic> _kissKhProvidersForEpisode({
+  required KdramaCard drama,
+  required KdramaEpisode episode,
+  required List<String> mirrorOrder,
+}) {
+  return {
+    for (final host in mirrorOrder)
+      host: <String, dynamic>{
+        'dramaId': drama.id,
+        'dramaTitle': drama.title,
+        'episodeId': episode.id,
+        'episodeNumber': episode.number,
+        'baseUrl': KissKhService.baseUrlForHost(host),
+      },
+  };
 }
 
 Future<T?> openAsianDramaPlayer<T>(
@@ -93,39 +111,100 @@ class AsianDramaPlayerScreen extends StatefulWidget {
 class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   final KissKhService _service = KissKhService();
   final KissKhExtractor _extractor = KissKhExtractor();
+  final SettingsService _settings = SettingsService();
 
   late final ValueNotifier<String> _messageNotifier;
   late final ValueNotifier<bool> _fadeOutNotifier;
+  late final ValueNotifier<List<StreamProviderProbe>> _probeNotifier;
+  late final ValueNotifier<Map<String, List<StreamSource>>>
+      _providerSourcesCache;
 
   String _statusLine = '';
   bool _failedAll = false;
   /// KissKh countdown / not-yet-published — skip extract, show availability copy.
   bool _isUpcoming = false;
   bool _cancelled = false;
+  bool _handedOffLiveNotifiers = false;
+  bool _switchingManualMirror = false;
+  String? _pendingManualMirrorId;
   KdramaCard? _resolvedDrama;
   KdramaEpisode? _resolvedEpisode;
   List<KdramaEpisode> _resolvedEpisodes = const [];
   String _resolvedOverview = '';
+  List<String> _mirrorOrder = List<String>.from(
+    SettingsService.defaultAsianDramaProviderOrder,
+  );
+  Map<String, dynamic> _providers = const {};
 
   @override
   void initState() {
     super.initState();
     _messageNotifier = ValueNotifier('Checking availability…');
     _fadeOutNotifier = ValueNotifier(false);
+    _probeNotifier = ValueNotifier(const []);
+    _providerSourcesCache = ValueNotifier({});
     _bootstrap();
   }
 
   @override
   void dispose() {
     _cancelled = true;
+    unawaited(_extractor.cancel());
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
-    unawaited(_extractor.cancel());
+    if (!_handedOffLiveNotifiers) {
+      _probeNotifier.dispose();
+      _providerSourcesCache.dispose();
+    }
     super.dispose();
   }
 
-  void _setPhase(String phase) {
-    _messageNotifier.value = phase;
+  void _setPhase(String message) {
+    _messageNotifier.value = message;
+  }
+
+  void _requestManualMirrorCheck(String mirrorId) {
+    if (_cancelled || _failedAll) return;
+    _pendingManualMirrorId = mirrorId;
+    _switchingManualMirror = true;
+    unawaited(_extractor.cancel());
+  }
+
+  void _applyProbeStatus(String mirrorId, StreamProviderProbeStatus status) {
+    final existing = _probeNotifier.value;
+    final idx = existing.indexWhere((p) => p.id == mirrorId);
+    if (idx < 0) {
+      _probeNotifier.value = [
+        ...existing,
+        StreamProviderProbe(
+          id: mirrorId,
+          label: KissKhService.mirrorLabel(mirrorId),
+          status: status,
+          isPreferred: existing.isEmpty,
+        ),
+      ];
+      return;
+    }
+    _probeNotifier.value = [
+      for (final p in existing)
+        if (p.id == mirrorId) p.copyWith(status: status) else p,
+    ];
+  }
+
+  void _prepareProbes({String? preferred}) {
+    final isManual =
+        preferred != null && preferred.isNotEmpty && preferred != 'auto';
+    _probeNotifier.value = [
+      for (var i = 0; i < _mirrorOrder.length; i++)
+        StreamProviderProbe(
+          id: _mirrorOrder[i],
+          label: KissKhService.mirrorLabel(_mirrorOrder[i]),
+          status: StreamProviderProbeStatus.pending,
+          isPreferred: isManual
+              ? _mirrorOrder[i] == preferred
+              : i == 0,
+        ),
+    ];
   }
 
   KdramaEpisode? _episodeByNumber(List<KdramaEpisode> episodes, double number) {
@@ -147,13 +226,14 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   }
 
   /// Loads drama details (status gate) and resolves the episode row.
-  Future<({
-    KdramaDetails details,
-    KdramaCard drama,
-    KdramaEpisode? episode,
-    List<KdramaEpisode> episodes,
-    bool matched,
-  })> _resolveEpisodeContext() async {
+  Future<
+      ({
+        KdramaDetails details,
+        KdramaCard drama,
+        KdramaEpisode? episode,
+        List<KdramaEpisode> episodes,
+        bool matched,
+      })> _resolveEpisodeContext() async {
     var drama = widget.drama;
     var episodes = widget.allEpisodes;
     var episode = widget.episode;
@@ -282,38 +362,99 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       final drama = ctx.drama;
       final episode = ctx.episode!;
 
-      if (!mounted) return;
-      setState(() => _setPhase('Fetching streams…'));
-
-      final stream = await _extractor.resolve(
-        dramaId: drama.id,
-        dramaTitle: drama.title,
-        episodeId: episode.id,
-        episodeNumber: episode.number,
-        isCancelled: () => _cancelled,
-        onProgress: (phase, detail) {
-          if (!mounted) return;
-          setState(() {
-            if (phase == 'init') _setPhase('Opening kisskh…');
-            if (phase == 'loaded') _setPhase('Waiting for stream key…');
-            if (phase == 'embed') _setPhase('Extracting stream…');
-            if (phase == 'subs') _setPhase(detail);
-            if (phase == 'done') _setPhase('Stream ready');
-            if (phase == 'error') _statusLine = detail;
-          });
-        },
+      _mirrorOrder = await _settings.getAsianDramaProviderOrder();
+      if (!mounted || _cancelled) return;
+      _providers = _kissKhProvidersForEpisode(
+        drama: drama,
+        episode: episode,
+        mirrorOrder: _mirrorOrder,
       );
 
       if (!mounted) return;
-      if (stream == null) {
+      setState(() => _setPhase('Checking mirrors…'));
+
+      var preferred = SourceEngine.auto;
+      KissKhStream? stream;
+      String? winningHost;
+
+      while (mounted && !_cancelled) {
+        _switchingManualMirror = false;
+        final pin = preferred;
+        final tryOrder = SourceEngine.isAuto(pin)
+            ? _mirrorOrder
+            : <String>[
+                pin,
+                ..._mirrorOrder.where((h) => h != pin),
+              ];
+        _prepareProbes(preferred: pin);
+
+        stream = null;
+        winningHost = null;
+        for (final host in tryOrder) {
+          if (!mounted || _cancelled || _switchingManualMirror) break;
+          _applyProbeStatus(host, StreamProviderProbeStatus.trying);
+          _setPhase('Checking ${KissKhService.mirrorLabel(host)}…');
+
+          final result = await _extractor.resolve(
+            dramaId: drama.id,
+            dramaTitle: drama.title,
+            episodeId: episode.id,
+            episodeNumber: episode.number,
+            forcedBaseUrl: KissKhService.baseUrlForHost(host),
+            timeout: const Duration(seconds: 16),
+            isCancelled: () =>
+                _cancelled || _switchingManualMirror,
+            onProgress: (phase, detail) {
+              if (!mounted || _switchingManualMirror) return;
+              if (phase == 'init' ||
+                  phase == 'loaded' ||
+                  phase == 'retry' ||
+                  phase == 'embed' ||
+                  phase == 'subs') {
+                _setPhase(detail);
+              }
+            },
+          );
+
+          if (_cancelled) return;
+          if (_switchingManualMirror) break;
+
+          if (result != null) {
+            _applyProbeStatus(host, StreamProviderProbeStatus.success);
+            final sources = result.toSources(
+              label: KissKhService.mirrorLabel(host),
+            );
+            _providerSourcesCache.value = {
+              ..._providerSourcesCache.value,
+              host: sources,
+            };
+            stream = result;
+            winningHost = host;
+            break;
+          }
+          _applyProbeStatus(host, StreamProviderProbeStatus.failed);
+        }
+
+        if (_cancelled) return;
+        if (_switchingManualMirror && _pendingManualMirrorId != null) {
+          preferred = _pendingManualMirrorId!;
+          _pendingManualMirrorId = null;
+          continue;
+        }
+        break;
+      }
+
+      if (!mounted || _cancelled) return;
+      if (stream == null || winningHost == null) {
         setState(() {
           _failedAll = true;
           _isUpcoming = false;
           _setPhase('No stream available');
+          _statusLine = 'All KissKH mirrors failed for this episode.';
         });
         return;
       }
-      await _launchPlayer(stream);
+      await _launchPlayer(stream, winningHost);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -325,8 +466,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     }
   }
 
-  Future<void> _launchPlayer(KissKhStream stream) async {
-    final sources = stream.toSources(label: 'kisskh');
+  Future<void> _launchPlayer(KissKhStream stream, String activeMirror) async {
+    final sources = stream.toSources(
+      label: KissKhService.mirrorLabel(activeMirror),
+    );
     final subs = stream.subtitles;
 
     final drama = _resolvedDrama ?? widget.drama;
@@ -400,25 +543,33 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       );
     }
 
-    // TV-shaped cache key (mediaType is always `tv` for hub movies). Pass the
-    // real episode so reopen / hydrate does not collapse every ep onto S1:E1.
+    // Per-episode cache key — do not collapse every ep onto S1:E1.
     final cacheEpisode = episode.number == episode.number.truncateToDouble()
         ? episode.number.toInt()
         : (episode.number * 100).round();
 
+    _providerSourcesCache.value = {
+      ..._providerSourcesCache.value,
+      activeMirror: sources,
+    };
+
     _fadeOutNotifier.value = true;
+    _handedOffLiveNotifiers = true;
     final playerFuture = AppRouter.openPlayer(
       context,
       streamUrl: sources.first.url,
       title: title,
       headers: sources.first.headers,
       sources: sources,
-      activeProvider: 'kisskh',
+      providers: _providers,
+      activeProvider: activeMirror,
       movie: _hubMovieFromDrama(drama, overview: overview),
       selectedSeason: 1,
       selectedEpisode: cacheEpisode,
       startPosition: widget.startPosition,
       externalSubtitles: subs.isNotEmpty ? subs : null,
+      providerSourcesCache: _providerSourcesCache,
+      providerProbesNotifier: _probeNotifier,
       hubEpisodes: hubEpisodes,
       hubEpisodeNumber: episode.number,
       episodeOverview: 'Episode ${episode.displayNumber}',
@@ -467,6 +618,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       navigator.removeRoute(resolverRoute);
     }
     await playerFuture;
+    _probeNotifier.dispose();
+    _providerSourcesCache.dispose();
   }
 
   Widget _buildFailure(AppThemePreset theme) {
@@ -528,6 +681,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
                           _isUpcoming = false;
                           _setPhase('Checking availability…');
                           _statusLine = '';
+                          _probeNotifier.value = const [];
                         });
                         _bootstrap();
                       },
@@ -575,8 +729,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         return LoadingOverlay(
           movie: movie,
           messageNotifier: _messageNotifier,
+          providerProbesNotifier: _probeNotifier,
           fadeOutNotifier: _fadeOutNotifier,
           subtitle: episodeLabel,
+          onManualCheckProvider: _requestManualMirrorCheck,
           onCancel: () {
             _cancelled = true;
             unawaited(_extractor.cancel());

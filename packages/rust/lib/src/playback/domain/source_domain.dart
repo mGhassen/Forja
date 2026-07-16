@@ -44,6 +44,9 @@ enum SourceDomain {
   static SourceDomain fromMediaType(String? mediaType) {
     final t = (mediaType ?? '').toLowerCase();
     if (t == 'anime') return SourceDomain.anime;
+    if (t == 'asian_drama' || t == 'asian' || t == 'drama') {
+      return SourceDomain.asianDrama;
+    }
     if (t == 'tv' || t == 'series' || t == 'show') {
       return SourceDomain.series;
     }

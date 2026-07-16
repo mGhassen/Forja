@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 2** device smoke |
+| **Progress** | **13 / 13** fix · **0 / 2** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,9 @@
 | 8 | I45-T08 | Rust mirror health selection + sticky API failover across compatible KissKh domains | ✅ |
 | 9 | I45-T09 | Use the Rust-selected mirror for WebView page, cookies, retries, Referer, Origin, and subtitles | ✅ |
 | 10 | I45-T10 | Mirror compatibility / failover unit tests and host URL contract tests | ✅ |
+| 11 | I45-T11 | Loading overlay: sequential CHECKING/UP/DOWN probes per KissKH mirror (movie-style) | ✅ |
+| 12 | I45-T12 | Settings → Playback: persist reorderable KissKH mirror list | ✅ |
+| 13 | I45-T13 | Player Sources panel: expose mirrors as servers + switch via forced-base extract | ✅ |
 
 ---
 
@@ -64,8 +67,7 @@ use the same selected base URL.
 
 **Shipped:** `crates/kisskh` races the five verified API mirrors, keeps the
 first valid response sticky, and retries catalog requests across the remaining
-mirrors on HTTP or non-JSON failure. `KissKhExtractor` starts from that selected
-host, rotates to another mirror every eight seconds while the Episode API is
-silent, and feeds the winning host back to Rust. Page cookies, navigation
-headers, playback headers, third-party extraction, and subtitle fetch all use
-that winning host.
+mirrors on HTTP or non-JSON failure. `KissKhExtractor` can pin a forced base
+URL for sequential probe / Sources switching, or hop mirrors when unpinned.
+Loading, Settings → Playback (Asian Drama), and the player Sources panel list
+each mirror (`kisskh.co` / `.nl` / `.ovh` / `.la` / `.do`) like movie servers.

@@ -83,9 +83,14 @@ abstract final class PlayerSourceResolve {
 
   static Future<List<String>> _movieSettingsOrder(Movie movie) async {
     final settings = SettingsService();
-    return movie.mediaType == 'tv' || movie.mediaType == 'series'
-        ? settings.getStreamProviderOrder()
-        : settings.getStreamProviderOrder();
+    final t = movie.mediaType.toLowerCase();
+    if (t == 'asian_drama' || t == 'asian' || t == 'drama') {
+      return settings.getAsianDramaProviderOrder();
+    }
+    if (t == 'anime') {
+      return settings.getAnimeProviderOrder();
+    }
+    return settings.getStreamProviderOrder();
   }
 
   static Future<PlaybackResolveHit?> resolvePinnedForMovie({

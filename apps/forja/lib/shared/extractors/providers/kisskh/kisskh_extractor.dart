@@ -28,12 +28,15 @@ class KissKhStream {
   final String type; // hls / mp4
   final List<Map<String, dynamic>> subtitles;
   final Map<String, String> headers;
+  /// Winning mirror host id (e.g. `kisskh.nl`).
+  final String mirrorHost;
 
   const KissKhStream({
     required this.url,
     required this.type,
     required this.headers,
     this.subtitles = const [],
+    this.mirrorHost = 'kisskh.co',
   });
 }
 
@@ -83,6 +86,8 @@ class KissKhExtractor {
     void Function(String phase, String detail)? onProgress,
     Duration timeout = const Duration(seconds: 45),
     bool Function()? isCancelled,
+    /// When set, only this mirror is tried (player Sources / sequential probe).
+    String? forcedBaseUrl,
   }) async {
     // Serialize resolves on this instance — overlapping WebViews cancel each
     // other and leave the UI stuck on "Waiting for stream key…".
@@ -101,6 +106,7 @@ class KissKhExtractor {
         onProgress: onProgress,
         timeout: timeout,
         isCancelled: isCancelled,
+        forcedBaseUrl: forcedBaseUrl,
       );
     } finally {
       if (identical(_activeForCancel, this)) {
@@ -160,6 +166,7 @@ class KissKhExtractor {
     void Function(String phase, String detail)? onProgress,
     required Duration timeout,
     bool Function()? isCancelled,
+    String? forcedBaseUrl,
   }) async {
     final gen = ++_resolveGen;
     _cancelled = false;
@@ -176,13 +183,29 @@ class KissKhExtractor {
     var recoveryInFlight = false;
     Timer? recoveryTimer;
     Timer? nudgeTimer;
+    final pinBase =
+        (forcedBaseUrl ?? '').trim().replaceFirst(RegExp(r'/$'), '');
+    final pinned = pinBase.isNotEmpty;
 
     try {
-      onProgress?.call('init', 'Checking kisskh mirrors…');
-      final endpoint = await KissKhService.resolveEndpoint();
-      if (cancelled()) return null;
-      baseUrl = endpoint.selected;
-      mirrorUrls = endpoint.mirrors;
+      if (pinned) {
+        baseUrl = pinBase;
+        mirrorUrls = [baseUrl];
+        onProgress?.call(
+          'init',
+          'Opening ${KissKhService.hostFromBaseUrl(baseUrl)}…',
+        );
+      } else {
+        onProgress?.call('init', 'Checking kisskh mirrors…');
+        final endpoint = await KissKhService.resolveEndpoint();
+        if (cancelled()) return null;
+        baseUrl = endpoint.selected;
+        mirrorUrls = endpoint.mirrors;
+        onProgress?.call(
+          'init',
+          'Opening ${KissKhService.hostFromBaseUrl(baseUrl)}…',
+        );
+      }
       pageUrl = KissKhService.episodePageUrl(
         baseUrl: baseUrl,
         dramaId: dramaId,
@@ -191,7 +214,6 @@ class KissKhExtractor {
         episodeNumber: episodeNumber,
       );
       openUrl = _cacheBusted(pageUrl);
-      onProgress?.call('init', 'Opening kisskh page…');
 
       // Incognito + no HTTP cache alone is not enough on WKWebView: a plain
       // reload() can reuse the SPA shell / skip UserScript reinjection, so the
@@ -307,31 +329,41 @@ class KissKhExtractor {
       if (cancelled()) return null;
 
       // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
-      // long after load-stop. Give each API-compatible mirror an 8s window,
-      // then hard-navigate to the next mirror so a silent SPA cannot consume
-      // the entire 45s extract timeout.
+      // long after load-stop. When not pinned, hop mirrors every 8s. When
+      // pinned (sequential probe / Sources), hard-reload the same host.
       recoveryTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
         if (cancelled() || recoveryInFlight) return;
         final c = _apiCompleter;
         if (c == null || c.isCompleted) return;
         final ctrl = _controller;
-        if (ctrl == null || mirrorIndex + 1 >= mirrorUrls.length) return;
+        if (ctrl == null) return;
 
         recoveryInFlight = true;
-        mirrorIndex++;
-        baseUrl = mirrorUrls[mirrorIndex];
-        pageUrl = KissKhService.episodePageUrl(
-          baseUrl: baseUrl,
-          dramaId: dramaId,
-          title: dramaTitle,
-          episodeId: episodeId,
-          episodeNumber: episodeNumber,
-        );
-        debugPrint(
-          '[KissKhExtractor] no Episode API after ${timer.tick * 8}s — '
-          'trying mirror $baseUrl',
-        );
-        onProgress?.call('retry', 'Trying another kisskh mirror…');
+        if (!pinned && mirrorIndex + 1 < mirrorUrls.length) {
+          mirrorIndex++;
+          baseUrl = mirrorUrls[mirrorIndex];
+          pageUrl = KissKhService.episodePageUrl(
+            baseUrl: baseUrl,
+            dramaId: dramaId,
+            title: dramaTitle,
+            episodeId: episodeId,
+            episodeNumber: episodeNumber,
+          );
+          debugPrint(
+            '[KissKhExtractor] no Episode API after ${timer.tick * 8}s — '
+            'trying mirror $baseUrl',
+          );
+          onProgress?.call(
+            'retry',
+            'Trying ${KissKhService.hostFromBaseUrl(baseUrl)}…',
+          );
+        } else {
+          debugPrint(
+            '[KissKhExtractor] no Episode API after ${timer.tick * 8}s — '
+            'hard navigate $baseUrl',
+          );
+          onProgress?.call('retry', 'Retrying stream key…');
+        }
         unawaited(
           _hardNavigate(ctrl, pageUrl, baseUrl).whenComplete(() {
             recoveryInFlight = false;
@@ -375,6 +407,7 @@ class KissKhExtractor {
       var streamUrl = _pickPlayableUrl(api);
       var streamType = _streamTypeFor(streamUrl);
       final referer = '${baseUrl.replaceFirst(RegExp(r'/$'), '')}/';
+      final mirrorHost = KissKhService.hostFromBaseUrl(baseUrl);
 
       if (streamUrl == null) {
         final embed = _thirdPartyEmbedUrl(api);
@@ -438,6 +471,7 @@ class KissKhExtractor {
         type: streamType,
         subtitles: List<Map<String, dynamic>>.from(_subsBuffer),
         headers: playbackHeaders(baseUrl),
+        mirrorHost: mirrorHost,
       );
     } catch (e) {
       if (cancelled()) return null;

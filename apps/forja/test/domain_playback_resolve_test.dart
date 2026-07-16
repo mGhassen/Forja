@@ -9,17 +9,33 @@ void main() {
   });
 
   group('DomainPlaybackResolve failover', () {
-    test('single kisskh provider has empty failover chain', () {
+    test('single kisskh mirror has empty failover chain', () {
       final chain = DomainPlaybackResolve.failoverChain(
         domain: SourceDomain.asianDrama,
-        providers: {'kisskh': {}},
-        currentProviderId: 'kisskh',
-        settingsOrder: const ['kisskh'],
+        providers: {'kisskh.co': {}},
+        currentProviderId: 'kisskh.co',
+        settingsOrder: const ['kisskh.co'],
       );
       expect(chain, isEmpty);
     });
 
-    test('asian drama strict order is kisskh only', () {
+    test('asian drama order includes verified KissKH mirrors', () {
+      final order = SourceEngine.orderProviders(
+        domain: SourceDomain.asianDrama,
+        candidateIds: const [
+          'kisskh.co',
+          'kisskh.nl',
+          'kisskh.ovh',
+          'kisskh.la',
+          'kisskh.do',
+        ],
+        settingsOrder: SettingsService.defaultAsianDramaProviderOrder,
+      );
+      expect(order.orderedIds, containsAll(['kisskh.co', 'kisskh.nl']));
+      expect(order.rows.every((r) => r.supported), isTrue);
+    });
+
+    test('legacy kisskh id still orders for asian drama', () {
       final order = SourceEngine.orderProviders(
         domain: SourceDomain.asianDrama,
         candidateIds: ['kisskh'],

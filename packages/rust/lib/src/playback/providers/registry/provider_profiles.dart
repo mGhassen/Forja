@@ -106,6 +106,18 @@ abstract final class ProviderProfiles {
     ..._profilesFromOrder(_animeOrder, SourceDomain.anime, start: 100),
 
     // ── Asian drama ───────────────────────────────────────────────────────
+    ..._profilesFromOrder(
+      const [
+        'kisskh.co',
+        'kisskh.nl',
+        'kisskh.ovh',
+        'kisskh.la',
+        'kisskh.do',
+      ],
+      SourceDomain.asianDrama,
+      start: 99,
+    ),
+    // Legacy single-id alias (older saves / tests).
     'kisskh': const ProviderProfile(
       id: 'kisskh',
       priority: {SourceDomain.asianDrama: 99, SourceDomain.anime: 40},

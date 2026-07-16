@@ -319,6 +319,12 @@ class PlayerStreamMenu {
     if (providers.values.any((v) => v is AnimeEmbed)) {
       return SourceDomain.anime;
     }
+    if (providers.keys.any((k) {
+      final id = k.trim().toLowerCase();
+      return id == 'kisskh' || id.startsWith('kisskh.');
+    })) {
+      return SourceDomain.asianDrama;
+    }
     var animeSupported = 0;
     var streamingSupported = 0;
     for (final id in providers.keys) {
@@ -350,9 +356,12 @@ class PlayerStreamMenu {
     final prov = providers ?? const <String, dynamic>{};
 
     final active = (activeProvider ?? '').trim().toLowerCase();
-    if (active == 'kisskh') return null;
+    if (active == 'kisskh' || active.startsWith('kisskh.')) return null;
     if (prov.isNotEmpty &&
-        prov.keys.every((k) => k.trim().toLowerCase() == 'kisskh')) {
+        prov.keys.every((k) {
+          final id = k.trim().toLowerCase();
+          return id == 'kisskh' || id.startsWith('kisskh.');
+        })) {
       return null;
     }
 
@@ -388,7 +397,7 @@ class PlayerStreamMenu {
   ) {
     final defaults = switch (domain) {
       SourceDomain.anime => SettingsService.defaultAnimeProviderOrder,
-      SourceDomain.asianDrama => const ['kisskh'],
+      SourceDomain.asianDrama => SettingsService.defaultAsianDramaProviderOrder,
       _ => SettingsService.defaultStreamProviderOrder,
     };
     return SettingsService.mergeProviderOrder(candidateIds.toList(), defaults);

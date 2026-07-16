@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -31,14 +32,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   String _maxPlaybackHeightLabel = 'Auto';
   List<String> _streamProviderOrder = [];
   List<String> _animeProviderOrder = [];
-  List<String> _asianDramaProviderOrder = List<String>.from(
-    _kAsianDramaProviderOrder,
-  );
-
-  static const Map<String, String> _kAsianDramaCatalog = {
-    'kisskh': 'KissKH',
-  };
-  static const List<String> _kAsianDramaProviderOrder = ['kisskh'];
+  List<String> _asianDramaProviderOrder = [];
 
   @override
   void initState() {
@@ -54,6 +48,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final streamOrder = await _settings.getStreamProviderOrder();
     final animeOrder = await _settings.getAnimeProviderOrder();
+    final asianDramaOrder = await _settings.getAsianDramaProviderOrder();
     final preferredAudio = await _settings.getPreferredAudioLanguage();
     final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
     final autoNextEpisode = await _settings.getAutoNextEpisode();
@@ -69,6 +64,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _builtInEngine = builtInEngine;
       _streamProviderOrder = streamOrder;
       _animeProviderOrder = animeOrder;
+      _asianDramaProviderOrder = asianDramaOrder;
       _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
           ? preferredAudio
           : 'None';
@@ -229,9 +225,10 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _animeProviderOrder,
       animeCatalog.keys,
     );
+    final asianDramaCatalog = KissKhService.settingsCatalog;
     final asianDramaOrder = SettingsService.mergeProviderOrder(
       _asianDramaProviderOrder,
-      _kAsianDramaCatalog.keys,
+      asianDramaCatalog.keys,
     );
 
     return Padding(
@@ -263,17 +260,18 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           await _settings.setAnimeProviderOrder(defaults);
           setState(() => _animeProviderOrder = defaults);
         },
-        asianDramaCatalog: _kAsianDramaCatalog,
+        asianDramaCatalog: asianDramaCatalog,
         asianDramaOrder: asianDramaOrder,
-        onAsianDramaOrderChanged: (next) {
+        onAsianDramaOrderChanged: (next) async {
           setState(() => _asianDramaProviderOrder = next);
+          await _settings.setAsianDramaProviderOrder(next);
         },
-        onAsianDramaOrderReset: () {
-          setState(
-            () => _asianDramaProviderOrder = List<String>.from(
-              _kAsianDramaProviderOrder,
-            ),
+        onAsianDramaOrderReset: () async {
+          final defaults = List<String>.from(
+            SettingsService.defaultAsianDramaProviderOrder,
           );
+          await _settings.setAsianDramaProviderOrder(defaults);
+          setState(() => _asianDramaProviderOrder = defaults);
         },
       ),
     );

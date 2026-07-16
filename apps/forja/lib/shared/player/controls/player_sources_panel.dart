@@ -21,6 +21,10 @@ class PlayerSourcesPanel {
   static bool get isShowing => _entry != null;
 
   static void dismiss() {
+    // Cancel before unmount — do not wait for Overlay dispose (next frame).
+    // Otherwise Nuvio JS keeps issuing fetches until the element drops.
+    NuvioService.instance.cancelPending();
+    Engine.cancelPendingResolve();
     _entry?.remove();
     _entry = null;
     _completer?.complete();
@@ -193,7 +197,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   bool _showTorrents = true;
   bool _showStremio = false;
   bool _showNuvio = false;
-  String _kindFilter = 'torrents';
+  String _kindFilter = 'all';
   String _selectedSourceId = 'forja';
   String _searchQuery = '';
   String _sortPreference = 'seeders';
@@ -477,19 +481,18 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     };
   }
 
-  /// Prefer the currently playing catalog kind; fall back to a sensible default.
+  /// Prefer All when multiple catalog kinds are on; otherwise the only kind.
   String _resolveInitialKind({
     required bool hasTorrent,
     required bool hasStremio,
     required bool hasNuvio,
   }) {
-    final preferred = _effectivePreferredKind();
-    if (preferred != null) {
-      if (preferred == 'nuvio' && hasNuvio) return 'nuvio';
-      if (preferred == 'stremio' && hasStremio) return 'stremio';
-      if (preferred == 'torrents' && hasTorrent) return 'torrents';
-    }
-    // Prefer a single kind so we do not fetch every category on open.
+    final available = [
+      hasTorrent,
+      hasStremio,
+      hasNuvio,
+    ].where((e) => e).length;
+    if (available >= 2) return 'all';
     if (hasTorrent) return 'torrents';
     if (hasNuvio) return 'nuvio';
     if (hasStremio) return 'stremio';
@@ -512,8 +515,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return preferred;
   }
 
-  /// After lists update, switch to the kind that contains the playing source
-  /// and scroll it into view.
+  /// After lists update, scroll the playing source into view. When on All,
+  /// keep that chip selected (do not hop to Torrents / Stremio / Nuvio).
   void _focusPlayingSourceIfNeeded() {
     if (!mounted) return;
 
@@ -523,12 +526,13 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     bool stremioHit() =>
         _showStremio && _stremioStreams.any(_isCurrentStremio);
 
-    // Already visible under the active filter — only scroll.
-    if (_kindFilter == 'all' &&
-        (torrentsHit() || nuvioHit() || stremioHit())) {
-      _requestScrollToCurrent();
+    if (_kindFilter == 'all') {
+      if (torrentsHit() || nuvioHit() || stremioHit()) {
+        _requestScrollToCurrent();
+      }
       return;
     }
+    // Already visible under the active filter — only scroll.
     if (_kindFilter == 'torrents' && torrentsHit()) {
       _requestScrollToCurrent();
       return;

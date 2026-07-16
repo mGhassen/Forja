@@ -113,7 +113,11 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
         },
         SourceDomain::Anime => anime_score(id),
         SourceDomain::AsianDrama => match id {
-            "kisskh" => 99,
+            "kisskh" | "kisskh.co" => 99,
+            "kisskh.nl" => 98,
+            "kisskh.ovh" => 97,
+            "kisskh.la" => 96,
+            "kisskh.do" => 95,
             _ => fallback_score(id, domain),
         },
         SourceDomain::Iptv => match id {
@@ -136,6 +140,7 @@ fn fallback_score(id: &str, domain: SourceDomain) -> u32 {
     match domain {
         SourceDomain::Movies | SourceDomain::Series if id.starts_with("nuvio:") => 1,
         SourceDomain::Anime if anime_score(id) > 0 => 1,
+        SourceDomain::AsianDrama if id.starts_with("kisskh.") => 1,
         _ => 0,
     }
 }
@@ -197,6 +202,11 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("webstreamr", SourceDomain::Series)
             | ("kisskh", SourceDomain::AsianDrama)
             | ("kisskh", SourceDomain::Anime)
+            | ("kisskh.co", SourceDomain::AsianDrama)
+            | ("kisskh.nl", SourceDomain::AsianDrama)
+            | ("kisskh.ovh", SourceDomain::AsianDrama)
+            | ("kisskh.la", SourceDomain::AsianDrama)
+            | ("kisskh.do", SourceDomain::AsianDrama)
             | ("xtream", SourceDomain::Iptv)
             | ("m3u", SourceDomain::Iptv)
             | ("stalker", SourceDomain::Iptv)

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -43,7 +44,7 @@ abstract final class DomainPlaybackResolve {
     };
 
     final usesDomainHost = orderedProviders.values.any((v) => v is AnimeEmbed) ||
-        orderedProviders.containsKey('kisskh');
+        orderedProviders.keys.any(_isKissKhProvider);
 
     if (usesDomainHost) {
       return _resolveDomainHostRace(
@@ -119,7 +120,7 @@ abstract final class DomainPlaybackResolve {
                 headers: result.headers,
               ),
             ];
-      final ranked = key == 'kisskh'
+      final ranked = _isKissKhProvider(key)
           ? normalizeLegacyStreamSources(
               sources: legacy,
               providerId: key,
@@ -204,8 +205,12 @@ class DomainStreamProviderResolver {
       return _resolveAnimeEmbed(payload, cancelled);
     }
 
-    if (key == 'kisskh' && payload is Map<String, dynamic>) {
-      return _resolveKissKh(payload, cancelled);
+    if (_isKissKhProvider(key) && payload is Map) {
+      return _resolveKissKh(
+        key,
+        Map<String, dynamic>.from(payload),
+        cancelled,
+      );
     }
 
     return null;
@@ -265,19 +270,29 @@ class DomainStreamProviderResolver {
   }
 
   Future<StreamProviderResolveResult?> _resolveKissKh(
+    String key,
     Map<String, dynamic> ctx,
     bool Function() cancelled,
   ) async {
     try {
+      final forcedBase = (ctx['baseUrl'] as String?)?.trim();
+      final baseUrl = (forcedBase != null && forcedBase.isNotEmpty)
+          ? forcedBase
+          : KissKhService.baseUrlForHost(key);
       final stream = await _kissKhExtractor.resolve(
         dramaId: (ctx['dramaId'] as num).toInt(),
         dramaTitle: ctx['dramaTitle']?.toString() ?? '',
         episodeId: (ctx['episodeId'] as num).toInt(),
         episodeNumber: (ctx['episodeNumber'] as num).toDouble(),
+        forcedBaseUrl: baseUrl,
+        timeout: const Duration(seconds: 16),
         isCancelled: () => cancelled(),
       );
       if (cancelled() || stream == null) return null;
-      final sources = stream.toSources(label: 'kisskh');
+      final label = KissKhService.mirrorLabel(
+        stream.mirrorHost.isNotEmpty ? stream.mirrorHost : key,
+      );
+      final sources = stream.toSources(label: label);
       return StreamProviderResolveResult(
         streamUrl: sources.first.url,
         headers: sources.first.headers,
@@ -285,7 +300,7 @@ class DomainStreamProviderResolver {
         subtitles: stream.subtitles,
       );
     } catch (e, st) {
-      debugPrint('[DomainStreamProviderResolver] kisskh failed: $e\n$st');
+      debugPrint('[DomainStreamProviderResolver] kisskh $key failed: $e\n$st');
       return null;
     }
   }
@@ -300,6 +315,11 @@ class DomainStreamProviderResolver {
     MiruroPipeSession.instance.cancelPending();
     unawaited(KissKhExtractor.cancelAllPending());
   }
+}
+
+bool _isKissKhProvider(String key) {
+  final id = key.trim().toLowerCase();
+  return id == 'kisskh' || KissKhService.isMirrorHost(id);
 }
 
 /// Build anime stream headers — omit empty Referer/Origin, then apply CDN rules
