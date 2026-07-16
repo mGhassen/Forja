@@ -14,6 +14,7 @@ import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SettingsSection } from '@/components/settings-section'
 import { useUserSetting } from '@/hooks/use-user-setting'
 import {
@@ -347,35 +348,16 @@ export function AccountSettingsIptvPage() {
 
         {addOpen ? (
           <div className="mb-4 rounded-md border border-forja-border bg-forja-elevated/60 p-4">
-            <div className="mb-4 flex gap-2">
-              <button
-                type="button"
-                className={cn(
-                  'rounded-md px-3 py-1.5 text-sm',
-                  addMode === 'share'
-                    ? 'bg-forja-green font-bold text-[#0B0A0A]'
-                    : 'bg-white/5 text-forja-muted',
-                )}
-                onClick={() => setAddMode('share')}
-              >
-                Share code
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  'rounded-md px-3 py-1.5 text-sm',
-                  addMode === 'manual'
-                    ? 'bg-forja-green font-bold text-[#0B0A0A]'
-                    : 'bg-white/5 text-forja-muted',
-                )}
-                onClick={() => setAddMode('manual')}
-              >
-                Manual
-              </button>
-            </div>
+            <Tabs
+              value={addMode}
+              onValueChange={(value) => setAddMode(value as AddMode)}
+            >
+              <TabsList aria-label="Add portal method">
+                <TabsTrigger value="share">Share code</TabsTrigger>
+                <TabsTrigger value="manual">Manual</TabsTrigger>
+              </TabsList>
 
-            {addMode === 'share' ? (
-              <div className="space-y-3">
+              <TabsContent value="share" className="space-y-3">
                 <Label htmlFor="share-code">Paste an 8-character code</Label>
                 <Input
                   id="share-code"
@@ -407,58 +389,70 @@ export function AccountSettingsIptvPage() {
                     your account sync — only encrypted ciphertext.
                   </p>
                 )}
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="portal-url">Panel URL</Label>
-                  <Input
-                    id="portal-url"
-                    placeholder="http://example.com:8080"
-                    value={portalForm.url}
-                    onChange={(e) =>
-                      setPortalForm((f) => ({ ...f, url: e.target.value }))
-                    }
-                  />
+              </TabsContent>
+
+              <TabsContent value="manual">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="portal-url">Panel URL</Label>
+                    <Input
+                      id="portal-url"
+                      placeholder="http://example.com:8080"
+                      value={portalForm.url}
+                      onChange={(e) =>
+                        setPortalForm((f) => ({ ...f, url: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="portal-user">Username</Label>
+                    <Input
+                      id="portal-user"
+                      value={portalForm.username}
+                      onChange={(e) =>
+                        setPortalForm((f) => ({
+                          ...f,
+                          username: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="portal-pass">Password</Label>
+                    <Input
+                      id="portal-pass"
+                      type="password"
+                      value={portalForm.password}
+                      onChange={(e) =>
+                        setPortalForm((f) => ({
+                          ...f,
+                          password: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="portal-name">Display name (optional)</Label>
+                    <Input
+                      id="portal-name"
+                      value={portalForm.name}
+                      onChange={(e) =>
+                        setPortalForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={addPortalManual}
+                    >
+                      {editingKey ? 'Save portal' : 'Add portal'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="portal-user">Username</Label>
-                  <Input
-                    id="portal-user"
-                    value={portalForm.username}
-                    onChange={(e) =>
-                      setPortalForm((f) => ({ ...f, username: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="portal-pass">Password</Label>
-                  <Input
-                    id="portal-pass"
-                    type="password"
-                    value={portalForm.password}
-                    onChange={(e) =>
-                      setPortalForm((f) => ({ ...f, password: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="portal-name">Display name (optional)</Label>
-                  <Input
-                    id="portal-name"
-                    value={portalForm.name}
-                    onChange={(e) =>
-                      setPortalForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Button type="button" variant="secondary" onClick={addPortalManual}>
-                    {editingKey ? 'Save portal' : 'Add portal'}
-                  </Button>
-                </div>
-              </div>
-            )}
+              </TabsContent>
+            </Tabs>
           </div>
         ) : null}
 

@@ -30,8 +30,10 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulse;
+  bool _buttonHovered = false;
 
   bool get _pulseEnabled =>
+      _buttonHovered &&
       widget.active &&
       widget.visible &&
       !(MediaQuery.maybeOf(context)?.disableAnimations ?? false);
@@ -109,7 +111,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
   @override
   Widget build(BuildContext context) {
     final lifted = widget.active && widget.visible;
-    final button = AnimatedSlide(
+    final buttonFace = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
@@ -159,21 +161,30 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
       ),
     );
 
-    final centered = Center(
+    final button = MouseRegion(
+      key: const ValueKey('shell-card-play-hover-target'),
+      cursor: widget.onTap != null
+          ? SystemMouseCursors.click
+          : MouseCursor.defer,
+      onEnter: (_) {
+        if (_buttonHovered) return;
+        setState(() => _buttonHovered = true);
+        _syncPulse();
+      },
+      onExit: (_) {
+        if (!_buttonHovered) return;
+        setState(() => _buttonHovered = false);
+        _syncPulse();
+      },
       child: widget.onTap != null
-          ? MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: widget.onTap,
-                behavior: HitTestBehavior.opaque,
-                child: button,
-              ),
+          ? GestureDetector(
+              onTap: widget.onTap,
+              behavior: HitTestBehavior.opaque,
+              child: buttonFace,
             )
-          : button,
+          : buttonFace,
     );
 
-    return Positioned.fill(
-      child: widget.onTap == null ? IgnorePointer(child: centered) : centered,
-    );
+    return Positioned.fill(child: Center(child: button));
   }
 }

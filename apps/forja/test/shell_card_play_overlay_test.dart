@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
@@ -29,9 +31,11 @@ Widget _overlayHarness({
 }
 
 Finder get _playPulse => find.byKey(const ValueKey('shell-card-play-pulse'));
+Finder get _hoverTarget =>
+    find.byKey(const ValueKey('shell-card-play-hover-target'));
 
 void main() {
-  testWidgets('active visible play control floats and pulses slowly', (
+  testWidgets('active visible play control pulses only on button hover', (
     tester,
   ) async {
     await tester.pumpWidget(_overlayHarness(active: false, visible: true));
@@ -49,11 +53,22 @@ void main() {
       tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
       const Offset(0, -0.1),
     );
+    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
 
-    await tester.pump(const Duration(milliseconds: 100));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer();
+    await mouse.moveTo(tester.getCenter(_hoverTarget));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
     final pulse = tester.widget<ScaleTransition>(_playPulse);
     expect(pulse.scale.value, greaterThan(1));
     expect(pulse.scale.value, lessThanOrEqualTo(1.12));
+
+    await mouse.moveTo(const Offset(0, 0));
+    await tester.pump();
+    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
   });
 
   testWidgets('hidden play control stays at rest and supports compact sizing', (
