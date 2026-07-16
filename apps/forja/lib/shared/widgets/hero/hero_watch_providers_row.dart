@@ -2,6 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 
+/// Flip to `true` to show TMDB watch-provider logos on media details hero.
+const bool kShowHeroWatchProviders = false;
+
 /// TMDB watch-provider logos for media details hero (Netflix, Disney+, etc.).
 class HeroWatchProvidersRow extends StatelessWidget {
   const HeroWatchProvidersRow({
@@ -19,6 +22,8 @@ class HeroWatchProvidersRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!kShowHeroWatchProviders) return const SizedBox.shrink();
+
     final visible = providers
         .where((p) => p.logoPath.isNotEmpty)
         .take(maxVisible)

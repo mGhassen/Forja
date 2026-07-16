@@ -1212,7 +1212,8 @@ class _HeroMainColumn extends StatelessWidget {
 
     var showDirector = hasDirector;
     var showGenres = movie.genres.isNotEmpty;
-    var showProviders = watchProviders.isNotEmpty;
+    var showProviders =
+        kShowHeroWatchProviders && watchProviders.isNotEmpty;
     var showOverview = movie.overview.isNotEmpty;
     var showProgress = hasProgress;
     var titleHeight = _titleBlockHeight;
