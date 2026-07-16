@@ -1,0 +1,343 @@
+@import "tailwindcss";
+
+@theme {
+  --color-forja-bg: #0b0a0a;
+  --color-forja-surface: #141212;
+  --color-forja-elevated: #1c1917;
+  --color-forja-border: rgba(237, 230, 218, 0.14);
+  --color-forja-text: #ede6da;
+  --color-forja-muted: rgba(237, 230, 218, 0.42);
+  /* Brand green (logo) + cinema flame — used together */
+  --color-forja-green: #1ce783;
+  --color-forja-green-dim: #15b86a;
+  --color-forja-flame: #ff4d1c;
+  --color-forja-flame-dim: #ff8a3d;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--color-forja-bg);
+    color: var(--color-forja-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, #1ce783 55%, #ff4d1c);
+    color: #0b0a0a;
+  }
+
+  :focus-visible {
+    outline: 2px solid #1ce783;
+    outline-offset: 4px;
+  }
+}
+
+/* ——— landing film grain ——— */
+.film-grain::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: -50%;
+  z-index: 9000;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: forja-grain 0.4s steps(2) infinite;
+}
+
+@keyframes forja-grain {
+  50% {
+    transform: translate(-3%, 2%);
+  }
+}
+
+/* ——— custom cursor ——— */
+.cur-dot,
+.cur-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  pointer-events: none;
+  border-radius: 50%;
+  mix-blend-mode: difference;
+}
+
+.cur-dot {
+  width: 7px;
+  height: 7px;
+  background: #ede6da;
+  transform: translate(-50%, -50%);
+}
+
+.cur-ring {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #ede6da;
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.25s,
+    height 0.25s,
+    background 0.25s,
+    opacity 0.25s;
+}
+
+.cur-ring.big {
+  width: 78px;
+  height: 78px;
+  background: rgba(237, 230, 218, 0.12);
+  border-color: transparent;
+}
+
+body.cursor-on {
+  cursor: none;
+}
+
+body.cursor-on a,
+body.cursor-on button {
+  cursor: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .cur-dot,
+  .cur-ring {
+    display: none !important;
+  }
+}
+
+/* ——— type helpers ——— */
+.font-disp {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.86;
+}
+
+.font-serif-i {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.font-mono-ui {
+  font-family: var(--font-mono);
+}
+
+.text-flame {
+  color: #ff4d1c;
+}
+
+.text-brand {
+  color: #1ce783;
+}
+
+.bg-flame {
+  background: #ff4d1c;
+}
+
+.bg-brand {
+  background: #1ce783;
+}
+
+/* Primary CTA: brand green → flame on hover */
+.btn-magnet {
+  background: #1ce783;
+  color: #0b0a0a;
+  transition: background 0.25s, transform 0.25s;
+}
+
+.btn-magnet:hover {
+  background: #ff4d1c;
+}
+
+.text-stroke {
+  -webkit-text-stroke: 1.4px #ede6da;
+  color: transparent;
+}
+
+/* ——— marquee ——— */
+@keyframes forja-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: forja-marquee 30s linear infinite;
+}
+
+@keyframes forja-scroll-grow {
+  0%,
+  100% {
+    transform: scaleX(0.3);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.animate-scroll-line {
+  transform-origin: left;
+  animation: forja-scroll-grow 2.2s ease-in-out infinite;
+}
+
+/* ——— now playing (CTA) ——— */
+@keyframes forja-stream-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-stream-progress {
+  width: 100%;
+  transform-origin: left;
+  animation: forja-stream-progress 4.2s linear;
+}
+
+@keyframes forja-play-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 28px rgba(28, 231, 131, 0.45);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 40px rgba(28, 231, 131, 0.7);
+  }
+}
+
+.animate-play-pulse {
+  animation: forja-play-pulse 2s ease-in-out infinite;
+}
+
+@keyframes forja-live-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.animate-live-dot {
+  animation: forja-live-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes forja-now-title {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-now-title {
+  animation: forja-now-title 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ——— reveal ——— */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition:
+    opacity 1s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 1s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ——— index hover ——— */
+.index-list.hovering .irow {
+  opacity: 0.32;
+}
+
+.index-list.hovering .irow.hot {
+  opacity: 1;
+}
+
+.irow.hot .irow-name {
+  transform: translateX(2vw);
+  color: #fff;
+}
+
+.preview-card {
+  position: fixed;
+  z-index: 150;
+  width: 230px;
+  height: 320px;
+  border-radius: 10px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9) rotate(-4deg);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+}
+
+.preview-card.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(-4deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film-grain::after,
+  .animate-marquee,
+  .animate-scroll-line,
+  .animate-stream-progress,
+  .animate-play-pulse,
+  .animate-live-dot,
+  .animate-now-title {
+    animation: none;
+  }
+
+  .animate-stream-progress {
+    transform: scaleX(0.66);
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  .cur-dot,
+  .cur-ring {
+    display: none !important;
+  }
+
+  body.cursor-on {
+    cursor: auto;
+  }
+}

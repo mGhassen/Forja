@@ -92,6 +92,8 @@ Feature-by-feature help for using the app: **[docs/features/README.md](docs/feat
 
 Building from source, architecture, and contribution docs: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 
+Marketing site + account portal (React): **`apps/web`** — `cd apps/web && pnpm install && pnpm dev`
+
 ---
 
 ## License

@@ -48,9 +48,11 @@ app.*.map.json
 android/release.keystore
 android/key.properties
 
-# Local environment secrets
+# Local environment secrets (keep .env.example tracked)
 .env
 *.env
+!.env.example
+!apps/web/.env.example
 
 # Generated platform folders (CI creates linux/ & macos/ on the fly)
 /linux/
@@ -61,3 +63,9 @@ installer/windows/Output/
 
 # Release packaging artifacts
 /dist/
+
+# Node (apps/web)
+**/node_modules/
+apps/web/dist/
+apps/web/.env
+apps/web/.env.local
