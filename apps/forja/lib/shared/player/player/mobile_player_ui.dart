@@ -110,7 +110,7 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
       newPos = duration;
     }
 
-    _s._player.seek(newPos);
+    _s._seekTo(newPos);
     _startHideTimer();
   }
 

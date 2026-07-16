@@ -5,6 +5,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
+import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -420,20 +421,92 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         ],
         const SizedBox(height: 20),
         if (widget.isLoadingSeason)
-          SizedBox(
-            height: 220,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: ForjaShellColors.sectionAccent,
-                strokeWidth: 2,
-              ),
-            ),
-          )
+          _buildEpisodeSkeletonRow()
         else if (_visibleEpisodes.isEmpty)
           const SizedBox.shrink()
         else
           _buildEpisodeRow(tabId),
       ],
+    );
+  }
+
+  Widget _buildEpisodeSkeletonRow() {
+    const count = 4;
+    return homeLoadingShimmer(
+      SizedBox(
+        height: _EpisodeCard.rowScrollerHeight,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(
+            vertical: _EpisodeCard.rowVerticalPadding,
+          ),
+          itemCount: count,
+          separatorBuilder: (_, _) => const SizedBox(width: 16),
+          itemBuilder: (_, _) => const _EpisodeCardSkeleton(),
+        ),
+      ),
+    );
+  }
+}
+
+class _EpisodeCardSkeleton extends StatelessWidget {
+  const _EpisodeCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbHeight = _EpisodeCard.thumbHeight;
+    return SizedBox(
+      width: _EpisodeCard.cardWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: _EpisodeCard.cardWidth,
+            height: thumbHeight,
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+            ),
+          ),
+          const SizedBox(height: _EpisodeCard._bodyTopGap),
+          Container(
+            height: 14,
+            width: _EpisodeCard.cardWidth * 0.72,
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: _EpisodeCard._metaGap),
+          Container(
+            height: 12,
+            width: _EpisodeCard.cardWidth * 0.38,
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: _EpisodeCard._metaGap),
+          Container(
+            height: 12,
+            width: _EpisodeCard.cardWidth,
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 12,
+            width: _EpisodeCard.cardWidth * 0.85,
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

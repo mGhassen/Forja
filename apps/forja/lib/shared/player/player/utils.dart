@@ -559,6 +559,25 @@ bool isMidEpisodePlayback(int positionMs, int durationMs) {
   return positionMs >= 30 * 1000 && positionMs <= durationMs - 90 * 1000;
 }
 
+/// Confirmed-playback age used for natural-end / persist guards.
+///
+/// When the user already watched the episode body this session, prefer the
+/// first confirm timestamp so a late source switch / re-open near credits does
+/// not reset the 45s grace and mis-label a real finish as abortive EOF.
+Duration confirmedPlaybackAge({
+  required DateTime? openConfirmedAt,
+  DateTime? sessionFirstConfirmedAt,
+  bool hadMidPlayback = false,
+  DateTime? now,
+}) {
+  final n = now ?? DateTime.now();
+  if (hadMidPlayback && sessionFirstConfirmedAt != null) {
+    return n.difference(sessionFirstConfirmedAt);
+  }
+  if (openConfirmedAt == null) return Duration.zero;
+  return n.difference(openConfirmedAt);
+}
+
 bool isNaturalPlaybackEnd(
   PlayerState state, {
   Duration? confirmedFor,
@@ -585,17 +604,47 @@ bool shouldPersistWatchProgress({
   required int positionMs,
   required int durationMs,
   DateTime? confirmedAt,
+  DateTime? sessionFirstConfirmedAt,
+  bool hadMidPlayback = false,
   DateTime? now,
 }) {
   if (positionMs <= 10000 || durationMs <= 0) return false;
-  if (confirmedAt == null) return true;
-  final alive = (now ?? DateTime.now()).difference(confirmedAt);
+  if (confirmedAt == null && sessionFirstConfirmedAt == null) return true;
+  final alive = confirmedPlaybackAge(
+    openConfirmedAt: confirmedAt,
+    sessionFirstConfirmedAt: sessionFirstConfirmedAt,
+    hadMidPlayback: hadMidPlayback,
+    now: now,
+  );
   if (alive < kMinConfirmedPlaybackForNaturalEnd &&
       durationMs >= 90 * 1000 &&
       positionMs >= durationMs - 5000) {
     return false;
   }
   return true;
+}
+
+/// Seek that keeps the progress bar alive after EOF.
+///
+/// Without mpv `keep-open`, EOF leaves the player idle and seeks no-op. Even
+/// with keep-open, resume playback when scrubbing away from the end.
+Future<void> seekPlayerPreservingProgress(
+  Player player, {
+  required Duration position,
+  required ValueNotifier<Duration> positionNotifier,
+  Duration? duration,
+}) async {
+  final dur = duration ?? player.state.duration;
+  var target = position;
+  if (target < Duration.zero) target = Duration.zero;
+  if (dur > Duration.zero && target > dur) target = dur;
+  positionNotifier.value = target;
+  await player.seek(target);
+  final nearEnd = dur > Duration.zero &&
+      target >= dur - const Duration(milliseconds: 500);
+  if (!player.state.playing && !nearEnd) {
+    await player.play();
+  }
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

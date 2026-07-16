@@ -61,6 +61,52 @@ void main() {
         isFalse,
       );
     });
+
+    test('true when mid-watched session age is used after late reconfirm', () {
+      expect(
+        isNaturalPlaybackEnd(
+          state(posMs: 3_599_500, durMs: 3_600_000),
+          confirmedFor: confirmedPlaybackAge(
+            openConfirmedAt: DateTime(2026, 7, 17, 0, 20, 0),
+            sessionFirstConfirmedAt: DateTime(2026, 7, 17, 0, 0, 0),
+            hadMidPlayback: true,
+            now: DateTime(2026, 7, 17, 0, 20, 5),
+          ),
+          hadMidPlayback: true,
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('confirmedPlaybackAge', () {
+    test('uses open confirm when mid was not watched', () {
+      final open = DateTime(2026, 7, 17, 0, 20, 0);
+      final session = DateTime(2026, 7, 17, 0, 0, 0);
+      expect(
+        confirmedPlaybackAge(
+          openConfirmedAt: open,
+          sessionFirstConfirmedAt: session,
+          hadMidPlayback: false,
+          now: open.add(const Duration(seconds: 5)),
+        ),
+        const Duration(seconds: 5),
+      );
+    });
+
+    test('uses session first confirm when mid was watched', () {
+      final open = DateTime(2026, 7, 17, 0, 20, 0);
+      final session = DateTime(2026, 7, 17, 0, 0, 0);
+      expect(
+        confirmedPlaybackAge(
+          openConfirmedAt: open,
+          sessionFirstConfirmedAt: session,
+          hadMidPlayback: true,
+          now: open.add(const Duration(seconds: 5)),
+        ),
+        const Duration(minutes: 20, seconds: 5),
+      );
+    });
   });
 
   group('shouldPersistWatchProgress', () {
@@ -97,6 +143,22 @@ void main() {
           durationMs: 3_600_000,
           confirmedAt: confirmed,
           now: confirmed.add(const Duration(minutes: 55)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('allows near-end after late reconfirm when mid session is old enough', () {
+      final session = DateTime(2026, 7, 17, 0, 0, 0);
+      final open = DateTime(2026, 7, 17, 0, 20, 0);
+      expect(
+        shouldPersistWatchProgress(
+          positionMs: 1_456_997,
+          durationMs: 1_456_997,
+          confirmedAt: open,
+          sessionFirstConfirmedAt: session,
+          hadMidPlayback: true,
+          now: open.add(const Duration(seconds: 5)),
         ),
         isTrue,
       );

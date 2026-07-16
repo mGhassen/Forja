@@ -338,7 +338,11 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                         final pos =
                             _s._positionNotifier.value -
                             const Duration(seconds: 10);
-                        _s._player.seek(pos < Duration.zero ? Duration.zero : pos);
+                        unawaited(
+                          _s._seekTo(
+                            pos < Duration.zero ? Duration.zero : pos,
+                          ),
+                        );
                         _s._onMouseMove();
                       },
                     ),
@@ -366,7 +370,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                         final pos =
                             _s._positionNotifier.value +
                             const Duration(seconds: 10);
-                        _s._player.seek(pos > dur ? dur : pos);
+                        unawaited(_s._seekTo(pos > dur ? dur : pos));
                         _s._onMouseMove();
                       },
                     ),
@@ -433,7 +437,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                                     bufferedPosition: buffered,
                                     captureFrame: _s._captureSeekPreview,
                                     onSeek: (t) {
-                                      _s._player.seek(t);
+                                      unawaited(_s._seekTo(t));
                                       _s._onMouseMove();
                                     },
                                     onDragStart: () => _s._hideTimer?.cancel(),

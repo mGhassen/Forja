@@ -441,8 +441,10 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                             final pos =
                                 _s._positionNotifier.value -
                                 const Duration(seconds: 10);
-                            _s._player.seek(
-                              pos < Duration.zero ? Duration.zero : pos,
+                            unawaited(
+                              _s._seekTo(
+                                pos < Duration.zero ? Duration.zero : pos,
+                              ),
                             );
                             _s._startHideTimer();
                           },
@@ -473,7 +475,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                             final pos =
                                 _s._positionNotifier.value +
                                 const Duration(seconds: 10);
-                            _s._player.seek(pos > dur ? dur : pos);
+                            unawaited(_s._seekTo(pos > dur ? dur : pos));
                             _s._startHideTimer();
                           },
                         ),
@@ -511,7 +513,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                                           position: position,
                                           bufferedPosition: buffered,
                                           tvFocusable: true,
-                                          onSeek: (t) => _s._player.seek(t),
+                                          onSeek: (t) => unawaited(_s._seekTo(t)),
                                         ),
                                       )
                                     : _MobileSeekbar(
@@ -519,7 +521,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                                         position: position,
                                         bufferedPosition: buffered,
                                         onSeek: (t) {
-                                          _s._player.seek(t);
+                                          unawaited(_s._seekTo(t));
                                           _s._startHideTimer();
                                         },
                                         onDragStart: () => _s._hideTimer?.cancel(),

@@ -293,20 +293,39 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _isInitPlaybackRunning = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
-  /// True once position was observed in the episode body this open.
+  /// First confirm of this episode session (survives source switches).
+  DateTime? _sessionFirstConfirmedAt;
+  /// True once position was observed in the episode body this session.
   bool _hadMidPlayback = false;
   /// Latch abortive EOF so repeating `completed` events do not spam / auto-next.
   bool _abortiveCompletedLatched = false;
   late final Future<void> _playableSourcesReady;
 
+  void _resetEofSessionGuards() {
+    _hadMidPlayback = false;
+    _abortiveCompletedLatched = false;
+    _sessionFirstConfirmedAt = null;
+  }
+
   void _markPlaybackConfirmed(bool confirmed) {
     _playbackConfirmed = confirmed;
-    _playbackConfirmedAt = confirmed ? DateTime.now() : null;
-    if (!confirmed) {
-      _hadMidPlayback = false;
-      _abortiveCompletedLatched = false;
+    if (confirmed) {
+      final now = DateTime.now();
+      _playbackConfirmedAt = now;
+      _sessionFirstConfirmedAt ??= now;
+    } else {
+      // Keep mid / session-first across source switches so a late re-open
+      // near credits does not reset the natural-end grace window.
+      _playbackConfirmedAt = null;
     }
   }
+
+  Future<void> _seekTo(Duration position) => seekPlayerPreservingProgress(
+        _player,
+        position: position,
+        positionNotifier: _positionNotifier,
+        duration: _durationNotifier.value,
+      );
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
 

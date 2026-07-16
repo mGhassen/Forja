@@ -143,7 +143,7 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
       var newPos = _s._positionNotifier.value + delta;
       if (newPos < Duration.zero) newPos = Duration.zero;
       if (newPos > _s._durationNotifier.value) newPos = _s._durationNotifier.value;
-      _s._player.seek(newPos);
+      unawaited(_s._seekTo(newPos));
     } else if (key == LogicalKeyboardKey.arrowRight) {
       final delta = HardwareKeyboard.instance.isShiftPressed
           ? const Duration(seconds: 30)
@@ -151,7 +151,7 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
       var newPos = _s._positionNotifier.value + delta;
       if (newPos < Duration.zero) newPos = Duration.zero;
       if (newPos > _s._durationNotifier.value) newPos = _s._durationNotifier.value;
-      _s._player.seek(newPos);
+      unawaited(_s._seekTo(newPos));
     } else if (key == LogicalKeyboardKey.arrowUp) {
       _s._player.setVolume((_s._volumeNotifier.value + 5).clamp(0, 150));
     } else if (key == LogicalKeyboardKey.arrowDown) {

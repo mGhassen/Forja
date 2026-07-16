@@ -253,13 +253,19 @@ mixin _DesktopPlayerPlayback
     return false;
   }
 
-  Future<void> _initPlayback({int sourceStartIndex = 0}) async {
+  Future<void> _initPlayback({
+    int sourceStartIndex = 0,
+    bool resetEofSession = true,
+  }) async {
     if (_s._disposed) return;
     if (_s._isInitPlaybackRunning) {
       return; // Prevent re-entrant calls during async extraction
     }
     _s._isInitPlaybackRunning = true;
     final initGen = _s._fallbackGen;
+    if (resetEofSession) {
+      _s._resetEofSessionGuards();
+    }
     _s._markPlaybackConfirmed(false);
 
     try {
@@ -806,7 +812,9 @@ mixin _DesktopPlayerPlayback
         if (_s._sourcePinned) return;
         final next = _s._currentFallbackSourceIndex + 1;
         if (_s._currentSources != null && next < _s._currentSources!.length) {
-          unawaited(_initPlayback(sourceStartIndex: next));
+          unawaited(
+            _initPlayback(sourceStartIndex: next, resetEofSession: false),
+          );
         } else if (!_s._providerPinned) {
           unawaited(_autoFallbackToNextProvider());
         }
@@ -993,10 +1001,11 @@ mixin _DesktopPlayerPlayback
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
       if (_s._abortiveCompletedLatched) return;
-      final confirmedAt = _s._playbackConfirmedAt;
-      final confirmedFor = confirmedAt == null
-          ? Duration.zero
-          : DateTime.now().difference(confirmedAt);
+      final confirmedFor = confirmedPlaybackAge(
+        openConfirmedAt: _s._playbackConfirmedAt,
+        sessionFirstConfirmedAt: _s._sessionFirstConfirmedAt,
+        hadMidPlayback: _s._hadMidPlayback,
+      );
       if (isNaturalPlaybackEnd(
         _s._player.state,
         confirmedFor: confirmedFor,
@@ -1154,6 +1163,10 @@ mixin _DesktopPlayerPlayback
     // Don't freeze on brief cache drain — keep decoding through HLS hiccups.
     await safeSet('cache-pause', 'no');
     await safeSet('cache-pause-initial', 'no');
+
+    // Stay on the last frame at EOF so the seek bar still works (scrub back /
+    // replay). Without this, mpv goes idle and seeks no-op after completed.
+    await safeSet('keep-open', 'yes');
 
     final isTorrent = widget.magnetLink != null;
     if (isTorrent) {

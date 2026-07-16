@@ -29,7 +29,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 
 ## What you can do
 
-- Play, pause, seek (with hover preview on desktop when supported), and adjust volume (hover the volume icon to expand the slider — same in the main player and IPTV)
+- Play, pause, seek (with hover preview on desktop when supported), and adjust volume (hover the volume icon to expand the slider — same in the main player and IPTV). After a title ends, the progress bar still moves — scrub back or restart from the beginning without reopening the player
 - Double-click the video (desktop) to enter/exit fullscreen — films also support **F** or the fullscreen button; IPTV / Live Matches use the fullscreen button or double-click
 - Back / Escape exits the player and **stops audio** immediately (mpv/Exo are stopped before the route closes). Leaving before playback starts returns to **details** (not the loading overlay). Leaving the player also **stops background source checks** for that session (server probes, Nuvio scrapers, embeds). Leaving media details stops torrent / Stremio / Nuvio fetches for that title so they do not keep running after you switch tabs.
 - Skip ±10 seconds from the bottom bar or large center controls

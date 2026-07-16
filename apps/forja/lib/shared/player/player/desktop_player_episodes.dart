@@ -94,7 +94,7 @@ mixin _DesktopPlayerEpisodes
 
   void _performSkip() {
     if (_s._activeSkipTarget == null) return;
-    _s._player.seek(_s._activeSkipTarget!);
+    unawaited(_s._seekTo(_s._activeSkipTarget!));
     setState(() {
       _s._activeSkipLabel = null;
       _s._activeSkipTarget = null;
@@ -228,14 +228,14 @@ mixin _DesktopPlayerEpisodes
 
   void _seekBack10Seconds() {
     final pos = _s._positionNotifier.value - const Duration(seconds: 10);
-    _s._player.seek(pos < Duration.zero ? Duration.zero : pos);
+    unawaited(_s._seekTo(pos < Duration.zero ? Duration.zero : pos));
     _s._onMouseMove();
   }
 
   void _seekForward10Seconds() {
     final dur = _s._durationNotifier.value;
     final pos = _s._positionNotifier.value + const Duration(seconds: 10);
-    _s._player.seek(pos > dur ? dur : pos);
+    unawaited(_s._seekTo(pos > dur ? dur : pos));
     _s._onMouseMove();
   }
 
@@ -395,6 +395,7 @@ mixin _DesktopPlayerEpisodes
 
   Future<void> _switchToEpisode(int season, int episode) async {
     if (widget.movie == null) return;
+    _s._resetEofSessionGuards();
     _beginEpisodeLoading(
       label: 'Season $season · Episode $episode',
       status: 'Loading episode info…',

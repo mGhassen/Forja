@@ -561,6 +561,8 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       positionMs: pos,
       durationMs: dur,
       confirmedAt: _s._playbackConfirmedAt,
+      sessionFirstConfirmedAt: _s._sessionFirstConfirmedAt,
+      hadMidPlayback: _s._hadMidPlayback,
     )) {
       debugPrint(
         '[WatchHistory] Skip early-EOF near-end progress '

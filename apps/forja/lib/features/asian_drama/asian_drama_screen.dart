@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_section.dart';
@@ -19,6 +20,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:rust/rust.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -29,7 +31,14 @@ class AsianDramaScreen extends StatefulWidget {
 
 class _AsianDramaScreenState extends State<AsianDramaScreen>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  /// KissKH `/Drama/{id}` hero synopsis — kept but off (burns shared IP).
+  static const bool _kissKhHeroSynopsisEnrich = false;
+
+  /// Trial: fill hero overview from TMDB search instead of KissKH details.
+  static const bool _tmdbHeroSynopsisEnrich = true;
+
   final KissKhService _service = KissKhService();
+  final TmdbApi _tmdb = TmdbApi();
   final ScrollController _scroll = ScrollController();
 
   KdramaHomeFeed? _feed;
@@ -116,7 +125,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             (results[1] as List<Map<String, dynamic>>).take(10).toList();
         _loading = false;
       });
-      // List endpoints omit year/type — fill from details in the background.
+      // Hero synopsis: TMDB trial (or KissKH path when re-enabled).
       unawaited(_enrichFeed(feed, gen));
     } catch (e) {
       if (!mounted || gen != _loadGen) return;
@@ -128,9 +137,20 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   Future<void> _enrichFeed(KdramaHomeFeed feed, int gen) async {
+    if (_tmdbHeroSynopsisEnrich) {
+      await _enrichFeedFromTmdb(feed, gen);
+      return;
+    }
+    if (_kissKhHeroSynopsisEnrich) {
+      await _enrichFeedFromKissKh(feed, gen);
+    }
+  }
+
+  /// Kept for later — KissKH list endpoints omit synopsis; this hits
+  /// `/Drama/{id}` per hero card and shares the Play rate-limit bucket.
+  // ignore: unused_element
+  Future<void> _enrichFeedFromKissKh(KdramaHomeFeed feed, int gen) async {
     try {
-      // Hero synopsis only — bulk year/type enrich for every row burned the
-      // shared KissKH IP budget before Episode extract could run.
       final hero = _heroCardsFrom(feed);
       if (hero.any((c) => c.description.trim().isEmpty)) {
         final withSynopsis = await _service.enrichCardDescriptions(hero);
@@ -139,6 +159,87 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         setState(() => _feed = working);
       }
     } catch (_) {}
+  }
+
+  Future<void> _enrichFeedFromTmdb(KdramaHomeFeed feed, int gen) async {
+    try {
+      final hero = _heroCardsFrom(feed);
+      if (hero.every((c) => c.description.trim().isNotEmpty)) return;
+
+      final enriched = await Future.wait(
+        hero.map((card) async {
+          if (card.description.trim().isNotEmpty) return card;
+          final overview = await _tmdbOverviewForKissKhTitle(
+            card.title,
+            year: card.year,
+          );
+          if (overview == null || overview.isEmpty) return card;
+          return card.copyWith(description: overview);
+        }),
+      );
+      if (!mounted || gen != _loadGen) return;
+      setState(() => _feed = feed.withCardsReplaced(enriched));
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AsianDrama] TMDB hero synopsis enrich failed: $e');
+      }
+    }
+  }
+
+  /// Best-effort TMDB match for a KissKH title (prefer TV, then year).
+  Future<String?> _tmdbOverviewForKissKhTitle(
+    String title, {
+    String? year,
+  }) async {
+    final q = title.trim();
+    if (q.isEmpty) return null;
+    try {
+      final hits = await _tmdb.searchMulti(q);
+      if (hits.isEmpty) return null;
+      Movie? best;
+      var bestScore = -1;
+      final wantYear = int.tryParse((year ?? '').trim());
+      for (final h in hits) {
+        final overview = h.overview.trim();
+        if (overview.isEmpty) continue;
+        var s = 0;
+        final ht = h.title.toLowerCase();
+        final qt = q.toLowerCase();
+        if (ht == qt) {
+          s += 5;
+        } else if (ht.startsWith(qt) || qt.startsWith(ht)) {
+          s += 2;
+        } else if (ht.contains(qt) || qt.contains(ht)) {
+          s += 1;
+        }
+        if (h.mediaType == 'tv') s += 3;
+        if (wantYear != null && h.releaseDate.length >= 4) {
+          final hy = int.tryParse(h.releaseDate.substring(0, 4));
+          if (hy == wantYear) {
+            s += 4;
+          } else if (hy != null && (hy - wantYear).abs() <= 1) {
+            s += 1;
+          }
+        }
+        if (s > bestScore) {
+          bestScore = s;
+          best = h;
+        }
+      }
+      if (best == null || bestScore < 2) return null;
+      if (kDebugMode) {
+        debugPrint(
+          '[AsianDrama] TMDB synopsis '
+          '"$q" → id=${best.id} ${best.mediaType} score=$bestScore',
+        );
+      }
+      return best.overview.trim();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AsianDrama] TMDB search failed for "$q": $e');
+      }
+      return null;
+    }
   }
 
   List<KdramaCard> _heroCardsFrom(KdramaHomeFeed feed) {
