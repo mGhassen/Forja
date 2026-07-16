@@ -232,6 +232,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       });
       return;
     }
+    if (id == _s._selectedSourceId) return;
     setState(() {
       _s._selectedSourceId = id;
       if (_s._panelKindFilter == 'stremio') {
@@ -250,9 +251,21 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     } else if (_s._panelKindFilter == 'stremio') {
       setState(() {
         _s._applyStremioFilter();
-        _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
-            ? 'No streams found in selected addon'
-            : null;
+        // If this addon is empty but another has rows, bounce to the working one
+        // instead of a sticky red error that hides the whole list.
+        if (_s._stremioStreams.isEmpty &&
+            _s._allCombinedStremioStreams.isNotEmpty &&
+            !_s._isStremioFetching) {
+          _s._userPickedStremioProvider = false;
+          _s._syncStremioProviderSelection();
+          _s._applyStremioFilter();
+          _s._errorMessage = null;
+        } else {
+          _s._errorMessage =
+              _s._stremioStreams.isEmpty && !_s._isStremioFetching
+              ? 'No streams found in selected addon'
+              : null;
+        }
       });
     } else {
       final chip = _providerOptions().firstWhere(
@@ -351,7 +364,69 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
   }
 
   Widget _buildStreamList({bool inPanel = false}) {
-    if (_s._errorMessage != null) {
+    final torrents = _panelShowsTorrents
+        ? _filteredTorrentResults
+        : <TorrentResult>[];
+    var stremio = _panelShowsStremio
+        ? _filteredPanelStremioStreams
+        : <Map<String, dynamic>>[];
+    final nuvio = _panelShowsNuvio
+        ? _filteredPanelNuvioStreams
+        : <Map<String, dynamic>>[];
+
+    // Dead provider selected (Torrentio 403) while another addon has rows —
+    // show the working addon's streams and fix selection after this frame.
+    if (_panelShowsStremio &&
+        stremio.isEmpty &&
+        _s._allCombinedStremioStreams.isNotEmpty) {
+      final fallbackId = promoteStremioProviderId(
+        currentId: _s._selectedSourceId,
+        preferredId: null,
+        addonBaseUrlsInOrder: _s._stremioAddonBaseUrlsInOrder,
+        loadedIds: _s._loadedAddonBaseUrls.isNotEmpty
+            ? _s._loadedAddonBaseUrls
+            : {
+                for (final s in _s._allCombinedStremioStreams)
+                  if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
+              },
+        completedIds: _s._completedAddonBaseUrls,
+        fetching: _s._isStremioFetching,
+        userPicked: false,
+      );
+      if (fallbackId != null) {
+        stremio = _s._allCombinedStremioStreams
+            .whereType<Map<String, dynamic>>()
+            .where((s) => s['_addonBaseUrl'] == fallbackId)
+            .where(_matchesPanelStreamFilters)
+            .toList();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_s._selectedSourceId == fallbackId &&
+              _s._errorMessage == null) {
+            return;
+          }
+          setState(() {
+            _s._selectedSourceId = fallbackId;
+            _s._userPickedStremioProvider = false;
+            _s._errorMessage = null;
+            _s._applyStremioFilter();
+          });
+        });
+      }
+    }
+
+    final count = torrents.length + stremio.length + nuvio.length;
+    final rawCount =
+        (_panelShowsTorrents ? _s._allTorrentResults.length : 0) +
+        (_panelShowsStremio ? _s._allCombinedStremioStreams.length : 0) +
+        (_panelShowsNuvio ? _selectedNuvioStreams.length : 0);
+    final isFetching =
+        (_panelShowsTorrents && _s._isSearching) ||
+        (_panelShowsStremio && _s._isStremioFetching) ||
+        (_panelShowsNuvio && _s._isNuvioFetching);
+
+    // Never replace a multi-addon result set with a sticky provider error.
+    if (_s._errorMessage != null && count == 0 && !isFetching) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Center(
@@ -362,25 +437,6 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
         ),
       );
     }
-
-    final torrents = _panelShowsTorrents
-        ? _filteredTorrentResults
-        : <TorrentResult>[];
-    final stremio = _panelShowsStremio
-        ? _filteredPanelStremioStreams
-        : <Map<String, dynamic>>[];
-    final nuvio = _panelShowsNuvio
-        ? _filteredPanelNuvioStreams
-        : <Map<String, dynamic>>[];
-    final count = torrents.length + stremio.length + nuvio.length;
-    final rawCount =
-        (_panelShowsTorrents ? _s._allTorrentResults.length : 0) +
-        (_panelShowsStremio ? _s._stremioStreams.length : 0) +
-        (_panelShowsNuvio ? _selectedNuvioStreams.length : 0);
-    final isFetching =
-        (_panelShowsTorrents && _s._isSearching) ||
-        (_panelShowsStremio && _s._isStremioFetching) ||
-        (_panelShowsNuvio && _s._isNuvioFetching);
 
     final remainingNuvioProviders = _panelShowsNuvio
         ? _s._pendingNuvioScraperIds.length

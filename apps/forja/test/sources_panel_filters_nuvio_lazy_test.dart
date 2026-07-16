@@ -113,7 +113,21 @@ void main() {
       );
     });
 
-    test('respects manual provider pick', () {
+    test('respects manual provider pick only when it has streams', () {
+      expect(
+        promoteStremioProviderId(
+          currentId: yts,
+          addonBaseUrlsInOrder: order,
+          loadedIds: {yts},
+          completedIds: {torrentio, yts},
+          fetching: false,
+          userPicked: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('overrides manual pick when selected addon is empty', () {
       expect(
         promoteStremioProviderId(
           currentId: torrentio,
@@ -123,7 +137,7 @@ void main() {
           fetching: false,
           userPicked: true,
         ),
-        isNull,
+        yts,
       );
     });
   });

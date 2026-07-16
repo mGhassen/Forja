@@ -556,7 +556,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
     if (_stremioStreams.isNotEmpty || _stremioFetching) return;
     final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-    if (cached != null) {
+    if (cached != null && cached.isNotEmpty) {
       setState(() {
         _stremioStreams = cached;
         _loadedAddonBaseUrls
@@ -569,11 +569,15 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           ..clear()
           ..addAll(_loadedAddonBaseUrls);
         _error = null;
+        _userPickedStremioProvider = false;
         _syncStremioProviderSelection();
       });
       _focusPlayingSourceIfNeeded();
       _requestScrollToCurrent();
       return;
+    }
+    if (cached != null && cached.isEmpty) {
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
     }
     unawaited(_fetchStremioStreams());
   }

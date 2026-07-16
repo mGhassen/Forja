@@ -110,6 +110,10 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
 
   @override
   Widget build(BuildContext context) {
+    // Attach a tap recognizer only while visible + actionable. An invisible
+    // play control must not win the gesture arena over the parent card
+    // (episode select). Hover tracking stays enabled for the pulse.
+    final interactive = widget.onTap != null && widget.visible;
     final lifted = widget.active && widget.visible;
     final buttonFace = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
@@ -163,9 +167,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
 
     final button = MouseRegion(
       key: const ValueKey('shell-card-play-hover-target'),
-      cursor: widget.onTap != null
-          ? SystemMouseCursors.click
-          : MouseCursor.defer,
+      cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
       onEnter: (_) {
         if (_buttonHovered) return;
         setState(() => _buttonHovered = true);
@@ -176,7 +178,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
         setState(() => _buttonHovered = false);
         _syncPulse();
       },
-      child: widget.onTap != null
+      child: interactive
           ? GestureDetector(
               onTap: widget.onTap,
               behavior: HitTestBehavior.opaque,

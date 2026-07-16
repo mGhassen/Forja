@@ -7,6 +7,8 @@ import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 Widget _overlayHarness({
   required bool active,
   required bool visible,
+  VoidCallback? onTap,
+  VoidCallback? onCardTap,
   double diameter = 48,
   double iconSize = 28,
 }) {
@@ -15,15 +17,20 @@ Widget _overlayHarness({
       body: SizedBox(
         width: 160,
         height: 160,
-        child: Stack(
-          children: [
-            ShellCardPlayOverlay(
-              active: active,
-              visible: visible,
-              diameter: diameter,
-              iconSize: iconSize,
-            ),
-          ],
+        child: GestureDetector(
+          onTap: onCardTap,
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
+            children: [
+              ShellCardPlayOverlay(
+                active: active,
+                visible: visible,
+                onTap: onTap,
+                diameter: diameter,
+                iconSize: iconSize,
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -90,5 +97,43 @@ void main() {
     expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
     expect(tester.getSize(find.byType(AnimatedContainer)), const Size(30, 30));
     expect(tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).size, 18);
+  });
+
+  testWidgets('visible play button receives tap; card does not', (tester) async {
+    var playTaps = 0;
+    var cardTaps = 0;
+    await tester.pumpWidget(
+      _overlayHarness(
+        active: true,
+        visible: true,
+        onTap: () => playTaps++,
+        onCardTap: () => cardTaps++,
+      ),
+    );
+
+    await tester.tap(_hoverTarget);
+    await tester.pump();
+
+    expect(playTaps, 1);
+    expect(cardTaps, 0);
+  });
+
+  testWidgets('hidden play onTap does not steal card taps', (tester) async {
+    var playTaps = 0;
+    var cardTaps = 0;
+    await tester.pumpWidget(
+      _overlayHarness(
+        active: true,
+        visible: false,
+        onTap: () => playTaps++,
+        onCardTap: () => cardTaps++,
+      ),
+    );
+
+    await tester.tapAt(const Offset(80, 80));
+    await tester.pump();
+
+    expect(playTaps, 0);
+    expect(cardTaps, 1);
   });
 }

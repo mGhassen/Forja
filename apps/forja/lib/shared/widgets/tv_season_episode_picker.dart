@@ -801,7 +801,11 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                         ShellCardPlayOverlay(
                           active: active,
                           visible: showPlayOverlay,
-                          onTap: playEnabled ? widget.onPlay : null,
+                          // Play only when the control is shown; otherwise the
+                          // card tap selects the episode (two-level interaction).
+                          onTap: playEnabled && showPlayOverlay
+                              ? widget.onPlay
+                              : null,
                         ),
                       ],
                     ),

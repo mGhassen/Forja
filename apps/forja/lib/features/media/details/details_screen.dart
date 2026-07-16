@@ -531,7 +531,8 @@ class _DetailsScreenState extends State<DetailsScreen>
     }
     if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
     final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-    if (cached != null) {
+    // Empty cache is a miss — a prior all-failed fetch must not block YTS.
+    if (cached != null && cached.isNotEmpty) {
       setState(() {
         _allCombinedStremioStreams = cached;
         _loadedAddonBaseUrls
@@ -544,10 +545,14 @@ class _DetailsScreenState extends State<DetailsScreen>
           ..clear()
           ..addAll(_loadedAddonBaseUrls);
         _errorMessage = null;
+        _userPickedStremioProvider = false;
         _syncStremioProviderSelection();
         _applyStremioFilter();
       });
       return;
+    }
+    if (cached != null && cached.isEmpty) {
+      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
     }
     _fetchAllStremioStreams();
   }

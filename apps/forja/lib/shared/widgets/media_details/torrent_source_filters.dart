@@ -21,12 +21,16 @@ int nuvioProviderFilterActiveCount({
 
 /// Picks a Stremio Filters → Providers id that actually has streams.
 ///
-/// Returns `null` when [currentId] should stay (user pick, preferred still
-/// loading, or current already has results). Callers apply the returned id.
+/// Returns `null` when [currentId] should stay (preferred still loading, or
+/// current already has results). Callers apply the returned id.
 ///
 /// When the default/first addon (e.g. Torrentio) 403s and another addon (e.g.
 /// YTS) returns rows, this moves the filter off the empty provider so the list
 /// is not stuck blank while other addons succeeded.
+///
+/// [userPicked] is ignored when the current id has no streams and another
+/// addon does — otherwise tapping a dead provider (or the badge “1” filter)
+/// permanently hides working addons.
 String? promoteStremioProviderId({
   required String currentId,
   String? preferredId,
@@ -36,7 +40,6 @@ String? promoteStremioProviderId({
   required bool fetching,
   required bool userPicked,
 }) {
-  if (userPicked) return null;
   if (preferredId != null && preferredId.isNotEmpty) {
     if (loadedIds.contains(preferredId)) {
       return preferredId == currentId ? null : preferredId;
@@ -45,6 +48,9 @@ String? promoteStremioProviderId({
     if (fetching && !completedIds.contains(preferredId)) return null;
   }
   if (loadedIds.contains(currentId)) return null;
+  // Current addon empty/failed — always move to one with rows (even after a
+  // manual tap on a dead provider). User can re-pick once it has streams.
+  if (userPicked && loadedIds.isEmpty) return null;
   for (final id in addonBaseUrlsInOrder) {
     if (loadedIds.contains(id)) return id;
   }
@@ -1025,11 +1031,9 @@ class _TorrentSourceSearchToolbarState
         totalEnabled: nuvio.length,
       );
     }
-    if (widget.selectedProviderId == null ||
-        widget.selectedProviderId!.isEmpty) {
-      return 0;
-    }
-    return 1;
+    // Torrents / Stremio providers are a required radio (always one selected),
+    // not a filter chip — never badge them as an active filter.
+    return 0;
   }
 
   int get _activeCount =>

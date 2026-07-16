@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** fix · **3 / 4** acceptance |
+| **Progress** | **Complete · 4 / 4** fix · **2 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,10 +30,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I73-A01 | Unit: empty Torrentio + loaded YTS → promote to YTS; user pick stays | ✅ |
+| 1 | I73-A01 | Unit: empty Torrentio + loaded YTS → promote to YTS; user pick stays when it has streams | ✅ |
 | 2 | I73-A02 | Unit: preferred still fetching → no promote; preferred empty + YTS loaded → YTS | ✅ |
-| 3 | I73-A03 | Manual: Stremio with Torrentio Cloudflare 403 + working YTS → Filters opens on YTS with rows | ⬜ |
-| 4 | I73-A04 | Manual: manually selecting Torrentio after promote keeps empty list (no auto-steal) | ⬜ |
+| 3 | I73-A03 | Manual: Stremio with Torrentio Cloudflare 403 + working YTS → list shows YTS rows (not red sticky error) | ⬜ |
+| 4 | I73-A04 | Manual: Filters badge does not count the required Stremio provider radio as “1” | ⬜ |
 
 ---
 
@@ -41,6 +41,6 @@
 
 Sources **Filters → Providers** defaults to the first installed stream addon (often Torrentio). When Torrentio returns **HTTP 403** (Cloudflare challenge on `torrentio.strem.fun`) and another addon (e.g. YTS) returns streams, the panel kept the empty provider selected — especially after session cache hydrate — so the list looked stuck/blank while YTS worked if selected by hand.
 
-**Symptom fix:** promote the provider filter to the first addon that actually returned streams (unless the user picked a provider). Stop retrying hard 4xx on Stremio HTTP so failed addons finish quickly.
+**Symptom fix:** promote the provider filter to the first addon that actually returned streams. Do not let a sticky red “No streams found in selected addon” replace the whole list when another addon has rows. Do not count the required Stremio/Torrents provider radio toward the Filters badge. Treat an empty session cache as a miss. Stop retrying hard 4xx on Stremio HTTP so failed addons finish quickly.
 
 **Root / environment:** Torrentio itself is blocked by Cloudflare from some IPs/networks — that is not fixed in-app; users may need a reachable mirror, VPN, or debrid-configured Torrentio URL. The panel no longer hides other addons’ results behind the failed default.
