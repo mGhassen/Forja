@@ -87,7 +87,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [063-[fixed]-…](fixed/063-[fixed]-iptv-catalog-scrape-extract-still-dart.md) | IPTV catalog scrape extract still Dart | P2 | Medium | fixed | Complete · 4/4 · 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [064-[fixed]-…](fixed/064-[fixed]-stremio-nuvio-player-sources-panel-missing.md) | Stremio/Nuvio player Sources panel missing | P2 | Medium | fixed | Complete · 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [065-[open]-…](065-[open]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | open | 7/7 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [066-[open]-…](066-[open]-canonical-settings-persistence.md) | Canonical settings persistence (KV file + secure secrets) | P1 | High | open | 5/5 · A 4/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [066-[open]-…](066-[open]-canonical-settings-persistence.md) | Canonical settings persistence (KV file + secure secrets) | P1 | High | open | 7/7 · A 4/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [067-[fixed]-…](fixed/067-[fixed]-server-panel-reload-ignores-disk-cache.md) | Server panel reload no-op from disk cache | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [069-[fixed]-…](fixed/069-[fixed]-stremio-magnet-url-opened-as-file.md) | Stremio magnet `url` opened as file / torrent switch throw | P1 | High | fixed | Complete · 4/4 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |

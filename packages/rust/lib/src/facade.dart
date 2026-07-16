@@ -270,113 +270,224 @@ abstract final class Engine {
   ) =>
       storageWrite(key, values);
 
-  /// One-time import from legacy SharedPreferences keys into Rust KV.
+  /// Settings live in one place: Rust KV (+ Keychain for secrets).
+  /// SharedPreferences is only a one-shot import source, then purged.
+  static const String _settingsCanonicalKey = 'settings_canonical_v1';
+
+  /// Prefs keys that belong to the canonical settings file (not caches/lists).
+  static const List<String> _settingsPrefsKeys = [
+    'forja_provider_order',
+    'forja_enabled_providers',
+    'forja_last_provider',
+    'stream_provider_order',
+    'anime_provider_order',
+    'stremio_addons',
+    'forja_auto_next',
+    'forja_external_player',
+    'forja_iptv_groups',
+    'forja_iptv_portal_meta',
+    'sort_preference',
+    'debrid_service',
+    'external_player',
+    'jackett_base_url',
+    'jackett_api_key',
+    'prowlarr_base_url',
+    'prowlarr_api_key',
+    'prowlarr_tag_ids',
+    'torrent_cache_type',
+    'torrent_ram_cache_mb',
+    'torrent_connections_limit',
+    'theme_preset',
+    'preferred_audio_lang',
+    'sub_font',
+    'sub_color',
+    'sub_size',
+    'sub_bg_opacity',
+    'sub_bottom_padding',
+    'sub_bold',
+    'streaming_mode',
+    'use_debrid_for_streams',
+    'light_mode',
+    'avoid_unsupported_audio',
+    'navbar_config',
+    'navbar_known_ids',
+    'watch_history',
+    'dismissed_history',
+    'nuvio_addons_v1',
+    'webstreamr_country_codes',
+    'webstreamr_mfp_url',
+    'webstreamr_flare_url',
+    'webstreamr_disabled_extractors',
+    'webstreamr_excluded_resolutions',
+  ];
+
+  /// Import any leftover SharedPreferences settings into KV, merge Stremio
+  /// addons, then delete the prefs copies so there is a single store.
   static Future<void> _migrateLegacyPrefsIfNeeded() async {
     if (!isReady) return;
-    if (storageHasKey('forja_provider_order')) return;
 
     final prefs = await SharedPreferences.getInstance();
+    final alreadyCanonical = storageHasKey(_settingsCanonicalKey);
 
-    void migrateStringList(String key) {
-      final list = prefs.getStringList(key);
-      if (list != null) storageWriteStringList(key, list);
-    }
-
-    void migrateString(String key) {
-      final s = prefs.getString(key);
-      if (s != null) storageWriteString(key, s);
-    }
-
-    void migrateBool(String key) {
-      if (prefs.containsKey(key)) {
-        storageWriteBool(key, prefs.getBool(key) ?? false);
+    if (!alreadyCanonical) {
+      void migrateStringList(String key) {
+        if (storageHasKey(key)) return;
+        final list = prefs.getStringList(key);
+        if (list != null) storageWriteStringList(key, list);
       }
+
+      void migrateString(String key) {
+        if (storageHasKey(key)) return;
+        final s = prefs.getString(key);
+        if (s != null) storageWriteString(key, s);
+      }
+
+      void migrateBool(String key) {
+        if (storageHasKey(key)) return;
+        if (prefs.containsKey(key)) {
+          storageWriteBool(key, prefs.getBool(key) ?? false);
+        }
+      }
+
+      void migrateInt(String key) {
+        if (storageHasKey(key)) return;
+        if (prefs.containsKey(key)) {
+          storageWrite(key, prefs.getInt(key)!);
+        }
+      }
+
+      void migrateDouble(String key) {
+        if (storageHasKey(key)) return;
+        if (prefs.containsKey(key)) {
+          storageWrite(key, prefs.getDouble(key)!);
+        }
+      }
+
+      void migrateJsonList(String key) {
+        if (storageHasKey(key)) return;
+        final raw = prefs.getString(key);
+        if (raw == null || raw.isEmpty) return;
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) storageWrite(key, decoded);
+        } catch (_) {}
+      }
+
+      migrateStringList('forja_provider_order');
+      migrateStringList('forja_enabled_providers');
+      migrateString('forja_last_provider');
+      migrateStringList('stream_provider_order');
+      migrateStringList('anime_provider_order');
+
+      // Stremio: merge prefs + KV by baseUrl (KV wins on conflict).
+      _mergeStremioAddonsFromPrefs(prefs);
+
+      migrateBool('forja_auto_next');
+      migrateString('forja_external_player');
+      migrateString('forja_iptv_groups');
+      migrateString('forja_iptv_portal_meta');
+
+      for (final k in const [
+        'sort_preference',
+        'debrid_service',
+        'external_player',
+        'jackett_base_url',
+        'jackett_api_key',
+        'prowlarr_base_url',
+        'prowlarr_api_key',
+        'torrent_cache_type',
+        'theme_preset',
+        'preferred_audio_lang',
+        'sub_font',
+      ]) {
+        migrateString(k);
+      }
+
+      for (final k in const [
+        'streaming_mode',
+        'use_debrid_for_streams',
+        'light_mode',
+        'sub_bold',
+        'avoid_unsupported_audio',
+      ]) {
+        migrateBool(k);
+      }
+
+      migrateInt('torrent_ram_cache_mb');
+      migrateInt('torrent_connections_limit');
+      migrateInt('sub_color');
+      migrateDouble('sub_size');
+      migrateDouble('sub_bg_opacity');
+      migrateDouble('sub_bottom_padding');
+
+      migrateStringList('prowlarr_tag_ids');
+      migrateStringList('navbar_config');
+      migrateStringList('navbar_known_ids');
+      migrateJsonList('watch_history');
+      migrateJsonList('dismissed_history');
+
+      // Nuvio / WebStreamr non-secrets if still only in prefs.
+      if (!storageHasKey('nuvio_addons_v1')) {
+        final raw = prefs.getString('nuvio_addons_v1');
+        if (raw != null && raw.isNotEmpty) {
+          storageWriteString('nuvio_addons_v1', raw);
+        }
+      }
+      migrateStringList('webstreamr_country_codes');
+      migrateString('webstreamr_mfp_url');
+      migrateString('webstreamr_flare_url');
+      migrateStringList('webstreamr_disabled_extractors');
+      migrateStringList('webstreamr_excluded_resolutions');
     }
 
-    migrateStringList('forja_provider_order');
-    migrateStringList('forja_enabled_providers');
-    migrateString('forja_last_provider');
-    migrateStringList('stream_provider_order');
-    migrateStringList('anime_provider_order');
+    // Always strip settings keys from prefs — one store only.
+    await _purgeSettingsPrefsKeys(prefs);
 
-    final stremio = prefs.getStringList('stremio_addons');
-    if (stremio != null && stremio.isNotEmpty) {
-      storageWriteMapList(
-        'stremio_addons',
-        stremio.map((s) => jsonDecode(s) as Map<String, dynamic>).toList(),
+    if (!alreadyCanonical) {
+      storageWriteString(_settingsCanonicalKey, '1');
+      debugPrint(
+        '[Engine] settings unified into forja_engine_store.json; prefs copies purged',
       );
     }
+  }
 
-    migrateBool('forja_auto_next');
-    migrateString('forja_external_player');
+  static void _mergeStremioAddonsFromPrefs(SharedPreferences prefs) {
+    final byUrl = <String, Map<String, dynamic>>{};
 
-    final iptvGroups = prefs.getString('forja_iptv_groups');
-    if (iptvGroups != null) storageWriteString('forja_iptv_groups', iptvGroups);
+    for (final a in storageReadMapList('stremio_addons')) {
+      final url = '${a['baseUrl'] ?? ''}'.trim();
+      if (url.isEmpty) continue;
+      byUrl[url] = a;
+    }
 
-    final iptvMeta = prefs.getString('forja_iptv_portal_meta');
-    if (iptvMeta != null) storageWriteString('forja_iptv_portal_meta', iptvMeta);
-
-    void migrateInt(String key) {
-      if (prefs.containsKey(key)) {
-        storageWrite(key, prefs.getInt(key)!);
+    final fromPrefs = prefs.getStringList('stremio_addons');
+    if (fromPrefs != null) {
+      for (final raw in fromPrefs) {
+        try {
+          final a = jsonDecode(raw) as Map<String, dynamic>;
+          final url = '${a['baseUrl'] ?? ''}'.trim();
+          if (url.isEmpty) continue;
+          // Prefer existing KV entry when both have the same addon.
+          byUrl.putIfAbsent(url, () => a);
+        } catch (_) {}
       }
     }
 
-    void migrateDouble(String key) {
+    if (byUrl.isNotEmpty) {
+      storageWriteMapList('stremio_addons', byUrl.values.toList());
+    }
+  }
+
+  static Future<void> _purgeSettingsPrefsKeys(SharedPreferences prefs) async {
+    var removed = 0;
+    for (final key in _settingsPrefsKeys) {
       if (prefs.containsKey(key)) {
-        storageWrite(key, prefs.getDouble(key)!);
+        await prefs.remove(key);
+        removed++;
       }
     }
-
-    const stringKeys = [
-      'sort_preference',
-      'debrid_service',
-      'external_player',
-      'jackett_base_url',
-      'jackett_api_key',
-      'prowlarr_base_url',
-      'prowlarr_api_key',
-      'torrent_cache_type',
-      'theme_preset',
-      'preferred_audio_lang',
-      'sub_font',
-    ];
-    for (final k in stringKeys) {
-      migrateString(k);
+    if (removed > 0) {
+      debugPrint('[Engine] purged $removed settings key(s) from SharedPreferences');
     }
-
-    const boolKeys = [
-      'streaming_mode',
-      'use_debrid_for_streams',
-      'light_mode',
-      'sub_bold',
-      'avoid_unsupported_audio',
-    ];
-    for (final k in boolKeys) {
-      migrateBool(k);
-    }
-
-    migrateInt('torrent_ram_cache_mb');
-    migrateInt('torrent_connections_limit');
-    migrateInt('sub_color');
-    migrateDouble('sub_size');
-    migrateDouble('sub_bg_opacity');
-    migrateDouble('sub_bottom_padding');
-
-    migrateStringList('prowlarr_tag_ids');
-    migrateStringList('navbar_config');
-    migrateStringList('navbar_known_ids');
-
-    void migrateJsonList(String key) {
-      final raw = prefs.getString(key);
-      if (raw == null || raw.isEmpty) return;
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) storageWrite(key, decoded);
-      } catch (_) {}
-    }
-
-    migrateJsonList('watch_history');
-    migrateJsonList('dismissed_history');
   }
 }

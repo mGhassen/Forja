@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **4 / 6** acceptance (device smoke ⬜) |
+| **Progress** | **7 / 7** fix · **4 / 6** acceptance (device smoke ⬜) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,8 @@
 | 3 | I66-T03 | Secure-settings adapter: Debrid / Jackett / Prowlarr / WebStreamr secrets | ✅ |
 | 4 | I66-T04 | Schema migration marker + restart round-trip tests (no secrets in JSON) | ✅ |
 | 5 | I66-T05 | Feature docs + changelog: local canonical file vs manual Export/Import | ✅ |
+| 6 | I66-T06 | Stop legacy prefs migration from re-running every boot and clobbering KV (Stremio addons) | ✅ |
+| 7 | I66-T07 | Single settings home: merge prefs+KV into store, purge prefs copies (`settings_canonical_v1`) | ✅ |
 
 ---
 
@@ -52,6 +54,8 @@ Settings, sources, addons, and auth were split across Rust KV, SharedPreferences
 - Debrid / Jackett / Prowlarr / WebStreamr MFP+TMDB secrets → `SecureSettings`
 - Schema marker `settings_schema_v2`; export/import version 2
 - Docs + changelog updated
+- Legacy prefs migration gated on `legacy_prefs_migrated_v1` and never overwrites existing KV keys (fixes Stremio addons wiped on restart)
+- Single settings home: merge prefs+KV (Stremio by baseUrl), purge SharedPreferences settings keys, marker `settings_canonical_v1`
 
 ### Out of scope
 

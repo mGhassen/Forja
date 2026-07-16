@@ -1,13 +1,19 @@
 # Backup & restore
 
-> Export and import Forja configuration as one JSON file. Local settings also persist automatically on this device.
+> Export and import Forja configuration as one JSON file. Settings also persist automatically on this device in a single store.
 
 ## What it is
 
-Two layers:
+**One settings store** on this device:
 
-1. **Automatic local persistence** — non-secret settings (playback, provider order, Stremio/Nuvio addons, WebStreamr countries/filters, navbar, …) live in `forja_engine_store.json` under app support. Credentials (Trakt, Simkl, Debrid keys, Jackett/Prowlarr API keys, WebStreamr MFP password / TMDB token, …) live in the platform Keychain/Keystore. Change a setting, quit the app, reopen — values stay.
-2. **Manual Export / Import** — copy configuration between devices or keep a backup JSON. Export is a snapshot; it does not replace the live stores while you use the app.
+| Layer | Holds |
+|-------|--------|
+| `forja_engine_store.json` (app support) | Non-secret settings: playback, provider order, Stremio/Nuvio addons, WebStreamr countries/filters, navbar, … |
+| Keychain / Keystore | Credentials: Trakt, Simkl, Debrid, Jackett/Prowlarr API keys, WebStreamr MFP password / TMDB token, … |
+
+Older SharedPreferences copies of those settings are imported once into that file and then removed — they are not a second source of truth.
+
+**Manual Export / Import** is a snapshot for backup or another device. It does not replace the live store while you use the app.
 
 ## How to open it
 
