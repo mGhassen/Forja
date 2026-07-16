@@ -380,7 +380,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
   }
 
   void _playTorrent(TorrentResult result, {Duration? startPosition}) async {
-    debugPrint('[Details] play torrent title=${result.title}');
+    debugPrint('[Details] play torrent title=${result.name}');
     if (mounted && _s._sourcesPanelOpen) {
       _s._closeSourcesPanel(cancelEngineJobs: false);
     }
