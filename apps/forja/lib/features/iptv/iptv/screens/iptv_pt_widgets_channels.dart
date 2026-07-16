@@ -674,11 +674,17 @@ class _ChannelHitCard extends StatelessWidget {
                     height: 56,
                     child: hit.stream.icon.isEmpty
                         ? const _StreamPlaceholder()
-                        : Image.network(
-                            hit.stream.icon,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) =>
-                                const _StreamPlaceholder(),
+                        : ColoredBox(
+                            color: Colors.white.withValues(alpha: 0.03),
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Image.network(
+                                hit.stream.icon,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) =>
+                                    const _StreamPlaceholder(),
+                              ),
+                            ),
                           ),
                   ),
                 ),

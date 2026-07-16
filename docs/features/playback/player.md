@@ -48,7 +48,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 
 ## Tips
 
-- If a **cached** stream list is dead (open/check fails), Forja tries the other URLs from that list, drops the bad cache, then — with **Auto server** On — re-searches servers from scratch like the first Play. If you **pinned** a server (or Auto server is Off), it refreshes that server only and stops so you can pick another from **Source**. Mid-play failures with Auto On can still try the next server in order
+- If a **cached** stream list is dead (open/check fails), Forja tries the other URLs from that list, drops the bad cache, then — with **Auto server** On — re-searches servers from scratch like the first Play. If you **pinned** a server (or Auto server is Off), it refreshes that server only and stops so you can pick another from **Source**. Mid-play failures with Auto On can still try the next server in order. **Anime** follows the same dead-cache path: a saved episode stream that expired no longer sticks on one failed row with an empty Source list — the full server list stays available and Forja re-searches from scratch
 - Direct HTTP MP4/MKV/HLS opens use a browser-like User-Agent (and extractor Referer when provided). Pasting the same URL in Chrome is a close match; bare `libmpv` is not
 - Seek preview needs a decodable frame; live or buffering streams may show time only
 - Quality shows all detected HLS variants; single-quality or direct streams show the current decoded resolution (e.g. 1080p)

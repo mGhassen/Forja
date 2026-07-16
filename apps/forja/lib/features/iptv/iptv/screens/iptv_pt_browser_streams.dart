@@ -305,15 +305,11 @@ class _StreamCardState extends State<_StreamCard> {
   }
 
   Widget _streamThumb() {
-    return widget.stream.icon.isEmpty
-        ? const _StreamPlaceholder()
-        : Image.network(
-            widget.stream.icon,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const _StreamPlaceholder(),
-            loadingBuilder: (_, child, p) =>
-                p == null ? child : const _StreamPlaceholder(),
-          );
+    return _streamIconThumb(
+      icon: widget.stream.icon,
+      contain: widget.stream.kind == 'live',
+      padding: 10,
+    );
   }
 
   Widget _healthDot(bool health, {bool compact = false}) {
@@ -445,17 +441,11 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            widget.stream.icon.isEmpty
-                                ? const _StreamPlaceholder()
-                                : Image.network(
-                                    widget.stream.icon,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) =>
-                                        const _StreamPlaceholder(),
-                                    loadingBuilder: (_, child, p) => p == null
-                                        ? child
-                                        : const _StreamPlaceholder(),
-                                  ),
+                            _streamIconThumb(
+                              icon: widget.stream.icon,
+                              contain: widget.stream.kind == 'live',
+                              padding: 6,
+                            ),
                             _StreamThumbPlayHint(active: active),
                           ],
                         ),
@@ -776,6 +766,31 @@ class _EpgSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Live channel logos use [BoxFit.contain] + inset so the mark sits inside the
+/// card; VOD posters stay [BoxFit.cover] to fill the frame.
+Widget _streamIconThumb({
+  required String icon,
+  required bool contain,
+  double padding = 0,
+}) {
+  if (icon.isEmpty) return const _StreamPlaceholder();
+  final image = Image.network(
+    icon,
+    fit: contain ? BoxFit.contain : BoxFit.cover,
+    errorBuilder: (_, _, _) => const _StreamPlaceholder(),
+    loadingBuilder: (_, child, p) =>
+        p == null ? child : const _StreamPlaceholder(),
+  );
+  if (!contain) return image;
+  return ColoredBox(
+    color: Colors.white.withValues(alpha: 0.03),
+    child: Padding(
+      padding: EdgeInsets.all(padding),
+      child: image,
+    ),
+  );
 }
 
 class _StreamPlaceholder extends StatelessWidget {

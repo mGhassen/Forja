@@ -371,9 +371,13 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         // Dead sources (often a stale disk cache): siblings already tried.
         // Drop cache, then either re-extract the pinned server or run a full
         // Auto race like green Play (score order from the top).
+        // Anime / host reload callback: always re-resolve like first Play even
+        // when Auto server is Off — otherwise a 1-URL session cache leaves an
+        // empty Sources panel and no recovery (movie I43 host path).
         await _invalidateWebstreamingCacheForCurrent();
 
-        if (_s._providerPinned) {
+        final hostOwnsReload = widget.onReloadStreams != null;
+        if (_s._providerPinned && !hostOwnsReload) {
           await _failPlaybackNoFailover(
             message: 'Playback failed. Pick another server from Sources.',
           );
@@ -527,9 +531,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
   }) async {
     final movie = widget.movie;
     final providers = widget.providers;
-    if (movie == null || providers == null || providers.isEmpty) {
-      return false;
-    }
+    if (movie == null) return false;
 
     debugPrint('[Player] Dead sources — full Auto re-resolve like first Play');
     PlaybackEngine.cancelAllPending();
@@ -539,11 +541,60 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       kind: StatusRouletteKind.loading,
     );
 
+    final episode = widget.hubEpisodeNumber?.toInt() ??
+        widget.selectedEpisode ??
+        1;
+    final season = widget.selectedSeason ?? 1;
+
+    // Anime / host-owned resolve: reload via the screen callback (full embed
+    // race), same idea as movie resolveAutoForMovie.
+    if (widget.onReloadStreams != null) {
+      final fresh = await widget.onReloadStreams!();
+      if (_fallbackAborted(chainGen)) return false;
+      if (fresh == null || fresh.isEmpty) {
+        _s._statusController.complete();
+        return false;
+      }
+      final playable = dedupeStreamSources(
+        fresh,
+      ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
+      if (playable.isEmpty) {
+        _s._statusController.complete();
+        return false;
+      }
+      final pid = _s._currentProvider ?? widget.activeProvider ?? '';
+      if (pid.isNotEmpty) {
+        _s._cacheProviderSources(pid, playable);
+        _s._markProviderLoadSucceeded(pid);
+      }
+      setState(() {
+        if (pid.isNotEmpty) _s._currentProvider = pid;
+        _s._currentSources = playable;
+        _s._currentUrl = playable.first.url;
+        _s._currentPlayingCatalogUrl = playable.first.url;
+        _s._currentFallbackSourceIndex = 0;
+        _s._failedSourceIndices.clear();
+        _s._checkingSourceIndices.clear();
+        _s._hasError = false;
+        _s._errorMessage = '';
+      });
+      return _trySourcesFromIndex(
+        0,
+        chainGen: chainGen,
+        seekAfterOpen: seekAfterOpen,
+      );
+    }
+
+    if (providers == null || providers.isEmpty) {
+      _s._statusController.complete();
+      return false;
+    }
+
     final hit = await PlayerSourceResolve.resolveAutoForMovie(
       movie: movie,
       providers: providers,
-      season: widget.selectedSeason ?? 1,
-      episode: widget.selectedEpisode ?? 1,
+      season: season,
+      episode: episode,
       isCancelled: () => _fallbackAborted(chainGen),
       onProgress: (providerId, status) {
         if (_fallbackAborted(chainGen)) return;

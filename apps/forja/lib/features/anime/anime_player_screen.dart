@@ -719,6 +719,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           '(${ranked.length} streams)',
         );
       }
+      // Same as movie dead-cache recovery: Source panel needs the full server
+      // list even when we resume from a cached stream URL.
+      await _ensureEmbedsReady();
+      if (!mounted || _cancelled) return;
       _setPhase('Starting…');
       _setStatusLine('Resuming stream');
       _launchedFromSavedOrCache = true;
@@ -729,7 +733,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         await _handleStaleSavedStreams();
         return;
       }
-      await _launchPlayer(ranked, usedSavedSource: true, fromSessionCache: true);
+      // Do not pass usedSavedSource:true — that pins the stream and blocks
+      // Auto dead-cache re-resolve (movie I43). Session cache is resume, not pin.
+      await _launchPlayer(ranked, fromSessionCache: true);
       return;
     }
 
@@ -1001,18 +1007,22 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     // Keep filling remaining embeds after early launch.
     _playerLaunched = true;
 
-    _AnimeStreamSessionCache.write(
-      widget.anime.id,
-      widget.episodeNumber,
-      _category,
-      hits,
-    );
-    unawaited(_service.cacheResolvedStreamsJson(
-      animeId: widget.anime.id,
-      episode: widget.episodeNumber,
-      category: _category,
-      hits: _hitsToJson(hits),
-    ));
+    // Do not re-stamp session/disk cache on cache resume — a dead URL would
+    // overwrite a drop and poison the next Play. Fresh resolves still cache.
+    if (!fromSessionCache) {
+      _AnimeStreamSessionCache.write(
+        widget.anime.id,
+        widget.episodeNumber,
+        _category,
+        hits,
+      );
+      unawaited(_service.cacheResolvedStreamsJson(
+        animeId: widget.anime.id,
+        episode: widget.episodeNumber,
+        category: _category,
+        hits: _hitsToJson(hits),
+      ));
+    }
 
     final winner = hits.first;
     await _service.recordWatch(
@@ -1022,7 +1032,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
 
     final pinSource = usedSavedSource ||
-        (_preferredSourceKey != null &&
+        (!fromSessionCache &&
+            _preferredSourceKey != null &&
             winner.embed.sourceKey == _preferredSourceKey);
 
     final urlKeys = urlToSourceKey ??
@@ -1186,14 +1197,21 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       },
       onAllSourcesExhausted: () {
         if (mounted) _fadeOutNotifier.value = false;
+        unawaited(_dropAllStreamCaches());
         if (navigator.canPop()) navigator.pop();
       },
-      onReloadStreams: () => reloadAnimeEpisodeStreams(
-        service: _service,
-        allEmbeds: List<AnimeEmbed>.from(_allEmbeds),
-        category: _category,
-        providerOrder: _providerOrder,
-      ),
+      onReloadStreams: () async {
+        await _dropAllStreamCaches();
+        await _ensureEmbedsReady();
+        if (!mounted || _cancelled) return null;
+        return reloadAnimeEpisodeStreams(
+          service: _service,
+          allEmbeds: List<AnimeEmbed>.from(_allEmbeds),
+          category: _category,
+          providerOrder: _providerOrder,
+          hubMovie: _hubMovieFromAnime(widget.anime),
+        );
+      },
     );
     await Future.any<void>([
       Future<void>.delayed(loadingOverlayFadeOutDuration),
@@ -1205,6 +1223,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       navigator.removeRoute(resolverRoute);
     }
     await playerFuture;
+    // Cache resume that never confirmed playback left a dead URL on disk —
+    // drop so the next Play re-resolves like green Play (movie I43).
+    if (_launchedFromSavedOrCache) {
+      await _dropAllStreamCaches();
+      _launchedFromSavedOrCache = false;
+    }
     sourcesListNotifier?.dispose();
     liveProbeNotifier.dispose();
     if (ownsProviderCache) {
