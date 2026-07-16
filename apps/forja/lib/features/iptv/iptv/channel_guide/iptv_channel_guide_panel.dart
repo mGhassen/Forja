@@ -34,8 +34,8 @@ class IptvChannelGuidePanel extends StatefulWidget {
   final VoidCallback onClose;
 
   static const double wideBreakpoint = 700;
-  static const double panelWidthWide = 480;
-  static const double panelWidthNarrow = 300;
+  static const double panelWidthWide = 580;
+  static const double panelWidthNarrow = 340;
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
 
@@ -595,8 +595,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
               child: Row(
                 children: [
-                  _ChannelLogo(url: playing.logoUrl ?? '', size: 26),
-                  const SizedBox(width: 8),
+                  _ChannelLogo(url: playing.logoUrl ?? '', size: 32),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,7 +636,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 5,
+          flex: 6,
           child: _frostedColumn(
             tint: _groupsTint,
             elevated: false,
@@ -644,7 +644,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           ),
         ),
         Expanded(
-          flex: 7,
+          flex: 8,
           child: _frostedColumn(
             tint: _channelsTint,
             elevated: true,
@@ -766,7 +766,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
                           color: selected ? Colors.white : Colors.white60,
-                          fontSize: 12,
+                          fontSize: 13.5,
                           fontWeight: selected || focused
                               ? FontWeight.w700
                               : FontWeight.w400,
@@ -908,7 +908,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: fill,
             border: Border(
@@ -920,7 +920,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 34),
+                  _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 44),
                   if (widget.health != null)
                     Positioned(
                       top: -2,
@@ -936,7 +936,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                     ),
                 ],
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.channel.name,
@@ -944,7 +944,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: active || focused ? Colors.white : Colors.white70,
-                    fontSize: 13,
+                    fontSize: 14.5,
                     fontWeight:
                         active || focused ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -969,13 +969,20 @@ class _ChannelLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
       child: Image.network(
         url,
         width: size,
         height: size,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         errorBuilder: (_, _, _) => _placeholder(),
         loadingBuilder: (ctx, child, prog) {
           if (prog == null) return child;

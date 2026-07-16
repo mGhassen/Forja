@@ -80,9 +80,10 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
       context,
       player: _s._player!,
       anchorContext: anchorContext,
+      alignment: Alignment.topRight,
       margin: EdgeInsets.only(
-        left: 16,
-        bottom: MediaQuery.paddingOf(context).bottom + 88,
+        top: MediaQuery.paddingOf(context).top + 56,
+        right: 16,
       ),
       snapshot: () => IptvPlayerStatsSnapshot(
         playing: _s._playing,
@@ -201,10 +202,12 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               : SystemMouseCursors.none,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: _toggleControls,
+            onTap: _s._isPipMode ? null : _toggleControls,
             // Double-click / double-tap video → toggle fullscreen (same as films).
             onDoubleTap: () {
-              if (_s._guideVisible || _s._searchVisible) return;
+              if (_s._isPipMode || _s._guideVisible || _s._searchVisible) {
+                return;
+              }
               unawaited(_s._toggleFullscreen());
             },
             child: Stack(
@@ -223,28 +226,36 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                           controls: NoVideoControls,
                         ),
                 ),
-                // Reconnect/buffering banner
-                if (_s._buffering || _s._statusBanner != null) _buildBanner(),
-                // Top bar + bottom controls (below guide when open)
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: _s._controlsVisible ? 1 : 0,
-                  child: ExcludeFocus(
-                    excluding:
-                        iptvUseTvFocus(context) &&
-                        (!_s._controlsVisible ||
+                // Reconnect/buffering banner — hidden in PiP
+                if (!_s._isPipMode &&
+                    (_s._buffering || _s._statusBanner != null))
+                  _buildBanner(),
+                // Top bar + bottom controls (below guide when open).
+                // Hidden entirely while PiP is active — replaced by the
+                // floating revert button below on desktop.
+                if (!_s._isPipMode)
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _s._controlsVisible ? 1 : 0,
+                    child: ExcludeFocus(
+                      excluding:
+                          iptvUseTvFocus(context) &&
+                          (!_s._controlsVisible ||
+                              _s._guideVisible ||
+                              _s._searchVisible),
+                      child: IgnorePointer(
+                        ignoring:
+                            !_s._controlsVisible ||
                             _s._guideVisible ||
-                            _s._searchVisible),
-                    child: IgnorePointer(
-                      ignoring:
-                          !_s._controlsVisible ||
-                          _s._guideVisible ||
-                          _s._searchVisible,
-                      child: _buildOverlay(compact),
+                            _s._searchVisible,
+                        child: _buildOverlay(compact),
+                      ),
                     ),
                   ),
-                ),
-                if (_s._searchVisible && widget.channelGuide != null)
+                if (_s._isPipMode) _buildPipRevertOverlay(),
+                if (!_s._isPipMode &&
+                    _s._searchVisible &&
+                    widget.channelGuide != null)
                   IptvChannelSearchOverlay(
                     guide: widget.channelGuide!,
                     currentChannelId: _s._currentChannelId,
@@ -254,7 +265,9 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                       _scheduleHideControls();
                     }),
                   ),
-                if (_s._guideVisible && widget.channelGuide != null)
+                if (!_s._isPipMode &&
+                    _s._guideVisible &&
+                    widget.channelGuide != null)
                   IptvChannelGuidePanel(
                     guide: widget.channelGuide!,
                     selectedGroupId: _s._selectedGroupId,
@@ -265,7 +278,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                     onChannelSelected: _s._switchChannel,
                     onClose: () => setState(() => _s._guideVisible = false),
                   ),
-                if (epgFuture != null)
+                if (!_s._isPipMode && epgFuture != null)
                   Positioned(
                     right: 16,
                     bottom: _floatingEpgBottomInset(context, compact),
@@ -377,71 +390,287 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   double _topBarLeftPadding(BuildContext context) => 8;
 
+  /// Floating revert button shown only while desktop PiP is active.
+  /// Transparent hover region across the whole window; the button itself
+  /// fades in only when the cursor is over the PiP, so the picture stays
+  /// clean otherwise. Click exits PiP and restores the window chrome.
+  Widget _buildPipRevertOverlay() {
+    return MouseRegion(
+      opaque: false,
+      onEnter: (_) {
+        if (mounted && !_s._pipHover) setState(() => _s._pipHover = true);
+      },
+      onExit: (_) {
+        if (mounted && _s._pipHover) setState(() => _s._pipHover = false);
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const Positioned.fill(
+            child: DragToMoveArea(child: SizedBox.expand()),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: AnimatedOpacity(
+              opacity: _s._pipHover ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 180),
+              child: IgnorePointer(
+                ignoring: !_s._pipHover,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      await PipService.instance.leave();
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.picture_in_picture_alt_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _togglePip() async {
+    await PipService.instance.toggle();
+    if (!mounted) return;
+    setState(() {});
+    _scheduleHideControls();
+  }
+
+  BuiltInPlayerEngine get _builtInEngine => _s._exoBackend
+      ? BuiltInPlayerEngine.exoPlayer
+      : BuiltInPlayerEngine.mediaKit;
+
+  Future<void> _showPlayerMenu(BuildContext anchorContext) async {
+    _scheduleHideControls();
+    if (!anchorContext.mounted) return;
+    PlayerAppMenu.show(
+      context,
+      anchorContext: anchorContext,
+      usingBuiltIn: true,
+      builtInEngine: _builtInEngine,
+      onSelect: ({builtInEngine, externalPlayer}) async {
+        if (externalPlayer == null) return;
+        final url = _s._sources[_s._sourceIdx].url;
+        if (url.isEmpty) return;
+        _s._userPlayWhenReady = false;
+        await _s._enginePause();
+        if (!mounted) return;
+        final ok = await ExternalPlayerService.launch(
+          url: url,
+          title: _s._title,
+          headers: const {'User-Agent': _IptvPtPlayerScreenState._ua},
+          context: context,
+          playerName: externalPlayer,
+        );
+        if (!mounted) return;
+        if (!ok) {
+          ForjaToast.warning('$externalPlayer not found.');
+          _s._userPlayWhenReady = true;
+          await _s._enginePlay();
+        }
+      },
+    );
+  }
+
+  /// Flat top-bar action — same chrome as the movie player (`PlayerFlatIconButton`),
+  /// with IPTV D-pad row hooks when on TV.
+  Widget _topBarFlatAction({
+    required IconData icon,
+    required String tooltip,
+    required int tvItemIndex,
+    VoidCallback? onPressed,
+    ValueChanged<BuildContext>? onPressedWithContext,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+    VoidCallback? onDownEdge,
+  }) {
+    assert(onPressed != null || onPressedWithContext != null);
+    const topRowId = 'iptv-player-top';
+    if (iptvUseTvFocus(context)) {
+      return Builder(
+        builder: (btnCtx) => iptvTap(
+          context: context,
+          onTap: () {
+            if (onPressedWithContext != null) {
+              onPressedWithContext(btnCtx);
+            } else {
+              onPressed!();
+            }
+          },
+          borderRadius: 22,
+          tvRowId: topRowId,
+          tvItemIndex: tvItemIndex,
+          onLeftEdge: onLeftEdge,
+          onRightEdge: onRightEdge,
+          onDownEdge: onDownEdge,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icon, color: Colors.white70, size: 22),
+          ),
+        ),
+      );
+    }
+    return PlayerFlatIconButton(
+      icon: icon,
+      tooltip: tooltip,
+      size: 44,
+      onPressed: onPressed,
+      onPressedWithContext: onPressedWithContext,
+    );
+  }
+
   Widget _buildTopBar(bool compact) {
     const topRowId = 'iptv-player-top';
-    final topCount = _s._sources.length > 1 ? 2 : 1;
+    final showPip = PipService.instance.isSupported;
+    final showStats = !_s._exoBackend;
+    final hasSources = _s._sources.length > 1;
+    var next = 0;
+    final backIdx = next++;
+    final sourceIdx = hasSources ? next++ : null;
+    final playerIdx = next++;
+    final statsIdx = showStats ? next++ : null;
+    final pipIdx = showPip ? next++ : null;
+    final topCount = next;
     iptvSyncRow(rowId: topRowId, sortOrder: 0, itemCount: topCount);
+
+    void downToControls() => iptvFocusRowItem('iptv-player-controls', 0);
+    int afterPlayerIdx() {
+      if (statsIdx != null) return statsIdx;
+      if (pipIdx != null) return pipIdx;
+      return playerIdx;
+    }
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         _topBarLeftPadding(context),
         _topBarTopPadding(context),
-        16,
+        8,
         0,
       ),
-      child: Row(
-        children: [
-          iptvBackButton(
-            context,
-            onTap: () => Navigator.of(context).maybePop(),
-            color: Colors.white,
-            size: 26,
-            tvRowId: topRowId,
-            tvItemIndex: 0,
-            onDownEdge: () => iptvFocusRowItem('iptv-player-controls', 0),
-            onRightEdge: topCount > 1
-                ? () => iptvFocusRowItem(topRowId, 1)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            fit: FlexFit.loose,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _s._title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: IptvShellStyle.overlayTitle.copyWith(
-                    fontSize: compact ? 18 : 22,
-                  ),
-                ),
-                if ((_s._subtitle ?? '').isNotEmpty)
+      child: SizedBox(
+        height: 44,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            iptvBackButton(
+              context,
+              onTap: () => Navigator.of(context).maybePop(),
+              color: Colors.white,
+              size: 22,
+              tvRowId: topRowId,
+              tvItemIndex: backIdx,
+              onDownEdge: downToControls,
+              onRightEdge: topCount > 1
+                  ? () => iptvFocusRowItem(topRowId, 1)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    _s._subtitle!,
+                    _s._title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white70,
-                      fontSize: 12,
+                    style: IptvShellStyle.overlayTitle.copyWith(
+                      fontSize: compact ? 16 : 18,
                     ),
                   ),
-              ],
+                  if ((_s._subtitle ?? '').isNotEmpty)
+                    Text(
+                      _s._subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (_s._sources.length > 1) ...[
-            const Spacer(),
-            _SourceChip(
-              label: _s._sources[_s._sourceIdx].label,
-              onTap: _showSourcePicker,
-              tvRowId: topRowId,
-              tvItemIndex: 1,
-              onDownEdge: () => iptvFocusRowItem('iptv-player-controls', 0),
-              onLeftEdge: () => iptvFocusRowItem(topRowId, 0),
+            if (hasSources) ...[
+              const SizedBox(width: 8),
+              _SourceChip(
+                label: _s._sources[_s._sourceIdx].label,
+                onTap: _showSourcePicker,
+                tvRowId: topRowId,
+                tvItemIndex: sourceIdx!,
+                onDownEdge: downToControls,
+                onLeftEdge: () => iptvFocusRowItem(topRowId, backIdx),
+                onRightEdge: () => iptvFocusRowItem(topRowId, playerIdx),
+              ),
+            ],
+            const SizedBox(width: 4),
+            _topBarFlatAction(
+              icon: Icons.smart_display_outlined,
+              tooltip: 'Player',
+              tvItemIndex: playerIdx,
+              onPressedWithContext: (ctx) => unawaited(_showPlayerMenu(ctx)),
+              onDownEdge: downToControls,
+              onLeftEdge: () => iptvFocusRowItem(
+                topRowId,
+                sourceIdx ?? backIdx,
+              ),
+              onRightEdge: afterPlayerIdx() != playerIdx
+                  ? () => iptvFocusRowItem(topRowId, afterPlayerIdx())
+                  : null,
             ),
+            if (showStats)
+              _topBarFlatAction(
+                icon: Icons.monitor_heart_outlined,
+                tooltip: 'Stream stats',
+                tvItemIndex: statsIdx!,
+                onPressedWithContext: _showStatsMenu,
+                onDownEdge: downToControls,
+                onLeftEdge: () => iptvFocusRowItem(topRowId, playerIdx),
+                onRightEdge: pipIdx != null
+                    ? () => iptvFocusRowItem(topRowId, pipIdx)
+                    : null,
+              ),
+            if (showPip)
+              _topBarFlatAction(
+                icon: PipService.instance.isDesktopActive
+                    ? Icons.picture_in_picture_alt_rounded
+                    : Icons.picture_in_picture_rounded,
+                tooltip: 'Picture in Picture',
+                tvItemIndex: pipIdx!,
+                onPressed: () => unawaited(_togglePip()),
+                onDownEdge: downToControls,
+                onLeftEdge: () => iptvFocusRowItem(
+                  topRowId,
+                  statsIdx ?? playerIdx,
+                ),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -562,8 +791,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     const rowId = 'iptv-player-controls';
     final expectedCount =
         3 // play, replay, mute
-        +
-        (_s._exoBackend ? 0 : 1) // stats
         +
         (widget.channelGuide != null ? 2 : 0) +
         (_s._sources.length > 1 ? 1 : 0) +
@@ -689,17 +916,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               ],
             ),
           ),
-          if (!_s._exoBackend) ...[
-            const SizedBox(width: 14),
-            Builder(
-              builder: (btnCtx) => IptvRoundIcon(
-                icon: Icons.monitor_heart_outlined,
-                tvRowId: rowId,
-                tvItemIndex: i++,
-                onTap: () => _showStatsMenu(btnCtx),
-              ),
-            ),
-          ],
           const Spacer(),
           if (widget.channelGuide != null) ...[
             IptvRoundIcon(

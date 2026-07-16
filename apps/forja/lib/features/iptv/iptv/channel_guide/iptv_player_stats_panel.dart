@@ -30,7 +30,8 @@ class IptvPlayerStatsPanel {
     required Player player,
     required IptvPlayerStatsSnapshot Function() snapshot,
     BuildContext? anchorContext,
-    EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
+    Alignment alignment = Alignment.topRight,
+    EdgeInsets margin = const EdgeInsets.only(top: 72, right: 16),
   }) {
     PlayerPopupPanel.show(
       context: context,
@@ -38,7 +39,7 @@ class IptvPlayerStatsPanel {
       leadingIcon: Icons.monitor_heart_outlined,
       width: 320,
       maxHeight: 440,
-      alignment: Alignment.bottomLeft,
+      alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
       child: _IptvStatsBody(

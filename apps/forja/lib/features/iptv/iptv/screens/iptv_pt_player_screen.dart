@@ -11,6 +11,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/shared/services/external_player_service.dart';
+import 'package:forja/shared/services/pip_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
@@ -21,6 +23,8 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
@@ -183,6 +187,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+  // Picture-in-picture (same PipService as the movie player)
+  bool _isPipMode = false;
+  bool _pipHover = false;
+  StreamSubscription<bool>? _pipSub;
+
   // Retry state
   int _retryAttempt = 0;
   DateTime? _lastRecoveryAt;
@@ -255,6 +264,28 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     }
     _initOrientationAndChrome();
     WakelockPlus.enable();
+    void onPipChanged(bool inPip) {
+      if (_disposed || !mounted) return;
+      setState(() {
+        _isPipMode = inPip;
+        if (inPip) {
+          _controlsVisible = false;
+          _guideVisible = false;
+          _searchVisible = false;
+          _hideControlsTimer?.cancel();
+        }
+      });
+      if (inPip && !_playing) {
+        _userPlayWhenReady = true;
+        unawaited(_enginePlay());
+      }
+    }
+
+    if (!kIsWeb && Platform.isAndroid) {
+      _pipSub = PipService.instance.androidPipChanges.listen(onPipChanged);
+    } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
+      _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
+    }
     if (_exoBackend) {
       unawaited(_bootExoPlayer());
     } else {
@@ -270,6 +301,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       _onIptvEpgPrefChanged,
     );
     WidgetsBinding.instance.removeObserver(this);
+    _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
@@ -280,8 +312,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     if (_isDesktop) {
       // Restore a normal (non-fullscreen, non-maximized) window when leaving.
+      // If we tear down while in PiP, restore window chrome so the next
+      // screen is not stuck in a frameless always-on-top box.
       Future.microtask(() async {
         try {
+          if (PipService.instance.isDesktopActive) {
+            await PipService.instance.leave();
+          }
           if (await windowManager.isFullScreen()) {
             await windowManager.setFullScreen(false);
           }
