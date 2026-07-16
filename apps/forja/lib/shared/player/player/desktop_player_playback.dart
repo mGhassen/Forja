@@ -172,7 +172,10 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         final needsDuration = sourceExpectsDuration(openUrl, type: source.type);
         final decoded =
             !sourceRequiresVideoDecode(openUrl, type: source.type) ||
-            await waitForVideoDecode(_s._player);
+            await waitForVideoDecode(
+              _s._player,
+              timeout: videoDecodeTimeoutForUrl(openUrl),
+            );
         if (_fallbackAborted(runGen)) return false;
         if (!decoded) {
           debugPrint('[Player] Source $i opened without video: $openUrl');
@@ -219,7 +222,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         setState(() {
           _s._currentUrl = openUrl;
           _s._currentPlayingCatalogUrl = source.url;
-          _s._playbackConfirmed = true;
+          _s._markPlaybackConfirmed(true);
         });
         _s._statusController.complete();
         _s._markSourceActive(i);
@@ -253,7 +256,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
     }
     _s._isInitPlaybackRunning = true;
     final initGen = _s._fallbackGen;
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
 
     try {
       setState(() {
@@ -430,7 +433,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
               throw Exception('Failed to open media');
             }
             _s._detectHlsQualities(openedUrl, widget.headers);
-            _s._playbackConfirmed = true;
+            _s._markPlaybackConfirmed(true);
             _s._syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
             return;
@@ -963,7 +966,7 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         debugPrint('[Player] Ignoring open error — probe handles open failure');
         return;
       }
-      _s._playbackConfirmed = false;
+      _s._markPlaybackConfirmed(false);
       final idx = _s._currentFallbackSourceIndex;
       _s._markSourceFailed(idx);
       final pid = _s._currentProvider;
@@ -987,7 +990,14 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
     _s._completedSub = _s._player.stream.completed.listen((completed) {
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
-      if (isNaturalPlaybackEnd(_s._player.state)) {
+      final confirmedAt = _s._playbackConfirmedAt;
+      final confirmedFor = confirmedAt == null
+          ? Duration.zero
+          : DateTime.now().difference(confirmedAt);
+      if (isNaturalPlaybackEnd(
+        _s._player.state,
+        confirmedFor: confirmedFor,
+      )) {
         debugPrint('✅ Playback completed');
         final autoNext = SettingsService.autoNextEpisodeNotifier.value;
         if (autoNext &&
@@ -1000,6 +1010,10 @@ mixin _DesktopPlayerPlayback on State<DesktopPlayerScreen>, WidgetsBindingObserv
         }
         return;
       }
+      debugPrint(
+        '[Player] Ignoring abortive completed '
+        '(confirmedFor=${confirmedFor.inSeconds}s)',
+      );
       if (mounted) setState(() => _s._showControls = true);
     });
 

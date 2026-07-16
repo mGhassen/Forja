@@ -14,7 +14,7 @@ Tap **Anime Arabic** in the navigation bar.
 
 - Browse featured and continue watching
 - Search Arabic anime catalog
-- Open series details and episode list
+- Open series details and episode list — tap an episode to select it; **Play** / **Resume** starts that episode
 - Play episodes in the Arabic anime player
 - Resume from per-series history
 - Hover a continue watching card (desktop) to scale it and show a brand-green play button

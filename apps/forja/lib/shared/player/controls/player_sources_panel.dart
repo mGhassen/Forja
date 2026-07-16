@@ -342,11 +342,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final hasStremio = stremioOn && addons.isNotEmpty;
     final hasTorrent = torrentOn;
     final hasNuvio = torrentOn && nuvioAddons.isNotEmpty;
-    final nuvioScraperIds = <String>{
-      for (final a in nuvioAddons)
-        for (final s in a.scrapers)
-          if (s.enabled) s.id,
-    };
     final kind = _resolveInitialKind(
       hasTorrent: hasTorrent,
       hasStremio: hasStremio,
@@ -362,7 +357,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _showStremio = hasStremio;
       _showNuvio = hasNuvio;
       _nuvioAddons = nuvioAddons;
-      _nuvioSelectedScraperIds = nuvioScraperIds;
+      // Filters → Providers starts empty; user picks scrapers.
+      _nuvioSelectedScraperIds = {};
       _streamAddons = addons;
       _kindFilter = kind;
       _selectedSourceId = kind == 'stremio'
@@ -546,15 +542,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       setState(() {
         _kindFilter = kind;
         _selectedSourceId = _sourceIdForKind(kind, _streamAddons);
-        if (kind == 'nuvio') {
-          if (_nuvioSelectedScraperIds.isEmpty) {
-            _nuvioSelectedScraperIds = {
-              for (final a in _nuvioAddons)
-                for (final s in a.scrapers)
-                  if (s.enabled) s.id,
-            };
-          }
-        }
       });
       _requestScrollToCurrent();
     }
@@ -954,11 +941,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         _selectedSourceId = _defaultStremioSourceId();
       } else if (kind == 'nuvio') {
         _selectedSourceId = 'all_nuvio';
-        _nuvioSelectedScraperIds = {
-          for (final a in _nuvioAddons)
-            for (final s in a.scrapers)
-              if (s.enabled) s.id,
-        };
       } else if (kind == 'torrents') {
         _selectedSourceId = 'forja';
       }

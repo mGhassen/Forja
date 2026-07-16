@@ -93,7 +93,7 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
     NuvioService.instance.cancelPending();
     DomainStreamProviderResolver.cancelAllPending();
     _s._statusController.clear();
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
 
     final currentPos = _s._positionNotifier.value;
     final provider = widget.providers![newProvider];
@@ -171,7 +171,7 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
           _s._errorMessage = '';
-          _s._playbackConfirmed = true;
+          _s._markPlaybackConfirmed(true);
           if (newProvider == 'service111477' &&
               _s._currentSources != null &&
               _s._currentSources!.isNotEmpty) {

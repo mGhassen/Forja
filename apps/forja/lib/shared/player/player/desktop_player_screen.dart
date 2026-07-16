@@ -272,7 +272,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
   bool _playbackConfirmed = false;
+  DateTime? _playbackConfirmedAt;
   late final Future<void> _playableSourcesReady;
+
+  void _markPlaybackConfirmed(bool confirmed) {
+    _playbackConfirmed = confirmed;
+    _playbackConfirmedAt = confirmed ? DateTime.now() : null;
+  }
 
   // ── Feature State ────────────────────────────────────────────────────────
   _HwDecMode _hwDecMode = _HwDecMode.autoSafe;

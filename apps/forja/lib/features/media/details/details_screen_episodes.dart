@@ -36,77 +36,21 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
   }
   void _highlightEpisode(int episode) {
     if (_s._selectedEpisode == episode) return;
-    setState(() => _s._selectedEpisode = episode);
-    if (_s._sourcesPanelOpen) {
-      _refreshSourcesForEpisode();
-    } else {
-      _s._invalidatePanelSourceCache();
-    }
-  }
-  void _openTorrentPanelForEpisode({bool preselectHistory = false}) {
-    setState(() {
-      _s._sourcesPanelOpen = true;
-      _s._episodePlayPending = false;
-      if (preselectHistory) {
-        _s._applyPanelFilterForSavedMethod('torrent');
-      }
-      if (_s._panelShowTorrent) _s._selectedSourceId = 'forja';
-    });
-    _refreshSourcesForEpisode();
-  }
-
-  Future<void> _onEpisodeSelected(int episode) async {
     setState(() {
       _s._selectedEpisode = episode;
       _s._webstreamingStreams = [];
       _s._webstreamingActiveProviderId = null;
       _s._syncSelectedSourceToPlaySources();
     });
+    if (_s._sourcesPanelOpen) {
+      _refreshSourcesForEpisode();
+    } else {
+      _s._invalidatePanelSourceCache();
+    }
+  }
+  Future<void> _onEpisodeSelected(int episode) async {
+    _highlightEpisode(episode);
     await _s._checkHistory();
-    if (!mounted) return;
-
-    final progress = _s._lastProgress;
-    final savedPlayback = hasSavedEpisodePlayback(progress);
-    final stale = savedPlayback && isStaleResume(progress);
-    final savedMethod = progress?['method'] as String?;
-
-    if (stale) {
-      if (savedMethod == 'torrent' && _s._hasPanelPlaySources) {
-        setState(() {
-          _s._sourcesPanelOpen = true;
-          _s._episodePlayPending = false;
-          _s._applyPanelFilterForSavedMethod(savedMethod);
-        });
-        _refreshSourcesForEpisode();
-      }
-      return;
-    }
-
-    if (savedPlayback && progress != null) {
-      if (savedMethod == 'torrent' &&
-          _s._playSourceTorrent &&
-          _s._hasPanelPlaySources) {
-        _openTorrentPanelForEpisode(preselectHistory: true);
-        return;
-      }
-
-      if (_s._isDirectStreamingSavedMethod(savedMethod)) {
-        await _s._hydrateWebstreamingFromCache();
-        if (!mounted) return;
-        await _s._tryDirectEpisodeResumeFromHistory(progress);
-        return;
-      }
-    }
-
-    // Never played — webstreaming auto-play only; never auto-launch torrent.
-    if (_s._playSourceWebstreaming) {
-      unawaited(_s._startWebstreamingOnlyPlayback());
-      return;
-    }
-
-    if (_s._hasPanelPlaySources) {
-      _openTorrentPanelForEpisode();
-    }
   }
   void _onSeasonSelected(int season) {
     if (widget.stremioItem != null &&

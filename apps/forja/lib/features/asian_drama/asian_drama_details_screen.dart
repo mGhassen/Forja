@@ -158,24 +158,18 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     ).then((_) => _refreshProgress());
   }
 
-  void _playFirst() {
+  void _playSelected() {
     final det = _details;
     if (det == null || det.episodes.isEmpty) return;
-    _play(det.episodes.first);
-  }
-
-  void _resume() {
-    final det = _details;
-    final p = _progress;
-    if (det == null || p == null) return;
-    final epNum = (p['episodeNumber'] as num?)?.toDouble() ?? 1.0;
-    final epId = (p['episodeId'] as num?)?.toInt();
-    final ep = det.episodeForResume(
-      episodeNumber: epNum,
-      episodeId: epId,
-    );
+    final ep = _episodeLookup(det)[_selectedEpisode];
     if (ep == null) return;
-    _play(ep, startPosition: KissKhService.startPositionFromHistory(p));
+    final p = _progress;
+    final resumeEp = (p?['episodeNumber'] as num?)?.toInt();
+    if (p != null && resumeEp == _selectedEpisode) {
+      _play(ep, startPosition: KissKhService.startPositionFromHistory(p));
+      return;
+    }
+    _play(ep);
   }
 
   Future<void> _clearProgress() async {
@@ -283,11 +277,16 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
 
   Widget _buildScrollLayout() {
     final det = _details!;
-    final hasResume = _progress != null;
+    final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
+    final canResumeSelected =
+        _progress != null && resumeEp == _selectedEpisode;
     final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
-    final posMs = (_progress?['positionMs'] as num?)?.toInt();
-    final durMs = (_progress?['durationMs'] as num?)?.toInt();
-    final lookup = _episodeLookup(det);
+    final posMs = canResumeSelected
+        ? (_progress?['positionMs'] as num?)?.toInt()
+        : null;
+    final durMs = canResumeSelected
+        ? (_progress?['durationMs'] as num?)?.toInt()
+        : null;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 
@@ -321,8 +320,6 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               onSeasonSelected: (_) {},
               onEpisodeSelected: (ep) {
                 setState(() => _selectedEpisode = ep);
-                final match = lookup[ep];
-                if (match != null) _play(match);
               },
               onToggleWatched: (_, _) {},
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
@@ -361,20 +358,22 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             durationMs: durMs,
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
-              itemCount: hasResume ? 2 : 1,
+              itemCount: _progress != null ? 2 : 1,
               onFocusUp: heroPopUp,
               child: Row(
                 children: [
                   HubDetailsPlayRow(
-                    label: hasResume ? 'Resume' : 'Play',
+                    label: canResumeSelected
+                        ? 'Resume'
+                        : 'Play Ep $_selectedEpisode',
                     enabled: det.episodes.isNotEmpty,
-                    onPlay: hasResume ? _resume : _playFirst,
+                    onPlay: _playSelected,
                     focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                     onUpEdge: heroPopUp,
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvItemIndex: 0,
                   ),
-                  if (hasResume) ...[
+                  if (_progress != null) ...[
                     const SizedBox(width: 10),
                     HeroPillIconGroup(
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,

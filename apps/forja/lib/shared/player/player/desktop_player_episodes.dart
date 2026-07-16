@@ -546,7 +546,7 @@ mixin _DesktopPlayerEpisodes
     final switchGen = ++_s._fallbackGen;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-stremio-${stream.hashCode}';
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(
       statusId,
       title,
@@ -623,7 +623,7 @@ mixin _DesktopPlayerEpisodes
             (base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio';
         _s._currentProvider = 'stremio_direct';
       });
-      _s._playbackConfirmed = true;
+      _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();
       _s._onMouseMove();
@@ -644,7 +644,7 @@ mixin _DesktopPlayerEpisodes
     final switchGen = ++_s._fallbackGen;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-torrent-${result.magnet.hashCode}';
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(
       statusId,
       result.name,
@@ -713,7 +713,7 @@ mixin _DesktopPlayerEpisodes
         _s._catalogAddonBaseUrl = null;
         _s._currentProvider = 'torrent';
       });
-      _s._playbackConfirmed = true;
+      _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();
       _s._onMouseMove();
@@ -1158,7 +1158,7 @@ mixin _DesktopPlayerEpisodes
     NuvioService.instance.cancelPending();
     DomainStreamProviderResolver.cancelAllPending();
     _s._statusController.clear();
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
 
     final currentPos = _s._positionNotifier.value;
     final provider = widget.providers![newProvider];
@@ -1236,7 +1236,7 @@ mixin _DesktopPlayerEpisodes
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
           _s._errorMessage = '';
-          _s._playbackConfirmed = true;
+          _s._markPlaybackConfirmed(true);
           if (newProvider == 'service111477' &&
               _s._currentSources != null &&
               _s._currentSources!.isNotEmpty) {

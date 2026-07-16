@@ -680,7 +680,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       NuvioService.instance.cancelPending();
       DomainStreamProviderResolver.cancelAllPending();
       _s._statusController.clear();
-      _s._playbackConfirmed = false;
+      _s._markPlaybackConfirmed(false);
 
       _s._autoTracksAppliedForSource = false;
       _s._durationNotifier.value = Duration.zero;
@@ -725,7 +725,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         position: _s._positionNotifier,
         buffered: _s._bufferedNotifier,
       );
-      _s._playbackConfirmed = true;
+      _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
       _markSourceActive(index);
       _syncPanelAfterPlaybackConfirmed();

@@ -436,9 +436,21 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
 
   void _saveWatchHistory({bool isBgPause = false}) {
     if (_s._historySaved && !isBgPause) return;
-    _s._historySaved = true;
     final pos = _s._positionNotifier.value.inMilliseconds;
     final dur = _s._durationNotifier.value.inMilliseconds;
+
+    if (!shouldPersistWatchProgress(
+      positionMs: pos,
+      durationMs: dur,
+      confirmedAt: _s._playbackConfirmedAt,
+    )) {
+      debugPrint(
+        '[WatchHistory] Skip early-EOF near-end progress '
+        '(pos=${pos}ms dur=${dur}ms)',
+      );
+      return;
+    }
+    _s._historySaved = true;
 
     if (widget.onSaveProgress != null && pos > 5000) {
       widget.onSaveProgress!(

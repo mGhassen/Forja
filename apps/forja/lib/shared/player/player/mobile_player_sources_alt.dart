@@ -28,7 +28,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
     final switchGen = ++_s._fallbackGen;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-stremio-${stream.hashCode}';
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(statusId, title, kind: StatusRouletteKind.loading);
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
@@ -101,7 +101,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
             (base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio';
         _s._currentProvider = 'stremio_direct';
       });
-      _s._playbackConfirmed = true;
+      _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();
       _s._startHideTimer();
@@ -121,7 +121,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
     final switchGen = ++_s._fallbackGen;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-torrent-${result.magnet.hashCode}';
-    _s._playbackConfirmed = false;
+    _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(
       statusId,
       result.name,
@@ -190,7 +190,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
         _s._catalogAddonBaseUrl = null;
         _s._currentProvider = 'torrent';
       });
-      _s._playbackConfirmed = true;
+      _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();
       _s._startHideTimer();

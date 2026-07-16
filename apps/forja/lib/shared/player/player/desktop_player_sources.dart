@@ -681,7 +681,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       NuvioService.instance.cancelPending();
       DomainStreamProviderResolver.cancelAllPending();
       _s._statusController.clear();
-      _s._playbackConfirmed = false;
+      _s._markPlaybackConfirmed(false);
 
       // Validated — stop the prior stream before opening the new one.
       _s._autoTracksAppliedForSource = false;
@@ -727,7 +727,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
         position: _s._positionNotifier,
         buffered: _s._bufferedNotifier,
       );
-      _s._playbackConfirmed = true;
+      _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
       _markSourceActive(index);
       _syncPanelAfterPlaybackConfirmed();

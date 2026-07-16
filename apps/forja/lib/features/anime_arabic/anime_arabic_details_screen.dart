@@ -110,6 +110,18 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
     ).then((_) => _onHistoryChanged());
   }
 
+  void _playSelected(ArabicAnimeDetails a) {
+    ArabicEpisode? ep;
+    for (final e in a.episodes) {
+      if (e.number == _selectedEpisode) {
+        ep = e;
+        break;
+      }
+    }
+    if (ep == null) return;
+    _play(ep);
+  }
+
   // ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -268,8 +280,6 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                       onSeasonSelected: (_) {},
                       onEpisodeSelected: (ep) {
                         setState(() => _selectedEpisode = ep);
-                        final match = d.episodes.where((e) => e.number == ep);
-                        if (match.isNotEmpty) _play(match.first);
                       },
                       onToggleWatched: (_, _) {},
                       tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
@@ -471,33 +481,33 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
 
   // ─── Action row (Play / Resume) ──────────────────────────────
   Widget _buildActionRow(ArabicAnimeDetails a) {
-    final hasProgress = _progress != null;
-    final resumeEpNum =
-        hasProgress ? _progress!['episodeNumber'] as int? : null;
-    final firstEp = a.episodes.isNotEmpty ? a.episodes.first : null;
-    ArabicEpisode? resumeEp;
-    if (resumeEpNum != null) {
-      try {
-        resumeEp = a.episodes.firstWhere((e) => e.number == resumeEpNum);
-      } catch (_) {}
+    final resumeEpNum = (_progress?['episodeNumber'] as int?);
+    final canResumeSelected =
+        _progress != null && resumeEpNum == _selectedEpisode;
+    ArabicEpisode? selectedEp;
+    for (final e in a.episodes) {
+      if (e.number == _selectedEpisode) {
+        selectedEp = e;
+        break;
+      }
     }
 
-    final canPlay = firstEp != null;
+    final canPlay = selectedEp != null;
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
 
     final row = Row(
       children: [
         HubDetailsPlayRow(
-          label: resumeEp != null
-              ? 'استئناف الحلقة ${resumeEp.number}'
-              : 'تشغيل الحلقة 1',
+          label: canResumeSelected
+              ? 'استئناف الحلقة $_selectedEpisode'
+              : 'تشغيل الحلقة $_selectedEpisode',
           enabled: canPlay,
-          onPlay: canPlay ? () => _play(resumeEp ?? firstEp) : null,
+          onPlay: canPlay ? () => _playSelected(a) : null,
           focusNode: _heroPlayFocus,
           tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
           tvItemIndex: 0,
         ),
-        if (hasProgress) ...[
+        if (_progress != null) ...[
           const SizedBox(width: 12),
           HeroPillIconGroup(
             tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
@@ -528,7 +538,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
       child: _tvNav
           ? DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
-              itemCount: hasProgress ? 2 : 1,
+              itemCount: _progress != null ? 2 : 1,
               onFocusUp: heroFocusUp,
               child: row,
             )

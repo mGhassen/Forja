@@ -151,14 +151,28 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   }
 
-  void _play(int epNumber) {
+  void _play(int epNumber, {Duration? startPosition}) {
     openAnimePlayer(
       context,
       anime: _data,
       episodeNumber: epNumber,
       category: _category,
       allEpisodes: _episodes,
+      startPosition: startPosition,
     );
+  }
+
+  void _playSelected() {
+    final match = _episodes.where((e) => e.number == _selectedEpisode);
+    if (match.isEmpty || !match.first.aired) return;
+    final p = _progress;
+    final resumeEp = (p?['episodeNumber'] as num?)?.toInt();
+    Duration? start;
+    if (p != null && resumeEp == _selectedEpisode) {
+      final posMs = (p['positionMs'] as num?)?.toInt() ?? 0;
+      if (posMs > 0) start = Duration(milliseconds: posMs);
+    }
+    _play(_selectedEpisode, startPosition: start);
   }
 
   Future<void> _clearProgress() async {
@@ -274,12 +288,16 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   Widget _buildScrollLayout() {
     final a = _data;
-    final hasProgress = _progress != null;
-    final resumeEp =
-        hasProgress ? (_progress!['episodeNumber'] as num?)?.toInt() : null;
+    final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
+    final canResumeSelected =
+        _progress != null && resumeEp == _selectedEpisode;
     final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
-    final posMs = (_progress?['positionMs'] as num?)?.toInt();
-    final durMs = (_progress?['durationMs'] as num?)?.toInt();
+    final posMs = canResumeSelected
+        ? (_progress?['positionMs'] as num?)?.toInt()
+        : null;
+    final durMs = canResumeSelected
+        ? (_progress?['durationMs'] as num?)?.toInt()
+        : null;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 
@@ -317,10 +335,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               onSeasonSelected: (_) {},
               onEpisodeSelected: (ep) {
                 setState(() => _selectedEpisode = ep);
-                final match = _episodes.where((e) => e.number == ep);
-                if (match.isNotEmpty && match.first.aired) {
-                  _play(ep);
-                }
               },
               onToggleWatched: (_, _) {},
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
@@ -364,22 +378,22 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             durationMs: durMs,
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
-              itemCount: hasProgress ? 2 : 1,
+              itemCount: _progress != null ? 2 : 1,
               onFocusUp: heroPopUp,
               child: Row(
                 children: [
                   HubDetailsPlayRow(
-                    label: hasProgress && resumeEp != null
-                        ? 'Resume Ep $resumeEp'
-                        : 'Play Ep 1',
+                    label: canResumeSelected
+                        ? 'Resume Ep $_selectedEpisode'
+                        : 'Play Ep $_selectedEpisode',
                     enabled: _episodes.isNotEmpty,
-                    onPlay: () => _play(resumeEp ?? 1),
+                    onPlay: _playSelected,
                     focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                     onUpEdge: heroPopUp,
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvItemIndex: 0,
                   ),
-                  if (hasProgress) ...[
+                  if (_progress != null) ...[
                     const SizedBox(width: 10),
                     HeroPillIconGroup(
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,

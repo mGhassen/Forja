@@ -330,13 +330,27 @@ class KissKhExtractor {
 
       // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
       // long after load-stop. When not pinned, hop mirrors every 8s. When
-      // pinned (sequential probe / Sources), hard-reload the same host.
-      recoveryTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
+      // pinned (sequential probe / Sources), hard-reload once; if still silent
+      // on the next tick, fail this host so Asian Drama can try the next
+      // mirror instead of burning the full timeout on a dead stream key.
+      final recoveryEvery =
+          pinned ? const Duration(seconds: 5) : const Duration(seconds: 8);
+      recoveryTimer = Timer.periodic(recoveryEvery, (timer) {
         if (cancelled() || recoveryInFlight) return;
         final c = _apiCompleter;
         if (c == null || c.isCompleted) return;
         final ctrl = _controller;
         if (ctrl == null) return;
+
+        if (pinned && timer.tick >= 2) {
+          debugPrint(
+            '[KissKhExtractor] pinned $baseUrl still silent after recovery — '
+            'fail over',
+          );
+          onProgress?.call('retry', 'Trying next mirror…');
+          if (!c.isCompleted) c.complete(<String, dynamic>{});
+          return;
+        }
 
         recoveryInFlight = true;
         if (!pinned && mirrorIndex + 1 < mirrorUrls.length) {
@@ -358,8 +372,9 @@ class KissKhExtractor {
             'Trying ${KissKhService.hostFromBaseUrl(baseUrl)}…',
           );
         } else {
+          final waited = timer.tick * recoveryEvery.inSeconds;
           debugPrint(
-            '[KissKhExtractor] no Episode API after ${timer.tick * 8}s — '
+            '[KissKhExtractor] no Episode API after ${waited}s — '
             'hard navigate $baseUrl',
           );
           onProgress?.call('retry', 'Retrying stream key…');

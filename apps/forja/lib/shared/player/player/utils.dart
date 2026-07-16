@@ -438,11 +438,21 @@ bool sourceExpectsDuration(String url, {String? type}) {
 /// Adaptive playlists can report buffer/duration while serving HTML/empty
 /// segments. Progressive containers (mkv/mp4) get real demuxer duration —
 /// do not require a decoded frame or large remote files fail the 8s probe.
+///
+/// Local torrent HTTP is the exception: moov duration arrives before any
+/// frame, then an early EOF looks like a finished episode and auto-next fires.
 bool sourceRequiresVideoDecode(String url, {String? type}) {
+  if (isLocalTorrentStreamUrl(url)) return true;
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' || normalizedType == 'dash') return true;
   final lower = url.toLowerCase();
   return lower.contains('.m3u8') || lower.contains('.mpd');
+}
+
+Duration videoDecodeTimeoutForUrl(String url) {
+  return isLocalTorrentStreamUrl(url)
+      ? const Duration(seconds: 45)
+      : const Duration(seconds: 8);
 }
 
 /// Adaptive opens must decode at least one video frame before we treat them as
@@ -488,7 +498,15 @@ void syncPlayerProgressNotifiers(
   buffered.value = player.state.buffer;
 }
 
-bool isNaturalPlaybackEnd(PlayerState state) {
+/// Wall-clock time after [_playbackConfirmed] before EOF can count as natural.
+/// Local torrents demux a real duration then hit EOF within seconds.
+const kMinConfirmedPlaybackForNaturalEnd = Duration(seconds: 45);
+
+bool isNaturalPlaybackEnd(
+  PlayerState state, {
+  Duration? confirmedFor,
+  Duration minConfirmed = kMinConfirmedPlaybackForNaturalEnd,
+}) {
   final dur = state.duration.inMilliseconds;
   final pos = state.position.inMilliseconds;
   // Torrent/HLS often report a tiny duration while probing. Then
@@ -496,7 +514,27 @@ bool isNaturalPlaybackEnd(PlayerState state) {
   // auto-next fires — episode looks like it "started finished".
   if (dur < 90 * 1000) return false;
   if (pos <= 0) return false;
+  // Early EOF with a real moov duration: position jumps to end immediately.
+  if (confirmedFor != null && confirmedFor < minConfirmed) return false;
   return pos >= dur - 1000;
+}
+
+/// Skip saving near-end progress from an early-EOF session (poisons resume).
+bool shouldPersistWatchProgress({
+  required int positionMs,
+  required int durationMs,
+  DateTime? confirmedAt,
+  DateTime? now,
+}) {
+  if (positionMs <= 10000 || durationMs <= 0) return false;
+  if (confirmedAt == null) return true;
+  final alive = (now ?? DateTime.now()).difference(confirmedAt);
+  if (alive < kMinConfirmedPlaybackForNaturalEnd &&
+      durationMs >= 90 * 1000 &&
+      positionMs >= durationMs - 5000) {
+    return false;
+  }
+  return true;
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

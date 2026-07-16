@@ -150,7 +150,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   List<NuvioAddon> _nuvioAddons = [];
 
   /// Enabled Nuvio scraper ids currently included in the results filter.
-  /// All enabled scrapers start selected when opening the Nuvio tab.
+  /// Starts empty — user picks scrapers under Filters → Providers.
   Set<String> _nuvioSelectedScraperIds = {};
 
   // Direct webstreaming providers (videasy, webstreamr, …) — no global mode toggle.
@@ -367,7 +367,7 @@ class _DetailsScreenState extends State<DetailsScreen>
           startPosition: startPosition,
         );
       case 'torrent':
-        // Torrent resumes open the sources panel — see [_openTorrentPanelForEpisode].
+        // Torrent resumes: user opens Sources (white Play) for the selected episode.
         return false;
       default:
         return false;
@@ -456,25 +456,8 @@ class _DetailsScreenState extends State<DetailsScreen>
     _loadedAddonBaseUrls.clear();
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
-    // Keep the Nuvio Filters default (all enabled) when staying on that tab.
-    _nuvioSelectedScraperIds = _panelKindFilter == 'nuvio'
-        ? _allEnabledNuvioScraperIds()
-        : {};
+    _nuvioSelectedScraperIds = {};
     _errorMessage = null;
-  }
-
-  Set<String> _allEnabledNuvioScraperIds() {
-    final ids = <String>{};
-    for (final a in _nuvioAddons) {
-      for (final s in a.scrapers) {
-        if (s.enabled) ids.add(s.id);
-      }
-    }
-    return ids;
-  }
-
-  void _selectAllEnabledNuvioScrapers() {
-    _nuvioSelectedScraperIds = _allEnabledNuvioScraperIds();
   }
 
   String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
@@ -545,9 +528,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     await _checkAndFetchNuvio();
     if (!mounted || !_panelShowNuvio) return;
     if (_panelKindFilter != 'nuvio') return;
-    if (_nuvioSelectedScraperIds.isEmpty) {
-      setState(_selectAllEnabledNuvioScrapers);
-    }
+    if (_nuvioSelectedScraperIds.isEmpty) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
       await _fetchNextNuvioScraper(reset: true);
@@ -589,7 +570,6 @@ class _DetailsScreenState extends State<DetailsScreen>
           _applyStremioFilter();
         case 'nuvio':
           _selectedSourceId = 'all_nuvio';
-          _selectAllEnabledNuvioScrapers();
         default:
           _selectedSourceId = 'forja';
       }
@@ -602,10 +582,6 @@ class _DetailsScreenState extends State<DetailsScreen>
     setState(() {
       _syncSelectedSourceToPlaySources();
       _sourcesPanelOpen = true;
-      // Ensure Nuvio providers start selected when opening Sources.
-      if (_panelKindFilter == 'nuvio' && _nuvioSelectedScraperIds.isEmpty) {
-        _selectAllEnabledNuvioScrapers();
-      }
     });
     _ensurePanelSourceLoaded();
   }

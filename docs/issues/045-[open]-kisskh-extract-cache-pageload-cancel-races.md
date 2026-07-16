@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** fix · **0 / 2** device smoke |
+| **Progress** | **17 / 17** fix · **0 / 2** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,7 @@
 | 14 | I45-T14 | Parallel API URL probe before WebView — mark dead mirrors DOWN without extract | ✅ |
 | 15 | I45-T15 | Fix probe hang: no OS-thread fan-out around shared Tokio `block_on`; Dart `Future.wait` + `probe_one` | ✅ |
 | 16 | I45-T16 | Probe deadline + per-mirror Dart timeout so one hung worker cannot block auto mirror pick | ✅ |
+| 17 | I45-T17 | Pinned extract: one hard-nav recovery then fail over (~10s) instead of burning full timeout per silent mirror | ✅ |
 
 ---
 
@@ -89,3 +90,7 @@ WebView extract.
 **Shipped (I45-T16):** each `probe_one` has a Dart timeout; the fan-out completes
 after a short deadline with unanswered hosts marked DOWN; late callbacks are
 ignored once extract starts.
+
+**Shipped (I45-T17):** pinned/sequential extract hard-navigates once at 5s; if the
+Episode API is still silent at 10s, complete empty and let the loader try the
+next healthy mirror (was ~16s per dead host).

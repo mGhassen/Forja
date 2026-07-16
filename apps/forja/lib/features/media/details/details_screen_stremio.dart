@@ -10,11 +10,6 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       setState(() {
         _s._hasNuvioAddons = addons.isNotEmpty;
         _s._nuvioAddons = addons;
-        // Default Filters → Providers to every enabled scraper as soon as the
-        // list is known (before Sources/Filters open), so chips are not empty.
-        if (_s._nuvioSelectedScraperIds.isEmpty) {
-          _s._selectAllEnabledNuvioScrapers();
-        }
       });
     } catch (_) {}
   }
