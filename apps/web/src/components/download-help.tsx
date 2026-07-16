@@ -243,7 +243,10 @@ function ShotSlider({
           )}
         >
           Step {String(index + 1).padStart(2, '0')} / {String(shots.length).padStart(2, '0')}
-          <span className="ml-3 text-[rgba(237,230,218,0.35)]">· click shot to enlarge</span>
+          <span className="ml-3 hidden text-[rgba(237,230,218,0.35)] sm:inline">
+            · click shot to enlarge
+          </span>
+          <span className="ml-3 text-[rgba(237,230,218,0.35)] sm:hidden">· tap to enlarge</span>
         </p>
         <div className="flex items-center gap-2">
           <button

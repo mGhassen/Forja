@@ -35,14 +35,14 @@ export function AccountSettingsPage() {
     <RequireAuth>
       <div className="min-h-screen">
         <SiteHeader solid />
-        <main className="mx-auto max-w-2xl px-6 py-16">
+        <main className="mx-auto max-w-2xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
           <Button asChild variant="ghost" size="sm" className="-ml-2 mb-6">
             <Link to="/account">← Account</Link>
           </Button>
           <p className="font-display text-sm uppercase tracking-[0.3em] text-forja-green">
             Settings sync
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight">Cloud domains</h1>
+          <h1 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">Cloud domains</h1>
           <p className="mt-4 text-forja-muted">
             Domains synced from the Forja app appear here. Sync choices live in the
             app — this view is status only.

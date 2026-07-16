@@ -128,17 +128,14 @@ export function PlatformDownloadButtons({
   }
 
   return (
-    <div className={cn('flex flex-wrap gap-3', className)}>
+    <div className={cn('flex flex-wrap gap-2.5 sm:gap-3', className)}>
       {SHOWCASE_PLATFORMS.map((p) => {
         const asset = byId[p.id]
         const hot = emphasize === p.id
+        // Landing CTAs: solid brand fill for every platform — download file or /download.
         const classNames = cn(
-          'inline-flex items-center rounded-full px-5 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] transition-colors',
-          asset
-            ? hot
-              ? 'btn-magnet'
-              : 'border border-[rgba(237,230,218,0.22)] text-[#EDE6DA] hover:border-brand hover:text-brand'
-            : 'border border-white/10 text-white/30',
+          'btn-magnet inline-flex min-h-11 flex-1 items-center justify-center rounded-full px-4 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] shadow-[0_0_28px_rgba(28,231,131,0.28)] transition-all will-change-transform sm:min-h-0 sm:flex-none sm:px-7 sm:py-4 sm:text-[13px]',
+          hot && 'scale-[1.04] shadow-[0_0_40px_rgba(28,231,131,0.45)]',
         )
         if (asset) {
           return (

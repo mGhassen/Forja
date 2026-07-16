@@ -37,7 +37,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader solid />
-      <main className="mx-auto flex max-w-md flex-col px-6 py-16">
+      <main className="mx-auto flex max-w-md flex-col px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
         <Card>
           <CardHeader>
             <CardTitle>Log in</CardTitle>

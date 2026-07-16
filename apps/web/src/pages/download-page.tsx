@@ -68,7 +68,7 @@ function MagnetDownload({
         e.preventDefault()
         startBackgroundDownload(href)
       }}
-      className="btn-magnet inline-flex items-center gap-3 rounded-full px-8 py-4 font-mono-ui text-xs font-bold uppercase tracking-[0.1em] will-change-transform"
+      className="btn-magnet inline-flex max-w-full items-center justify-center gap-3 rounded-full px-6 py-3.5 text-center font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] will-change-transform sm:px-8 sm:py-4 sm:text-xs"
     >
       {label}
     </a>
@@ -112,7 +112,7 @@ function PlatformPicker({
                 type="button"
                 data-hover=""
                 onClick={() => onSelect(platform.id)}
-                className="flex min-w-0 flex-1 items-baseline gap-4 py-5 text-left sm:gap-6 sm:py-6"
+                className="flex min-w-0 flex-1 items-baseline gap-3 py-4 text-left sm:gap-6 sm:py-6"
               >
                 <span
                   className={cn(
@@ -254,9 +254,9 @@ export function DownloadPage() {
       <CustomCursor />
       <SiteHeader />
 
-      <main className="relative px-[5vw] pb-24 pt-[5.5rem] sm:pt-28">
+      <main className="relative px-[5vw] pb-16 pt-20 sm:pb-24 sm:pt-28">
         <Reveal>
-          <h1 className="font-disp max-w-[14ch] text-[clamp(52px,11vw,140px)] uppercase leading-[0.84] tracking-[-0.04em]">
+          <h1 className="font-disp max-w-[14ch] text-[clamp(40px,11vw,140px)] uppercase leading-[0.84] tracking-[-0.04em]">
             Ready to
             <br />
             <span className="text-flame">watch?</span>

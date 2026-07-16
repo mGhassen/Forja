@@ -259,15 +259,15 @@ export function LandingPage() {
       {/* Beat 8 — close */}
       <section
         id="drop"
-        className="grid grid-cols-1 items-center gap-12 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh] md:grid-cols-[0.95fr_1.15fr] md:gap-14 lg:gap-16"
+        className="grid grid-cols-1 items-center gap-10 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh] md:grid-cols-[0.95fr_1.15fr] md:gap-14 lg:gap-16"
       >
         <Reveal>
-          <h2 className="font-disp text-[clamp(48px,10vw,110px)] uppercase leading-[0.85] tracking-[-0.04em]">
+          <h2 className="font-disp text-[clamp(40px,10vw,110px)] uppercase leading-[0.85] tracking-[-0.04em]">
             Don&apos;t wait
             <br />
             <span className="text-brand">for the night.</span>
           </h2>
-          <p className="mt-8 max-w-lg font-disp text-[clamp(22px,3vw,36px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
+          <p className="mt-6 max-w-lg font-disp text-[clamp(18px,3vw,36px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)] sm:mt-8">
             Download Forja.
             <br />
             Press play.
@@ -280,7 +280,7 @@ export function LandingPage() {
             data-hover=""
             onMouseMove={onMagnetMove}
             onMouseLeave={onMagnetLeave}
-            className="btn-magnet mt-8 inline-flex items-center rounded-full px-[34px] py-5 font-mono-ui text-[15px] font-bold uppercase tracking-[0.08em] will-change-transform"
+            className="btn-magnet mt-7 inline-flex w-full items-center justify-center rounded-full px-8 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] will-change-transform sm:mt-8 sm:w-auto sm:px-[34px] sm:py-5 sm:text-[15px]"
           >
             Get Forja
           </Link>

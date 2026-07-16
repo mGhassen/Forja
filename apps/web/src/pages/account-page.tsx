@@ -20,11 +20,11 @@ export function AccountPage() {
     <RequireAuth>
       <div className="min-h-screen">
         <SiteHeader solid />
-        <main className="mx-auto max-w-2xl px-6 py-16">
+        <main className="mx-auto max-w-2xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
           <p className="font-display text-sm uppercase tracking-[0.3em] text-forja-green">
             Account
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight">Forja account</h1>
+          <h1 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">Forja account</h1>
           <Card className="mt-10">
             <CardHeader>
               <CardTitle>Logged in</CardTitle>

@@ -92,8 +92,8 @@ export function IptvPage() {
       <CustomCursor />
       <SiteHeader />
 
-      <main className="relative pt-[5.5rem] sm:pt-24">
-        <header className="relative overflow-hidden px-[5vw] pb-16 pt-10 lg:pb-24 lg:pt-14">
+      <main className="relative pt-16 sm:pt-24">
+        <header className="relative overflow-hidden px-[5vw] pb-12 pt-6 sm:pb-16 sm:pt-10 lg:pb-24 lg:pt-14">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
@@ -165,7 +165,7 @@ export function IptvPage() {
         </div>
 
         {/* Player benefits */}
-        <section className="px-[5vw] py-24 sm:py-28">
+        <section className="px-[5vw] py-16 sm:py-28">
           <Reveal>
             <h2 className="max-w-[16ch] font-disp text-[clamp(32px,5vw,64px)] uppercase leading-[0.95] tracking-[-0.03em]">
               Why this player
