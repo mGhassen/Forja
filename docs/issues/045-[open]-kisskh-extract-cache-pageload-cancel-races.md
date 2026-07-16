@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **19 / 19** fix · **0 / 4** device smoke |
+| **Progress** | **21 / 21** fix · **0 / 4** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -38,6 +38,8 @@
 | 17 | I45-T17 | Pinned extract: one hard-nav recovery then fail over (~10s) instead of burning full timeout per silent mirror | ✅ |
 | 18 | I45-T18 | Detect KissKH "Too many request." rate limit — cool down + Retry; do not hard-nav / hop mirrors on same IP | ✅ |
 | 19 | I45-T19 | Disable mirror probes/failover; pin playback to `kisskh.nl`; show all other mirrors on hold in Settings | ✅ |
+| 20 | I45-T20 | Sticky `everRateLimited`: after rate-limit CLEAR, still never hard-nav / fail cleanly (second reload dug the ban) | ✅ |
+| 21 | I45-T21 | Stop home bulk `/Drama/{id}` enrich; throttle home list concurrency + sequential detail enrich | ✅ |
 
 ---
 
@@ -116,3 +118,16 @@ rate-limit signal and shows an explicit “slow down / try again” message.
 disabled. Playback opens only `kisskh.nl`; the player exposes only that source.
 Settings retains the other verified aliases as disabled “On hold” rows so they
 can be reactivated deliberately later without generating preflight traffic.
+
+### Rate-limit reload + catalog storm (2026-07-16)
+
+Live macOS: first Episode page load showed rate-limit → CLEAR → silent Episode
+API → extractor treated CLEAR as “silent” and **hard-navigated a second time**,
+re-triggering the ban. Separately, opening Asian Drama ran 7 parallel home list
+calls then fanned out `/Drama/{id}` for every poster row — same shared IP.
+
+**Shipped (I45-T20):** sticky `everRateLimited` for the resolve — after CLEAR,
+still only cool-down + Retry; never hard-nav; fail with the rate-limit message.
+
+**Shipped (I45-T21):** home lists load two-at-a-time; hub enrich is hero synopsis
+only (≤8); detail enrich is sequential with a longer pause when still used.

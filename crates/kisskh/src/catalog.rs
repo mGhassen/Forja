@@ -234,15 +234,28 @@ pub fn get_home() -> Result<KdramaHomeFeed, String> {
         "/DramaList/Animate?ispc=false",
     ];
 
-    let bodies: Result<Vec<String>, String> = std::thread::scope(|scope| {
-        let handles: Vec<_> = paths
-            .iter()
-            .map(|path| scope.spawn(|| http::get_api(path, true)))
-            .collect();
-        handles.into_iter().map(|h| h.join().unwrap()).collect()
-    });
+    // Cap concurrency — seven parallel list hits share the same client IP as
+    // Episode extract and helped trip KissKH "Too many request."
+    const HOME_CONCURRENCY: usize = 2;
+    let mut results: Vec<String> = Vec::with_capacity(paths.len());
+    let mut i = 0;
+    while i < paths.len() {
+        let end = (i + HOME_CONCURRENCY).min(paths.len());
+        let chunk = &paths[i..end];
+        let bodies: Result<Vec<String>, String> = std::thread::scope(|scope| {
+            let handles: Vec<_> = chunk
+                .iter()
+                .map(|path| scope.spawn(|| http::get_api(path, true)))
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        results.extend(bodies?);
+        i = end;
+        if i < paths.len() {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+        }
+    }
 
-    let results = bodies?;
     Ok(KdramaHomeFeed {
         spotlight: parse_card_list(&results[0]),
         latest: parse_card_list(&results[1]),
@@ -391,31 +404,6 @@ pub fn get_details(id: i32) -> Result<KdramaDetails, String> {
     })
 }
 
-fn merge_card_meta(card: &KdramaCard, meta: &KdramaCard) -> KdramaCard {
-    KdramaCard {
-        id: card.id,
-        title: card.title.clone(),
-        cover: if card.cover.is_empty() {
-            meta.cover.clone()
-        } else {
-            card.cover.clone()
-        },
-        label: card.label.clone().or(meta.label.clone()),
-        episodes_count: if card.episodes_count > 0 {
-            card.episodes_count
-        } else {
-            meta.episodes_count
-        },
-        year: card.year.clone().or(meta.year.clone()),
-        r#type: card.r#type.clone().or(meta.r#type.clone()),
-        description: if !card.description.is_empty() {
-            card.description.clone()
-        } else {
-            meta.description.clone()
-        },
-    }
-}
-
 fn merge_card_details(card: &KdramaCard, det: &KdramaDetails) -> KdramaCard {
     let description = if !card.description.is_empty() {
         card.description.clone()
@@ -463,7 +451,9 @@ fn enrich_cards_where(
         return cards;
     }
     let mut out = cards;
-    const CHUNK: usize = 4;
+    // One detail at a time + longer pause — bulk fan-out burned the shared
+    // KissKH IP budget before Play could open an Episode page.
+    const CHUNK: usize = 1;
     let mut i = 0;
     while i < out.len() {
         let end = (i + CHUNK).min(out.len());
@@ -494,7 +484,7 @@ fn enrich_cards_where(
         }
 
         if end < out.len() {
-            std::thread::sleep(std::time::Duration::from_millis(120));
+            std::thread::sleep(std::time::Duration::from_millis(350));
         }
         i = end;
     }
@@ -506,14 +496,17 @@ fn enrich_hero_lists(feed: &KdramaHomeFeed) -> (Vec<KdramaCard>, Vec<KdramaCard>
     let mut spotlight = feed.spotlight.clone();
     let mut latest = feed.latest.clone();
     let mut trending = feed.trending.clone();
+    const HERO_CAP: usize = 8;
     if !spotlight.is_empty() {
-        spotlight = enrich_card_descriptions(spotlight);
+        let n = spotlight.len().min(HERO_CAP);
+        let head = enrich_card_descriptions(spotlight[..n].to_vec());
+        spotlight = head.into_iter().chain(spotlight.into_iter().skip(n)).collect();
     } else if !latest.is_empty() {
-        let n = latest.len().min(8);
+        let n = latest.len().min(HERO_CAP);
         let head = enrich_card_descriptions(latest[..n].to_vec());
         latest = head.into_iter().chain(latest.into_iter().skip(n)).collect();
     } else if !trending.is_empty() {
-        let n = trending.len().min(8);
+        let n = trending.len().min(HERO_CAP);
         let head = enrich_card_descriptions(trending[..n].to_vec());
         trending = head.into_iter().chain(trending.into_iter().skip(n)).collect();
     }
@@ -521,59 +514,26 @@ fn enrich_hero_lists(feed: &KdramaHomeFeed) -> (Vec<KdramaCard>, Vec<KdramaCard>
 }
 
 pub fn enrich_home_feed(feed: KdramaHomeFeed) -> KdramaHomeFeed {
-    // Synopsis first — small hero set, before bulk meta enrich can rate-limit details.
+    // Hero synopsis only — do NOT fan out `/Drama/{id}` for every poster in
+    // every row. That shared-IP storm rate-limited Episode extract before Play.
     let (hero_spotlight, hero_latest, hero_trending) = enrich_hero_lists(&feed);
 
-    let mut by_id: std::collections::HashMap<i32, KdramaCard> = std::collections::HashMap::new();
-    for c in hero_spotlight
-        .iter()
-        .chain(hero_latest.iter())
-        .chain(hero_trending.iter())
-        .chain(feed.spotlight.iter())
-        .chain(feed.latest.iter())
-        .chain(feed.most_viewed.iter())
-        .chain(feed.trending.iter())
-        .chain(feed.top_rated.iter())
-        .chain(feed.upcoming.iter())
-        .chain(feed.anime.iter())
-    {
-        by_id
-            .entry(c.id)
-            .and_modify(|existing| *existing = merge_card_meta(existing, c))
-            .or_insert_with(|| c.clone());
-    }
-
-    let enriched = enrich_cards(by_id.into_values().collect::<Vec<_>>());
-    let map: std::collections::HashMap<i32, KdramaCard> =
-        enriched.into_iter().map(|c| (c.id, c)).collect();
-
-    let map_list = |list: &[KdramaCard]| -> Vec<KdramaCard> {
-        list.iter()
-            .map(|c| map.get(&c.id).cloned().unwrap_or_else(|| c.clone()))
-            .collect()
-    };
-
-    let merge_hero = |hero: Vec<KdramaCard>, fallback: &[KdramaCard]| -> Vec<KdramaCard> {
+    let merge_hero = |hero: Vec<KdramaCard>, fallback: Vec<KdramaCard>| -> Vec<KdramaCard> {
         if hero.is_empty() {
-            return map_list(fallback);
+            fallback
+        } else {
+            hero
         }
-        hero.into_iter()
-            .map(|c| {
-                map.get(&c.id)
-                    .map(|meta| merge_card_meta(&c, meta))
-                    .unwrap_or(c)
-            })
-            .collect()
     };
 
     KdramaHomeFeed {
-        spotlight: merge_hero(hero_spotlight, &feed.spotlight),
-        latest: merge_hero(hero_latest, &feed.latest),
-        most_viewed: map_list(&feed.most_viewed),
-        trending: merge_hero(hero_trending, &feed.trending),
-        top_rated: map_list(&feed.top_rated),
-        upcoming: map_list(&feed.upcoming),
-        anime: map_list(&feed.anime),
+        spotlight: merge_hero(hero_spotlight, feed.spotlight),
+        latest: merge_hero(hero_latest, feed.latest),
+        most_viewed: feed.most_viewed,
+        trending: merge_hero(hero_trending, feed.trending),
+        top_rated: feed.top_rated,
+        upcoming: feed.upcoming,
+        anime: feed.anime,
     }
 }
 

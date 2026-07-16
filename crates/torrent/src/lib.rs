@@ -149,6 +149,10 @@ impl TorrentEngine {
                     dump_interval: Some(Duration::from_secs(60)),
                     config_filename: Some(dht_path),
                 }),
+                // Always ephemeral: librqbit otherwise rebinds the port stored in
+                // dht_state.json, which fails when another Forja/test holds it
+                // ("error initializing persistent DHT"). Routing table still loads.
+                port: Some(0),
                 // Default bootstraps include dead hosts (router.bittorrent.com).
                 // Pin nodes that answer UDP from this network.
                 bootstrap_addrs: Some(vec![

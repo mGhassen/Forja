@@ -182,6 +182,9 @@ class KissKhExtractor {
     var mirrorIndex = 0;
     var recoveryInFlight = false;
     var rateLimited = false;
+    /// Sticky for this resolve — once KissKH shows rate-limit copy, never
+    /// hard-nav even after the banner clears (that reload digs the hole).
+    var everRateLimited = false;
     var rateLimitRetries = 0;
     Timer? recoveryTimer;
     Timer? nudgeTimer;
@@ -281,6 +284,7 @@ class KissKhExtractor {
           if (s == 'KKH_RATE_LIMIT' || s.startsWith('KKH_RATE_LIMIT')) {
             if (!rateLimited) {
               rateLimited = true;
+              everRateLimited = true;
               rateLimitRetries = 0;
               debugPrint(
                 '[KissKhExtractor] KissKH rate limit on $baseUrl — '
@@ -296,9 +300,12 @@ class KissKhExtractor {
           if (s == 'KKH_RATE_CLEAR' || s.startsWith('KKH_RATE_CLEAR')) {
             if (rateLimited) {
               rateLimited = false;
-              rateLimitRetries = 0;
+              // Keep everRateLimited — CLEAR only means the banner left the
+              // DOM; Episode API may still be blocked. Do not reset retries
+              // into a hard-nav path.
               debugPrint(
-                '[KissKhExtractor] rate limit cleared on $baseUrl',
+                '[KissKhExtractor] rate limit cleared on $baseUrl '
+                '(still no hard-nav this resolve)',
               );
             }
             return;
@@ -360,10 +367,11 @@ class KissKhExtractor {
       //
       // Rate limit ("Too many request."): stay on this host, click Retry after
       // a cool-down — hard-nav + mirror hop share one IP and make it worse.
+      // Once everRateLimited, never hard-nav even after the banner clears.
       //
-      // Silent (no rate limit): when not pinned, hop mirrors every 8s. When
-      // pinned, hard-reload once; if still silent on the next tick, fail so
-      // Asian Drama can try the next mirror.
+      // Silent (no rate limit this resolve): when not pinned, hop mirrors
+      // every 8s. When pinned, hard-reload once; if still silent on the next
+      // tick, fail so the loader can stop cleanly.
       final recoveryEvery =
           pinned ? const Duration(seconds: 5) : const Duration(seconds: 8);
       recoveryTimer = Timer.periodic(recoveryEvery, (timer) {
@@ -373,14 +381,15 @@ class KissKhExtractor {
         final ctrl = _controller;
         if (ctrl == null) return;
 
-        if (rateLimited) {
+        if (rateLimited || everRateLimited) {
           rateLimitRetries++;
           // Cool down ~10s between Retry clicks; give up after ~40s so the
           // loader can show a clear rate-limit message (do not hop mirrors).
           if (rateLimitRetries > 8) {
             debugPrint(
               '[KissKhExtractor] rate limited on $baseUrl after '
-              '${rateLimitRetries * recoveryEvery.inSeconds}s — stop',
+              '${rateLimitRetries * recoveryEvery.inSeconds}s — stop '
+              '(no hard-nav)',
             );
             onProgress?.call(
               'rate_limit',

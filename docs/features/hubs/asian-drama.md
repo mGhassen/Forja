@@ -12,7 +12,7 @@ Tap **Asian Drama** in the navigation bar.
 
 ## What you can do
 
-- Browse hero and explore sections — the desktop hero shows title, year/type badge, and synopsis (filled after KissKH details enrich)
+- Browse hero and explore sections — the desktop hero shows title and synopsis when KissKH details enrich finishes for the hero set (poster rows no longer fan out a details request per title)
 - Search dramas — **desktop / TV:** same layout as the Search tab (large search field, trending title suggestions on the left, poster grid on the right; **Select** a suggestion to run that search; on desktop, hover a result card to reveal the info button — click it or double-click the card to open details); **mobile:** search bar + results grid — on **desktop**, **Cmd+F** / **Ctrl+F** opens this search page (or focuses the field when it is already open)
 - Open details with episodes — tap an episode card to select it; click the card’s **play** button (or hero **Play** / **Resume**) to start that episode. On **TV**, **Play** / **Resume** is focused when the page opens; **↑** from hero actions closes details; **←** from the leftmost hero action moves focus to the shell nav rail; **↑** from the episode rail returns focus to **Play**
 - Play with subtitle support where available
@@ -27,7 +27,7 @@ Tap **Asian Drama** in the navigation bar.
 - KissKH availability can vary by region and site status
 - Watch history is stored per drama in this hub
 - Forja currently uses only `kisskh.nl`. The compatible `.co`, `.ovh`, `.la`, and `.do` aliases are held disabled because automatic checks across them share the same client-IP rate limit
-- Stream resolve opens a fresh (no HTTP cache) headless browser so KissKH can sign the stream key. If KissKH rate-limits your IP (“Too many request”), Forja cools down and asks you to wait — it does not test or hop to another mirror
+- Stream resolve opens a fresh (no HTTP cache) headless browser so KissKH can sign the stream key. If KissKH rate-limits your IP (“Too many request”), Forja cools down and asks you to wait — it does **not** reload the episode page or hop to another mirror (a second load made bans worse)
 - Playback and subtitle requests send the `Referer`/`Origin` of the mirror that produced the stream (including cached URLs on `streamingcdn` hosts)
 - **Escape** / **Cancel** during resolve or before video starts returns to details — not a stuck loading screen
 

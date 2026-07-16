@@ -129,17 +129,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   Future<void> _enrichFeed(KdramaHomeFeed feed, int gen) async {
     try {
-      var working = feed;
-      final hero = _heroCardsFrom(working);
+      // Hero synopsis only — bulk year/type enrich for every row burned the
+      // shared KissKH IP budget before Episode extract could run.
+      final hero = _heroCardsFrom(feed);
       if (hero.any((c) => c.description.trim().isEmpty)) {
         final withSynopsis = await _service.enrichCardDescriptions(hero);
-        working = working.withCardsReplaced(withSynopsis);
+        final working = feed.withCardsReplaced(withSynopsis);
         if (!mounted || gen != _loadGen) return;
         setState(() => _feed = working);
       }
-      final enriched = await _service.enrichHomeFeed(working);
-      if (!mounted || gen != _loadGen) return;
-      setState(() => _feed = enriched);
     } catch (_) {}
   }
 

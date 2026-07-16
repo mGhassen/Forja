@@ -40,6 +40,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   AnimeCard? _full;
   List<AnimeEpisode> _episodes = [];
+  bool _episodesLoading = true;
   List<AnimeCard> _related = [];
   Map<String, dynamic>? _progress;
   String? _error;
@@ -97,43 +98,35 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   AnimeCard get _data => _full ?? widget.anime;
 
-  List<AnimeEpisode> _synthEpisodes(AnimeCard a) {
-    final count = a.episodes ?? a.nextAiringEpisode?['episode'];
-    final n = (count is int && count > 0) ? count : 1;
-    final airedNow = a.nextAiringEpisode?['episode'];
-    final maxAired = (airedNow is int && airedNow > 1) ? (airedNow - 1) : n;
-    return List.generate(
-      n,
-      (i) => AnimeEpisode(
-        number: i + 1,
-        title: 'Episode ${i + 1}',
-        aired: (i + 1) <= maxAired,
-      ),
-    );
-  }
-
   Future<void> _load() async {
     setState(() {
       _error = null;
-      _episodes = _synthEpisodes(widget.anime);
+      _episodes = [];
+      _episodesLoading = true;
     });
 
+    // Metadata only — never paint AniList episode totals into the picker
+    // (that count is planned/announced; Anikoto's list is what's playable).
     _service.getDetails(widget.anime.id).then((d) {
       if (!mounted) return;
-      setState(() {
-        _full = d;
-        if (_episodes.isEmpty || _episodes.length < (d.episodes ?? 0)) {
-          _episodes = _synthEpisodes(d);
-        }
-      });
+      setState(() => _full = d);
     }).catchError((e) {
       if (mounted && _full == null) setState(() => _error = 'Failed to load: $e');
     });
 
     _service.getEpisodes(widget.anime).then((eps) {
-      if (!mounted || eps.isEmpty) return;
-      setState(() => _episodes = eps);
-    }).catchError((_) {});
+      if (!mounted) return;
+      setState(() {
+        _episodes = eps;
+        _episodesLoading = false;
+        if (_episodes.isNotEmpty &&
+            !_episodes.any((e) => e.number == _selectedEpisode)) {
+          _selectedEpisode = _episodes.first.number;
+        }
+      });
+    }).catchError((_) {
+      if (mounted) setState(() => _episodesLoading = false);
+    });
 
     _service.getRelations(widget.anime.id).then((r) {
       if (!mounted) return;
@@ -145,10 +138,13 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       setState(() {
         _progress = p;
         final ep = (p?['episodeNumber'] as num?)?.toInt();
-        if (ep != null && ep > 0) _selectedEpisode = ep;
+        if (ep != null &&
+            ep > 0 &&
+            (_episodesLoading || _episodes.any((e) => e.number == ep))) {
+          _selectedEpisode = ep;
+        }
       });
     }).catchError((_) {});
-
   }
 
   void _play(int epNumber, {Duration? startPosition}) {
@@ -315,10 +311,10 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _popDetailsFromTvUp : null;
-    final showEpisodes = _episodes.isNotEmpty;
-    final relatedOrder = showEpisodes ? 1 : 0;
+    final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
+    final relatedOrder = showEpisodeRail ? 1 : 0;
 
-    final episodePicker = showEpisodes
+    final episodePicker = showEpisodeRail
         ? MediaDetailsBody.padContent(
             context,
             TvSeasonEpisodePicker(
@@ -326,7 +322,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               seasonCount: 1,
               selectedSeason: 1,
               selectedEpisode: _selectedEpisode,
-              isLoadingSeason: false,
+              isLoadingSeason: _episodesLoading,
               seasonData: null,
               watchedEpisodes: const {},
               fallbackPosterPath: a.coverUrl,
@@ -441,7 +437,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                 children: [
                   _buildRelated(
                     tvRowOrder: relatedOrder,
-                    tvFocusUp: showEpisodes ? null : heroFocusUp,
+                    tvFocusUp: showEpisodeRail ? null : heroFocusUp,
                   ),
                 ],
               ),
