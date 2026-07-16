@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
@@ -52,6 +53,7 @@ class IptvStore {
             })
         .toList();
     await prefs.setString(_key, json.encode(arr));
+    scheduleIptvSyncPush();
   }
 
   static Future<Set<String>> loadFavorites() async {
@@ -63,6 +65,7 @@ class IptvStore {
   static Future<void> saveFavorites(Set<String> keys) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_favKey, keys.toList());
+    scheduleIptvSyncPush();
   }
 
   static Future<String?> loadLastPortalKey() async {

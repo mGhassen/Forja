@@ -60,6 +60,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
     ForjaToast.success('Signed in');
     _passwordCtrl.clear();
+    await SyncDomainBridge.instance.pullAndMergeAll();
     await _refreshRemote();
     setState(() {});
   }
@@ -80,6 +81,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       return;
     }
     ForjaToast.success('Account created');
+    await SyncDomainBridge.instance.pullAndMergeAll();
     await _refreshRemote();
     setState(() {});
   }

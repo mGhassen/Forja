@@ -52,6 +52,31 @@ void main() {
     expect(uri.query, isNot(contains('totalSeasons')));
   });
 
+  test('Yoru cdn is first mirror for movies and TV', () {
+    expect(VideasyExtractor.mirrorEndpointsForTest().first, 'cdn');
+  });
+
+  test('tv sources query uses cdn path with season fields', () {
+    final uri = Uri.https(
+      'api.wingsdatabase.com',
+      '/cdn/sources-with-title',
+      VideasyExtractor.sourcesQueryForTest(
+        title: 'Lucky',
+        isMovie: false,
+        tmdbId: '278624',
+        year: '2026',
+        imdbId: 'tt34866681',
+        season: 1,
+        episode: 1,
+        totalSeasons: 1,
+        seed: 'test-seed',
+      ),
+    );
+    expect(uri.path, '/cdn/sources-with-title');
+    expect(uri.query, contains('mediaType=tv'));
+    expect(uri.query, contains('totalSeasons=1'));
+  });
+
   test('wingsTitleQueryValue single-encodes for query map', () {
     expect(VideasyExtractor.wingsTitleQueryValue('Fight Club'), 'Fight%20Club');
   });

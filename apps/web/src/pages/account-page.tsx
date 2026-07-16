@@ -32,13 +32,13 @@ export function AccountPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-forja-muted">
-                Cloud settings sync uses the same project as the Forja app. Domains
-                are managed in the app; this page shows status.
+                Manage IPTV portals, playback prefs, provider order, and Stremio addons
+                from the web — the app pulls them when you sign in.
               </p>
               <Separator />
               <div className="flex flex-wrap gap-3">
                 <Button asChild>
-                  <Link to="/account/settings">Settings sync</Link>
+                  <Link to="/account/settings">Remote settings</Link>
                 </Button>
                 <Button
                   variant="secondary"

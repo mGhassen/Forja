@@ -1,0 +1,14 @@
+---
+description: Expert recommendations first, then verify, then implement
+alwaysApply: true
+---
+
+# Expert-first workflow
+
+When the user asks as an expert (architecture, provider behavior, “why”, “what’s best”):
+
+1. **Recommend** — State what is best for Forja (reliability, UX, parity with the live player). Do not stop at describing current code unless comparing “today vs recommended”.
+2. **Verify** — Test or inspect live behavior (API, player, logs) before treating the recommendation as fact. Say explicitly when something is unverified.
+3. **Implement** — Code/docs changes only after verification, unless the user scoped a spike or doc-only answer.
+
+Forbidden: answering “how Forja works” when the user asked “what should Forja do”.

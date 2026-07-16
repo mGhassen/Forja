@@ -6,7 +6,6 @@ export 'paper2audio_service.dart';
 export 'subtitlecat_service.dart';
 export 'stremio_service.dart';
 export 'tmdb_api.dart';
-export 'tmdb_watch_region.dart';
 export 'tmdb_service.dart';
 export 'subtitle_api.dart';
 export 'music_service.dart';

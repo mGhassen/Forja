@@ -1,7 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { SiteHeader } from '@/components/site-header'
-import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -9,88 +6,88 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { RequireAuth } from '@/components/require-auth'
-import { useAuth } from '@/hooks/use-auth'
-import { supabase, supabaseConfigured } from '@/lib/supabase'
-import type { UserSetting } from '@/lib/database.types'
+import { AccountSettingsShell } from '@/components/account-settings-shell'
+import { useUserSettings } from '@/hooks/use-user-setting'
+import { REMOTE_SETTING_SECTIONS } from '@/lib/sync-domains'
 
 export function AccountSettingsPage() {
-  const { user } = useAuth()
-
-  const settingsQuery = useQuery({
-    queryKey: ['user_settings', user?.id],
-    enabled: Boolean(user?.id && supabaseConfigured),
-    queryFn: async (): Promise<UserSetting[]> => {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('domain')
-      if (error) throw error
-      return data ?? []
-    },
-  })
+  const settingsQuery = useUserSettings()
+  const updatedByDomain = new Map(
+    (settingsQuery.data ?? []).map((row) => [row.domain, row.updated_at]),
+  )
 
   return (
-    <RequireAuth>
-      <div className="min-h-screen">
-        <SiteHeader solid />
-        <main className="mx-auto max-w-2xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
-          <Button asChild variant="ghost" size="sm" className="-ml-2 mb-6">
-            <Link to="/account">← Account</Link>
-          </Button>
-          <p className="font-display text-sm uppercase tracking-[0.3em] text-forja-green">
-            Settings sync
-          </p>
-          <h1 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">Cloud domains</h1>
-          <p className="mt-4 text-forja-muted">
-            Domains synced from the Forja app appear here. Sync choices live in the
-            app — this view is status only.
-          </p>
+    <AccountSettingsShell
+      title="Remote settings"
+      description="Manage settings that travel with your account. Device-only options like cache, navigation, and torrent tuning stay in the app."
+      backTo="/account"
+      backLabel="← Account"
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Synced from the web or app</CardTitle>
+          <CardDescription>
+            Changes save to your Forja account and apply on the next sign-in or sync in the
+            app.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {settingsQuery.isLoading && (
+            <p className="text-sm text-forja-muted">Loading…</p>
+          )}
+          {settingsQuery.isError && (
+            <p className="text-sm text-red-300">
+              {settingsQuery.error instanceof Error
+                ? settingsQuery.error.message
+                : 'Failed to load settings'}
+            </p>
+          )}
+          {REMOTE_SETTING_SECTIONS.map((section) => {
+            const updatedAt = updatedByDomain.get(section.domain)
+            return (
+              <Link
+                key={section.domain}
+                to={section.href}
+                className="block rounded-lg border border-forja-border bg-forja-surface/40 px-4 py-4 transition hover:border-forja-green/40 hover:bg-forja-surface/70"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium">{section.title}</p>
+                    <p className="mt-1 text-sm text-forja-muted">{section.description}</p>
+                  </div>
+                  <span className="shrink-0 text-sm text-forja-green">Open →</span>
+                </div>
+                {updatedAt ? (
+                  <p className="mt-2 text-xs text-forja-muted">
+                    Last saved {new Date(updatedAt).toLocaleString()}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-forja-muted">Not configured yet</p>
+                )}
+              </Link>
+            )
+          })}
+        </CardContent>
+      </Card>
 
-          <Card className="mt-10">
-            <CardHeader>
-              <CardTitle>Synced domains</CardTitle>
-              <CardDescription>
-                Latest <code>updated_at</code> per domain.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {settingsQuery.isLoading && (
-                <p className="text-sm text-forja-muted">Loading…</p>
-              )}
-              {settingsQuery.isError && (
-                <p className="text-sm text-red-300">
-                  {settingsQuery.error instanceof Error
-                    ? settingsQuery.error.message
-                    : 'Failed to load settings'}
-                </p>
-              )}
-              {settingsQuery.data && settingsQuery.data.length === 0 && (
-                <p className="text-sm text-forja-muted">
-                  No domains synced yet. When domains are enabled in Forja, they show
-                  up here.
-                </p>
-              )}
-              {settingsQuery.data && settingsQuery.data.length > 0 && (
-                <ul className="divide-y divide-forja-border">
-                  {settingsQuery.data.map((row) => (
-                    <li
-                      key={row.domain}
-                      className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                    >
-                      <span className="font-medium">{row.domain}</span>
-                      <span className="text-sm text-forja-muted">
-                        {new Date(row.updated_at).toLocaleString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    </RequireAuth>
+      <Card>
+        <CardHeader>
+          <CardTitle>Stays on your device</CardTitle>
+          <CardDescription>
+            These are intentionally not synced — they depend on hardware, LAN services, or
+            one-time cache.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="list-inside list-disc space-y-1 text-sm text-forja-muted">
+            <li>Shell navigation layout and default tab</li>
+            <li>Torrent cache size, connections, and provider scores</li>
+            <li>Debrid and indexer API keys (for now)</li>
+            <li>Cache clears, downloaded updates, and WebView data</li>
+            <li>Trakt / Simkl / MDBlist account linking</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </AccountSettingsShell>
   )
 }

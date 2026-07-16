@@ -18,6 +18,10 @@ import { Route as DmcaRouteImport } from './routes/dmca'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
+import { Route as AccountSettingsStremioRouteImport } from './routes/account.settings.stremio'
+import { Route as AccountSettingsProvidersRouteImport } from './routes/account.settings.providers'
+import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.settings.playback'
+import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -64,6 +68,27 @@ const AccountSettingsRoute = AccountSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AccountRoute,
 } as any)
+const AccountSettingsStremioRoute = AccountSettingsStremioRouteImport.update({
+  id: '/stremio',
+  path: '/stremio',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsProvidersRoute =
+  AccountSettingsProvidersRouteImport.update({
+    id: '/providers',
+    path: '/providers',
+    getParentRoute: () => AccountSettingsRoute,
+  } as any)
+const AccountSettingsPlaybackRoute = AccountSettingsPlaybackRouteImport.update({
+  id: '/playback',
+  path: '/playback',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsIptvRoute = AccountSettingsIptvRouteImport.update({
+  id: '/iptv',
+  path: '/iptv',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,7 +99,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
-  '/account/settings': typeof AccountSettingsRoute
+  '/account/settings': typeof AccountSettingsRouteWithChildren
+  '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/playback': typeof AccountSettingsPlaybackRoute
+  '/account/settings/providers': typeof AccountSettingsProvidersRoute
+  '/account/settings/stremio': typeof AccountSettingsStremioRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -85,7 +114,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
-  '/account/settings': typeof AccountSettingsRoute
+  '/account/settings': typeof AccountSettingsRouteWithChildren
+  '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/playback': typeof AccountSettingsPlaybackRoute
+  '/account/settings/providers': typeof AccountSettingsProvidersRoute
+  '/account/settings/stremio': typeof AccountSettingsStremioRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,7 +130,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
-  '/account/settings': typeof AccountSettingsRoute
+  '/account/settings': typeof AccountSettingsRouteWithChildren
+  '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/playback': typeof AccountSettingsPlaybackRoute
+  '/account/settings/providers': typeof AccountSettingsProvidersRoute
+  '/account/settings/stremio': typeof AccountSettingsStremioRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +148,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/account/settings'
+    | '/account/settings/iptv'
+    | '/account/settings/playback'
+    | '/account/settings/providers'
+    | '/account/settings/stremio'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +163,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/account/settings'
+    | '/account/settings/iptv'
+    | '/account/settings/playback'
+    | '/account/settings/providers'
+    | '/account/settings/stremio'
   id:
     | '__root__'
     | '/'
@@ -133,6 +178,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/account/settings'
+    | '/account/settings/iptv'
+    | '/account/settings/playback'
+    | '/account/settings/providers'
+    | '/account/settings/stremio'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -211,15 +260,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsRouteImport
       parentRoute: typeof AccountRoute
     }
+    '/account/settings/stremio': {
+      id: '/account/settings/stremio'
+      path: '/stremio'
+      fullPath: '/account/settings/stremio'
+      preLoaderRoute: typeof AccountSettingsStremioRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/providers': {
+      id: '/account/settings/providers'
+      path: '/providers'
+      fullPath: '/account/settings/providers'
+      preLoaderRoute: typeof AccountSettingsProvidersRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/playback': {
+      id: '/account/settings/playback'
+      path: '/playback'
+      fullPath: '/account/settings/playback'
+      preLoaderRoute: typeof AccountSettingsPlaybackRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/iptv': {
+      id: '/account/settings/iptv'
+      path: '/iptv'
+      fullPath: '/account/settings/iptv'
+      preLoaderRoute: typeof AccountSettingsIptvRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
   }
 }
 
+interface AccountSettingsRouteChildren {
+  AccountSettingsIptvRoute: typeof AccountSettingsIptvRoute
+  AccountSettingsPlaybackRoute: typeof AccountSettingsPlaybackRoute
+  AccountSettingsProvidersRoute: typeof AccountSettingsProvidersRoute
+  AccountSettingsStremioRoute: typeof AccountSettingsStremioRoute
+}
+
+const AccountSettingsRouteChildren: AccountSettingsRouteChildren = {
+  AccountSettingsIptvRoute: AccountSettingsIptvRoute,
+  AccountSettingsPlaybackRoute: AccountSettingsPlaybackRoute,
+  AccountSettingsProvidersRoute: AccountSettingsProvidersRoute,
+  AccountSettingsStremioRoute: AccountSettingsStremioRoute,
+}
+
+const AccountSettingsRouteWithChildren = AccountSettingsRoute._addFileChildren(
+  AccountSettingsRouteChildren,
+)
+
 interface AccountRouteChildren {
-  AccountSettingsRoute: typeof AccountSettingsRoute
+  AccountSettingsRoute: typeof AccountSettingsRouteWithChildren
 }
 
 const AccountRouteChildren: AccountRouteChildren = {
-  AccountSettingsRoute: AccountSettingsRoute,
+  AccountSettingsRoute: AccountSettingsRouteWithChildren,
 }
 
 const AccountRouteWithChildren =

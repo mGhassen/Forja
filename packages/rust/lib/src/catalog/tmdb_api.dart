@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'package:rust/rust.dart';
 import '../models/media_details_extras.dart';
 import '../models/watch_provider.dart';
-import 'tmdb_watch_region.dart';
 
 class TmdbApi {
+  /// ISO 3166-1 watch region for discover, providers, and regional popular.
+  /// TMDB has no continent code — use a country (FR, DE, GB, …).
+  static const String kWatchRegion = 'FR';
+
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
   static Future<dynamic> _fetch(String resourcePath, {int timeoutSecs = 15}) async {
@@ -48,17 +51,17 @@ class TmdbApi {
 
   /// Website-style popular: discover sorted by popularity with a minimum vote
   /// floor so low-signal titles from raw `/popular` do not dominate the row.
-  Future<List<Movie>> getPopular({String? watchRegion}) {
+  Future<List<Movie>> getPopular({String watchRegion = kWatchRegion}) {
     return discoverMovies(
-      watchRegion: watchRegion ?? TmdbWatchRegion.current,
+      watchRegion: watchRegion,
       sortBy: 'popularity.desc',
       minVoteCount: 100,
     );
   }
 
-  Future<List<Movie>> getPopularTv({String? watchRegion}) {
+  Future<List<Movie>> getPopularTv({String watchRegion = kWatchRegion}) {
     return discoverTvShows(
-      watchRegion: watchRegion ?? TmdbWatchRegion.current,
+      watchRegion: watchRegion,
       sortBy: 'popularity.desc',
       minVoteCount: 100,
     );
@@ -225,13 +228,10 @@ class TmdbApi {
   /// Top flatrate watch providers for a region (used by Home top-bar filter).
   Future<List<WatchProvider>> getTopWatchProviders({
     int limit = 24,
-    String? region,
+    String region = kWatchRegion,
   }) async {
-    final watchRegion = region ?? TmdbWatchRegion.current;
     try {
-      final decoded = await _fetchMap(
-        'watch/providers/movie?watch_region=$watchRegion',
-      );
+      final decoded = await _fetchMap('watch/providers/movie?watch_region=$region');
       final results = (decoded['results'] as List? ?? [])
           .map((json) => WatchProvider.fromJson(json as Map<String, dynamic>))
           .where((p) => p.logoPath.isNotEmpty)
@@ -251,12 +251,11 @@ class TmdbApi {
     int? minVoteCount,
     String? language,
     int? watchProviderId,
-    String? watchRegion,
+    String watchRegion = kWatchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
   }) async {
-    final region = watchRegion ?? TmdbWatchRegion.current;
-    var path = 'discover/movie?page=$page&watch_region=$region&sort_by=$sortBy';
+    var path = 'discover/movie?page=$page&watch_region=$watchRegion&sort_by=$sortBy';
     if (genres != null && genres.isNotEmpty) {
       path += '&with_genres=${genres.join(',')}';
     }
@@ -295,12 +294,11 @@ class TmdbApi {
     int? minVoteCount,
     String? language,
     int? watchProviderId,
-    String? watchRegion,
+    String watchRegion = kWatchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
   }) async {
-    final region = watchRegion ?? TmdbWatchRegion.current;
-    var path = 'discover/tv?page=$page&watch_region=$region&sort_by=$sortBy';
+    var path = 'discover/tv?page=$page&watch_region=$watchRegion&sort_by=$sortBy';
     if (genres != null && genres.isNotEmpty) {
       path += '&with_genres=${genres.join(',')}';
     }
@@ -405,16 +403,15 @@ class TmdbApi {
 
   static List<WatchProvider> parseWatchProviders(
     Map<String, dynamic> json, {
-    String? region,
+    String region = kWatchRegion,
   }) {
-    final watchRegion = region ?? TmdbWatchRegion.current;
     final root = json['watch/providers'];
     if (root is! Map<String, dynamic>) return const [];
 
     final results = root['results'];
     if (results is! Map<String, dynamic> || results.isEmpty) return const [];
 
-    var regionData = results[watchRegion];
+    var regionData = results[region];
     regionData ??= results.values.first;
     if (regionData is! Map<String, dynamic>) return const [];
 

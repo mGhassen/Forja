@@ -73,16 +73,8 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     return safeBottom + barPad + barHeight + seekbar + 12;
   }
 
-  void _updateSubVisibility(SubtitleTrack track) {
-    if (_s._exoBackend) return;
-    if (_s._player?.platform is! NativePlayer) return;
-    final on = track.id != 'no';
-    (_s._player!.platform as NativePlayer)
-        .setProperty('sub-visibility', on ? 'yes' : 'no');
-  }
-
   Future<void> _applyAutoAudio() async {
-    if (_s._exoBackend || _s._audioPinned) return;
+    if (_s._exoBackend) return;
     try {
       final settings = SettingsService();
       final audioLang = await settings.getPreferredAudioLanguage();
@@ -97,21 +89,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     } catch (e) {
       debugPrint('[IPTV] auto audio select failed: $e');
     }
-  }
-
-  void _showAudioMenu(BuildContext anchorContext) {
-    if (_s._exoBackend || _s._player == null) return;
-    _scheduleHideControls();
-    PlayerAudioMenu.show(
-      context,
-      player: _s._player!,
-      onTrackSelected: () => setState(() => _s._audioPinned = true),
-      anchorContext: anchorContext,
-      margin: EdgeInsets.only(
-        left: 16,
-        bottom: MediaQuery.paddingOf(context).bottom + 88,
-      ),
-    );
   }
 
   void _showStatsMenu(BuildContext anchorContext) {
@@ -132,98 +109,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         retryAttempt: _s._retryAttempt,
         volume: _s._volume,
         buffered: _s._buffered,
-      ),
-    );
-  }
-
-  void _showSubtitleMenu(BuildContext anchorContext) {
-    if (_s._exoBackend || _s._player == null) return;
-    _scheduleHideControls();
-    PlayerSubtitleMenu.show(
-      context,
-      player: _s._player!,
-      anchorContext: anchorContext,
-      externalSubtitles: const [],
-      selectedExternalSubUrl: null,
-      isFetchingSubs: false,
-      updateSubVisibility: _updateSubVisibility,
-      onExternalUrlChanged: (_) {},
-      onNativeSubtitleChanged: (_) {},
-      loadOnlineSubtitle: (_) async {},
-      onSubtitleSettings: _showSubtitleSettings,
-      onSubtitleSelected: () => setState(() => _s._subtitlePinned = true),
-      margin: EdgeInsets.only(
-        left: 16,
-        bottom: MediaQuery.paddingOf(context).bottom + 88,
-      ),
-    );
-  }
-
-  void _showSubtitleSettings() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => ShellScope.rehost(
-        context,
-        StatefulBuilder(
-          builder: (ctx, setDialog) => AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: const Text(
-            'Subtitle delay',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IptvIconAction(
-                tooltip: 'Decrease delay',
-                icon: Icons.remove,
-                color: Colors.white70,
-                onPressed: () {
-                  setDialog(() {
-                    _s._subtitleDelay =
-                        double.parse((_s._subtitleDelay - 0.1).toStringAsFixed(1));
-                  });
-                  if (_s._player?.platform is NativePlayer) {
-                    (_s._player!.platform as NativePlayer).setProperty(
-                      'sub-delay',
-                      _s._subtitleDelay.toString(),
-                    );
-                  }
-                },
-              ),
-              Text(
-                '${_s._subtitleDelay.toStringAsFixed(1)}s',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              IptvIconAction(
-                tooltip: 'Increase delay',
-                icon: Icons.add,
-                color: Colors.white70,
-                onPressed: () {
-                  setDialog(() {
-                    _s._subtitleDelay =
-                        double.parse((_s._subtitleDelay + 0.1).toStringAsFixed(1));
-                  });
-                  if (_s._player?.platform is NativePlayer) {
-                    (_s._player!.platform as NativePlayer).setProperty(
-                      'sub-delay',
-                      _s._subtitleDelay.toString(),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            IptvTextAction(
-              icon: Icons.check_rounded,
-              label: 'Done',
-              color: Colors.white70,
-              onPressed: () => Navigator.pop(ctx),
-            ),
-          ],
-        ),
-        ),
       ),
     );
   }
@@ -483,6 +368,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
+            _buildBottomChannelLogo(compact),
             if (_s._isVod) _buildSeekbar(compact),
             _buildBottomBar(compact),
           ],
@@ -530,19 +416,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                 ? () => iptvFocusRowItem(topRowId, 1)
                 : null,
           ),
-          if ((_s._logoUrl ?? '').isNotEmpty) ...[
-            const SizedBox(width: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.network(
-                _s._logoUrl!,
-                width: 32,
-                height: 32,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            ),
-          ],
           const SizedBox(width: 8),
           Flexible(
             fit: FlexFit.loose,
@@ -590,6 +463,27 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   // ───────────────────────────────────────────────────────────────────────
   //  VOD SEEKBAR — only shown when duration > 0 (Xtream movies / series)
   // ───────────────────────────────────────────────────────────────────────
+  Widget _buildBottomChannelLogo(bool compact) {
+    if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
+    final size = compact ? 44.0 : 56.0;
+    return Align(
+      alignment: Alignment.bottomLeft,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(compact ? 16 : 24, 0, 0, 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            _s._logoUrl!,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSeekbar(bool compact) {
     final totalMs = _s._duration.inMilliseconds.toDouble();
     if (totalMs <= 0) return const SizedBox.shrink();
@@ -673,7 +567,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   Widget _buildBottomBar(bool compact) {
     const rowId = 'iptv-player-controls';
     final expectedCount = 3 // play, replay, mute
-        + (_s._exoBackend ? 0 : 3) // subs, audio, stats
+        + (_s._exoBackend ? 0 : 1) // stats
         + (widget.channelGuide != null ? 2 : 0)
         + (_s._sources.length > 1 ? 1 : 0)
         + 1; // fullscreen
@@ -795,24 +689,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             ),
           ),
           if (!_s._exoBackend) ...[
-            const SizedBox(width: 14),
-            Builder(
-              builder: (btnCtx) => IptvRoundIcon(
-                icon: Icons.subtitles_outlined,
-                tvRowId: rowId,
-                tvItemIndex: i++,
-                onTap: () => _showSubtitleMenu(btnCtx),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Builder(
-              builder: (btnCtx) => IptvRoundIcon(
-                icon: Icons.audiotrack_rounded,
-                tvRowId: rowId,
-                tvItemIndex: i++,
-                onTap: () => _showAudioMenu(btnCtx),
-              ),
-            ),
             const SizedBox(width: 14),
             Builder(
               builder: (btnCtx) => IptvRoundIcon(

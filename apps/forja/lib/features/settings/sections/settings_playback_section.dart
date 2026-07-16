@@ -8,6 +8,7 @@ import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/sync/sync.dart';
 
 /// Playback sources, scoring, and audio prefs.
 class SettingsPlaybackSection extends StatefulWidget {
@@ -93,6 +94,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setPlaySourceTorrentEnabled(val);
                 setState(() => _playSourceTorrent = val);
+                schedulePreferencesSyncPush();
               },
             ),
             settingsFocusableToggle(
@@ -103,6 +105,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setPlaySourceStremioEnabled(val);
                 setState(() => _playSourceStremio = val);
+                schedulePreferencesSyncPush();
               },
             ),
             settingsFocusableToggle(
@@ -113,6 +116,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setPlaySourceWebstreamingEnabled(val);
                 setState(() => _playSourceWebstreaming = val);
+                schedulePreferencesSyncPush();
               },
             ),
           ],
@@ -148,6 +152,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                 if (val != null) {
                   await _settings.setPreferredAudioLanguage(val);
                   setState(() => _preferredAudioLang = val);
+                  schedulePreferencesSyncPush();
                 }
               },
             ),
@@ -159,6 +164,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setAvoidUnsupportedAudio(val);
                 setState(() => _avoidUnsupportedAudio = val);
+                schedulePreferencesSyncPush();
               },
             ),
             settingsFocusableToggle(
@@ -169,6 +175,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setAutoNextEpisode(val);
                 setState(() => _autoNextEpisode = val);
+                schedulePreferencesSyncPush();
               },
             ),
             settingsFocusableToggle(
@@ -179,6 +186,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setAutoSkipIntro(val);
                 setState(() => _autoSkipIntro = val);
+                schedulePreferencesSyncPush();
               },
             ),
             settingsFocusableToggle(
@@ -189,6 +197,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               (val) async {
                 await _settings.setIptvEpgEnabled(val);
                 setState(() => _iptvEpgEnabled = val);
+                schedulePreferencesSyncPush();
               },
             ),
             settingsFocusableDropdown(
@@ -203,6 +212,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                     SettingsService.maxPlaybackHeightOptions[val] ?? 0;
                 await _settings.setMaxPlaybackHeight(height);
                 setState(() => _maxPlaybackHeightLabel = val);
+                schedulePreferencesSyncPush();
               },
             ),
           ],
@@ -239,6 +249,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
         onStreamOrderChanged: (next) async {
           setState(() => _streamProviderOrder = next);
           await _settings.setStreamProviderOrder(next);
+          scheduleProvidersSyncPush();
         },
         onStreamOrderReset: () async {
           final defaults = List<String>.from(
@@ -246,12 +257,14 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           );
           await _settings.setStreamProviderOrder(defaults);
           setState(() => _streamProviderOrder = defaults);
+          scheduleProvidersSyncPush();
         },
         animeCatalog: animeCatalog,
         animeOrder: animeOrder,
         onAnimeOrderChanged: (next) async {
           setState(() => _animeProviderOrder = next);
           await _settings.setAnimeProviderOrder(next);
+          scheduleProvidersSyncPush();
         },
         onAnimeOrderReset: () async {
           final defaults = List<String>.from(
@@ -259,12 +272,14 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           );
           await _settings.setAnimeProviderOrder(defaults);
           setState(() => _animeProviderOrder = defaults);
+          scheduleProvidersSyncPush();
         },
         asianDramaCatalog: asianDramaCatalog,
         asianDramaOrder: asianDramaOrder,
         onAsianDramaOrderChanged: (next) async {
           setState(() => _asianDramaProviderOrder = next);
           await _settings.setAsianDramaProviderOrder(next);
+          scheduleProvidersSyncPush();
         },
         onAsianDramaOrderReset: () async {
           final defaults = List<String>.from(
@@ -272,6 +287,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           );
           await _settings.setAsianDramaProviderOrder(defaults);
           setState(() => _asianDramaProviderOrder = defaults);
+          scheduleProvidersSyncPush();
         },
       ),
     );

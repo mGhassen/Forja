@@ -3,6 +3,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/sync/sync.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
 class SettingsProvidersSection extends StatefulWidget {
@@ -126,6 +127,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
         await _settings.saveStremioAddon(addonData);
         _addonController.clear();
         await _load();
+        scheduleStremioSyncPush();
         if (mounted) ForjaToast.success('Addon installed successfully!');
       } else {
         if (mounted) ForjaToast.error('Failed to install addon. Check URL.');
@@ -140,6 +142,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
   void _removeAddon(String baseUrl) async {
     await _settings.removeStremioAddon(baseUrl);
     await _load();
+    scheduleStremioSyncPush();
     if (mounted) ForjaToast.success('Addon removed');
   }
   Widget _buildAddonInput() {

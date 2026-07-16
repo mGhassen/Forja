@@ -22,8 +22,6 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.d
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
-import 'package:forja/shared/player/controls/player_audio_menu.dart';
-import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
@@ -162,7 +160,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   late String _selectedGroupId;
   late String _currentChannelId;
   IptvGuideEpgCache? _epgCache;
-  double _subtitleDelay = 0;
   bool _iptvEpgEnabled = true;
 
   // Watchdog state
@@ -223,8 +220,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   bool _disposed = false;
   bool _playerAlive = false;
-  bool _audioPinned = false;
-  bool _subtitlePinned = false;
 
   static const _playerConfiguration = PlayerConfiguration(
     bufferSize: 64 * 1024 * 1024,

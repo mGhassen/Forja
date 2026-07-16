@@ -37,7 +37,7 @@ class VideasyExtractor {
   /// Order matches the website default: fast working mirrors first so hung
   /// upstreams (neon2/m4uhd) cannot eat the whole extract budget.
   static const _mirrors = <_VideasyMirror>[
-    _VideasyMirror('cdn', movieOnly: true, displayName: 'Yoru'),
+    _VideasyMirror('cdn', displayName: 'Yoru'),
     _VideasyMirror('neon2', slow: true, displayName: 'Neon'),
     _VideasyMirror('ym', displayName: 'Sage'),
     _VideasyMirror('jett', displayName: 'Jett'),
@@ -204,7 +204,6 @@ class VideasyExtractor {
 
     final jobs = <_ProviderJob>[];
     for (final mirror in _mirrors) {
-      if (mirror.movieOnly && !isMovie) continue;
       final query = Map<String, String>.from(qp);
       if (mirror.language != null) {
         query['language'] = mirror.language!;
@@ -699,6 +698,10 @@ class VideasyExtractor {
       Uri.encodeComponent(title);
 
   @visibleForTesting
+  static List<String> mirrorEndpointsForTest() =>
+      [for (final m in _mirrors) m.endpoint];
+
+  @visibleForTesting
   static Map<String, String> sourcesQueryForTest({
     required String title,
     required bool isMovie,
@@ -767,7 +770,6 @@ class _VideasyMirror {
   const _VideasyMirror(
     this.endpoint, {
     required this.displayName,
-    this.movieOnly = false,
     this.qualityFilter,
     this.language,
     this.slow = false,
@@ -775,7 +777,6 @@ class _VideasyMirror {
 
   final String endpoint;
   final String displayName;
-  final bool movieOnly;
   final String? qualityFilter;
   final String? language;
   final bool slow;

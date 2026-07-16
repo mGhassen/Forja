@@ -1,0 +1,1 @@
+import{g as e,r as t}from"./use-auth-BKzP2_hN.js";import{y as n}from"./index-D62ixhSQ.js";var r=e();function i({children:e}){let{user:i,loading:a}=t();return a?(0,r.jsx)(`div`,{className:`flex min-h-screen items-center justify-center text-forja-muted`,children:`Loading…`}):i?e:(0,r.jsx)(n,{to:`/login`})}export{i as t};
