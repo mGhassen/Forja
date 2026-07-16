@@ -149,6 +149,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     );
   }
   void _resetPanelFilters() {
+    _s._resetPanelVisibleLimit();
     _s._sourceSearchQuery = '';
     _s._activeQualityFilters = {};
     _s._activeLanguageFilters = {};

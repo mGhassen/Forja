@@ -812,8 +812,8 @@ String _languageChipLabel(String code) {
   return '$flag ${code.toUpperCase()}';
 }
 
-class TorrentSourcePanelToolbar extends StatelessWidget {
-  const TorrentSourcePanelToolbar({
+class TorrentSourceSearchToolbar extends StatelessWidget {
+  const TorrentSourceSearchToolbar({
     super.key,
     required this.searchQuery,
     required this.onSearchChanged,

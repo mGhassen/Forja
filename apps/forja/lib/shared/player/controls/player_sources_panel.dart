@@ -8,6 +8,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
 import 'package:rust/rust.dart';
@@ -718,14 +719,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       ];
     }
     return const [];
-  }
-
-  int get _visibleCount {
-    var n = 0;
-    if (_showsTorrents) n += _filteredTorrents.length;
-    if (_showsStremio) n += _filteredStremio.length;
-    if (_showsNuvio) n += _filteredNuvio.length;
-    return n;
   }
 
   bool get _isFetching =>
