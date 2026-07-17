@@ -38,6 +38,10 @@ class ShellBus {
   /// Switch nav tab from anywhere: `ShellBus.requestTab.value = 'home';`
   static final ValueNotifier<String?> requestTab = ValueNotifier<String?>(null);
 
+  /// Mid-session profile switch: next navbar reload selects the profile default tab.
+  /// Cleared by [MainScreen] when applied.
+  static bool selectDefaultTabOnNextNavLoad = false;
+
   /// True after the splash overlay is dismissed — defer heavy tab work until then.
   static final ValueNotifier<bool> splashDismissed = ValueNotifier<bool>(false);
 

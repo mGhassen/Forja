@@ -1,1 +1,0 @@
-import{l as e}from"./useMatch-CcToMSxM.js";import{S as t,d as n}from"./index-DjcNNRoC.js";var r=e();function i({children:e}){let{user:i,loading:a}=n();return a?(0,r.jsx)(`div`,{className:`flex min-h-screen items-center justify-center text-forja-muted`,children:`Loading…`}):i?e:(0,r.jsx)(t,{to:`/login`})}export{i as t};

@@ -39,6 +39,7 @@ type AuthContextValue = {
     options?: { captchaToken?: string },
   ) => Promise<AuthResult>
   signOut: () => Promise<void>
+  deleteAccount: (confirmEmail: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -137,6 +138,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
   }, [])
 
+  const deleteAccount = useCallback(
+    async (confirmEmail: string): Promise<{ error: string | null }> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        return { error: 'You must be signed in to delete your account.' }
+      }
+
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { confirmEmail },
+      })
+
+      if (error) {
+        const message =
+          typeof data === 'object' &&
+          data &&
+          'error' in data &&
+          typeof (data as { error: unknown }).error === 'string'
+            ? (data as { error: string }).error
+            : error.message
+        return { error: message || 'Could not delete account.' }
+      }
+
+      if (
+        data &&
+        typeof data === 'object' &&
+        'error' in data &&
+        typeof (data as { error: unknown }).error === 'string'
+      ) {
+        return { error: (data as { error: string }).error }
+      }
+
+      await supabase.auth.signOut()
+      return { error: null }
+    },
+    [],
+  )
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -146,8 +189,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
     }),
-    [session, loading, signIn, signUp, signOut],
+    [session, loading, signIn, signUp, signOut, deleteAccount],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AccountEntryScreen extends StatefulWidget {
   const AccountEntryScreen({
@@ -18,17 +23,45 @@ class AccountEntryScreen extends StatefulWidget {
   State<AccountEntryScreen> createState() => _AccountEntryScreenState();
 }
 
-class _AccountEntryScreenState extends State<AccountEntryScreen> {
+class _AccountEntryScreenState extends State<AccountEntryScreen>
+    with TickerProviderStateMixin {
+  static const _words = ['stream', 'sync', 'live', 'play'];
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _createAccount = false;
   bool _obscurePassword = true;
   bool _busy = false;
+  bool _webBusy = false;
   String? _message;
   bool _messageIsError = false;
+  int _wordIndex = 0;
+  Timer? _wordTimer;
+
+  late final AnimationController _breathe;
+  late final AnimationController _enter;
+
+  @override
+  void initState() {
+    super.initState();
+    _breathe = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat(reverse: true);
+    _enter = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+    _wordTimer = Timer.periodic(const Duration(milliseconds: 3200), (_) {
+      if (!mounted || _busy || _webBusy) return;
+      setState(() => _wordIndex = (_wordIndex + 1) % _words.length);
+    });
+  }
 
   @override
   void dispose() {
+    _wordTimer?.cancel();
+    _breathe.dispose();
+    _enter.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -50,22 +83,16 @@ class _AccountEntryScreenState extends State<AccountEntryScreen> {
       _message = null;
     });
     try {
-      final response = _createAccount
-          ? await SyncService.instance.createAccount(
-              email: email,
-              password: password,
-            )
-          : await SyncService.instance.signInWithPassword(
-              email: email,
-              password: password,
-            );
+      final response = await SyncService.instance.signInWithPassword(
+        email: email,
+        password: password,
+      );
       if (!mounted) return;
       if (response.session == null) {
         setState(() {
           _message =
               'Check your email to confirm the account, then come back to sign in.';
           _messageIsError = false;
-          _createAccount = false;
         });
         return;
       }
@@ -88,162 +115,546 @@ class _AccountEntryScreenState extends State<AccountEntryScreen> {
     }
   }
 
-  void _setMode(bool createAccount) {
-    if (_busy) return;
+  Future<void> _webLogin() async {
     setState(() {
-      _createAccount = createAccount;
-      _message = null;
+      _webBusy = true;
+      _message =
+          'Browser opened — sign in on the web, then return here.';
+      _messageIsError = false;
     });
+    try {
+      final response = await SyncService.instance.signInWithBrowser();
+      if (!mounted) return;
+      if (response.session == null) {
+        setState(() {
+          _message = 'Web login did not complete. Try again.';
+          _messageIsError = true;
+        });
+        return;
+      }
+      widget.onAuthenticated();
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _message = error.message;
+        _messageIsError = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _message =
+            'Could not finish web login. Check that the portal is reachable.';
+        _messageIsError = true;
+      });
+    } finally {
+      if (mounted) setState(() => _webBusy = false);
+    }
   }
+
+  Future<void> _openSignup() async {
+    final uri = DesktopBrowserAuth.signupUri();
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      setState(() {
+        _message = 'Could not open the signup page in your browser.';
+        _messageIsError = true;
+      });
+    }
+  }
+
+  bool get _locked => _busy || _webBusy;
 
   @override
   Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 980;
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: AutofillGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Image.asset(
-                        'assets/icon/logo-dark.png',
-                        width: 132,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Text(
-                      _createAccount ? 'Create your account' : 'Welcome back',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: ForjaShellColors.textPrimary,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Sync settings and keep separate profiles on every screen.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary.withValues(
-                          alpha: 0.9,
-                        ),
-                        fontSize: 14,
-                        height: 1.45,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: false, label: Text('Sign in')),
-                        ButtonSegment(
-                          value: true,
-                          label: Text('Create account'),
-                        ),
-                      ],
-                      selected: {_createAccount},
-                      onSelectionChanged: (selection) =>
-                          _setMode(selection.first),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _emailController,
-                      enabled: !_busy,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.email],
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _passwordController,
-                      enabled: !_busy,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      autofillHints: _createAccount
-                          ? const [AutofillHints.newPassword]
-                          : const [AutofillHints.password],
-                      onSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
-                        suffixIcon: IconButton(
-                          tooltip: _obscurePassword
-                              ? 'Show password'
-                              : 'Hide password',
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_message != null) ...[
-                      const SizedBox(height: 14),
-                      Text(
-                        _message!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _messageIsError
-                              ? Colors.redAccent
-                              : ForjaShellColors.brandGreen,
-                          fontSize: 13,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 22),
-                    FilledButton(
-                      onPressed: _busy ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
-                        backgroundColor: ForjaShellColors.brandGreen,
-                        foregroundColor: Colors.black,
-                      ),
-                      child: Text(
-                        _busy
-                            ? 'Connecting…'
-                            : _createAccount
-                            ? 'Create account'
-                            : 'Sign in',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: _busy ? null : widget.onContinueAsGuest,
-                      child: const Text('Continue without an account'),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Guest mode keeps everything on this device. You can sign in later from Settings.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+      body: AnimatedBuilder(
+        animation: Listenable.merge([_breathe, _enter]),
+        builder: (context, _) {
+          final t = Curves.easeOutCubic.transform(_enter.value);
+          final glow = 0.10 + (_breathe.value * 0.06);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(
+                painter: _AccountAtmospherePainter(
+                  breathe: _breathe.value,
+                  greenGlow: glow,
                 ),
               ),
+              SafeArea(
+                child: Opacity(
+                  opacity: t,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - t) * 18),
+                    child: wide
+                        ? Row(
+                            children: [
+                              Expanded(flex: 11, child: _buildStory()),
+                              Expanded(
+                                flex: 10,
+                                child: _buildForm(maxWidth: 420),
+                              ),
+                            ],
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 28,
+                              vertical: 24,
+                            ),
+                            child: Column(
+                              children: [
+                                _buildStory(compact: true),
+                                const SizedBox(height: 28),
+                                _buildForm(maxWidth: 440),
+                              ],
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStory({bool compact = false}) {
+    final word = _words[_wordIndex];
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        compact ? 8 : 56,
+        compact ? 12 : 48,
+        compact ? 8 : 40,
+        compact ? 8 : 48,
+      ),
+      child: Align(
+        alignment: compact ? Alignment.center : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            crossAxisAlignment: compact
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/icon/logo-dark.png',
+                width: compact ? 96 : 118,
+                fit: BoxFit.contain,
+              ),
+              SizedBox(height: compact ? 28 : 40),
+              Text(
+                'CREATIVE PLAYER',
+                textAlign: compact ? TextAlign.center : TextAlign.start,
+                style: GoogleFonts.spaceMono(
+                  color: ForjaShellColors.brandGreen.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  letterSpacing: 3.2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text.rich(
+                TextSpan(
+                  style: GoogleFonts.oswald(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: compact ? 40 : 56,
+                    height: 1.05,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                  children: [
+                    const TextSpan(text: 'One player.\nYour sources.\nEvery '),
+                    TextSpan(
+                      text: word,
+                      style: TextStyle(color: ForjaShellColors.brandGreen),
+                    ),
+                    const TextSpan(text: '.'),
+                  ],
+                ),
+                textAlign: compact ? TextAlign.center : TextAlign.start,
+              ),
+              SizedBox(height: compact ? 16 : 22),
+              Text(
+                'Sign in to sync settings and profiles across every screen. '
+                'New accounts live on the web — not in the app.',
+                textAlign: compact ? TextAlign.center : TextAlign.start,
+                style: GoogleFonts.plusJakartaSans(
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.95),
+                  fontSize: 15,
+                  height: 1.55,
+                ),
+              ),
+              if (!compact) ...[
+                const SizedBox(height: 36),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: const [
+                    _StoryChip('Playback'),
+                    _StoryChip('IPTV guides'),
+                    _StoryChip('Profiles'),
+                    _StoryChip('Desk → TV'),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm({required double maxWidth}) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Welcome back',
+                  style: GoogleFonts.oswald(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Use your Forja account, or open the browser to sign in on the web.',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                _HairlineField(
+                  controller: _emailController,
+                  enabled: !_locked,
+                  label: 'Email',
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
+                  prefix: Icons.alternate_email_rounded,
+                ),
+                const SizedBox(height: 18),
+                _HairlineField(
+                  controller: _passwordController,
+                  enabled: !_locked,
+                  label: 'Password',
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  prefix: Icons.lock_outline_rounded,
+                  onSubmitted: (_) => _submit(),
+                  suffix: IconButton(
+                    tooltip: _obscurePassword
+                        ? 'Show password'
+                        : 'Hide password',
+                    onPressed: _locked
+                        ? null
+                        : () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: ForjaShellColors.textSecondary,
+                    ),
+                  ),
+                ),
+                if (_message != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _message!,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: _messageIsError
+                          ? const Color(0xFFFF8A80)
+                          : ForjaShellColors.brandGreen,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 28),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _locked ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ForjaShellColors.brandGreen,
+                      foregroundColor: Colors.black,
+                      disabledBackgroundColor: ForjaShellColors.brandGreen
+                          .withValues(alpha: 0.35),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      _busy ? 'Connecting…' : 'Sign in',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _locked ? null : _webLogin,
+                    icon: Icon(
+                      _webBusy
+                          ? Icons.hourglass_top_rounded
+                          : Icons.open_in_browser_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _webBusy ? 'Waiting for browser…' : 'Web login',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        letterSpacing: 0.15,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ForjaShellColors.textPrimary,
+                      side: BorderSide(
+                        color: ForjaShellColors.textPrimary.withValues(
+                          alpha: 0.35,
+                        ),
+                      ),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: _locked ? null : _openSignup,
+                    style: TextButton.styleFrom(
+                      foregroundColor: ForjaShellColors.brandGreen,
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Create an account on the web →',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Divider(
+                  height: 1,
+                  color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
+                ),
+                const SizedBox(height: 18),
+                TextButton(
+                  onPressed: _locked ? null : widget.onContinueAsGuest,
+                  child: Text(
+                    'Continue without an account',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: ForjaShellColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Guest mode keeps everything on this device. You can sign in later from Settings.',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: ForjaShellColors.textSecondary.withValues(
+                      alpha: 0.85,
+                    ),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _StoryChip extends StatelessWidget {
+  const _StoryChip(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: ForjaShellColors.textPrimary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.spaceMono(
+          color: ForjaShellColors.textSecondary,
+          fontSize: 10,
+          letterSpacing: 1.4,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _HairlineField extends StatelessWidget {
+  const _HairlineField({
+    required this.controller,
+    required this.label,
+    required this.prefix,
+    this.enabled = true,
+    this.obscureText = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.onSubmitted,
+    this.suffix,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData prefix;
+  final bool enabled;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final ValueChanged<String>? onSubmitted;
+  final Widget? suffix;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
+      onSubmitted: onSubmitted,
+      style: GoogleFonts.plusJakartaSans(
+        color: ForjaShellColors.textPrimary,
+        fontSize: 15,
+      ),
+      cursorColor: ForjaShellColors.brandGreen,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.plusJakartaSans(
+          color: ForjaShellColors.textSecondary,
+        ),
+        prefixIcon: Icon(prefix, color: ForjaShellColors.textSecondary),
+        suffixIcon: suffix,
+        filled: false,
+        border: const UnderlineInputBorder(
+          borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
+        ),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(
+            color: ForjaShellColors.textPrimary.withValues(alpha: 0.22),
+          ),
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: ForjaShellColors.brandGreen, width: 1.6),
+        ),
+        disabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(
+            color: ForjaShellColors.borderSubtle.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountAtmospherePainter extends CustomPainter {
+  _AccountAtmospherePainter({
+    required this.breathe,
+    required this.greenGlow,
+  });
+
+  final double breathe;
+  final double greenGlow;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = AppTheme.bgDark,
+    );
+
+    final green = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(-0.75 + breathe * 0.08, -0.35),
+        radius: 1.05,
+        colors: [
+          ForjaShellColors.brandGreen.withValues(alpha: greenGlow),
+          Colors.transparent,
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, green);
+
+    final flame = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(0.85, 0.7 - breathe * 0.1),
+        radius: 0.85,
+        colors: [
+          const Color(0xFFFF4D1C).withValues(alpha: 0.08 + breathe * 0.04),
+          Colors.transparent,
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, flame);
+
+    final grain = Paint()
+      ..color = Colors.white.withValues(alpha: 0.015)
+      ..strokeWidth = 1;
+    final rng = math.Random(42);
+    for (var i = 0; i < 180; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      canvas.drawCircle(Offset(x, y), 0.6, grain);
+    }
+
+    final rule = Paint()
+      ..color = ForjaShellColors.textPrimary.withValues(alpha: 0.06)
+      ..strokeWidth = 1;
+    if (size.width >= 980) {
+      final x = size.width * (11 / 21);
+      canvas.drawLine(Offset(x, 48), Offset(x, size.height - 48), rule);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AccountAtmospherePainter oldDelegate) =>
+      oldDelegate.breathe != breathe || oldDelegate.greenGlow != greenGlow;
 }

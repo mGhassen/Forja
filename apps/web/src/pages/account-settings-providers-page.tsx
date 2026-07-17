@@ -3,10 +3,9 @@ import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
 import { ProviderOrderList } from '@/components/provider-order-list'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useUserSetting } from '@/hooks/use-user-setting'
+import { useProvidersSetting } from '@/hooks/use-user-setting'
 import {
   emptyProvidersPayload,
-  SYNC_DOMAINS,
   type ProvidersPayload,
 } from '@/lib/sync-domains'
 
@@ -33,7 +32,7 @@ const tabs = [
 
 export function AccountSettingsProvidersPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
-    useUserSetting<ProvidersPayload>(SYNC_DOMAINS.providers)
+    useProvidersSetting()
   const [draft, setDraft] = useState(emptyProvidersPayload())
   const [savedFlash, setSavedFlash] = useState(false)
 

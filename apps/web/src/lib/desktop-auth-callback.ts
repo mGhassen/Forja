@@ -1,0 +1,48 @@
+/**
+ * Hands a Supabase session back to the Forja desktop app via a localhost
+ * callback started by DesktopBrowserAuth.
+ *
+ * Only http(s) loopback hosts are accepted.
+ */
+export function isSafeDesktopCallback(raw: string | null | undefined): boolean {
+  if (!raw) return false
+  try {
+    const url = new URL(raw)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function buildDesktopCallbackUrl(options: {
+  callback: string
+  state: string | null
+  accessToken: string
+  refreshToken: string
+}): string | null {
+  if (!isSafeDesktopCallback(options.callback)) return null
+  const url = new URL(options.callback)
+  url.searchParams.set('access_token', options.accessToken)
+  url.searchParams.set('refresh_token', options.refreshToken)
+  if (options.state) {
+    url.searchParams.set('state', options.state)
+  }
+  return url.toString()
+}
+
+export function readDesktopAuthSearchParams(
+  search: string | URLSearchParams = typeof window !== 'undefined'
+    ? window.location.search
+    : '',
+): { callback: string | null; state: string | null } {
+  const params =
+    typeof search === 'string' ? new URLSearchParams(search) : search
+  return {
+    callback: params.get('desktop_callback'),
+    state: params.get('desktop_state'),
+  }
+}

@@ -66,7 +66,8 @@ Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE
 | `/terms` | Terms of use |
 | `/dmca` | DMCA / copyright notice |
 | `/login`, `/signup` | Public — email/password auth (Turnstile when configured) |
-| `/account` | Authenticated |
-| `/account/settings` | Authenticated — sync domain status |
+| `/account` | Authenticated — redirects into settings |
+| `/account/profiles` | Authenticated — Who's watching / manage profiles |
+| `/account/settings/*` | Authenticated — Profile sync domains + Account (logout / delete) |
 
 File routes live under `src/routes/`. Page UI stays in `src/pages/`.

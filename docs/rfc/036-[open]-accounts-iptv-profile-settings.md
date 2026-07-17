@@ -1,0 +1,99 @@
+# RFC-036: Accounts hub, global IPTV, profile settings
+
+**Status:** open  
+**Depends on:** RFC-006, RFC-034  
+**Area:** `apps/web/supabase/`, `apps/web/src/`, `apps/forja/lib/shared/sync/`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **1 / 7** components · **4 / 19** acceptance (lean storage + profile splash + model correction in progress) |
+| **Current slice** | Corrected IPTV: `user_iptv_portals.portal_name`; full playback + navigation in settings |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R36-C01 | Supabase: `accounts`, `iptv_portals`, `profile_settings`; drop releases/announcements/`user_settings` | ⬜ |
+| 2 | R36-C02 | Web self-serve settings on single profile payload + IPTV portal RPC | ⬜ |
+| 3 | R36-C03 | Web admin UI (`/admin`) gated by `accounts.is_admin` | ⬜ |
+| 4 | R36-C04 | Flutter `SyncService` / `SyncDomainBridge` single-payload pull/push | ⬜ |
+| 5 | R36-C05 | Profile-switch splash (distinct from boot splash) | ✅ |
+| 6 | R36-C06 | GitHub-only updater; remove announcements consumer | ⬜ |
+| 7 | R36-C07 | `user_iptv_portals` assignment table (`portal_name`, favorite); settings iptv = M3U only | 🔄 |
+
+---
+
+## Acceptance (schema + sync)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R36-A01 | `accounts` 1:1 with `auth.users`; profiles/settings FK `account_id` | ⬜ |
+| 2 | R36-A02 | Global `iptv_portals` unique by url+username; no active connections; audit columns | ⬜ |
+| 3 | R36-A03 | One `profile_settings` row per profile with lean JSON payload (playback, connectedServices, navigation, iptv — no films) | 🔄 |
+| 4 | R36-A04 | Per-profile IPTV label in payload; portal credentials only on global row | ⬜ |
+| 5 | R36-A05 | `releases` / `release_assets` / `announcements` / `user_settings` dropped | ⬜ |
+| 6 | R36-A06 | RLS: own rows for users; admin elevated via `is_admin` | ⬜ |
+| 7 | R36-A15 | Lean payload: no M3U `channels[]`, omit default provider orders, omit false/empty flags | ✅ |
+| 8 | R36-A16 | My List / films not stored in cloud (device-local only) | ✅ |
+| 9 | R36-A17 | `user_iptv_portals.portal_name` is the only cloud display name; no `provider_name` on `iptv_portals` | 🔄 |
+| 10 | R36-A18 | `profile_settings.playback` stores full prefs including `play_source_*` modes | 🔄 |
+| 11 | R36-A19 | `profile_settings.navigation` stores visibleIds + defaultTab | 🔄 |
+
+---
+
+## Acceptance (web + Flutter)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 12 | R36-A07 | Web settings pages read/write new payload paths | 🔄 |
+| 13 | R36-A08 | Admin: accounts list, profile settings, global IPTV portals | ⬜ |
+| 14 | R36-A09 | Flutter pull/push lean `profile_settings` (navigation yes; films no) | 🔄 |
+| 15 | R36-A10 | Profile switch shows dedicated splash until merge completes or fails | ✅ |
+| 16 | R36-A11 | App updater no longer reads Supabase releases tables | ⬜ |
+| 17 | R36-A12 | Announcement banner/service removed or no-ops | ⬜ |
+| 18 | R36-A13 | Feature docs + changelog updated | ✅ |
+| 19 | R36-A14 | Existing multi-domain settings migrate into `profile_settings` without loss | ⬜ |
+
+---
+
+## Summary
+
+Replace multi-domain `user_settings` and Auth-only identity with an `accounts` hub, deduplicated global IPTV portals, and one JSON settings row per profile. Web portal gains admin tools; Flutter syncs the new shape and shows a profile-switch splash.
+
+## Goals
+
+1. Relational `accounts` for all FKs and admin listing.
+2. Share Xtream portal rows across users who use the same credentials; keep labels per profile.
+3. Single lean settings blob per profile for web + Flutter (no M3U channels, no My List, omit defaults).
+4. Operator admin UI without a separate staff auth system (`is_admin` flag).
+5. Clear UX when switching profiles (dedicated splash).
+
+## Lean payload (storage)
+
+On write, clients call compact helpers:
+
+- No `films` / My List
+- M3U under `iptv`: `{ id, name, sourceUrl, addedAt, updatedAt }` only (no `channels[]`; file M3U stays local)
+- Provider order arrays omitted when equal to built-in defaults
+- **Portal assignments are not in settings JSON** — see `user_iptv_portals`
+- **Playback** is stored in full (including `play_source_torrent_enabled` / `stremio` / `webstreaming`)
+- **Navigation** (`visibleIds`, `defaultTab`) is stored when set
+
+## Correction (portal naming)
+
+| Field | Table | Meaning |
+|-------|-------|---------|
+| `portal_name` | `user_iptv_portals` | User-chosen label for this profile (only cloud display name) |
+
+Global `iptv_portals` stores credentials / expiry / max connections only — no display-name column.
+
+## Related
+
+- [RFC-006](006-[partial]-supabase-sync.md) — prior sync domains (historical rows frozen)
+- [RFC-034](034-[partial]-web-portal-landing.md) — web portal

@@ -16,7 +16,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
 - On **Home (desktop)**, a **Search** icon then **Films / TV Shows / Categories** menu overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
-- Open **Settings → Navigation** to toggle tabs on/off, drag to reorder, and star the tab that opens on app start (only the tabs listed below are available right now)
+- Open **Settings → Navigation** to toggle tabs on/off, drag to reorder, and star the tab that opens on app start and after you switch profiles (only the tabs listed below are available right now)
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)
 
 ## Desktop shell layout

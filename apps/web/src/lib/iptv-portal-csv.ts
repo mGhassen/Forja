@@ -186,8 +186,7 @@ export function parsePortalsCsv(text: string): ParsePortalsCsvResult {
       url,
       username,
       password,
-      label: cell('label') || undefined,
-      name: cell('name') || undefined,
+      portalName: cell('label') || cell('name') || username,
       source: cell('source') || 'csv',
       expiry: cell('expiry') || undefined,
       max: cell('max') || undefined,
@@ -226,10 +225,8 @@ export type MergePortalsCsvResult = {
 }
 
 function portalLogLabel(portal: IptvPortalRow): string {
-  const label = portal.label?.trim()
+  const label = (portal.portalName ?? portal.label)?.trim()
   if (label) return label
-  const name = portal.name?.trim()
-  if (name) return name
   const user = portal.username?.trim()
   return user || portal.url || 'Portal'
 }
@@ -289,8 +286,8 @@ export function portalsToCsv(
     CSV_HEADERS.join(','),
     ...portals.map((portal) => {
       const cells: string[] = [
-        portal.label?.trim() ?? '',
-        portal.name?.trim() ?? '',
+        (portal.portalName ?? portal.label)?.trim() ?? '',
+        '',
         portal.url ?? '',
         portal.username ?? '',
         portal.password ?? '',

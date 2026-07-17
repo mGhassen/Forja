@@ -109,3 +109,7 @@ enabled = false
 # Public release sync — called without a user JWT from CI / dashboard.
 [functions.sync-github-releases]
 verify_jwt = false
+
+# Self-service account deletion — requires a valid user JWT.
+[functions.delete-account]
+verify_jwt = true

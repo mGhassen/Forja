@@ -293,12 +293,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           .toList();
     }
     if (!mounted) return;
+    final applyDefaultTab = ShellBus.selectDefaultTabOnNextNavLoad;
+    if (applyDefaultTab) {
+      ShellBus.selectDefaultTabOnNextNavLoad = false;
+    }
     setState(() {
       final currentId = _selectedIndex < _visibleIds.length
           ? _visibleIds[_selectedIndex]
           : null;
       _visibleIds = [...visible, 'settings'];
-      if (!_initialNavResolved) {
+      if (!_initialNavResolved || applyDefaultTab) {
+        if (applyDefaultTab) {
+          // Fresh tab trees for the incoming profile's settings/portals.
+          _tabCache.clear();
+          _mountedTabIds.clear();
+          _tabLru.clear();
+        }
         _initialNavResolved = true;
         _selectedIndex = SettingsService.initialShellTabIndex(
           _visibleIds,
@@ -308,6 +318,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           final tabId = _visibleIds[_selectedIndex];
           _mountedTabIds.add(tabId);
           _touchTab(tabId);
+          _applyTabShellChrome(tabId);
         }
       } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);

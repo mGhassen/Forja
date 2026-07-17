@@ -45,6 +45,7 @@ void main() {
     ShellBus.homeScrollOffset.value = 0;
     ShellBus.selectedWatchProviderId.value = null;
     ShellBus.requestTab.value = null;
+    ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.shellOverlayHasPage.value = false;
   });
 

@@ -20,16 +20,26 @@ import {
   CAPTCHA_REQUIRED_MESSAGE,
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
+import {
+  buildDesktopCallbackUrl,
+  isSafeDesktopCallback,
+  readDesktopAuthSearchParams,
+} from '@/lib/desktop-auth-callback'
+import { supabase } from '@/lib/supabase'
 
 function LoginForm() {
   const navigate = useNavigate()
-  const { signIn, user, loading, configured } = useAuth()
+  const { signIn, session, user, loading, configured } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [desktopHandoff, setDesktopHandoff] = useState(false)
+
+  const desktopParams = readDesktopAuthSearchParams()
+  const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
@@ -40,11 +50,43 @@ function LoginForm() {
     setCaptchaKey((k) => k + 1)
   }
 
+  const handoffToDesktop = useCallback(
+    (accessToken: string, refreshToken: string) => {
+      if (!desktopParams.callback) return false
+      const target = buildDesktopCallbackUrl({
+        callback: desktopParams.callback,
+        state: desktopParams.state,
+        accessToken,
+        refreshToken,
+      })
+      if (!target) {
+        setError('This desktop login link is invalid. Open Web login from Forja again.')
+        return false
+      }
+      setDesktopHandoff(true)
+      window.location.assign(target)
+      return true
+    },
+    [desktopParams.callback, desktopParams.state],
+  )
+
   useEffect(() => {
-    if (!loading && user) {
+    if (loading || !user) return
+    if (isDesktopLogin && session?.access_token && session.refresh_token) {
+      handoffToDesktop(session.access_token, session.refresh_token)
+      return
+    }
+    if (!isDesktopLogin) {
       void navigate({ to: '/account/profiles' })
     }
-  }, [loading, user, navigate])
+  }, [
+    loading,
+    user,
+    session,
+    isDesktopLogin,
+    handoffToDesktop,
+    navigate,
+  ])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -59,127 +101,158 @@ function LoginForm() {
     const { error: signInError } = await signIn(email.trim(), password, {
       captchaToken: captchaToken ?? undefined,
     })
-    setSubmitting(false)
     if (signInError) {
+      setSubmitting(false)
       setError(signInError)
       resetCaptcha()
       return
     }
+
+    if (isDesktopLogin) {
+      const { data } = await supabase.auth.getSession()
+      const next = data.session
+      if (next?.access_token && next.refresh_token) {
+        handoffToDesktop(next.access_token, next.refresh_token)
+        return
+      }
+      setSubmitting(false)
+      setError('Signed in, but the desktop handoff failed. Try Web login again from Forja.')
+      return
+    }
+
+    setSubmitting(false)
     void navigate({ to: '/account/profiles' })
   }
 
   return (
-    <section className="flex flex-1 items-center justify-center px-[5vw] py-14 lg:py-20">
+    <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="w-full max-w-md">
         <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)] backdrop-blur-sm">
           <CardHeader className="space-y-2 pb-2">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
-              Welcome back
+              {isDesktopLogin ? 'Desktop handoff' : 'Welcome back'}
             </p>
             <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-              Log in
+              {isDesktopLogin ? 'Sign in for Forja' : 'Log in'}
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Your player settings, synced. Download stays free - account is
-              optional.
+              {isDesktopLogin
+                ? 'After you sign in here, Forja on your desktop finishes automatically. You can close this tab.'
+                : 'Your player settings, synced. Download stays free - account is optional.'}
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={onSubmit} className="space-y-5">
-              {!configured ? (
-                <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Web sign-in is not open yet. Download Forja - you can watch
-                  without an account.
-                </p>
-              ) : null}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  required={configured}
-                  disabled={!configured}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required={configured}
-                  disabled={!configured}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
-                />
-              </div>
-
-              {configured && captchaConfigured ? (
-                <div className="space-y-2">
-                  <Label>Verification</Label>
-                  <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
-                </div>
-              ) : null}
-
-              {error ? (
-                <p
-                  role="alert"
-                  className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
-                >
-                  {error === AUTH_UNAVAILABLE_MESSAGE
-                    ? 'Sign-in is not available right now. Download Forja and play without an account.'
-                    : error}
-                </p>
-              ) : null}
-
-              {configured ? (
-                <Button
-                  type="submit"
-                  disabled={
-                    submitting ||
-                    loading ||
-                    (captchaConfigured && !captchaToken)
-                  }
-                  className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                >
-                  {submitting ? 'Signing in…' : 'Sign in'}
-                </Button>
-              ) : (
-                <Link
-                  to="/download"
-                  data-hover=""
-                  className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                >
-                  Download Forja
-                </Link>
-              )}
-            </form>
-
-            <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
-              <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
-                No account yet?{' '}
-                <Link
-                  to="/signup"
-                  className="text-forja-green hover:text-flame hover:underline"
-                >
-                  Create one
-                </Link>
+            {desktopHandoff ? (
+              <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.7)]">
+                Returning you to the Forja app…
               </p>
-              <Link
-                to="/download"
-                className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-              >
-                Or download and play without signing in →
-              </Link>
-            </div>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-5">
+                {!configured ? (
+                  <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
+                    Web sign-in is not open yet. Download Forja - you can watch
+                    without an account.
+                  </p>
+                ) : null}
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required={configured}
+                    disabled={!configured}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required={configured}
+                    disabled={!configured}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                  />
+                </div>
+
+                {configured && captchaConfigured ? (
+                  <div className="space-y-2">
+                    <Label>Verification</Label>
+                    <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
+                  </div>
+                ) : null}
+
+                {error ? (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                  >
+                    {error === AUTH_UNAVAILABLE_MESSAGE
+                      ? 'Sign-in is not available right now. Download Forja and play without an account.'
+                      : error}
+                  </p>
+                ) : null}
+
+                {configured ? (
+                  <Button
+                    type="submit"
+                    disabled={
+                      submitting ||
+                      loading ||
+                      (captchaConfigured && !captchaToken)
+                    }
+                    className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                  >
+                    {submitting
+                      ? isDesktopLogin
+                        ? 'Signing in for desktop…'
+                        : 'Signing in…'
+                      : isDesktopLogin
+                        ? 'Sign in & return to app'
+                        : 'Sign in'}
+                  </Button>
+                ) : (
+                  <Link
+                    to="/download"
+                    data-hover=""
+                    className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                  >
+                    Download Forja
+                  </Link>
+                )}
+              </form>
+            )}
+
+            {!desktopHandoff ? (
+              <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+                <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
+                  No account yet?{' '}
+                  <Link
+                    to="/signup"
+                    className="text-forja-green hover:text-flame hover:underline"
+                  >
+                    Create one
+                  </Link>
+                </p>
+                {!isDesktopLogin ? (
+                  <Link
+                    to="/download"
+                    className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
+                  >
+                    Or download and play without signing in →
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </Reveal>
@@ -190,12 +263,19 @@ function LoginForm() {
 export function LoginPage() {
   return (
     <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
-      <SiteHeader solid />
+      <SiteHeader solid flush />
 
-      <main className="relative mx-auto grid min-h-screen max-w-[1400px] lg:grid-cols-[1.05fr_0.95fr] lg:pt-[4.5rem]">
-        <AuthStoryPanel />
+      <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
+        <AuthStoryPanel
+          emphasis={
+            isSafeDesktopCallback(readDesktopAuthSearchParams().callback)
+              ? 'Sign in here to unlock sync on your desktop Forja app.'
+              : undefined
+          }
+        />
         <LoginForm />
       </main>
     </div>
   )
 }
+

@@ -297,6 +297,70 @@ String _avatarSvg(String rawKey) {
 </svg>''';
 }
 
+/// Categories matching the web portal avatar picker.
+class ForjaProfileAvatarCategory {
+  const ForjaProfileAvatarCategory({required this.label, required this.keys});
+
+  final String label;
+  final List<String> keys;
+}
+
+const forjaProfileAvatarCategories = <ForjaProfileAvatarCategory>[
+  ForjaProfileAvatarCategory(
+    label: 'Characters',
+    keys: [
+      'forge',
+      'flame',
+      'mint',
+      'captain',
+      'rebel',
+      'ninja',
+      'royal',
+      'racer',
+    ],
+  ),
+  ForjaProfileAvatarCategory(
+    label: 'Creatures',
+    keys: [
+      'night',
+      'panda',
+      'fox',
+      'owl',
+      'shark',
+      'dragon',
+      'bunny',
+      'yeti',
+    ],
+  ),
+  ForjaProfileAvatarCategory(
+    label: 'Space',
+    keys: [
+      'orbit',
+      'comet',
+      'nova',
+      'alien',
+      'rover',
+      'lunar',
+      'solar',
+      'void',
+    ],
+  ),
+  ForjaProfileAvatarCategory(
+    label: 'Retro',
+    keys: ['pixel', 'arcade', 'cassette', 'glitch', 'neon', 'synth'],
+  ),
+];
+
+List<String> get forjaProfileAvatarKeys => [
+  for (final category in forjaProfileAvatarCategories) ...category.keys,
+];
+
+String normalizeForjaAvatarKey(String? raw) {
+  final key = (raw ?? '').trim();
+  if (key.isEmpty || !_avatarPalettes.containsKey(key)) return 'forge';
+  return key;
+}
+
 /// The same SVG artwork and generated variants used by the web profile picker.
 class ForjaProfileAvatar extends StatelessWidget {
   const ForjaProfileAvatar({
@@ -306,6 +370,7 @@ class ForjaProfileAvatar extends StatelessWidget {
     this.size = 42,
     this.selected = false,
     this.showBorder = true,
+    this.editing = false,
   });
 
   final String avatarKey;
@@ -313,34 +378,54 @@ class ForjaProfileAvatar extends StatelessWidget {
   final double size;
   final bool selected;
   final bool showBorder;
+  final bool editing;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       image: true,
       label: '$name avatar',
-      child: Container(
-        width: size,
-        height: size,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: const Color(0xFF171717),
-          borderRadius: BorderRadius.circular(size * 0.04),
-          border: showBorder
-              ? Border.all(
-                  color: selected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.12),
-                  width: selected ? 2 : 1,
-                )
-              : null,
-        ),
-        child: SvgPicture.string(
-          _avatarSvg(avatarKey),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: const Color(0xFF171717),
+              borderRadius: BorderRadius.circular(size * 0.04),
+              border: showBorder
+                  ? Border.all(
+                      color: selected
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.12),
+                      width: selected ? 2 : 1,
+                    )
+                  : null,
+            ),
+            child: SvgPicture.string(
+              _avatarSvg(avatarKey),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+            ),
+          ),
+          if (editing)
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(size * 0.04),
+              ),
+              child: Icon(
+                Icons.edit_rounded,
+                color: Colors.white,
+                size: size * 0.28,
+              ),
+            ),
+        ],
       ),
     );
   }

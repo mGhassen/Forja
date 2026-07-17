@@ -90,7 +90,7 @@ function SignupForm() {
 
   if (needsEmailConfirmation) {
     return (
-      <section className="flex flex-1 items-center justify-center px-[5vw] py-14 lg:py-20">
+      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
         <Reveal variant="right" className="w-full max-w-md">
           <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)] backdrop-blur-sm">
             <CardHeader className="space-y-2 pb-2">
@@ -128,7 +128,7 @@ function SignupForm() {
   }
 
   return (
-    <section className="flex flex-1 items-center justify-center px-[5vw] py-14 lg:py-20">
+    <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="w-full max-w-md">
         <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)] backdrop-blur-sm">
           <CardHeader className="space-y-2 pb-2">
@@ -264,9 +264,9 @@ function SignupForm() {
 export function SignupPage() {
   return (
     <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
-      <SiteHeader solid />
+      <SiteHeader solid flush />
 
-      <main className="relative mx-auto grid min-h-screen max-w-[1400px] lg:grid-cols-[1.05fr_0.95fr] lg:pt-[4.5rem]">
+      <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
         <AuthStoryPanel
           emphasis="Create an account to sync settings across your screens."
         />

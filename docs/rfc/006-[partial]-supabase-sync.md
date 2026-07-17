@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) |
-| **Current slice** | Desktop account/profile UX shipped locally — hosted GitHub Supabase secrets, per-key timestamp merge, and domain allowlist remain |
+| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **3 / 3** acceptance (desktop browser auth) · **2 / 5** acceptance (accounts hub slice) |
+| **Current slice** | Accounts hub / global IPTV / single profile_settings — see [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -78,6 +78,28 @@
 
 ---
 
+## Acceptance (desktop browser auth)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A30 | Desktop account entry offers **Web login** that opens the portal and returns a session via localhost callback | ✅ |
+| 2 | R06-A31 | In-app signup removed; create-account CTA opens web `/signup` only | ✅ |
+| 3 | R06-A32 | Web `/login?desktop_callback=…` hands access/refresh tokens back to the desktop app after sign-in | ✅ |
+
+---
+
+## Acceptance (accounts hub slice — RFC-036)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A26 | Sync uses `profile_settings` single payload (not multi-domain `user_settings`) | ⬜ |
+| 2 | R06-A27 | IPTV credentials live in global `iptv_portals`; profile stores portalId + label | ⬜ |
+| 3 | R06-A28 | Flutter profile switch shows dedicated splash until pull/merge finishes | ✅ |
+| 4 | R06-A29 | Schema/RLS match web portal accounts hub ([RFC-036](036-[open]-accounts-iptv-profile-settings.md)) | ⬜ |
+| 5 | R06-A33 | Mid-session profile switch lands on that profile’s saved default nav tab (not the previous screen) | ✅ |
+
+---
+
 ## Summary
 
 Optional account to backup and restore settings across devices. Offline-first — no auth required to use Forja.
@@ -89,8 +111,9 @@ Optional account to backup and restore settings across devices. Offline-first �
 
 ## Auth
 
-- Supabase Auth: email/password or magic link
-- Sign-in from Settings → Account (new section)
+- Supabase Auth: email/password (app + web); desktop **Web login** via portal localhost callback
+- Sign-up is web-only (`/signup`); desktop links out for account creation
+- Sign-in from desktop startup / Settings → Profile & account
 - Sign-out clears remote session only; local data retained
 
 ## Schema

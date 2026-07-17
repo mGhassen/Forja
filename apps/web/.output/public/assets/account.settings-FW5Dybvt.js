@@ -1,1 +1,0 @@
-import{l as e}from"./useMatch-CcToMSxM.js";import{t}from"./useRouterState-dD2QYZ3L.js";import{S as n,b as r}from"./index-DjcNNRoC.js";var i=e();function a(){let e=t({select:e=>e.location.pathname});return e!==`/account/settings`&&e!==`/account/settings/`?(0,i.jsx)(r,{}):(0,i.jsx)(n,{to:`/account/settings/playback`,replace:!0})}var o=a;export{o as component};

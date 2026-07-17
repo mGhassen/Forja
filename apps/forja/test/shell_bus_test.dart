@@ -7,6 +7,7 @@ void main() {
 
   tearDown(() {
     ShellBus.clearHideGlobalNav();
+    ShellBus.selectDefaultTabOnNextNavLoad = false;
     while (ShellBus.playerSurfaceActive.value) {
       ShellBus.leavePlayerSurface();
     }
@@ -43,6 +44,13 @@ void main() {
     ShellBus.requestTab.value = 'search';
     expect(ShellBus.requestTab.value, 'search');
     ShellBus.requestTab.value = null;
+  });
+
+  test('ShellBus.selectDefaultTabOnNextNavLoad defaults false and is mutable', () {
+    expect(ShellBus.selectDefaultTabOnNextNavLoad, isFalse);
+    ShellBus.selectDefaultTabOnNextNavLoad = true;
+    expect(ShellBus.selectDefaultTabOnNextNavLoad, isTrue);
+    ShellBus.selectDefaultTabOnNextNavLoad = false;
   });
 
   test('ShellBus.clearHideGlobalNav resets hideGlobalNav', () {

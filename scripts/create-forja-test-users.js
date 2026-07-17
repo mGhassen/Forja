@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * Create local Forja portal test users + sample `user_settings` rows.
- * Run after `supabase db reset` (or via scripts/reset-forja-supabase.js).
+ * Create local Forja portal test users + profile_settings + iptv_portals +
+ * user_iptv_portals. Run after `supabase db reset`.
  *
- * Auth users cannot be created in seed.sql (need Admin Auth API), so settings
- * seed lives here too — `user_settings.user_id` references auth.users.
+ * Auth users cannot be created in seed.sql (need Admin Auth API).
+ *
+ * Correct model:
+ * - iptv_portals = shared credentials (url, username, password, expiry, max)
+ * - user_iptv_portals.portal_name = per-profile label
+ * - profile_settings.playback = full prefs (incl. play_source_*)
+ * - profile_settings.navigation = navbar visibleIds + defaultTab
+ * - profile_settings.iptv = M3U URLs only (no portals)
  */
 
 const path = require('path')
@@ -22,156 +28,198 @@ const TEST_USERS = [
     password: 'password123',
     label: 'User',
     seedVariant: 'full',
+    isAdmin: true,
   },
   {
     email: 'demo@forja.local',
     password: 'password123',
     label: 'Demo',
     seedVariant: 'light',
+    isAdmin: false,
   },
 ]
 
 const nowMs = Date.now()
 
-function portalKey(url, username, password) {
-  return `${url}|${username}|${password}`.toLowerCase()
+const PORTAL_A = {
+  url: 'http://demo-iptv.forja.local:8080',
+  username: 'forja_user',
+  password: 'demo_pass_1',
+  source: 'seed',
+  expiry: '2027-12-31',
+  max_connections: '3',
 }
 
-function settingsFor(variant) {
-  const portalA = {
-    url: 'http://demo-iptv.forja.local:8080',
-    username: 'forja_user',
-    password: 'demo_pass_1',
-    source: 'seed',
-    name: 'Forja Demo Xtream',
-    expiry: '2027-12-31',
-    max: '3',
-    active: '1',
-  }
-  const portalB = {
-    url: 'http://backup-iptv.forja.local:25461',
-    username: 'forja_backup',
-    password: 'demo_pass_2',
-    source: 'seed',
-    name: 'Backup Panel',
-    expiry: '2026-09-15',
-    max: '1',
-    active: '0',
+const PORTAL_B = {
+  url: 'http://backup-iptv.forja.local:25461',
+  username: 'forja_backup',
+  password: 'demo_pass_2',
+  source: 'seed',
+  expiry: '2026-09-15',
+  max_connections: '1',
+}
+
+async function upsertIptvPortal(admin, portal, actorId) {
+  const now = new Date().toISOString()
+  const { data: existing, error: findError } = await admin
+    .from('iptv_portals')
+    .select('id')
+    .ilike('url', portal.url.trim())
+    .ilike('username', portal.username.trim())
+    .maybeSingle()
+  if (findError) throw findError
+
+  if (existing?.id) {
+    const { data, error } = await admin
+      .from('iptv_portals')
+      .update({
+        password: portal.password,
+        source: portal.source,
+        expiry: portal.expiry,
+        max_connections: portal.max_connections,
+        updated_at: now,
+        updated_by: actorId,
+      })
+      .eq('id', existing.id)
+      .select('id')
+      .single()
+    if (error) throw error
+    return data.id
   }
 
-  const iptvFull = {
-    portals: [portalA, portalB],
-    favoriteKeys: [portalKey(portalA.url, portalA.username, portalA.password)],
-    m3uPlaylists: [
-      {
-        id: `seed_m3u_${nowMs.toString(16)}`,
-        name: 'Public demo M3U',
-        sourceUrl: 'https://iptv-org.github.io/iptv/countries/us.m3u',
-        addedAt: nowMs - 86_400_000,
-        updatedAt: nowMs,
-        channels: [
-          {
-            n: 'Example News',
-            u: 'https://example.com/live/news.m3u8',
-            g: 'News',
-            l: '',
-          },
-          {
-            n: 'Example Sports',
-            u: 'https://example.com/live/sports.m3u8',
-            g: 'Sports',
-            l: '',
-          },
-        ],
-      },
-    ],
-  }
+  const { data, error } = await admin
+    .from('iptv_portals')
+    .insert({
+      ...portal,
+      created_by: actorId,
+      updated_by: actorId,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id
+}
 
-  const iptvLight = {
-    portals: [portalA],
-    favoriteKeys: [],
-    m3uPlaylists: [],
-  }
-
-  const preferences = {
+/** Full playback prefs for Home profile — includes play_source_* modes. */
+function fullPlaybackPayload() {
+  return {
     play_source_torrent_enabled: true,
     play_source_stremio_enabled: true,
     play_source_webstreaming_enabled: true,
-    preferred_audio_lang: variant === 'full' ? 'English' : 'None',
+    preferred_audio_lang: 'English',
     avoid_unsupported_audio: true,
     auto_next_episode: true,
-    auto_skip_intro: variant === 'full',
+    auto_skip_intro: true,
     iptv_epg_enabled: true,
-    max_playback_height: variant === 'full' ? 1080 : 0,
+    max_playback_height: 1080,
   }
+}
 
-  const providers = {
-    stream_provider_order: [
-      'videasy',
-      'vidlink',
-      'vidsrc',
-      'vidsrcwin',
-      'vixsrc',
-      'vidnest',
-      'vidzee',
-      'vidrock',
-      'vidfast',
-      '2embed',
-      'autoembed',
-      'vidlove',
-      'vidsrcsbs',
-      '111movies',
-      'moviesapi',
-      'service111477',
-      'webstreamr',
-    ],
-    anime_provider_order: [
-      'miruro:bee',
-      'allanime:Default',
-      'allanime:Yt-mp4',
-      'allanime:S-mp4',
-      'allanime:Luf-Mp4',
-      'vidnest:hianime',
-      'vidnest:animepahe',
-      'megaplay',
-      'vidwish',
-      'miruro:zoro',
-      'miruro:kiwi',
-      'miruro:ally',
-      'miruro:hop',
-      'miruro:bonk',
-      'miruro:moo',
-    ],
-    asian_drama_provider_order: [
-      'kisskh.co',
-      'kisskh.nl',
-      'kisskh.ovh',
-      'kisskh.la',
-      'kisskh.do',
-    ],
-  }
-
-  const stremio = {
-    addons: [
-      {
-        baseUrl: 'https://v3-cinemeta.strem.io/manifest.json',
-        name: 'Cinemeta',
-        description: 'Official catalog addon (seed)',
-      },
-      {
-        baseUrl: 'https://torrentio.strem.fun/manifest.json',
-        name: 'Torrentio',
-        description: 'Torrent streams (seed)',
-      },
-    ],
-  }
-
+function lightPlaybackPayload() {
   return {
-    iptv: variant === 'full' ? iptvFull : iptvLight,
-    preferences,
-    providers,
-    stremio: variant === 'full' ? stremio : { addons: [stremio.addons[0]] },
+    play_source_torrent_enabled: true,
+    play_source_stremio_enabled: true,
+    play_source_webstreaming_enabled: true,
+    preferred_audio_lang: 'None',
+    avoid_unsupported_audio: true,
+    auto_next_episode: true,
+    auto_skip_intro: false,
+    iptv_epg_enabled: true,
+    max_playback_height: 0,
   }
+}
+
+function navigationPayload(variant) {
+  if (variant === 'full') {
+    return {
+      visibleIds: [
+        'home',
+        'search',
+        'anime',
+        'asian_drama',
+        'iptv',
+        'live_matches',
+        'mylist',
+        'settings',
+      ],
+      defaultTab: 'home',
+    }
+  }
+  return {
+    visibleIds: ['home', 'search', 'iptv', 'settings'],
+    defaultTab: 'home',
+  }
+}
+
+/** profile_settings only — no portal assignments here. */
+function settingsPayloadFor(variant) {
+  const stremioAddons =
+    variant === 'full'
+      ? [
+          {
+            baseUrl: 'https://v3-cinemeta.strem.io/manifest.json',
+            name: 'Cinemeta',
+          },
+          {
+            baseUrl: 'https://torrentio.strem.fun/manifest.json',
+            name: 'Torrentio',
+          },
+        ]
+      : [
+          {
+            baseUrl: 'https://v3-cinemeta.strem.io/manifest.json',
+            name: 'Cinemeta',
+          },
+        ]
+
+  const payload = {
+    playback:
+      variant === 'full' ? fullPlaybackPayload() : lightPlaybackPayload(),
+    navigation: navigationPayload(variant),
+    connectedServices: { stremio: { addons: stremioAddons } },
+  }
+
+  if (variant === 'full') {
+    payload.iptv = {
+      m3uPlaylists: [
+        {
+          id: `seed_m3u_${nowMs.toString(16)}`,
+          name: 'Public demo M3U',
+          sourceUrl: 'https://iptv-org.github.io/iptv/countries/us.m3u',
+          addedAt: nowMs - 86_400_000,
+          updatedAt: nowMs,
+        },
+      ],
+    }
+  }
+
+  return payload
+}
+
+/** Assignments go to user_iptv_portals — portal_name is the profile label. */
+function portalAssignmentsFor(variant, portalIds) {
+  const [portalAId, portalBId] = portalIds
+  if (variant === 'full') {
+    return [
+      {
+        portal_id: portalAId,
+        portal_name: 'Home XT',
+        favorite: true,
+      },
+      {
+        portal_id: portalBId,
+        portal_name: 'Backup',
+        favorite: false,
+      },
+    ]
+  }
+  return [
+    {
+      portal_id: portalAId,
+      portal_name: 'Demo portal',
+      favorite: false,
+    },
+  ]
 }
 
 async function ensureUser(admin, { email, password, label }) {
@@ -205,7 +253,21 @@ async function ensureUser(admin, { email, password, label }) {
   return data.user.id
 }
 
-async function ensureProfiles(admin, userId, variant) {
+async function ensureAccount(admin, userId, email, isAdmin) {
+  const now = new Date().toISOString()
+  const { error } = await admin.from('accounts').upsert({
+    id: userId,
+    email,
+    is_admin: isAdmin,
+    updated_at: now,
+  })
+  if (error) throw error
+  if (isAdmin) {
+    console.log(`    · accounts.is_admin = true`)
+  }
+}
+
+async function ensureProfiles(admin, accountId, variant) {
   const desired =
     variant === 'full'
       ? [
@@ -225,7 +287,7 @@ async function ensureProfiles(admin, userId, variant) {
   const { data: current, error: loadError } = await admin
     .from('profiles')
     .select('*')
-    .eq('user_id', userId)
+    .eq('account_id', accountId)
     .order('created_at')
   if (loadError) throw loadError
 
@@ -262,7 +324,7 @@ async function ensureProfiles(admin, userId, variant) {
     const { data, error } = await admin
       .from('profiles')
       .insert({
-        user_id: userId,
+        account_id: accountId,
         name: item.name,
         color: item.color,
         avatar_key: item.avatar_key,
@@ -279,22 +341,47 @@ async function ensureProfiles(admin, userId, variant) {
   }))
 }
 
-async function seedUserSettings(admin, userId, profile, variant) {
-  const domains = settingsFor(variant)
+async function seedProfileSettings(admin, accountId, profile, variant) {
   const now = new Date().toISOString()
-  const rows = Object.entries(domains).map(([domain, payload]) => ({
-    user_id: userId,
+  const payload = settingsPayloadFor(variant)
+  const { error } = await admin.from('profile_settings').upsert({
     profile_id: profile.id,
-    domain,
+    account_id: accountId,
     payload,
+    updated_at: now,
+    updated_by: accountId,
+  })
+  if (error) throw error
+  const sections = Object.keys(payload).join(', ')
+  console.log(`    · ${profile.name}: profile_settings (${variant}) [${sections}]`)
+}
+
+async function seedUserIptvPortals(admin, accountId, profile, variant, portalIds) {
+  const now = new Date().toISOString()
+  const { error: delError } = await admin
+    .from('user_iptv_portals')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('profile_id', profile.id)
+  if (delError) throw delError
+
+  const rows = portalAssignmentsFor(variant, portalIds).map((row) => ({
+    account_id: accountId,
+    profile_id: profile.id,
+    portal_id: row.portal_id,
+    portal_name: row.portal_name,
+    favorite: row.favorite,
+    created_by: accountId,
+    updated_by: accountId,
     updated_at: now,
   }))
 
-  const { error } = await admin.from('user_settings').upsert(rows)
-  if (error) throw error
-  console.log(
-    `    · ${profile.name}: ${rows.map((r) => r.domain).join(', ')} (${variant})`,
-  )
+  if (rows.length) {
+    const { error } = await admin.from('user_iptv_portals').insert(rows)
+    if (error) throw error
+  }
+  const names = rows.map((r) => r.portal_name).join(', ')
+  console.log(`    · ${profile.name}: user_iptv_portals [${names || 'none'}]`)
 }
 
 async function main() {
@@ -316,15 +403,36 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  console.log('Creating Forja test users + settings seed…')
+  console.log(
+    'Creating Forja test users + profile_settings + user_iptv_portals…',
+  )
+
+  let portalAId = null
+  let portalBId = null
+
   for (const user of TEST_USERS) {
     const userId = await ensureUser(admin, user)
+    await ensureAccount(admin, userId, user.email, user.isAdmin)
+
+    if (!portalAId) {
+      portalAId = await upsertIptvPortal(admin, PORTAL_A, userId)
+      portalBId = await upsertIptvPortal(admin, PORTAL_B, userId)
+      console.log(
+        `    · iptv_portals seeded (${portalAId.slice(0, 8)}…, ${portalBId.slice(0, 8)}…)`,
+      )
+    }
+
     const profiles = await ensureProfiles(admin, userId, user.seedVariant)
     for (const profile of profiles) {
-      await seedUserSettings(admin, userId, profile, profile.settings)
+      await seedProfileSettings(admin, userId, profile, profile.settings)
+      await seedUserIptvPortals(admin, userId, profile, profile.settings, [
+        portalAId,
+        portalBId,
+      ])
     }
   }
   console.log('Done.')
+  console.log('Admin: user@forja.local / password123 → /admin')
 }
 
 main().catch((err) => {

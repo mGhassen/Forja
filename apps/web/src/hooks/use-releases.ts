@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase, supabaseConfigured } from '@/lib/supabase'
 import type { Release, ReleaseAsset } from '@/lib/database.types'
 
 export type ReleaseWithAssets = Release & { assets: ReleaseAsset[] }
@@ -135,50 +134,13 @@ async function fetchGitHubLatest(): Promise<ReleaseWithAssets | null> {
   return fromGitHub(release)
 }
 
-async function fetchSupabaseLatest(): Promise<ReleaseWithAssets | null> {
-  if (!supabaseConfigured) return null
-
-  const { data, error } = await supabase
-    .from('releases')
-    .select('*')
-    .order('published_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error) throw error
-  if (!data) return null
-
-  const release = data as Release
-
-  const { data: assetsData, error: assetsError } = await supabase
-    .from('release_assets')
-    .select('*')
-    .eq('release_id', release.id)
-
-  if (assetsError) throw assetsError
-
-  const assets = (assetsData ?? []) as ReleaseAsset[]
-  if (!assets.length) return null
-
-  return { ...release, assets }
-}
-
 /**
- * Latest release for download buttons.
- * Prefer GitHub Releases (always public); use Supabase mirror only if it has assets.
+ * Latest release for download buttons — GitHub Releases only.
  */
 export function useLatestRelease() {
   return useQuery({
     queryKey: ['releases', 'latest'],
-    queryFn: async (): Promise<ReleaseWithAssets | null> => {
-      try {
-        const mirrored = await fetchSupabaseLatest()
-        if (mirrored?.assets.length) return mirrored
-      } catch {
-        /* fall through to GitHub */
-      }
-      return fetchGitHubLatest()
-    },
+    queryFn: async (): Promise<ReleaseWithAssets | null> => fetchGitHubLatest(),
     staleTime: 60_000,
   })
 }

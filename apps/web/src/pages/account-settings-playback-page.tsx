@@ -4,18 +4,17 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
 import { SettingsToggle } from '@/components/settings-toggle'
-import { useUserSetting } from '@/hooks/use-user-setting'
+import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import {
   AUDIO_LANGUAGE_OPTIONS,
   emptyPreferencesPayload,
   MAX_PLAYBACK_HEIGHT_OPTIONS,
-  SYNC_DOMAINS,
   type PreferencesPayload,
 } from '@/lib/sync-domains'
 
 export function AccountSettingsPlaybackPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
-    useUserSetting<PreferencesPayload>(SYNC_DOMAINS.preferences)
+    usePlaybackSetting()
   const [draft, setDraft] = useState(emptyPreferencesPayload())
   const [savedFlash, setSavedFlash] = useState(false)
 

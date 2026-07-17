@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum DesktopStartupDestination { account, splash }
 
@@ -23,6 +26,9 @@ enum _StartupStage { account, profiles, splash }
 
 /// Optional account entry for desktop. Guest and unconfigured builds preserve
 /// the existing splash-first startup; restored sessions skip this gate.
+///
+/// Sign-out (from settings or the profile chooser) returns here so the main
+/// app is torn down until the user signs in again or continues as guest.
 class DesktopStartupGate extends StatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
 
@@ -34,6 +40,7 @@ class DesktopStartupGate extends StatefulWidget {
 
 class _DesktopStartupGateState extends State<DesktopStartupGate> {
   late _StartupStage _stage;
+  StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
@@ -48,6 +55,37 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     _stage = destination == DesktopStartupDestination.account
         ? _StartupStage.account
         : _StartupStage.splash;
+    _authSub = SyncService.instance.authChanges.listen(_onAuthState);
+  }
+
+  @override
+  void dispose() {
+    final sub = _authSub;
+    _authSub = null;
+    if (sub != null) unawaited(sub.cancel());
+    super.dispose();
+  }
+
+  void _onAuthState(AuthState state) {
+    if (!mounted) return;
+    if (state.event != AuthChangeEvent.signedOut) return;
+    _returnToAccountAfterSignOut();
+  }
+
+  void _returnToAccountAfterSignOut() {
+    final isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    if (!isDesktop || !ForjaSupabase.isConfigured) return;
+    if (_stage == _StartupStage.account) return;
+
+    SyncDomainBridge.instance.cancelPendingPushes();
+    // Fresh splash/main tree on next entry — do not keep prior dismiss flag.
+    ShellBus.splashDismissed.value = false;
+    ShellBus.hideGlobalNav.value = false;
+    ShellBus.requestTab.value = null;
+    ShellBus.selectDefaultTabOnNextNavLoad = false;
+
+    setState(() => _stage = _StartupStage.account);
   }
 
   @override
@@ -58,6 +96,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
         onContinueAsGuest: () => setState(() => _stage = _StartupStage.splash),
       ),
       _StartupStage.profiles => ProfileChooserScreen(
+        prepareCurrentOnSwitch: false,
         onProfileSelected: () => setState(() => _stage = _StartupStage.splash),
         onSignOut: () => setState(() => _stage = _StartupStage.account),
       ),

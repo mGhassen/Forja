@@ -58,7 +58,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('account_id', user!.id)
         .order('created_at')
       if (error) throw error
       return data ?? []
@@ -103,10 +103,15 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
         avatarKey ?? PROFILE_AVATARS[profiles.length % PROFILE_AVATARS.length].key
       const { data, error } = await supabase
         .from('profiles')
-        .insert({ user_id: user.id, name: cleanName, color, avatar_key })
+        .insert({ account_id: user.id, name: cleanName, color, avatar_key })
         .select('*')
         .single()
       if (error) throw error
+      await supabase.from('profile_settings').upsert({
+        profile_id: data.id,
+        account_id: user.id,
+        payload: {},
+      })
       return data
     },
     onSuccess: (profile) => {
@@ -124,7 +129,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .update({ name: cleanName, updated_at: new Date().toISOString() })
         .eq('id', profileId)
-        .eq('user_id', user.id)
+        .eq('account_id', user.id)
       if (error) throw error
     },
     onSuccess: () => {
@@ -148,7 +153,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', profileId)
-        .eq('user_id', user.id)
+        .eq('account_id', user.id)
       if (error) throw error
     },
     onSuccess: () => {
@@ -164,7 +169,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .delete()
         .eq('id', profileId)
-        .eq('user_id', user.id)
+        .eq('account_id', user.id)
       if (error) throw error
     },
     onSuccess: (_, deletedId) => {

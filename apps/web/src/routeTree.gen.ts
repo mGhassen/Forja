@@ -24,6 +24,7 @@ import { Route as AccountSettingsStremioRouteImport } from './routes/account.set
 import { Route as AccountSettingsProvidersRouteImport } from './routes/account.settings.providers'
 import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.settings.playback'
 import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
+import { Route as AccountSettingsAccountRouteImport } from './routes/account.settings.account'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -101,6 +102,11 @@ const AccountSettingsIptvRoute = AccountSettingsIptvRouteImport.update({
   path: '/iptv',
   getParentRoute: () => AccountSettingsRoute,
 } as any)
+const AccountSettingsAccountRoute = AccountSettingsAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/account/profiles'
     | '/account/settings'
     | '/api/iptv-share'
+    | '/account/settings/account'
     | '/account/settings/iptv'
     | '/account/settings/playback'
     | '/account/settings/providers'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/account/profiles'
     | '/account/settings'
     | '/api/iptv-share'
+    | '/account/settings/account'
     | '/account/settings/iptv'
     | '/account/settings/playback'
     | '/account/settings/providers'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/account/profiles'
     | '/account/settings'
     | '/api/iptv-share'
+    | '/account/settings/account'
     | '/account/settings/iptv'
     | '/account/settings/playback'
     | '/account/settings/providers'
@@ -327,10 +339,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsIptvRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
+    '/account/settings/account': {
+      id: '/account/settings/account'
+      path: '/account'
+      fullPath: '/account/settings/account'
+      preLoaderRoute: typeof AccountSettingsAccountRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
   }
 }
 
 interface AccountSettingsRouteChildren {
+  AccountSettingsAccountRoute: typeof AccountSettingsAccountRoute
   AccountSettingsIptvRoute: typeof AccountSettingsIptvRoute
   AccountSettingsPlaybackRoute: typeof AccountSettingsPlaybackRoute
   AccountSettingsProvidersRoute: typeof AccountSettingsProvidersRoute
@@ -338,6 +358,7 @@ interface AccountSettingsRouteChildren {
 }
 
 const AccountSettingsRouteChildren: AccountSettingsRouteChildren = {
+  AccountSettingsAccountRoute: AccountSettingsAccountRoute,
   AccountSettingsIptvRoute: AccountSettingsIptvRoute,
   AccountSettingsPlaybackRoute: AccountSettingsPlaybackRoute,
   AccountSettingsProvidersRoute: AccountSettingsProvidersRoute,

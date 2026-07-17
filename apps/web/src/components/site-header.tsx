@@ -66,7 +66,14 @@ function NavLink({
   )
 }
 
-export function SiteHeader({ solid = false }: { solid?: boolean }) {
+export function SiteHeader({
+  solid = false,
+  /** Edge-to-edge bar (auth pages) instead of the floating inset pill. */
+  flush = false,
+}: {
+  solid?: boolean
+  flush?: boolean
+}) {
   const { user, loading } = useAuth()
   const [open, setOpen] = useState(false)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -91,7 +98,6 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 
   const close = () => setOpen(false)
   const accountActive = pathname.startsWith('/account')
-
   return (
     <header className="fixed inset-x-0 top-0 z-40">
       <div
@@ -102,10 +108,20 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         )}
       />
 
-      <div className="relative mx-auto max-w-[1400px] px-[4vw] pt-3 sm:pt-4">
+      <div
+        className={cn(
+          'relative mx-auto',
+          flush
+            ? 'w-full px-0 pt-0'
+            : 'max-w-[1400px] px-[4vw] pt-3 sm:pt-4',
+        )}
+      >
         <div
           className={cn(
-            'flex items-center gap-3 rounded-2xl border border-[rgba(237,230,218,0.12)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(237,230,218,0.08),0_12px_40px_-20px_rgba(0,0,0,0.55)] backdrop-blur-md backdrop-saturate-150 sm:gap-4 sm:px-4 sm:py-3',
+            'flex items-center gap-3 px-3 py-2.5 backdrop-blur-md backdrop-saturate-150 sm:gap-4 sm:px-4 sm:py-3',
+            flush
+              ? 'rounded-none border-x-0 border-t-0 border-b border-[rgba(237,230,218,0.12)] shadow-none'
+              : 'rounded-2xl border border-[rgba(237,230,218,0.12)] shadow-[inset_0_1px_0_rgba(237,230,218,0.08),0_12px_40px_-20px_rgba(0,0,0,0.55)]',
             solid ? 'bg-[#0B0A0A]/45' : 'bg-[#0B0A0A]/35',
           )}
         >
@@ -249,8 +265,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
             <NavLink to="/login" onNavigate={close} variant="mobile">
               Log in
             </NavLink>
-          )}
-        </nav>
+          )}        </nav>
 
         <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
           Free download

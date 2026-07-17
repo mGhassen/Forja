@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) |
-| **Current slice** | Web signup + Turnstile captcha shipped — configure live Supabase captcha secret + deploy Edge Function to verify end-to-end |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) |
+| **Current slice** | Account vs profile settings shell + logout/delete — configure live Supabase captcha secret + deploy Edge Functions to verify end-to-end |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,6 +53,24 @@
 | 1 | R34-A12 | `/signup` email/password form (replace coming-soon stub) | ✅ |
 | 2 | R34-A13 | Cloudflare Turnstile on signup; token passed to Supabase `signUp` | ✅ |
 | 3 | R34-A14 | Login also sends captcha when Turnstile is configured (Auth captcha applies to both) | ✅ |
+
+---
+
+## Acceptance (account management)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R34-A15 | Settings shell separates Profile vs Account nav; back goes to Who's watching | ✅ |
+| 2 | R34-A16 | Account page: email, log out, and confirmed account delete | ✅ |
+| 3 | R34-A17 | `delete-account` Edge Function deletes auth user (cascades profiles/settings) | ✅ |
+
+---
+
+## Acceptance (desktop handoff)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R34-A18 | `/login?desktop_callback=` (loopback only) returns session tokens to the desktop app after sign-in | ✅ |
 
 ---
 

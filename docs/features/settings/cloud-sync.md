@@ -13,61 +13,80 @@ another screen.
 
 ## How to open it
 
-- **Desktop startup:** sign in or create an account before the splash, or choose
-  **Continue without an account** to keep using Forja locally
-- **App:** select the profile avatar at the bottom of the desktop rail, then
-  open **Profile & account**
+- **Desktop startup:** sign in with email/password, use **Web login** (browser
+  handoff), or choose **Continue without an account**. New accounts are created
+  only on the web (**Create an account on the web**).
+- **App:** select the profile avatar at the bottom of the desktop rail (opens
+  **Who’s watching?** when signed in), or open **Settings → Profile & account**
+  and use **Who’s watching?** / **Manage profiles**
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
-  when configured), choose a profile on **Who's watching?**, then manage
-  **Remote settings**. Switch profiles from the settings header menu.
+  when configured), choose a profile on **Who's watching?**, then open **Remote
+  settings**. The sidebar splits **Profile** (synced IPTV / playback / providers /
+  Stremio) from **Account** (email, log out, delete). Back returns to Who's watching.
+  Switch profiles from the header menu. **Log out** is under Account in the left nav.
 
 ## What syncs (remote settings)
 
-These domains can be edited on the web or in the app; the app pulls them on sign-in:
+Per profile:
 
-| Domain | What it includes |
-|--------|------------------|
-| **IPTV** | Xtream portals (URL, user, pass, favorites) and M3U playlist URLs |
-| **Playback** | Play source toggles, auto next/skip intro, IPTV EPG, preferred audio, max quality |
-| **Provider order** | Film and series, Anime, and Asian drama host order (tabs on the web settings page) |
-| **Stremio** | Installed addon manifest URLs |
+| Store | What it includes |
+|---------|------------------|
+| **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals`. |
+| **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
+| **`profile_settings` → Provider order** | Film/series, Anime, Asian drama host order — stored only when different from built-in defaults |
+| **`profile_settings` → Stremio** | Installed addon manifest URLs |
+| **`profile_settings` → Navigation** | Visible shell tabs (`visibleIds`) and default tab |
+| **`profile_settings` → IPTV** | Reserved for device sync (M3U URLs). Not edited on the web portal. |
 
 ## What stays local
 
 Not synced — device-specific or sensitive:
 
-- Shell navigation layout and default tab
+- My List / film lists (TMDB ids stay on the device)
+- M3U playlists uploaded from a file, and all M3U **channel** rows (URL playlists re-fetch channels on device)
+- Live IPTV connection counts (probed in-app; not stored in cloud)
 - Torrent cache size, connections, and learned provider scores
 - Debrid and indexer API keys (for now)
 - Cache clears, downloaded updates, WebView data
 - Trakt / Simkl / MDBList account linking
-- M3U playlists uploaded from a file (URL-based M3U syncs)
 
 ## What you can do
 
-- Create an account or sign in with email and password (app or web). Web signup
-  and sign-in show a Cloudflare Turnstile check when captcha is configured.
+- Sign in with email and password in the desktop app, or use **Web login** to
+  authenticate in the browser (the app opens the portal and finishes when you
+  sign in there). Create accounts only on the web (`/signup`); the app does not
+  offer in-app signup. Web signup and sign-in show a Cloudflare Turnstile check
+  when captcha is configured.
 - Continue as a guest; the current local-only app behavior remains available
+- Select the active profile from the desktop rail avatar, **Who’s watching?**, or
+  **Manage profiles** under **Settings → Profile & account** (same Netflix-style
+  grid as the web). Choosing a profile shows a dedicated splash while settings
+  sync — not an in-settings dropdown. After the splash, the app opens that
+  profile’s **default menu** tab (the starred tab under **Settings → Navigation**),
+  not the screen you were on before switching.
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
-- Open **Account** after sign-in: pick a profile on **Who’s watching?**, then
-  land in **Remote settings**. Switch or manage profiles from the settings
-  profile menu — not as a peer of settings.
-- Create, rename, and delete profiles on the web, with 30 avatars organized
-  into Characters, Creatures, Space, and Retro categories
+  Tapping a profile shows the profile-switch splash, then the boot splash.
+- **Sign out** from Profile & account (or the profile chooser) returns to the
+  desktop sign-in screen and unloads the main app. You must sign in again or
+  choose **Continue without an account**. Device-local settings stay on disk for
+  guest / offline use; cloud sync stops until you sign in again
+- Open **Account** after sign-in on the web: pick a profile on **Who’s watching?**,
+  then land in **Remote settings**. Use the **Account** sidebar item for log out
+  or permanent account delete (confirm by typing your email)
+- Create, rename, and delete profiles on desktop or the web, with 30 avatars
+  organized into Characters, Creatures, Space, and Retro categories
 - The desktop chooser, rail, and Profile & account page use the same avatar
   artwork selected on the web
-- Select the active profile from **Settings → Profile & account** or the web
-  settings header
-- Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from
-  the web (share codes match the app peer-code flow). Portal rows match the app
-  panel (expiry, name, URL, seats); lists paginate every 10 items. **Import CSV** /
-  **Export CSV** move portals (plain-text passwords in the file; on-device they use Keychain) as a spreadsheet-friendly file —
-  import adds only portals that are not already in your list (shown in an import log);
-  then **Save** to sync.
+- Add, edit, search, favorite, share, or remove IPTV portals from
+  the web (share codes match the app peer-code flow). On the web IPTV page,
+  portals are a compact list (expiry, name, URL, seats). Lists paginate every 10 items.
+  **Export CSV** downloads portals (plain-text passwords in the file; on-device they use Keychain).
+  Then **Save** to sync.
 - Change playback prefs and provider order from the web
 - Manage Stremio addon URLs from the web
-- Sign out (local settings stay on the device)
+- Delete the cloud account from **Account** settings (removes synced profiles
+  and settings; the app still works without an account)
 
 After saving on the web, select the same profile in Forja to pull its changes.
 
@@ -80,6 +99,12 @@ Builds need the shared Supabase project:
 --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 ```
 
+Optional portal origin for **Web login** / signup links (defaults to local Vite):
+
+```text
+--dart-define=FORJA_WEB_URL=https://your-portal.example
+```
+
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
 For signup/sign-in captcha, also set `VITE_TURNSTILE_SITE_KEY` (Cloudflare Turnstile
 site key). Local dummy keys are documented in `apps/web/.env.example`.
@@ -89,13 +114,19 @@ Local Flutter development can load the repo-root `.env` directly:
 flutter run -d macos --dart-define-from-file=../../.env
 ```
 
+When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
+port 3000) and keep `FORJA_WEB_URL` at the default `http://127.0.0.1:3000`.
+
 GitHub build/release workflows use repository secrets `SUPABASE_URL` and
 `SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`). The publishable key is a public client credential; never put a
-Supabase `service_role` / `sb_secret_…` key in a desktop build.
+Supabase `service_role` / `sb_secret_…` key in a desktop build. Set
+`FORJA_WEB_URL` in release builds to the deployed portal origin so **Web login**
+does not point at localhost.
 
 ## Tips
 
-- IPTV credentials are stored in your account row (HTTPS + per-user RLS). Treat your account password like any cloud secret.
+- IPTV credentials live on shared `iptv_portals` rows. Your per-profile **portal name** is only on `user_iptv_portals`.
+- Cloud settings omit default provider orders and never store M3U channel lists or My List — those stay on each device. Playback prefs (including play sources) sync in full.
 - Portal **share codes** are a separate peer handoff (encrypted ciphertext on
   rentry) — they are not stored in your sync payload.
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.

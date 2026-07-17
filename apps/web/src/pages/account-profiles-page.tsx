@@ -13,11 +13,13 @@ import {
   type ProfileAvatarKey,
 } from '@/components/profile-avatar'
 import { useProfiles } from '@/hooks/use-profiles'
+import { useAuth } from '@/hooks/use-auth'
 
 type Screen = 'choose' | 'manage' | 'create' | 'edit'
 
 export function AccountProfilesPage() {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
   const {
     profiles,
     activeProfile,
@@ -195,18 +197,33 @@ export function AccountProfilesPage() {
                 </div>
               )}
 
-              <Button
-                type="button"
-                variant={screen === 'manage' ? 'default' : 'secondary'}
-                className="mt-14 min-w-40 uppercase tracking-[0.12em]"
-                onClick={() =>
-                  setScreen((current) =>
-                    current === 'manage' ? 'choose' : 'manage',
-                  )
-                }
-              >
-                {screen === 'manage' ? 'Done' : 'Manage profiles'}
-              </Button>
+              <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant={screen === 'manage' ? 'default' : 'secondary'}
+                  className="min-w-40 uppercase tracking-[0.12em]"
+                  onClick={() =>
+                    setScreen((current) =>
+                      current === 'manage' ? 'choose' : 'manage',
+                    )
+                  }
+                >
+                  {screen === 'manage' ? 'Done' : 'Manage profiles'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-w-40 uppercase tracking-[0.12em]"
+                  onClick={() => {
+                    void (async () => {
+                      await signOut()
+                      void navigate({ to: '/' })
+                    })()
+                  }}
+                >
+                  Log out
+                </Button>
+              </div>
             </>
           )}
         </main>

@@ -19,6 +19,7 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   # Prefer publishable; fall back to legacy anon secret until that secret is renamed.
   SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
+  FORJA_WEB_URL: ${{ secrets.FORJA_WEB_URL }}
 
 jobs:
   validate_config:
@@ -46,9 +47,15 @@ jobs:
       - working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
+          # Ad-hoc sign — no Apple Developer certs in CI (see RFC-021 for notarization).
+          EXTRA=()
+          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            "${EXTRA[@]}" \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-macOS
@@ -70,9 +77,12 @@ jobs:
         shell: bash
         run: |
           flutter pub get
+          EXTRA=()
+          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            "${EXTRA[@]}"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -100,9 +110,12 @@ jobs:
       - working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
+          EXTRA=()
+          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            "${EXTRA[@]}"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -127,10 +140,13 @@ jobs:
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
       - run: flutter pub get
-      - run: >-
-          flutter build apk --release --split-per-abi
-          --dart-define=SUPABASE_URL="$SUPABASE_URL"
-          --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+      - run: |
+          EXTRA=()
+          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
+          flutter build apk --release --split-per-abi \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            "${EXTRA[@]}"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

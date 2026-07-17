@@ -5,17 +5,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
-import { useUserSetting } from '@/hooks/use-user-setting'
+import { useStremioSetting } from '@/hooks/use-user-setting'
 import {
   emptyStremioPayload,
-  SYNC_DOMAINS,
   type StremioAddonRow,
   type StremioPayload,
 } from '@/lib/sync-domains'
 
 export function AccountSettingsStremioPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
-    useUserSetting<StremioPayload>(SYNC_DOMAINS.stremio)
+    useStremioSetting()
   const [draft, setDraft] = useState(emptyStremioPayload())
   const [url, setUrl] = useState('')
   const [savedFlash, setSavedFlash] = useState(false)

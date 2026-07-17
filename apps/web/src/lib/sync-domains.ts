@@ -1,63 +1,4 @@
-/** Sync domain payloads - must match Flutter `SyncDomainBridge` export/import. */
-
-export const SYNC_DOMAINS = {
-  iptv: 'iptv',
-  preferences: 'preferences',
-  providers: 'providers',
-  stremio: 'stremio',
-} as const
-
-export type SyncDomain = (typeof SYNC_DOMAINS)[keyof typeof SYNC_DOMAINS]
-
-export type IptvPortalRow = {
-  url: string
-  username: string
-  password: string
-  source?: string
-  /** User-chosen portal name (matches Flutter `VerifiedPortal.label`). */
-  label?: string
-  /** Xtream account name from the provider (Flutter `VerifiedPortal.name`). */
-  name?: string
-  expiry?: string
-  max?: string
-  active?: string
-}
-
-/** Prefer user label, then provider name, then username. */
-export function portalDisplayLabel(
-  portal: Pick<IptvPortalRow, 'label' | 'name' | 'username'>,
-): string {
-  const label = portal.label?.trim()
-  if (label) return label
-  const name = portal.name?.trim()
-  if (name) return name
-  const user = portal.username?.trim()
-  return user || 'Portal'
-}
-
-export type M3uChannelRow = {
-  n: string
-  u: string
-  l?: string
-  g?: string
-  ti?: string
-  tn?: string
-}
-
-export type M3uPlaylistRow = {
-  id: string
-  name: string
-  sourceUrl: string | null
-  addedAt: number
-  updatedAt: number
-  channels: M3uChannelRow[]
-}
-
-export type IptvPayload = {
-  portals: IptvPortalRow[]
-  favoriteKeys?: string[]
-  m3uPlaylists?: M3uPlaylistRow[]
-}
+/** Profile settings payload — must match Flutter SyncDomainBridge (lean storage). */
 
 export type PreferencesPayload = {
   play_source_torrent_enabled?: boolean
@@ -85,6 +26,91 @@ export type StremioAddonRow = {
 
 export type StremioPayload = {
   addons: StremioAddonRow[]
+}
+
+export type ConnectedServicesPayload = {
+  providers?: ProvidersPayload
+  stremio?: StremioPayload
+}
+
+export type NavigationPayload = {
+  visibleIds?: string[]
+  defaultTab?: string
+}
+
+/** Cloud M3U row — metadata only (no channels[]). Portals live in user_iptv_portals. */
+export type M3uPlaylistCloudRow = {
+  id: string
+  name: string
+  sourceUrl: string
+  addedAt: number
+  updatedAt: number
+}
+
+export type M3uChannelRow = {
+  n: string
+  u: string
+  l?: string
+  g?: string
+  ti?: string
+  tn?: string
+}
+
+/** Local/UI playlist; channels are device-local and never written to cloud. */
+export type M3uPlaylistRow = {
+  id: string
+  name: string
+  sourceUrl: string | null
+  addedAt: number
+  updatedAt: number
+  channels?: M3uChannelRow[]
+}
+
+/** Settings-only IPTV slice: M3U URLs. Portal assignments are user_iptv_portals. */
+export type IptvSettingsPayload = {
+  m3uPlaylists?: M3uPlaylistCloudRow[]
+}
+
+export type ProfileSettingsPayload = {
+  playback?: PreferencesPayload
+  connectedServices?: ConnectedServicesPayload
+  navigation?: NavigationPayload
+  iptv?: IptvSettingsPayload
+}
+
+/**
+ * UI-merged portal row.
+ * Display name is always `portalName` → user_iptv_portals.portal_name.
+ */
+export type IptvPortalRow = {
+  portalId?: string
+  url: string
+  username: string
+  password: string
+  source?: string
+  /** Per-profile display name (user_iptv_portals.portal_name). */
+  portalName: string
+  /** @deprecated use portalName */
+  label?: string
+  /** @deprecated ignored — names live on user_iptv_portals only */
+  name?: string
+  expiry?: string
+  max?: string
+  active?: string
+  favorite?: boolean
+}
+
+export function portalDisplayLabel(
+  portal: Pick<IptvPortalRow, 'portalName' | 'label' | 'username'>,
+): string {
+  const portalName = (portal.portalName ?? portal.label)?.trim()
+  if (portalName) return portalName
+  const user = portal.username?.trim()
+  return user || 'Portal'
+}
+
+export function portalKey(row: Pick<IptvPortalRow, 'url' | 'username' | 'password'>): string {
+  return `${row.url}|${row.username}|${row.password}`.toLowerCase()
 }
 
 export const DEFAULT_STREAM_PROVIDER_ORDER = [
@@ -157,7 +183,7 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 ] as const
 
 export type RemoteSettingSection = {
-  domain: SyncDomain
+  key: keyof ProfileSettingsPayload | 'providers' | 'stremio'
   title: string
   description: string
   href: string
@@ -165,37 +191,47 @@ export type RemoteSettingSection = {
 
 export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   {
-    domain: SYNC_DOMAINS.iptv,
-    title: 'IPTV portals',
-    description: 'Xtream portals and M3U playlists - synced to every signed-in device.',
+    key: 'iptv',
+    title: 'IPTV',
+    description:
+      'Assign Xtream portals for this profile (user_iptv_portals).',
     href: '/account/settings/iptv',
   },
   {
-    domain: SYNC_DOMAINS.preferences,
+    key: 'playback',
     title: 'Playback',
-    description: 'Play sources, auto next episode, audio language, and quality cap.',
+    description:
+      'Play sources (torrent / Stremio / web), auto next, audio language, and quality cap.',
     href: '/account/settings/playback',
   },
   {
-    domain: SYNC_DOMAINS.providers,
+    key: 'providers',
     title: 'Provider order',
     description: 'Priority for film and series, anime, and Asian drama hosts.',
     href: '/account/settings/providers',
   },
   {
-    domain: SYNC_DOMAINS.stremio,
+    key: 'stremio',
     title: 'Stremio addons',
     description: 'Addon manifest URLs installed on your account.',
     href: '/account/settings/stremio',
   },
 ]
 
-export function portalKey(row: Pick<IptvPortalRow, 'url' | 'username' | 'password'>): string {
-  return `${row.url}|${row.username}|${row.password}`.toLowerCase()
+export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
+  return {
+    playback: emptyPreferencesPayload(),
+    connectedServices: {
+      providers: emptyProvidersPayload(),
+      stremio: emptyStremioPayload(),
+    },
+    navigation: {},
+    iptv: emptyIptvSettingsPayload(),
+  }
 }
 
-export function emptyIptvPayload(): IptvPayload {
-  return { portals: [], favoriteKeys: [], m3uPlaylists: [] }
+export function emptyIptvSettingsPayload(): IptvSettingsPayload {
+  return { m3uPlaylists: [] }
 }
 
 export function emptyPreferencesPayload(): Required<PreferencesPayload> {
@@ -223,3 +259,156 @@ export function emptyProvidersPayload(): Required<ProvidersPayload> {
 export function emptyStremioPayload(): StremioPayload {
   return { addons: [] }
 }
+
+function arraysEqual(a: string[] | undefined, b: readonly string[]): boolean {
+  if (!a || a.length !== b.length) return false
+  return a.every((v, i) => v === b[i])
+}
+
+/** Persist full playback prefs (incl. play_source_* modes) — never strip to empty. */
+function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload | undefined {
+  if (!p) return undefined
+  const d = emptyPreferencesPayload()
+  return { ...d, ...p }
+}
+
+function compactProviders(p: ProvidersPayload | undefined): ProvidersPayload | undefined {
+  if (!p) return undefined
+  const out: ProvidersPayload = {}
+  if (
+    p.stream_provider_order &&
+    !arraysEqual(p.stream_provider_order, DEFAULT_STREAM_PROVIDER_ORDER)
+  ) {
+    out.stream_provider_order = p.stream_provider_order
+  }
+  if (
+    p.anime_provider_order &&
+    !arraysEqual(p.anime_provider_order, DEFAULT_ANIME_PROVIDER_ORDER)
+  ) {
+    out.anime_provider_order = p.anime_provider_order
+  }
+  if (
+    p.asian_drama_provider_order &&
+    !arraysEqual(p.asian_drama_provider_order, DEFAULT_ASIAN_DRAMA_PROVIDER_ORDER)
+  ) {
+    out.asian_drama_provider_order = p.asian_drama_provider_order
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+function compactStremio(s: StremioPayload | undefined): StremioPayload | undefined {
+  if (!s?.addons?.length) return undefined
+  const addons = s.addons
+    .map((a) => {
+      const baseUrl = a.baseUrl?.trim()
+      if (!baseUrl) return null
+      const row: StremioAddonRow = { baseUrl }
+      const name = a.name?.trim()
+      if (name) row.name = name
+      const description = a.description?.trim()
+      if (description) row.description = description
+      return row
+    })
+    .filter((a): a is StremioAddonRow => a != null)
+  return addons.length ? { addons } : undefined
+}
+
+function compactNavigation(n: NavigationPayload | undefined): NavigationPayload | undefined {
+  if (!n) return undefined
+  const out: NavigationPayload = {}
+  if (n.visibleIds?.length) out.visibleIds = n.visibleIds
+  if (n.defaultTab?.trim()) out.defaultTab = n.defaultTab.trim()
+  return Object.keys(out).length ? out : undefined
+}
+
+/** M3U URL metadata only — portal assignments are user_iptv_portals. */
+function compactIptv(i: IptvSettingsPayload | undefined): IptvSettingsPayload | undefined {
+  if (!i) return undefined
+  const m3uPlaylists = (i.m3uPlaylists ?? [])
+    .map((pl) => {
+      const sourceUrl =
+        typeof pl.sourceUrl === 'string' ? pl.sourceUrl.trim() : ''
+      if (!sourceUrl) return null
+      return {
+        id: pl.id,
+        name: pl.name,
+        sourceUrl,
+        addedAt: pl.addedAt,
+        updatedAt: pl.updatedAt,
+      } satisfies M3uPlaylistCloudRow
+    })
+    .filter((pl): pl is M3uPlaylistCloudRow => pl != null)
+
+  if (!m3uPlaylists.length) return undefined
+  return { m3uPlaylists }
+}
+
+/** Compact before DB write: full playback; omit default provider orders; M3U only under iptv. */
+export function compactProfileSettingsPayload(
+  full: ProfileSettingsPayload,
+): ProfileSettingsPayload {
+  const playback = compactPlayback(full.playback)
+  const providers = compactProviders(full.connectedServices?.providers)
+  const stremio = compactStremio(full.connectedServices?.stremio)
+  const navigation = compactNavigation(full.navigation)
+  const iptv = compactIptv(full.iptv)
+
+  const connectedServices: ConnectedServicesPayload = {}
+  if (providers) connectedServices.providers = providers
+  if (stremio) connectedServices.stremio = stremio
+
+  const out: ProfileSettingsPayload = {}
+  if (playback) out.playback = playback
+  if (Object.keys(connectedServices).length) out.connectedServices = connectedServices
+  if (navigation) out.navigation = navigation
+  if (iptv) out.iptv = iptv
+  return out
+}
+
+/** Expand lean cloud payload to full in-memory defaults. */
+export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPayload {
+  const base = emptyProfileSettingsPayload()
+  if (!raw || typeof raw !== 'object') return base
+  const p = raw as ProfileSettingsPayload & { films?: unknown }
+
+  const providers = {
+    ...base.connectedServices!.providers!,
+    ...p.connectedServices?.providers,
+  }
+  const stremio = {
+    addons: p.connectedServices?.stremio?.addons ?? [],
+  }
+
+  const m3uPlaylists = (p.iptv?.m3uPlaylists ?? [])
+    .map((pl) => {
+      const sourceUrl =
+        typeof pl.sourceUrl === 'string' ? pl.sourceUrl.trim() : ''
+      if (!sourceUrl) return null
+      return {
+        id: pl.id,
+        name: pl.name,
+        sourceUrl,
+        addedAt: pl.addedAt,
+        updatedAt: pl.updatedAt,
+      } satisfies M3uPlaylistCloudRow
+    })
+    .filter((pl): pl is M3uPlaylistCloudRow => pl != null)
+
+  void p.films
+
+  return {
+    playback: { ...base.playback, ...p.playback },
+    connectedServices: { providers, stremio },
+    navigation: { ...base.navigation, ...p.navigation },
+    iptv: { m3uPlaylists },
+  }
+}
+
+/** @deprecated legacy alias */
+export type IptvPayload = IptvSettingsPayload
+export function emptyIptvPayload(): IptvPayload {
+  return emptyIptvSettingsPayload()
+}
+
+/** @deprecated films no longer synced */
+export type FilmRef = { tmdbId: number; mediaType: 'movie' | 'tv' }

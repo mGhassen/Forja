@@ -279,6 +279,17 @@ class _SettingsNavigationPageBodyState
   @override
   void initState() {
     super.initState();
+    SettingsService.navbarChangeNotifier.addListener(_onNavbarChanged);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    SettingsService.navbarChangeNotifier.removeListener(_onNavbarChanged);
+    super.dispose();
+  }
+
+  void _onNavbarChanged() {
     _load();
   }
 

@@ -27,10 +27,12 @@ That will:
 
 **Test logins**
 
-| Email | Password |
-|-------|----------|
-| `user@forja.local` | `password123` |
-| `demo@forja.local` | `password123` |
+| Email | Password | Notes |
+|-------|----------|-------|
+| `user@forja.local` | `password123` | `accounts.is_admin` — open `/admin` |
+| `demo@forja.local` | `password123` | Non-admin |
+
+The script seeds lean `profile_settings` + shared `iptv_portals` (no `user_settings`, no M3U channel lists).
 
 Then put the printed `VITE_SUPABASE_*` values into `apps/web/.env` (or run `supabase status` from `apps/web`).
 Keep `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` for local Auth captcha
@@ -96,6 +98,7 @@ cd apps/web
 supabase link --project-ref <ref>
 supabase db push
 supabase functions deploy sync-github-releases
+supabase functions deploy delete-account
 ```
 
 Secrets for the Edge Function (optional):
@@ -105,6 +108,9 @@ supabase secrets set GITHUB_TOKEN=ghp_...
 # GITHUB_REPO defaults to mGhassen/Forja
 ```
 
+`delete-account` uses the project’s built-in `SUPABASE_SERVICE_ROLE_KEY` (set
+automatically for Edge Functions). Call it only with a signed-in user JWT from
+the web Account settings page.
 Invoke after a release:
 
 ```bash
