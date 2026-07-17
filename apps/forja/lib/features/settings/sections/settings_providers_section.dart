@@ -261,7 +261,6 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
                     return SwitchListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                       dense: true,
-                      activeThumbColor: ForjaShellColors.brandGreen,
                       value: s.enabled,
                       onChanged: (val) async {
                         await NuvioService.instance.setScraperEnabled(

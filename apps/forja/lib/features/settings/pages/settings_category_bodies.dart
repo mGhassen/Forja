@@ -438,9 +438,9 @@ class _SettingsNavigationPageBodyState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _defaultNavStar(id, enabled: isVisible),
-                        Switch(
+                        ForjaSwitch(
                           value: isVisible,
-                          activeTrackColor: ForjaShellColors.brandGreen,
+                          scale: ForjaSwitch.settingsScale,
                           onChanged: (val) {
                             setState(() {
                               if (val) {

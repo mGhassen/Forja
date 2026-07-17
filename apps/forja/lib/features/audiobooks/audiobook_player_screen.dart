@@ -365,14 +365,10 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
                 children: [
                   const Text('AUTOPLAY', style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   const SizedBox(width: 8),
-                  SizedBox(
-                    height: 24,
-                    child: Switch(
-                      value: auto, 
-                      onChanged: (v) => _service.autoplay.value = v,
-                      activeTrackColor: AppTheme.primaryColor,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+                  ForjaSwitch(
+                    value: auto,
+                    onChanged: (v) => _service.autoplay.value = v,
+                    scale: ForjaSwitch.settingsScale,
                   ),
                 ],
               ),

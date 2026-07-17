@@ -645,9 +645,9 @@ class _BoldRow extends StatelessWidget {
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         const Spacer(),
-        Switch(
+        ForjaSwitch(
           value: bold,
-          activeThumbColor: ForjaShellColors.brandGreen,
+          scale: ForjaSwitch.settingsScale,
           onChanged: tvFocus ? null : onChanged,
         ),
       ],

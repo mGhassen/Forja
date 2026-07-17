@@ -1299,23 +1299,10 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                SizedBox(
-                  height: 28,
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    child: Switch(
-                      value: widget.autoNext,
-                      onChanged: widget.onAutoNextChanged,
-                      activeThumbColor: Colors.white,
-                      activeTrackColor:
-                          ForjaShellColors.brandGreen.withValues(alpha: 0.55),
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: const Color(0xFF3A3A3A),
-                      trackOutlineColor:
-                          const WidgetStatePropertyAll(Colors.transparent),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
+                ForjaSwitch(
+                  value: widget.autoNext,
+                  onChanged: widget.onAutoNextChanged,
+                  scale: ForjaSwitch.settingsScale,
                 ),
               ],
             ),

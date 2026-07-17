@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/forja_switch.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_layout.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
@@ -133,10 +134,8 @@ class AppTheme {
           foregroundColor: const Color(0xFFF5F5F7),
         ),
       ),
-      // Trim the extra tap-target padding so toggles are shorter/less tall.
-      switchTheme: const SwitchThemeData(
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
+      // Canonical Forja toggle — see [ForjaSwitch] / [forjaSwitchThemeData].
+      switchTheme: forjaSwitchThemeData,
     );
   }
 

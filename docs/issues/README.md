@@ -99,6 +99,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [075-[fixed]-…](fixed/075-[fixed]-anime-dead-cache-empty-sources.md) | Anime dead session cache pins one stream / empty Sources | P1 | High | fixed | Complete · 12/12 · A 4/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [076-[fixed]-…](fixed/076-[fixed]-provider-score-negatives-floored.md) | Provider fail (−2) verdicts floored away from global Σ | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [077-[fixed]-…](fixed/077-[fixed]-iptv-portal-passwords-plaintext-prefs.md) | IPTV portal passwords in plaintext prefs | P1 | High | fixed | Complete · 4/4 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [078-[fixed]-…](fixed/078-[fixed]-switches-not-in-design-system.md) | Switches not in design system | P2 | Medium | fixed | Complete · 4/4 · A 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

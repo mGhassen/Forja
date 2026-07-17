@@ -53,6 +53,15 @@ When adding a reused constant: **shell/catalog → `ShellTokens`**, **details su
 | `ForjaIconButton` | Sparingly — bordered square; prefer `ForjaPlainIcon` in hero chrome |
 | `ForjaInteractive` | Custom hit targets that need hover/press scale |
 
+## Toggles
+
+| Widget | When |
+|--------|------|
+| `ForjaSwitch` | All on/off toggles (settings rows, player chrome, etc.) |
+| `forjaSwitchThemeData` | App `ThemeData.switchTheme` — also styles `SwitchListTile` that do not override colors |
+
+Prefer `ForjaSwitch(scale: ForjaSwitch.settingsScale)` in dense settings lists. Do **not** style raw `Switch(` with ad-hoc `activeTrackColor` / `thumbColor`.
+
 ## Section titles
 
 - Horizontal catalog rows: `ShellSectionTitle` or `ShellSectionTitle.titleStyle`
@@ -68,4 +77,5 @@ When adding a reused constant: **shell/catalog → `ShellTokens`**, **details su
 
 - Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)
 - Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
+- Ad-hoc `Switch(` / `SwitchListTile` color overrides — use `ForjaSwitch` / theme tokens
 - Duplicating hero title or meta rendering — use `shared/widgets/hero/` (see `forja-shared-ui.mdc`)
