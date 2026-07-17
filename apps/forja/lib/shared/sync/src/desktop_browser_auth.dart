@@ -23,10 +23,14 @@ class DesktopBrowserAuth {
   static Uri signupUri() => Uri.parse('$webUrl/signup');
 
   /// Starts a loopback listener, opens `/login?desktop_callback=…`, and
-  /// resolves when the browser posts tokens back (or [timeout] / cancel).
+  /// resolves when the browser posts tokens back (or [timeout] / [cancel]).
+  ///
+  /// Complete [cancel] to abort early (closes the loopback server and unlocks
+  /// the UI). Prefer this over leaving the user stuck until [timeout].
   static Future<DesktopBrowserAuthResult> signIn({
     Duration timeout = const Duration(minutes: 5),
     Future<void> Function(Uri loginUrl)? launchBrowser,
+    Future<void>? cancel,
   }) async {
     final state = _randomState();
     HttpServer? server;
@@ -61,6 +65,16 @@ class DesktopBrowserAuth {
           ),
         );
       });
+
+      if (cancel != null) {
+        unawaited(
+          cancel.then((_) {
+            finish(
+              const DesktopBrowserAuthResult.failure('Web login cancelled.'),
+            );
+          }),
+        );
+      }
 
       sub = server.listen((request) async {
         try {

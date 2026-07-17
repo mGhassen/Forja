@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror) |
-| **Current slice** | Supabase release mirror shipped in code — deploy Edge Function to populate tables |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **1 / 1** acceptance (GitHub-only) |
+| **Current slice** | In-app updater is GitHub-only — Supabase `releases` mirror retired (RFC-036) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -82,9 +82,17 @@
 
 ---
 
+## Acceptance (GitHub-only — RFC-036)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A26 | `AppUpdaterService` checks GitHub Releases only (no Supabase `releases` / `release_assets`) | ✅ |
+
+---
+
 ## Summary
 
-Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. GitHub remains the publish source of truth; [RFC-034](034-[partial]-web-portal-landing.md) mirrors releases into Supabase for the web `/download` page and as the preferred in-app check path.
+Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. GitHub is the publish source of truth and the only in-app check path after RFC-036 dropped the Supabase `releases` mirror.
 
 ## Goals
 

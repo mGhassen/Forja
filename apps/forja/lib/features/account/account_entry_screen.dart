@@ -36,6 +36,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   bool _messageIsError = false;
   int _wordIndex = 0;
   Timer? _wordTimer;
+  Completer<void>? _webCancel;
 
   late final AnimationController _breathe;
   late final AnimationController _enter;
@@ -60,6 +61,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   @override
   void dispose() {
     _wordTimer?.cancel();
+    _cancelWebLogin();
     _breathe.dispose();
     _enter.dispose();
     _emailController.dispose();
@@ -116,14 +118,19 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Future<void> _webLogin() async {
+    final cancel = Completer<void>();
+    _webCancel = cancel;
     setState(() {
       _webBusy = true;
       _message =
-          'Browser opened — sign in on the web, then return here.';
+          'Opening browser — sign in on the web, then return here. '
+          'Tap Cancel if the browser does not open.';
       _messageIsError = false;
     });
     try {
-      final response = await SyncService.instance.signInWithBrowser();
+      final response = await SyncService.instance.signInWithBrowser(
+        cancel: cancel.future,
+      );
       if (!mounted) return;
       if (response.session == null) {
         setState(() {
@@ -135,9 +142,12 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       widget.onAuthenticated();
     } on AuthException catch (error) {
       if (!mounted) return;
+      final cancelled = error.message == 'Web login cancelled.';
       setState(() {
-        _message = error.message;
-        _messageIsError = true;
+        _message = cancelled
+            ? null
+            : error.message;
+        _messageIsError = !cancelled;
       });
     } catch (_) {
       if (!mounted) return;
@@ -147,8 +157,20 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         _messageIsError = true;
       });
     } finally {
+      _webCancel = null;
       if (mounted) setState(() => _webBusy = false);
     }
+  }
+
+  void _cancelWebLogin() {
+    final cancel = _webCancel;
+    if (cancel == null || cancel.isCompleted) return;
+    cancel.complete();
+  }
+
+  void _continueAsGuest() {
+    _cancelWebLogin();
+    widget.onContinueAsGuest();
   }
 
   Future<void> _openSignup() async {
@@ -162,7 +184,10 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     }
   }
 
-  bool get _locked => _busy || _webBusy;
+  /// Password auth locks the form. Web login only locks email/password submit
+  /// so Cancel / guest stay available if the browser never returns.
+  bool get _formLocked => _busy || _webBusy;
+  bool get _passwordLocked => _busy;
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +365,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 const SizedBox(height: 32),
                 _HairlineField(
                   controller: _emailController,
-                  enabled: !_locked,
+                  enabled: !_formLocked,
                   label: 'Email',
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
@@ -350,7 +375,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 const SizedBox(height: 18),
                 _HairlineField(
                   controller: _passwordController,
-                  enabled: !_locked,
+                  enabled: !_formLocked,
                   label: 'Password',
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
@@ -361,7 +386,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     tooltip: _obscurePassword
                         ? 'Show password'
                         : 'Hide password',
-                    onPressed: _locked
+                    onPressed: _formLocked
                         ? null
                         : () => setState(
                             () => _obscurePassword = !_obscurePassword,
@@ -391,7 +416,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 SizedBox(
                   height: 52,
                   child: FilledButton(
-                    onPressed: _locked ? null : _submit,
+                    onPressed: _formLocked ? null : _submit,
                     style: FilledButton.styleFrom(
                       backgroundColor: ForjaShellColors.brandGreen,
                       foregroundColor: Colors.black,
@@ -416,15 +441,17 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 SizedBox(
                   height: 52,
                   child: OutlinedButton.icon(
-                    onPressed: _locked ? null : _webLogin,
+                    onPressed: _passwordLocked
+                        ? null
+                        : (_webBusy ? _cancelWebLogin : _webLogin),
                     icon: Icon(
                       _webBusy
-                          ? Icons.hourglass_top_rounded
+                          ? Icons.close_rounded
                           : Icons.open_in_browser_rounded,
                       size: 18,
                     ),
                     label: Text(
-                      _webBusy ? 'Waiting for browser…' : 'Web login',
+                      _webBusy ? 'Cancel web login' : 'Web login',
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -448,7 +475,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton(
-                    onPressed: _locked ? null : _openSignup,
+                    onPressed: _formLocked ? null : _openSignup,
                     style: TextButton.styleFrom(
                       foregroundColor: ForjaShellColors.brandGreen,
                       padding: EdgeInsets.zero,
@@ -471,7 +498,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 ),
                 const SizedBox(height: 18),
                 TextButton(
-                  onPressed: _locked ? null : widget.onContinueAsGuest,
+                  onPressed: _busy ? null : _continueAsGuest,
                   child: Text(
                     'Continue without an account',
                     style: GoogleFonts.plusJakartaSans(

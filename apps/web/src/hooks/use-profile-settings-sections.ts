@@ -4,6 +4,7 @@ import type {
   ProvidersPayload,
   StremioPayload,
   IptvSettingsPayload,
+  NavigationPayload,
 } from '@/lib/sync-domains'
 
 export function usePlaybackSetting() {
@@ -60,6 +61,22 @@ export function useStremioSetting() {
           stremio: payload,
         },
       })
+    },
+  }
+}
+
+export function useNavigationSetting() {
+  const settings = useProfileSettings()
+  return {
+    ...settings,
+    data: settings.data
+      ? {
+          payload: settings.data.payload.navigation ?? {},
+          updated_at: settings.data.updated_at,
+        }
+      : undefined,
+    save: async (payload: NavigationPayload) => {
+      await settings.patch({ navigation: payload })
     },
   }
 }

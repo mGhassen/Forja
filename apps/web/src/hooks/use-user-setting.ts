@@ -3,6 +3,7 @@ export {
   useProvidersSetting,
   useStremioSetting,
   useIptvSetting,
+  useNavigationSetting,
 } from '@/hooks/use-profile-settings-sections'
 
 // Re-export profile settings for callers that need the full payload.

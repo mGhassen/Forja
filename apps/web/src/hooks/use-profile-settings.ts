@@ -73,6 +73,9 @@ export function useProfileSettings() {
           },
           stremio: patch.connectedServices?.stremio ?? current.connectedServices?.stremio,
         },
+        navigation: patch.navigation
+          ? { ...current.navigation, ...patch.navigation }
+          : current.navigation,
         iptv: patch.iptv
           ? {
               m3uPlaylists:

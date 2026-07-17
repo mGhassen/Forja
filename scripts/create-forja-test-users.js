@@ -140,13 +140,12 @@ function navigationPayload(variant) {
         'iptv',
         'live_matches',
         'mylist',
-        'settings',
       ],
       defaultTab: 'home',
     }
   }
   return {
-    visibleIds: ['home', 'search', 'iptv', 'settings'],
+    visibleIds: ['home', 'search', 'iptv'],
     defaultTab: 'home',
   }
 }

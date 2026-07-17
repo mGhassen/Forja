@@ -129,8 +129,11 @@ class SyncService {
   }
 
   /// Opens the web portal login in the system browser and waits for a session.
-  Future<AuthResponse> signInWithBrowser() async {
-    final result = await DesktopBrowserAuth.signIn();
+  ///
+  /// Complete [cancel] to abort the wait (e.g. user tapped Cancel on the
+  /// account entry screen).
+  Future<AuthResponse> signInWithBrowser({Future<void>? cancel}) async {
+    final result = await DesktopBrowserAuth.signIn(cancel: cancel);
     if (!result.isSuccess) {
       throw AuthException(result.error ?? 'Web login failed.');
     }

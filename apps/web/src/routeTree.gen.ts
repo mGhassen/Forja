@@ -23,6 +23,7 @@ import { Route as AccountProfilesRouteImport } from './routes/account.profiles'
 import { Route as AccountSettingsStremioRouteImport } from './routes/account.settings.stremio'
 import { Route as AccountSettingsProvidersRouteImport } from './routes/account.settings.providers'
 import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.settings.playback'
+import { Route as AccountSettingsNavigationRouteImport } from './routes/account.settings.navigation'
 import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
 import { Route as AccountSettingsAccountRouteImport } from './routes/account.settings.account'
 
@@ -97,6 +98,12 @@ const AccountSettingsPlaybackRoute = AccountSettingsPlaybackRouteImport.update({
   path: '/playback',
   getParentRoute: () => AccountSettingsRoute,
 } as any)
+const AccountSettingsNavigationRoute =
+  AccountSettingsNavigationRouteImport.update({
+    id: '/navigation',
+    path: '/navigation',
+    getParentRoute: () => AccountSettingsRoute,
+  } as any)
 const AccountSettingsIptvRoute = AccountSettingsIptvRouteImport.update({
   id: '/iptv',
   path: '/iptv',
@@ -122,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/navigation': typeof AccountSettingsNavigationRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
   '/account/settings/stremio': typeof AccountSettingsStremioRoute
@@ -140,6 +148,7 @@ export interface FileRoutesByTo {
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/navigation': typeof AccountSettingsNavigationRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
   '/account/settings/stremio': typeof AccountSettingsStremioRoute
@@ -159,6 +168,7 @@ export interface FileRoutesById {
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/navigation': typeof AccountSettingsNavigationRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
   '/account/settings/stremio': typeof AccountSettingsStremioRoute
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/api/iptv-share'
     | '/account/settings/account'
     | '/account/settings/iptv'
+    | '/account/settings/navigation'
     | '/account/settings/playback'
     | '/account/settings/providers'
     | '/account/settings/stremio'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/iptv-share'
     | '/account/settings/account'
     | '/account/settings/iptv'
+    | '/account/settings/navigation'
     | '/account/settings/playback'
     | '/account/settings/providers'
     | '/account/settings/stremio'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/iptv-share'
     | '/account/settings/account'
     | '/account/settings/iptv'
+    | '/account/settings/navigation'
     | '/account/settings/playback'
     | '/account/settings/providers'
     | '/account/settings/stremio'
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsPlaybackRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
+    '/account/settings/navigation': {
+      id: '/account/settings/navigation'
+      path: '/navigation'
+      fullPath: '/account/settings/navigation'
+      preLoaderRoute: typeof AccountSettingsNavigationRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
     '/account/settings/iptv': {
       id: '/account/settings/iptv'
       path: '/iptv'
@@ -352,6 +372,7 @@ declare module '@tanstack/react-router' {
 interface AccountSettingsRouteChildren {
   AccountSettingsAccountRoute: typeof AccountSettingsAccountRoute
   AccountSettingsIptvRoute: typeof AccountSettingsIptvRoute
+  AccountSettingsNavigationRoute: typeof AccountSettingsNavigationRoute
   AccountSettingsPlaybackRoute: typeof AccountSettingsPlaybackRoute
   AccountSettingsProvidersRoute: typeof AccountSettingsProvidersRoute
   AccountSettingsStremioRoute: typeof AccountSettingsStremioRoute
@@ -360,6 +381,7 @@ interface AccountSettingsRouteChildren {
 const AccountSettingsRouteChildren: AccountSettingsRouteChildren = {
   AccountSettingsAccountRoute: AccountSettingsAccountRoute,
   AccountSettingsIptvRoute: AccountSettingsIptvRoute,
+  AccountSettingsNavigationRoute: AccountSettingsNavigationRoute,
   AccountSettingsPlaybackRoute: AccountSettingsPlaybackRoute,
   AccountSettingsProvidersRoute: AccountSettingsProvidersRoute,
   AccountSettingsStremioRoute: AccountSettingsStremioRoute,

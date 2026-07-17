@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  LayoutList,
   ListOrdered,
   LogOut,
   PlayCircle,
@@ -38,6 +39,12 @@ const profileCategories = [
     title: 'Playback',
     subtitle: 'Sources, quality, auto-play',
     icon: PlayCircle,
+  },
+  {
+    href: '/account/settings/navigation',
+    title: 'Navigation',
+    subtitle: 'Tabs and default menu',
+    icon: LayoutList,
   },
   {
     href: '/account/settings/providers',

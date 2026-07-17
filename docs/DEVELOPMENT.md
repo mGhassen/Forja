@@ -87,7 +87,7 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `TMDB_API_KEY` | Catalog / Home / Search (`crates/tmdb`) |
 | `TMDB_READ_ACCESS_TOKEN` | WebStreamr TMDB lookups when Settings token is empty |
 | `WYZIE_API_KEY` | Player subtitle search (`crates/anime` Wyzie) |
-| `SUPABASE_URL` | Shared Supabase project used by desktop accounts, sync, releases, and announcements |
+| `SUPABASE_URL` | Shared Supabase project used by desktop accounts and settings sync |
 | `SUPABASE_PUBLISHABLE_KEY` | Public Supabase client key (`sb_publishable_…`); never use `service_role` / `sb_secret_…` in the app |
 
 **Desktop reality:** anything baked into the binary can be extracted. `.env` keeps keys out of git; it does **not** hide them from someone who reverse-engineers a shipped build. Real options for production: a small backend proxy that holds the key, or user-supplied keys (WebStreamr already has a Settings TMDB token). TMDB’s v3 key is rate-limited per key — rotate if it leaks; prefer the read token only where Bearer is needed.

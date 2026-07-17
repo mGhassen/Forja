@@ -27,7 +27,6 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
-import 'package:forja/shared/widgets/announcement_banner.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 
@@ -457,23 +456,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         final shell = ShellFindShortcutScope(
           enabled: profile == ShellProfile.desktop,
           onFind: _onFindShortcut,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const AnnouncementBanner(),
-              Expanded(
-                child: ShellHost(
-                  visibleIds: _visibleIds,
-                  selectedIndex: _selectedIndex,
-                  mountedTabIds: _mountedTabIds,
-                  onDestinationSelected: _selectTab,
-                  tabFor: _tabFor,
-                  shellHeader: _shellHeader(),
-                  shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
-                  hideGlobalNav: ShellBus.hideGlobalNav.value,
-                ),
-              ),
-            ],
+          child: ShellHost(
+            visibleIds: _visibleIds,
+            selectedIndex: _selectedIndex,
+            mountedTabIds: _mountedTabIds,
+            onDestinationSelected: _selectTab,
+            tabFor: _tabFor,
+            shellHeader: _shellHeader(),
+            shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
+            hideGlobalNav: ShellBus.hideGlobalNav.value,
           ),
         );
 

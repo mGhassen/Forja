@@ -38,6 +38,25 @@ export type NavigationPayload = {
   defaultTab?: string
 }
 
+/** Shell tabs editable on web / synced — mirrors Flutter PlatformDefaults.defaultNavIds. */
+export const SYNCABLE_NAV_TABS = [
+  { id: 'search', label: 'Search' },
+  { id: 'home', label: 'Home' },
+  { id: 'asian_drama', label: 'Asian Drama' },
+  { id: 'anime', label: 'Anime' },
+  { id: 'iptv', label: 'IPTV' },
+  { id: 'live_matches', label: 'Live Matches' },
+  { id: 'mylist', label: 'My List' },
+] as const
+
+export const DEFAULT_NAV_VISIBLE_IDS: string[] = SYNCABLE_NAV_TABS.map(
+  (t) => t.id,
+)
+
+export const DEFAULT_NAV_TAB = 'home'
+
+const SYNCABLE_NAV_ID_SET = new Set<string>(DEFAULT_NAV_VISIBLE_IDS)
+
 /** Cloud M3U row — metadata only (no channels[]). Portals live in user_iptv_portals. */
 export type M3uPlaylistCloudRow = {
   id: string
@@ -205,6 +224,12 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     href: '/account/settings/playback',
   },
   {
+    key: 'navigation',
+    title: 'Navigation',
+    description: 'Which shell tabs are visible and which opens by default.',
+    href: '/account/settings/navigation',
+  },
+  {
     key: 'providers',
     title: 'Provider order',
     description: 'Priority for film and series, anime, and Asian drama hosts.',
@@ -225,9 +250,36 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
       providers: emptyProvidersPayload(),
       stremio: emptyStremioPayload(),
     },
-    navigation: {},
+    navigation: emptyNavigationPayload(),
     iptv: emptyIptvSettingsPayload(),
   }
+}
+
+export function emptyNavigationPayload(): Required<NavigationPayload> {
+  return {
+    visibleIds: [...DEFAULT_NAV_VISIBLE_IDS],
+    defaultTab: DEFAULT_NAV_TAB,
+  }
+}
+
+/** Normalize cloud/UI nav: only syncable tabs; Settings is always on-device, never stored. */
+export function normalizeNavigationPayload(
+  n: NavigationPayload | undefined,
+): Required<NavigationPayload> {
+  const raw = (n?.visibleIds ?? []).filter((id) => SYNCABLE_NAV_ID_SET.has(id))
+  const seen = new Set<string>()
+  const ordered: string[] = []
+  for (const id of raw) {
+    if (seen.add(id)) ordered.push(id)
+  }
+  const visibleIds = ordered.length ? ordered : [...DEFAULT_NAV_VISIBLE_IDS]
+  let defaultTab = (n?.defaultTab ?? DEFAULT_NAV_TAB).trim() || DEFAULT_NAV_TAB
+  if (defaultTab !== 'settings' && !visibleIds.includes(defaultTab)) {
+    defaultTab = visibleIds.includes(DEFAULT_NAV_TAB)
+      ? DEFAULT_NAV_TAB
+      : (visibleIds[0] ?? DEFAULT_NAV_TAB)
+  }
+  return { visibleIds, defaultTab }
 }
 
 export function emptyIptvSettingsPayload(): IptvSettingsPayload {
@@ -315,10 +367,12 @@ function compactStremio(s: StremioPayload | undefined): StremioPayload | undefin
 
 function compactNavigation(n: NavigationPayload | undefined): NavigationPayload | undefined {
   if (!n) return undefined
-  const out: NavigationPayload = {}
-  if (n.visibleIds?.length) out.visibleIds = n.visibleIds
-  if (n.defaultTab?.trim()) out.defaultTab = n.defaultTab.trim()
-  return Object.keys(out).length ? out : undefined
+  const normalized = normalizeNavigationPayload(n)
+  const out: NavigationPayload = {
+    visibleIds: normalized.visibleIds,
+  }
+  if (normalized.defaultTab) out.defaultTab = normalized.defaultTab
+  return out
 }
 
 /** M3U URL metadata only — portal assignments are user_iptv_portals. */
@@ -399,7 +453,7 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
   return {
     playback: { ...base.playback, ...p.playback },
     connectedServices: { providers, stremio },
-    navigation: { ...base.navigation, ...p.navigation },
+    navigation: normalizeNavigationPayload(p.navigation),
     iptv: { m3uPlaylists },
   }
 }

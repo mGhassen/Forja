@@ -31,7 +31,7 @@ Per profile:
 
 | Store | What it includes |
 |---------|------------------|
-| **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals`. |
+| **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
 | **`profile_settings` → Provider order** | Film/series, Anime, Asian drama host order — stored only when different from built-in defaults |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
@@ -54,7 +54,9 @@ Not synced — device-specific or sensitive:
 
 - Sign in with email and password in the desktop app, or use **Web login** to
   authenticate in the browser (the app opens the portal and finishes when you
-  sign in there). Create accounts only on the web (`/signup`); the app does not
+  sign in there). If the browser does not open or you change your mind, tap
+  **Cancel web login** (or **Continue without an account**) to unlock the
+  screen. Create accounts only on the web (`/signup`); the app does not
   offer in-app signup. Web signup and sign-in show a Cloudflare Turnstile check
   when captcha is configured.
 - Continue as a guest; the current local-only app behavior remains available
@@ -125,7 +127,7 @@ does not point at localhost.
 
 ## Tips
 
-- IPTV credentials live on shared `iptv_portals` rows. Your per-profile **portal name** is only on `user_iptv_portals`.
+- IPTV credentials live on shared `iptv_portals` rows with passwords encrypted at rest. Your per-profile **portal name** is only on `user_iptv_portals`.
 - Cloud settings omit default provider orders and never store M3U channel lists or My List — those stay on each device. Playback prefs (including play sources) sync in full.
 - Portal **share codes** are a separate peer handoff (encrypted ciphertext on
   rentry) — they are not stored in your sync payload.

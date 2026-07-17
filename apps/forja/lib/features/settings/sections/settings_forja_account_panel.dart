@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/shared/design/design.dart';
@@ -25,6 +27,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   int _domains = 0;
   List<SyncProfile> _profiles = const [];
   String? _activeProfileId;
+  Completer<void>? _webCancel;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 
   @override
   void dispose() {
+    _cancelWebLogin();
     SyncService.instance.identityRevision.removeListener(_onIdentity);
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
@@ -114,12 +118,16 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   }
 
   Future<void> _webLogin() async {
+    final cancel = Completer<void>();
+    _webCancel = cancel;
     setState(() {
       _webBusy = true;
       _error = null;
     });
     try {
-      final response = await SyncService.instance.signInWithBrowser();
+      final response = await SyncService.instance.signInWithBrowser(
+        cancel: cancel.future,
+      );
       if (!mounted) return;
       if (response.session == null) {
         setState(() => _error = 'Web login did not complete.');
@@ -134,6 +142,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       setState(() {});
     } on AuthException catch (e) {
       if (!mounted) return;
+      if (e.message == 'Web login cancelled.') {
+        setState(() => _error = null);
+        return;
+      }
       setState(() => _error = e.message);
     } catch (_) {
       if (!mounted) return;
@@ -142,8 +154,15 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
             'Could not finish web login. Check that the portal is reachable.',
       );
     } finally {
+      _webCancel = null;
       if (mounted) setState(() => _webBusy = false);
     }
+  }
+
+  void _cancelWebLogin() {
+    final cancel = _webCancel;
+    if (cancel == null || cancel.isCompleted) return;
+    cancel.complete();
   }
 
   Future<void> _openSignup() async {
@@ -165,7 +184,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     });
   }
 
-  bool get _locked => _busy || _webBusy;
+  bool get _formLocked => _busy || _webBusy;
+  bool get _passwordLocked => _busy;
 
   @override
   Widget build(BuildContext context) {
@@ -246,14 +266,14 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         TextField(
           controller: _emailCtrl,
           keyboardType: TextInputType.emailAddress,
-          enabled: !_locked,
+          enabled: !_formLocked,
           decoration: const InputDecoration(labelText: 'Email', isDense: true),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: _passwordCtrl,
           obscureText: true,
-          enabled: !_locked,
+          enabled: !_formLocked,
           decoration: const InputDecoration(
             labelText: 'Password',
             isDense: true,
@@ -272,18 +292,20 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
           runSpacing: 8,
           children: [
             FilledButton(
-              onPressed: _locked ? null : _signIn,
+              onPressed: _formLocked ? null : _signIn,
               child: Text(_busy ? '…' : 'Sign in'),
             ),
             OutlinedButton.icon(
-              onPressed: _locked ? null : _webLogin,
+              onPressed: _passwordLocked
+                  ? null
+                  : (_webBusy ? _cancelWebLogin : _webLogin),
               icon: Icon(
                 _webBusy
-                    ? Icons.hourglass_top_rounded
+                    ? Icons.close_rounded
                     : Icons.open_in_browser_rounded,
                 size: 16,
               ),
-              label: Text(_webBusy ? 'Waiting…' : 'Web login'),
+              label: Text(_webBusy ? 'Cancel' : 'Web login'),
             ),
           ],
         ),
@@ -291,7 +313,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
-            onPressed: _locked ? null : _openSignup,
+            onPressed: _formLocked ? null : _openSignup,
             child: const Text('Create an account on the web →'),
           ),
         ),

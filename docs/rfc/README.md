@@ -26,7 +26,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [003-[partial]-…](003-[partial]-player-overlay.md) | Player overlay + server grid | v1.1 | partial | 4/6 · 0/4 | [0.0.1](../backlog/done/0.0.1-[done].md) slice → [1.0.2](../backlog/1.0.2-[draft].md) |
 | [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 5/8 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.1](../backlog/1.0.1-[open].md) / [1.0.2](../backlog/1.0.2-[draft].md) |
 | [005-[partial]-…](005-[partial]-casting.md) | AirPlay + Chromecast | v1.1 | stub | 0/1 · 0/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | partial | 2/3 · 3/4 · 4/5 · 8/8 · 7/8 · 3/3 · 2/5 | [1.0.4](../backlog/1.0.4-[draft].md) · [1.0.2](../backlog/1.0.2-[draft].md) RFC-036 |
+| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | partial | 2/3 · 3/4 · 4/5 · 8/8 · 7/8 · 4/4 · 2/5 | [1.0.4](../backlog/1.0.4-[draft].md) · [1.0.2](../backlog/1.0.2-[draft].md) RFC-036 |
 | [007-[draft]-…](007-[draft]-lan-companion.md) | LAN remote API | v1.2 | draft | 0/4 | v2 |
 | [008-[partial]-…](008-[partial]-watch-party.md) | Watch party sync | v1.2+ | stub | 0/4 | v2 |
 | [009-[fixed]-…](fixed/009-[fixed]-rust-ffi.md) | Rust core FFI | v1.0 engine | fixed | Complete · 20/21 · 1 ⏭️ | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md) |
@@ -35,7 +35,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [012-[draft]-…](012-[draft]-v1.1-casting-providers.md) | v1.1 casting + providers | v1.1 | draft | 0/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [013-[draft]-…](013-[draft]-v1.2-sync-lan-party.md) | v1.2 sync + LAN party | v1.2 | draft | 0/6 | v2 |
 | [014-[draft]-…](014-[draft]-v3-web-rust.md) | v3.0 web + Rust/WASM | v3.0 | draft | 0/5 | v3 |
-| [015-[partial]-…](015-[partial]-in-app-updates.md) | In-app updates | v1.0 / v1.1 | partial | 7/7 · 9/13 · 3/3 | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.2](../backlog/1.0.2-[draft].md), [1.0.4](../backlog/1.0.4-[draft].md) |
+| [015-[partial]-…](015-[partial]-in-app-updates.md) | In-app updates | v1.0 / v1.1 | partial | 7/7 · 9/13 · 3/3 · 1/1 | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.2](../backlog/1.0.2-[draft].md), [1.0.4](../backlog/1.0.4-[draft].md) |
 | [016-[partial]-…](016-[partial]-lazy-tab-mounting.md) | Lazy tab mounting | v0.8.x | partial | 5/5 mount | [0.8.2](../backlog/done/0.8.2-[done].md) |
 | [024-[partial]-…](024-[partial]-tab-cache-eviction-stale.md) | Tab cache eviction + stale | v0.8.x | partial | 15/16 · 1 ⏭️ | [0.8.2](../backlog/done/0.8.2-[done].md) |
 | [017-[draft]-…](017-[draft]-deferred-engine-boot.md) | Deferred engine boot | v1.0.1 | draft | 0/6 | [0.5.0](../backlog/done/0.5.0-[done].md) slice |
@@ -56,7 +56,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 7/7 · 10/10 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
-| [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 1/7 · 4/19 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 2/7 · 8/20 | [1.0.2](../backlog/1.0.2-[draft].md) |
 
 ## Related
 

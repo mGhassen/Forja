@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 7** components · **4 / 19** acceptance (lean storage + profile splash + model correction in progress) |
-| **Current slice** | Corrected IPTV: `user_iptv_portals.portal_name`; full playback + navigation in settings |
+| **Progress** | **2 / 7** components · **8 / 20** acceptance (GitHub-only updater + announcements removed; IPTV passwords encrypted at rest) |
+| **Current slice** | Password encryption verified — IPTV `portal_name` + remaining schema/web/sync still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,7 +24,7 @@
 | 3 | R36-C03 | Web admin UI (`/admin`) gated by `accounts.is_admin` | ⬜ |
 | 4 | R36-C04 | Flutter `SyncService` / `SyncDomainBridge` single-payload pull/push | ⬜ |
 | 5 | R36-C05 | Profile-switch splash (distinct from boot splash) | ✅ |
-| 6 | R36-C06 | GitHub-only updater; remove announcements consumer | ⬜ |
+| 6 | R36-C06 | GitHub-only updater; remove announcements consumer | ✅ |
 | 7 | R36-C07 | `user_iptv_portals` assignment table (`portal_name`, favorite); settings iptv = M3U only | 🔄 |
 
 ---
@@ -37,13 +37,14 @@
 | 2 | R36-A02 | Global `iptv_portals` unique by url+username; no active connections; audit columns | ⬜ |
 | 3 | R36-A03 | One `profile_settings` row per profile with lean JSON payload (playback, connectedServices, navigation, iptv — no films) | 🔄 |
 | 4 | R36-A04 | Per-profile IPTV label in payload; portal credentials only on global row | ⬜ |
-| 5 | R36-A05 | `releases` / `release_assets` / `announcements` / `user_settings` dropped | ⬜ |
+| 5 | R36-A05 | `releases` / `release_assets` / `announcements` / `user_settings` dropped | ✅ |
 | 6 | R36-A06 | RLS: own rows for users; admin elevated via `is_admin` | ⬜ |
 | 7 | R36-A15 | Lean payload: no M3U `channels[]`, omit default provider orders, omit false/empty flags | ✅ |
 | 8 | R36-A16 | My List / films not stored in cloud (device-local only) | ✅ |
 | 9 | R36-A17 | `user_iptv_portals.portal_name` is the only cloud display name; no `provider_name` on `iptv_portals` | 🔄 |
 | 10 | R36-A18 | `profile_settings.playback` stores full prefs including `play_source_*` modes | 🔄 |
 | 11 | R36-A19 | `profile_settings.navigation` stores visibleIds + defaultTab | 🔄 |
+| 12 | R36-A20 | `iptv_portals.password` encrypted at rest (pgcrypto); decrypted only via authorized RPC | ✅ |
 
 ---
 
@@ -51,14 +52,14 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 12 | R36-A07 | Web settings pages read/write new payload paths | 🔄 |
-| 13 | R36-A08 | Admin: accounts list, profile settings, global IPTV portals | ⬜ |
-| 14 | R36-A09 | Flutter pull/push lean `profile_settings` (navigation yes; films no) | 🔄 |
-| 15 | R36-A10 | Profile switch shows dedicated splash until merge completes or fails | ✅ |
-| 16 | R36-A11 | App updater no longer reads Supabase releases tables | ⬜ |
-| 17 | R36-A12 | Announcement banner/service removed or no-ops | ⬜ |
-| 18 | R36-A13 | Feature docs + changelog updated | ✅ |
-| 19 | R36-A14 | Existing multi-domain settings migrate into `profile_settings` without loss | ⬜ |
+| 13 | R36-A07 | Web settings pages read/write new payload paths | 🔄 |
+| 14 | R36-A08 | Admin: accounts list, profile settings, global IPTV portals | ⬜ |
+| 15 | R36-A09 | Flutter pull/push lean `profile_settings` (navigation yes; films no) | 🔄 |
+| 16 | R36-A10 | Profile switch shows dedicated splash until merge completes or fails | ✅ |
+| 17 | R36-A11 | App updater no longer reads Supabase releases tables | ✅ |
+| 18 | R36-A12 | Announcement banner/service removed or no-ops | ✅ |
+| 19 | R36-A13 | Feature docs + changelog updated | ✅ |
+| 20 | R36-A14 | Existing multi-domain settings migrate into `profile_settings` without loss | ⬜ |
 
 ---
 

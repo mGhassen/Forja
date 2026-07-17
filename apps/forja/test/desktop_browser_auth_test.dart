@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -52,5 +53,20 @@ void main() {
     expect(result.isSuccess, isTrue);
     expect(result.accessToken, 'access-token');
     expect(result.refreshToken, 'refresh-token');
+  });
+
+  test('signIn finishes when cancel completes', () async {
+    final cancel = Completer<void>();
+    final future = DesktopBrowserAuth.signIn(
+      timeout: const Duration(seconds: 8),
+      cancel: cancel.future,
+      launchBrowser: (_) async {
+        cancel.complete();
+      },
+    );
+
+    final result = await future;
+    expect(result.isSuccess, isFalse);
+    expect(result.error, 'Web login cancelled.');
   });
 }
