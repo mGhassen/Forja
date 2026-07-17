@@ -48,5 +48,8 @@ coverage/
 *.sln
 *.sw?
 
+# Local email template previews (generated; not source of truth)
+supabase/templates/preview/
+
 # OS
 Thumbs.db
