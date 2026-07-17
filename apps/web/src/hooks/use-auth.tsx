@@ -28,8 +28,6 @@ type AuthContextValue = {
   user: User | null
   loading: boolean
   configured: boolean
-  /** True after a recovery link establishes a password-reset session. */
-  passwordRecovery: boolean
   signIn: (
     email: string,
     password: string,
@@ -40,11 +38,19 @@ type AuthContextValue = {
     password: string,
     options?: { captchaToken?: string },
   ) => Promise<AuthResult>
+  /** Confirm signup with the OTP emailed after sign-up. */
+  verifySignupOtp: (email: string, token: string) => Promise<AuthResult>
+  /** Send a recovery OTP email (code only — not a magic link login). */
   requestPasswordReset: (
     email: string,
     options?: { captchaToken?: string },
   ) => Promise<AuthResult>
-  updatePassword: (password: string) => Promise<AuthResult>
+  /** Verify recovery OTP and set a new password in one step. */
+  resetPasswordWithOtp: (
+    email: string,
+    token: string,
+    password: string,
+  ) => Promise<AuthResult>
   signOut: () => Promise<void>
   deleteAccount: (confirmEmail: string) => Promise<{ error: string | null }>
 }
@@ -54,7 +60,6 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -70,12 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setPasswordRecovery(true)
-      } else if (event === 'SIGNED_OUT') {
-        setPasswordRecovery(false)
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next)
       setLoading(false)
     })
@@ -130,10 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo:
-            typeof window !== 'undefined'
-              ? `${window.location.origin}/account/profiles`
-              : undefined,
           ...(options?.captchaToken
             ? { captchaToken: options.captchaToken }
             : {}),
@@ -142,6 +138,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error: error.message }
       const needsEmailConfirmation = Boolean(data.user) && !data.session
       return { error: null, needsEmailConfirmation }
+    },
+    [],
+  )
+
+  const verifySignupOtp = useCallback(
+    async (email: string, token: string): Promise<AuthResult> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: token.trim(),
+        type: 'signup',
+      })
+      return { error: error?.message ?? null }
     },
     [],
   )
@@ -159,11 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { error: AUTH_UNAVAILABLE_MESSAGE }
       }
+      // Sends recovery email with OTP. App uses code entry — not link login.
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo:
-          typeof window !== 'undefined'
-            ? `${window.location.origin}/reset-password`
-            : undefined,
         ...(options?.captchaToken
           ? { captchaToken: options.captchaToken }
           : {}),
@@ -173,14 +181,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const updatePassword = useCallback(
-    async (password: string): Promise<AuthResult> => {
+  const resetPasswordWithOtp = useCallback(
+    async (
+      email: string,
+      token: string,
+      password: string,
+    ): Promise<AuthResult> => {
       if (!supabaseConfigured) {
         return { error: AUTH_UNAVAILABLE_MESSAGE }
       }
-      const { error } = await supabase.auth.updateUser({ password })
-      if (!error) setPasswordRecovery(false)
-      return { error: error?.message ?? null }
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: token.trim(),
+        type: 'recovery',
+      })
+      if (verifyError) return { error: verifyError.message }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+      })
+      return { error: updateError?.message ?? null }
     },
     [],
   )
@@ -238,22 +258,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       loading,
       configured: supabaseConfigured,
-      passwordRecovery,
       signIn,
       signUp,
+      verifySignupOtp,
       requestPasswordReset,
-      updatePassword,
+      resetPasswordWithOtp,
       signOut,
       deleteAccount,
     }),
     [
       session,
       loading,
-      passwordRecovery,
       signIn,
       signUp,
+      verifySignupOtp,
       requestPasswordReset,
-      updatePassword,
+      resetPasswordWithOtp,
       signOut,
       deleteAccount,
     ],

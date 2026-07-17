@@ -121,7 +121,7 @@ export function IptvPage() {
           />
 
           <div className="relative z-[2] mx-auto grid max-w-[1400px] gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-            <div>
+            <div className="hero-enter">
               <div className="mb-6 flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-brand/40 bg-brand/10 px-3 py-1 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-brand">
                   New IPTV Player
@@ -150,19 +150,21 @@ export function IptvPage() {
               </div>
             </div>
 
-            <div className="relative" id="proof">
-              <img
-                src="/brand/forja-iptv-live.jpg"
-                alt="Forja IPTV Player - live channels and categories"
-                width={1024}
-                height={637}
-                className="h-auto w-full rounded-lg border border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)]"
-                decoding="async"
-              />
+            <Reveal variant="right" delayMs={120} className="relative">
+              <div id="proof" className="animate-float">
+                <img
+                  src="/brand/forja-iptv-live.jpg"
+                  alt="Forja IPTV Player - live channels and categories"
+                  width={1024}
+                  height={637}
+                  className="h-auto w-full rounded-lg border border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)]"
+                  decoding="async"
+                />
+              </div>
               <p className="font-mono-ui mt-4 text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.4)]">
                 IPTV Player · live · films · series
               </p>
-            </div>
+            </Reveal>
           </div>
         </header>
 

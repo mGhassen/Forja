@@ -25,10 +25,11 @@ const MIN_PASSWORD_LENGTH = 6
 
 function SignupForm() {
   const navigate = useNavigate()
-  const { signUp, user, loading, configured } = useAuth()
+  const { signUp, verifySignupOtp, user, loading, configured } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [otp, setOtp] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -88,6 +89,27 @@ function SignupForm() {
     void navigate({ to: '/account/profiles' })
   }
 
+  async function onConfirmOtp(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+
+    if (!otp.trim()) {
+      setError('Enter the code from your email.')
+      return
+    }
+
+    setSubmitting(true)
+    const { error: otpError } = await verifySignupOtp(email.trim(), otp)
+    setSubmitting(false)
+
+    if (otpError) {
+      setError(otpError)
+      return
+    }
+
+    void navigate({ to: '/account/profiles' })
+  }
+
   if (needsEmailConfirmation) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
@@ -101,25 +123,54 @@ function SignupForm() {
                 Confirm email
               </CardTitle>
               <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                We sent a confirmation link to{' '}
-                <span className="text-[#EDE6DA]">{email.trim()}</span>. Open it,
-                then sign in to sync your settings.
+                We sent a confirmation code to{' '}
+                <span className="text-[#EDE6DA]">{email.trim()}</span>. Enter it
+                below, then you can sign in with your password anytime.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-2">
-              <Link
-                to="/login"
-                data-hover=""
-                className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-              >
-                Back to sign in
-              </Link>
-              <Link
-                to="/download"
-                className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-              >
-                Or download and play without an account →
-              </Link>
+            <CardContent>
+              <form onSubmit={onConfirmOtp} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-otp">Confirmation code</Label>
+                  <Input
+                    id="signup-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="6-digit code"
+                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] font-mono-ui tracking-[0.2em]"
+                  />
+                </div>
+
+                {error ? (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                  >
+                    {error}
+                  </p>
+                ) : null}
+
+                <Button
+                  type="submit"
+                  disabled={submitting || loading}
+                  className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                >
+                  {submitting ? 'Confirming…' : 'Confirm email'}
+                </Button>
+              </form>
+
+              <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+                <Link
+                  to="/login"
+                  className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
+                >
+                  Back to sign in →
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </Reveal>

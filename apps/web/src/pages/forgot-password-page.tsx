@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
@@ -22,13 +22,13 @@ import {
 import { captchaConfigured } from '@/lib/captcha'
 
 function ForgotPasswordForm() {
+  const navigate = useNavigate()
   const { requestPasswordReset, configured } = useAuth()
   const [email, setEmail] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [sent, setSent] = useState(false)
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
@@ -49,7 +49,8 @@ function ForgotPasswordForm() {
     }
 
     setSubmitting(true)
-    const { error: resetError } = await requestPasswordReset(email.trim(), {
+    const trimmed = email.trim()
+    const { error: resetError } = await requestPasswordReset(trimmed, {
       captchaToken: captchaToken ?? undefined,
     })
     setSubmitting(false)
@@ -60,40 +61,10 @@ function ForgotPasswordForm() {
       return
     }
 
-    setSent(true)
-  }
-
-  if (sent) {
-    return (
-      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-        <Reveal variant="right" className="w-full max-w-md">
-          <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
-            <CardHeader className="space-y-2 pb-2">
-              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-forja-green">
-                Check your inbox
-              </p>
-              <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                Reset link sent
-              </CardTitle>
-              <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                If an account exists for{' '}
-                <span className="text-[#EDE6DA]">{email.trim()}</span>, we sent a
-                password reset link. Open it to choose a new password.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-2">
-              <Link
-                to="/login"
-                data-hover=""
-                className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-              >
-                Back to sign in
-              </Link>
-            </CardContent>
-          </Card>
-        </Reveal>
-      </section>
-    )
+    void navigate({
+      to: '/reset-password',
+      search: { email: trimmed },
+    })
   }
 
   return (
@@ -108,7 +79,8 @@ function ForgotPasswordForm() {
               Forgot password
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Enter your email and we&apos;ll send a link to reset your password.
+              Enter your email. We&apos;ll send a one-time code — then you choose
+              a new password. Sign-in stays email + password (no magic links).
             </CardDescription>
           </CardHeader>
 
@@ -162,7 +134,7 @@ function ForgotPasswordForm() {
                   }
                   className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                 >
-                  {submitting ? 'Sending link…' : 'Send reset link'}
+                  {submitting ? 'Sending code…' : 'Send reset code'}
                 </Button>
               ) : (
                 <Link
@@ -176,6 +148,15 @@ function ForgotPasswordForm() {
             </form>
 
             <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+              <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
+                Already have a code?{' '}
+                <Link
+                  to="/reset-password"
+                  className="text-forja-green hover:text-flame hover:underline"
+                >
+                  Enter it here
+                </Link>
+              </p>
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
                 Remembered it?{' '}
                 <Link

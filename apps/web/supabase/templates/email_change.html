@@ -19,14 +19,44 @@
     "
   >
     <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all">
-      Confirm {{ .NewEmail }} as the new email for your Forja account.
+      Your Forja email-change code is {{ .Token }}. Don’t share it.
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0b0a0a; width: 100%">
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="
+        width: 100%;
+        background-color: #0b0a0a;
+        background-image: radial-gradient(ellipse 90% 55% at 15% 0%, rgba(255, 77, 28, 0.22), transparent 55%),
+          radial-gradient(ellipse 70% 50% at 95% 100%, rgba(28, 231, 131, 0.12), transparent 50%),
+          radial-gradient(ellipse 50% 40% at 50% 50%, rgba(237, 230, 218, 0.04), transparent 70%);
+      "
+    >
       <tr>
-        <td align="center" style="padding: 0">
-          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 560px">
+        <td align="center" style="padding: 48px 20px">
+          <table
+            role="presentation"
+            width="560"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+              width: 100%;
+              max-width: 560px;
+              background-color: rgba(18, 16, 16, 0.72);
+              border: 1px solid rgba(237, 230, 218, 0.14);
+              border-radius: 24px;
+              overflow: hidden;
+              box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(237, 230, 218, 0.1);
+              backdrop-filter: blur(40px) saturate(180%);
+              -webkit-backdrop-filter: blur(40px) saturate(180%);
+            "
+          >
             <tr>
-              <td style="height: 4px; line-height: 4px; font-size: 0; background-color: #1ce783">&nbsp;</td>
+              <td style="height: 3px; line-height: 3px; font-size: 0; background: linear-gradient(90deg, #ff4d1c, rgba(255, 77, 28, 0.2))">&nbsp;</td>
             </tr>
             <tr>
               <td style="padding: 40px 32px 0 32px">
@@ -49,10 +79,10 @@
                     font-weight: 700;
                     letter-spacing: 0.14em;
                     text-transform: uppercase;
-                    color: #1ce783;
+                    color: #ff4d1c;
                   "
                 >
-                  Account
+                  Security
                 </p>
                 <h1
                   style="
@@ -78,72 +108,40 @@
                   color: rgba(237, 230, 218, 0.62);
                 "
               >
-                Confirm
-                <span style="color: #ede6da">{{ .NewEmail }}</span>
-                as the new address for
+                Enter this code to confirm the email change for
                 <span style="color: #ede6da">{{ .Email }}</span>.
+                It expires soon — don’t share it.
               </td>
             </tr>
             <tr>
-              <td style="padding: 32px 32px 0 32px">
-                <a
-                  href="{{ .ConfirmationURL }}"
+              <td style="padding: 32px 32px 0 32px" align="center">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
                   style="
-                    display: inline-block;
-                    background-color: #1ce783;
-                    color: #0b0a0a;
-                    font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                    font-size: 13px;
-                    font-weight: 700;
-                    letter-spacing: 0.08em;
-                    text-transform: uppercase;
-                    text-decoration: none;
-                    padding: 16px 28px;
-                    border-radius: 999px;
+                    margin: 0 auto;
+                    background-color: rgba(255, 255, 255, 0.04);
+                    border: 1px solid rgba(237, 230, 218, 0.1);
+                    border-radius: 14px;
+                    overflow: hidden;
                   "
-                  >Confirm email</a
                 >
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 28px 32px 0 32px">
-                <p style="margin: 0 0 8px 0; font-size: 12px; line-height: 1.5; color: rgba(237, 230, 218, 0.38)">
-                  Or paste this link:
-                </p>
-                <p style="margin: 0; font-size: 12px; line-height: 1.5; word-break: break-all">
-                  <a href="{{ .ConfirmationURL }}" style="color: #1ce783; text-decoration: none">{{ .ConfirmationURL }}</a>
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 24px 32px 0 32px">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #141212">
                   <tr>
-                    <td style="padding: 16px 18px; border-left: 3px solid #1ce783">
-                      <p
-                        style="
-                          margin: 0 0 6px 0;
-                          font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                          font-size: 10px;
-                          letter-spacing: 0.12em;
-                          text-transform: uppercase;
-                          color: rgba(237, 230, 218, 0.42);
-                        "
-                      >
-                        Code
-                      </p>
-                      <p
-                        style="
-                          margin: 0;
-                          font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                          font-size: 22px;
-                          font-weight: 700;
-                          letter-spacing: 0.18em;
-                          color: #ede6da;
-                        "
-                      >
-                        {{ .Token }}
-                      </p>
+                    <td
+                      style="
+                        padding: 28px 40px;
+                        border-left: 3px solid #1ce783;
+                        font-family: 'Space Mono', 'Courier New', Courier, monospace;
+                        font-size: 36px;
+                        font-weight: 700;
+                        letter-spacing: 0.22em;
+                        color: #1ce783;
+                        text-align: center;
+                      "
+                    >
+                      {{ .Token }}
                     </td>
                   </tr>
                 </table>
@@ -159,7 +157,7 @@
                 <p style="margin: 20px 0 0 0; font-size: 12px; line-height: 1.55; color: rgba(237, 230, 218, 0.38)">
                   Forja ·
                   <a href="{{ .SiteURL }}" style="color: rgba(237, 230, 218, 0.38); text-decoration: none">{{ .SiteURL }}</a><br />
-                  Didn’t request a change? Ignore this email.
+                  Didn’t request this? Ignore the email — your email stays the same.
                 </p>
               </td>
             </tr>

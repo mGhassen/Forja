@@ -71,11 +71,16 @@ copy match the Forja dark brand (green CTA, paper text on near-black).
 | Template | File | Subject |
 |----------|------|---------|
 | Confirm signup | `confirmation.html` | Confirm your Forja account |
-| Reset password | `recovery.html` | Reset your Forja password |
-| Magic link | `magic_link.html` | Your Forja sign-in link |
+| Reset password | `recovery.html` | Your Forja password reset code |
+| Magic link / OTP | `magic_link.html` | Your Forja sign-in code |
 | Invite | `invite.html` | You're invited to Forja |
 | Change email | `email_change.html` | Confirm your new email |
 | Reauthentication | `reauthentication.html` | Your Forja verification code |
+
+**Auth model:** email + password sign-in (no magic-link login in the app).
+Auth emails are **OTP codes** you type in the web UI — not clickable login links
+(keeps Resend free-tier usage predictable: one mail per signup/reset, zero on
+daily sign-in).
 
 Logo URL in every template: `{{ .SiteURL }}/brand/logo-email.png`
 (served from `apps/web/public/brand/logo-email.png`). Hosted Site URL must be
@@ -87,8 +92,10 @@ your public web origin so the logo loads in real inboxes.
 2. Restart: `supabase stop && supabase start` (from `apps/web`)
 3. Run the web app (`pnpm dev`) so `/brand/logo-email.png` is reachable
 4. Sign up (or open `/forgot-password` to trigger recovery) → open Mailpit UI at **http://127.0.0.1:55324**
-5. For recovery: click **Reset password** in the email → `/reset-password` → set a new password
-6. Set `enable_confirmations = false` again if you want click-free test users
+5. For recovery: copy the **code** from the email → `/reset-password` → enter
+   email + code + new password
+6. For signup confirm: enter the **code** on the sign-up page after register
+7. Set `enable_confirmations = false` again if you want click-free test users
 
 ### Hosted (production Dashboard)
 
@@ -99,8 +106,9 @@ editing files in `templates/`:
 2. For each template above, paste the HTML and matching subject
 3. Confirm **URL Configuration → Site URL** is the public web origin (not
    `localhost`) so `{{ .SiteURL }}/brand/logo-email.png` resolves
-4. Add exact redirect URLs for `/login`, `/signup`, `/forgot-password`,
-   `/reset-password`, and `/account` under **Redirect URLs**
+4. Redirect URLs still need `/login`, `/signup`, `/forgot-password`,
+   `/reset-password`, and `/account` for any rare link fallbacks — day-to-day
+   auth is password + OTP codes
 
 From `apps/web` only:
 

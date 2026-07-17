@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **3 / 3** acceptance (password reset) |
-| **Current slice** | Password reset shipped — configure live Supabase redirect URLs + recovery template; captcha secret + Edge deploy remain ops |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **5 / 5** acceptance (password reset) |
+| **Current slice** | Password + OTP email auth — paste code-only templates into hosted Dashboard; daily sign-in stays email/password (no magic-link login) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -81,6 +81,8 @@
 | 1 | R34-A19 | `/forgot-password` requests recovery email via Supabase (+ Turnstile when configured); login links to it | ✅ |
 | 2 | R34-A20 | Recovery link lands on `/reset-password`; user sets new password via `updateUser` | ✅ |
 | 3 | R34-A21 | Local Auth redirect allowlist includes `/forgot-password` and `/reset-password` | ✅ |
+| 4 | R34-A22 | Password reset is OTP-code based (not magic-link login): recovery email shows `{{ .Token }}`; `/reset-password` accepts email + code + new password via `verifyOtp` + `updateUser` | ✅ |
+| 5 | R34-A23 | Signup confirmation is OTP-code based: confirmation email shows code; signup page verifies via `verifyOtp` type `signup` | ✅ |
 
 ---
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark only" />
     <meta name="supported-color-schemes" content="dark" />
-    <title>You’re invited to Forja</title>
+    <title>You're invited to Forja</title>
     <!--[if mso]><style>body,table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
   </head>
   <body
@@ -19,14 +19,44 @@
     "
   >
     <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all">
-      You’ve been invited to Forja as {{ .Email }}. Accept to set up your account.
+      Your Forja invite code is {{ .Token }}. Don’t share it.
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0b0a0a; width: 100%">
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="
+        width: 100%;
+        background-color: #0b0a0a;
+        background-image: radial-gradient(ellipse 90% 55% at 15% 0%, rgba(28, 231, 131, 0.22), transparent 55%),
+          radial-gradient(ellipse 70% 50% at 95% 100%, rgba(255, 77, 28, 0.14), transparent 50%),
+          radial-gradient(ellipse 50% 40% at 50% 50%, rgba(237, 230, 218, 0.04), transparent 70%);
+      "
+    >
       <tr>
-        <td align="center" style="padding: 0">
-          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 560px">
+        <td align="center" style="padding: 48px 20px">
+          <table
+            role="presentation"
+            width="560"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+              width: 100%;
+              max-width: 560px;
+              background-color: rgba(18, 16, 16, 0.72);
+              border: 1px solid rgba(237, 230, 218, 0.14);
+              border-radius: 24px;
+              overflow: hidden;
+              box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(237, 230, 218, 0.1);
+              backdrop-filter: blur(40px) saturate(180%);
+              -webkit-backdrop-filter: blur(40px) saturate(180%);
+            "
+          >
             <tr>
-              <td style="height: 4px; line-height: 4px; font-size: 0; background-color: #1ce783">&nbsp;</td>
+              <td style="height: 3px; line-height: 3px; font-size: 0; background: linear-gradient(90deg, #1ce783, rgba(28, 231, 131, 0.2))">&nbsp;</td>
             </tr>
             <tr>
               <td style="padding: 40px 32px 0 32px">
@@ -65,7 +95,7 @@
                     color: #ede6da;
                   "
                 >
-                  You’re invited to Forja
+                  You’re invited
                 </h1>
               </td>
             </tr>
@@ -78,71 +108,40 @@
                   color: rgba(237, 230, 218, 0.62);
                 "
               >
-                Join Forja as
-                <span style="color: #ede6da">{{ .Email }}</span>.
-                Accept the invite to set your password and start watching.
+                Enter this code to accept the invite for
+                <span style="color: #ede6da">{{ .Email }}</span>,
+                then set your password. It expires soon — don’t share it.
               </td>
             </tr>
             <tr>
-              <td style="padding: 32px 32px 0 32px">
-                <a
-                  href="{{ .ConfirmationURL }}"
+              <td style="padding: 32px 32px 0 32px" align="center">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
                   style="
-                    display: inline-block;
-                    background-color: #1ce783;
-                    color: #0b0a0a;
-                    font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                    font-size: 13px;
-                    font-weight: 700;
-                    letter-spacing: 0.08em;
-                    text-transform: uppercase;
-                    text-decoration: none;
-                    padding: 16px 28px;
-                    border-radius: 999px;
+                    margin: 0 auto;
+                    background-color: rgba(255, 255, 255, 0.04);
+                    border: 1px solid rgba(237, 230, 218, 0.1);
+                    border-radius: 14px;
+                    overflow: hidden;
                   "
-                  >Accept invite</a
                 >
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 28px 32px 0 32px">
-                <p style="margin: 0 0 8px 0; font-size: 12px; line-height: 1.5; color: rgba(237, 230, 218, 0.38)">
-                  Or paste this link:
-                </p>
-                <p style="margin: 0; font-size: 12px; line-height: 1.5; word-break: break-all">
-                  <a href="{{ .ConfirmationURL }}" style="color: #1ce783; text-decoration: none">{{ .ConfirmationURL }}</a>
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 24px 32px 0 32px">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #141212">
                   <tr>
-                    <td style="padding: 16px 18px; border-left: 3px solid #1ce783">
-                      <p
-                        style="
-                          margin: 0 0 6px 0;
-                          font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                          font-size: 10px;
-                          letter-spacing: 0.12em;
-                          text-transform: uppercase;
-                          color: rgba(237, 230, 218, 0.42);
-                        "
-                      >
-                        Code
-                      </p>
-                      <p
-                        style="
-                          margin: 0;
-                          font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                          font-size: 22px;
-                          font-weight: 700;
-                          letter-spacing: 0.18em;
-                          color: #ede6da;
-                        "
-                      >
-                        {{ .Token }}
-                      </p>
+                    <td
+                      style="
+                        padding: 28px 40px;
+                        border-left: 3px solid #1ce783;
+                        font-family: 'Space Mono', 'Courier New', Courier, monospace;
+                        font-size: 36px;
+                        font-weight: 700;
+                        letter-spacing: 0.22em;
+                        color: #1ce783;
+                        text-align: center;
+                      "
+                    >
+                      {{ .Token }}
                     </td>
                   </tr>
                 </table>
@@ -158,7 +157,7 @@
                 <p style="margin: 20px 0 0 0; font-size: 12px; line-height: 1.55; color: rgba(237, 230, 218, 0.38)">
                   Forja ·
                   <a href="{{ .SiteURL }}" style="color: rgba(237, 230, 218, 0.38); text-decoration: none">{{ .SiteURL }}</a><br />
-                  Weren’t expecting this? Ignore the invite.
+                  Didn’t expect this? Ignore the email.
                 </p>
               </td>
             </tr>

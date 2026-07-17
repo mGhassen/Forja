@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useState, type FormEvent } from 'react'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
@@ -18,32 +18,19 @@ import {
   AUTH_UNAVAILABLE_MESSAGE,
 } from '@/hooks/use-auth'
 
+const resetPasswordRoute = getRouteApi('/reset-password')
 const MIN_PASSWORD_LENGTH = 6
 
 function ResetPasswordForm() {
   const navigate = useNavigate()
-  const {
-    updatePassword,
-    passwordRecovery,
-    loading,
-    configured,
-    session,
-  } = useAuth()
+  const { email: emailFromSearch } = resetPasswordRoute.useSearch()
+  const { resetPasswordWithOtp, loading, configured } = useAuth()
+  const [email, setEmail] = useState(emailFromSearch ?? '')
+  const [token, setToken] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  /** Give the recovery hash/code a moment to establish a session. */
-  const [waited, setWaited] = useState(false)
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setWaited(true), 1500)
-    return () => window.clearTimeout(t)
-  }, [])
-
-  const canReset = passwordRecovery || Boolean(session)
-  const stillResolving = !canReset && (!waited || loading)
-  const showInvalid = !canReset && waited && !loading
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -57,77 +44,25 @@ function ResetPasswordForm() {
       setError('Passwords do not match.')
       return
     }
+    if (!token.trim()) {
+      setError('Enter the code from your email.')
+      return
+    }
 
     setSubmitting(true)
-    const { error: updateError } = await updatePassword(password)
+    const { error: resetError } = await resetPasswordWithOtp(
+      email.trim(),
+      token,
+      password,
+    )
     setSubmitting(false)
 
-    if (updateError) {
-      setError(updateError)
+    if (resetError) {
+      setError(resetError)
       return
     }
 
     void navigate({ to: '/account/profiles' })
-  }
-
-  if (stillResolving) {
-    return (
-      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-        <Reveal variant="right" className="w-full max-w-md">
-          <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
-            <CardHeader className="space-y-2 pb-2">
-              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
-                Password reset
-              </p>
-              <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                Opening link…
-              </CardTitle>
-              <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                Confirming your reset link. This only takes a moment.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Reveal>
-      </section>
-    )
-  }
-
-  if (showInvalid) {
-    return (
-      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-        <Reveal variant="right" className="w-full max-w-md">
-          <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
-            <CardHeader className="space-y-2 pb-2">
-              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-flame">
-                Link expired
-              </p>
-              <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                Invalid reset link
-              </CardTitle>
-              <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                This password reset link is invalid or has expired. Request a
-                new one to continue.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-2">
-              <Link
-                to="/forgot-password"
-                data-hover=""
-                className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-              >
-                Request a new link
-              </Link>
-              <Link
-                to="/login"
-                className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-              >
-                Back to sign in →
-              </Link>
-            </CardContent>
-          </Card>
-        </Reveal>
-      </section>
-    )
   }
 
   return (
@@ -142,8 +77,9 @@ function ResetPasswordForm() {
               Choose a new password
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Pick a new password for your Forja account. At least{' '}
-              {MIN_PASSWORD_LENGTH} characters.
+              Enter the code from your email, then pick a new password (at least{' '}
+              {MIN_PASSWORD_LENGTH} characters). After that, sign in with email +
+              password as usual.
             </CardDescription>
           </CardHeader>
 
@@ -156,6 +92,35 @@ function ResetPasswordForm() {
                 </p>
               ) : null}
 
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  autoComplete="email"
+                  required={configured}
+                  disabled={!configured}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reset-code">Reset code</Label>
+                <Input
+                  id="reset-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required={configured}
+                  disabled={!configured}
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="6-digit code"
+                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] font-mono-ui tracking-[0.2em] disabled:opacity-40"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="reset-password">New password</Label>
                 <Input
@@ -215,7 +180,16 @@ function ResetPasswordForm() {
               )}
             </form>
 
-            <div className="mt-8 border-t border-[rgba(237,230,218,0.1)] pt-6">
+            <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+              <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
+                Need a new code?{' '}
+                <Link
+                  to="/forgot-password"
+                  className="text-forja-green hover:text-flame hover:underline"
+                >
+                  Request one
+                </Link>
+              </p>
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
                 <Link
                   to="/login"
