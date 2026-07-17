@@ -68,6 +68,41 @@ double_confirm_changes = true
 # Set true when testing the real confirmation email flow.
 enable_confirmations = false
 
+# Branded Forja auth emails (source of truth in templates/). Hosted: paste into
+# Dashboard → Authentication → Email Templates — see supabase/README.md.
+[auth.email.template.confirmation]
+subject = "Confirm your Forja account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Forja password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.magic_link]
+subject = "Your Forja sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.invite]
+subject = "You're invited to Forja"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.reauthentication]
+subject = "Your Forja verification code"
+content_path = "./supabase/templates/reauthentication.html"
+
+# Bot protection — Cloudflare Turnstile (same provider as hosted Supabase Auth).
+# Dummy always-pass secret pairs with VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+# in apps/web/.env. Hosted: set real keys in Dashboard → Auth → Bot and Abuse Protection
+# and Vercel env VITE_TURNSTILE_SITE_KEY.
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "1x0000000000000000000000000000000AA"
+
 [analytics]
 enabled = false
 

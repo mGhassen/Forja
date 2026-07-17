@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
+import { TurnstileCaptcha } from '@/components/turnstile-captcha'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -12,149 +14,31 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAuth, AUTH_UNAVAILABLE_MESSAGE } from '@/hooks/use-auth'
-import { cn } from '@/lib/utils'
-
-const WORDS = ['stream', 'sync', 'live', 'play'] as const
-const BEATS = [
-  {
-    n: '01',
-    title: 'One player',
-    line: 'Movies, series, anime, live TV - same controls, same calm.',
-    accent: 'brand' as const,
-  },
-  {
-    n: '02',
-    title: 'Your sources',
-    line: 'Playlists you connect. Guides inside the player. Nothing hosted here.',
-    accent: 'flame' as const,
-  },
-  {
-    n: '03',
-    title: 'Every screen',
-    line: 'Desk, couch, TV - pick up where you left off when you sign in.',
-    accent: 'brand' as const,
-  },
-]
-
-const MARQUEE = [
-  'Playback',
-  'Guides',
-  'Live lists',
-  'Subtitles',
-  'Desk to TV',
-  'Sync',
-]
-
-const CYCLE_MS = 3200
-
-function LoginStoryPanel() {
-  const [wordIndex, setWordIndex] = useState(0)
-  const [reduced, setReduced] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(mq.matches)
-    const onChange = () => setReduced(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-
-  useEffect(() => {
-    if (reduced) return
-    const id = window.setInterval(() => {
-      setWordIndex((i) => (i + 1) % WORDS.length)
-    }, CYCLE_MS)
-    return () => window.clearInterval(id)
-  }, [reduced])
-
-  const word = WORDS[wordIndex]!
-
-  return (
-    <section className="relative flex min-h-[min(52vh,520px)] flex-col justify-center overflow-hidden border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-14 lg:min-h-0 lg:border-b-0 lg:border-r lg:py-20">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 20% 40%, rgba(28,231,131,0.14), transparent 55%), radial-gradient(ellipse 55% 50% at 85% 75%, rgba(255,77,28,0.12), transparent 50%)',
-        }}
-      />
-      <div
-        aria-hidden
-        className="animate-login-glow pointer-events-none absolute -top-24 right-[-10%] h-64 w-64 rounded-full bg-forja-green/20 blur-3xl"
-      />
-
-      <div className="hero-enter relative z-[1] max-w-xl">
-        <p className="font-mono-ui text-[11px] uppercase tracking-[0.22em] text-forja-green">
-          <span className="animate-live-dot mr-2 inline-block h-1.5 w-1.5 rounded-full bg-forja-green align-middle" />
-          Creative player platform
-        </p>
-
-        <h1 className="mt-5 font-disp text-[clamp(36px,7vw,72px)] uppercase leading-[0.9] tracking-[-0.04em]">
-          Built to
-          <br />
-          <span
-            key={word}
-            className="animate-word-in font-serif-i inline-block normal-case text-flame"
-          >
-            {word}.
-          </span>
-        </h1>
-
-        <p className="mt-6 max-w-md font-disp text-[clamp(17px,2.4vw,26px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-          One player. Your sources. Every screen.
-          <br />
-          <span className="text-[#EDE6DA]">Sign in to sync settings across your screens.</span>
-        </p>
-      </div>
-
-      <ul className="relative z-[1] mt-10 space-y-4">
-        {BEATS.map((beat, i) => (
-          <Reveal key={beat.n} delayMs={i * 90} variant="left">
-            <li className="group flex gap-4 border-l-2 border-[rgba(237,230,218,0.12)] py-1 pl-4 transition-colors hover:border-forja-green/50">
-              <span
-                className={cn(
-                  'font-mono-ui shrink-0 text-[11px] tracking-[0.16em]',
-                  beat.accent === 'flame' ? 'text-flame' : 'text-brand',
-                )}
-              >
-                {beat.n}
-              </span>
-              <div>
-                <p className="font-disp text-lg uppercase tracking-tight text-[#EDE6DA]">
-                  {beat.title}
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-[rgba(237,230,218,0.48)]">
-                  {beat.line}
-                </p>
-              </div>
-            </li>
-          </Reveal>
-        ))}
-      </ul>
-
-      <div className="relative z-[1] mt-10 hidden overflow-hidden border border-[rgba(237,230,218,0.12)] bg-[#121110] py-4 sm:block">
-        <div className="animate-marquee flex w-max gap-10 whitespace-nowrap px-4">
-          {[...MARQUEE, ...MARQUEE].map((item, i) => (
-            <span key={`${item}-${i}`} className="inline-flex items-center gap-3">
-              <span className="font-serif-i text-xl text-[#EDE6DA]">{item}</span>
-              <span className={i % 2 === 0 ? 'text-brand' : 'text-flame'}>✦</span>
-            </span>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
+import {
+  useAuth,
+  AUTH_UNAVAILABLE_MESSAGE,
+  CAPTCHA_REQUIRED_MESSAGE,
+} from '@/hooks/use-auth'
+import { captchaConfigured } from '@/lib/captcha'
 
 function LoginForm() {
   const navigate = useNavigate()
   const { signIn, user, loading, configured } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const onCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token)
+  }, [])
+
+  function resetCaptcha() {
+    setCaptchaToken(null)
+    setCaptchaKey((k) => k + 1)
+  }
 
   useEffect(() => {
     if (!loading && user) {
@@ -165,11 +49,20 @@ function LoginForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (captchaConfigured && !captchaToken) {
+      setError(CAPTCHA_REQUIRED_MESSAGE)
+      return
+    }
+
     setSubmitting(true)
-    const { error: signInError } = await signIn(email.trim(), password)
+    const { error: signInError } = await signIn(email.trim(), password, {
+      captchaToken: captchaToken ?? undefined,
+    })
     setSubmitting(false)
     if (signInError) {
       setError(signInError)
+      resetCaptcha()
       return
     }
     void navigate({ to: '/account/profiles' })
@@ -187,7 +80,8 @@ function LoginForm() {
               Log in
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Your player settings, synced. Download stays free - account is optional.
+              Your player settings, synced. Download stays free - account is
+              optional.
             </CardDescription>
           </CardHeader>
 
@@ -195,8 +89,8 @@ function LoginForm() {
             <form onSubmit={onSubmit} className="space-y-5">
               {!configured ? (
                 <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Web sign-in is not open yet. Download Forja - you can watch without an
-                  account.
+                  Web sign-in is not open yet. Download Forja - you can watch
+                  without an account.
                 </p>
               ) : null}
 
@@ -228,6 +122,13 @@ function LoginForm() {
                 />
               </div>
 
+              {configured && captchaConfigured ? (
+                <div className="space-y-2">
+                  <Label>Verification</Label>
+                  <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
+                </div>
+              ) : null}
+
               {error ? (
                 <p
                   role="alert"
@@ -242,7 +143,11 @@ function LoginForm() {
               {configured ? (
                 <Button
                   type="submit"
-                  disabled={submitting || loading}
+                  disabled={
+                    submitting ||
+                    loading ||
+                    (captchaConfigured && !captchaToken)
+                  }
                   className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                 >
                   {submitting ? 'Signing in…' : 'Sign in'}
@@ -261,7 +166,10 @@ function LoginForm() {
             <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
                 No account yet?{' '}
-                <Link to="/signup" className="text-forja-green hover:text-flame hover:underline">
+                <Link
+                  to="/signup"
+                  className="text-forja-green hover:text-flame hover:underline"
+                >
                   Create one
                 </Link>
               </p>
@@ -285,7 +193,7 @@ export function LoginPage() {
       <SiteHeader solid />
 
       <main className="relative mx-auto grid min-h-screen max-w-[1400px] lg:grid-cols-[1.05fr_0.95fr] lg:pt-[4.5rem]">
-        <LoginStoryPanel />
+        <AuthStoryPanel />
         <LoginForm />
       </main>
     </div>

@@ -15,16 +15,20 @@ Creative-agency landing, account portal, and Supabase-backed APIs shared with th
 cd apps/web
 pnpm install
 cp .env.example .env
-# fill VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+# fill VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_TURNSTILE_SITE_KEY
 pnpm dev
 ```
+
+Local Turnstile uses Cloudflare’s always-pass dummy site key (already in `.env.example`);
+`supabase/config.toml` enables Auth captcha with the matching dummy secret. Restart
+local Supabase after changing captcha settings (`supabase stop && supabase start`).
 
 ## Deploy (Vercel)
 
 1. Root Directory: `apps/web`
 2. Framework Preset: TanStack Start
 3. Leave Build / Output / Install on defaults (do **not** override Output to `dist`)
-4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`
 
 Nitro (`nitro()` in `vite.config.ts`) is required — without it Vercel returns `404: NOT_FOUND` because there is no serverless entry.
 
@@ -61,7 +65,7 @@ Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE
 | `/download` | Public — latest mirrored release |
 | `/terms` | Terms of use |
 | `/dmca` | DMCA / copyright notice |
-| `/login`, `/signup` | Coming soon (auth in progress) |
+| `/login`, `/signup` | Public — email/password auth (Turnstile when configured) |
 | `/account` | Authenticated |
 | `/account/settings` | Authenticated — sync domain status |
 

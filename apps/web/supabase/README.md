@@ -33,6 +33,53 @@ That will:
 | `demo@forja.local` | `password123` |
 
 Then put the printed `VITE_SUPABASE_*` values into `apps/web/.env` (or run `supabase status` from `apps/web`).
+Keep `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` for local Auth captcha
+(matches `[auth.captcha]` in `config.toml`).
+
+## Auth captcha (Turnstile)
+
+Local `config.toml` enables Cloudflare Turnstile with Cloudflare’s always-pass
+test secret. Hosted projects: Dashboard → Authentication → Bot and Abuse
+Protection → enable Turnstile and paste your **secret** key; set
+`VITE_TURNSTILE_SITE_KEY` (site key) in `apps/web` / Vercel.
+
+## Auth email templates
+
+Branded Forja HTML lives in [`templates/`](./templates/) and is wired in
+`config.toml` under `[auth.email.template.*]` (`content_path` is relative to
+`apps/web`, e.g. `./supabase/templates/confirmation.html`). Subjects and body
+copy match the Forja dark brand (green CTA, paper text on near-black).
+
+| Template | File | Subject |
+|----------|------|---------|
+| Confirm signup | `confirmation.html` | Confirm your Forja account |
+| Reset password | `recovery.html` | Reset your Forja password |
+| Magic link | `magic_link.html` | Your Forja sign-in link |
+| Invite | `invite.html` | You're invited to Forja |
+| Change email | `email_change.html` | Confirm your new email |
+| Reauthentication | `reauthentication.html` | Your Forja verification code |
+
+Logo URL in every template: `{{ .SiteURL }}/brand/logo-email.png`
+(served from `apps/web/public/brand/logo-email.png`). Hosted Site URL must be
+your public web origin so the logo loads in real inboxes.
+
+### Local preview (Mailpit / Inbucket)
+
+1. Set `enable_confirmations = true` in `config.toml`
+2. Restart: `supabase stop && supabase start` (from `apps/web`)
+3. Run the web app (`pnpm dev`) so `/brand/logo-email.png` is reachable
+4. Sign up (or trigger recovery) → open Mailpit UI at **http://127.0.0.1:55324**
+5. Set `enable_confirmations = false` again if you want click-free test users
+
+### Hosted (production Dashboard)
+
+`config.toml` does **not** push templates to a linked remote project. After
+editing files in `templates/`:
+
+1. Dashboard → **Authentication** → **Email Templates**
+2. For each template above, paste the HTML and matching subject
+3. Confirm **URL Configuration → Site URL** is the public web origin (not
+   `localhost`) so `{{ .SiteURL }}/brand/logo-email.png` resolves
 
 From `apps/web` only:
 

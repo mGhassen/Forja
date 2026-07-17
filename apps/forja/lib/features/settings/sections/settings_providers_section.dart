@@ -168,13 +168,18 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
             const SizedBox(height: 20),
             const _MiniLabel('Installed addons'),
             const SizedBox(height: 4),
-            ..._installedAddons.map(
-              (addon) => _FlatListRow(
-                leading: addon['icon'].toString().isNotEmpty
+            ..._installedAddons.map((addon) {
+              // Synced / web-installed addons may omit icon (or name).
+              // Never pass a null URL into Image.network.
+              final icon = addon['icon']?.toString().trim() ?? '';
+              final name = addon['name']?.toString().trim();
+              final baseUrl = addon['baseUrl']?.toString().trim() ?? '';
+              return _FlatListRow(
+                leading: icon.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: Image.network(
-                          addon['icon'],
+                          icon,
                           width: 28,
                           height: 28,
                           errorBuilder: (c, e, s) => const Icon(
@@ -187,11 +192,11 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
                         Icons.extension,
                         color: ForjaShellColors.iconActive,
                       ),
-                title: addon['name'].toString(),
-                subtitle: addon['baseUrl'].toString(),
-                onRemove: () => _removeAddon(addon['baseUrl']),
-              ),
-            ),
+                title: (name == null || name.isEmpty) ? 'Untitled addon' : name,
+                subtitle: baseUrl,
+                onRemove: () => _removeAddon(baseUrl),
+              );
+            }),
           ],
         ],
       ),

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) |
-| **Current slice** | TanStack Start scaffold — configure live Supabase project + deploy Edge Function to verify end-to-end |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) |
+| **Current slice** | Web signup + Turnstile captcha shipped — configure live Supabase captcha secret + deploy Edge Function to verify end-to-end |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -43,6 +43,16 @@
 | 9 | R34-A09 | Flutter `SyncService` uses same Supabase project (domains deferred) | ✅ |
 | 10 | R34-A10 | Flutter announcement banner from active announcements | ✅ |
 | 11 | R34-A11 | `pnpm build` produces TanStack Start client + SSR output | ✅ |
+
+---
+
+## Acceptance (signup captcha)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R34-A12 | `/signup` email/password form (replace coming-soon stub) | ✅ |
+| 2 | R34-A13 | Cloudflare Turnstile on signup; token passed to Supabase `signUp` | ✅ |
+| 3 | R34-A14 | Login also sends captcha when Turnstile is configured (Auth captcha applies to both) | ✅ |
 
 ---
 

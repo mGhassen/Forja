@@ -17,8 +17,9 @@ another screen.
   **Continue without an account** to keep using Forja locally
 - **App:** select the profile avatar at the bottom of the desktop rail, then
   open **Profile & account**
-- **Web:** sign in at `/login`, choose a profile on **Who's watching?**, then
-  manage **Remote settings**. Switch profiles from the settings header menu.
+- **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
+  when configured), choose a profile on **Who's watching?**, then manage
+  **Remote settings**. Switch profiles from the settings header menu.
 
 ## What syncs (remote settings)
 
@@ -44,7 +45,8 @@ Not synced — device-specific or sensitive:
 
 ## What you can do
 
-- Create an account or sign in with email and password (app or web)
+- Create an account or sign in with email and password (app or web). Web signup
+  and sign-in show a Cloudflare Turnstile check when captcha is configured.
 - Continue as a guest; the current local-only app behavior remains available
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
@@ -79,6 +81,8 @@ Builds need the shared Supabase project:
 ```
 
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
+For signup/sign-in captcha, also set `VITE_TURNSTILE_SITE_KEY` (Cloudflare Turnstile
+site key). Local dummy keys are documented in `apps/web/.env.example`.
 Local Flutter development can load the repo-root `.env` directly:
 
 ```text
