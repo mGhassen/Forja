@@ -76,10 +76,11 @@ function restartGatewayContainers() {
 }
 
 function printLocalEnvHint(status) {
-  if (!status?.API_URL || !status?.ANON_KEY) return
+  const publishableKey = status?.PUBLISHABLE_KEY || status?.ANON_KEY
+  if (!status?.API_URL || !publishableKey) return
   console.log('\n📌 Point apps/web/.env at local Supabase:')
   console.log(`VITE_SUPABASE_URL=${status.API_URL}`)
-  console.log(`VITE_SUPABASE_ANON_KEY=${status.ANON_KEY}`)
+  console.log(`VITE_SUPABASE_PUBLISHABLE_KEY=${publishableKey}`)
   console.log('\nStudio:  http://localhost:55323')
   console.log('API:     http://localhost:55321')
   console.log('Mailpit:  http://localhost:55324')

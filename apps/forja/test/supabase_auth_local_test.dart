@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _runLocal = bool.fromEnvironment('RUN_LOCAL_SUPABASE_TESTS');
 const _url = String.fromEnvironment('SUPABASE_URL');
-const _anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+const _publishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
 
 void main() {
   test(
@@ -11,7 +11,7 @@ void main() {
     () async {
       final client = SupabaseClient(
         _url,
-        _anonKey,
+        _publishableKey,
         authOptions: const AuthClientOptions(autoRefreshToken: false),
       );
       addTearDown(client.dispose);
@@ -30,6 +30,6 @@ void main() {
 
       await client.auth.signOut();
     },
-    skip: !_runLocal || _url.isEmpty || _anonKey.isEmpty,
+    skip: !_runLocal || _url.isEmpty || _publishableKey.isEmpty,
   );
 }

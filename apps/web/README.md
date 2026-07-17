@@ -15,7 +15,7 @@ Creative-agency landing, account portal, and Supabase-backed APIs shared with th
 cd apps/web
 pnpm install
 cp .env.example .env
-# fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+# fill VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 pnpm dev
 ```
 
@@ -24,7 +24,7 @@ pnpm dev
 1. Root Directory: `apps/web`
 2. Framework Preset: TanStack Start
 3. Leave Build / Output / Install on defaults (do **not** override Output to `dist`)
-4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 Nitro (`nitro()` in `vite.config.ts`) is required — without it Vercel returns `404: NOT_FOUND` because there is no serverless entry.
 
@@ -50,7 +50,7 @@ Migrations and the `sync-github-releases` Edge Function live under [`supabase/`]
 3. Deploy the Edge Function and set secrets (`GITHUB_TOKEN` optional for higher rate limits)
 4. Invoke `sync-github-releases` after each GitHub release (or schedule a cron)
 
-Same project URL/anon key are used by Flutter via `--dart-define=SUPABASE_URL` / `SUPABASE_ANON_KEY`.
+Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`.
 
 ## Routes
 

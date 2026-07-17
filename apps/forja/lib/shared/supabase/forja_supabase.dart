@@ -4,14 +4,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Shared Supabase project with [apps/web].
 ///
 /// Pass at run/build time:
-/// `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`
+/// `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...`
 class ForjaSupabase {
   ForjaSupabase._();
 
   static const String url = String.fromEnvironment('SUPABASE_URL');
-  static const String anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String publishableKey =
+      String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
 
-  static bool get isConfigured => url.isNotEmpty && anonKey.isNotEmpty;
+  static bool get isConfigured => url.isNotEmpty && publishableKey.isNotEmpty;
 
   static bool _initialized = false;
   static bool get isInitialized => _initialized;
@@ -20,14 +21,14 @@ class ForjaSupabase {
     if (_initialized) return;
     if (!isConfigured) {
       debugPrint(
-        '[Supabase] Not configured — set SUPABASE_URL and SUPABASE_ANON_KEY',
+        '[Supabase] Not configured — set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY',
       );
       return;
     }
     await Supabase.initialize(
       url: url,
-      // Same project key as apps/web VITE_SUPABASE_ANON_KEY.
-      publishableKey: anonKey,
+      // Same project key as apps/web VITE_SUPABASE_PUBLISHABLE_KEY.
+      publishableKey: publishableKey,
     );
     _initialized = true;
     debugPrint('[Supabase] Initialized');

@@ -75,10 +75,10 @@ Builds need the shared Supabase project:
 
 ```text
 --dart-define=SUPABASE_URL=...
---dart-define=SUPABASE_ANON_KEY=...
+--dart-define=SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `apps/web/.env`.
+Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
 Local Flutter development can load the repo-root `.env` directly:
 
 ```text
@@ -86,8 +86,8 @@ flutter run -d macos --dart-define-from-file=../../.env
 ```
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL` and
-`SUPABASE_ANON_KEY`. The anon key is a public client credential; never put a
-Supabase `service_role` key in a desktop build.
+`SUPABASE_PUBLISHABLE_KEY`. The publishable key is a public client credential; never put a
+Supabase `service_role` / `sb_secret_…` key in a desktop build.
 
 ## Tips
 

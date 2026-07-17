@@ -139,7 +139,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         padding: EdgeInsets.all(12),
         child: Text(
           'Cloud account is not configured in this build. '
-          'Pass SUPABASE_URL and SUPABASE_ANON_KEY via --dart-define.',
+          'Pass SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY via --dart-define.',
           style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 13),
         ),
       );
