@@ -561,21 +561,15 @@ class SettingsService {
   static const String _navbarShell086Key = 'navbar_shell_086';
   static const String _navbarShell087Key = 'navbar_shell_087';
   static const String _navbarShell088Key = 'navbar_shell_088';
+  static const String _navbarShell089Key = 'navbar_shell_089';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
   static const List<String> defaultTvVisibleNavIds =
       PlatformDefaults.androidTvNavIds;
 
-  static const List<String> defaultVisibleNavIds = [
-    'home',
-    'search',
-    'asian_drama',
-    'anime',
-    'iptv',
-    'live_matches',
-    'mylist',
-  ];
+  static const List<String> defaultVisibleNavIds =
+      PlatformDefaults.defaultNavIds;
 
   static List<String> _migrateSearchFirstNavToHomeFirst(List<String> ids) {
     if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
@@ -624,6 +618,9 @@ class SettingsService {
     }
     return false;
   }
+
+  static bool _isLegacyPlatformDefaultNav(List<String> ids) =>
+      _isLegacyDefaultNav(ids) || _isLegacyAndroidTvNav(ids);
 
   static int initialShellTabIndex(
     List<String> visibleIds, {
@@ -737,6 +734,7 @@ class SettingsService {
       await kvSetString(_navbarShell086Key, '1');
       await kvSetString(_navbarShell087Key, '1');
       await kvSetString(_navbarShell088Key, '1');
+      await kvSetString(_navbarShell089Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -818,6 +816,18 @@ class SettingsService {
         }
       }
       await kvSetString(_navbarShell088Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell089Key)) {
+      if (await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        if (_isLegacyPlatformDefaultNav(raw)) {
+          await kvSetStringList(
+            _navbarConfigKey,
+            List<String>.from(defaultVisibleNavIds),
+          );
+        }
+      }
+      await kvSetString(_navbarShell089Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

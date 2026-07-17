@@ -14,7 +14,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _selectedId = SettingsCategoryId.playback;
+  String _selectedId = SettingsCategoryId.profile;
 
   @override
   void dispose() {
@@ -36,9 +36,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsHubScaffold(
-      selectedId: _selectedId,
-      onSelect: _onSelect,
-    );
+    return SettingsHubScaffold(selectedId: _selectedId, onSelect: _onSelect);
   }
 }

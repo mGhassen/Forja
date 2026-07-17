@@ -58,6 +58,8 @@ env:
   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
   TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
   WYZIE_API_KEY: ${{ secrets.WYZIE_API_KEY }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
 jobs:
   resolve_version:
@@ -66,6 +68,13 @@ jobs:
     outputs:
       version: ${{ steps.final.outputs.version }}
     steps:
+      - name: Require Supabase desktop client config
+        run: |
+          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_ANON_KEY" ]]; then
+            echo "::error::Set SUPABASE_URL and SUPABASE_ANON_KEY repository secrets."
+            exit 1
+          fi
+
       - name: Validate platform selection
         run: |
           if [[ "${{ inputs.platform_macos }}" != "true" && \
@@ -175,7 +184,9 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          flutter build macos --release
+          flutter build macos --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Verify installer payload
         run: ./scripts/verify_installer_payload.sh macos
@@ -210,9 +221,12 @@ jobs:
 
       - name: Build Windows app
         working-directory: ${{ env.APP_DIR }}
+        shell: bash
         run: |
           flutter pub get
-          flutter build windows --release
+          flutter build windows --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Embed Rust in release output
         shell: bash
@@ -272,7 +286,9 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          flutter build linux --release
+          flutter build linux --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Embed Rust in release output
         run: ./scripts/embed_rust_in_release_output.sh linux
@@ -350,6 +366,8 @@ jobs:
         run: |
           flutter pub get
           flutter build apk --release --split-per-abi \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \

@@ -38,6 +38,7 @@ import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/catalog/tmdb_user_region.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:forja/app/desktop_startup_gate.dart';
 
 bool _appShutdownStarted = false;
 
@@ -317,7 +318,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           title: widget.title,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.themeData,
-          home: const SplashScreen(),
+          home: const DesktopStartupGate(splash: SplashScreen()),
           builder: (context, child) {
             Widget content = ShellScopeBuilder(
               builder: (context, _) => ForjaToastHost(
@@ -405,9 +406,7 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _showOverlay = true;
 
   /// Live boot step shown above the version on the splash.
-  final ValueNotifier<String> _bootStatus = ValueNotifier<String>(
-    'Starting…',
-  );
+  final ValueNotifier<String> _bootStatus = ValueNotifier<String>('Starting…');
 
   @override
   void initState() {
@@ -555,11 +554,7 @@ class _SplashScreenState extends State<SplashScreen> {
         api.getTrending,
         onRetryStatus: _setBootStatus,
       ),
-      _bootTmdbFetch(
-        'popular',
-        api.getPopular,
-        onRetryStatus: _setBootStatus,
-      ),
+      _bootTmdbFetch('popular', api.getPopular, onRetryStatus: _setBootStatus),
       _bootTmdbFetch(
         'top rated',
         api.getTopRated,
@@ -622,8 +617,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final isOffline = connectivityResult.contains(ConnectivityResult.none);
     debugPrint('[Boot] Network status: ${isOffline ? "OFFLINE" : "ONLINE"}');
 
-    final bootFuture =
-        isOffline ? _initOfflineBoot() : _initOnlineBoot();
+    final bootFuture = isOffline ? _initOfflineBoot() : _initOnlineBoot();
     await _dismissWhenReady(bootFuture);
   }
 

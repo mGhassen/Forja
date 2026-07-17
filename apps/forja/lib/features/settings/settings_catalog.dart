@@ -3,6 +3,7 @@ import 'package:rust/rust.dart';
 
 /// Stable category IDs for the Settings hub (RFC-033).
 abstract final class SettingsCategoryId {
+  static const profile = 'profile';
   static const playback = 'playback';
   static const sources = 'sources';
   static const webstreamr = 'webstreamr';
@@ -14,6 +15,7 @@ abstract final class SettingsCategoryId {
   static const about = 'about';
 
   static const ordered = <String>[
+    profile,
     playback,
     sources,
     webstreamr,
@@ -49,6 +51,12 @@ List<SettingsCategoryMeta> settingsCategories() {
   final torrent = PlatformPlayback.capabilities.builtinTorrentSearch;
   return [
     const SettingsCategoryMeta(
+      id: SettingsCategoryId.profile,
+      title: 'Profile & account',
+      subtitle: 'Profile, cloud sync, sign in',
+      icon: Icons.account_circle_outlined,
+    ),
+    const SettingsCategoryMeta(
       id: SettingsCategoryId.playback,
       title: 'Playback',
       subtitle: 'Sources, quality, audio, auto-play',
@@ -76,7 +84,7 @@ List<SettingsCategoryMeta> settingsCategories() {
     ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.accounts,
-      title: 'Accounts',
+      title: 'Connected services',
       subtitle: 'Trakt, Simkl, MDBlist',
       icon: Icons.sync_rounded,
     ),

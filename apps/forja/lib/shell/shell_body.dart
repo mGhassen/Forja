@@ -22,18 +22,30 @@ class ShellBody extends StatelessWidget {
       builder: (context, overlayOpen, _) {
         return ExcludeFocus(
           excluding: overlayOpen,
-          child: IndexedStack(
-            index: selectedIndex,
-            // Stable keys so reordering / show-hide of nav tabs does not
-            // dispose and recreate other tab States (e.g. Settings category).
-            children: visibleIds.map((id) {
-              return KeyedSubtree(
-                key: ValueKey<String>('shell-tab-$id'),
-                child: mountedTabIds.contains(id)
-                    ? tabFor(id)
-                    : const SizedBox.shrink(),
-              );
-            }).toList(),
+          // Do not use IndexedStack here: it wraps each child in an unkeyed
+          // Visibility, so KeyedSubtree keys never reach the Stack. Enabling
+          // or reordering a nav tab then remounts other tabs (e.g. Settings
+          // loses its selected category and appears to "reload").
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              for (var i = 0; i < visibleIds.length; i++)
+                Visibility(
+                  key: ValueKey<String>('shell-tab-${visibleIds[i]}'),
+                  visible: i == selectedIndex,
+                  maintainState: true,
+                  maintainAnimation: true,
+                  maintainSize: true,
+                  // Hidden tabs must not hit-test. With maintainInteractivity,
+                  // later mounted tabs sit above the selected one in this Stack
+                  // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
+                  // Settings / Live Matches).
+                  maintainInteractivity: false,
+                  child: mountedTabIds.contains(visibleIds[i])
+                      ? tabFor(visibleIds[i])
+                      : const SizedBox.shrink(),
+                ),
+            ],
           ),
         );
       },

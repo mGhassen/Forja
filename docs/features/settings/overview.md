@@ -8,17 +8,19 @@ Settings is organized as a **category hub** (not a long accordion). On desktop/w
 
 ## How to open it
 
-**Settings** tab in the shell rail / bottom nav (always available).
+Select the profile avatar / Guest item pinned at the bottom of the desktop rail.
+On other layouts, open the **Settings** tab (always available).
 
 ## Categories
 
 | Category | What it covers |
 |----------|----------------|
+| [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out |
 | [Playback](playback-settings.md) | Play sources, server reliability, audio, auto next/skip, quality |
 | [Sources](torrent-settings.md) | Torrents (when available), Stremio / Nuvio / Jackett / Prowlarr |
 | [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link |
-| Accounts | Trakt, Simkl, MDBlist |
+| Connected services | Trakt, Simkl, MDBlist |
 | [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu |

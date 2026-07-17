@@ -13,7 +13,10 @@ another screen.
 
 ## How to open it
 
-- **App:** Settings → Accounts → **Forja account**
+- **Desktop startup:** sign in or create an account before the splash, or choose
+  **Continue without an account** to keep using Forja locally
+- **App:** select the profile avatar at the bottom of the desktop rail, then
+  open **Profile & account**
 - **Web:** sign in at `/login`, choose a profile on **Who's watching?**, then
   manage **Remote settings**. Switch profiles from the settings header menu.
 
@@ -42,12 +45,16 @@ Not synced — device-specific or sensitive:
 ## What you can do
 
 - Create an account or sign in with email and password (app or web)
+- Continue as a guest; the current local-only app behavior remains available
+- On desktop, a restored session goes straight to the splash. A new interactive
+  sign-in opens **Who’s watching?** so you can choose the device profile first.
 - Open **Account** after sign-in: pick a profile on **Who’s watching?**, then
   land in **Remote settings**. Switch or manage profiles from the settings
   profile menu — not as a peer of settings.
 - Create, rename, and delete profiles on the web, with 30 avatars organized
   into Characters, Creatures, Space, and Retro categories
-- Select the active profile from the app account panel or web settings header
+- Select the active profile from **Settings → Profile & account** or the web
+  settings header
 - Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from
   the web (share codes match the app peer-code flow). Portal rows match the app
   panel (expiry, name, URL, seats); lists paginate every 10 items. **Import CSV** /
@@ -70,6 +77,15 @@ Builds need the shared Supabase project:
 ```
 
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `apps/web/.env`.
+Local Flutter development can load the repo-root `.env` directly:
+
+```text
+flutter run -d macos --dart-define-from-file=../../.env
+```
+
+GitHub build/release workflows use repository secrets `SUPABASE_URL` and
+`SUPABASE_ANON_KEY`. The anon key is a public client credential; never put a
+Supabase `service_role` key in a desktop build.
 
 ## Tips
 

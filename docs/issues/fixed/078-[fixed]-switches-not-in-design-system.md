@@ -41,3 +41,5 @@
 Switch styling lived only inside `SettingsToggleRow`. Other screens used Material `Switch` / `SwitchListTile` with one-off colors, so redesigns did not propagate.
 
 **Root fix:** canonical `ForjaSwitch` + theme `switchTheme` in the design system; call sites use the shared widget (or inherit theme for list tiles).
+
+**Follow-on:** remaining controls (`ForjaSlider`, list tiles, audit) tracked in [RFC-035](../rfc/035-[draft]-design-system-controls.md).

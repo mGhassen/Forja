@@ -70,12 +70,12 @@ Nav tabs: Home · Discover · Similar · Search · My List · Media Downloader �
 git clone https://github.com/forja/forja.git && cd forja
 melos bootstrap
 
-cp .env.example .env             # fill TMDB_API_KEY + WYZIE_API_KEY (+ optional TMDB_READ_ACCESS_TOKEN)
+cp .env.example .env             # fill API keys + local/hosted Supabase client config
 ./scripts/build_rust.sh          # required before first run — bakes .env into libffi
 
 cd apps/forja
 flutter pub get
-flutter run -d macos             # or windows / linux / android / ios
+flutter run -d macos --dart-define-from-file=../../.env
 ```
 
 ### API keys / `.env`
@@ -87,10 +87,12 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `TMDB_API_KEY` | Catalog / Home / Search (`crates/tmdb`) |
 | `TMDB_READ_ACCESS_TOKEN` | WebStreamr TMDB lookups when Settings token is empty |
 | `WYZIE_API_KEY` | Player subtitle search (`crates/anime` Wyzie) |
+| `SUPABASE_URL` | Shared Supabase project used by desktop accounts, sync, releases, and announcements |
+| `SUPABASE_ANON_KEY` | Public/anon Supabase client key; never use `service_role` in the app |
 
 **Desktop reality:** anything baked into the binary can be extracted. `.env` keeps keys out of git; it does **not** hide them from someone who reverse-engineers a shipped build. Real options for production: a small backend proxy that holds the key, or user-supplied keys (WebStreamr already has a Settings TMDB token). TMDB’s v3 key is rate-limited per key — rotate if it leaks; prefer the read token only where Bearer is needed.
 
-CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, and `WYZIE_API_KEY` are injected by `.github/workflows/{build,release,rust}.yml` (process env overrides `.env`).
+CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are injected by `.github/workflows/{build,release,rust}.yml`. Flutter builds receive the Supabase pair through `--dart-define`; use the hosted project values in GitHub, never the local `127.0.0.1` URL.
 
 **Debug badge:** In debug (`flutter run`), a small runtime **DEV** chip sits under the nav-rail wordmark (`kDebugMode`). macOS also sets a dock badge via `windowManager.setBadgeLabel('DEV')`. No alternate logo assets required.
 
@@ -108,7 +110,7 @@ Boot log must show `[Engine] Rust engine v0.1.0`. If you see `Rust engine NOT lo
 
 ```bash
 ./scripts/build_rust.sh              # or: melos run rust:build
-cd apps/forja && flutter run -d macos
+cd apps/forja && flutter run -d macos --dart-define-from-file=../../.env
 ```
 
 Release macOS:

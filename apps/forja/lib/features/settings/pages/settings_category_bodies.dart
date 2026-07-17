@@ -29,15 +29,14 @@ import 'package:forja/shell/nav_config.dart';
 /// Builds the body for a Settings category (lazy — only when selected / pushed).
 Widget buildSettingsCategoryBody(String categoryId) {
   switch (categoryId) {
+    case SettingsCategoryId.profile:
+      return const SettingsProfileAccountPageBody();
     case SettingsCategoryId.playback:
       return const SettingsPlaybackSection();
     case SettingsCategoryId.sources:
       return const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SettingsSearchTorrentsSection(),
-          SettingsProvidersSection(),
-        ],
+        children: [SettingsSearchTorrentsSection(), SettingsProvidersSection()],
       );
     case SettingsCategoryId.webstreamr:
       return const SettingsWebstreamrSection();
@@ -79,6 +78,18 @@ class SettingsCategoryPage extends StatelessWidget {
   }
 }
 
+class SettingsProfileAccountPageBody extends StatelessWidget {
+  const SettingsProfileAccountPageBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SettingsGroup(
+      label: 'Forja profile & account',
+      children: [SettingsForjaAccountPanel()],
+    );
+  }
+}
+
 class SettingsAccountsPageBody extends StatelessWidget {
   const SettingsAccountsPageBody({super.key});
 
@@ -87,18 +98,8 @@ class SettingsAccountsPageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(
-          label: 'Forja account',
-          children: const [SettingsForjaAccountPanel()],
-        ),
-        SettingsGroup(
-          label: 'Trakt',
-          children: const [SettingsTraktPanel()],
-        ),
-        SettingsGroup(
-          label: 'Simkl',
-          children: const [SettingsSimklPanel()],
-        ),
+        SettingsGroup(label: 'Trakt', children: const [SettingsTraktPanel()]),
+        SettingsGroup(label: 'Simkl', children: const [SettingsSimklPanel()]),
         SettingsGroup(
           label: 'MDBlist',
           children: const [SettingsMdblistPanel()],
@@ -303,10 +304,7 @@ class _SettingsNavigationPageBodyState
     setState(() {
       _navbarVisible = navVisible;
       _navbarOrder = navOrder;
-      final startupOptions = _startupTabOptionsFor(
-        navOrder,
-        navVisible,
-      );
+      final startupOptions = _startupTabOptionsFor(navOrder, navVisible);
       _defaultNavTab = startupOptions.contains(defaultNavTab)
           ? defaultNavTab
           : (startupOptions.isNotEmpty ? startupOptions.first : 'settings');
@@ -316,10 +314,7 @@ class _SettingsNavigationPageBodyState
     });
   }
 
-  List<String> _startupTabOptionsFor(
-    List<String> order,
-    List<String> visible,
-  ) {
+  List<String> _startupTabOptionsFor(List<String> order, List<String> visible) {
     final seen = <String>{};
     final options = <String>[];
     for (final id in order) {
@@ -366,8 +361,8 @@ class _SettingsNavigationPageBodyState
         color: isDefault
             ? ForjaShellColors.brandGreen
             : enabled
-                ? ForjaShellColors.iconMuted
-                : ForjaShellColors.borderSubtle,
+            ? ForjaShellColors.iconMuted
+            : ForjaShellColors.borderSubtle,
         size: 21,
       ),
     );
@@ -518,16 +513,14 @@ class SettingsAboutPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showSplashPreview = kDebugMode &&
+    final showSplashPreview =
+        kDebugMode &&
         (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(
-          label: 'Updates',
-          children: const [SettingsAboutPanel()],
-        ),
+        SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
         if (showSplashPreview)
           SettingsGroup(
             label: 'Developer',

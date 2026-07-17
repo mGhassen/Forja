@@ -26,56 +26,56 @@ class PlatformDefaults {
   final int torrentRamCacheMb;
   final bool showTorrentStatsOverlay;
 
-  static const List<String> phoneNavIds = ['home', 'search', 'mylist'];
-
-  static const List<String> androidTvNavIds = [
+  static const List<String> defaultNavIds = [
     'search',
     'home',
-    'asian_drama',
     'anime',
+    'asian_drama',
     'iptv',
     'live_matches',
     'mylist',
   ];
+  static const List<String> phoneNavIds = defaultNavIds;
+  static const List<String> androidTvNavIds = defaultNavIds;
 
   static PlatformDefaults forProfile(PlatformProfile profile) {
     return switch (profile) {
       PlatformProfile.androidTv => const PlatformDefaults(
-          visibleNavIds: androidTvNavIds,
-          externalPlayer: 'Built-in Player',
-          subSize: 52,
-          subBottomPadding: 48,
-          iptvEpgEnabled: true,
-          playSourceTorrent: false,
-          playSourceStremio: false,
-          playSourceWebstreaming: true,
-          torrentRamCacheMb: 128,
-          showTorrentStatsOverlay: false,
-        ),
+        visibleNavIds: androidTvNavIds,
+        externalPlayer: 'Built-in Player',
+        subSize: 52,
+        subBottomPadding: 48,
+        iptvEpgEnabled: true,
+        playSourceTorrent: false,
+        playSourceStremio: false,
+        playSourceWebstreaming: true,
+        torrentRamCacheMb: 128,
+        showTorrentStatsOverlay: false,
+      ),
       PlatformProfile.desktop => const PlatformDefaults(
-          visibleNavIds: phoneNavIds,
-          externalPlayer: 'Built-in Player',
-          subSize: 44,
-          subBottomPadding: 24,
-          iptvEpgEnabled: true,
-          playSourceTorrent: true,
-          playSourceStremio: true,
-          playSourceWebstreaming: true,
-          torrentRamCacheMb: 200,
-          showTorrentStatsOverlay: false,
-        ),
+        visibleNavIds: phoneNavIds,
+        externalPlayer: 'Built-in Player',
+        subSize: 44,
+        subBottomPadding: 24,
+        iptvEpgEnabled: true,
+        playSourceTorrent: true,
+        playSourceStremio: true,
+        playSourceWebstreaming: true,
+        torrentRamCacheMb: 200,
+        showTorrentStatsOverlay: false,
+      ),
       PlatformProfile.phone => const PlatformDefaults(
-          visibleNavIds: phoneNavIds,
-          externalPlayer: 'Built-in Player',
-          subSize: 24,
-          subBottomPadding: 24,
-          iptvEpgEnabled: true,
-          playSourceTorrent: true,
-          playSourceStremio: true,
-          playSourceWebstreaming: true,
-          torrentRamCacheMb: 200,
-          showTorrentStatsOverlay: false,
-        ),
+        visibleNavIds: phoneNavIds,
+        externalPlayer: 'Built-in Player',
+        subSize: 24,
+        subBottomPadding: 24,
+        iptvEpgEnabled: true,
+        playSourceTorrent: true,
+        playSourceStremio: true,
+        playSourceWebstreaming: true,
+        torrentRamCacheMb: 200,
+        showTorrentStatsOverlay: false,
+      ),
     };
   }
 }

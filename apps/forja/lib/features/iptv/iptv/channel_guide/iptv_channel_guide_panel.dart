@@ -34,7 +34,7 @@ class IptvChannelGuidePanel extends StatefulWidget {
   final VoidCallback onClose;
 
   static const double wideBreakpoint = 700;
-  static const double panelWidthWide = 580;
+  static const double panelWidthWide = 660;
   static const double panelWidthNarrow = 340;
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
@@ -648,7 +648,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           ),
         ),
         Expanded(
-          flex: 8,
+          flex: 10,
           child: _frostedColumn(
             tint: _channelsTint,
             elevated: true,
@@ -914,7 +914,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
           decoration: BoxDecoration(
             color: fill,
             border: Border(
@@ -928,8 +928,8 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                 children: [
                   _ChannelLogo(
                     url: widget.channel.logoUrl ?? '',
-                    width: 84,
-                    height: 56,
+                    width: 104,
+                    height: 68,
                   ),
                   if (widget.health != null)
                     Positioned(
@@ -954,7 +954,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: active || focused ? Colors.white : Colors.white70,
-                    fontSize: 14.5,
+                    fontSize: 13.5,
                     fontWeight:
                         active || focused ? FontWeight.w700 : FontWeight.w500,
                   ),

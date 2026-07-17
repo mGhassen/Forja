@@ -19,7 +19,9 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     await initRustForTests();
-    await Engine.init(storagePath: '${Directory.systemTemp.path}/forja_seed_init.json');
+    await Engine.init(
+      storagePath: '${Directory.systemTemp.path}/forja_seed_init.json',
+    );
     tmp = await Directory.systemTemp.createTemp('forja_settings_seed_');
   });
 
@@ -53,7 +55,15 @@ void main() {
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
 
     final nav = await service.getNavbarConfig();
-    expect(nav, PlatformDefaults.phoneNavIds);
+    expect(nav, [
+      'search',
+      'home',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ]);
     expect(await service.getSubSize(), 24);
     expect(await service.getTorrentRamCacheMb(), 200);
   });
@@ -79,7 +89,10 @@ void main() {
 
   test('legacy install with navbar config is not overwritten', () async {
     await kvSetStringList('navbar_config', const ['home', 'iptv']);
-    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetStringList(
+      'navbar_known_ids',
+      List.from(SettingsService.allNavIds),
+    );
     await kvSetString('navbar_shell_080', '1');
     await kvSetString('navbar_shell_081', '1');
 
@@ -92,6 +105,32 @@ void main() {
     expect(nav.indexOf('home'), lessThan(nav.indexOf('iptv')));
   });
 
+  test(
+    'legacy untouched nav defaults migrate to the current default',
+    () async {
+      await kvSetStringList('navbar_config', const [
+        'home',
+        'search',
+        'mylist',
+      ]);
+      await kvSetStringList(
+        'navbar_known_ids',
+        List.from(SettingsService.allNavIds),
+      );
+      await kvSetString('navbar_shell_080', '1');
+      await kvSetString('navbar_shell_081', '1');
+      await kvSetString('navbar_shell_084', '1');
+      await kvSetString('navbar_shell_085', '1');
+      await kvSetString('navbar_shell_086', '1');
+      await kvSetString('navbar_shell_087', '1');
+      await kvSetString('navbar_shell_088', '1');
+
+      final nav = await SettingsService().getNavbarConfig();
+
+      expect(nav, PlatformDefaults.defaultNavIds);
+    },
+  );
+
   test('Android TV legacy nav migrates to search-first default', () async {
     await kvSetStringList('navbar_config', const [
       'home',
@@ -102,7 +141,10 @@ void main() {
       'live_matches',
       'mylist',
     ]);
-    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetStringList(
+      'navbar_known_ids',
+      List.from(SettingsService.allNavIds),
+    );
     await kvSetString('navbar_shell_080', '1');
     await kvSetString('navbar_shell_081', '1');
     await kvSetString('navbar_shell_084', '1');
@@ -119,7 +161,10 @@ void main() {
 
   test('Android TV custom nav is not overwritten by shell 088', () async {
     await kvSetStringList('navbar_config', const ['home', 'iptv', 'search']);
-    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetStringList(
+      'navbar_known_ids',
+      List.from(SettingsService.allNavIds),
+    );
     await kvSetString('navbar_shell_080', '1');
     await kvSetString('navbar_shell_081', '1');
     await kvSetString('navbar_shell_084', '1');
@@ -144,7 +189,10 @@ void main() {
       'live_matches',
       'mylist',
     ]);
-    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetStringList(
+      'navbar_known_ids',
+      List.from(SettingsService.allNavIds),
+    );
     await kvSetString('navbar_shell_080', '1');
     await kvSetString('navbar_shell_081', '1');
     await kvSetString('navbar_shell_084', '1');
@@ -157,36 +205,44 @@ void main() {
     expect(nav, PlatformDefaults.androidTvNavIds);
   });
 
-  test('Android TV search-first legacy is left unchanged once shell 088 applied',
-      () async {
-    await kvSetStringList('navbar_config', const [
-      'search',
-      'home',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_matches',
-      'mylist',
-    ]);
-    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
-    await kvSetString('navbar_shell_080', '1');
-    await kvSetString('navbar_shell_081', '1');
-    await kvSetString('navbar_shell_084', '1');
-    await kvSetString('navbar_shell_085', '1');
-    await kvSetString('navbar_shell_086', '1');
-    await kvSetString('navbar_shell_087', '1');
-    await kvSetString('navbar_shell_088', '1');
+  test(
+    'Android TV search-first legacy is left unchanged once shell 088 applied',
+    () async {
+      await kvSetStringList('navbar_config', const [
+        'search',
+        'home',
+        'anime',
+        'asian_drama',
+        'iptv',
+        'live_matches',
+        'mylist',
+      ]);
+      await kvSetStringList(
+        'navbar_known_ids',
+        List.from(SettingsService.allNavIds),
+      );
+      await kvSetString('navbar_shell_080', '1');
+      await kvSetString('navbar_shell_081', '1');
+      await kvSetString('navbar_shell_084', '1');
+      await kvSetString('navbar_shell_085', '1');
+      await kvSetString('navbar_shell_086', '1');
+      await kvSetString('navbar_shell_087', '1');
+      await kvSetString('navbar_shell_088', '1');
 
-    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
-    final service = SettingsService();
-    final nav = await service.getNavbarConfig();
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      final service = SettingsService();
+      final nav = await service.getNavbarConfig();
 
-    expect(nav.take(2), ['search', 'home']);
-  });
+      expect(nav.take(2), ['search', 'home']);
+    },
+  );
 
-  test('desktop search-first nav migrates back to home-first', () async {
+  test('desktop legacy search-first nav migrates to current default', () async {
     await kvSetStringList('navbar_config', const ['search', 'home', 'mylist']);
-    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetStringList(
+      'navbar_known_ids',
+      List.from(SettingsService.allNavIds),
+    );
     await kvSetString('navbar_shell_080', '1');
     await kvSetString('navbar_shell_081', '1');
     await kvSetString('navbar_shell_084', '1');
@@ -197,7 +253,7 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav.take(2), ['home', 'search']);
+    expect(nav, PlatformDefaults.defaultNavIds);
   });
 
   test('default nav tab persists and resolves startup index', () async {

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 2** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) |
-| **Current slice** | Account profiles shipped — per-key timestamp merge and domain allowlist remain |
+| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) |
+| **Current slice** | Desktop account/profile UX shipped locally — hosted GitHub Supabase secrets, per-key timestamp merge, and domain allowlist remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -21,6 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | R06-C01 | SyncService (`sync_service.dart`) | ✅ |
 | 2 | R06-C02 | Account profiles with profile-scoped settings | ✅ |
+| 3 | R06-C03 | Optional desktop account entry and profile-aware shell | 🔄 |
 
 ---
 
@@ -59,6 +60,21 @@
 | 6 | R06-A15 | RLS prevents access to profiles and profile settings owned by another account | ✅ |
 | 7 | R06-A16 | Netflix-style profile chooser with account-owned avatar selection | ✅ |
 | 8 | R06-A17 | Avatar picker offers 30 choices grouped into categories of up to eight | ✅ |
+
+---
+
+## Acceptance (desktop account slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A18 | Unauthenticated desktop launches show account entry before the splash | ✅ |
+| 2 | R06-A19 | Continue without an account preserves the existing local-only app flow | ✅ |
+| 3 | R06-A20 | A restored authenticated session bypasses account entry and opens the splash directly | ✅ |
+| 4 | R06-A21 | Interactive sign-in or account creation opens the account profile chooser before the splash | ✅ |
+| 5 | R06-A22 | Choosing a profile activates and pulls that profile before app startup | ✅ |
+| 6 | R06-A23 | The desktop rail replaces the Settings glyph with the active profile avatar while still opening Settings | ✅ |
+| 7 | R06-A24 | Settings exposes a dedicated Profile & account page for switching profiles and managing the Forja session | ✅ |
+| 8 | R06-A25 | Local and CI builds inject the shared Supabase URL and public client key without committing a service-role secret | 🔄 |
 
 ---
 

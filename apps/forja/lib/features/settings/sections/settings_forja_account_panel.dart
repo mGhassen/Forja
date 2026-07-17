@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 
 /// Forja cloud account (Supabase) — Settings → Accounts.
 class SettingsForjaAccountPanel extends StatefulWidget {
@@ -86,7 +87,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (!ok) {
-      setState(() => _error = 'Sign-in failed. Check email/password or Supabase config.');
+      setState(
+        () =>
+            _error = 'Sign-in failed. Check email/password or Supabase config.',
+      );
       return;
     }
     ForjaToast.success('Signed in');
@@ -143,19 +147,38 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 
     final signedIn = SyncService.instance.isSignedIn;
     final email = SyncService.instance.userEmail;
+    SyncProfile? activeProfile;
+    for (final profile in _profiles) {
+      if (profile.id == _activeProfileId) {
+        activeProfile = profile;
+        break;
+      }
+    }
 
     if (signedIn) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(email ?? 'Signed in'),
-            subtitle: Text(
-              _domains == 0
-                  ? 'No settings domains synced yet'
-                  : '$_domains synced domain${_domains == 1 ? '' : 's'}',
-            ),
+          Row(
+            children: [
+              ForjaProfileAvatar(
+                avatarKey: activeProfile?.avatarKey ?? 'forge',
+                name: activeProfile?.name ?? 'Profile',
+                size: 58,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(activeProfile?.name ?? 'Profile'),
+                  subtitle: Text(
+                    '${email ?? 'Signed in'}\n'
+                    '${_domains == 0 ? 'No settings domains synced yet' : '$_domains synced domain${_domains == 1 ? '' : 's'}'}',
+                  ),
+                  isThreeLine: true,
+                ),
+              ),
+            ],
           ),
           if (_profiles.isNotEmpty)
             DropdownButtonFormField<String>(
@@ -195,10 +218,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         TextField(
           controller: _emailCtrl,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            isDense: true,
-          ),
+          decoration: const InputDecoration(labelText: 'Email', isDense: true),
         ),
         const SizedBox(height: 8),
         TextField(

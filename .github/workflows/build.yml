@@ -16,10 +16,24 @@ env:
   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
   TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
   WYZIE_API_KEY: ${{ secrets.WYZIE_API_KEY }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
 jobs:
+  validate_config:
+    name: Validate cloud config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require Supabase desktop client config
+        run: |
+          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_ANON_KEY" ]]; then
+            echo "::error::Set SUPABASE_URL and SUPABASE_ANON_KEY repository secrets."
+            exit 1
+          fi
+
   macos:
     name: macOS
+    needs: validate_config
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +45,9 @@ jobs:
       - working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          flutter build macos --release
+          flutter build macos --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-macOS
@@ -39,6 +55,7 @@ jobs:
 
   windows:
     name: Windows
+    needs: validate_config
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,9 +66,12 @@ jobs:
       - shell: bash
         run: ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
+        shell: bash
         run: |
           flutter pub get
-          flutter build windows --release
+          flutter build windows --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -63,6 +83,7 @@ jobs:
 
   linux:
     name: Linux
+    needs: validate_config
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +99,9 @@ jobs:
       - working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          flutter build linux --release
+          flutter build linux --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -88,6 +111,7 @@ jobs:
 
   android:
     name: Android
+    needs: validate_config
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -102,7 +126,10 @@ jobs:
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
       - run: flutter pub get
-      - run: flutter build apk --release --split-per-abi
+      - run: >-
+          flutter build apk --release --split-per-abi
+          --dart-define=SUPABASE_URL="$SUPABASE_URL"
+          --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

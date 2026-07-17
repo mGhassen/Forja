@@ -10,8 +10,9 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 
 double _navRailItemSpacingForHeight({
   required int itemCount,
@@ -22,10 +23,7 @@ double _navRailItemSpacingForHeight({
   if (itemCount <= 0) return preferredSpacing;
   final naturalHeight = itemCount * (itemContentHeight + preferredSpacing);
   if (naturalHeight <= maxHeight) return preferredSpacing;
-  return math.max(
-    0,
-    (maxHeight - itemCount * itemContentHeight) / itemCount,
-  );
+  return math.max(0, (maxHeight - itemCount * itemContentHeight) / itemCount);
 }
 
 /// Opens the shell nav drawer when the rail is collapsed on narrow windows.
@@ -44,9 +42,10 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
 
   @override
   Widget build(BuildContext context) {
-    final policy = ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final active = (_hover && policy.scaleOnHover) ||
-        (_focused && policy.scaleOnFocus);
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final active =
+        (_hover && policy.scaleOnHover) || (_focused && policy.scaleOnFocus);
     return Focus(
       onFocusChange: (focused) => setState(() => _focused = focused),
       onKeyEvent: (node, event) {
@@ -112,6 +111,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
   bool _focusInRail = false;
   bool _coldStartNavFocusDone = false;
   bool _coldStartNavFocusScheduled = false;
+  String _profileLabel = 'Guest';
 
   bool get _railEngaged => _mouseInRail || _focusInRail;
 
@@ -130,6 +130,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
     }
   }
 
+  void _onActiveProfile(SyncProfile? profile) {
+    final label =
+        profile?.name ??
+        (SyncService.instance.isSignedIn ? 'Profile' : 'Guest');
+    if (!mounted || label == _profileLabel) return;
+    setState(() => _profileLabel = label);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -143,10 +151,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
   }
 
   void _syncNavOrder() {
-    final order = [
-      ..._navIds,
-      if (_indexForId('settings') != null) 'settings',
-    ];
+    final order = [..._navIds, if (_indexForId('settings') != null) 'settings'];
     ShellTvFocusCoordinator.setNavOrder(order);
   }
 
@@ -183,6 +188,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
     _scheduleColdStartNavFocus(context);
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
+    final showDesktopProfile = ShellScope.inputPolicyOf(context).scaleOnHover;
 
     Widget buildNavColumn(double itemSpacing) {
       return Column(
@@ -212,72 +218,82 @@ class _ShellNavRailState extends State<ShellNavRail> {
     return FocusTraversalGroup(
       policy: OrderedTraversalPolicy(),
       child: Container(
-      width: metrics.navRailWidth,
-      color: AppTheme.bgDark,
-      child: SafeArea(
-        left: false,
-        right: false,
-        top: metrics.navRailSafeAreaVertical,
-        bottom: metrics.navRailSafeAreaVertical,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(height: metrics.navRailTopPadding),
-            const _RailLogo(),
-            SizedBox(height: metrics.navRailLogoGap),
-            Expanded(
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _mouseInRail = true),
-                onExit: (_) => setState(() => _mouseInRail = false),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final contentHeight =
-                              shellNavRailItemContentHeight(context);
-                          final itemSpacing = _navRailItemSpacingForHeight(
-                            itemCount: _navIds.length,
-                            maxHeight: constraints.maxHeight,
-                            preferredSpacing: metrics.navRailItemSpacing,
-                            itemContentHeight: contentHeight,
-                          );
-                          final navColumn = buildNavColumn(itemSpacing);
+        width: metrics.navRailWidth,
+        color: AppTheme.bgDark,
+        child: SafeArea(
+          left: false,
+          right: false,
+          top: metrics.navRailSafeAreaVertical,
+          bottom: metrics.navRailSafeAreaVertical,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(height: metrics.navRailTopPadding),
+              const _RailLogo(),
+              SizedBox(height: metrics.navRailLogoGap),
+              Expanded(
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _mouseInRail = true),
+                  onExit: (_) => setState(() => _mouseInRail = false),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final contentHeight = shellNavRailItemContentHeight(
+                              context,
+                            );
+                            final itemSpacing = _navRailItemSpacingForHeight(
+                              itemCount: _navIds.length,
+                              maxHeight: constraints.maxHeight,
+                              preferredSpacing: metrics.navRailItemSpacing,
+                              itemContentHeight: contentHeight,
+                            );
+                            final navColumn = buildNavColumn(itemSpacing);
 
-                          return SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: math.max(
-                                  0,
-                                  constraints.maxHeight - 16,
+                            return SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: math.max(
+                                    0,
+                                    constraints.maxHeight - 16,
+                                  ),
                                 ),
+                                child: navColumn,
                               ),
-                              child: navColumn,
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    if (settingsIndex != null)
-                      _ShellNavRailItem(
-                        destination: navDestinations['settings']!,
-                        selected: settingsIndex == widget.selectedIndex,
-                        onTap: () =>
-                            widget.onDestinationSelected(settingsIndex),
-                        itemSpacing: metrics.navRailItemSpacing,
-                        railEngaged: _railEngaged,
-                        onFocusChanged: _syncFocusInRail,
-                      ),
-                  ],
+                      if (settingsIndex != null)
+                        _ShellNavRailItem(
+                          destination: navDestinations['settings']!,
+                          label: showDesktopProfile ? _profileLabel : null,
+                          icon: showDesktopProfile
+                              ? ForjaActiveProfileAvatar(
+                                  size: shellNavRailIconSize(context) * 1.15,
+                                  selected:
+                                      settingsIndex == widget.selectedIndex,
+                                  onProfile: _onActiveProfile,
+                                )
+                              : null,
+                          selected: settingsIndex == widget.selectedIndex,
+                          onTap: () =>
+                              widget.onDestinationSelected(settingsIndex),
+                          itemSpacing: metrics.navRailItemSpacing,
+                          railEngaged: _railEngaged,
+                          onFocusChanged: _syncFocusInRail,
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (settingsIndex != null)
-              SizedBox(height: metrics.navRailBottomPadding),
-          ],
+              if (settingsIndex != null)
+                SizedBox(height: metrics.navRailBottomPadding),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -424,6 +440,8 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.itemSpacing,
     required this.railEngaged,
     required this.onFocusChanged,
+    this.label,
+    this.icon,
   });
 
   final NavDestination destination;
@@ -432,6 +450,8 @@ class _ShellNavRailItem extends StatefulWidget {
   final double itemSpacing;
   final bool railEngaged;
   final VoidCallback onFocusChanged;
+  final String? label;
+  final Widget? icon;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -487,8 +507,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   double _scaleFor(ShellInputPolicy policy) {
     final big = ShellTokens.navRailIconHoverScale;
     final small = ShellTokens.navRailIconIdleScale;
-    final itemActive = (policy.scaleOnHover && _hover) ||
-        (policy.scaleOnFocus && _focused);
+    final itemActive =
+        (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
     if (itemActive) return _pressed ? big * 0.92 : big;
     if (!widget.railEngaged) return widget.selected ? big : small;
     return small;
@@ -530,28 +550,27 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final iconColor = selectedFocused
         ? Colors.white
         : widget.selected
-            ? ForjaShellColors.iconActive
-            : active
-                ? ForjaShellColors.iconHover
-                : ForjaShellColors.iconMuted;
+        ? ForjaShellColors.iconActive
+        : active
+        ? ForjaShellColors.iconHover
+        : ForjaShellColors.iconMuted;
     final labelColor = selectedFocused
         ? Colors.white
         : widget.selected
-            ? ForjaShellColors.textPrimary
-            : active
-                ? ForjaShellColors.textSecondary
-                : ForjaShellColors.iconMuted;
+        ? ForjaShellColors.textPrimary
+        : active
+        ? ForjaShellColors.textSecondary
+        : ForjaShellColors.iconMuted;
     final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,
       fontWeight: FontWeight.w500,
       height: 1,
     );
+    final label = widget.label ?? widget.destination.label;
 
     return Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: widget.itemSpacing / 2,
-      ),
+      padding: EdgeInsets.symmetric(vertical: widget.itemSpacing / 2),
       child: Focus(
         focusNode: _focusNode,
         debugLabel: 'nav-${widget.destination.id}',
@@ -585,86 +604,86 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: Builder(
           builder: (context) {
             return SizedBox(
-                width: ShellTokens.navRailWidth,
-                height: contentHeight,
-                child: Center(
-                  child: MouseRegion(
-                    onEnter: (_) => _onHoverEnter(),
-                    onExit: (_) => _onHoverExit(),
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTapDown: (_) => setState(() => _pressed = true),
-                      onTapUp: (_) => setState(() => _pressed = false),
-                      onTapCancel: () => setState(() => _pressed = false),
-                      onTap: _enterPageFromNav,
-                      behavior: HitTestBehavior.opaque,
-                      child: SizedBox(
-                        width: ShellTokens.navRailWidth,
-                        height: contentHeight,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              height: iconSize *
-                                  ShellTokens.navRailIconHoverScale +
-                                  ShellTokens.navRailIconUnderlineGap +
-                                  ShellTokens.shellNavUnderlineHeight,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Expanded(
-                                    child: Center(
-                                      child: AnimatedScale(
-                                        scale: _scaleFor(policy),
-                                        duration:
-                                            ShellTokens.navSelectionAnimation,
-                                        curve: Curves.easeOutCubic,
-                                        child: NavDestinationIcon(
-                                          destination: widget.destination,
-                                          selected: widget.selected,
-                                          color: iconColor,
-                                          size: iconSize,
-                                        ),
-                                      ),
+              width: ShellTokens.navRailWidth,
+              height: contentHeight,
+              child: Center(
+                child: MouseRegion(
+                  onEnter: (_) => _onHoverEnter(),
+                  onExit: (_) => _onHoverExit(),
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTapDown: (_) => setState(() => _pressed = true),
+                    onTapUp: (_) => setState(() => _pressed = false),
+                    onTapCancel: () => setState(() => _pressed = false),
+                    onTap: _enterPageFromNav,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: ShellTokens.navRailWidth,
+                      height: contentHeight,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height:
+                                iconSize * ShellTokens.navRailIconHoverScale +
+                                ShellTokens.navRailIconUnderlineGap +
+                                ShellTokens.shellNavUnderlineHeight,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: Center(
+                                    child: AnimatedScale(
+                                      scale: _scaleFor(policy),
+                                      duration:
+                                          ShellTokens.navSelectionAnimation,
+                                      curve: Curves.easeOutCubic,
+                                      child:
+                                          widget.icon ??
+                                          NavDestinationIcon(
+                                            destination: widget.destination,
+                                            selected: widget.selected,
+                                            color: iconColor,
+                                            size: iconSize,
+                                          ),
                                     ),
                                   ),
-                                  AnimatedContainer(
-                                    duration:
-                                        ShellTokens.navSelectionAnimation,
-                                    curve: Curves.easeOutCubic,
-                                    height:
-                                        ShellTokens.shellNavUnderlineHeight,
-                                    width: widget.selected ? underlineWidth : 0,
-                                    decoration: BoxDecoration(
-                                      color: widget.selected
-                                          ? (selectedFocused
+                                ),
+                                AnimatedContainer(
+                                  duration: ShellTokens.navSelectionAnimation,
+                                  curve: Curves.easeOutCubic,
+                                  height: ShellTokens.shellNavUnderlineHeight,
+                                  width: widget.selected ? underlineWidth : 0,
+                                  decoration: BoxDecoration(
+                                    color: widget.selected
+                                        ? (selectedFocused
                                               ? Colors.white
                                               : ForjaShellColors.navUnderline)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(2),
                                   ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: ShellTokens.navRailIconLabelGap),
-                            SizedBox(
-                              height: labelFontSize,
-                              width: ShellTokens.navRailWidth,
-                              child: Center(
-                                child: _TypewriterLabel(
-                                  text: widget.destination.label,
-                                  active: _typing,
-                                  style: labelStyle,
                                 ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: ShellTokens.navRailIconLabelGap),
+                          SizedBox(
+                            height: labelFontSize,
+                            width: ShellTokens.navRailWidth,
+                            child: Center(
+                              child: _TypewriterLabel(
+                                text: label,
+                                active: _typing,
+                                style: labelStyle,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
+              ),
             );
           },
         ),

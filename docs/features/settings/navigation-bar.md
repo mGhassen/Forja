@@ -4,7 +4,9 @@
 
 ## What it is
 
-Customize which sections appear in the bottom nav (mobile) or side rail (desktop) and in what order. **Settings** always stays visible and cannot be removed.
+Customize which sections appear in the bottom nav (mobile) or side rail (desktop) and in what order. **Settings** always stays visible and cannot be removed. On desktop its pinned rail control is rendered as the active profile avatar (or Guest).
+
+On a fresh install, all available tabs are enabled in this order: Search, Home, Anime, Asian Drama, IPTV, Live Matches, My List, then Settings. Home is the default startup tab.
 
 ## How to open it
 

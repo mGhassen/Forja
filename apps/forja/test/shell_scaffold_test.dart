@@ -76,7 +76,9 @@ void main() {
     );
   }
 
-  testWidgets('ShellScaffold shows bottom nav on portrait mobile', (tester) async {
+  testWidgets('ShellScaffold shows bottom nav on portrait mobile', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       ShellScaffold(
@@ -93,7 +95,9 @@ void main() {
     expect(find.byType(ShellNavRail), findsNothing);
   });
 
-  testWidgets('ShellScaffold hides bottom nav when hideGlobalNav is true', (tester) async {
+  testWidgets('ShellScaffold hides bottom nav when hideGlobalNav is true', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       ShellScaffold(
@@ -110,7 +114,9 @@ void main() {
     expect(find.byType(ShellBottomNav), findsNothing);
   });
 
-  testWidgets('ShellScaffold shows rail on desktop; top bar only when passed', (tester) async {
+  testWidgets('ShellScaffold shows rail on desktop; top bar only when passed', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -124,7 +130,9 @@ void main() {
     expect(find.text('Films'), findsNothing);
   });
 
-  testWidgets('ShellScaffold shows home top bar when shellTopBar is set', (tester) async {
+  testWidgets('ShellScaffold shows home top bar when shellTopBar is set', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
@@ -154,7 +162,9 @@ void main() {
     expect(ShellBus.homeSelectedGenreId.value, 'action');
   });
 
-  testWidgets('HomeTopBar Films tap toggles homeCategory filter', (tester) async {
+  testWidgets('HomeTopBar Films tap toggles homeCategory filter', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
@@ -175,8 +185,9 @@ void main() {
     expect(ShellBus.homeCategory.value, isNull);
   });
 
-  testWidgets('HomeTopBar slides away after scrolling past hero height',
-      (tester) async {
+  testWidgets('HomeTopBar slides away after scrolling past hero height', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
@@ -209,8 +220,9 @@ void main() {
     expect(hideOffset().dy, lessThan(0));
   });
 
-  testWidgets('ShellScaffold hides home top bar when shell overlay has page',
-      (tester) async {
+  testWidgets('ShellScaffold hides home top bar when shell overlay has page', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
@@ -235,58 +247,65 @@ void main() {
     expect(ShellBus.shellOverlayHasPage.value, isFalse);
   });
 
-  testWidgets('ShellScaffold dismisses shell overlay when nav destination selected',
-      (tester) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
+  testWidgets(
+    'ShellScaffold dismisses shell overlay when nav destination selected',
+    (tester) async {
+      await pumpScaffold(
+        tester,
+        desktopScaffold(),
+        size: const Size(1200, 800),
+        profile: ShellProfile.desktop,
+      );
 
-    shellOverlayNavigatorKey.currentState!.push(
-      MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(body: Text('Details')),
-      ),
-    );
-    await tester.pumpAndSettle();
+      shellOverlayNavigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('Details')),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(ShellBus.shellOverlayHasPage.value, isTrue);
-    expect(find.text('Details'), findsOneWidget);
+      expect(ShellBus.shellOverlayHasPage.value, isTrue);
+      expect(find.text('Details'), findsOneWidget);
 
-    await tester.tap(
-      find.image(const AssetImage('assets/images/nav/home.png')),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.image(const AssetImage('assets/images/nav/home.png')),
+      );
+      await tester.pumpAndSettle();
 
-    expect(ShellBus.shellOverlayHasPage.value, isFalse);
-    expect(find.text('Details'), findsNothing);
-  });
+      expect(ShellBus.shellOverlayHasPage.value, isFalse);
+      expect(find.text('Details'), findsNothing);
+    },
+  );
 
-  testWidgets('ShellScaffold collapses nav rail to left menu on home when narrow', (tester) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const HomeTopBar()),
-      size: const Size(800, 800),
-    );
+  testWidgets(
+    'ShellScaffold collapses nav rail to left menu on home when narrow',
+    (tester) async {
+      await pumpScaffold(
+        tester,
+        desktopScaffold(shellTopBar: const HomeTopBar()),
+        size: const Size(800, 800),
+      );
 
-    expect(find.byType(ShellNavRail), findsNothing);
-    expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
+      expect(find.byType(ShellNavRail), findsNothing);
+      expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
 
-    final menuCenter = tester.getCenter(find.byIcon(Icons.menu_rounded));
-    expect(menuCenter.dx, lessThan(120));
+      final menuCenter = tester.getCenter(find.byIcon(Icons.menu_rounded));
+      expect(menuCenter.dx, lessThan(120));
 
-    await tester.tap(find.byIcon(Icons.menu_rounded));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.menu_rounded));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(
-      find.image(const AssetImage('assets/images/nav/search.png')),
-      findsOneWidget,
-    );
-  });
+      expect(find.byType(ShellNavRail), findsOneWidget);
+      expect(
+        find.image(const AssetImage('assets/images/nav/search.png')),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {
+  testWidgets('ShellNavRail uses fixed width without hover expand', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -299,7 +318,9 @@ void main() {
     expect(find.text('Search'), findsNothing);
   });
 
-  testWidgets('ShellNavRail reveals label after sustained hover', (tester) async {
+  testWidgets('ShellNavRail reveals label after sustained hover', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -307,8 +328,9 @@ void main() {
       profile: ShellProfile.desktop,
     );
 
-    final searchIcon =
-        find.image(const AssetImage('assets/images/nav/search.png'));
+    final searchIcon = find.image(
+      const AssetImage('assets/images/nav/search.png'),
+    );
     expect(searchIcon, findsOneWidget);
     expect(find.text('Search'), findsNothing);
 
@@ -329,13 +351,18 @@ void main() {
     final searchItem = find.ancestor(
       of: searchIcon,
       matching: find.byWidgetPredicate(
-        (w) => w is SizedBox && w.height != null && w.width == ShellTokens.navRailWidth,
+        (w) =>
+            w is SizedBox &&
+            w.height != null &&
+            w.width == ShellTokens.navRailWidth,
       ),
     );
     expect(searchItem, findsWidgets);
   });
 
-  testWidgets('ShellScaffold body is inset by fixed rail width', (tester) async {
+  testWidgets('ShellScaffold body is inset by fixed rail width', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -347,7 +374,9 @@ void main() {
     expect(bodyBox.size.width, 1200 - ShellTokens.navRailWidth);
   });
 
-  testWidgets('ShellScaffold TV profile applies system overscan inset once', (tester) async {
+  testWidgets('ShellScaffold TV profile applies system overscan inset once', (
+    tester,
+  ) async {
     const systemOverscan = 24.0;
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -367,12 +396,13 @@ void main() {
       1920 - ShellTokens.navRailWidth - systemOverscan * 2,
     );
 
-    final railBox =
-        tester.renderObject<RenderBox>(find.byType(ShellNavRail));
+    final railBox = tester.renderObject<RenderBox>(find.byType(ShellNavRail));
     expect(railBox.localToGlobal(Offset.zero).dx, systemOverscan);
   });
 
-  testWidgets('ShellScaffold hides rail when hideGlobalNav is true', (tester) async {
+  testWidgets('ShellScaffold hides rail when hideGlobalNav is true', (
+    tester,
+  ) async {
     await pumpScaffold(
       tester,
       desktopScaffold(hideGlobalNav: true),
@@ -384,56 +414,62 @@ void main() {
     expect(find.byType(HomeTopBar), findsNothing);
   });
 
-  testWidgets('ForjaGhostButton is text-only; ForjaPlainIcon has no border box', (tester) async {
-    await pumpScaffold(
-      tester,
-      Scaffold(
-        body: Row(
-          children: [
-            ForjaGhostButton(label: 'Watch Now', onTap: () {}),
-            ForjaPlainIcon(icon: Icons.info_outline, onTap: () {}),
-          ],
+  testWidgets(
+    'ForjaGhostButton is text-only; ForjaPlainIcon has no border box',
+    (tester) async {
+      await pumpScaffold(
+        tester,
+        Scaffold(
+          body: Row(
+            children: [
+              ForjaGhostButton(label: 'Watch Now', onTap: () {}),
+              ForjaPlainIcon(icon: Icons.info_outline, onTap: () {}),
+            ],
+          ),
         ),
-      ),
-      size: const Size(600, 200),
-    );
+        size: const Size(600, 200),
+      );
 
-    expect(find.text('Watch Now'), findsOneWidget);
-    expect(find.byType(ForjaPlainIcon), findsOneWidget);
-    expect(find.byType(ForjaIconButton), findsNothing);
-  });
+      expect(find.text('Watch Now'), findsOneWidget);
+      expect(find.byType(ForjaPlainIcon), findsOneWidget);
+      expect(find.byType(ForjaIconButton), findsNothing);
+    },
+  );
 
-  testWidgets('ForjaPlainIcon and ForjaCloseButton use circular hover, no border', (tester) async {
-    await pumpScaffold(
-      tester,
-      const Scaffold(
-        body: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ForjaPlainIcon(icon: Icons.tune_rounded, onTap: null),
-            ForjaCloseButton(onTap: null),
-          ],
+  testWidgets(
+    'ForjaPlainIcon and ForjaCloseButton use circular hover, no border',
+    (tester) async {
+      await pumpScaffold(
+        tester,
+        const Scaffold(
+          body: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ForjaPlainIcon(icon: Icons.tune_rounded, onTap: null),
+              ForjaCloseButton(onTap: null),
+            ],
+          ),
         ),
-      ),
-      size: const Size(200, 120),
-    );
+        size: const Size(200, 120),
+      );
 
-    final borderFinder = find.byWidgetPredicate(
-      (widget) =>
-          widget is DecoratedBox &&
-          widget.decoration is BoxDecoration &&
-          (widget.decoration as BoxDecoration).border != null,
-    );
-    expect(borderFinder, findsNothing);
+      final borderFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).border != null,
+      );
+      expect(borderFinder, findsNothing);
 
-    final circleFinder = find.byWidgetPredicate(
-      (widget) =>
-          widget is DecoratedBox &&
-          widget.decoration is BoxDecoration &&
-          (widget.decoration as BoxDecoration).shape == BoxShape.circle,
-    );
-    expect(circleFinder, findsWidgets);
-  });
+      final circleFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).shape == BoxShape.circle,
+      );
+      expect(circleFinder, findsWidgets);
+    },
+  );
 
   testWidgets('ShellBottomNav is flat without BackdropFilter', (tester) async {
     await pumpScaffold(
@@ -457,6 +493,103 @@ void main() {
     expect(ForjaShellColors.cinematic.textPrimary, const Color(0xFFE5E7EB));
   });
 
+  testWidgets(
+    'ShellBody keeps tab State when a nav tab is enabled (visibleIds grow)',
+    (tester) async {
+      var settingsInits = 0;
+      final settingsStates = <State>[];
+
+      Widget tabFor(String id) {
+        if (id == 'settings') {
+          return _CountingTab(
+            onInit: (state) {
+              settingsInits += 1;
+              settingsStates.add(state);
+            },
+          );
+        }
+        return Center(child: Text(id));
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShellBody(
+            selectedIndex: 2,
+            visibleIds: const ['home', 'search', 'settings'],
+            mountedTabIds: const {'home', 'search', 'settings'},
+            tabFor: tabFor,
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(settingsInits, 1);
+      final firstState = settingsStates.single;
+
+      // Enabling a tab inserts before settings — same as navbar config save.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShellBody(
+            selectedIndex: 3,
+            visibleIds: const ['home', 'search', 'anime', 'settings'],
+            mountedTabIds: const {'home', 'search', 'settings'},
+            tabFor: tabFor,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(settingsInits, 1);
+      expect(settingsStates.single, same(firstState));
+      expect(find.text('settings-alive'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'ShellBody selected tab receives taps when later tabs stay mounted',
+    (tester) async {
+      // Repro: IPTV (or any mid-list tab) looked frozen after visiting a later
+      // tab — hidden siblings kept maintainInteractivity and stole hit tests.
+      var iptvTaps = 0;
+      var settingsTaps = 0;
+
+      Widget tabFor(String id) {
+        if (id == 'iptv') {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => iptvTaps += 1,
+            child: const SizedBox.expand(child: Text('iptv-catalog')),
+          );
+        }
+        if (id == 'settings') {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => settingsTaps += 1,
+            child: const SizedBox.expand(child: Text('settings-panel')),
+          );
+        }
+        return Center(child: Text(id));
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShellBody(
+            selectedIndex: 0,
+            visibleIds: const ['iptv', 'settings'],
+            mountedTabIds: const {'iptv', 'settings'},
+            tabFor: tabFor,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('iptv-catalog'));
+      await tester.pump();
+
+      expect(iptvTaps, 1);
+      expect(settingsTaps, 0);
+    },
+  );
+
   test('navDestinations includes default shell tabs', () {
     expect(navDestinations.containsKey('home'), isTrue);
     expect(navDestinations.containsKey('search'), isTrue);
@@ -467,10 +600,10 @@ void main() {
     expect(navDestinations.containsKey('mylist'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
     expect(SettingsService.defaultVisibleNavIds, [
-      'home',
       'search',
-      'asian_drama',
+      'home',
       'anime',
+      'asian_drama',
       'iptv',
       'live_matches',
       'mylist',
@@ -489,4 +622,26 @@ void main() {
       isEmpty,
     );
   });
+}
+
+class _CountingTab extends StatefulWidget {
+  const _CountingTab({required this.onInit});
+
+  final void Function(State<StatefulWidget> state) onInit;
+
+  @override
+  State<_CountingTab> createState() => _CountingTabState();
+}
+
+class _CountingTabState extends State<_CountingTab> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onInit(this);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text('settings-alive'));
+  }
 }
