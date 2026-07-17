@@ -97,6 +97,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   Logger.root.level = Level.FINER;
   Logger.root.onRecord.listen((e) {
+    // youtube_explode spam: countdown every tick while a token is cached
+    if (e.message.contains('Access token expires in')) return;
     debugPrint('[YT] ${e.message}');
     if (e.error != null) {
       debugPrint('[YT ERROR] ${e.error}');
