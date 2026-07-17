@@ -46,6 +46,14 @@ export function AccountProfilesPage() {
     setAvatarKey(normalizeAvatarKey(editingProfile.avatar_key))
   }, [editingProfile, screen])
 
+  useEffect(() => {
+    if (loading || screen !== 'choose' || profiles.length > 0) return
+    setName('')
+    setAvatarKey(PROFILE_AVATARS[0]!.key)
+    setError(null)
+    setScreen('create')
+  }, [loading, profiles.length, screen])
+
   const chooseProfile = (profileId: string) => {
     selectProfile(profileId)
     void navigate({ to: '/account/settings' })
@@ -70,9 +78,15 @@ export function AccountProfilesPage() {
     event.preventDefault()
     setError(null)
     setSaving(true)
+    const creatingFirst = screen === 'create' && profiles.length === 0
     try {
       if (screen === 'create') {
-        await createProfile(name, avatarKey)
+        const profile = await createProfile(name, avatarKey)
+        if (creatingFirst) {
+          selectProfile(profile.id)
+          void navigate({ to: '/account/settings' })
+          return
+        }
       } else if (editingProfile) {
         await Promise.all([
           renameProfile(editingProfile.id, name),
@@ -110,34 +124,48 @@ export function AccountProfilesPage() {
         <main className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-5 pb-20 pt-28 sm:px-8">
           {screen === 'create' || screen === 'edit' ? (
             <ProfileEditor
-              title={screen === 'create' ? 'Add profile' : 'Edit profile'}
+              title={
+                screen === 'create'
+                  ? profiles.length === 0
+                    ? 'Create your profile'
+                    : 'Add profile'
+                  : 'Edit profile'
+              }
               name={name}
               avatarKey={avatarKey}
               saving={saving || creating}
               canDelete={screen === 'edit' && profiles.length > 1}
+              canCancel={profiles.length > 0 || screen === 'edit'}
               error={error}
               onNameChange={setName}
               onAvatarChange={setAvatarKey}
               onSave={handleSave}
               onDelete={() => void handleDelete()}
               onCancel={() => {
-                setScreen('manage')
+                setScreen(profiles.length === 0 ? 'choose' : 'manage')
                 setEditingId(null)
               }}
             />
           ) : (
             <>
               <div className="relative w-full text-center">
-                <Link
-                  to="/account/settings"
-                  className="absolute left-0 top-1/2 hidden -translate-y-1/2 items-center gap-2 text-sm text-forja-muted hover:text-forja-text sm:flex"
-                >
-                  <ArrowLeft className="size-4" />
-                  Settings
-                </Link>
+                {profiles.length > 0 ? (
+                  <Link
+                    to="/account/settings"
+                    className="absolute left-0 top-1/2 hidden -translate-y-1/2 items-center gap-2 text-sm text-forja-muted hover:text-forja-text sm:flex"
+                  >
+                    <ArrowLeft className="size-4" />
+                    Settings
+                  </Link>
+                ) : null}
                 <h1 className="font-display text-4xl tracking-tight sm:text-5xl">
                   {screen === 'manage' ? 'Manage profiles' : "Who's watching?"}
                 </h1>
+                {profiles.length === 0 ? (
+                  <p className="mt-3 text-forja-muted">
+                    Create a profile to sync settings across devices.
+                  </p>
+                ) : null}
               </div>
 
               {loading ? (
@@ -180,7 +208,7 @@ export function AccountProfilesPage() {
                     )
                   })}
 
-                  {screen === 'manage' ? (
+                  {screen === 'manage' || profiles.length === 0 ? (
                     <button
                       type="button"
                       className="group w-28 text-center sm:w-36"
@@ -198,18 +226,20 @@ export function AccountProfilesPage() {
               )}
 
               <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
-                <Button
-                  type="button"
-                  variant={screen === 'manage' ? 'default' : 'secondary'}
-                  className="min-w-40 uppercase tracking-[0.12em]"
-                  onClick={() =>
-                    setScreen((current) =>
-                      current === 'manage' ? 'choose' : 'manage',
-                    )
-                  }
-                >
-                  {screen === 'manage' ? 'Done' : 'Manage profiles'}
-                </Button>
+                {profiles.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant={screen === 'manage' ? 'default' : 'secondary'}
+                    className="min-w-40 uppercase tracking-[0.12em]"
+                    onClick={() =>
+                      setScreen((current) =>
+                        current === 'manage' ? 'choose' : 'manage',
+                      )
+                    }
+                  >
+                    {screen === 'manage' ? 'Done' : 'Manage profiles'}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
@@ -238,6 +268,7 @@ type ProfileEditorProps = {
   avatarKey: ProfileAvatarKey
   saving: boolean
   canDelete: boolean
+  canCancel?: boolean
   error: string | null
   onNameChange: (name: string) => void
   onAvatarChange: (avatar: ProfileAvatarKey) => void
@@ -252,6 +283,7 @@ function ProfileEditor({
   avatarKey,
   saving,
   canDelete,
+  canCancel = true,
   error,
   onNameChange,
   onAvatarChange,
@@ -337,9 +369,11 @@ function ProfileEditor({
           <Button type="submit" disabled={saving || !name.trim()}>
             {saving ? 'Saving…' : 'Save profile'}
           </Button>
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
+          {canCancel ? (
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : null}
           {canDelete ? (
             <Button
               type="button"

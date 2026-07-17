@@ -33,6 +33,7 @@ That will:
 | `demo@forja.local` | `password123` | Non-admin |
 
 The script seeds lean `profile_settings` + shared `iptv_portals` (no `user_settings`, no M3U channel lists).
+Signup creates an `accounts` row only — test users get named profiles from the seed script, not an auto `Profile 1`.
 
 Then put the printed `VITE_SUPABASE_*` values into `apps/web/.env` (or run `supabase status` from `apps/web`).
 Keep `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` for local Auth captcha

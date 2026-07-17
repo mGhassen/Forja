@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 8** components · **12 / 22** acceptance (account `features` + IPTV scrape flag; web navigation settings) |
+| **Progress** | **3 / 8** components · **13 / 23** acceptance (account `features` + IPTV scrape flag; web navigation settings; no default profile on signup) |
 | **Current slice** | Account feature flags (`iptvScrape`) shipped — admin UI for toggling still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -63,6 +63,7 @@
 | 20 | R36-A13 | Feature docs + changelog updated | ✅ |
 | 21 | R36-A14 | Existing multi-domain settings migrate into `profile_settings` without loss | ⬜ |
 | 22 | R36-A22 | IPTV Scrape / Find Portals hidden and blocked unless `accounts.features.iptvScrape` | ✅ |
+| 23 | R36-A23 | Signup creates `accounts` only — no auto `Profile 1`; user creates first profile; `profile_settings` defaults on profile insert | ✅ |
 
 ---
 

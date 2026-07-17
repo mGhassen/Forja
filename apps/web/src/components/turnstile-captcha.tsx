@@ -39,7 +39,7 @@ export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) 
   }
 
   return (
-    <div className={cn('overflow-hidden rounded-lg', className)}>
+    <div className={cn(className)}>
       <Turnstile
         siteKey={turnstileSiteKey!}
         options={{ theme: 'dark', size: 'normal' }}

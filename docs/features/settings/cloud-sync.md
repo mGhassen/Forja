@@ -21,11 +21,12 @@ another screen.
   the page shows the active profile (**Watching now** — tap to switch), cloud
   sync status, and **Sign out**
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
-  when configured), choose a profile on **Who's watching?**, then open **Remote
-  settings**. The sidebar splits **Profile** (synced IPTV / playback / navigation /
-  Stremio) from **Account** (email, log out, delete). Back returns to
-  Who's watching. Switch profiles from the header menu. **Log out** is under
-  Account in the left nav.
+  when configured). New accounts have no profiles yet — create your first one
+  (name + avatar); default synced settings are attached then. After that, choose a
+  profile on **Who's watching?**, then open **Remote settings**. The sidebar splits
+  **Profile** (synced IPTV / playback / navigation / Stremio) from **Account**
+  (email, log out, delete). Back returns to Who's watching. Switch profiles from
+  the header menu. **Log out** is under Account in the left nav.
 
 ## What syncs (remote settings)
 
@@ -72,16 +73,19 @@ Not synced — device-specific or sensitive:
   under **Settings → Navigation**), not the screen you were on before switching.
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
-  Tapping a profile shows the profile-switch splash, then the boot splash.
+  If the account has no profiles yet, you create one before continuing. Tapping a
+  profile shows the profile-switch splash, then the boot splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for
   guest / offline use; cloud sync stops until you sign in again
-- Open **Account** after sign-in on the web: pick a profile on **Who’s watching?**,
-  then land in **Remote settings**. Use the **Account** sidebar item for log out
-  or permanent account delete (confirm by typing your email)
+- Open **Account** after sign-in on the web: create a profile if needed, pick one
+  on **Who’s watching?**, then land in **Remote settings**. Use the **Account**
+  sidebar item for log out or permanent account delete (confirm by typing your email)
 - Create, rename, and delete profiles on desktop or the web, with 30 avatars
-  organized into Characters, Creatures, Space, and Retro categories
+  organized into Characters, Creatures, Space, and Retro categories. Signup does
+  not invent a default profile — the first one is yours, with default settings
+  applied when you create it
 - The desktop chooser, rail, and Profile & account page use the same avatar
   artwork selected on the web
 - Add, edit, search, favorite, share, or remove IPTV portals from

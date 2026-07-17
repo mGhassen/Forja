@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
 import 'package:forja/shared/sync/src/forja_captcha.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
 /// Compact Turnstile challenge for desktop email/password sign-in.
@@ -24,7 +25,9 @@ class TurnstileCaptcha extends StatefulWidget {
 
 class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
   static const _handlerName = 'turnstileToken';
-  static const _widgetHeight = 72.0;
+  /// Cloudflare "normal" widget is 300×65; pad height slightly for WebView chrome.
+  static const _widgetWidth = 300.0;
+  static const _widgetHeight = 65.0;
 
   @override
   void initState() {
@@ -36,8 +39,17 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
     }
   }
 
+  /// Match [AppTheme.appBackground] so the WebView host does not flash a
+  /// darker full-bleed rectangle behind the 300px Turnstile frame.
+  static String get _pageBgCss {
+    final argb = AppTheme.appBackground.toARGB32();
+    final hex = (argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0');
+    return '#$hex';
+  }
+
   String get _html {
     final siteKeyJson = jsonEncode(ForjaCaptcha.siteKey);
+    final pageBg = _pageBgCss;
     return '''
 <!DOCTYPE html>
 <html>
@@ -49,10 +61,12 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
     html, body {
       margin: 0;
       padding: 0;
-      background: #0a0a0a;
+      width: ${_widgetWidth.toInt()}px;
+      height: ${_widgetHeight.toInt()}px;
+      background: $pageBg;
       overflow: hidden;
     }
-    #cf-turnstile { display: inline-block; }
+    #cf-turnstile { display: block; width: 300px; height: 65px; }
   </style>
 </head>
 <body>
@@ -72,6 +86,7 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       turnstile.render('#cf-turnstile', {
         sitekey: siteKey,
         theme: 'dark',
+        size: 'normal',
         callback: function (token) { postToken(token); },
         'expired-callback': function () { postToken(null); },
         'error-callback': function () { postToken(null); }
@@ -104,35 +119,38 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       return s.endsWith('/') ? s : '$s/';
     }();
 
-    return SizedBox(
-      height: _widgetHeight,
-      width: double.infinity,
-      child: ForjaInAppWebView(
-        initialSettings: InAppWebViewSettings(
-          javaScriptEnabled: true,
-          supportZoom: false,
-          disableHorizontalScroll: true,
-          disableVerticalScroll: true,
-          transparentBackground: false,
-          // Avoid Windows WebView2 create-time transparent bug path.
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        height: _widgetHeight,
+        width: _widgetWidth,
+        child: ForjaInAppWebView(
+          initialSettings: InAppWebViewSettings(
+            javaScriptEnabled: true,
+            supportZoom: false,
+            disableHorizontalScroll: true,
+            disableVerticalScroll: true,
+            transparentBackground: false,
+            // Avoid Windows WebView2 create-time transparent bug path.
+          ),
+          initialData: InAppWebViewInitialData(
+            data: _html,
+            mimeType: 'text/html',
+            encoding: 'utf-8',
+            baseUrl: WebUri(normalized),
+          ),
+          onWebViewCreated: (controller) {
+            controller.addJavaScriptHandler(
+              handlerName: _handlerName,
+              callback: (args) {
+                final raw = args.isEmpty ? null : args.first;
+                final token = raw is String && raw.isNotEmpty ? raw : null;
+                widget.onToken(token);
+                return null;
+              },
+            );
+          },
         ),
-        initialData: InAppWebViewInitialData(
-          data: _html,
-          mimeType: 'text/html',
-          encoding: 'utf-8',
-          baseUrl: WebUri(normalized),
-        ),
-        onWebViewCreated: (controller) {
-          controller.addJavaScriptHandler(
-            handlerName: _handlerName,
-            callback: (args) {
-              final raw = args.isEmpty ? null : args.first;
-              final token = raw is String && raw.isNotEmpty ? raw : null;
-              widget.onToken(token);
-              return null;
-            },
-          );
-        },
       ),
     );
   }

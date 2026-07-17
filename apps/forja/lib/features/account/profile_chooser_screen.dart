@@ -97,7 +97,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool openCreateWhenEmpty = true}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -109,8 +109,11 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       _profiles = profiles;
       _activeProfileId = active?.id;
       _loading = false;
-      if (profiles.isEmpty) {
-        _error = 'No profiles were found for this account.';
+      if (profiles.isEmpty && openCreateWhenEmpty) {
+        _screen = _Screen.create;
+        _editingId = null;
+        _nameCtrl.text = '';
+        _avatarKey = forjaProfileAvatarKeys.first;
       }
     });
   }
@@ -181,16 +184,23 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
 
   Future<void> _saveEditor() async {
     if (_busy) return;
+    final creatingFirst = _screen == _Screen.create && _profiles.isEmpty;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       if (_screen == _Screen.create) {
-        await SyncService.instance.createProfile(
+        final profile = await SyncService.instance.createProfile(
           name: _nameCtrl.text,
           avatarKey: _avatarKey,
         );
+        if (!mounted) return;
+        if (creatingFirst) {
+          setState(() => _busy = false);
+          await _select(profile);
+          return;
+        }
       } else if (_editingId != null) {
         await SyncService.instance.updateProfile(
           profileId: _editingId!,
@@ -204,7 +214,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
         _editingId = null;
         _busy = false;
       });
-      await _load();
+      await _load(openCreateWhenEmpty: false);
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -271,18 +281,24 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
           SafeArea(
             child: _screen == _Screen.create || _screen == _Screen.edit
                 ? _ProfileEditor(
-                    title:
-                        _screen == _Screen.create ? 'Add profile' : 'Edit profile',
+                    title: _screen == _Screen.create
+                        ? (_profiles.isEmpty
+                            ? 'Create your profile'
+                            : 'Add profile')
+                        : 'Edit profile',
                     nameController: _nameCtrl,
                     avatarKey: _avatarKey,
                     saving: _busy,
                     canDelete: _screen == _Screen.edit && _profiles.length > 1,
+                    canCancel: _profiles.isNotEmpty || _screen == _Screen.edit,
                     error: _error,
                     onAvatarChange: (key) => setState(() => _avatarKey = key),
                     onSave: _saveEditor,
                     onDelete: _deleteEditing,
                     onCancel: () => setState(() {
-                      _screen = _Screen.manage;
+                      _screen = _profiles.isEmpty
+                          ? _Screen.choose
+                          : _Screen.manage;
                       _editingId = null;
                       _error = null;
                     }),
@@ -330,9 +346,11 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                managing
-                    ? 'Edit a profile or add a new one.'
-                    : 'Choose the profile whose settings you want on this device.',
+                _profiles.isEmpty
+                    ? 'Create a profile to sync settings on this device.'
+                    : managing
+                        ? 'Edit a profile or add a new one.'
+                        : 'Choose the profile whose settings you want on this device.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: ForjaShellColors.textSecondary,
@@ -363,7 +381,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                 ? _beginEdit(profile)
                                 : _select(profile),
                           ),
-                        if (managing)
+                        if (managing || _profiles.isEmpty)
                           _AddProfileTile(
                             enabled: !_busy,
                             onTap: _beginCreate,
@@ -384,7 +402,9 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: _busy ? null : _load,
+                  onPressed: _busy
+                      ? null
+                      : () => _load(openCreateWhenEmpty: false),
                   child: const Text('Retry'),
                 ),
               ],
@@ -394,18 +414,19 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() {
-                              _screen = managing
-                                  ? _Screen.choose
-                                  : _Screen.manage;
-                              _error = null;
-                            }),
-                    child: Text(managing ? 'Done' : 'Manage profiles'),
-                  ),
-                  if (widget.showBack)
+                  if (_profiles.isNotEmpty)
+                    OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() {
+                                _screen = managing
+                                    ? _Screen.choose
+                                    : _Screen.manage;
+                                _error = null;
+                              }),
+                      child: Text(managing ? 'Done' : 'Manage profiles'),
+                    ),
+                  if (widget.showBack && _profiles.isNotEmpty)
                     TextButton(
                       onPressed: _busy
                           ? null
@@ -600,6 +621,7 @@ class _ProfileEditor extends StatefulWidget {
     required this.avatarKey,
     required this.saving,
     required this.canDelete,
+    this.canCancel = true,
     required this.error,
     required this.onAvatarChange,
     required this.onSave,
@@ -612,6 +634,7 @@ class _ProfileEditor extends StatefulWidget {
   final String avatarKey;
   final bool saving;
   final bool canDelete;
+  final bool canCancel;
   final String? error;
   final ValueChanged<String> onAvatarChange;
   final VoidCallback onSave;
@@ -755,10 +778,11 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                         widget.saving || name.isEmpty ? null : widget.onSave,
                     child: Text(widget.saving ? 'Saving…' : 'Save profile'),
                   ),
-                  OutlinedButton(
-                    onPressed: widget.saving ? null : widget.onCancel,
-                    child: const Text('Cancel'),
-                  ),
+                  if (widget.canCancel)
+                    OutlinedButton(
+                      onPressed: widget.saving ? null : widget.onCancel,
+                      child: const Text('Cancel'),
+                    ),
                   if (widget.canDelete)
                     TextButton(
                       onPressed: widget.saving ? null : widget.onDelete,
