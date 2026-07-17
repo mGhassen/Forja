@@ -197,17 +197,20 @@ jobs:
 
       - name: Build macOS app
         working-directory: ${{ env.APP_DIR }}
+        env:
+          # Flutter forwards FLUTTER_XCODE_* to xcodebuild. Bare KEY=VALUE args are
+          # treated as --target (→ "Target file CODE_SIGN_IDENTITY=- not found").
+          # Ad-hoc sign — no Apple Developer certs in CI yet; Developer ID +
+          # notarization is tracked in RFC-021.
+          FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
+          FLUTTER_XCODE_CODE_SIGN_STYLE: Manual
         run: |
           flutter pub get
-          # Ad-hoc sign (CODE_SIGN_IDENTITY=-). No Apple Developer certs in CI yet;
-          # Developer ID + notarization is tracked in RFC-021.
           flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
-            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
-            CODE_SIGN_IDENTITY=- \
-            CODE_SIGN_STYLE=Manual
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
 
       - name: Verify installer payload
         run: ./scripts/verify_installer_payload.sh macos

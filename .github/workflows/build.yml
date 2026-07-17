@@ -58,16 +58,19 @@ jobs:
           channel: ${{ env.FLUTTER_CHANNEL }}
       - run: ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
+        env:
+          # Flutter forwards FLUTTER_XCODE_* to xcodebuild. Bare KEY=VALUE args are
+          # treated as --target (→ "Target file CODE_SIGN_IDENTITY=- not found").
+          # Ad-hoc sign — no Apple Developer certs in CI (see RFC-021 for notarization).
+          FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
+          FLUTTER_XCODE_CODE_SIGN_STYLE: Manual
         run: |
           flutter pub get
-          # Ad-hoc sign — no Apple Developer certs in CI (see RFC-021 for notarization).
           flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
-            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
-            CODE_SIGN_IDENTITY=- \
-            CODE_SIGN_STYLE=Manual
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-macOS
