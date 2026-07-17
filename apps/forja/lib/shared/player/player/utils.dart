@@ -590,12 +590,18 @@ bool isNaturalPlaybackEnd(
   // `pos >= dur - 1000` is true at position 0 (e.g. dur=500ms → -500) and
   // auto-next fires — episode looks like it "started finished".
   if (dur < 90 * 1000) return false;
-  if (pos <= 0) return false;
   // Early EOF with a real moov duration: position jumps to end immediately.
   if (confirmedFor != null && confirmedFor < minConfirmed) return false;
   // Sitting at EOF for minutes must not become "natural" after the grace
   // window — require evidence the user actually watched the middle.
   if (hadMidPlayback == false) return false;
+  // keep-open / HLS: `completed` often fires after position resets to 0 while
+  // duration remains. Mid-watch + grace already proved a real session.
+  if (pos <= 0) {
+    return hadMidPlayback == true &&
+        confirmedFor != null &&
+        confirmedFor >= minConfirmed;
+  }
   return pos >= dur - 1000;
 }
 

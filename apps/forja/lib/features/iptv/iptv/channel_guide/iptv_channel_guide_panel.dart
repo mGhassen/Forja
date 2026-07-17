@@ -640,7 +640,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 6,
+          flex: 8,
           child: _frostedColumn(
             tint: _groupsTint,
             elevated: false,

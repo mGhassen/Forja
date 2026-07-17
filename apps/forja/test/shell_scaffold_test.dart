@@ -427,8 +427,17 @@ void main() {
     expect(avatar.showBorder, isFalse);
     expect(
       avatar.size,
-      shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) * 1.5,
+      shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) * 1.65,
     );
+    final avatarScale = tester.widget<AnimatedScale>(
+      find
+          .ancestor(
+            of: find.byType(ForjaProfileAvatar),
+            matching: find.byType(AnimatedScale),
+          )
+          .first,
+    );
+    expect(avatarScale.scale, 1);
     expect(find.text('Guest'), findsOneWidget);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);

@@ -466,6 +466,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   bool _prefWriteAllowed = false;
   String? _pendingPrefKey;
   String? _pendingPrefTitle;
+  /// Next/prev episode while player is open — pop player, then replace host.
+  int? _handOffEpisode;
 
   @override
   void initState() {
@@ -1165,20 +1167,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final navigator = Navigator.of(context, rootNavigator: true);
 
     Future<void> openEpisode(int epNumber) async {
-      final hostContext = context;
-      await navigator.pushReplacement(
-        AppRouter.fadeRoute(
-          (_) => ShellScope.rehost(
-            hostContext,
-            AnimePlayerScreen(
-              anime: widget.anime,
-              episodeNumber: epNumber,
-              category: _category,
-              allEpisodes: episodes,
-            ),
-          ),
-        ),
-      );
+      // Player is on top of this host. Replacing the host under it left a
+      // dead player (black screen). Pop the player first; after playerFuture
+      // completes we pushReplacement to the next episode host.
+      _handOffEpisode = epNumber;
+      if (navigator.canPop()) navigator.pop();
     }
 
     _fadeOutNotifier.value = true;
@@ -1294,6 +1287,24 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       liveProviderCache.dispose();
     } else {
       providerSourcesCache!.dispose();
+    }
+    final handOff = _handOffEpisode;
+    _handOffEpisode = null;
+    if (handOff != null && mounted) {
+      await navigator.pushReplacement(
+        AppRouter.fadeRoute(
+          (_) => ShellScope.rehost(
+            context,
+            AnimePlayerScreen(
+              anime: widget.anime,
+              episodeNumber: handOff,
+              category: _category,
+              allEpisodes: episodes,
+            ),
+          ),
+        ),
+      );
+      return;
     }
     // Player closed — leave the loading shell and return to details.
     if (mounted && navigator.canPop()) {

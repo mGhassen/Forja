@@ -127,6 +127,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   bool _isUpcoming = false;
   bool _cancelled = false;
   bool _handedOffLiveNotifiers = false;
+  /// Next/prev while player is open — pop player, then replace this host.
+  KdramaEpisode? _handOffEpisode;
+  List<KdramaEpisode> _handOffEpisodes = const [];
   KdramaCard? _resolvedDrama;
   KdramaEpisode? _resolvedEpisode;
   List<KdramaEpisode> _resolvedEpisodes = const [];
@@ -510,19 +513,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         } catch (_) {}
       }
       if (ep == null) return;
-      final hostContext = context;
-      await navigator.pushReplacement(
-        AppRouter.fadeRoute(
-          (_) => ShellScope.rehost(
-            hostContext,
-            AsianDramaPlayerScreen(
-              drama: drama,
-              episode: ep!,
-              allEpisodes: list,
-            ),
-          ),
-        ),
-      );
+      _handOffEpisode = ep;
+      _handOffEpisodes = list;
+      if (navigator.canPop()) navigator.pop();
     }
 
     // Per-episode cache key — do not collapse every ep onto S1:E1.
@@ -564,19 +557,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           }
         }
         if (target == null) return;
-        final hostContext = context;
-        await navigator.pushReplacement(
-          AppRouter.fadeRoute(
-            (_) => ShellScope.rehost(
-              hostContext,
-              AsianDramaPlayerScreen(
-                drama: drama,
-                episode: target!,
-                allEpisodes: episodes,
-              ),
-            ),
-          ),
-        );
+        _handOffEpisode = target;
+        _handOffEpisodes = episodes;
+        if (navigator.canPop()) navigator.pop();
       },
       onSaveProgress: (pos, dur) async {
         await _service.recordWatch(
@@ -600,6 +583,25 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     await playerFuture;
     _probeNotifier.dispose();
     _providerSourcesCache.dispose();
+    final handOff = _handOffEpisode;
+    final handOffList = _handOffEpisodes;
+    _handOffEpisode = null;
+    _handOffEpisodes = const [];
+    if (handOff != null && mounted) {
+      await navigator.pushReplacement(
+        AppRouter.fadeRoute(
+          (_) => ShellScope.rehost(
+            context,
+            AsianDramaPlayerScreen(
+              drama: drama,
+              episode: handOff,
+              allEpisodes: handOffList,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     if (mounted && navigator.canPop()) {
       navigator.pop();
     }

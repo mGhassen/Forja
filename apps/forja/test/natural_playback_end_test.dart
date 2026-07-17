@@ -30,6 +30,31 @@ void main() {
       );
     });
 
+    test(
+      'true at position zero after mid-watch + grace (keep-open EOF reset)',
+      () {
+        expect(
+          isNaturalPlaybackEnd(
+            state(posMs: 0, durMs: 3_600_000),
+            confirmedFor: const Duration(seconds: 171),
+            hadMidPlayback: true,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test('false at position zero within grace even with mid flag', () {
+      expect(
+        isNaturalPlaybackEnd(
+          state(posMs: 0, durMs: 3_600_000),
+          confirmedFor: const Duration(seconds: 3),
+          hadMidPlayback: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('true near real end of a long title after enough confirmed time', () {
       expect(
         isNaturalPlaybackEnd(

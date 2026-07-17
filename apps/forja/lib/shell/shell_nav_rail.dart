@@ -189,7 +189,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
     final showDesktopProfile = ShellScope.inputPolicyOf(context).scaleOnHover;
-    final profileAvatarSize = shellNavRailIconSize(context) * 1.5;
+    final profileAvatarSize = shellNavRailIconSize(context) * 1.65;
 
     Widget buildNavColumn(double itemSpacing) {
       return Column(
@@ -575,6 +575,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final small = ShellTokens.navRailIconIdleScale;
     final itemActive =
         (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+    if (widget.customIconSize != null) {
+      if (itemActive) return _pressed ? big * 0.92 : big;
+      return 1;
+    }
     if (itemActive) return _pressed ? big * 0.92 : big;
     if (!widget.railEngaged) return widget.selected ? big : small;
     return small;

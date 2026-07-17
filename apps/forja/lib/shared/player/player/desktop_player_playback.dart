@@ -996,6 +996,15 @@ mixin _DesktopPlayerPlayback
       // Ignore ephemeral demux while hunting a playable source — otherwise the
       // seek bar flashes full/empty as each CDN briefly reports duration.
       if (!_s._playbackConfirmed) return;
+      // keep-open EOF often emits position 0 after a real finish — don't empty
+      // a seek bar that was already at the end.
+      final shownDur = _s._durationNotifier.value;
+      final shownPos = _s._positionNotifier.value;
+      if (pos <= Duration.zero &&
+          shownDur >= const Duration(seconds: 90) &&
+          shownPos >= shownDur - const Duration(seconds: 2)) {
+        return;
+      }
       _s._positionNotifier.value = pos;
 
       final dur = _s._durationNotifier.value;
@@ -1181,6 +1190,12 @@ mixin _DesktopPlayerPlayback
         hadMidPlayback: _s._hadMidPlayback,
       )) {
         debugPrint('✅ Playback completed');
+        // keep-open may reset mpv position to 0 — pin the seek bar at EOF.
+        final dur = _s._player.state.duration;
+        if (dur > Duration.zero) {
+          _s._durationNotifier.value = dur;
+          _s._positionNotifier.value = dur;
+        }
         final autoNext = SettingsService.autoNextEpisodeNotifier.value;
         if (autoNext &&
             !_s._loopEnabled &&
