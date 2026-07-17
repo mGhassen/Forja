@@ -40,6 +40,10 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
+      // Flutter Web login defaults to http://127.0.0.1:3000 (IPv4). Without an
+      // explicit host, Vite may bind only [::1] on macOS and the portal looks
+      // "down" from the desktop app.
+      host: '127.0.0.1',
     },
     resolve: {
       tsconfigPaths: true,

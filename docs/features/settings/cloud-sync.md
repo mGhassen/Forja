@@ -21,9 +21,10 @@ another screen.
   and use **Who’s watching?** / **Manage profiles**
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
   when configured), choose a profile on **Who's watching?**, then open **Remote
-  settings**. The sidebar splits **Profile** (synced IPTV / playback / providers /
-  Stremio) from **Account** (email, log out, delete). Back returns to Who's watching.
-  Switch profiles from the header menu. **Log out** is under Account in the left nav.
+  settings**. The sidebar splits **Profile** (synced IPTV / playback / navigation /
+  providers / Stremio) from **Account** (email, log out, delete). Back returns to
+  Who's watching. Switch profiles from the header menu. **Log out** is under
+  Account in the left nav.
 
 ## What syncs (remote settings)
 
@@ -33,9 +34,9 @@ Per profile:
 |---------|------------------|
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
+| **`profile_settings` → Navigation** | Visible shell tabs and default tab — editable on web under **Profile → Navigation** |
 | **`profile_settings` → Provider order** | Film/series, Anime, Asian drama host order — stored only when different from built-in defaults |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
-| **`profile_settings` → Navigation** | Visible shell tabs (`visibleIds`) and default tab |
 | **`profile_settings` → IPTV** | Reserved for device sync (M3U URLs). Not edited on the web portal. |
 
 ## What stays local
@@ -117,7 +118,9 @@ flutter run -d macos --dart-define-from-file=../../.env
 ```
 
 When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
-port 3000) and keep `FORJA_WEB_URL` at the default `http://127.0.0.1:3000`.
+`http://127.0.0.1:3000`) and keep `FORJA_WEB_URL` at that default. Restart the
+web dev server after pulling Vite host changes so it binds IPv4 (not only
+`[::1]`).
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL` and
 `SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`). The publishable key is a public client credential; never put a

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 7** components · **8 / 20** acceptance (GitHub-only updater + announcements removed; IPTV passwords encrypted at rest) |
-| **Current slice** | Password encryption verified — IPTV `portal_name` + remaining schema/web/sync still open |
+| **Progress** | **2 / 7** components · **10 / 20** acceptance (GitHub-only updater + announcements removed; IPTV passwords encrypted; web navigation settings) |
+| **Current slice** | Web profile settings cover playback + navigation + portals — remaining schema/admin/sync rows still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -43,7 +43,7 @@
 | 8 | R36-A16 | My List / films not stored in cloud (device-local only) | ✅ |
 | 9 | R36-A17 | `user_iptv_portals.portal_name` is the only cloud display name; no `provider_name` on `iptv_portals` | 🔄 |
 | 10 | R36-A18 | `profile_settings.playback` stores full prefs including `play_source_*` modes | 🔄 |
-| 11 | R36-A19 | `profile_settings.navigation` stores visibleIds + defaultTab | 🔄 |
+| 11 | R36-A19 | `profile_settings.navigation` stores visibleIds + defaultTab | ✅ |
 | 12 | R36-A20 | `iptv_portals.password` encrypted at rest (pgcrypto); decrypted only via authorized RPC | ✅ |
 
 ---
@@ -52,7 +52,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 13 | R36-A07 | Web settings pages read/write new payload paths | 🔄 |
+| 13 | R36-A07 | Web settings pages read/write new payload paths (incl. navigation) | ✅ |
 | 14 | R36-A08 | Admin: accounts list, profile settings, global IPTV portals | ⬜ |
 | 15 | R36-A09 | Flutter pull/push lean `profile_settings` (navigation yes; films no) | 🔄 |
 | 16 | R36-A10 | Profile switch shows dedicated splash until merge completes or fails | ✅ |

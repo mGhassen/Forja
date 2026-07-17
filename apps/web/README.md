@@ -36,7 +36,7 @@ Nitro (`nitro()` in `vite.config.ts`) is required — without it Vercel returns 
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm dev` | TanStack Start / Vite dev server (`:3000`) |
+| `pnpm dev` | TanStack Start / Vite dev server on `http://127.0.0.1:3000` (IPv4 — matches Flutter Web login) |
 | `pnpm build` | Production client + SSR build |
 | `pnpm preview` | Preview production build |
 | `pnpm supabase:reset` | Local DB reset + test users (`forja-dev`, ports 55321+) |

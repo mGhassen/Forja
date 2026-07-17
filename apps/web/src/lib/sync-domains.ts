@@ -270,7 +270,9 @@ export function normalizeNavigationPayload(
   const seen = new Set<string>()
   const ordered: string[] = []
   for (const id of raw) {
-    if (seen.add(id)) ordered.push(id)
+    if (seen.has(id)) continue
+    seen.add(id)
+    ordered.push(id)
   }
   const visibleIds = ordered.length ? ordered : [...DEFAULT_NAV_VISIBLE_IDS]
   let defaultTab = (n?.defaultTab ?? DEFAULT_NAV_TAB).trim() || DEFAULT_NAV_TAB

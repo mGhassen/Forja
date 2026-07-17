@@ -15,9 +15,10 @@ On a fresh install, all available tabs are enabled in this order: Search, Home, 
 ## What you can do
 
 - Toggle visibility for each available tab (Home, Search, Asian Drama, Anime, IPTV, Live Matches, My List)
-- Drag to reorder visible tabs
+- Drag to reorder visible tabs (in the app); on the web portal use up/down controls under **Profile settings → Navigation**
 - Select the star beside a visible tab to make it the menu that opens when you launch the app (and after you switch to this profile mid-session)
 - Restore a cleaner bar by hiding unused hubs
+- Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab)
 
 Some hubs (Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, Arabic) are temporarily withheld from this list and the shell — code remains; they are not deletable from Settings either.
 
