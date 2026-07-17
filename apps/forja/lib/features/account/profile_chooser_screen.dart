@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -246,41 +250,61 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     }
   }
 
+  /// Sits below macOS traffic lights (and desktop caption), not beside them.
+  static double _backTopInset(BuildContext context) {
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final chromeTop = DesktopWindowChrome.isDesktop
+        ? DesktopWindowChrome.topInset(context)
+        : 0.0;
+    return math.max(safeTop, chromeTop) + (DesktopWindowChrome.isDesktop ? 8 : 10);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showChromeBack = widget.showBack &&
+        (_screen == _Screen.choose || _screen == _Screen.manage);
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
-      appBar: widget.showBack &&
-              (_screen == _Screen.choose || _screen == _Screen.manage)
-          ? AppBar(
-              backgroundColor: Colors.transparent,
-              foregroundColor: ForjaShellColors.textPrimary,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: _busy ? null : () => Navigator.of(context).maybePop(),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _screen == _Screen.create || _screen == _Screen.edit
+                ? _ProfileEditor(
+                    title:
+                        _screen == _Screen.create ? 'Add profile' : 'Edit profile',
+                    nameController: _nameCtrl,
+                    avatarKey: _avatarKey,
+                    saving: _busy,
+                    canDelete: _screen == _Screen.edit && _profiles.length > 1,
+                    error: _error,
+                    onAvatarChange: (key) => setState(() => _avatarKey = key),
+                    onSave: _saveEditor,
+                    onDelete: _deleteEditing,
+                    onCancel: () => setState(() {
+                      _screen = _Screen.manage;
+                      _editingId = null;
+                      _error = null;
+                    }),
+                  )
+                : _buildChooserBody(),
+          ),
+          DesktopWindowChrome.overlayDragStrip(),
+          if (showChromeBack)
+            Positioned(
+              top: _backTopInset(context),
+              left: 12,
+              child: ShellBackIconButton(
+                icon: Icons.arrow_back_rounded,
+                size: 28,
+                tooltip: 'Back',
+                onTap: () {
+                  if (_busy) return;
+                  Navigator.of(context).maybePop();
+                },
               ),
-            )
-          : null,
-      body: SafeArea(
-        child: _screen == _Screen.create || _screen == _Screen.edit
-            ? _ProfileEditor(
-                title: _screen == _Screen.create ? 'Add profile' : 'Edit profile',
-                nameController: _nameCtrl,
-                avatarKey: _avatarKey,
-                saving: _busy,
-                canDelete: _screen == _Screen.edit && _profiles.length > 1,
-                error: _error,
-                onAvatarChange: (key) => setState(() => _avatarKey = key),
-                onSave: _saveEditor,
-                onDelete: _deleteEditing,
-                onCancel: () => setState(() {
-                  _screen = _Screen.manage;
-                  _editingId = null;
-                  _error = null;
-                }),
-              )
-            : _buildChooserBody(),
+            ),
+        ],
       ),
     );
   }
