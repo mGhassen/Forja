@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useCallback, useState, type FormEvent } from 'react'
+import { Link } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
@@ -21,19 +21,14 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 
-const MIN_PASSWORD_LENGTH = 6
-
-function SignupForm() {
-  const navigate = useNavigate()
-  const { signUp, user, loading, configured } = useAuth()
+function ForgotPasswordForm() {
+  const { requestPasswordReset, configured } = useAuth()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
+  const [sent, setSent] = useState(false)
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
@@ -44,51 +39,31 @@ function SignupForm() {
     setCaptchaKey((k) => k + 1)
   }
 
-  useEffect(() => {
-    if (!loading && user) {
-      void navigate({ to: '/account/profiles' })
-    }
-  }, [loading, user, navigate])
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
-      return
-    }
-    if (password !== confirm) {
-      setError('Passwords do not match.')
-      return
-    }
     if (captchaConfigured && !captchaToken) {
       setError(CAPTCHA_REQUIRED_MESSAGE)
       return
     }
 
     setSubmitting(true)
-    const { error: signUpError, needsEmailConfirmation: confirmEmail } =
-      await signUp(email.trim(), password, {
-        captchaToken: captchaToken ?? undefined,
-      })
+    const { error: resetError } = await requestPasswordReset(email.trim(), {
+      captchaToken: captchaToken ?? undefined,
+    })
     setSubmitting(false)
 
-    if (signUpError) {
-      setError(signUpError)
+    if (resetError) {
+      setError(resetError)
       resetCaptcha()
       return
     }
 
-    if (confirmEmail) {
-      setNeedsEmailConfirmation(true)
-      return
-    }
-
-    void navigate({ to: '/account/profiles' })
+    setSent(true)
   }
 
-  if (needsEmailConfirmation) {
+  if (sent) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
         <Reveal variant="right" className="w-full max-w-md">
@@ -98,12 +73,12 @@ function SignupForm() {
                 Check your inbox
               </p>
               <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                Confirm email
+                Reset link sent
               </CardTitle>
               <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                We sent a confirmation link to{' '}
-                <span className="text-[#EDE6DA]">{email.trim()}</span>. Open it,
-                then sign in to sync your settings.
+                If an account exists for{' '}
+                <span className="text-[#EDE6DA]">{email.trim()}</span>, we sent a
+                password reset link. Open it to choose a new password.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
@@ -113,12 +88,6 @@ function SignupForm() {
                 className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
               >
                 Back to sign in
-              </Link>
-              <Link
-                to="/download"
-                className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-              >
-                Or download and play without an account →
               </Link>
             </CardContent>
           </Card>
@@ -133,14 +102,13 @@ function SignupForm() {
         <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
           <CardHeader className="space-y-2 pb-2">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
-              New account
+              Account recovery
             </p>
             <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-              Sign up
+              Forgot password
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Optional account for synced settings. Download stays free either
-              way.
+              Enter your email and we&apos;ll send a link to reset your password.
             </CardDescription>
           </CardHeader>
 
@@ -148,15 +116,15 @@ function SignupForm() {
             <form onSubmit={onSubmit} className="space-y-5">
               {!configured ? (
                 <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Web sign-up is not open yet. Download Forja - you can watch
+                  Password reset is not open yet. Download Forja - you can watch
                   without an account.
                 </p>
               ) : null}
 
               <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
+                <Label htmlFor="forgot-email">Email</Label>
                 <Input
-                  id="signup-email"
+                  id="forgot-email"
                   type="email"
                   autoComplete="email"
                   required={configured}
@@ -164,34 +132,6 @@ function SignupForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
-                  type="password"
-                  autoComplete="new-password"
-                  required={configured}
-                  disabled={!configured}
-                  minLength={MIN_PASSWORD_LENGTH}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-confirm">Confirm password</Label>
-                <Input
-                  id="signup-confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  required={configured}
-                  disabled={!configured}
-                  minLength={MIN_PASSWORD_LENGTH}
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
                   className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
                 />
               </div>
@@ -209,7 +149,7 @@ function SignupForm() {
                   className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
                 >
                   {error === AUTH_UNAVAILABLE_MESSAGE
-                    ? 'Sign-up is not available right now. Download Forja and play without an account.'
+                    ? 'Password reset is not available right now. Download Forja and play without an account.'
                     : error}
                 </p>
               ) : null}
@@ -218,13 +158,11 @@ function SignupForm() {
                 <Button
                   type="submit"
                   disabled={
-                    submitting ||
-                    loading ||
-                    (captchaConfigured && !captchaToken)
+                    submitting || (captchaConfigured && !captchaToken)
                   }
                   className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                 >
-                  {submitting ? 'Creating account…' : 'Create account'}
+                  {submitting ? 'Sending link…' : 'Send reset link'}
                 </Button>
               ) : (
                 <Link
@@ -239,7 +177,7 @@ function SignupForm() {
 
             <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
-                Already have an account?{' '}
+                Remembered it?{' '}
                 <Link
                   to="/login"
                   className="text-forja-green hover:text-flame hover:underline"
@@ -247,12 +185,6 @@ function SignupForm() {
                   Sign in
                 </Link>
               </p>
-              <Link
-                to="/download"
-                className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-              >
-                Or download and play without signing up →
-              </Link>
             </div>
           </CardContent>
         </Card>
@@ -261,16 +193,14 @@ function SignupForm() {
   )
 }
 
-export function SignupPage() {
+export function ForgotPasswordPage() {
   return (
     <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
       <SiteHeader solid flush />
 
       <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        <AuthStoryPanel
-          emphasis="Create an account to sync settings across your screens."
-        />
-        <SignupForm />
+        <AuthStoryPanel emphasis="Reset your password to get back to synced settings." />
+        <ForgotPasswordForm />
       </main>
     </div>
   )

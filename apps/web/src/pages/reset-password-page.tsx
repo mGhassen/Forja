@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
-import { TurnstileCaptcha } from '@/components/turnstile-captcha'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -17,38 +16,34 @@ import { Label } from '@/components/ui/label'
 import {
   useAuth,
   AUTH_UNAVAILABLE_MESSAGE,
-  CAPTCHA_REQUIRED_MESSAGE,
 } from '@/hooks/use-auth'
-import { captchaConfigured } from '@/lib/captcha'
 
 const MIN_PASSWORD_LENGTH = 6
 
-function SignupForm() {
+function ResetPasswordForm() {
   const navigate = useNavigate()
-  const { signUp, user, loading, configured } = useAuth()
-  const [email, setEmail] = useState('')
+  const {
+    updatePassword,
+    passwordRecovery,
+    loading,
+    configured,
+    session,
+  } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
-
-  const onCaptchaToken = useCallback((token: string | null) => {
-    setCaptchaToken(token)
-  }, [])
-
-  function resetCaptcha() {
-    setCaptchaToken(null)
-    setCaptchaKey((k) => k + 1)
-  }
+  /** Give the recovery hash/code a moment to establish a session. */
+  const [waited, setWaited] = useState(false)
 
   useEffect(() => {
-    if (!loading && user) {
-      void navigate({ to: '/account/profiles' })
-    }
-  }, [loading, user, navigate])
+    const t = window.setTimeout(() => setWaited(true), 1500)
+    return () => window.clearTimeout(t)
+  }, [])
+
+  const canReset = passwordRecovery || Boolean(session)
+  const stillResolving = !canReset && (!waited || loading)
+  const showInvalid = !canReset && waited && !loading
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -62,63 +57,71 @@ function SignupForm() {
       setError('Passwords do not match.')
       return
     }
-    if (captchaConfigured && !captchaToken) {
-      setError(CAPTCHA_REQUIRED_MESSAGE)
-      return
-    }
 
     setSubmitting(true)
-    const { error: signUpError, needsEmailConfirmation: confirmEmail } =
-      await signUp(email.trim(), password, {
-        captchaToken: captchaToken ?? undefined,
-      })
+    const { error: updateError } = await updatePassword(password)
     setSubmitting(false)
 
-    if (signUpError) {
-      setError(signUpError)
-      resetCaptcha()
-      return
-    }
-
-    if (confirmEmail) {
-      setNeedsEmailConfirmation(true)
+    if (updateError) {
+      setError(updateError)
       return
     }
 
     void navigate({ to: '/account/profiles' })
   }
 
-  if (needsEmailConfirmation) {
+  if (stillResolving) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
         <Reveal variant="right" className="w-full max-w-md">
           <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
             <CardHeader className="space-y-2 pb-2">
-              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-forja-green">
-                Check your inbox
+              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
+                Password reset
               </p>
               <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                Confirm email
+                Opening link…
               </CardTitle>
               <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                We sent a confirmation link to{' '}
-                <span className="text-[#EDE6DA]">{email.trim()}</span>. Open it,
-                then sign in to sync your settings.
+                Confirming your reset link. This only takes a moment.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Reveal>
+      </section>
+    )
+  }
+
+  if (showInvalid) {
+    return (
+      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+        <Reveal variant="right" className="w-full max-w-md">
+          <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
+            <CardHeader className="space-y-2 pb-2">
+              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-flame">
+                Link expired
+              </p>
+              <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
+                Invalid reset link
+              </CardTitle>
+              <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
+                This password reset link is invalid or has expired. Request a
+                new one to continue.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <Link
-                to="/login"
+                to="/forgot-password"
                 data-hover=""
                 className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
               >
-                Back to sign in
+                Request a new link
               </Link>
               <Link
-                to="/download"
+                to="/login"
                 className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
               >
-                Or download and play without an account →
+                Back to sign in →
               </Link>
             </CardContent>
           </Card>
@@ -133,14 +136,14 @@ function SignupForm() {
         <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
           <CardHeader className="space-y-2 pb-2">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
-              New account
+              Password reset
             </p>
             <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-              Sign up
+              Choose a new password
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Optional account for synced settings. Download stays free either
-              way.
+              Pick a new password for your Forja account. At least{' '}
+              {MIN_PASSWORD_LENGTH} characters.
             </CardDescription>
           </CardHeader>
 
@@ -148,29 +151,15 @@ function SignupForm() {
             <form onSubmit={onSubmit} className="space-y-5">
               {!configured ? (
                 <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Web sign-up is not open yet. Download Forja - you can watch
+                  Password reset is not open yet. Download Forja - you can watch
                   without an account.
                 </p>
               ) : null}
 
               <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
+                <Label htmlFor="reset-password">New password</Label>
                 <Input
-                  id="signup-email"
-                  type="email"
-                  autoComplete="email"
-                  required={configured}
-                  disabled={!configured}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
+                  id="reset-password"
                   type="password"
                   autoComplete="new-password"
                   required={configured}
@@ -182,9 +171,9 @@ function SignupForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-confirm">Confirm password</Label>
+                <Label htmlFor="reset-confirm">Confirm password</Label>
                 <Input
-                  id="signup-confirm"
+                  id="reset-confirm"
                   type="password"
                   autoComplete="new-password"
                   required={configured}
@@ -196,20 +185,13 @@ function SignupForm() {
                 />
               </div>
 
-              {configured && captchaConfigured ? (
-                <div className="space-y-2">
-                  <Label>Verification</Label>
-                  <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
-                </div>
-              ) : null}
-
               {error ? (
                 <p
                   role="alert"
                   className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
                 >
                   {error === AUTH_UNAVAILABLE_MESSAGE
-                    ? 'Sign-up is not available right now. Download Forja and play without an account.'
+                    ? 'Password reset is not available right now. Download Forja and play without an account.'
                     : error}
                 </p>
               ) : null}
@@ -217,14 +199,10 @@ function SignupForm() {
               {configured ? (
                 <Button
                   type="submit"
-                  disabled={
-                    submitting ||
-                    loading ||
-                    (captchaConfigured && !captchaToken)
-                  }
+                  disabled={submitting || loading}
                   className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                 >
-                  {submitting ? 'Creating account…' : 'Create account'}
+                  {submitting ? 'Saving…' : 'Save new password'}
                 </Button>
               ) : (
                 <Link
@@ -237,22 +215,15 @@ function SignupForm() {
               )}
             </form>
 
-            <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+            <div className="mt-8 border-t border-[rgba(237,230,218,0.1)] pt-6">
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
-                Already have an account?{' '}
                 <Link
                   to="/login"
                   className="text-forja-green hover:text-flame hover:underline"
                 >
-                  Sign in
+                  Back to sign in
                 </Link>
               </p>
-              <Link
-                to="/download"
-                className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-              >
-                Or download and play without signing up →
-              </Link>
             </div>
           </CardContent>
         </Card>
@@ -261,16 +232,14 @@ function SignupForm() {
   )
 }
 
-export function SignupPage() {
+export function ResetPasswordPage() {
   return (
     <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
       <SiteHeader solid flush />
 
       <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        <AuthStoryPanel
-          emphasis="Create an account to sync settings across your screens."
-        />
-        <SignupForm />
+        <AuthStoryPanel emphasis="Almost there — set a new password and you’re back in." />
+        <ResetPasswordForm />
       </main>
     </div>
   )

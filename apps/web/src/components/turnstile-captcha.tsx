@@ -39,7 +39,7 @@ export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) 
   }
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('relative z-10 overflow-visible', className)}>
       <Turnstile
         siteKey={turnstileSiteKey!}
         options={{ theme: 'dark', size: 'normal' }}

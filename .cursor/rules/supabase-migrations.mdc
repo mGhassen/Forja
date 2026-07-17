@@ -1,0 +1,33 @@
+---
+description: Supabase is production — immutable migrations, no silent resets
+alwaysApply: true
+---
+
+# Supabase — production schema discipline
+
+The Forja web portal is **released**. Hosted Supabase is live data. Treat schema like production.
+
+## Mandatory
+
+1. **Schema changes only via new migrations** — never edit tables/RLS/functions/triggers by hand in Studio (or SQL that bypasses the migration history) as the way to “fix” prod/local parity. Add a new file under `apps/web/supabase/migrations/`.
+2. **Pushed migrations are immutable** — once a migration has been committed and applied (local history or remote), **do not edit, rename, reorder, or delete it**. Fix mistakes with a **new** forward migration.
+3. **Never reset without asking** — do not run `supabase db reset`, `node scripts/reset-forja-supabase.js`, or any destructive wipe/recreate of local or remote DB unless the user explicitly approved that reset in the conversation.
+
+## Allowed
+
+- Add a new timestamped migration SQL file for additive/altering changes
+- Update `seed.sql` for **local-only** seed data (still never rewrite old migrations to change seed assumptions that already shipped)
+- Ask before any reset, link, push, or remote `db` command that mutates hosted data
+
+## Forbidden
+
+| Action | Why |
+|--------|-----|
+| Edit an existing `migrations/*.sql` that already shipped | Breaks checksums / history on every environment that already applied it |
+| `db reset` / wipe without user OK | Destroys local (or worse, remote) state silently |
+| “Just change it in Studio” as the source of truth | Drift; next reset or teammate loses the change |
+| Squash / rewrite migration history on a released project | Same as editing old migrations |
+
+## When stuck
+
+If local and remote disagree, **stop and ask**. Do not “fix” by resetting or rewriting history.

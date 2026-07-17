@@ -302,6 +302,9 @@
   opacity: 1;
   transform: none;
   filter: none;
+  /* Drop will-change so fixed descendants (e.g. Turnstile Troubleshoot)
+     use the viewport as containing block, not this element. */
+  will-change: auto;
 }
 
 /* Hero load-in (first viewport) */

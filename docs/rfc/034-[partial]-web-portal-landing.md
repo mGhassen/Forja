@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) |
-| **Current slice** | Account vs profile settings shell + logout/delete — configure live Supabase captcha secret + deploy Edge Functions to verify end-to-end |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **3 / 3** acceptance (password reset) |
+| **Current slice** | Password reset shipped — configure live Supabase redirect URLs + recovery template; captcha secret + Edge deploy remain ops |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -71,6 +71,16 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R34-A18 | `/login?desktop_callback=` (loopback only) returns session tokens to the desktop app after sign-in | ✅ |
+
+---
+
+## Acceptance (password reset)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R34-A19 | `/forgot-password` requests recovery email via Supabase (+ Turnstile when configured); login links to it | ✅ |
+| 2 | R34-A20 | Recovery link lands on `/reset-password`; user sets new password via `updateUser` | ✅ |
+| 3 | R34-A21 | Local Auth redirect allowlist includes `/forgot-password` and `/reset-password` | ✅ |
 
 ---
 

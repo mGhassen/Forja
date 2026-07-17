@@ -96,7 +96,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [1.0.1-[open].md](1.0.1-[open].md) | 1.0.x patch checklist | Bab Souika | open — details & player UX (67/76 shipped) |
 | [1.0.2-[draft].md](1.0.2-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — overlay, providers, casting, settings UX (14/24) |
 | [1.0.3-[draft].md](1.0.3-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — Resolver Engine (5/8) |
-| [1.0.4-[draft].md](1.0.4-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — web portal + desktop account/profile shell (16/17; hosted secrets + Edge/Turnstile ops) |
+| [1.0.4-[draft].md](1.0.4-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — web portal + desktop account/profile shell (18/19; hosted secrets + Edge/Turnstile/recovery ops) |
 | `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |
 
 ## Done — v1

@@ -1,5 +1,8 @@
+# Dependencies
+node_modules/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +10,43 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Env (keep .env.example tracked)
+.env
+.env.*
+!.env.example
 *.local
 
-# Editor directories and files
+# Vite / SPA build
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+
+# TanStack Start / Nitro / Vinxi build & cache
+.output/
+.nitro/
+.tanstack/
+.vinxi/
+.wrangler/
+.netlify/
+.vercel/
+__unconfig*
+
+# Test / coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Editor
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS
+Thumbs.db

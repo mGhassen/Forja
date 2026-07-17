@@ -147,7 +147,7 @@ function LoginForm() {
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="w-full max-w-md">
-        <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)] backdrop-blur-sm">
+        <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
           <CardHeader className="space-y-2 pb-2">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
               {isDesktopLogin ? 'Desktop handoff' : 'Welcome back'}
@@ -191,7 +191,17 @@ function LoginForm() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="password">Password</Label>
+                    {configured && !isDesktopLogin ? (
+                      <Link
+                        to="/forgot-password"
+                        className="text-xs text-[rgba(237,230,218,0.45)] transition-colors hover:text-forja-green hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
+                    ) : null}
+                  </div>
                   <Input
                     id="password"
                     type="password"

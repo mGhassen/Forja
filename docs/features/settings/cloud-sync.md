@@ -21,7 +21,9 @@ another screen.
   the page shows the active profile (**Watching now** — tap to switch), cloud
   sync status, and **Sign out**
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
-  when configured). New accounts have no profiles yet — create your first one
+  when configured). Use **Forgot password?** on `/login` (or open `/forgot-password`)
+  to email a reset link; the link opens `/reset-password` so you can choose a new
+  password. New accounts have no profiles yet — create your first one
   (name + avatar); default synced settings are attached then. After that, choose a
   profile on **Who's watching?**, then open **Remote settings**. The sidebar splits
   **Profile** (synced IPTV / playback / navigation / Stremio) from **Account**
@@ -63,7 +65,8 @@ Not synced — device-specific or sensitive:
   **Cancel web login** (or **Continue without an account**) to unlock the
   screen. Create accounts only on the web (`/signup`); the app does not offer
   in-app signup. Web signup and sign-in show a Cloudflare Turnstile check when
-  captcha is configured.
+  captcha is configured. Forgot password is web-only: `/forgot-password` emails a
+  reset link that opens `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
 - Select the active profile from the desktop rail avatar, or tap **Watching now**
   under **Settings → Profile & account** to open **Who’s watching?** / **Manage

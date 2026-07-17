@@ -86,8 +86,9 @@ your public web origin so the logo loads in real inboxes.
 1. Set `enable_confirmations = true` in `config.toml`
 2. Restart: `supabase stop && supabase start` (from `apps/web`)
 3. Run the web app (`pnpm dev`) so `/brand/logo-email.png` is reachable
-4. Sign up (or trigger recovery) → open Mailpit UI at **http://127.0.0.1:55324**
-5. Set `enable_confirmations = false` again if you want click-free test users
+4. Sign up (or open `/forgot-password` to trigger recovery) → open Mailpit UI at **http://127.0.0.1:55324**
+5. For recovery: click **Reset password** in the email → `/reset-password` → set a new password
+6. Set `enable_confirmations = false` again if you want click-free test users
 
 ### Hosted (production Dashboard)
 
@@ -98,6 +99,8 @@ editing files in `templates/`:
 2. For each template above, paste the HTML and matching subject
 3. Confirm **URL Configuration → Site URL** is the public web origin (not
    `localhost`) so `{{ .SiteURL }}/brand/logo-email.png` resolves
+4. Add exact redirect URLs for `/login`, `/signup`, `/forgot-password`,
+   `/reset-password`, and `/account` under **Redirect URLs**
 
 From `apps/web` only:
 

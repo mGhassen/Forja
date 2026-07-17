@@ -28,6 +28,8 @@ type AuthContextValue = {
   user: User | null
   loading: boolean
   configured: boolean
+  /** True after a recovery link establishes a password-reset session. */
+  passwordRecovery: boolean
   signIn: (
     email: string,
     password: string,
@@ -38,6 +40,11 @@ type AuthContextValue = {
     password: string,
     options?: { captchaToken?: string },
   ) => Promise<AuthResult>
+  requestPasswordReset: (
+    email: string,
+    options?: { captchaToken?: string },
+  ) => Promise<AuthResult>
+  updatePassword: (password: string) => Promise<AuthResult>
   signOut: () => Promise<void>
   deleteAccount: (confirmEmail: string) => Promise<{ error: string | null }>
 }
@@ -47,6 +54,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -62,7 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecovery(true)
+      } else if (event === 'SIGNED_OUT') {
+        setPasswordRecovery(false)
+      }
       setSession(next)
       setLoading(false)
     })
@@ -133,6 +146,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const requestPasswordReset = useCallback(
+    async (
+      email: string,
+      options?: { captchaToken?: string },
+    ): Promise<AuthResult> => {
+      if (!supabaseConfigured) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[auth] Password reset unavailable - set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in apps/web/.env',
+          )
+        }
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo:
+          typeof window !== 'undefined'
+            ? `${window.location.origin}/reset-password`
+            : undefined,
+        ...(options?.captchaToken
+          ? { captchaToken: options.captchaToken }
+          : {}),
+      })
+      return { error: error?.message ?? null }
+    },
+    [],
+  )
+
+  const updatePassword = useCallback(
+    async (password: string): Promise<AuthResult> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { error } = await supabase.auth.updateUser({ password })
+      if (!error) setPasswordRecovery(false)
+      return { error: error?.message ?? null }
+    },
+    [],
+  )
+
   const signOut = useCallback(async () => {
     if (!supabaseConfigured) return
     await supabase.auth.signOut()
@@ -186,12 +238,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       loading,
       configured: supabaseConfigured,
+      passwordRecovery,
       signIn,
       signUp,
+      requestPasswordReset,
+      updatePassword,
       signOut,
       deleteAccount,
     }),
-    [session, loading, signIn, signUp, signOut, deleteAccount],
+    [
+      session,
+      loading,
+      passwordRecovery,
+      signIn,
+      signUp,
+      requestPasswordReset,
+      updatePassword,
+      signOut,
+      deleteAccount,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

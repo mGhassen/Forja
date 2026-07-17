@@ -64,10 +64,22 @@ installer/windows/Output/
 # Release packaging artifacts
 /dist/
 
-# Node (apps/web)
+# Node (apps/web) — build/cache/deps (see also apps/web/.gitignore)
 **/node_modules/
 apps/web/dist/
+apps/web/dist-ssr/
+apps/web/.vite/
+apps/web/.output/
+apps/web/.nitro/
+apps/web/.tanstack/
+apps/web/.vinxi/
+apps/web/.wrangler/
+apps/web/.netlify/
+apps/web/.vercel/
+apps/web/coverage/
 apps/web/.env
+apps/web/.env.*
+!apps/web/.env.example
 apps/web/.env.local
 
 # Supabase CLI local cache (keep migrations/config tracked)

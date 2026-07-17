@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IptvRouteImport } from './routes/iptv'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DmcaRouteImport } from './routes/dmca'
 import { Route as AccountRouteImport } from './routes/account'
@@ -37,6 +39,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -45,6 +52,11 @@ const LoginRoute = LoginRouteImport.update({
 const IptvRoute = IptvRouteImport.update({
   id: '/iptv',
   path: '/iptv',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -120,8 +132,10 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRouteWithChildren
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/account/profiles': typeof AccountProfilesRoute
@@ -139,8 +153,10 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRouteWithChildren
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/account/profiles': typeof AccountProfilesRoute
@@ -159,8 +175,10 @@ export interface FileRoutesById {
   '/account': typeof AccountRouteWithChildren
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/iptv': typeof IptvRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/account/profiles': typeof AccountProfilesRoute
@@ -180,8 +198,10 @@ export interface FileRouteTypes {
     | '/account'
     | '/dmca'
     | '/download'
+    | '/forgot-password'
     | '/iptv'
     | '/login'
+    | '/reset-password'
     | '/signup'
     | '/terms'
     | '/account/profiles'
@@ -199,8 +219,10 @@ export interface FileRouteTypes {
     | '/account'
     | '/dmca'
     | '/download'
+    | '/forgot-password'
     | '/iptv'
     | '/login'
+    | '/reset-password'
     | '/signup'
     | '/terms'
     | '/account/profiles'
@@ -218,8 +240,10 @@ export interface FileRouteTypes {
     | '/account'
     | '/dmca'
     | '/download'
+    | '/forgot-password'
     | '/iptv'
     | '/login'
+    | '/reset-password'
     | '/signup'
     | '/terms'
     | '/account/profiles'
@@ -238,8 +262,10 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRouteWithChildren
   DmcaRoute: typeof DmcaRoute
   DownloadRoute: typeof DownloadRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   IptvRoute: typeof IptvRoute
   LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
@@ -261,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -273,6 +306,13 @@ declare module '@tanstack/react-router' {
       path: '/iptv'
       fullPath: '/iptv'
       preLoaderRoute: typeof IptvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download': {
@@ -409,8 +449,10 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRouteWithChildren,
   DmcaRoute: DmcaRoute,
   DownloadRoute: DownloadRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   IptvRoute: IptvRoute,
   LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
