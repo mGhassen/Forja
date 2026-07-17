@@ -1,10 +1,31 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
+/// Map key for portal passwords in [SecureSettings.iptvPortalPasswords].
+String iptvPortalPasswordMapKey(String url, String username) =>
+    '${url.trim()}|${username.trim()}'.toLowerCase();
+
+/// Prefs JSON for one portal — never includes the password.
+Map<String, dynamic> iptvPortalMetadataJson(VerifiedPortal v) => {
+      'url': v.portal.url,
+      'username': v.portal.username,
+      'source': v.portal.source,
+      'label': v.label,
+      'name': v.name,
+      'expiry': v.expiry,
+      'max': v.maxConnections,
+      'active': v.activeConnections,
+    };
+
 /// Verified portal store (port of IptvStore.kt).
+///
+/// Non-secret portal metadata lives in SharedPreferences. Passwords live in
+/// Keychain/Keystore via [SecureSettings.iptvPortalPasswords]. CSV export still
+/// writes plaintext passwords on purpose (user-owned backup file).
 class IptvStore {
   static const _key = 'pt_iptv_verified_portals';
   static const _favKey = 'pt_iptv_favorite_portal_keys';
@@ -18,28 +39,97 @@ class IptvStore {
     listRevision.value++;
   }
 
+  static Future<Map<String, String>> _loadPasswordMap() async {
+    final raw = await SecureSettings.read(SecureSettings.iptvPortalPasswords);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final e in decoded.entries)
+          e.key.toString(): e.value?.toString() ?? '',
+      }..removeWhere((_, v) => v.isEmpty);
+    } catch (e) {
+      debugPrint('IptvStore password map decode failed: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> _writePasswordMap(Map<String, String> map) async {
+    final cleaned = {
+      for (final e in map.entries)
+        if (e.value.isNotEmpty) e.key: e.value,
+    };
+    try {
+      if (cleaned.isEmpty) {
+        await SecureSettings.delete(SecureSettings.iptvPortalPasswords);
+      } else {
+        await SecureSettings.write(
+          SecureSettings.iptvPortalPasswords,
+          json.encode(cleaned),
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('IptvStore secure password write failed: $e');
+      return false;
+    }
+  }
+
   static Future<List<VerifiedPortal>> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     if (raw == null) return [];
     try {
       final arr = json.decode(raw) as List;
-      return arr.map((e) {
+      final passwords = await _loadPasswordMap();
+      var needsStrip = false;
+      final list = <VerifiedPortal>[];
+
+      for (final e in arr) {
         final o = e as Map<String, dynamic>;
-        return VerifiedPortal(
-          portal: IptvPortal(
-            url: o['url'] as String? ?? '',
-            username: o['username'] as String? ?? '',
-            password: o['password'] as String? ?? '',
-            source: o['source'] as String? ?? '',
+        final url = o['url'] as String? ?? '';
+        final username = o['username'] as String? ?? '';
+        final legacyPassword = o['password'] as String? ?? '';
+        final mapKey = iptvPortalPasswordMapKey(url, username);
+        var password = passwords[mapKey] ?? '';
+
+        if (legacyPassword.isNotEmpty) {
+          if (password != legacyPassword) {
+            passwords[mapKey] = legacyPassword;
+            password = legacyPassword;
+          }
+          needsStrip = true;
+        }
+
+        list.add(
+          VerifiedPortal(
+            portal: IptvPortal(
+              url: url,
+              username: username,
+              password: password,
+              source: o['source'] as String? ?? '',
+            ),
+            label: o['label'] as String? ?? '',
+            name: o['name'] as String? ?? '',
+            expiry: o['expiry'] as String? ?? '',
+            maxConnections: o['max'] as String? ?? '1',
+            activeConnections: o['active'] as String? ?? '0',
           ),
-          label: o['label'] as String? ?? '',
-          name: o['name'] as String? ?? '',
-          expiry: o['expiry'] as String? ?? '',
-          maxConnections: o['max'] as String? ?? '1',
-          activeConnections: o['active'] as String? ?? '0',
         );
-      }).toList();
+      }
+
+      if (needsStrip) {
+        final secured = await _writePasswordMap(passwords);
+        if (secured) {
+          await prefs.setString(
+            _key,
+            json.encode(list.map(iptvPortalMetadataJson).toList()),
+          );
+        }
+      }
+
+      return list;
     } catch (e) {
       debugPrint('IptvStore.load failed: $e');
       return [];
@@ -48,20 +138,31 @@ class IptvStore {
 
   static Future<void> save(List<VerifiedPortal> list) async {
     final prefs = await SharedPreferences.getInstance();
-    final arr = list
-        .map((v) => {
-              'url': v.portal.url,
-              'username': v.portal.username,
+    final passwords = <String, String>{
+      for (final v in list)
+        if (v.portal.password.isNotEmpty)
+          iptvPortalPasswordMapKey(v.portal.url, v.portal.username):
+              v.portal.password,
+    };
+
+    final secured = await _writePasswordMap(passwords);
+    if (secured) {
+      await prefs.setString(
+        _key,
+        json.encode(list.map(iptvPortalMetadataJson).toList()),
+      );
+    } else {
+      // Keychain unavailable — keep portals usable; passwords stay in prefs.
+      final arr = list
+          .map(
+            (v) => {
+              ...iptvPortalMetadataJson(v),
               'password': v.portal.password,
-              'source': v.portal.source,
-              'label': v.label,
-              'name': v.name,
-              'expiry': v.expiry,
-              'max': v.maxConnections,
-              'active': v.activeConnections,
-            })
-        .toList();
-    await prefs.setString(_key, json.encode(arr));
+            },
+          )
+          .toList();
+      await prefs.setString(_key, json.encode(arr));
+    }
     scheduleIptvSyncPush();
   }
 

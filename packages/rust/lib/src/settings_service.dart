@@ -871,6 +871,7 @@ class SettingsService {
     SecureSettings.prowlarrApiKey,
     SecureSettings.webstreamrMfpPassword,
     SecureSettings.webstreamrTmdbToken,
+    SecureSettings.iptvPortalPasswords,
     'trakt_access_token',
     'trakt_refresh_token',
     'trakt_expires_at',

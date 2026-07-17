@@ -1344,7 +1344,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           reloadHint: 'That saved link is no longer working',
           onReload: _manualRecheck,
           onCancel: () {
-            _cancelled = true;
+            _haltBackgroundResolve();
             _manualSwitchRequested = false;
             _manualPreferredSourceKey = null;
             Navigator.of(context).pop();

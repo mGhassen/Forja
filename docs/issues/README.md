@@ -86,7 +86,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [062-[fixed]-…](fixed/062-[fixed]-windows-quit-freeze-unbounded-mpv-teardown.md) | Windows quit freezes (unbounded mpv teardown) | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [063-[fixed]-…](fixed/063-[fixed]-iptv-catalog-scrape-extract-still-dart.md) | IPTV catalog scrape extract still Dart | P2 | Medium | fixed | Complete · 4/4 · 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [064-[fixed]-…](fixed/064-[fixed]-stremio-nuvio-player-sources-panel-missing.md) | Stremio/Nuvio player Sources panel missing | P2 | Medium | fixed | Complete · 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [065-[open]-…](065-[open]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | open | 9/9 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [065-[open]-…](065-[open]-source-fetch-continues-after-leave.md) | Source fetch continues after leave | P1 | High | open | 10/10 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [066-[open]-…](066-[open]-canonical-settings-persistence.md) | Canonical settings persistence (KV file + secure secrets) | P1 | High | open | 7/7 · A 4/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [067-[fixed]-…](fixed/067-[fixed]-server-panel-reload-ignores-disk-cache.md) | Server panel reload no-op from disk cache | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [068-[fixed]-…](fixed/068-[fixed]-catalog-sources-panel-ttl-cache-lazy-reload.md) | Catalog Sources TTL cache + lazy kind + per-kind reload | P2 | Medium | fixed | Complete · 9/9 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -98,6 +98,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [074-[fixed]-…](fixed/074-[fixed]-vod-eof-seek-bar-stuck.md) | VOD EOF sticks seek bar / mislabels real end | P1 | High | fixed | Complete · 5/5 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [075-[fixed]-…](fixed/075-[fixed]-anime-dead-cache-empty-sources.md) | Anime dead session cache pins one stream / empty Sources | P1 | High | fixed | Complete · 12/12 · A 4/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [076-[fixed]-…](fixed/076-[fixed]-provider-score-negatives-floored.md) | Provider fail (−2) verdicts floored away from global Σ | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [077-[fixed]-…](fixed/077-[fixed]-iptv-portal-passwords-plaintext-prefs.md) | IPTV portal passwords in plaintext prefs | P1 | High | fixed | Complete · 4/4 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

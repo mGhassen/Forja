@@ -15,6 +15,10 @@ void main() {
       SecureSettings.forbiddenCanonicalKeys,
       contains('webstreamr_tmdb_token'),
     );
+    expect(
+      SecureSettings.forbiddenCanonicalKeys,
+      contains('iptv_portal_passwords_v1'),
+    );
     // Non-secret configuration must remain allowed in the canonical file.
     expect(
       SecureSettings.forbiddenCanonicalKeys.contains('stream_provider_order'),

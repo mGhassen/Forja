@@ -158,8 +158,10 @@ class _SettingsIptvPortalsSectionState extends State<SettingsIptvPortalsSection>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Export or import Xtream portals as a CSV file (includes '
-                'passwords). Import adds only portals that are not already saved.',
+                'Export or import Xtream portals as a CSV file. The file '
+                'includes passwords in plain text — keep it private. On this '
+                'device, portal passwords are stored in the system Keychain / '
+                'Keystore. Import adds only portals that are not already saved.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                   fontSize: 13,

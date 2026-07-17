@@ -51,7 +51,7 @@ Not synced — device-specific or sensitive:
 - Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from
   the web (share codes match the app peer-code flow). Portal rows match the app
   panel (expiry, name, URL, seats); lists paginate every 10 items. **Import CSV** /
-  **Export CSV** move portals (including passwords) as a spreadsheet-friendly file —
+  **Export CSV** move portals (plain-text passwords in the file; on-device they use Keychain) as a spreadsheet-friendly file —
   import adds only portals that are not already in your list (shown in an import log);
   then **Save** to sync.
 - Change playback prefs and provider order from the web

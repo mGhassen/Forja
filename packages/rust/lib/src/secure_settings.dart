@@ -35,6 +35,9 @@ abstract final class SecureSettings {
   static const webstreamrMfpPassword = 'webstreamr_mfp_password';
   static const webstreamrTmdbToken = 'webstreamr_tmdb_token';
 
+  /// IPTV Xtream portal passwords (JSON map `url|username` → password).
+  static const iptvPortalPasswords = 'iptv_portal_passwords_v1';
+
   /// Keys that must never appear as plaintext in forja_engine_store.json.
   static const forbiddenCanonicalKeys = <String>{
     rdAccessToken,
@@ -50,6 +53,7 @@ abstract final class SecureSettings {
     prowlarrApiKey,
     webstreamrMfpPassword,
     webstreamrTmdbToken,
+    iptvPortalPasswords,
   };
 
   static Future<String?> read(String key) async {

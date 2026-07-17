@@ -41,6 +41,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 ## Tips
 
+- Portal passwords on this device use Keychain / Keystore; CSV import/export files still contain passwords in plain text — keep those files private
 - **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by portal name, account name, or URL
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit **Reload** on the selected shelf (or the centered **Reload** button when the catalog failed to load)
 - On **Android TV**, focusable controls (search, portals, dialogs, back/close, portal actions, group rows) use **brand green** when D-pad focused — **Live / Movies / Series** shelf chips keep their own section colors on focus (same as hover)

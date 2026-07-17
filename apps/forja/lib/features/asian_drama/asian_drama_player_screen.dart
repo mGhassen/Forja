@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -145,8 +146,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
   @override
   void dispose() {
-    _cancelled = true;
-    unawaited(_extractor.cancel());
+    _haltResolve();
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
     if (!_handedOffLiveNotifiers) {
@@ -154,6 +154,13 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       _providerSourcesCache.dispose();
     }
     super.dispose();
+  }
+
+  /// Leave title / Cancel / tab switch — same stop as the Cancel button.
+  void _haltResolve() {
+    _cancelled = true;
+    unawaited(_extractor.cancel());
+    DomainStreamProviderResolver.cancelAllPending();
   }
 
   void _setPhase(String message) {
@@ -645,8 +652,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           fadeOutNotifier: _fadeOutNotifier,
           subtitle: episodeLabel,
           onCancel: () {
-            _cancelled = true;
-            unawaited(_extractor.cancel());
+            _haltResolve();
             Navigator.of(context).pop();
           },
         );
