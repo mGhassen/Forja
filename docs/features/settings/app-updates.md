@@ -14,6 +14,7 @@ Forja can check for newer builds when the app starts and lets you check manually
 
 - Tap **Check for updates** in Settings
 - Accept update prompt when a newer version exists
+- Read **What’s new** for every release since your installed version (not only the latest tag) — empty or auto-generated GitHub stubs are skipped
 - Install updates on Android through the update dialog when supported
 - On macOS, download the `.dmg`, then choose **Install and close Forja** to open it and quit the app, or **Skip for now** to keep using Forja; if Downloads is unavailable, the app falls back to its own updates folder
 - On Windows, download the `.exe`, then choose **Install and close Forja** to launch it and quit the app, or **Skip for now**

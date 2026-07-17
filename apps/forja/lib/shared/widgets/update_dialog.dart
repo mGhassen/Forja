@@ -484,11 +484,17 @@ class _UpdateDialogState extends State<UpdateDialog> {
       children: [
         for (var i = 0; i < sections.length; i++) ...[
           if (sections[i].title != null)
-            _ReleaseNoteGroupHeader(
-              title: sections[i].title!,
-              layout: layout,
-              isFirst: i == 0,
-            ),
+            sections[i].isVersion
+                ? _ReleaseNoteVersionHeader(
+                    title: sections[i].title!,
+                    layout: layout,
+                    isFirst: i == 0,
+                  )
+                : _ReleaseNoteGroupHeader(
+                    title: sections[i].title!,
+                    layout: layout,
+                    isFirst: i == 0,
+                  ),
           ...sections[i].items.map(
             (item) => _ReleaseNoteRow(item: item, layout: layout),
           ),
@@ -742,6 +748,37 @@ class _ReleaseNotesScrollerState extends State<_ReleaseNotesScroller> {
           bottom: widget.layout.isTv ? 8 : 12,
         ),
         child: widget.child,
+      ),
+    );
+  }
+}
+
+class _ReleaseNoteVersionHeader extends StatelessWidget {
+  const _ReleaseNoteVersionHeader({
+    required this.title,
+    required this.layout,
+    required this.isFirst,
+  });
+
+  final String title;
+  final _UpdateLayout layout;
+  final bool isFirst;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: isFirst ? 0 : (layout.isTv ? 18 : 26),
+        bottom: layout.isTv ? 8 : 10,
+      ),
+      child: Text(
+        title,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: layout.versionSize,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+          color: ForjaShellColors.textPrimary,
+        ),
       ),
     );
   }
@@ -1052,10 +1089,15 @@ class _ReleaseNoteItem {
 }
 
 class _ReleaseNoteSection {
-  const _ReleaseNoteSection({this.title, required this.items});
+  const _ReleaseNoteSection({
+    this.title,
+    required this.items,
+    this.isVersion = false,
+  });
 
   final String? title;
   final List<_ReleaseNoteItem> items;
+  final bool isVersion;
 }
 
 abstract final class _ReleaseNotesParser {
@@ -1069,36 +1111,68 @@ abstract final class _ReleaseNotesParser {
   static List<_ReleaseNoteSection> parseSections(String raw) {
     final sections = <_ReleaseNoteSection>[];
     String? currentTitle;
+    var currentIsVersion = false;
+    String? pendingVersionTitle;
     var currentItems = <_ReleaseNoteItem>[];
 
-    void flush() {
-      if (currentItems.isEmpty) return;
+    void flushGroup() {
+      if (currentItems.isEmpty) {
+        currentTitle = null;
+        currentIsVersion = false;
+        return;
+      }
       sections.add(
-        _ReleaseNoteSection(title: currentTitle, items: List.of(currentItems)),
+        _ReleaseNoteSection(
+          title: currentTitle,
+          items: List.of(currentItems),
+          isVersion: currentIsVersion,
+        ),
       );
       currentItems = [];
+      currentTitle = null;
+      currentIsVersion = false;
+    }
+
+    void flushPendingVersion() {
+      if (pendingVersionTitle == null) return;
+      sections.add(
+        _ReleaseNoteSection(
+          title: pendingVersionTitle,
+          items: const [],
+          isVersion: true,
+        ),
+      );
+      pendingVersionTitle = null;
     }
 
     for (final rawLine in raw.split('\n')) {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
 
-      if (line.startsWith('# ') && !line.startsWith('### ')) {
+      // Multi-version aggregate uses `# X.Y.Z` as version headers.
+      if (line.startsWith('# ') && !line.startsWith('##')) {
+        flushGroup();
+        flushPendingVersion();
+        pendingVersionTitle = line.substring(2).trim();
         continue;
       }
 
       if (line.startsWith('### ')) {
-        flush();
+        flushGroup();
+        flushPendingVersion();
         currentTitle = line.substring(4).trim();
+        currentIsVersion = false;
         continue;
       }
 
       if (!_bulletPattern.hasMatch(line)) continue;
 
+      flushPendingVersion();
       currentItems.add(_parseBullet(line));
     }
 
-    flush();
+    flushGroup();
+    flushPendingVersion();
     return sections;
   }
 

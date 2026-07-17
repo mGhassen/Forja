@@ -3,14 +3,20 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppUpdaterService {
   static const String githubRepo = 'mGhassen/Forja';
-  static const String githubApiUrl =
-      'https://api.github.com/repos/$githubRepo/releases/latest';
+  static const String githubReleasesUrl =
+      'https://api.github.com/repos/$githubRepo/releases?per_page=100';
+
+  static const Map<String, String> _githubHeaders = {
+    'Accept': 'application/vnd.github+json',
+    'User-Agent': 'Forja-AppUpdater',
+  };
 
   Future<UpdateInfo?> checkForUpdates() async {
     try {
@@ -24,21 +30,59 @@ class AppUpdaterService {
   }
 
   Future<UpdateInfo?> _checkGitHub(String currentVersion) async {
-    final response = await http.get(Uri.parse(githubApiUrl));
+    final response = await http.get(
+      Uri.parse(githubReleasesUrl),
+      headers: _githubHeaders,
+    );
 
     if (response.statusCode != 200) return null;
 
-    final data = json.decode(response.body) as Map<String, dynamic>;
-    final latestVersion =
-        (data['tag_name'] as String).replaceFirst('v', '');
-    final releaseNotes =
-        data['body'] as String? ?? 'No release notes available';
-    final publishedAt = DateTime.parse(data['published_at'] as String);
+    final decoded = json.decode(response.body);
+    if (decoded is! List) return null;
 
-    if (!_isNewerVersion(currentVersion, latestVersion)) return null;
+    final releases = <_GitHubRelease>[];
+    for (final item in decoded) {
+      if (item is! Map<String, dynamic>) continue;
+      final parsed = _GitHubRelease.tryParse(item);
+      if (parsed != null) releases.add(parsed);
+    }
+
+    final stable = releases
+        .where((r) => !r.draft && !r.prerelease)
+        .toList()
+      ..sort(
+        (a, b) => AppUpdaterReleaseNotes.compareVersions(b.version, a.version),
+      );
+
+    if (stable.isEmpty) return null;
+
+    final latest = stable.first;
+    if (!AppUpdaterReleaseNotes.isNewerVersion(
+      currentVersion,
+      latest.version,
+    )) {
+      return null;
+    }
+
+    final releaseNotes = AppUpdaterReleaseNotes.aggregate(
+      currentVersion: currentVersion,
+      releases: [
+        for (final r in stable)
+          ReleaseNotesEntry(
+            version: r.version,
+            body: r.body,
+            prerelease: r.prerelease,
+            draft: r.draft,
+          ),
+      ],
+    );
+
+    final notes = releaseNotes.isEmpty
+        ? 'No release notes were published for this update.'
+        : releaseNotes;
 
     String? downloadUrl;
-    final assets = data['assets'] as List;
+    final assets = latest.assets;
 
     if (Platform.isWindows) {
       final asset = assets.cast<dynamic>().firstWhere(
@@ -62,15 +106,15 @@ class AppUpdaterService {
     } else if (Platform.isAndroid) {
       downloadUrl = _pickAndroidApkUrl(assets);
     } else if (Platform.isIOS) {
-      downloadUrl = data['html_url'] as String?;
+      downloadUrl = latest.htmlUrl;
     }
 
     return UpdateInfo(
       currentVersion: currentVersion,
-      latestVersion: latestVersion,
-      downloadUrl: downloadUrl ?? data['html_url'] as String,
-      releaseNotes: releaseNotes,
-      publishedAt: publishedAt,
+      latestVersion: latest.version,
+      downloadUrl: downloadUrl ?? latest.htmlUrl,
+      releaseNotes: notes,
+      publishedAt: latest.publishedAt,
       isMacOS: Platform.isMacOS,
       isIOS: Platform.isIOS,
     );
@@ -138,25 +182,49 @@ class AppUpdaterService {
     return 'arm64';
   }
 
-  bool _isNewerVersion(String current, String latest) {
-    final currentParts = current.split('.').map(int.parse).toList();
-    final latestParts = latest.split('.').map(int.parse).toList();
-
-    for (int i = 0; i < 3; i++) {
-      final currentPart = i < currentParts.length ? currentParts[i] : 0;
-      final latestPart = i < latestParts.length ? latestParts[i] : 0;
-
-      if (latestPart > currentPart) return true;
-      if (latestPart < currentPart) return false;
-    }
-    return false;
-  }
-
   Future<void> openDownloadPage(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+}
+
+class _GitHubRelease {
+  const _GitHubRelease({
+    required this.version,
+    required this.body,
+    required this.publishedAt,
+    required this.prerelease,
+    required this.draft,
+    required this.assets,
+    required this.htmlUrl,
+  });
+
+  final String version;
+  final String? body;
+  final DateTime publishedAt;
+  final bool prerelease;
+  final bool draft;
+  final List<dynamic> assets;
+  final String htmlUrl;
+
+  static _GitHubRelease? tryParse(Map<String, dynamic> data) {
+    final tag = data['tag_name'] as String?;
+    if (tag == null || tag.isEmpty) return null;
+    final publishedRaw = data['published_at'] as String?;
+    if (publishedRaw == null) return null;
+
+    return _GitHubRelease(
+      version: tag.replaceFirst(RegExp(r'^v'), ''),
+      body: data['body'] as String?,
+      publishedAt: DateTime.parse(publishedRaw),
+      prerelease: data['prerelease'] as bool? ?? false,
+      draft: data['draft'] as bool? ?? false,
+      assets: data['assets'] as List? ?? const [],
+      htmlUrl: data['html_url'] as String? ??
+          'https://github.com/${AppUpdaterService.githubRepo}/releases',
+    );
   }
 }
 

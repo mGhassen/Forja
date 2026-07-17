@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **1 / 1** acceptance (GitHub-only) |
-| **Current slice** | In-app updater is GitHub-only — Supabase `releases` mirror retired (RFC-036) |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) |
+| **Current slice** | Multi-version changelog — dialog shows all GitHub release notes since the installed version |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -87,6 +87,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R15-A26 | `AppUpdaterService` checks GitHub Releases only (no Supabase `releases` / `release_assets`) | ✅ |
+| 2 | R15-A27 | Update dialog aggregates release notes for every stable GitHub release newer than the installed version (newest first; skips empty / auto-only bodies) | ✅ |
 
 ---
 
@@ -130,11 +131,13 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 
 ## Update manifest (GitHub Releases)
 
-**Endpoint:** `GET https://api.github.com/repos/{owner}/{repo}/releases/latest`
+**Endpoint:** `GET https://api.github.com/repos/{owner}/{repo}/releases?per_page=100`
 
 Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_updater_service.dart`.
 
 **Release tag:** `v1.2.3` (leading `v` stripped for compare).
+
+Latest install target = newest non-draft, non-prerelease release. Download assets come from that release only.
 
 **Required assets per platform:**
 
@@ -146,7 +149,7 @@ Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_u
 | macOS | `Forja-*-macos-arm64.dmg` (prefer host arch) | Download to Downloads + `open` DMG |
 | iOS | — | Link to releases / TestFlight only |
 
-**Release body:** Markdown release notes shown in dialog (scrollable).
+**Release body:** Markdown from every stable release newer than the installed version is aggregated (newest first) into the dialog. Empty bodies and GitHub auto `Full Changelog:` stubs are skipped. When more than one version contributes notes, each block is headed with `# X.Y.Z`.
 
 ## Version comparison
 
