@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { BrandLogo } from '@/components/brand-logo'
+import { LiquidGlass } from '@/components/liquid-glass'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
@@ -66,14 +67,7 @@ function NavLink({
   )
 }
 
-export function SiteHeader({
-  solid = false,
-  /** Edge-to-edge bar (auth pages) instead of the floating inset pill. */
-  flush = false,
-}: {
-  solid?: boolean
-  flush?: boolean
-}) {
+export function SiteHeader({ solid = false }: { solid?: boolean }) {
   const { user, loading } = useAuth()
   const [open, setOpen] = useState(false)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -108,109 +102,99 @@ export function SiteHeader({
         )}
       />
 
-      <div
-        className={cn(
-          'relative mx-auto',
-          flush
-            ? 'w-full px-0 pt-0'
-            : 'max-w-[1400px] px-[4vw] pt-3 sm:pt-4',
-        )}
-      >
-        <div
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 backdrop-blur-md backdrop-saturate-150 sm:gap-4 sm:px-4 sm:py-3',
-            flush
-              ? 'rounded-none border-x-0 border-t-0 border-b border-[rgba(237,230,218,0.12)] shadow-none'
-              : 'rounded-2xl border border-[rgba(237,230,218,0.12)] shadow-[inset_0_1px_0_rgba(237,230,218,0.08),0_12px_40px_-20px_rgba(0,0,0,0.55)]',
-            solid ? 'bg-[#0B0A0A]/45' : 'bg-[#0B0A0A]/35',
-          )}
+      <div className="relative mx-auto max-w-[1400px] px-[4vw] pt-3 sm:pt-4">
+        <LiquidGlass
+          solid={solid}
+          className="shadow-[0_16px_48px_-20px_rgba(0,0,0,0.65)]"
         >
-          <BrandLogo imgClassName="h-7 w-auto sm:h-8" />
+          <div className="flex items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
+            <BrandLogo imgClassName="h-7 w-auto sm:h-8" />
 
-          <span
-            aria-hidden
-            className="hidden h-6 w-px shrink-0 bg-forja-border md:block"
-          />
+            <span
+              aria-hidden
+              className="hidden h-6 w-px shrink-0 bg-white/15 md:block"
+            />
 
-          <nav
-            aria-label="Primary"
-            className="hidden flex-1 items-center justify-center gap-3 md:flex lg:gap-4"
-          >
-            {LINKS.map((link) => (
-              <NavLink key={link.to} to={link.to} exact={link.exact}>
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="ml-auto hidden items-center gap-2 md:flex">
-            {!loading && user ? (
-              <Link
-                to="/account/settings"
-                data-hover=""
-                className={cn(
-                  'inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200',
-                  accountActive
-                    ? 'text-forja-green'
-                    : 'text-[rgba(237,230,218,0.55)] hover:bg-forja-green/12 hover:text-forja-green',
-                )}
-              >
-                Account
-              </Link>
-            ) : (
-              <Link
-                to="/login"
-                data-hover=""
-                className="inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)] transition-all duration-200 hover:bg-forja-green/12 hover:text-forja-green"
-              >
-                Log in
-              </Link>
-            )}
-            <Link
-              to="/download"
-              data-hover=""
-              className="inline-flex items-center justify-center rounded-full bg-forja-green px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B0A0A] shadow-[0_0_24px_rgba(28,231,131,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forja-flame hover:shadow-[0_0_28px_rgba(255,77,28,0.35)]"
+            <nav
+              aria-label="Primary"
+              className="hidden flex-1 items-center justify-center gap-3 md:flex lg:gap-4"
             >
-              Get Forja
-            </Link>
-          </div>
+              {LINKS.map((link) => (
+                <NavLink key={link.to} to={link.to} exact={link.exact}>
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
 
-          <button
-            type="button"
-            className={cn(
-              'ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-[#EDE6DA] transition-colors md:hidden',
-              open
-                ? 'border-forja-green/40 bg-forja-green/10 text-forja-green'
-                : 'border-[rgba(237,230,218,0.16)] bg-[rgba(237,230,218,0.04)]',
-            )}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            aria-label={open ? 'Close menu' : 'Open menu'}
-            onClick={() => setOpen((v) => !v)}
-          >
-            <span className="sr-only">{open ? 'Close' : 'Menu'}</span>
-            <span className="relative block h-3.5 w-5" aria-hidden>
-              <span
-                className={cn(
-                  'absolute left-0 block h-0.5 w-full bg-current transition-transform duration-200',
-                  open ? 'top-1.5 rotate-45' : 'top-0',
-                )}
-              />
-              <span
-                className={cn(
-                  'absolute left-0 top-1.5 block h-0.5 w-full bg-current transition-opacity duration-200',
-                  open && 'opacity-0',
-                )}
-              />
-              <span
-                className={cn(
-                  'absolute left-0 block h-0.5 w-full bg-current transition-transform duration-200',
-                  open ? 'top-1.5 -rotate-45' : 'top-3',
-                )}
-              />
-            </span>
-          </button>
-        </div>
+            <div className="ml-auto hidden items-center gap-2 md:flex">
+              {!loading && user ? (
+                <Link
+                  to="/account/settings"
+                  data-hover=""
+                  className={cn(
+                    'inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200',
+                    accountActive
+                      ? 'text-forja-green'
+                      : 'text-[rgba(237,230,218,0.55)] hover:bg-forja-green/12 hover:text-forja-green',
+                  )}
+                >
+                  Account
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  data-hover=""
+                  className="inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)] transition-all duration-200 hover:bg-forja-green/12 hover:text-forja-green"
+                >
+                  Log in
+                </Link>
+              )}
+              <Link
+                to="/download"
+                data-hover=""
+                className="inline-flex items-center justify-center rounded-full bg-forja-green px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B0A0A] shadow-[0_0_24px_rgba(28,231,131,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forja-flame hover:shadow-[0_0_28px_rgba(255,77,28,0.35)]"
+              >
+                Get Forja
+              </Link>
+            </div>
+
+            <button
+              type="button"
+              className={cn(
+                'ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-[#EDE6DA] transition-colors md:hidden',
+                open
+                  ? 'border-forja-green/40 bg-forja-green/10 text-forja-green'
+                  : 'border-white/15 bg-white/5',
+              )}
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              aria-label={open ? 'Close menu' : 'Open menu'}
+              onClick={() => setOpen((v) => !v)}
+            >
+              <span className="sr-only">{open ? 'Close' : 'Menu'}</span>
+              <span className="relative block h-3.5 w-5" aria-hidden>
+                <span
+                  className={cn(
+                    'absolute left-0 block h-0.5 w-full bg-current transition-transform duration-200',
+                    open ? 'top-1.5 rotate-45' : 'top-0',
+                  )}
+                />
+                <span
+                  className={cn(
+                    'absolute left-0 top-1.5 block h-0.5 w-full bg-current transition-opacity duration-200',
+                    open && 'opacity-0',
+                  )}
+                />
+                <span
+                  className={cn(
+                    'absolute left-0 block h-0.5 w-full bg-current transition-transform duration-200',
+                    open ? 'top-1.5 -rotate-45' : 'top-3',
+                  )}
+                />
+              </span>
+            </button>
+          </div>
+        </LiquidGlass>
       </div>
 
       <div

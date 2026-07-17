@@ -1,6 +1,7 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
+import { LiquidGlass } from '@/components/liquid-glass'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
@@ -70,7 +71,8 @@ function ForgotPasswordForm() {
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="w-full max-w-md">
-        <Card className="border-[rgba(237,230,218,0.16)] bg-[#121110]/90 shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
+        <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
+          <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="space-y-2 pb-2">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
               Account recovery
@@ -169,6 +171,7 @@ function ForgotPasswordForm() {
             </div>
           </CardContent>
         </Card>
+        </LiquidGlass>
       </Reveal>
     </section>
   )
@@ -177,7 +180,7 @@ function ForgotPasswordForm() {
 export function ForgotPasswordPage() {
   return (
     <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
-      <SiteHeader solid flush />
+      <SiteHeader />
 
       <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
         <AuthStoryPanel emphasis="Reset your password to get back to synced settings." />
