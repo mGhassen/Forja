@@ -408,6 +408,37 @@ void main() {
     );
   });
 
+  testWidgets('desktop selected underline keeps its icon accent on hover', (
+    tester,
+  ) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pumpAndSettle();
+
+    final searchImage = find.image(
+      const AssetImage('assets/images/nav/search.png'),
+    );
+    final underline = find.byKey(const ValueKey('nav-search-underline'));
+    Color underlineColor() =>
+        (tester.widget<AnimatedContainer>(underline).decoration
+                as BoxDecoration)
+            .color!;
+
+    expect(underlineColor(), navDestinationAccentColors['search']);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(searchImage));
+    await tester.pumpAndSettle();
+
+    expect(underlineColor(), navDestinationAccentColors['search']);
+  });
+
   testWidgets('desktop profile avatar is grey idle and colored on hover', (
     tester,
   ) async {

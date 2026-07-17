@@ -755,16 +755,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                   ),
                                 ),
                                 AnimatedContainer(
+                                  key: ValueKey(
+                                    'nav-${widget.destination.id}-underline',
+                                  ),
                                   duration: ShellTokens.navSelectionAnimation,
                                   curve: Curves.easeOutCubic,
                                   height: ShellTokens.shellNavUnderlineHeight,
                                   width: widget.selected ? underlineWidth : 0,
                                   decoration: BoxDecoration(
                                     color: widget.selected
-                                        ? (selectedFocused
-                                              ? Colors.white
-                                              : useDestinationAccent
+                                        ? (useDestinationAccent
                                               ? desktopAccent
+                                              : selectedFocused
+                                              ? Colors.white
                                               : ForjaShellColors.navUnderline)
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(2),
