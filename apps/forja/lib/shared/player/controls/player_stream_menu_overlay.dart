@@ -79,7 +79,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   final Map<String, int> _loadGens = {};
   final Map<String, PlayerSourceStatus> _urlStatuses = {};
   _StreamAudioFilter? _audioFilter;
-  bool _useEmbed = false;
 
   Set<String> get _failedProviders =>
       widget.providerLoadFailures?.value ?? const {};
@@ -94,10 +93,8 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
 
   Future<void> _bootstrap() async {
     await ProviderScoreMemory.ensureLoaded();
-    final useEmbed = await SettingsService().getPlayerWebViewUseEmbed();
     if (!mounted) return;
     setState(() {
-      _useEmbed = useEmbed;
       _initAudioFilterDefault();
       _open = true;
     });
@@ -546,73 +543,12 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     );
   }
 
-  Future<void> _setUseEmbed(bool value) async {
-    setState(() => _useEmbed = value);
-    await SettingsService().setPlayerWebViewUseEmbed(value);
-  }
-
-  Widget? _buildUseEmbedHeaderControl() {
-    if (!_hasProviders || isAndroidTvHeadlessWebViewBlocked) return null;
-    return InkWell(
-      onTap: () => unawaited(_setUseEmbed(!_useEmbed)),
-      borderRadius: BorderRadius.circular(6),
-      hoverColor: ForjaShellColors.inkHover,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: Checkbox(
-                value: _useEmbed,
-                onChanged: (v) {
-                  if (v == null) return;
-                  unawaited(_setUseEmbed(v));
-                },
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
-                fillColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return ForjaShellColors.cinematic.textPrimary;
-                  }
-                  return Colors.transparent;
-                }),
-                checkColor: Colors.black,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'Embed',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.72),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeaderTrailing() {
-    final embed = _buildUseEmbedHeaderControl();
-    final reload = PlayerStreamMenu.reloadTrailing(
-      onReload: widget.onReload,
-      isReloading: widget.isReloading,
-    );
-    if (embed == null && reload == null) return const SizedBox.shrink();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ?embed,
-        if (embed != null && reload != null) const SizedBox(width: 4),
-        ?reload,
-      ],
-    );
+    return PlayerStreamMenu.reloadTrailing(
+          onReload: widget.onReload,
+          isReloading: widget.isReloading,
+        ) ??
+        const SizedBox.shrink();
   }
 
   Widget? _buildAudioFilterGroup() {

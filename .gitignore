@@ -69,3 +69,7 @@ installer/windows/Output/
 apps/web/dist/
 apps/web/.env
 apps/web/.env.local
+
+# Supabase CLI local cache (keep migrations/config tracked)
+**/.temp/
+apps/web/supabase/.branches/

@@ -76,8 +76,9 @@ class SettingsService {
   static const String _maxPlaybackHeightKey = 'max_playback_height';
 
   /// Headless WebView sniff: iframe-wrap embed URLs vs load them directly.
+  /// Always on — Source panel toggle removed; providers may still force direct.
   static final ValueNotifier<bool> playerWebViewUseEmbedNotifier =
-      ValueNotifier<bool>(false);
+      ValueNotifier<bool>(true);
 
   /// User cap for stream scoring (0 = auto / no cap).
   static const Map<String, int> maxPlaybackHeightOptions = {
@@ -178,7 +179,8 @@ class SettingsService {
   }
 
   Future<bool> getPlayerWebViewUseEmbed() async {
-    final v = await kvGetBool(_playerWebViewUseEmbedKey, fallback: false);
+    // Embed mode is always on (Source panel toggle removed).
+    const v = true;
     if (playerWebViewUseEmbedNotifier.value != v) {
       playerWebViewUseEmbedNotifier.value = v;
     }
@@ -187,7 +189,8 @@ class SettingsService {
 
   Future<void> setPlayerWebViewUseEmbed(bool v) async {
     await kvSetBool(_playerWebViewUseEmbedKey, v);
-    playerWebViewUseEmbedNotifier.value = v;
+    // Effective mode stays on; persist is kept for forward-compat only.
+    playerWebViewUseEmbedNotifier.value = true;
   }
 
   Future<bool> isIptvEpgEnabled() async =>

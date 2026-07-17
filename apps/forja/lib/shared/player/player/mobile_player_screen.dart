@@ -299,12 +299,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _hadMidPlayback = false;
   /// Latch abortive EOF so repeating `completed` events do not spam / auto-next.
   bool _abortiveCompletedLatched = false;
+  /// Wall-clock when the user scrubbed away from EOF (suppresses re-pin).
+  DateTime? _seekAwayFromEofAt;
   late final Future<void> _playableSourcesReady;
 
   void _resetEofSessionGuards() {
     _hadMidPlayback = false;
     _abortiveCompletedLatched = false;
     _sessionFirstConfirmedAt = null;
+    _seekAwayFromEofAt = null;
   }
 
   void _markPlaybackConfirmed(bool confirmed) {
@@ -325,6 +328,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         position: position,
         positionNotifier: _positionNotifier,
         duration: _durationNotifier.value,
+        onSeekAwayFromEof: () {
+          _seekAwayFromEofAt = DateTime.now();
+          _abortiveCompletedLatched = false;
+        },
       );
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;

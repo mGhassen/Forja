@@ -1005,6 +1005,34 @@ mixin _DesktopPlayerPlayback
           shownPos >= shownDur - const Duration(seconds: 2)) {
         return;
       }
+      final confirmedFor = confirmedPlaybackAge(
+        openConfirmedAt: _s._playbackConfirmedAt,
+        sessionFirstConfirmedAt: _s._sessionFirstConfirmedAt,
+        hadMidPlayback: _s._hadMidPlayback,
+      );
+      final effectiveDurMs = shownDur.inMilliseconds > 0
+          ? shownDur.inMilliseconds
+          : _s._player.state.duration.inMilliseconds;
+      // Dead CDN: demux jumps to duration within the early-EOF grace — do not
+      // paint a fake "finished" bar the user then cannot scrub off.
+      if (shouldSuppressEarlyEofSeekBarPosition(
+        positionMs: pos.inMilliseconds,
+        durationMs: effectiveDurMs,
+        confirmedFor: confirmedFor,
+        hadMidPlayback: _s._hadMidPlayback,
+      )) {
+        return;
+      }
+      if (shouldIgnoreStaleEofPosition(
+        reported: pos,
+        duration: shownDur.inMilliseconds > 0
+            ? shownDur
+            : _s._player.state.duration,
+        uiPosition: shownPos,
+        seekAwayFromEofAt: _s._seekAwayFromEofAt,
+      )) {
+        return;
+      }
       _s._positionNotifier.value = pos;
 
       final dur = _s._durationNotifier.value;
@@ -1189,12 +1217,24 @@ mixin _DesktopPlayerPlayback
         confirmedFor: confirmedFor,
         hadMidPlayback: _s._hadMidPlayback,
       )) {
+        final dur = _s._player.state.duration;
+        final pinDur = dur > Duration.zero ? dur : _s._durationNotifier.value;
+        // Scrub-back race: keep-open re-emits completed while mpv pos is still
+        // 0/end — do not yank the bar back to EOF after the user left the end.
+        if (!shouldPinSeekBarAtEof(
+          uiPosition: _s._positionNotifier.value,
+          duration: pinDur,
+        )) {
+          debugPrint(
+            '[Player] Ignoring completed pin — UI already seeked away from EOF',
+          );
+          return;
+        }
         debugPrint('✅ Playback completed');
         // keep-open may reset mpv position to 0 — pin the seek bar at EOF.
-        final dur = _s._player.state.duration;
-        if (dur > Duration.zero) {
-          _s._durationNotifier.value = dur;
-          _s._positionNotifier.value = dur;
+        if (pinDur > Duration.zero) {
+          _s._durationNotifier.value = pinDur;
+          _s._positionNotifier.value = pinDur;
         }
         final autoNext = SettingsService.autoNextEpisodeNotifier.value;
         if (autoNext &&
@@ -1213,6 +1253,10 @@ mixin _DesktopPlayerPlayback
         '(confirmedFor=${confirmedFor.inSeconds}s '
         'mid=${_s._hadMidPlayback})',
       );
+      // Fake early EOF jumped demux to duration — don't leave a "finished" bar.
+      if (!_s._hadMidPlayback) {
+        _s._positionNotifier.value = Duration.zero;
+      }
       if (mounted) setState(() => _s._showControls = true);
     });
 

@@ -630,20 +630,75 @@ bool shouldPersistWatchProgress({
   return true;
 }
 
+/// Dead HLS / torrent opens often jump `position` to `duration` within the
+/// early-EOF grace window. Painting that on the seek bar looks like a finished
+/// episode and makes scrub-back fight a fake end.
+bool shouldSuppressEarlyEofSeekBarPosition({
+  required int positionMs,
+  required int durationMs,
+  required Duration confirmedFor,
+  required bool hadMidPlayback,
+  Duration minConfirmed = kMinConfirmedPlaybackForNaturalEnd,
+}) {
+  if (hadMidPlayback) return false;
+  if (durationMs < 90 * 1000) return false;
+  if (confirmedFor >= minConfirmed) return false;
+  return positionMs >= durationMs - 5000;
+}
+
+/// keep-open EOF: `completed` can re-fire while mpv position is still 0/end.
+/// If the UI already scrubbed away, do not yank the bar back to duration.
+bool shouldPinSeekBarAtEof({
+  required Duration uiPosition,
+  required Duration duration,
+}) {
+  if (duration <= Duration.zero) return false;
+  return uiPosition >= duration - const Duration(seconds: 2);
+}
+
+/// Grace after scrubbing away from EOF — ignore stale near-end position reports.
+const kSeekAwayFromEofGrace = Duration(seconds: 2);
+
+bool shouldIgnoreStaleEofPosition({
+  required Duration reported,
+  required Duration duration,
+  required Duration uiPosition,
+  DateTime? seekAwayFromEofAt,
+  DateTime? now,
+  Duration grace = kSeekAwayFromEofGrace,
+}) {
+  if (seekAwayFromEofAt == null || duration <= Duration.zero) return false;
+  final n = now ?? DateTime.now();
+  if (n.difference(seekAwayFromEofAt) > grace) return false;
+  // UI already away from end; drop reports that are still sitting at EOF.
+  if (shouldPinSeekBarAtEof(uiPosition: uiPosition, duration: duration)) {
+    return false;
+  }
+  return shouldPinSeekBarAtEof(uiPosition: reported, duration: duration);
+}
+
 /// Seek that keeps the progress bar alive after EOF.
 ///
 /// Without mpv `keep-open`, EOF leaves the player idle and seeks no-op. Even
 /// with keep-open, resume playback when scrubbing away from the end.
+///
+/// Calls [onSeekAwayFromEof] when the scrub leaves the last ~2s so callers can
+/// suppress completed re-pins and stale EOF position events.
 Future<void> seekPlayerPreservingProgress(
   Player player, {
   required Duration position,
   required ValueNotifier<Duration> positionNotifier,
   Duration? duration,
+  void Function()? onSeekAwayFromEof,
 }) async {
   final dur = duration ?? player.state.duration;
+  final previous = positionNotifier.value;
   var target = position;
   if (target < Duration.zero) target = Duration.zero;
   if (dur > Duration.zero && target > dur) target = dur;
+  final leavingEof = dur > Duration.zero &&
+      shouldPinSeekBarAtEof(uiPosition: previous, duration: dur) &&
+      !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
   positionNotifier.value = target;
   await player.seek(target);
   final nearEnd = dur > Duration.zero &&
@@ -651,6 +706,7 @@ Future<void> seekPlayerPreservingProgress(
   if (!player.state.playing && !nearEnd) {
     await player.play();
   }
+  if (leavingEof) onSeekAwayFromEof?.call();
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

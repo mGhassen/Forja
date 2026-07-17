@@ -15,7 +15,6 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
-import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
 part 'player_stream_menu_overlay.dart';

@@ -190,6 +190,84 @@ void main() {
     });
   });
 
+  group('shouldSuppressEarlyEofSeekBarPosition', () {
+    test('suppresses near-end jump within grace without mid', () {
+      expect(
+        shouldSuppressEarlyEofSeekBarPosition(
+          positionMs: 1_422_004,
+          durationMs: 1_422_004,
+          confirmedFor: const Duration(seconds: 17),
+          hadMidPlayback: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('allows near-end after mid watch', () {
+      expect(
+        shouldSuppressEarlyEofSeekBarPosition(
+          positionMs: 1_422_004,
+          durationMs: 1_422_004,
+          confirmedFor: const Duration(minutes: 20),
+          hadMidPlayback: true,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('shouldPinSeekBarAtEof', () {
+    test('false when UI already scrubbed away', () {
+      expect(
+        shouldPinSeekBarAtEof(
+          uiPosition: const Duration(minutes: 10),
+          duration: const Duration(minutes: 24),
+        ),
+        isFalse,
+      );
+    });
+
+    test('true when UI still at end', () {
+      expect(
+        shouldPinSeekBarAtEof(
+          uiPosition: const Duration(minutes: 24),
+          duration: const Duration(minutes: 24),
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('shouldIgnoreStaleEofPosition', () {
+    test('ignores stale EOF report after scrub-away', () {
+      final scrubbed = DateTime(2026, 7, 17, 15, 0, 0);
+      expect(
+        shouldIgnoreStaleEofPosition(
+          reported: const Duration(minutes: 24),
+          duration: const Duration(minutes: 24),
+          uiPosition: const Duration(minutes: 10),
+          seekAwayFromEofAt: scrubbed,
+          now: scrubbed.add(const Duration(milliseconds: 200)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('stops ignoring after grace', () {
+      final scrubbed = DateTime(2026, 7, 17, 15, 0, 0);
+      expect(
+        shouldIgnoreStaleEofPosition(
+          reported: const Duration(minutes: 24),
+          duration: const Duration(minutes: 24),
+          uiPosition: const Duration(minutes: 10),
+          seekAwayFromEofAt: scrubbed,
+          now: scrubbed.add(const Duration(seconds: 3)),
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('sourceRequiresVideoDecode', () {
     test('requires decode for local torrent stream URLs', () {
       expect(
