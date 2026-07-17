@@ -18,8 +18,8 @@ another screen.
   only on the web (**Create an account on the web**).
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
   **Who’s watching?** when signed in), or open **Settings → Profile & account** —
-  the page shows the active profile (**Watching now**), a household avatar strip,
-  then **Who’s watching?** / **Manage profiles**, cloud sync status, and **Sign out**
+  the page shows the active profile (**Watching now** — tap to switch), cloud
+  sync status, and **Sign out**
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
   when configured), choose a profile on **Who's watching?**, then open **Remote
   settings**. The sidebar splits **Profile** (synced IPTV / playback / navigation /
@@ -63,12 +63,12 @@ Not synced — device-specific or sensitive:
   offer in-app signup. Web signup and sign-in show a Cloudflare Turnstile check
   when captcha is configured.
 - Continue as a guest; the current local-only app behavior remains available
-- Select the active profile from the desktop rail avatar, **Who’s watching?**, or
-  **Manage profiles** under **Settings → Profile & account** (same Netflix-style
-  grid as the web). Choosing a profile shows a dedicated splash while settings
-  sync — not an in-settings dropdown. After the splash, the app opens that
-  profile’s **default menu** tab (the starred tab under **Settings → Navigation**),
-  not the screen you were on before switching.
+- Select the active profile from the desktop rail avatar, or tap **Watching now**
+  under **Settings → Profile & account** to open **Who’s watching?** / **Manage
+  profiles** (same Netflix-style grid as the web). Choosing a profile shows a
+  dedicated splash while settings sync — not an in-settings dropdown. After the
+  splash, the app opens that profile’s **default menu** tab (the starred tab
+  under **Settings → Navigation**), not the screen you were on before switching.
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
   Tapping a profile shows the profile-switch splash, then the boot splash.

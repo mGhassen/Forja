@@ -99,17 +99,53 @@ pub fn streamed_sports() -> String {
     ok_items(items)
 }
 
-pub fn streamed_matches() -> String {
-    let url = format!("{STREAMED_BASE}/api/matches/all");
+fn streamed_matches_list(path: &str) -> Vec<Value> {
+    let url = format!("{STREAMED_BASE}{path}");
     let body = match http_get(&url, &streamed_headers(), 15) {
         Some(b) => b,
-        None => return ok_items(vec![]),
+        None => return vec![],
     };
-    let list = match serde_json::from_str::<Vec<Value>>(&body) {
-        Ok(v) => v,
-        Err(_) => return ok_items(vec![]),
-    };
-    ok_items(list)
+    serde_json::from_str::<Vec<Value>>(&body).unwrap_or_default()
+}
+
+/// Match id used for dedupe — Streamed sometimes lists the same event under
+/// different ids on `/live` vs `/all` (e.g. `ppv-tour-…` vs `tour-…-2447760`).
+fn streamed_match_id(m: &Value) -> Option<String> {
+    m.get("id")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+/// Merge `/api/matches/all` (schedule) with `/api/matches/live` (currently
+/// airing). The website Popular Live row uses `/live`; several events (ACA,
+/// some PPV mirrors) appear there only and are missing from `/all`.
+///
+/// Live rows win on id collision and are tagged `airing: true` so the host
+/// can show LIVE / allow play without guessing from start time alone.
+pub fn streamed_matches() -> String {
+    let all = streamed_matches_list("/api/matches/all");
+    let live = streamed_matches_list("/api/matches/live");
+
+    let mut by_id: HashMap<String, Value> = HashMap::new();
+    for m in all {
+        if let Some(id) = streamed_match_id(&m) {
+            by_id.insert(id, m);
+        }
+    }
+    for m in live {
+        let Some(id) = streamed_match_id(&m) else {
+            continue;
+        };
+        let mut row = m;
+        if let Some(obj) = row.as_object_mut() {
+            obj.insert("airing".into(), Value::Bool(true));
+        }
+        by_id.insert(id, row);
+    }
+
+    ok_items(by_id.into_values().collect())
 }
 
 pub fn streamed_streams(source: &str, id: &str) -> String {
@@ -233,6 +269,33 @@ mod tests {
             .collect();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0]["id"], "football");
+    }
+
+    #[test]
+    fn streamed_matches_merge_tags_airing_and_keeps_all_only() {
+        // Simulate merge: all has Open; live has ACA + Open (same id) → ACA
+        // appears, Open is marked airing, all-only Nascar stays.
+        let mut by_id: HashMap<String, Value> = HashMap::new();
+        for m in [
+            json!({"id":"open","title":"Open","category":"golf"}),
+            json!({"id":"nascar","title":"Nascar","category":"motor-sports"}),
+        ] {
+            by_id.insert(m["id"].as_str().unwrap().into(), m);
+        }
+        for m in [json!({"id":"aca","title":"ACA","category":"other"}), json!({"id":"open","title":"Open Live","category":"golf"})]
+        {
+            let id = m["id"].as_str().unwrap().to_string();
+            let mut row = m;
+            row.as_object_mut()
+                .unwrap()
+                .insert("airing".into(), Value::Bool(true));
+            by_id.insert(id, row);
+        }
+        assert_eq!(by_id.len(), 3);
+        assert_eq!(by_id["aca"]["airing"], true);
+        assert_eq!(by_id["open"]["airing"], true);
+        assert_eq!(by_id["open"]["title"], "Open Live");
+        assert!(by_id["nascar"].get("airing").is_none());
     }
 
     #[test]

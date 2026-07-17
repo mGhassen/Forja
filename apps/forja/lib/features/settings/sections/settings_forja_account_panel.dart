@@ -216,12 +216,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     if (signedIn) {
       return _SignedInAccountBody(
         activeProfile: activeProfile,
-        profiles: _profiles,
         email: email,
         domains: _domains,
         busy: _busy,
         onOpenChooser: () => _openChooser(),
-        onManage: () => _openChooser(mode: ProfileChooserMode.manage),
         onSignOut: _signOut,
       );
     }
@@ -245,22 +243,18 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 class _SignedInAccountBody extends StatelessWidget {
   const _SignedInAccountBody({
     required this.activeProfile,
-    required this.profiles,
     required this.email,
     required this.domains,
     required this.busy,
     required this.onOpenChooser,
-    required this.onManage,
     required this.onSignOut,
   });
 
   final SyncProfile? activeProfile;
-  final List<SyncProfile> profiles;
   final String? email;
   final int domains;
   final bool busy;
   final VoidCallback onOpenChooser;
-  final VoidCallback onManage;
   final VoidCallback onSignOut;
 
   @override
@@ -280,38 +274,6 @@ class _SignedInAccountBody extends StatelessWidget {
           onTap: busy ? null : onOpenChooser,
         ),
         const SizedBox(height: 8),
-        SettingsGroup(
-          label: 'Household',
-          children: [
-            _HouseholdRail(
-              profiles: profiles,
-              activeProfileId: activeProfile?.id,
-              busy: busy,
-              onOpenChooser: onOpenChooser,
-              onManage: onManage,
-            ),
-            SettingsActionRow(
-              title: 'Who’s watching?',
-              subtitle: 'Switch the active profile on this device',
-              leading: const Icon(
-                Icons.groups_rounded,
-                color: ForjaShellColors.brandGreen,
-                size: 22,
-              ),
-              onTap: busy ? null : onOpenChooser,
-            ),
-            SettingsActionRow(
-              title: 'Manage profiles',
-              subtitle: 'Add, rename, change avatars, or remove',
-              leading: const Icon(
-                Icons.edit_rounded,
-                color: ForjaShellColors.iconMuted,
-                size: 22,
-              ),
-              onTap: busy ? null : onManage,
-            ),
-          ],
-        ),
         SettingsGroup(
           label: 'Cloud sync',
           children: [
@@ -472,192 +434,6 @@ class _ActiveProfileStage extends StatelessWidget {
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: content,
-    );
-  }
-}
-
-/// Compact household strip — tap any face to open Who’s watching.
-class _HouseholdRail extends StatelessWidget {
-  const _HouseholdRail({
-    required this.profiles,
-    required this.activeProfileId,
-    required this.busy,
-    required this.onOpenChooser,
-    required this.onManage,
-  });
-
-  final List<SyncProfile> profiles;
-  final String? activeProfileId;
-  final bool busy;
-  final VoidCallback onOpenChooser;
-  final VoidCallback onManage;
-
-  @override
-  Widget build(BuildContext context) {
-    if (profiles.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 14),
-        child: Text(
-          'No profiles yet — open Manage profiles to create one.',
-          style: TextStyle(
-            color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-            fontSize: 13,
-            height: 1.35,
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            profiles.length == 1
-                ? '1 profile on this account'
-                : '${profiles.length} profiles on this account',
-            style: const TextStyle(
-              color: ForjaShellColors.textSecondary,
-              fontSize: 12.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final profile in profiles) ...[
-                  _HouseholdAvatar(
-                    profile: profile,
-                    selected: profile.id == activeProfileId,
-                    enabled: !busy,
-                    onTap: onOpenChooser,
-                  ),
-                  const SizedBox(width: 14),
-                ],
-                _AddProfileChip(
-                  enabled: !busy,
-                  onTap: onManage,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HouseholdAvatar extends StatelessWidget {
-  const _HouseholdAvatar({
-    required this.profile,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final SyncProfile profile;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ForjaProfileAvatar(
-          avatarKey: profile.avatarKey,
-          name: profile.name,
-          size: 52,
-          selected: selected,
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: 64,
-          child: Text(
-            profile.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: selected
-                  ? ForjaShellColors.textPrimary
-                  : ForjaShellColors.textSecondary,
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-
-    return shellFocusableTap(
-      context: context,
-      onTap: enabled ? onTap : null,
-      scaleOnFocus: 1.04,
-      navLeftAlways: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      child: Opacity(opacity: enabled ? 1 : 0.5, child: child),
-    );
-  }
-}
-
-class _AddProfileChip extends StatelessWidget {
-  const _AddProfileChip({required this.enabled, required this.onTap});
-
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: ForjaShellColors.ghostBorder.withValues(alpha: 0.7),
-              width: 1.5,
-            ),
-            color: ForjaShellColors.inkHover,
-          ),
-          child: const Icon(
-            Icons.add_rounded,
-            color: ForjaShellColors.textSecondary,
-            size: 26,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const SizedBox(
-          width: 64,
-          child: Text(
-            'Add',
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: ForjaShellColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-
-    return shellFocusableTap(
-      context: context,
-      onTap: enabled ? onTap : null,
-      scaleOnFocus: 1.04,
-      navLeftAlways: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      child: Opacity(opacity: enabled ? 1 : 0.5, child: child),
     );
   }
 }

@@ -266,6 +266,8 @@ class _StreamedMatch {
   final int dateMs;
   final String poster;
   final bool popular;
+  /// From Streamed `/api/matches/live` (engine tags `airing: true`).
+  final bool airing;
   final String? homeTeam;
   final String? homeBadge;
   final String? awayTeam;
@@ -279,6 +281,7 @@ class _StreamedMatch {
     required this.dateMs,
     required this.poster,
     required this.popular,
+    this.airing = false,
     this.homeTeam,
     this.homeBadge,
     this.awayTeam,
@@ -298,6 +301,7 @@ class _StreamedMatch {
       dateMs: (j['date'] as num?)?.toInt() ?? 0,
       poster: (j['poster'] ?? '').toString(),
       popular: j['popular'] == true,
+      airing: j['airing'] == true,
       homeTeam: home?['name'] as String?,
       homeBadge: home?['badge'] as String?,
       awayTeam: away?['name'] as String?,
@@ -314,14 +318,16 @@ class _StreamedMatch {
 
   bool get isAlwaysOn => dateMs == 0 && sources.isNotEmpty;
 
+  /// Hours after start that still count as live when Streamed did not tag
+  /// `airing`. Popular rows (golf, cycling) often outlast the short window.
+  static int _liveWindowHours({required bool popular}) => popular ? 18 : 6;
+
   String get timeLabel {
-    if (isAlwaysOn) return 'live';
+    if (isLive) return 'live';
 
     if (dateMs <= 0) return '';
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
     final now = DateTime.now();
-    final delta = now.difference(dt);
-    if (delta.inMinutes >= 0 && delta.inHours < 6) return 'live';
     if (dt.isAfter(now)) {
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
@@ -329,13 +335,14 @@ class _StreamedMatch {
   }
 
   bool get isLive {
-    if (isAlwaysOn) return true;
+    if (isAlwaysOn || airing) return true;
 
     if (dateMs <= 0) return false;
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
     final now = DateTime.now();
     final delta = now.difference(dt);
-    return delta.inMinutes >= 0 && delta.inHours < 6;
+    final maxHours = _liveWindowHours(popular: popular);
+    return delta.inMinutes >= 0 && delta.inHours < maxHours;
   }
 }
 
@@ -394,14 +401,20 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
 
 List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
   final sorted = List<_StreamedMatch>.from(items);
-  sorted.sort(
-    (a, b) => _liveFirstCompare(
+  sorted.sort((a, b) {
+    final live = _liveFirstCompare(
       aLive: a.isLive,
       bLive: b.isLive,
       aStart: a.dateMs,
       bStart: b.dateMs,
-    ),
-  );
+    );
+    if (live != 0) return live;
+    // Within the same live bucket, prefer Streamed's popular / airing rows
+    // (matches the website Popular Live ordering more closely).
+    if (a.airing != b.airing) return a.airing ? -1 : 1;
+    if (a.popular != b.popular) return a.popular ? -1 : 1;
+    return 0;
+  });
   return sorted;
 }
 
