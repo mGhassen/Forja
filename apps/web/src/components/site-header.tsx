@@ -105,7 +105,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
       <div className="relative mx-auto max-w-[1400px] px-[4vw] pt-3 sm:pt-4">
         <LiquidGlass
           solid={solid}
-          className="shadow-[0_16px_48px_-20px_rgba(0,0,0,0.65)]"
+          className="backdrop-blur-md backdrop-saturate-125 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.65)]"
         >
           <div className="flex items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
             <BrandLogo imgClassName="h-7 w-auto sm:h-8" />

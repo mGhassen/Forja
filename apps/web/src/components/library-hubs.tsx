@@ -12,35 +12,35 @@ type Mood = {
   logos?: { src: string; alt: string }[]
 }
 
-/** Six moods - open-film art + app/sport stills (CC BY Blender Foundation where noted). */
+/** Six moods - open-film landscape art + app/sport stills (CC BY Blender Foundation where noted). */
 const MOODS: Mood[] = [
   {
     id: 'movies',
     label: 'Movies',
     line: 'Open films & more',
     accent: 'flame',
-    backdrop: '/brand/open-films/big-buck-bunny.jpg',
+    backdrop: '/brand/open-films/big-buck-bunny-backdrop.jpg',
   },
   {
     id: 'series',
     label: 'Series',
     line: 'Episodes & arcs',
     accent: 'brand',
-    backdrop: '/brand/open-films/sintel.jpg',
+    backdrop: '/brand/open-films/sintel-backdrop.jpg',
   },
   {
     id: 'anime',
     label: 'Anime',
     line: 'Animated worlds',
     accent: 'flame',
-    backdrop: '/brand/open-films/sprite-fright.jpg',
+    backdrop: '/brand/open-films/spring-backdrop.jpg',
   },
   {
     id: 'asian',
     label: 'Asian Drama',
     line: 'Stories that hit',
     accent: 'brand',
-    backdrop: '/brand/open-films/tears-of-steel.jpg',
+    backdrop: '/brand/open-films/tears-of-steel-backdrop.jpg',
   },
   {
     id: 'iptv',

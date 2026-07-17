@@ -4,29 +4,29 @@ import { cn } from '@/lib/utils'
 /** Freely licensed Blender Foundation open movies (CC BY). See /brand/open-films/ATTRIBUTION.txt */
 const OPEN_FILMS = [
   {
-    poster: '/brand/open-films/big-buck-bunny.jpg',
+    backdrop: '/brand/open-films/big-buck-bunny-backdrop.jpg',
     hero: '/brand/open-films/heroes/big-buck-bunny-hero.jpg',
     label: 'Big Buck Bunny',
   },
   {
-    poster: '/brand/open-films/sintel.jpg',
+    backdrop: '/brand/open-films/sintel-backdrop.jpg',
     hero: '/brand/open-films/heroes/sintel-hero.jpg',
     label: 'Sintel',
   },
   {
-    poster: '/brand/open-films/tears-of-steel.jpg',
+    backdrop: '/brand/open-films/tears-of-steel-backdrop.jpg',
     hero: '/brand/open-films/heroes/tears-of-steel-hero.jpg',
     label: 'Tears of Steel',
   },
   {
-    poster: '/brand/open-films/sprite-fright.jpg',
-    hero: '/brand/open-films/heroes/sprite-fright-hero.jpg',
-    label: 'Sprite Fright',
+    backdrop: '/brand/open-films/spring-backdrop.jpg',
+    hero: '/brand/open-films/heroes/spring-hero.jpg',
+    label: 'Spring',
   },
   {
-    poster: '/brand/open-films/cosmos-laundromat.jpg',
-    hero: '/brand/open-films/heroes/cosmos-laundromat-hero.jpg',
-    label: 'Cosmos Laundromat',
+    backdrop: '/brand/open-films/elephants-dream-backdrop.jpg',
+    hero: '/brand/open-films/heroes/elephants-dream-hero.jpg',
+    label: 'Elephants Dream',
   },
 ] as const
 
@@ -175,7 +175,7 @@ function ShellScreen() {
           </span>
         </div>
 
-        <div className="relative z-[2] flex h-full max-w-[58%] flex-col justify-end px-2.5 pb-[4.75rem] pt-10 sm:max-w-[55%] sm:px-3.5 sm:pb-[5.5rem]">
+        <div className="relative z-[2] flex h-full max-w-[58%] flex-col justify-end px-2.5 pb-[5rem] pt-10 sm:max-w-[55%] sm:px-3.5 sm:pb-[5.75rem]">
           <h3
             key={hero.hero}
             className={cn(
@@ -210,20 +210,20 @@ function ShellScreen() {
               const selected = i === activeIndex
               return (
                 <button
-                  key={item.poster}
+                  key={item.backdrop}
                   type="button"
                   aria-label={`Show ${item.label}`}
                   aria-current={selected ? 'true' : undefined}
                   onClick={() => setActiveIndex(i)}
                   className={cn(
-                    'relative aspect-[2/3] w-[18%] min-w-[2.4rem] overflow-hidden rounded-md ring-1 transition duration-300',
+                    'relative aspect-[16/9] w-[22%] min-w-[3.2rem] overflow-hidden rounded-md ring-1 transition duration-300',
                     selected
                       ? 'z-[1] scale-[1.06] ring-[#1CE783]/80'
                       : 'ring-white/10 opacity-75 hover:opacity-100',
                   )}
                 >
                   <img
-                    src={item.poster}
+                    src={item.backdrop}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover"
                   />
@@ -242,9 +242,9 @@ function ShellScreen() {
 
 function TvBezel({ children }: { children: ReactNode }) {
   return (
-    <div className="relative mx-auto w-full max-w-[760px]">
-      <div className="rounded-[1.1rem] border border-white/15 bg-[#1a1816] p-[0.55rem] shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)] sm:rounded-[1.35rem] sm:p-[0.7rem]">
-        <div className="overflow-hidden rounded-[0.75rem] border border-white/8 bg-black sm:rounded-[0.95rem]">
+    <div className="relative mx-auto w-full max-w-[600px]">
+      <div className="rounded-[1rem] border border-white/15 bg-[#1a1816] p-[0.5rem] shadow-[0_40px_100px_-24px_rgba(0,0,0,0.95)] sm:rounded-[1.2rem] sm:p-[0.6rem]">
+        <div className="overflow-hidden rounded-[0.65rem] border border-white/8 bg-black sm:rounded-[0.85rem]">
           <div className="aspect-[16/10] w-full">{children}</div>
         </div>
       </div>
@@ -252,7 +252,7 @@ function TvBezel({ children }: { children: ReactNode }) {
   )
 }
 
-/** TV mock of Forja Home for the landing hero - CC BY open-film posters. */
+/** TV mock of Forja Home for the landing hero - CC BY open-film landscape backdrops. */
 export function HeroTvMock({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>

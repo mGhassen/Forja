@@ -56,8 +56,8 @@ const MODES = [
     accent: 'brand' as const,
     posters: [
       '/brand/open-films/big-buck-bunny.jpg',
-      '/brand/open-films/cosmos-laundromat.jpg',
-      '/brand/open-films/sprite-fright.jpg',
+      '/brand/open-films/spring.jpg',
+      '/brand/open-films/elephants-dream.jpg',
     ],
   },
   {
@@ -67,7 +67,7 @@ const MODES = [
     posters: [
       '/brand/open-films/sintel.jpg',
       '/brand/open-films/tears-of-steel.jpg',
-      '/brand/open-films/cosmos-laundromat.jpg',
+      '/brand/open-films/spring.jpg',
     ],
   },
 ]

@@ -307,6 +307,14 @@
   will-change: auto;
 }
 
+/* Same slide; fade uses an even curve so it doesn’t pop opaque mid-move. */
+.reveal-slow {
+  transition:
+    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 1.35s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 1.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Hero load-in (first viewport) */
 .hero-enter > * {
   opacity: 0;

@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { LiquidGlass } from '@/components/liquid-glass'
-import { PageAtmosphere } from '@/components/page-atmosphere'
 import { Reveal } from '@/components/reveal'
-import { SiteHeader } from '@/components/site-header'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
 import { Button } from '@/components/ui/button'
 import {
@@ -115,7 +112,7 @@ function SignupForm() {
   if (needsEmailConfirmation) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-        <Reveal variant="right" className="w-full max-w-md">
+        <Reveal variant="right" className="reveal-slow w-full max-w-md">
           <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
             <Card className="border-0 bg-transparent shadow-none">
             <CardHeader className="space-y-2 pb-2">
@@ -184,7 +181,7 @@ function SignupForm() {
 
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-      <Reveal variant="right" className="w-full max-w-md">
+      <Reveal variant="right" className="reveal-slow w-full max-w-md">
         <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
           <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="space-y-2 pb-2">
@@ -319,19 +316,5 @@ function SignupForm() {
 }
 
 export function SignupPage() {
-  return (
-    <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
-      <PageAtmosphere recipe="auth" />
-      <div className="relative z-10">
-      <SiteHeader />
-
-      <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        <AuthStoryPanel
-          emphasis="Create an account to sync settings across your screens."
-        />
-        <SignupForm />
-      </main>
-      </div>
-    </div>
-  )
+  return <SignupForm />
 }

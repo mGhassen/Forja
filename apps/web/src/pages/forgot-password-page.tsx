@@ -1,10 +1,7 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { LiquidGlass } from '@/components/liquid-glass'
-import { PageAtmosphere } from '@/components/page-atmosphere'
 import { Reveal } from '@/components/reveal'
-import { SiteHeader } from '@/components/site-header'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
 import { Button } from '@/components/ui/button'
 import {
@@ -69,7 +66,7 @@ function ForgotPasswordForm() {
   if (sentTo) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-        <Reveal variant="right" className="w-full max-w-md">
+        <Reveal variant="right" className="reveal-slow w-full max-w-md">
           <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
             <Card className="border-0 bg-transparent shadow-none">
               <CardHeader className="space-y-2 pb-2">
@@ -77,16 +74,38 @@ function ForgotPasswordForm() {
                   Account recovery
                 </p>
                 <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                  Check your email
+                  We sent you an email
                 </CardTitle>
                 <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                  If an account exists for{' '}
-                  <span className="text-[#EDE6DA]">{sentTo}</span>, we sent a
-                  reset link. Open it to choose a new password, then sign in.
+                  Check{' '}
+                  <span className="text-[#EDE6DA]">{sentTo}</span> for a
+                  message from Forja. Open the link in that email to choose a new
+                  password, then sign in. The link expires soon — if you don&apos;t
+                  see it, check spam.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+                <ol className="space-y-3 rounded-xl border border-[rgba(237,230,218,0.12)] bg-black/20 px-4 py-4 text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
+                  <li>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                      1
+                    </span>{' '}
+                    Open the reset email
+                  </li>
+                  <li>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                      2
+                    </span>{' '}
+                    Click <span className="text-[#EDE6DA]">Choose new password</span>
+                  </li>
+                  <li>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                      3
+                    </span>{' '}
+                    Set your password, then sign in
+                  </li>
+                </ol>
+                <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
                   <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
                     Didn&apos;t get it?{' '}
                     <button
@@ -97,7 +116,7 @@ function ForgotPasswordForm() {
                         resetCaptcha()
                       }}
                     >
-                      Try again
+                      Send again
                     </button>
                   </p>
                   <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
@@ -119,7 +138,7 @@ function ForgotPasswordForm() {
 
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-      <Reveal variant="right" className="w-full max-w-md">
+      <Reveal variant="right" className="reveal-slow w-full max-w-md">
         <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
           <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="space-y-2 pb-2">
@@ -217,17 +236,5 @@ function ForgotPasswordForm() {
 }
 
 export function ForgotPasswordPage() {
-  return (
-    <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
-      <PageAtmosphere recipe="auth" />
-      <div className="relative z-10">
-      <SiteHeader />
-
-      <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        <AuthStoryPanel emphasis="Reset your password to get back to synced settings." />
-        <ForgotPasswordForm />
-      </main>
-      </div>
-    </div>
-  )
+  return <ForgotPasswordForm />
 }

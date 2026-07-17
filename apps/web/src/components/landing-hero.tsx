@@ -32,7 +32,7 @@ export function LandingHero() {
           </Link>
         </div>
 
-        <Reveal variant="right" delayMs={120} className="w-full max-w-[760px] justify-self-center lg:justify-self-end">
+        <Reveal variant="right" delayMs={120} className="w-full max-w-[600px] justify-self-center lg:justify-self-end">
           <div className="animate-float">
             <HeroTvMock className="w-full" />
           </div>
