@@ -20,6 +20,7 @@ import { SettingsSection } from '@/components/settings-section'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import { useUserIptvPortals } from '@/hooks/use-user-iptv-portals'
 import {
   downloadTextFile,
@@ -490,9 +491,8 @@ export function AccountSettingsIptvPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="portal-pass">Password</Label>
-                <Input
+                <PasswordInput
                   id="portal-pass"
-                  type="password"
                   value={portalForm.password}
                   onChange={(e) =>
                     setPortalForm((f) => ({

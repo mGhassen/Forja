@@ -10,8 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import {
   useAuth,
   AUTH_UNAVAILABLE_MESSAGE,
@@ -163,9 +163,8 @@ function ResetPasswordForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="reset-password">New password</Label>
-                <Input
+                <PasswordInput
                   id="reset-password"
-                  type="password"
                   autoComplete="new-password"
                   required={configured}
                   disabled={!configured}
@@ -177,9 +176,8 @@ function ResetPasswordForm() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="reset-confirm">Confirm password</Label>
-                <Input
+                <PasswordInput
                   id="reset-confirm"
-                  type="password"
                   autoComplete="new-password"
                   required={configured}
                   disabled={!configured}

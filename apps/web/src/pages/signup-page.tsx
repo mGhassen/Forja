@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import {
   useAuth,
   AUTH_UNAVAILABLE_MESSAGE,
@@ -222,9 +223,8 @@ function SignupForm() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Password</Label>
-                <Input
+                <PasswordInput
                   id="signup-password"
-                  type="password"
                   autoComplete="new-password"
                   required={configured}
                   disabled={!configured}
@@ -236,9 +236,8 @@ function SignupForm() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-confirm">Confirm password</Label>
-                <Input
+                <PasswordInput
                   id="signup-confirm"
-                  type="password"
                   autoComplete="new-password"
                   required={configured}
                   disabled={!configured}
