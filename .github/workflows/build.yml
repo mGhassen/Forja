@@ -20,6 +20,9 @@ env:
   # Prefer publishable; fall back to legacy anon secret until that secret is renamed.
   SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
   FORJA_WEB_URL: ${{ secrets.FORJA_WEB_URL }}
+  # Public Turnstile site key — optional; empty hides in-app captcha (password login
+  # fails if Auth captcha is enabled without a matching token).
+  TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
 
 jobs:
   validate_config:
@@ -62,6 +65,7 @@ jobs:
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGN_STYLE=Manual
       - uses: actions/upload-artifact@v4
@@ -88,7 +92,8 @@ jobs:
           flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL"
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -119,7 +124,8 @@ jobs:
           flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL"
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -148,7 +154,8 @@ jobs:
           flutter build apk --release --split-per-abi \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL"
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

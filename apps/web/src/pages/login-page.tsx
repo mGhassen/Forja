@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { Reveal } from '@/components/reveal'
@@ -21,7 +21,7 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
-  buildDesktopCallbackUrl,
+  handoffSessionToDesktop,
   isSafeDesktopCallback,
   readDesktopAuthSearchParams,
 } from '@/lib/desktop-auth-callback'
@@ -37,6 +37,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [desktopHandoff, setDesktopHandoff] = useState(false)
+  const handoffStarted = useRef(false)
 
   const desktopParams = readDesktopAuthSearchParams()
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
@@ -51,20 +52,32 @@ function LoginForm() {
   }
 
   const handoffToDesktop = useCallback(
-    (accessToken: string, refreshToken: string) => {
+    async (accessToken: string, refreshToken: string) => {
       if (!desktopParams.callback) return false
-      const target = buildDesktopCallbackUrl({
+      if (!isSafeDesktopCallback(desktopParams.callback)) {
+        setError(
+          'This desktop login link is invalid. Open Web login from Forja again.',
+        )
+        return false
+      }
+      if (handoffStarted.current) return true
+      handoffStarted.current = true
+      setDesktopHandoff(true)
+      setError(null)
+      const ok = await handoffSessionToDesktop({
         callback: desktopParams.callback,
         state: desktopParams.state,
         accessToken,
         refreshToken,
       })
-      if (!target) {
-        setError('This desktop login link is invalid. Open Web login from Forja again.')
+      if (!ok) {
+        handoffStarted.current = false
+        setDesktopHandoff(false)
+        setError(
+          'Signed in, but the desktop handoff failed. Try Web login again from Forja.',
+        )
         return false
       }
-      setDesktopHandoff(true)
-      window.location.assign(target)
       return true
     },
     [desktopParams.callback, desktopParams.state],
@@ -73,7 +86,7 @@ function LoginForm() {
   useEffect(() => {
     if (loading || !user) return
     if (isDesktopLogin && session?.access_token && session.refresh_token) {
-      handoffToDesktop(session.access_token, session.refresh_token)
+      void handoffToDesktop(session.access_token, session.refresh_token)
       return
     }
     if (!isDesktopLogin) {
@@ -112,11 +125,18 @@ function LoginForm() {
       const { data } = await supabase.auth.getSession()
       const next = data.session
       if (next?.access_token && next.refresh_token) {
-        handoffToDesktop(next.access_token, next.refresh_token)
+        const ok = await handoffToDesktop(
+          next.access_token,
+          next.refresh_token,
+        )
+        setSubmitting(false)
+        if (!ok) resetCaptcha()
         return
       }
       setSubmitting(false)
-      setError('Signed in, but the desktop handoff failed. Try Web login again from Forja.')
+      setError(
+        'Signed in, but the desktop handoff failed. Try Web login again from Forja.',
+      )
       return
     }
 
@@ -145,7 +165,7 @@ function LoginForm() {
           <CardContent>
             {desktopHandoff ? (
               <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.7)]">
-                Returning you to the Forja app…
+                Signed in — you can close this tab and return to Forja.
               </p>
             ) : (
               <form onSubmit={onSubmit} className="space-y-5">

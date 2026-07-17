@@ -44,6 +44,7 @@ class SyncService {
   Future<AuthResponse> signInWithPassword({
     required String email,
     required String password,
+    String? captchaToken,
   }) async {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
@@ -53,6 +54,7 @@ class SyncService {
     final response = await client.auth.signInWithPassword(
       email: email,
       password: password,
+      captchaToken: captchaToken,
     );
     _notifyIdentityChanged();
     return response;
@@ -61,18 +63,27 @@ class SyncService {
   Future<AuthResponse> createAccount({
     required String email,
     required String password,
+    String? captchaToken,
   }) async {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
       throw const AuthException('Supabase is not configured for this build.');
     }
-    final response = await client.auth.signUp(email: email, password: password);
+    final response = await client.auth.signUp(
+      email: email,
+      password: password,
+      captchaToken: captchaToken,
+    );
     if (response.session != null) _notifyIdentityChanged();
     return response;
   }
 
-  Future<bool> signIn({required String email, required String password}) async {
+  Future<bool> signIn({
+    required String email,
+    required String password,
+    String? captchaToken,
+  }) async {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
@@ -80,7 +91,11 @@ class SyncService {
       return false;
     }
     try {
-      final res = await signInWithPassword(email: email, password: password);
+      final res = await signInWithPassword(
+        email: email,
+        password: password,
+        captchaToken: captchaToken,
+      );
       return res.session != null;
     } catch (e) {
       debugPrint('[Sync] signIn error: $e');
@@ -88,12 +103,20 @@ class SyncService {
     }
   }
 
-  Future<bool> signUp({required String email, required String password}) async {
+  Future<bool> signUp({
+    required String email,
+    required String password,
+    String? captchaToken,
+  }) async {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return false;
     try {
-      final res = await createAccount(email: email, password: password);
+      final res = await createAccount(
+        email: email,
+        password: password,
+        captchaToken: captchaToken,
+      );
       return res.session != null || res.user != null;
     } catch (e) {
       debugPrint('[Sync] signUp error: $e');

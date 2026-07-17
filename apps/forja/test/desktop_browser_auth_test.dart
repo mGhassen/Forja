@@ -69,4 +69,52 @@ void main() {
     expect(result.isSuccess, isFalse);
     expect(result.error, 'Web login cancelled.');
   });
+
+  test('signIn accepts CORS preflight then token fetch', () async {
+    final future = DesktopBrowserAuth.signIn(
+      timeout: const Duration(seconds: 8),
+      launchBrowser: (loginUrl) async {
+        final callback = Uri.parse(
+          loginUrl.queryParameters['desktop_callback']!,
+        );
+        final state = loginUrl.queryParameters['desktop_state']!;
+        final client = HttpClient();
+        try {
+          final preflight = await client.openUrl('OPTIONS', callback);
+          preflight.headers.set(
+            'Access-Control-Request-Private-Network',
+            'true',
+          );
+          final preflightResponse = await preflight.close();
+          expect(preflightResponse.statusCode, HttpStatus.noContent);
+          expect(
+            preflightResponse.headers.value(
+              'access-control-allow-private-network',
+            ),
+            'true',
+          );
+          await preflightResponse.drain<void>();
+
+          final handoff = callback.replace(
+            queryParameters: {
+              'access_token': 'access-token',
+              'refresh_token': 'refresh-token',
+              'state': state,
+            },
+          );
+          final request = await client.getUrl(handoff);
+          request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+          final response = await request.close();
+          expect(response.statusCode, HttpStatus.ok);
+          expect(response.headers.value('access-control-allow-origin'), '*');
+          await response.drain<void>();
+        } finally {
+          client.close(force: true);
+        }
+      },
+    );
+
+    final result = await future;
+    expect(result.isSuccess, isTrue);
+  });
 }

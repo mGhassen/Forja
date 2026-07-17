@@ -31,6 +31,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   List<SyncProfile> _profiles = const [];
   String? _activeProfileId;
   Completer<void>? _webCancel;
+  String? _captchaToken;
+  int _captchaKey = 0;
 
   @override
   void initState() {
@@ -93,6 +95,11 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   }
 
   Future<void> _signIn() async {
+    if (ForjaCaptcha.isConfigured &&
+        (_captchaToken == null || _captchaToken!.isEmpty)) {
+      setState(() => _error = 'Complete the captcha check, then try again.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -100,14 +107,17 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     final ok = await SyncService.instance.signIn(
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
+      captchaToken: _captchaToken,
     );
     if (!mounted) return;
     setState(() => _busy = false);
     if (!ok) {
-      setState(
-        () =>
-            _error = 'Sign-in failed. Check email/password or Supabase config.',
-      );
+      setState(() {
+        _error =
+            'Sign-in failed. Check email/password, captcha, or Supabase config.';
+        _captchaToken = null;
+        _captchaKey++;
+      });
       return;
     }
     _passwordCtrl.clear();
@@ -189,6 +199,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 
   bool get _formLocked => _busy || _webBusy;
   bool get _passwordLocked => _busy;
+  bool get _captchaReady =>
+      !ForjaCaptcha.isConfigured ||
+      (_captchaToken != null && _captchaToken!.isNotEmpty);
+  bool get _canSubmitPassword => !_formLocked && _captchaReady;
 
   @override
   Widget build(BuildContext context) {
@@ -229,9 +243,15 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       passwordCtrl: _passwordCtrl,
       formLocked: _formLocked,
       passwordLocked: _passwordLocked,
+      canSubmitPassword: _canSubmitPassword,
       busy: _busy,
       webBusy: _webBusy,
       error: _error,
+      captchaKey: _captchaKey,
+      onCaptchaToken: (token) {
+        if (!mounted) return;
+        setState(() => _captchaToken = token);
+      },
       onSignIn: _signIn,
       onWebLogin: _webLogin,
       onCancelWebLogin: _cancelWebLogin,
@@ -444,9 +464,12 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.passwordCtrl,
     required this.formLocked,
     required this.passwordLocked,
+    required this.canSubmitPassword,
     required this.busy,
     required this.webBusy,
     required this.error,
+    required this.captchaKey,
+    required this.onCaptchaToken,
     required this.onSignIn,
     required this.onWebLogin,
     required this.onCancelWebLogin,
@@ -457,9 +480,12 @@ class _SignedOutAccountBody extends StatelessWidget {
   final TextEditingController passwordCtrl;
   final bool formLocked;
   final bool passwordLocked;
+  final bool canSubmitPassword;
   final bool busy;
   final bool webBusy;
   final String? error;
+  final int captchaKey;
+  final ValueChanged<String?> onCaptchaToken;
   final VoidCallback onSignIn;
   final VoidCallback onWebLogin;
   final VoidCallback onCancelWebLogin;
@@ -502,8 +528,22 @@ class _SignedOutAccountBody extends StatelessWidget {
                     label: 'Password',
                     obscureText: true,
                     enabled: !formLocked,
-                    onSubmitted: formLocked ? null : (_) => onSignIn(),
+                    onSubmitted:
+                        canSubmitPassword ? (_) => onSignIn() : null,
                   ),
+                  if (ForjaCaptcha.isConfigured) ...[
+                    const SizedBox(height: 10),
+                    IgnorePointer(
+                      ignoring: formLocked,
+                      child: Opacity(
+                        opacity: formLocked ? 0.55 : 1,
+                        child: TurnstileCaptcha(
+                          key: ValueKey(captchaKey),
+                          onToken: onCaptchaToken,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (error != null) ...[
                     const SizedBox(height: 10),
                     Text(
@@ -524,7 +564,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                         label: busy ? 'Signing in…' : 'Sign in',
                         icon: Icons.login_rounded,
                         busy: busy,
-                        onPressed: formLocked ? null : onSignIn,
+                        onPressed: canSubmitPassword ? onSignIn : null,
                       ),
                       ForjaButton(
                         label: webBusy ? 'Cancel web login' : 'Web login',

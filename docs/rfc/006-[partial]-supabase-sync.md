@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **4 / 4** acceptance (desktop browser auth) · **2 / 5** acceptance (accounts hub slice) |
-| **Current slice** | Accounts hub / global IPTV / single profile_settings — see [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
+| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **4 / 4** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **2 / 5** acceptance (accounts hub slice) |
+| **Current slice** | Desktop Turnstile captcha for email/password when Auth captcha is configured — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -89,6 +89,16 @@
 
 ---
 
+## Acceptance (desktop captcha)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A35 | `TURNSTILE_SITE_KEY` dart-define enables in-app Turnstile on desktop email/password sign-in | ✅ |
+| 2 | R06-A36 | Account entry + Settings → Profile & account pass `captchaToken` to Supabase Auth | ✅ |
+| 3 | R06-A37 | Failed auth remounts Turnstile for a fresh token; empty site key hides the widget | ✅ |
+
+---
+
 ## Acceptance (accounts hub slice — RFC-036)
 
 | # | ID | Description | Status |
@@ -113,6 +123,7 @@ Optional account to backup and restore settings across devices. Offline-first �
 ## Auth
 
 - Supabase Auth: email/password (app + web); desktop **Web login** via portal localhost callback
+- When Auth captcha is enabled, desktop password login embeds Cloudflare Turnstile (`TURNSTILE_SITE_KEY`) and sends `captchaToken`
 - Sign-up is web-only (`/signup`); desktop links out for account creation
 - Sign-in from desktop startup / Settings → Profile & account
 - Sign-out clears remote session only; local data retained

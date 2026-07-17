@@ -45,6 +45,21 @@ test secret. Hosted projects: Dashboard → Authentication → Bot and Abuse
 Protection → enable Turnstile and paste your **secret** key; set
 `VITE_TURNSTILE_SITE_KEY` (site key) in `apps/web` / Vercel.
 
+### Prod widget fails with `400020`
+
+Cloudflare maps **400020 → invalid sitekey**. Ignore unrelated console noise
+(Gmail, password managers, `background-redux-new.js`).
+
+1. Cloudflare Dashboard → **Turnstile** → open the widget → copy the **Site Key**
+   (not the Secret Key) into Vercel env `VITE_TURNSTILE_SITE_KEY`
+2. Under the same widget → **Hostname management** — allow every prod host
+   (`forjahq.vercel.app`, custom domain, `www` if used). Missing host is usually
+   `110200`; a deleted/wrong key is `400020`
+3. Supabase → Auth → Bot protection → paste that widget’s **Secret** key
+4. Redeploy the web app so Vite picks up the env (site key is build-time)
+
+Local always-pass dummy (`1x00000000000000000000AA`) must never be set on Vercel.
+
 ## Auth email templates
 
 Branded Forja HTML lives in [`templates/`](./templates/) and is wired in

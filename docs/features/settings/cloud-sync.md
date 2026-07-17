@@ -55,13 +55,14 @@ Not synced — device-specific or sensitive:
 
 ## What you can do
 
-- Sign in with email and password in the desktop app, or use **Web login** to
-  authenticate in the browser (the app opens the portal and finishes when you
-  sign in there). If the browser does not open or you change your mind, tap
+- Sign in with email and password in the desktop app (Cloudflare Turnstile appears
+  when Auth captcha is configured), or use **Web login** to authenticate in the
+  browser (one portal tab; the app finishes when you sign in there — no second
+  localhost page). If the browser does not open or you change your mind, tap
   **Cancel web login** (or **Continue without an account**) to unlock the
-  screen. Create accounts only on the web (`/signup`); the app does not
-  offer in-app signup. Web signup and sign-in show a Cloudflare Turnstile check
-  when captcha is configured.
+  screen. Create accounts only on the web (`/signup`); the app does not offer
+  in-app signup. Web signup and sign-in show a Cloudflare Turnstile check when
+  captcha is configured.
 - Continue as a guest; the current local-only app behavior remains available
 - Select the active profile from the desktop rail avatar, or tap **Watching now**
   under **Settings → Profile & account** to open **Who’s watching?** / **Manage
@@ -110,16 +111,30 @@ Optional portal origin for **Web login** / signup links:
 --dart-define=FORJA_WEB_URL=https://your-portal.example
 ```
 
-Put the same key in repo-root `.env` (see `.env.example`) so local
-`flutter run --dart-define-from-file=../../.env` picks it up. Local default is
-`http://127.0.0.1:3000`. **Release / CI** must set GitHub secret `FORJA_WEB_URL`
-to the deployed portal (Vercel URL, custom domain, etc.) — builds fail if it is
-missing or still localhost. This does **not** go in `apps/web/.env` (that file
-configures the portal itself; the desktop app needs the portal’s public origin).
+When Supabase Auth captcha is enabled, also pass the public Turnstile site key
+(same value as `VITE_TURNSTILE_SITE_KEY` on the web portal):
+
+```text
+--dart-define=TURNSTILE_SITE_KEY=…
+```
+
+Local always-pass dummy: `1x00000000000000000000AA` (matches
+`apps/web/supabase/config.toml`). Hosted projects need the real widget site key
+that matches the Auth captcha secret.
+
+Put the same keys in repo-root `.env` (see `.env.example`) so local
+`flutter run --dart-define-from-file=../../.env` picks them up. Local default
+portal is `http://127.0.0.1:3000`. **Release / CI** must set GitHub secret
+`FORJA_WEB_URL` to the deployed portal (Vercel URL, custom domain, etc.) —
+builds fail if it is missing or still localhost. Set optional secret
+`TURNSTILE_SITE_KEY` so in-app password login works when Auth captcha is on.
+This does **not** go in `apps/web/.env` alone (that file configures the portal;
+the desktop app needs its own dart-defines).
 
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
 For signup/sign-in captcha, also set `VITE_TURNSTILE_SITE_KEY` (Cloudflare Turnstile
-site key). Local dummy keys are documented in `apps/web/.env.example`.
+site key) on the web and the matching `TURNSTILE_SITE_KEY` for Flutter.
+Local dummy keys are documented in `apps/web/.env.example` and root `.env.example`.
 Local Flutter development can load the repo-root `.env` directly:
 
 ```text

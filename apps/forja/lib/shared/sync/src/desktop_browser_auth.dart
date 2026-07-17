@@ -7,15 +7,16 @@ import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Opens the Forja web portal login and captures the session via a localhost
-/// callback (desktop OAuth-style redirect).
+/// callback (desktop OAuth-style). The portal `fetch()`es the loopback URL so
+/// the browser stays on one tab — it must not navigate to 127.0.0.1.
 class DesktopBrowserAuth {
   DesktopBrowserAuth._();
 
   /// Portal origin for browser login / signup.
   ///
   /// Pass `--dart-define=FORJA_WEB_URL=https://…` (release: GitHub secret).
-  /// Local `.env` should set `FORJA_WEB_URL=http://127.0.0.1:3000` and load via
-  /// `--dart-define-from-file`.
+  /// Local `.env` should set `FORJA_WEB_URL=http://127.0.0.1:3000` (or the
+  /// deployed https origin) and load via `--dart-define-from-file`.
   static const String webUrl = String.fromEnvironment(
     'FORJA_WEB_URL',
     defaultValue: 'http://127.0.0.1:3000',
@@ -79,6 +80,16 @@ class DesktopBrowserAuth {
 
       sub = server.listen((request) async {
         try {
+          // Portal hands off via fetch() from https://… so Chrome sends a
+          // Private Network Access preflight. Never navigate the browser here —
+          // that used to open a second 127.0.0.1 tab.
+          if (request.method == 'OPTIONS') {
+            _applyCors(request.response);
+            request.response.statusCode = HttpStatus.noContent;
+            await request.response.close();
+            return;
+          }
+
           if (request.method == 'GET' && request.uri.path == '/callback') {
             final params = request.uri.queryParameters;
             final returnedState = params['state'];
@@ -87,7 +98,7 @@ class DesktopBrowserAuth {
             final error = params['error'];
 
             if (error != null && error.isNotEmpty) {
-              await _writeHtml(
+              await _writeCallbackResponse(
                 request,
                 title: 'Sign-in cancelled',
                 body: 'You can close this tab and return to Forja.',
@@ -102,7 +113,7 @@ class DesktopBrowserAuth {
                 access.isEmpty ||
                 refresh == null ||
                 refresh.isEmpty) {
-              await _writeHtml(
+              await _writeCallbackResponse(
                 request,
                 title: 'Sign-in failed',
                 body:
@@ -117,7 +128,7 @@ class DesktopBrowserAuth {
               return;
             }
 
-            await _writeHtml(
+            await _writeCallbackResponse(
               request,
               title: 'Signed in',
               body: 'You can close this tab and return to Forja.',
@@ -132,11 +143,13 @@ class DesktopBrowserAuth {
             return;
           }
 
+          _applyCors(request.response);
           request.response.statusCode = HttpStatus.notFound;
           await request.response.close();
         } catch (e, st) {
           debugPrint('[DesktopBrowserAuth] request error: $e\n$st');
           try {
+            _applyCors(request.response);
             request.response.statusCode = HttpStatus.internalServerError;
             await request.response.close();
           } catch (_) {}
@@ -174,15 +187,33 @@ class DesktopBrowserAuth {
     return base64UrlEncode(bytes).replaceAll('=', '');
   }
 
-  static Future<void> _writeHtml(
+  /// CORS for portal `fetch()` handoff (incl. Chrome Private Network Access).
+  static void _applyCors(HttpResponse response) {
+    response.headers
+      ..set('Access-Control-Allow-Origin', '*')
+      ..set('Access-Control-Allow-Methods', 'GET, OPTIONS')
+      ..set(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Access-Control-Request-Private-Network',
+      )
+      ..set('Access-Control-Allow-Private-Network', 'true');
+  }
+
+  static Future<void> _writeCallbackResponse(
     HttpRequest request, {
     required String title,
     required String body,
     required bool ok,
   }) async {
-    final accent = ok ? '#1CE783' : '#FF6B6B';
-    final html =
-        '''
+    final response = request.response;
+    _applyCors(response);
+    response.statusCode = HttpStatus.ok;
+    // Prefer JSON for fetch(); keep a tiny HTML fallback if something navigates.
+    final accept = request.headers.value(HttpHeaders.acceptHeader) ?? '';
+    if (accept.contains('text/html') && !accept.contains('application/json')) {
+      final accent = ok ? '#1CE783' : '#FF6B6B';
+      response.headers.contentType = ContentType.html;
+      response.write('''
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,16 +225,13 @@ class DesktopBrowserAuth {
     body {
       margin: 0; min-height: 100vh; display: grid; place-items: center;
       font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-      background: radial-gradient(ellipse 70% 55% at 20% 30%, rgba(28,231,131,.16), transparent 55%),
-                  radial-gradient(ellipse 50% 45% at 85% 75%, rgba(255,90,40,.1), transparent 50%),
-                  #141414;
-      color: #E5E7EB;
+      background: #141414; color: #E5E7EB;
     }
     main { text-align: center; padding: 2rem; max-width: 28rem; }
-    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 .75rem; letter-spacing: -.02em; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 .75rem; }
     p { margin: 0; color: #9CA3AF; line-height: 1.5; }
     .dot { width: 10px; height: 10px; border-radius: 50%; background: $accent;
-           margin: 0 auto 1.25rem; box-shadow: 0 0 24px $accent; }
+           margin: 0 auto 1.25rem; }
   </style>
 </head>
 <body>
@@ -214,11 +242,17 @@ class DesktopBrowserAuth {
   </main>
 </body>
 </html>
-''';
-    final response = request.response;
-    response.statusCode = HttpStatus.ok;
-    response.headers.contentType = ContentType.html;
-    response.write(html);
+''');
+    } else {
+      response.headers.contentType = ContentType.json;
+      response.write(
+        jsonEncode({
+          'ok': ok,
+          'title': title,
+          'body': body,
+        }),
+      );
+    }
     await response.close();
   }
 }

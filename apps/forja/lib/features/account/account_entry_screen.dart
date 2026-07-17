@@ -37,6 +37,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   int _wordIndex = 0;
   Timer? _wordTimer;
   Completer<void>? _webCancel;
+  String? _captchaToken;
+  int _captchaKey = 0;
 
   late final AnimationController _breathe;
   late final AnimationController _enter;
@@ -79,6 +81,14 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       });
       return;
     }
+    if (ForjaCaptcha.isConfigured &&
+        (_captchaToken == null || _captchaToken!.isEmpty)) {
+      setState(() {
+        _message = 'Complete the captcha check, then try again.';
+        _messageIsError = true;
+      });
+      return;
+    }
 
     setState(() {
       _busy = true;
@@ -88,6 +98,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       final response = await SyncService.instance.signInWithPassword(
         email: email,
         password: password,
+        captchaToken: _captchaToken,
       );
       if (!mounted) return;
       if (response.session == null) {
@@ -104,6 +115,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       setState(() {
         _message = error.message;
         _messageIsError = true;
+        _captchaToken = null;
+        _captchaKey++;
       });
     } catch (_) {
       if (!mounted) return;
@@ -111,6 +124,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         _message =
             'Could not connect to Forja. Check your connection and retry.';
         _messageIsError = true;
+        _captchaToken = null;
+        _captchaKey++;
       });
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -188,6 +203,10 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   /// so Cancel / guest stay available if the browser never returns.
   bool get _formLocked => _busy || _webBusy;
   bool get _passwordLocked => _busy;
+  bool get _captchaReady =>
+      !ForjaCaptcha.isConfigured ||
+      (_captchaToken != null && _captchaToken!.isNotEmpty);
+  bool get _canSubmitPassword => !_formLocked && _captchaReady;
 
   @override
   Widget build(BuildContext context) {
@@ -399,6 +418,22 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     ),
                   ),
                 ),
+                if (ForjaCaptcha.isConfigured) ...[
+                  const SizedBox(height: 18),
+                  IgnorePointer(
+                    ignoring: _formLocked,
+                    child: Opacity(
+                      opacity: _formLocked ? 0.55 : 1,
+                      child: TurnstileCaptcha(
+                        key: ValueKey(_captchaKey),
+                        onToken: (token) {
+                          if (!mounted) return;
+                          setState(() => _captchaToken = token);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
                 if (_message != null) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -416,7 +451,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 SizedBox(
                   height: 52,
                   child: FilledButton(
-                    onPressed: _formLocked ? null : _submit,
+                    onPressed: _canSubmitPassword ? _submit : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: ForjaShellColors.brandGreen,
                       foregroundColor: Colors.black,
