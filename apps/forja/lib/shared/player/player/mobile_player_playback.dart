@@ -1009,6 +1009,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     _s._positionSub = _s._player.stream.position.listen((pos) {
       if (_s._disposed) return;
+      // Ignore ephemeral demux while hunting a playable source — otherwise the
+      // seek bar flashes full/empty as each CDN briefly reports duration.
+      if (!_s._playbackConfirmed) return;
       _s._positionNotifier.value = pos;
 
       final dur = _s._durationNotifier.value;
@@ -1035,6 +1038,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     _s._durationSub = _s._player.stream.duration.listen((dur) {
       if (_s._disposed) return;
+      if (!_s._playbackConfirmed) return;
       _s._durationNotifier.value = dur;
       if (!_s._hasInitialSeek &&
           dur.inSeconds >= 90 &&
@@ -1051,7 +1055,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         // _configureMpvProperties). Fire a deferred seek as a safety net in
         // case the property was ignored (e.g. live streams, non-seekable src).
         Future.delayed(const Duration(milliseconds: 500), () {
-          if (_s._disposed) return;
+          if (_s._disposed || !_s._playbackConfirmed) return;
           final currentPos = _s._positionNotifier.value;
           if ((currentPos - target).abs() > const Duration(seconds: 5)) {
             _s._player.seek(target);
@@ -1062,6 +1066,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     _s._bufferSub = _s._player.stream.buffer.listen((buf) {
       if (_s._disposed) return;
+      if (!_s._playbackConfirmed) return;
       _s._bufferedNotifier.value = buf;
     });
 

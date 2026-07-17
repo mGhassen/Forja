@@ -40,17 +40,19 @@ class _SettingsIptvPortalsSectionState extends State<SettingsIptvPortalsSection>
       final csv = portalsToCsv(portals: portals, favoriteKeys: favorites);
       final fileName = iptvPortalsCsvFilename();
       final bytes = Uint8List.fromList(utf8.encode(csv));
+      final isDesktop =
+          Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
       final result = await FilePicker.platform.saveFile(
         dialogTitle: 'Export IPTV portals',
         fileName: fileName,
         type: FileType.custom,
         allowedExtensions: const ['csv'],
-        bytes: bytes,
+        bytes: isDesktop ? null : bytes,
       );
 
       if (result != null) {
-        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        if (isDesktop) {
           await File(result).writeAsString(csv);
         }
       }

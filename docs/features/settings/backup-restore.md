@@ -26,7 +26,7 @@ Older SharedPreferences copies of those settings are imported once into that fil
 
 - **Export** — save a JSON file to disk (includes settings map + secure keys when present)
 - **Import** — load a previously exported file (replaces current settings after confirm)
-- **Export CSV** / **Import CSV** — move Xtream portals only (**plain-text passwords in the file**). On-device passwords use Keychain/Keystore. Import adds portals that are not already saved and shows an import log; existing portals are left unchanged
+- **Export CSV** / **Import CSV** — move Xtream portals only (**plain-text passwords in the file**). Export opens the platform save dialog. On-device passwords use Keychain/Keystore. Import adds portals that are not already saved and shows an import log; existing portals are left unchanged
 
 ## Tips
 
