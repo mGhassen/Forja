@@ -86,7 +86,7 @@ flutter run -d macos --dart-define-from-file=../../.env
 ```
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL` and
-`SUPABASE_PUBLISHABLE_KEY`. The publishable key is a public client credential; never put a
+`SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`). The publishable key is a public client credential; never put a
 Supabase `service_role` / `sb_secret_…` key in a desktop build.
 
 ## Tips

@@ -59,7 +59,8 @@ env:
   TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
   WYZIE_API_KEY: ${{ secrets.WYZIE_API_KEY }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+  # Prefer publishable; fall back to legacy anon secret until that secret is renamed.
+  SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
 
 jobs:
   resolve_version:
@@ -71,7 +72,7 @@ jobs:
       - name: Require Supabase desktop client config
         run: |
           if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
-            echo "::error::Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY repository secrets."
+            echo "::error::Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY) repository secrets."
             exit 1
           fi
 
