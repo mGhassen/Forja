@@ -450,11 +450,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final greyAvatar = find.byKey(const ValueKey('nav-profile-avatar-grey'));
-    expect(greyAvatar, findsOneWidget);
-    final avatar = tester.widget<ForjaProfileAvatar>(
-      find.byType(ForjaProfileAvatar),
-    );
+    final greyMarker = find.byKey(const ValueKey('nav-profile-avatar-grey'));
+    expect(greyMarker, findsOneWidget);
+    final avatarFinder = find.byType(ForjaProfileAvatar);
+    final avatar = tester.widget<ForjaProfileAvatar>(avatarFinder);
     expect(avatar.showBorder, isFalse);
     expect(
       avatar.size,
@@ -463,7 +462,7 @@ void main() {
     final avatarScale = tester.widget<AnimatedScale>(
       find
           .ancestor(
-            of: find.byType(ForjaProfileAvatar),
+            of: avatarFinder,
             matching: find.byType(AnimatedScale),
           )
           .first,
@@ -474,14 +473,61 @@ void main() {
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
-    await gesture.moveTo(tester.getCenter(greyAvatar));
+    await gesture.moveTo(tester.getCenter(avatarFinder));
     await tester.pumpAndSettle();
 
     expect(
       find.byKey(const ValueKey('nav-profile-avatar-color')),
       findsOneWidget,
     );
+    // Hover must not remount the avatar (would flash default forge artwork).
+    expect(find.byType(ForjaProfileAvatar), findsOneWidget);
+    expect(
+      tester.widget<ForjaProfileAvatar>(avatarFinder).avatarKey,
+      avatar.avatarKey,
+    );
   });
+
+  testWidgets(
+    'desktop profile avatar keeps the same artwork across rapid hover',
+    (tester) async {
+      await pumpScaffold(
+        tester,
+        desktopScaffold(),
+        size: const Size(1200, 800),
+        profile: ShellProfile.desktop,
+      );
+      await tester.pumpAndSettle();
+
+      final avatarFinder = find.byType(ForjaProfileAvatar);
+      final avatarKey = tester
+          .widget<ForjaProfileAvatar>(avatarFinder)
+          .avatarKey;
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+
+      final center = tester.getCenter(avatarFinder);
+      for (var i = 0; i < 8; i++) {
+        await gesture.moveTo(center);
+        await tester.pump(const Duration(milliseconds: 16));
+        await gesture.moveTo(center + const Offset(80, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ForjaProfileAvatar), findsOneWidget);
+      expect(
+        tester.widget<ForjaProfileAvatar>(avatarFinder).avatarKey,
+        avatarKey,
+      );
+      expect(
+        find.byKey(const ValueKey('nav-profile-avatar-grey')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('ShellScaffold body is inset by fixed rail width', (
     tester,

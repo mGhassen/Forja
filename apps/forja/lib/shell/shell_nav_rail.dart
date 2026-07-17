@@ -474,20 +474,30 @@ class _AnimatedSaturation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KeyedSubtree(
-      key: ValueKey(
-        colorized ? 'nav-profile-avatar-color' : 'nav-profile-avatar-grey',
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: colorized ? 1 : 0),
-        duration: ShellTokens.navSelectionAnimation,
-        curve: Curves.easeOutCubic,
-        child: child,
-        builder: (context, saturation, child) => ColorFiltered(
-          colorFilter: ColorFilter.matrix(_matrix(saturation)),
-          child: child!,
+    // Keep the avatar Element stable across grey↔color. A KeyedSubtree on the
+    // avatar remounts [ForjaActiveProfileAvatar] and briefly flashes the default
+    // forge face while the profile reloads — visible on quick hover.
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: colorized ? 1 : 0),
+          duration: ShellTokens.navSelectionAnimation,
+          curve: Curves.easeOutCubic,
+          child: child,
+          builder: (context, saturation, child) => ColorFiltered(
+            colorFilter: ColorFilter.matrix(_matrix(saturation)),
+            child: child!,
+          ),
         ),
-      ),
+        // Sibling marker only — must not wrap the avatar (see above).
+        SizedBox.shrink(
+          key: ValueKey(
+            colorized ? 'nav-profile-avatar-color' : 'nav-profile-avatar-grey',
+          ),
+        ),
+      ],
     );
   }
 }
