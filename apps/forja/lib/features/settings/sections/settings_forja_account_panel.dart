@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -191,7 +194,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   Widget build(BuildContext context) {
     if (!ForjaSupabase.isConfigured) {
       return const Padding(
-        padding: EdgeInsets.all(12),
+        padding: EdgeInsets.fromLTRB(2, 8, 2, 8),
         child: Text(
           'Cloud account is not configured in this build. '
           'Pass SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY via --dart-define.',
@@ -211,111 +214,572 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
 
     if (signedIn) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              ForjaProfileAvatar(
-                avatarKey: activeProfile?.avatarKey ?? 'forge',
-                name: activeProfile?.name ?? 'Profile',
-                size: 58,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(activeProfile?.name ?? 'Profile'),
-                  subtitle: Text(
-                    '${email ?? 'Signed in'}\n'
-                    '${_domains == 0 ? 'No cloud settings synced yet' : '$_domains setting section${_domains == 1 ? '' : 's'} in cloud'}',
-                  ),
-                  isThreeLine: true,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton(
-                onPressed: _busy ? null : () => _openChooser(),
-                child: const Text('Who’s watching?'),
-              ),
-              OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _openChooser(mode: ProfileChooserMode.manage),
-                child: const Text('Manage profiles'),
-              ),
-              TextButton(
-                onPressed: _busy ? null : _signOut,
-                child: const Text('Sign out'),
-              ),
-            ],
-          ),
-        ],
+      return _SignedInAccountBody(
+        activeProfile: activeProfile,
+        profiles: _profiles,
+        email: email,
+        domains: _domains,
+        busy: _busy,
+        onOpenChooser: () => _openChooser(),
+        onManage: () => _openChooser(mode: ProfileChooserMode.manage),
+        onSignOut: _signOut,
       );
     }
+
+    return _SignedOutAccountBody(
+      emailCtrl: _emailCtrl,
+      passwordCtrl: _passwordCtrl,
+      formLocked: _formLocked,
+      passwordLocked: _passwordLocked,
+      busy: _busy,
+      webBusy: _webBusy,
+      error: _error,
+      onSignIn: _signIn,
+      onWebLogin: _webLogin,
+      onCancelWebLogin: _cancelWebLogin,
+      onOpenSignup: _openSignup,
+    );
+  }
+}
+
+class _SignedInAccountBody extends StatelessWidget {
+  const _SignedInAccountBody({
+    required this.activeProfile,
+    required this.profiles,
+    required this.email,
+    required this.domains,
+    required this.busy,
+    required this.onOpenChooser,
+    required this.onManage,
+    required this.onSignOut,
+  });
+
+  final SyncProfile? activeProfile;
+  final List<SyncProfile> profiles;
+  final String? email;
+  final int domains;
+  final bool busy;
+  final VoidCallback onOpenChooser;
+  final VoidCallback onManage;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = activeProfile?.name ?? 'Profile';
+    final avatarKey = activeProfile?.avatarKey ?? 'forge';
+    final syncSubtitle = domains == 0
+        ? 'No cloud settings synced yet — changes will upload as you use Forja'
+        : '$domains setting section${domains == 1 ? '' : 's'} synced to this profile';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _emailCtrl,
-          keyboardType: TextInputType.emailAddress,
-          enabled: !_formLocked,
-          decoration: const InputDecoration(labelText: 'Email', isDense: true),
+        _ActiveProfileStage(
+          name: name,
+          avatarKey: avatarKey,
+          onTap: busy ? null : onOpenChooser,
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _passwordCtrl,
-          obscureText: true,
-          enabled: !_formLocked,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            isDense: true,
-          ),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _error!,
-            style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-          ),
-        ],
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        SettingsGroup(
+          label: 'Household',
           children: [
-            FilledButton(
-              onPressed: _formLocked ? null : _signIn,
-              child: Text(_busy ? '…' : 'Sign in'),
+            _HouseholdRail(
+              profiles: profiles,
+              activeProfileId: activeProfile?.id,
+              busy: busy,
+              onOpenChooser: onOpenChooser,
+              onManage: onManage,
             ),
-            OutlinedButton.icon(
-              onPressed: _passwordLocked
-                  ? null
-                  : (_webBusy ? _cancelWebLogin : _webLogin),
-              icon: Icon(
-                _webBusy
-                    ? Icons.close_rounded
-                    : Icons.open_in_browser_rounded,
-                size: 16,
+            SettingsActionRow(
+              title: 'Who’s watching?',
+              subtitle: 'Switch the active profile on this device',
+              leading: const Icon(
+                Icons.groups_rounded,
+                color: ForjaShellColors.brandGreen,
+                size: 22,
               ),
-              label: Text(_webBusy ? 'Cancel' : 'Web login'),
+              onTap: busy ? null : onOpenChooser,
+            ),
+            SettingsActionRow(
+              title: 'Manage profiles',
+              subtitle: 'Add, rename, change avatars, or remove',
+              leading: const Icon(
+                Icons.edit_rounded,
+                color: ForjaShellColors.iconMuted,
+                size: 22,
+              ),
+              onTap: busy ? null : onManage,
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: _formLocked ? null : _openSignup,
-            child: const Text('Create an account on the web →'),
+        SettingsGroup(
+          label: 'Cloud sync',
+          children: [
+            SettingsStatusRow(
+              title: domains == 0 ? 'Signed in · waiting for sync' : 'Synced',
+              subtitle: syncSubtitle,
+              icon: domains == 0
+                  ? Icons.cloud_queue_rounded
+                  : Icons.cloud_done_rounded,
+            ),
+          ],
+        ),
+        SettingsGroup(
+          label: 'Account',
+          children: [
+            SettingsStatusRow(
+              title: email ?? 'Signed in',
+              subtitle: 'Forja cloud account shared with the web portal',
+              icon: Icons.mail_outline_rounded,
+              iconColor: ForjaShellColors.iconMuted,
+            ),
+            SettingsActionRow(
+              title: 'Sign out',
+              subtitle: 'Returns to the sign-in screen on this device',
+              leading: const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFFF87171),
+                size: 22,
+              ),
+              destructive: true,
+              onTap: busy ? null : onSignOut,
+              trailing: const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Cinematic active-profile hero — large avatar, name, “Watching now”.
+class _ActiveProfileStage extends StatelessWidget {
+  const _ActiveProfileStage({
+    required this.name,
+    required this.avatarKey,
+    required this.onTap,
+  });
+
+  final String name;
+  final String avatarKey;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(2, 10, 2, 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              // Soft brand wash — atmosphere without a card box.
+              Container(
+                width: 108,
+                height: 108,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      ForjaShellColors.brandGreen.withValues(alpha: 0.22),
+                      ForjaShellColors.brandGreen.withValues(alpha: 0.04),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+              ForjaProfileAvatar(
+                avatarKey: avatarKey,
+                name: name,
+                size: 88,
+                selected: true,
+              ),
+            ],
           ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: ForjaShellColors.brandGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color:
+                          ForjaShellColors.brandGreen.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: const Text(
+                    'WATCHING NOW',
+                    style: TextStyle(
+                      color: ForjaShellColors.brandGreen,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  onTap == null
+                      ? 'Active profile on this device'
+                      : 'Tap to switch who’s watching',
+                  style: const TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: ForjaShellColors.iconMuted,
+              size: 28,
+            ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      scaleOnFocus: 1.0,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: content,
+    );
+  }
+}
+
+/// Compact household strip — tap any face to open Who’s watching.
+class _HouseholdRail extends StatelessWidget {
+  const _HouseholdRail({
+    required this.profiles,
+    required this.activeProfileId,
+    required this.busy,
+    required this.onOpenChooser,
+    required this.onManage,
+  });
+
+  final List<SyncProfile> profiles;
+  final String? activeProfileId;
+  final bool busy;
+  final VoidCallback onOpenChooser;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (profiles.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 14),
+        child: Text(
+          'No profiles yet — open Manage profiles to create one.',
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+            fontSize: 13,
+            height: 1.35,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            profiles.length == 1
+                ? '1 profile on this account'
+                : '${profiles.length} profiles on this account',
+            style: const TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 12.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final profile in profiles) ...[
+                  _HouseholdAvatar(
+                    profile: profile,
+                    selected: profile.id == activeProfileId,
+                    enabled: !busy,
+                    onTap: onOpenChooser,
+                  ),
+                  const SizedBox(width: 14),
+                ],
+                _AddProfileChip(
+                  enabled: !busy,
+                  onTap: onManage,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HouseholdAvatar extends StatelessWidget {
+  const _HouseholdAvatar({
+    required this.profile,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final SyncProfile profile;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ForjaProfileAvatar(
+          avatarKey: profile.avatarKey,
+          name: profile.name,
+          size: 52,
+          selected: selected,
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: 64,
+          child: Text(
+            profile.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return shellFocusableTap(
+      context: context,
+      onTap: enabled ? onTap : null,
+      scaleOnFocus: 1.04,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: Opacity(opacity: enabled ? 1 : 0.5, child: child),
+    );
+  }
+}
+
+class _AddProfileChip extends StatelessWidget {
+  const _AddProfileChip({required this.enabled, required this.onTap});
+
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: ForjaShellColors.ghostBorder.withValues(alpha: 0.7),
+              width: 1.5,
+            ),
+            color: ForjaShellColors.inkHover,
+          ),
+          child: const Icon(
+            Icons.add_rounded,
+            color: ForjaShellColors.textSecondary,
+            size: 26,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const SizedBox(
+          width: 64,
+          child: Text(
+            'Add',
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return shellFocusableTap(
+      context: context,
+      onTap: enabled ? onTap : null,
+      scaleOnFocus: 1.04,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: Opacity(opacity: enabled ? 1 : 0.5, child: child),
+    );
+  }
+}
+
+class _SignedOutAccountBody extends StatelessWidget {
+  const _SignedOutAccountBody({
+    required this.emailCtrl,
+    required this.passwordCtrl,
+    required this.formLocked,
+    required this.passwordLocked,
+    required this.busy,
+    required this.webBusy,
+    required this.error,
+    required this.onSignIn,
+    required this.onWebLogin,
+    required this.onCancelWebLogin,
+    required this.onOpenSignup,
+  });
+
+  final TextEditingController emailCtrl;
+  final TextEditingController passwordCtrl;
+  final bool formLocked;
+  final bool passwordLocked;
+  final bool busy;
+  final bool webBusy;
+  final String? error;
+  final VoidCallback onSignIn;
+  final VoidCallback onWebLogin;
+  final VoidCallback onCancelWebLogin;
+  final VoidCallback onOpenSignup;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
+          child: Text(
+            'Sign in to sync profiles and settings across devices. '
+            'You can keep using Forja without an account.',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ),
+        SettingsGroup(
+          label: 'Sign in',
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SettingsTextField(
+                    controller: emailCtrl,
+                    label: 'Email',
+                    hint: 'you@example.com',
+                    enabled: !formLocked,
+                  ),
+                  const SizedBox(height: 4),
+                  SettingsTextField(
+                    controller: passwordCtrl,
+                    label: 'Password',
+                    obscureText: true,
+                    enabled: !formLocked,
+                    onSubmitted: formLocked ? null : (_) => onSignIn(),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      error!,
+                      style: const TextStyle(
+                        color: Color(0xFFF87171),
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      ForjaButton.primary(
+                        label: busy ? 'Signing in…' : 'Sign in',
+                        icon: Icons.login_rounded,
+                        busy: busy,
+                        onPressed: formLocked ? null : onSignIn,
+                      ),
+                      ForjaButton(
+                        label: webBusy ? 'Cancel web login' : 'Web login',
+                        icon: webBusy
+                            ? Icons.close_rounded
+                            : Icons.open_in_browser_rounded,
+                        onPressed: passwordLocked
+                            ? null
+                            : (webBusy ? onCancelWebLogin : onWebLogin),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          label: 'New here?',
+          children: [
+            SettingsActionRow(
+              title: 'Create an account on the web',
+              subtitle: 'Opens the Forja portal in your browser',
+              leading: const Icon(
+                Icons.person_add_alt_1_rounded,
+                color: ForjaShellColors.iconMuted,
+                size: 22,
+              ),
+              onTap: formLocked ? null : onOpenSignup,
+            ),
+          ],
         ),
       ],
     );

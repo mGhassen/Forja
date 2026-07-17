@@ -83,10 +83,7 @@ class SettingsProfileAccountPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SettingsGroup(
-      label: 'Forja profile & account',
-      children: [SettingsForjaAccountPanel()],
-    );
+    return const SettingsForjaAccountPanel();
   }
 }
 

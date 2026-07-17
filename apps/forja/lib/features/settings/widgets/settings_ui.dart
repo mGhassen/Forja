@@ -596,6 +596,7 @@ class SettingsTextField extends StatelessWidget {
     this.label,
     this.hint,
     this.obscureText = false,
+    this.enabled = true,
     this.onSubmitted,
   });
 
@@ -603,6 +604,7 @@ class SettingsTextField extends StatelessWidget {
   final String? label;
   final String? hint;
   final bool obscureText;
+  final bool enabled;
   final ValueChanged<String>? onSubmitted;
 
   @override
@@ -610,9 +612,12 @@ class SettingsTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscureText,
+      enabled: enabled,
       onSubmitted: onSubmitted,
-      style: const TextStyle(
-        color: ForjaShellColors.textPrimary,
+      style: TextStyle(
+        color: enabled
+            ? ForjaShellColors.textPrimary
+            : ForjaShellColors.textSecondary.withValues(alpha: 0.55),
         fontSize: 14,
       ),
       cursorColor: ForjaShellColors.brandGreen,
@@ -628,6 +633,11 @@ class SettingsTextField extends StatelessWidget {
         contentPadding: const EdgeInsets.only(top: 18, bottom: 10),
         enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
+        ),
+        disabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(
+            color: ForjaShellColors.borderSubtle.withValues(alpha: 0.5),
+          ),
         ),
         focusedBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: ForjaShellColors.brandGreen, width: 2),

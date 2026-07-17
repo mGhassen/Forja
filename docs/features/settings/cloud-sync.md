@@ -17,8 +17,9 @@ another screen.
   handoff), or choose **Continue without an account**. New accounts are created
   only on the web (**Create an account on the web**).
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
-  **Who’s watching?** when signed in), or open **Settings → Profile & account**
-  and use **Who’s watching?** / **Manage profiles**
+  **Who’s watching?** when signed in), or open **Settings → Profile & account** —
+  the page shows the active profile (**Watching now**), a household avatar strip,
+  then **Who’s watching?** / **Manage profiles**, cloud sync status, and **Sign out**
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
   when configured), choose a profile on **Who's watching?**, then open **Remote
   settings**. The sidebar splits **Profile** (synced IPTV / playback / navigation /
