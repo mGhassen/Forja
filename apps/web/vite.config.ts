@@ -44,6 +44,10 @@ export default defineConfig(({ mode }) => {
       // explicit host, Vite may bind only [::1] on macOS and the portal looks
       // "down" from the desktop app.
       host: '127.0.0.1',
+      fs: {
+        // Changelog page bundles docs/changelog/done from the repo root.
+        allow: [webRoot, repoRoot],
+      },
     },
     resolve: {
       tsconfigPaths: true,

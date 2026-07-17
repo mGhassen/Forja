@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { cleanReleaseBody } from '@/hooks/use-releases'
 
 type Block =
   | { type: 'h1'; text: string }
@@ -9,12 +10,21 @@ type Block =
 
 const PREFIX_RE = /^\*\*(Add|Change|Fix|Remove):\*\*\s*/i
 
+function isGithubOnlyLine(trimmed: string): boolean {
+  const plain = trimmed.replace(/\*\*/g, '').trim()
+  if (/^Full Changelog:\s*\S+/i.test(plain)) return true
+  if (/^https?:\/\/github\.com\/\S+$/i.test(plain)) return true
+  return false
+}
+
 function parseBlocks(markdown: string): Block[] {
+  const cleaned = cleanReleaseBody(markdown)
   const blocks: Block[] = []
-  for (const raw of markdown.split(/\r?\n/)) {
+  for (const raw of cleaned.split(/\r?\n/)) {
     const line = raw.trimEnd()
     const trimmed = line.trim()
     if (!trimmed) continue
+    if (isGithubOnlyLine(trimmed)) continue
 
     if (trimmed.startsWith('# ')) {
       blocks.push({ type: 'h1', text: trimmed.slice(2).trim() })
@@ -30,6 +40,7 @@ function parseBlocks(markdown: string): Block[] {
     }
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       const body = trimmed.slice(2).trim()
+      if (isGithubOnlyLine(body)) continue
       const m = body.match(PREFIX_RE)
       if (m) {
         blocks.push({
@@ -43,7 +54,11 @@ function parseBlocks(markdown: string): Block[] {
       continue
     }
 
-    if (trimmed.startsWith('**Status:**') || trimmed.startsWith('**Since release:**')) {
+    if (
+      trimmed.startsWith('**Status:**') ||
+      trimmed.startsWith('**Since release:**') ||
+      trimmed.startsWith('**Version:**')
+    ) {
       continue
     }
     if (trimmed === '---') continue
@@ -72,11 +87,26 @@ function prefixClass(prefix: string): string {
 export function ReleaseNotes({
   markdown,
   className,
+  emptyLabel = 'No release notes for this version.',
 }: {
   markdown: string
   className?: string
+  emptyLabel?: string
 }) {
   const blocks = parseBlocks(markdown)
+
+  if (blocks.length === 0) {
+    return (
+      <p
+        className={cn(
+          'text-sm leading-relaxed text-[rgba(237,230,218,0.45)]',
+          className,
+        )}
+      >
+        {emptyLabel}
+      </p>
+    )
+  }
 
   return (
     <div

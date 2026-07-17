@@ -98,7 +98,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         aria-hidden
         className={cn(
           'pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b to-transparent',
-          solid ? 'from-[#0B0A0A]/90' : 'from-[#0B0A0A]/70',
+          solid ? 'from-forja-bg/90' : 'from-forja-bg/70',
         )}
       />
 
@@ -200,7 +200,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
       <div
         id="mobile-nav"
         className={cn(
-          'fixed inset-0 z-50 flex flex-col bg-[#0B0A0A] transition-[opacity,visibility] duration-200 md:hidden',
+          'fixed inset-0 z-50 flex flex-col bg-forja-bg transition-[opacity,visibility] duration-200 md:hidden',
           open ? 'visible opacity-100' : 'invisible pointer-events-none opacity-0',
         )}
       >

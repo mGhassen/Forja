@@ -97,7 +97,7 @@ function ShellScreen() {
   const hero = OPEN_FILMS[activeIndex]!
 
   return (
-    <div className="flex h-full min-h-0 bg-[#0B0A0A] text-[#EDE6DA]">
+    <div className="flex h-full min-h-0 bg-forja-bg text-[#EDE6DA]">
       <aside className="flex w-9 shrink-0 flex-col items-center border-r border-white/[0.06] py-2 sm:w-10">
         <img
           src="/brand/logo-dark.svg"

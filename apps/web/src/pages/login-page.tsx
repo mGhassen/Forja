@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { LiquidGlass } from '@/components/liquid-glass'
+import { PageAtmosphere } from '@/components/page-atmosphere'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
@@ -189,7 +190,7 @@ function LoginForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                    className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
                   />
                 </div>
                 <div className="space-y-2">
@@ -212,7 +213,7 @@ function LoginForm() {
                     disabled={!configured}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A] disabled:opacity-40"
+                    className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
                   />
                 </div>
 
@@ -295,7 +296,9 @@ function LoginForm() {
 
 export function LoginPage() {
   return (
-    <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
+    <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
+      <PageAtmosphere recipe="auth" />
+      <div className="relative z-10">
       <SiteHeader />
 
       <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
@@ -308,6 +311,7 @@ export function LoginPage() {
         />
         <LoginForm />
       </main>
+      </div>
     </div>
   )
 }

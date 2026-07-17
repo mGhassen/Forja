@@ -17,6 +17,7 @@ import { Route as IptvRouteImport } from './routes/iptv'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DmcaRouteImport } from './routes/dmca'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
@@ -67,6 +68,11 @@ const DownloadRoute = DownloadRouteImport.update({
 const DmcaRoute = DmcaRouteImport.update({
   id: '/dmca',
   path: '/dmca',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -130,6 +136,7 @@ const AccountSettingsAccountRoute = AccountSettingsAccountRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
+  '/changelog': typeof ChangelogRoute
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
+  '/changelog': typeof ChangelogRoute
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
+  '/changelog': typeof ChangelogRoute
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/changelog'
     | '/dmca'
     | '/download'
     | '/forgot-password'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/changelog'
     | '/dmca'
     | '/download'
     | '/forgot-password'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/changelog'
     | '/dmca'
     | '/download'
     | '/forgot-password'
@@ -260,6 +272,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRouteWithChildren
+  ChangelogRoute: typeof ChangelogRoute
   DmcaRoute: typeof DmcaRoute
   DownloadRoute: typeof DownloadRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -327,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/dmca'
       fullPath: '/dmca'
       preLoaderRoute: typeof DmcaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -447,6 +467,7 @@ const AccountRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRouteWithChildren,
+  ChangelogRoute: ChangelogRoute,
   DmcaRoute: DmcaRoute,
   DownloadRoute: DownloadRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,

@@ -70,7 +70,7 @@ export function AccountSettingsAccountPage() {
                 value={confirmEmail}
                 onChange={(e) => setConfirmEmail(e.target.value)}
                 placeholder={user?.email ?? 'you@example.com'}
-                className="h-11 border-[rgba(237,230,218,0.16)] bg-[#0B0A0A]"
+                className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg"
               />
             </div>
             {deleteError ? (

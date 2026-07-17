@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-forja-bg: #0b0a0a;
+  --color-forja-bg: #141414;
   --color-forja-surface: #141212;
   --color-forja-elevated: #1c1917;
   --color-forja-border: rgba(237, 230, 218, 0.14);

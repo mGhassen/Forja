@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { SiteFooter } from '@/components/legal-shell'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
+import { PageAtmosphere } from '@/components/page-atmosphere'
 
 /** One capability per card - independent hooks, not a feature dump. */
 const PLAYER_POWERS = [
@@ -105,22 +106,15 @@ function DownloadCta({
 
 export function IptvPage() {
   return (
-    <div className="film-grain relative bg-[#0B0A0A] text-[#EDE6DA]">
+    <div className="film-grain relative bg-forja-bg text-[#EDE6DA]">
+      <PageAtmosphere recipe="iptv" />
+      <div className="relative z-10">
       <SiteHeader />
 
       <main className="relative pt-16 sm:pt-24">
         {/* 1 - Opening: the live player story */}
-        <header className="relative overflow-hidden px-[5vw] pb-12 pt-6 sm:pb-16 sm:pt-10 lg:pb-24 lg:pt-14">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(ellipse 60% 55% at 80% 35%, rgba(255,77,28,0.2), transparent 55%), radial-gradient(ellipse 45% 50% at 15% 60%, rgba(28,231,131,0.14), transparent 50%)',
-            }}
-          />
-
-          <div className="relative z-[2] mx-auto grid max-w-[1400px] gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
+        <header className="relative px-[5vw] pb-12 pt-6 sm:pb-16 sm:pt-10 lg:pb-24 lg:pt-14">
+          <div className="relative mx-auto grid max-w-[1400px] gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
             <div className="hero-enter">
               <div className="mb-6 flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-brand/40 bg-brand/10 px-3 py-1 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-brand">
@@ -273,7 +267,7 @@ export function IptvPage() {
                   data-hover=""
                   className="group hover-lift relative h-full overflow-hidden rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#121110] transition duration-500 hover:border-brand/40"
                 >
-                  <div className="relative flex h-44 items-end justify-center gap-2 overflow-hidden bg-[#0B0A0A] px-5 pt-8 sm:h-52">
+                  <div className="relative flex h-44 items-end justify-center gap-2 overflow-hidden bg-forja-bg px-5 pt-8 sm:h-52">
                     <div
                       aria-hidden
                       className="pointer-events-none absolute inset-0 opacity-70 transition duration-700 group-hover:opacity-100"
@@ -384,9 +378,10 @@ export function IptvPage() {
             </div>
           </Reveal>
         </section>
-
-        <SiteFooter />
       </main>
+
+      <SiteFooter />
+      </div>
     </div>
   )
 }

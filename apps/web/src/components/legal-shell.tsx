@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { SiteHeader } from '@/components/site-header'
 import { BrandLogo } from '@/components/brand-logo'
+import { PageAtmosphere } from '@/components/page-atmosphere'
 
 export function LegalPage({
   eyebrow,
@@ -13,7 +14,9 @@ export function LegalPage({
   children: ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
+    <div className="relative min-h-screen bg-forja-bg text-[#EDE6DA]">
+      <PageAtmosphere recipe="quiet" />
+      <div className="relative z-10">
       <SiteHeader solid />
       <main className="mx-auto max-w-3xl px-5 pb-20 pt-24 sm:px-6 sm:pt-28">
         <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
@@ -27,6 +30,7 @@ export function LegalPage({
         </div>
       </main>
       <SiteFooter />
+      </div>
     </div>
   )
 }
@@ -52,16 +56,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="relative overflow-hidden border-t border-[rgba(237,230,218,0.12)]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 50% 60% at 0% 100%, rgba(28,231,131,0.1), transparent 55%), radial-gradient(ellipse 40% 50% at 100% 0%, rgba(255,77,28,0.08), transparent 50%)',
-        }}
-      />
-
+    <footer className="relative border-t border-[rgba(237,230,218,0.12)]">
       <div className="relative mx-auto max-w-[1400px] px-[5vw] pt-16 pb-10 sm:pt-20 sm:pb-12">
         <div className="flex flex-col gap-12 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
           <div className="max-w-xl">

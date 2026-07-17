@@ -6,6 +6,7 @@ import { NowPlayingPanel } from '@/components/now-playing-panel'
 import { Reveal } from '@/components/reveal'
 import { SiteFooter } from '@/components/legal-shell'
 import { SiteHeader } from '@/components/site-header'
+import { PageAtmosphere } from '@/components/page-atmosphere'
 
 /** Four clear use cases - plain language. */
 const NIGHTS = [
@@ -62,7 +63,9 @@ export function LandingPage() {
   const marqueeItems = [...MARQUEE, ...MARQUEE]
 
   return (
-    <div className="film-grain relative bg-[#0B0A0A] text-[#EDE6DA]">
+    <div className="film-grain relative bg-forja-bg text-[#EDE6DA]">
+      <PageAtmosphere recipe="landing" />
+      <div className="relative z-10">
       <SiteHeader />
 
       <LandingHero />
@@ -70,7 +73,7 @@ export function LandingPage() {
       {/* Beat 2 - moods of a night */}
       <section
         id="why"
-        className="border-y border-[rgba(237,230,218,0.14)] bg-[#0f0e0d]"
+        className="border-y border-[rgba(237,230,218,0.14)]"
       >
         <div className="mx-auto max-w-[1400px] px-[5vw] pt-14 pb-4 lg:pt-16">
           <Reveal>
@@ -289,6 +292,7 @@ export function LandingPage() {
       </section>
 
       <SiteFooter />
+      </div>
     </div>
   )
 }

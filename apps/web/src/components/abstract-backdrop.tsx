@@ -28,7 +28,7 @@ export function AbstractBackdrop({
 }) {
   return (
     <div
-      className={cn('relative overflow-hidden bg-[#0B0A0A]', className)}
+      className={cn('relative overflow-hidden bg-forja-bg', className)}
       style={{ backgroundImage: TONES[tone] }}
     >
       <div

@@ -70,19 +70,6 @@ export function AuthStoryPanel({
 
   return (
     <section className="relative flex min-h-[min(52vh,520px)] flex-col justify-center overflow-hidden border-b border-[rgba(237,230,218,0.1)] py-14 lg:min-h-0 lg:border-b-0 lg:border-r lg:py-20">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 20% 40%, rgba(28,231,131,0.14), transparent 55%), radial-gradient(ellipse 55% 50% at 85% 75%, rgba(255,77,28,0.12), transparent 50%)',
-        }}
-      />
-      <div
-        aria-hidden
-        className="animate-login-glow pointer-events-none absolute -top-24 right-[-10%] h-64 w-64 rounded-full bg-forja-green/20 blur-3xl"
-      />
-
       <div className="hero-enter relative z-[1] max-w-xl px-5 sm:px-8 lg:px-10">
         <p className="font-mono-ui text-[11px] uppercase tracking-[0.22em] text-forja-green">
           <span className="animate-live-dot mr-2 inline-block h-1.5 w-1.5 rounded-full bg-forja-green align-middle" />

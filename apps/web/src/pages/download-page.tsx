@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { DownloadHelp } from '@/components/download-help'
 import { SiteFooter } from '@/components/legal-shell'
+import { PageAtmosphere } from '@/components/page-atmosphere'
 import { ReleaseNotes } from '@/components/release-notes'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
@@ -250,7 +251,9 @@ export function DownloadPage() {
   )
 
   return (
-    <div className="film-grain relative min-h-screen bg-[#0B0A0A] text-[#EDE6DA]">
+    <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
+      <PageAtmosphere recipe="download" />
+      <div className="relative z-10">
       <SiteHeader />
 
       <main className="relative px-[5vw] pb-16 pt-20 sm:pb-24 sm:pt-28">
@@ -410,6 +413,7 @@ export function DownloadPage() {
         ) : null}
       </main>
       <SiteFooter />
+      </div>
     </div>
   )
 }

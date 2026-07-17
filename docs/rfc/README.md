@@ -57,6 +57,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 · 5/5 | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 13/23 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 
 ## Related
 

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Release, ReleaseAsset } from '@/lib/database.types'
+import { compareSemverDesc, DOC_CHANGELOGS } from '@/lib/changelog-docs'
 
 export type ReleaseWithAssets = Release & { assets: ReleaseAsset[] }
 
@@ -48,6 +49,11 @@ export const SHOWCASE_PLATFORMS: ShowcasePlatform[] = [
 
 const GITHUB_REPO = 'mGhassen/Forja'
 const GITHUB_LATEST = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`
+/** Changelog menu shows at most this many stable releases. */
+export const CHANGELOG_MENU_LIMIT = 20
+
+/** Fetch enough GitHub releases to merge with docs/changelog/done. */
+const GITHUB_RELEASES = `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=100`
 
 type GhAsset = {
   id: number
@@ -62,7 +68,52 @@ type GhRelease = {
   body: string | null
   published_at: string
   html_url: string
+  draft?: boolean
+  prerelease?: boolean
   assets: GhAsset[]
+}
+
+const FULL_CHANGELOG_LINE =
+  /^\s*(?:\*\*)?Full Changelog(?:\*\*)?\s*:\s*\S+\s*$/gim
+const GITHUB_URL_LINE =
+  /^\s*(?:[-*]\s+)?(?:\*\*)?(?:See\s+)?(?:the\s+)?(?:changelog|release notes)?(?:\*\*)?\s*:?\s*https?:\/\/github\.com\/\S+\s*$/gim
+
+/**
+ * Strip GitHub auto-generated compare links and other github.com-only lines
+ * so the web UI never pushes people to GitHub.
+ */
+export function cleanReleaseBody(raw: string | null | undefined): string {
+  if (!raw) return ''
+  let text = raw.replace(/\r\n/g, '\n').trim()
+  if (!text) return ''
+
+  text = text.replace(FULL_CHANGELOG_LINE, '').trim()
+  text = text.replace(GITHUB_URL_LINE, '').trim()
+  // Drop any remaining bare github.com URLs inside otherwise empty-looking lines.
+  text = text
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim()
+      if (!t) return true
+      if (/github\.com\/\S+/i.test(t) && !/^[-*]\s+\*\*(Add|Change|Fix|Remove):/i.test(t)) {
+        // Keep bullet notes that merely mention GitHub; drop link-only lines.
+        const withoutUrl = t.replace(/https?:\/\/github\.com\/\S+/gi, '').replace(/\*\*/g, '').trim()
+        if (!withoutUrl || /^full changelog:?$/i.test(withoutUrl)) return false
+      }
+      return true
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  return text
+}
+
+/** True when cleaned markdown still has user-facing change bullets. */
+export function hasChangelogBullets(raw: string | null | undefined): boolean {
+  const cleaned = cleanReleaseBody(raw)
+  if (!cleaned) return false
+  return cleaned.split('\n').some((line) => /^[-*]\s+/.test(line.trim()))
 }
 
 function detectPlatform(name: string): string {
@@ -120,18 +171,77 @@ function fromGitHub(release: GhRelease): ReleaseWithAssets {
   }
 }
 
+const GH_HEADERS = {
+  Accept: 'application/vnd.github+json',
+  'User-Agent': 'forja-web',
+} as const
+
 async function fetchGitHubLatest(): Promise<ReleaseWithAssets | null> {
-  const res = await fetch(GITHUB_LATEST, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'forja-web',
-    },
-  })
+  const res = await fetch(GITHUB_LATEST, { headers: GH_HEADERS })
   if (!res.ok) {
     throw new Error(`GitHub releases ${res.status}`)
   }
   const release = (await res.json()) as GhRelease
   return fromGitHub(release)
+}
+
+async function fetchGitHubReleases(): Promise<ReleaseWithAssets[]> {
+  const res = await fetch(GITHUB_RELEASES, { headers: GH_HEADERS })
+  if (!res.ok) {
+    throw new Error(`GitHub releases ${res.status}`)
+  }
+  const list = (await res.json()) as GhRelease[]
+  if (!Array.isArray(list)) return []
+  return list.filter((r) => !r.draft && !r.prerelease).map(fromGitHub)
+}
+
+function fromDocChangelog(version: string, markdown: string): ReleaseWithAssets {
+  return {
+    id: `docs-${version}`,
+    tag: `v${version}`,
+    version,
+    body: markdown,
+    published_at: '',
+    html_url: null,
+    source: 'docs',
+    synced_at: new Date().toISOString(),
+    assets: [],
+  }
+}
+
+/**
+ * Prefer frozen docs/changelog/done notes when they have bullets; otherwise keep
+ * the GitHub release body (after clean). Union both sources by version.
+ */
+export function mergeChangelogReleases(
+  github: ReleaseWithAssets[],
+  docs: Record<string, string> = DOC_CHANGELOGS,
+): ReleaseWithAssets[] {
+  const byVersion = new Map<string, ReleaseWithAssets>()
+
+  for (const release of github) {
+    byVersion.set(release.version, { ...release, assets: [...release.assets] })
+  }
+
+  for (const [version, markdown] of Object.entries(docs)) {
+    const existing = byVersion.get(version)
+    const docsHasNotes = hasChangelogBullets(markdown)
+    if (existing) {
+      const ghHasNotes = hasChangelogBullets(existing.body)
+      if (docsHasNotes || !ghHasNotes) {
+        existing.body = markdown
+        if (existing.source === 'github') {
+          existing.source = 'github+docs'
+        }
+      }
+      continue
+    }
+    byVersion.set(version, fromDocChangelog(version, markdown))
+  }
+
+  return [...byVersion.values()]
+    .sort((a, b) => compareSemverDesc(a.version, b.version))
+    .slice(0, CHANGELOG_MENU_LIMIT)
 }
 
 /**
@@ -141,6 +251,25 @@ export function useLatestRelease() {
   return useQuery({
     queryKey: ['releases', 'latest'],
     queryFn: async (): Promise<ReleaseWithAssets | null> => fetchGitHubLatest(),
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * Changelog entries: GitHub Releases merged with docs/changelog/done notes.
+ */
+export function useAllReleases() {
+  return useQuery({
+    queryKey: ['releases', 'changelog'],
+    queryFn: async (): Promise<ReleaseWithAssets[]> => {
+      try {
+        const github = await fetchGitHubReleases()
+        return mergeChangelogReleases(github)
+      } catch {
+        // Docs-only fallback when GitHub is unreachable.
+        return mergeChangelogReleases([])
+      }
+    },
     staleTime: 60_000,
   })
 }

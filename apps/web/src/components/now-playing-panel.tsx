@@ -78,7 +78,7 @@ export function NowPlayingPanel({ className }: { className?: string }) {
               )}
             />
           ))}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0B0A0A] via-[#0B0A0A]/85 to-[#0B0A0A]/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-forja-bg via-forja-bg/85 to-forja-bg/40" />
         </div>
 
         <div className="relative flex flex-col gap-5 p-5 sm:flex-row sm:gap-7 sm:p-8 lg:gap-8 lg:p-10">

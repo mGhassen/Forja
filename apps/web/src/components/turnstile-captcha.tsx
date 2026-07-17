@@ -29,7 +29,7 @@ export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) 
     return (
       <div
         className={cn(
-          'flex h-[65px] items-center rounded-lg border border-[rgba(237,230,218,0.12)] bg-[#0B0A0A] px-3 text-xs text-[rgba(237,230,218,0.4)]',
+          'flex h-[65px] items-center rounded-lg border border-[rgba(237,230,218,0.12)] bg-forja-bg px-3 text-xs text-[rgba(237,230,218,0.4)]',
           className,
         )}
       >
