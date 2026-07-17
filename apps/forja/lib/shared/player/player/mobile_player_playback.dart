@@ -778,6 +778,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       _s._markProviderLoadFailed(pid);
     }
     _s._finalizeProbeStatusesAfterPlayback();
+    // Terminal error owns the center chrome — drop "Finding servers…" etc.
+    _s._statusController.clear();
     setState(() {
       _s._hasError = true;
       _s._showControls = true;
@@ -788,6 +790,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
   Future<void> _autoFallbackToNextProvider() async {
     if (widget.providers == null || widget.providers!.isEmpty) {
+      _s._statusController.clear();
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
@@ -814,6 +817,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     if (mounted && !_fallbackAborted(chainGen)) {
       _s._finalizeProbeStatusesAfterPlayback();
+      _s._statusController.clear();
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
@@ -1208,6 +1212,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         _s._showControls = true;
         _s._errorMessage = 'Playback failed. Pick another server from Sources.';
       });
+      _s._statusController.clear();
       unawaited(_invalidateWebstreamingCacheForCurrent());
     });
 

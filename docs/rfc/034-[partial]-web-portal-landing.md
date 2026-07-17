@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **5 / 5** acceptance (password reset) |
-| **Current slice** | Password + OTP email auth — paste code-only templates into hosted Dashboard; daily sign-in stays email/password (no magic-link login) |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **6 / 6** acceptance (password reset) · **6 / 7** acceptance (passkeys) · **0 / 1** mobile deferred |
+| **Current slice** | Password reset via email link (JWT) → `/reset-password` → sign in; passkeys on web + Flutter desktop |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -83,6 +83,21 @@
 | 3 | R34-A21 | Local Auth redirect allowlist includes `/forgot-password` and `/reset-password` | ✅ |
 | 4 | R34-A22 | Password reset is OTP-code based (not magic-link login): recovery email shows `{{ .Token }}`; `/reset-password` accepts email + code + new password via `verifyOtp` + `updateUser` | ✅ |
 | 5 | R34-A23 | Signup confirmation is OTP-code based: confirmation email shows code; signup page verifies via `verifyOtp` type `signup` | ✅ |
+| 6 | R34-A31 | Password reset uses email link (`{{ .ConfirmationURL }}` + `redirectTo` `/reset-password`); `PASSWORD_RECOVERY` → `updateUser` → sign out → `/login` (replaces typed OTP for recovery) | ✅ |
+
+---
+
+## Acceptance (passkeys)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R34-A24 | Web `createClient` opts into `auth.experimental.passkey` | ✅ |
+| 2 | R34-A25 | `/login` offers Sign in with passkey; desktop handoff still works after passkey session | ✅ |
+| 3 | R34-A26 | Account settings: enroll, list, and delete passkeys | ✅ |
+| 4 | R34-A27 | Flutter macOS + Windows: sign in with passkey + manage passkeys in Profile & account | ✅ |
+| 5 | R34-A28 | Portal hosts `/.well-known/apple-app-site-association` for `com.forja.app`; macOS Associated Domains `webcredentials:forjahq.xyz` | ✅ |
+| 6 | R34-A29 | Linux / mobile / TV hide native passkey UI (password and/or web login unchanged) | ✅ |
+| 7 | R34-A30 | iOS / Android native passkeys (Associated Domains + Digital Asset Links) | ⏭️ |
 
 ---
 
@@ -102,7 +117,8 @@ Marketing site and account portal under `apps/web`, backed by one Supabase proje
 - Admin CMS for landing copy
 - Choosing which settings domains sync
 - Flutter-in-browser playback
-- Magic-link / OAuth beyond email-password
+- Magic-link / OAuth beyond email-password (passkeys are a separate slice)
+- Native passkeys on iOS / Android (deferred — R34-A30)
 
 ### Stack
 

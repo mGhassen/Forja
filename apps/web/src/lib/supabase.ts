@@ -19,4 +19,9 @@ export const supabaseConfigured = !looksLikePlaceholder
 export const supabase: SupabaseClient<Database> = createClient<Database>(
   looksLikePlaceholder ? 'https://placeholder.supabase.co' : url!,
   looksLikePlaceholder ? 'placeholder' : publishableKey!,
+  {
+    auth: {
+      experimental: { passkey: true },
+    },
+  },
 )

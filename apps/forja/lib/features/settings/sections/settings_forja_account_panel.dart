@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -11,6 +12,9 @@ import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+// Passkey type is @experimental.
+// ignore_for_file: experimental_member_use
 
 /// Forja cloud account (Supabase) — Settings → Profile & account.
 class SettingsForjaAccountPanel extends StatefulWidget {
@@ -26,6 +30,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   final _passwordCtrl = TextEditingController();
   bool _busy = false;
   bool _webBusy = false;
+  bool _passkeyBusy = false;
   String? _error;
   int _domains = 0;
   List<SyncProfile> _profiles = const [];
@@ -33,6 +38,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   Completer<void>? _webCancel;
   String? _captchaToken;
   int _captchaKey = 0;
+  List<Passkey> _passkeys = const [];
+  bool _passkeysLoading = false;
 
   @override
   void initState() {
@@ -62,6 +69,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
           _domains = 0;
           _profiles = const [];
           _activeProfileId = null;
+          _passkeys = const [];
         });
       }
       return;
@@ -69,11 +77,20 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     final profiles = await SyncService.instance.listProfiles();
     final activeProfile = await SyncService.instance.activeProfile();
     final remote = await SyncService.instance.pullProfileSettings();
+    List<Passkey> passkeys = const [];
+    if (ForjaPasskeys.supported) {
+      try {
+        passkeys = await SyncService.instance.listPasskeys();
+      } catch (_) {
+        passkeys = const [];
+      }
+    }
     if (!mounted) return;
     setState(() {
       _profiles = profiles;
       _activeProfileId = activeProfile?.id;
       _domains = remote == null ? 0 : remote.keys.length;
+      _passkeys = passkeys;
     });
   }
 
@@ -128,6 +145,95 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     if (!mounted) return;
     await _refreshRemote();
     setState(() {});
+  }
+
+  Future<void> _passkeyLogin() async {
+    if (!ForjaPasskeys.supported) return;
+    if (ForjaCaptcha.isConfigured &&
+        (_captchaToken == null || _captchaToken!.isEmpty)) {
+      setState(() => _error = 'Complete the captcha check, then try again.');
+      return;
+    }
+    setState(() {
+      _passkeyBusy = true;
+      _error = null;
+    });
+    try {
+      final response = await SyncService.instance.signInWithPasskey(
+        captchaToken: _captchaToken,
+      );
+      if (!mounted) return;
+      if (response.session == null) {
+        setState(() => _error = 'Passkey sign-in did not complete.');
+        return;
+      }
+      await presentProfileChooser(
+        context,
+        prepareCurrentOnSwitch: false,
+      );
+      if (!mounted) return;
+      await _refreshRemote();
+      setState(() {});
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _captchaToken = null;
+        _captchaKey++;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error =
+            'Passkey sign-in was cancelled or failed. Try password or web login.';
+        _captchaToken = null;
+        _captchaKey++;
+      });
+    } finally {
+      if (mounted) setState(() => _passkeyBusy = false);
+    }
+  }
+
+  Future<void> _addPasskey() async {
+    if (!ForjaPasskeys.supported) return;
+    setState(() {
+      _passkeysLoading = true;
+      _error = null;
+    });
+    try {
+      await SyncService.instance.registerPasskey();
+      await _refreshRemote();
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(
+        () => _error =
+            'Could not add passkey. Cancelled or platform authenticator failed.',
+      );
+    } finally {
+      if (mounted) setState(() => _passkeysLoading = false);
+    }
+  }
+
+  Future<void> _removePasskey(String passkeyId) async {
+    setState(() {
+      _passkeysLoading = true;
+      _error = null;
+    });
+    try {
+      await SyncService.instance.deletePasskey(passkeyId);
+      await _refreshRemote();
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not remove passkey.');
+    } finally {
+      if (mounted) setState(() => _passkeysLoading = false);
+    }
   }
 
   Future<void> _webLogin() async {
@@ -197,12 +303,14 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     });
   }
 
-  bool get _formLocked => _busy || _webBusy;
-  bool get _passwordLocked => _busy;
+  bool get _formLocked => _busy || _webBusy || _passkeyBusy;
+  bool get _passwordLocked => _busy || _passkeyBusy;
   bool get _captchaReady =>
       !ForjaCaptcha.isConfigured ||
       (_captchaToken != null && _captchaToken!.isNotEmpty);
   bool get _canSubmitPassword => !_formLocked && _captchaReady;
+  bool get _canSubmitPasskey =>
+      ForjaPasskeys.supported && !_formLocked && _captchaReady;
 
   @override
   Widget build(BuildContext context) {
@@ -232,9 +340,13 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         activeProfile: activeProfile,
         email: email,
         domains: _domains,
-        busy: _busy,
+        busy: _busy || _passkeysLoading,
+        passkeys: ForjaPasskeys.supported ? _passkeys : null,
         onOpenChooser: () => _openChooser(),
         onSignOut: _signOut,
+        onAddPasskey: _addPasskey,
+        onRemovePasskey: _removePasskey,
+        error: _error,
       );
     }
 
@@ -244,7 +356,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       formLocked: _formLocked,
       passwordLocked: _passwordLocked,
       canSubmitPassword: _canSubmitPassword,
+      canSubmitPasskey: _canSubmitPasskey,
+      showPasskey: ForjaPasskeys.supported,
       busy: _busy,
+      passkeyBusy: _passkeyBusy,
       webBusy: _webBusy,
       error: _error,
       captchaKey: _captchaKey,
@@ -253,6 +368,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         setState(() => _captchaToken = token);
       },
       onSignIn: _signIn,
+      onPasskeyLogin: _passkeyLogin,
       onWebLogin: _webLogin,
       onCancelWebLogin: _cancelWebLogin,
       onOpenSignup: _openSignup,
@@ -266,16 +382,25 @@ class _SignedInAccountBody extends StatelessWidget {
     required this.email,
     required this.domains,
     required this.busy,
+    required this.passkeys,
     required this.onOpenChooser,
     required this.onSignOut,
+    required this.onAddPasskey,
+    required this.onRemovePasskey,
+    this.error,
   });
 
   final SyncProfile? activeProfile;
   final String? email;
   final int domains;
   final bool busy;
+  /// Null when passkeys are unsupported on this platform.
+  final List<Passkey>? passkeys;
   final VoidCallback onOpenChooser;
   final VoidCallback onSignOut;
+  final VoidCallback onAddPasskey;
+  final ValueChanged<String> onRemovePasskey;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
@@ -306,6 +431,64 @@ class _SignedInAccountBody extends StatelessWidget {
             ),
           ],
         ),
+        if (passkeys != null)
+          SettingsGroup(
+            label: 'Passkeys',
+            children: [
+              SettingsActionRow(
+                title: busy ? 'Waiting for authenticator…' : 'Add passkey',
+                subtitle:
+                    'Touch ID, Windows Hello, or a security key for this account',
+                leading: const Icon(
+                  Icons.fingerprint_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  size: 22,
+                ),
+                onTap: busy ? null : onAddPasskey,
+              ),
+              if (passkeys!.isEmpty)
+                const SettingsStatusRow(
+                  title: 'No passkeys yet',
+                  subtitle: 'Add one to sign in without a password',
+                  icon: Icons.key_off_rounded,
+                  iconColor: ForjaShellColors.iconMuted,
+                )
+              else
+                for (final passkey in passkeys!)
+                  SettingsActionRow(
+                    title: passkey.friendlyName ?? 'Passkey',
+                    subtitle: 'Added ${_formatPasskeyDate(passkey.createdAt)}',
+                    leading: const Icon(
+                      Icons.key_rounded,
+                      color: ForjaShellColors.iconMuted,
+                      size: 22,
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Remove passkey',
+                      onPressed:
+                          busy ? null : () => onRemovePasskey(passkey.id),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Color(0xFFF87171),
+                        size: 20,
+                      ),
+                    ),
+                    onTap: null,
+                  ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+                  child: Text(
+                    error!,
+                    style: const TextStyle(
+                      color: Color(0xFFF87171),
+                      fontSize: 12.5,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         SettingsGroup(
           label: 'Account',
           children: [
@@ -332,6 +515,10 @@ class _SignedInAccountBody extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatPasskeyDate(DateTime value) {
+  return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 }
 
 /// Cinematic active-profile hero — large avatar, name, “Watching now”.
@@ -465,12 +652,16 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.formLocked,
     required this.passwordLocked,
     required this.canSubmitPassword,
+    required this.canSubmitPasskey,
+    required this.showPasskey,
     required this.busy,
+    required this.passkeyBusy,
     required this.webBusy,
     required this.error,
     required this.captchaKey,
     required this.onCaptchaToken,
     required this.onSignIn,
+    required this.onPasskeyLogin,
     required this.onWebLogin,
     required this.onCancelWebLogin,
     required this.onOpenSignup,
@@ -481,12 +672,16 @@ class _SignedOutAccountBody extends StatelessWidget {
   final bool formLocked;
   final bool passwordLocked;
   final bool canSubmitPassword;
+  final bool canSubmitPasskey;
+  final bool showPasskey;
   final bool busy;
+  final bool passkeyBusy;
   final bool webBusy;
   final String? error;
   final int captchaKey;
   final ValueChanged<String?> onCaptchaToken;
   final VoidCallback onSignIn;
+  final VoidCallback onPasskeyLogin;
   final VoidCallback onWebLogin;
   final VoidCallback onCancelWebLogin;
   final VoidCallback onOpenSignup;
@@ -566,6 +761,15 @@ class _SignedOutAccountBody extends StatelessWidget {
                         busy: busy,
                         onPressed: canSubmitPassword ? onSignIn : null,
                       ),
+                      if (showPasskey)
+                        ForjaButton(
+                          label: passkeyBusy
+                              ? 'Waiting…'
+                              : 'Sign in with passkey',
+                          icon: Icons.fingerprint_rounded,
+                          busy: passkeyBusy,
+                          onPressed: canSubmitPasskey ? onPasskeyLogin : null,
+                        ),
                       ForjaButton(
                         label: webBusy ? 'Cancel web login' : 'Web login',
                         icon: webBusy

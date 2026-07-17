@@ -244,6 +244,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       return;
     }
     if (!mounted) return;
+    _statusController.clear();
     setState(() {
       _hasError = true;
       _errorMessage = message;
@@ -1230,7 +1231,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                     failed: _episodeLoadingFailed,
                   ),
                 ),
-              if (!_loadingNextEp)
+              if (!_loadingNextEp && !_hasError)
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,

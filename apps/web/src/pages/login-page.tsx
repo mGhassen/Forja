@@ -31,13 +31,15 @@ import { supabase } from '@/lib/supabase'
 
 function LoginForm() {
   const navigate = useNavigate()
-  const { signIn, session, user, loading, configured } = useAuth()
+  const { signIn, signInWithPasskey, session, user, loading, configured } =
+    useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [passkeySubmitting, setPasskeySubmitting] = useState(false)
   const [desktopHandoff, setDesktopHandoff] = useState(false)
   const handoffStarted = useRef(false)
 
@@ -146,6 +148,50 @@ function LoginForm() {
     void navigate({ to: '/account/profiles' })
   }
 
+  async function onPasskeySignIn() {
+    setError(null)
+
+    if (captchaConfigured && !captchaToken) {
+      setError(CAPTCHA_REQUIRED_MESSAGE)
+      return
+    }
+
+    setPasskeySubmitting(true)
+    const { error: passkeyError } = await signInWithPasskey({
+      captchaToken: captchaToken ?? undefined,
+    })
+    if (passkeyError) {
+      setPasskeySubmitting(false)
+      setError(passkeyError)
+      resetCaptcha()
+      return
+    }
+
+    if (isDesktopLogin) {
+      const { data } = await supabase.auth.getSession()
+      const next = data.session
+      if (next?.access_token && next.refresh_token) {
+        const ok = await handoffToDesktop(
+          next.access_token,
+          next.refresh_token,
+        )
+        setPasskeySubmitting(false)
+        if (!ok) resetCaptcha()
+        return
+      }
+      setPasskeySubmitting(false)
+      setError(
+        'Signed in, but the desktop handoff failed. Try Web login again from Forja.',
+      )
+      return
+    }
+
+    setPasskeySubmitting(false)
+    void navigate({ to: '/account/profiles' })
+  }
+
+  const authBusy = submitting || passkeySubmitting
+
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="w-full max-w-md">
@@ -236,23 +282,50 @@ function LoginForm() {
                 ) : null}
 
                 {configured ? (
-                  <Button
-                    type="submit"
-                    disabled={
-                      submitting ||
-                      loading ||
-                      (captchaConfigured && !captchaToken)
-                    }
-                    className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                  >
-                    {submitting
-                      ? isDesktopLogin
-                        ? 'Signing in for desktop…'
-                        : 'Signing in…'
-                      : isDesktopLogin
-                        ? 'Sign in & return to app'
-                        : 'Sign in'}
-                  </Button>
+                  <>
+                    <Button
+                      type="submit"
+                      disabled={
+                        authBusy ||
+                        loading ||
+                        (captchaConfigured && !captchaToken)
+                      }
+                      className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    >
+                      {submitting
+                        ? isDesktopLogin
+                          ? 'Signing in for desktop…'
+                          : 'Signing in…'
+                        : isDesktopLogin
+                          ? 'Sign in & return to app'
+                          : 'Sign in'}
+                    </Button>
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-[rgba(237,230,218,0.12)]" />
+                      </div>
+                      <div className="relative flex justify-center text-[10px] uppercase tracking-[0.16em]">
+                        <span className="bg-transparent px-3 font-mono-ui text-[rgba(237,230,218,0.35)]">
+                          or
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        authBusy ||
+                        loading ||
+                        (captchaConfigured && !captchaToken)
+                      }
+                      onClick={() => void onPasskeySignIn()}
+                      className="h-12 w-full rounded-full border-[rgba(237,230,218,0.22)] font-mono-ui text-xs font-bold uppercase tracking-[0.12em] text-[#EDE6DA] hover:border-forja-green/50 hover:bg-forja-green/10"
+                    >
+                      {passkeySubmitting
+                        ? 'Waiting for passkey…'
+                        : 'Sign in with passkey'}
+                    </Button>
+                  </>
                 ) : (
                   <Link
                     to="/download"

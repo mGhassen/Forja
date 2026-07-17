@@ -17,6 +17,13 @@ export const AUTH_UNAVAILABLE_MESSAGE =
 export const CAPTCHA_REQUIRED_MESSAGE =
   'Complete the captcha check, then try again.'
 
+export type ForjaPasskey = {
+  id: string
+  friendlyName: string | null
+  createdAt: string
+  lastUsedAt: string | null
+}
+
 type AuthResult = {
   error: string | null
   /** True when the user was created but must confirm email before a session exists. */
@@ -33,6 +40,9 @@ type AuthContextValue = {
     password: string,
     options?: { captchaToken?: string },
   ) => Promise<AuthResult>
+  signInWithPasskey: (options?: {
+    captchaToken?: string
+  }) => Promise<AuthResult>
   signUp: (
     email: string,
     password: string,
@@ -40,26 +50,51 @@ type AuthContextValue = {
   ) => Promise<AuthResult>
   /** Confirm signup with the OTP emailed after sign-up. */
   verifySignupOtp: (email: string, token: string) => Promise<AuthResult>
-  /** Send a recovery OTP email (code only — not a magic link login). */
+  /** Email a password-reset link that opens `/reset-password` with a recovery session. */
   requestPasswordReset: (
     email: string,
     options?: { captchaToken?: string },
   ) => Promise<AuthResult>
-  /** Verify recovery OTP and set a new password in one step. */
-  resetPasswordWithOtp: (
-    email: string,
-    token: string,
-    password: string,
-  ) => Promise<AuthResult>
+  /**
+   * True after the user opens the recovery link (PASSWORD_RECOVERY).
+   * Required before `updatePassword` on `/reset-password`.
+   */
+  isPasswordRecovery: boolean
+  /** Set a new password while in a recovery session, then sign out. */
+  updatePassword: (password: string) => Promise<AuthResult>
+  registerPasskey: () => Promise<{
+    error: string | null
+    passkey: ForjaPasskey | null
+  }>
+  listPasskeys: () => Promise<{
+    error: string | null
+    passkeys: ForjaPasskey[]
+  }>
+  deletePasskey: (passkeyId: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   deleteAccount: (confirmEmail: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function mapPasskey(item: {
+  id: string
+  friendly_name?: string
+  created_at: string
+  last_used_at?: string
+}): ForjaPasskey {
+  return {
+    id: item.id,
+    friendlyName: item.friendly_name ?? null,
+    createdAt: item.created_at,
+    lastUsedAt: item.last_used_at ?? null,
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -68,16 +103,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let mounted = true
+
+    // Subscribe first so PASSWORD_RECOVERY from the email redirect is not missed.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!mounted) return
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true)
+      }
+      if (event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false)
+      }
+      setSession(next)
+      setLoading(false)
+    })
+
     void supabase.auth.getSession().then(({ data }) => {
       if (mounted) {
         setSession(data.session)
         setLoading(false)
       }
-    })
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next)
-      setLoading(false)
     })
 
     return () => {
@@ -103,6 +147,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: options?.captchaToken
+          ? { captchaToken: options.captchaToken }
+          : undefined,
+      })
+      return { error: error?.message ?? null }
+    },
+    [],
+  )
+
+  const signInWithPasskey = useCallback(
+    async (options?: { captchaToken?: string }): Promise<AuthResult> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { error } = await supabase.auth.signInWithPasskey({
         options: options?.captchaToken
           ? { captchaToken: options.captchaToken }
           : undefined,
@@ -170,8 +229,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { error: AUTH_UNAVAILABLE_MESSAGE }
       }
-      // Sends recovery email with OTP. App uses code entry — not link login.
+      const redirectTo = `${window.location.origin}/reset-password`
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
         ...(options?.captchaToken
           ? { captchaToken: options.captchaToken }
           : {}),
@@ -181,26 +241,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const resetPasswordWithOtp = useCallback(
-    async (
-      email: string,
-      token: string,
-      password: string,
-    ): Promise<AuthResult> => {
+  const updatePassword = useCallback(
+    async (password: string): Promise<AuthResult> => {
       if (!supabaseConfigured) {
         return { error: AUTH_UNAVAILABLE_MESSAGE }
       }
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: token.trim(),
-        type: 'recovery',
-      })
-      if (verifyError) return { error: verifyError.message }
-
+      if (!isPasswordRecovery) {
+        return {
+          error:
+            'Open the reset link from your email first. Request a new one if it expired.',
+        }
+      }
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       })
-      return { error: updateError?.message ?? null }
+      if (updateError) return { error: updateError.message }
+
+      setIsPasswordRecovery(false)
+      await supabase.auth.signOut()
+      return { error: null }
+    },
+    [isPasswordRecovery],
+  )
+
+  const registerPasskey = useCallback(async (): Promise<{
+    error: string | null
+    passkey: ForjaPasskey | null
+  }> => {
+    if (!supabaseConfigured) {
+      return { error: AUTH_UNAVAILABLE_MESSAGE, passkey: null }
+    }
+    const { data, error } = await supabase.auth.registerPasskey()
+    if (error) return { error: error.message, passkey: null }
+    if (!data) return { error: 'Could not register passkey.', passkey: null }
+    return { error: null, passkey: mapPasskey(data) }
+  }, [])
+
+  const listPasskeys = useCallback(async (): Promise<{
+    error: string | null
+    passkeys: ForjaPasskey[]
+  }> => {
+    if (!supabaseConfigured) {
+      return { error: AUTH_UNAVAILABLE_MESSAGE, passkeys: [] }
+    }
+    const { data, error } = await supabase.auth.passkey.list()
+    if (error) return { error: error.message, passkeys: [] }
+    return {
+      error: null,
+      passkeys: (data ?? []).map(mapPasskey),
+    }
+  }, [])
+
+  const deletePasskey = useCallback(
+    async (passkeyId: string): Promise<{ error: string | null }> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { error } = await supabase.auth.passkey.delete({ passkeyId })
+      return { error: error?.message ?? null }
     },
     [],
   )
@@ -259,21 +357,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       configured: supabaseConfigured,
       signIn,
+      signInWithPasskey,
       signUp,
       verifySignupOtp,
       requestPasswordReset,
-      resetPasswordWithOtp,
+      isPasswordRecovery,
+      updatePassword,
+      registerPasskey,
+      listPasskeys,
+      deletePasskey,
       signOut,
       deleteAccount,
     }),
     [
       session,
       loading,
+      isPasswordRecovery,
       signIn,
+      signInWithPasskey,
       signUp,
       verifySignupOtp,
       requestPasswordReset,
-      resetPasswordWithOtp,
+      updatePassword,
+      registerPasskey,
+      listPasskeys,
+      deletePasskey,
       signOut,
       deleteAccount,
     ],

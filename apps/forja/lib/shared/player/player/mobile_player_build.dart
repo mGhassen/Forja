@@ -232,7 +232,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                     ),
                   ),
 
-                if (!_s._isLoadingNextEp)
+                if (!_s._isLoadingNextEp && !_s._hasError)
                   PlayerStatusOverlay(
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,

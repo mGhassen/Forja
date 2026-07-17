@@ -12,6 +12,10 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>webcredentials:forjahq.xyz</string>
+	</array>
 	<key>keychain-access-groups</key>
 	<array>
 		<string>$(AppIdentifierPrefix)com.forja.app</string>

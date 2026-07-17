@@ -13,22 +13,26 @@ another screen.
 
 ## How to open it
 
-- **Desktop startup:** sign in with email/password, use **Web login** (browser
-  handoff), or choose **Continue without an account**. New accounts are created
-  only on the web (**Create an account on the web**).
+- **Desktop startup:** sign in with email/password, **Sign in with passkey** (macOS /
+  Windows), use **Web login** (browser handoff), or choose **Continue without an
+  account**. New accounts are created only on the web (**Create an account on the
+  web**). Linux, phones, and TV keep password and/or web login only.
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
   **Who’s watching?** when signed in), or open **Settings → Profile & account** —
   the page shows the active profile (**Watching now** — tap to switch), cloud
-  sync status, and **Sign out**
-- **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
-  when configured). Use **Forgot password?** on `/login` (or open `/forgot-password`)
-  to email a reset link; the link opens `/reset-password` so you can choose a new
-  password. New accounts have no profiles yet — create your first one
-  (name + avatar); default synced settings are attached then. After that, choose a
-  profile on **Who's watching?**, then open **Remote settings**. The sidebar splits
-  **Profile** (synced IPTV / playback / navigation / Stremio) from **Account**
-  (email, log out, delete). Back returns to Who's watching. Switch profiles from
-  the header menu. **Log out** is under Account in the left nav.
+  sync status, passkeys (macOS / Windows), and **Sign out**
+- **Web:** sign in at `/login` with email/password or **Sign in with passkey**, or
+  create an account at `/signup` (Turnstile captcha when configured). Use
+  **Forgot password?** on `/login` (or open `/forgot-password`) to email a reset
+  link; open the link to choose a new password on `/reset-password`, then sign in.
+  Under **Account**, enroll and remove passkeys. New accounts have no profiles yet —
+  create your
+  first one (name + avatar); default synced settings are attached then. After
+  that, choose a profile on **Who's watching?**, then open **Remote settings**.
+  The sidebar splits **Profile** (synced IPTV / playback / navigation / Stremio)
+  from **Account** (email, passkeys, log out, delete). Back returns to Who's
+  watching. Switch profiles from the header menu. **Log out** is under Account in
+  the left nav.
 
 ## What syncs (remote settings)
 
@@ -59,14 +63,15 @@ Not synced — device-specific or sensitive:
 ## What you can do
 
 - Sign in with email and password in the desktop app (Cloudflare Turnstile appears
-  when Auth captcha is configured), or use **Web login** to authenticate in the
+  when Auth captcha is configured), **Sign in with passkey** on macOS and Windows
+  (Touch ID / Windows Hello), or use **Web login** to authenticate in the
   browser (one portal tab; the app finishes when you sign in there — no second
   localhost page). If the browser does not open or you change your mind, tap
   **Cancel web login** (or **Continue without an account**) to unlock the
   screen. Create accounts only on the web (`/signup`); the app does not offer
   in-app signup. Web signup and sign-in show a Cloudflare Turnstile check when
-  captcha is configured. Forgot password is web-only: `/forgot-password` emails a
-  reset link that opens `/reset-password`.
+  captcha is configured. Web login also offers passkeys. Forgot password is
+  web-only: `/forgot-password` emails a reset link that opens `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
 - Select the active profile from the desktop rail avatar, or tap **Watching now**
   under **Settings → Profile & account** to open **Who’s watching?** / **Manage
@@ -84,7 +89,9 @@ Not synced — device-specific or sensitive:
   guest / offline use; cloud sync stops until you sign in again
 - Open **Account** after sign-in on the web: create a profile if needed, pick one
   on **Who’s watching?**, then land in **Remote settings**. Use the **Account**
-  sidebar item for log out or permanent account delete (confirm by typing your email)
+  sidebar item for passkeys, log out, or permanent account delete (confirm by
+  typing your email). On macOS / Windows, **Settings → Profile & account** also
+  lists Add / remove passkey.
 - Create, rename, and delete profiles on desktop or the web, with 30 avatars
   organized into Characters, Creatures, Space, and Retro categories. Signup does
   not invent a default profile — the first one is yours, with default settings

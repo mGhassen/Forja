@@ -57,7 +57,7 @@ const accountCategories = [
   {
     href: '/account/settings/account',
     title: 'Account',
-    subtitle: 'Email and delete',
+    subtitle: 'Email, passkeys, and delete',
     icon: UserRound,
   },
 ] as const

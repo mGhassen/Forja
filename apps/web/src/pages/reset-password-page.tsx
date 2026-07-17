@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { LiquidGlass } from '@/components/liquid-glass'
 import { PageAtmosphere } from '@/components/page-atmosphere'
@@ -20,19 +20,44 @@ import {
   AUTH_UNAVAILABLE_MESSAGE,
 } from '@/hooks/use-auth'
 
-const resetPasswordRoute = getRouteApi('/reset-password')
 const MIN_PASSWORD_LENGTH = 6
+
+/** True while Supabase may still be exchanging the recovery link tokens. */
+function urlLooksLikeRecoveryRedirect(): boolean {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  if (params.has('code')) return true
+  const hash = window.location.hash.replace(/^#/, '')
+  if (!hash) return false
+  const hashParams = new URLSearchParams(hash)
+  return (
+    hashParams.get('type') === 'recovery' || hashParams.has('access_token')
+  )
+}
 
 function ResetPasswordForm() {
   const navigate = useNavigate()
-  const { email: emailFromSearch } = resetPasswordRoute.useSearch()
-  const { resetPasswordWithOtp, loading, configured } = useAuth()
-  const [email, setEmail] = useState(emailFromSearch ?? '')
-  const [token, setToken] = useState('')
+  const {
+    updatePassword,
+    isPasswordRecovery,
+    loading,
+    configured,
+  } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [awaitingLink, setAwaitingLink] = useState(urlLooksLikeRecoveryRedirect)
+
+  useEffect(() => {
+    if (isPasswordRecovery) {
+      setAwaitingLink(false)
+      return
+    }
+    if (!awaitingLink) return
+    const timeout = window.setTimeout(() => setAwaitingLink(false), 8000)
+    return () => window.clearTimeout(timeout)
+  }, [isPasswordRecovery, awaitingLink])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -46,17 +71,9 @@ function ResetPasswordForm() {
       setError('Passwords do not match.')
       return
     }
-    if (!token.trim()) {
-      setError('Enter the code from your email.')
-      return
-    }
 
     setSubmitting(true)
-    const { error: resetError } = await resetPasswordWithOtp(
-      email.trim(),
-      token,
-      password,
-    )
+    const { error: resetError } = await updatePassword(password)
     setSubmitting(false)
 
     if (resetError) {
@@ -64,7 +81,60 @@ function ResetPasswordForm() {
       return
     }
 
-    void navigate({ to: '/account/profiles' })
+    void navigate({ to: '/login' })
+  }
+
+  if (loading || awaitingLink) {
+    return (
+      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+        <p className="text-sm text-[rgba(237,230,218,0.55)]">
+          Checking reset link…
+        </p>
+      </section>
+    )
+  }
+
+  if (configured && !isPasswordRecovery) {
+    return (
+      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+        <Reveal variant="right" className="w-full max-w-md">
+          <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
+            <Card className="border-0 bg-transparent shadow-none">
+              <CardHeader className="space-y-2 pb-2">
+                <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
+                  Password reset
+                </p>
+                <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
+                  Link expired
+                </CardTitle>
+                <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
+                  Open the reset link from your email, or request a new one.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mt-2 space-y-4">
+                  <Link
+                    to="/forgot-password"
+                    data-hover=""
+                    className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                  >
+                    Request reset link
+                  </Link>
+                  <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
+                    <Link
+                      to="/login"
+                      className="text-forja-green hover:text-flame hover:underline"
+                    >
+                      Back to sign in
+                    </Link>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </LiquidGlass>
+        </Reveal>
+      </section>
+    )
   }
 
   return (
@@ -80,9 +150,8 @@ function ResetPasswordForm() {
               Choose a new password
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Enter the code from your email, then pick a new password (at least{' '}
-              {MIN_PASSWORD_LENGTH} characters). After that, sign in with email +
-              password as usual.
+              Pick a new password (at least {MIN_PASSWORD_LENGTH} characters).
+              Then sign in with email + password.
             </CardDescription>
           </CardHeader>
 
@@ -95,35 +164,6 @@ function ResetPasswordForm() {
                 </p>
               ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  autoComplete="email"
-                  required={configured}
-                  disabled={!configured}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reset-code">Reset code</Label>
-                <Input
-                  id="reset-code"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  required={configured}
-                  disabled={!configured}
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="6-digit code"
-                  className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg font-mono-ui tracking-[0.2em] disabled:opacity-40"
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="reset-password">New password</Label>
                 <Input
@@ -167,7 +207,7 @@ function ResetPasswordForm() {
               {configured ? (
                 <Button
                   type="submit"
-                  disabled={submitting || loading}
+                  disabled={submitting}
                   className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                 >
                   {submitting ? 'Saving…' : 'Save new password'}
@@ -183,16 +223,7 @@ function ResetPasswordForm() {
               )}
             </form>
 
-            <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
-              <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
-                Need a new code?{' '}
-                <Link
-                  to="/forgot-password"
-                  className="text-forja-green hover:text-flame hover:underline"
-                >
-                  Request one
-                </Link>
-              </p>
+            <div className="mt-8 border-t border-[rgba(237,230,218,0.1)] pt-6">
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
                 <Link
                   to="/login"

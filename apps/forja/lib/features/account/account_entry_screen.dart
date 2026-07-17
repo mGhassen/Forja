@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -32,6 +33,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   bool _obscurePassword = true;
   bool _busy = false;
   bool _webBusy = false;
+  bool _passkeyBusy = false;
   String? _message;
   bool _messageIsError = false;
   int _wordIndex = 0;
@@ -132,6 +134,56 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     }
   }
 
+  Future<void> _passkeyLogin() async {
+    if (!ForjaPasskeys.supported) return;
+    if (ForjaCaptcha.isConfigured &&
+        (_captchaToken == null || _captchaToken!.isEmpty)) {
+      setState(() {
+        _message = 'Complete the captcha check, then try again.';
+        _messageIsError = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _passkeyBusy = true;
+      _message = null;
+    });
+    try {
+      final response = await SyncService.instance.signInWithPasskey(
+        captchaToken: _captchaToken,
+      );
+      if (!mounted) return;
+      if (response.session == null) {
+        setState(() {
+          _message = 'Passkey sign-in did not complete. Try again.';
+          _messageIsError = true;
+        });
+        return;
+      }
+      widget.onAuthenticated();
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _message = error.message;
+        _messageIsError = true;
+        _captchaToken = null;
+        _captchaKey++;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _message =
+            'Passkey sign-in was cancelled or failed. Try again, or use password.';
+        _messageIsError = true;
+        _captchaToken = null;
+        _captchaKey++;
+      });
+    } finally {
+      if (mounted) setState(() => _passkeyBusy = false);
+    }
+  }
+
   Future<void> _webLogin() async {
     final cancel = Completer<void>();
     _webCancel = cancel;
@@ -201,12 +253,14 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   /// Password auth locks the form. Web login only locks email/password submit
   /// so Cancel / guest stay available if the browser never returns.
-  bool get _formLocked => _busy || _webBusy;
-  bool get _passwordLocked => _busy;
+  bool get _formLocked => _busy || _webBusy || _passkeyBusy;
+  bool get _passwordLocked => _busy || _passkeyBusy;
   bool get _captchaReady =>
       !ForjaCaptcha.isConfigured ||
       (_captchaToken != null && _captchaToken!.isNotEmpty);
   bool get _canSubmitPassword => !_formLocked && _captchaReady;
+  bool get _canSubmitPasskey =>
+      ForjaPasskeys.supported && !_formLocked && _captchaReady;
 
   @override
   Widget build(BuildContext context) {
@@ -472,6 +526,42 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     ),
                   ),
                 ),
+                if (ForjaPasskeys.supported) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _canSubmitPasskey ? _passkeyLogin : null,
+                      icon: Icon(
+                        _passkeyBusy
+                            ? Icons.hourglass_top_rounded
+                            : Icons.fingerprint_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        _passkeyBusy
+                            ? 'Waiting for passkey…'
+                            : 'Sign in with passkey',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          letterSpacing: 0.15,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ForjaShellColors.textPrimary,
+                        side: BorderSide(
+                          color: ForjaShellColors.textPrimary.withValues(
+                            alpha: 0.35,
+                          ),
+                        ),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 52,

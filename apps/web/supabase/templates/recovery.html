@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark only" />
     <meta name="supported-color-schemes" content="dark" />
-    <title>Your Forja password reset code</title>
+    <title>Reset your Forja password</title>
     <!--[if mso]><style>body,table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
   </head>
   <body
@@ -19,7 +19,7 @@
     "
   >
     <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all">
-      Your Forja password reset code is {{ .Token }}. Don’t share it.
+      Reset your Forja password for {{ .Email }}. This link expires soon.
     </div>
     <table
       role="presentation"
@@ -92,7 +92,7 @@
                     color: #ede6da;
                   "
                 >
-                  Password reset code
+                  Reset your password
                 </h1>
               </td>
             </tr>
@@ -105,9 +105,9 @@
                   color: rgba(237, 230, 218, 0.62);
                 "
               >
-                Enter this code on the Forja reset page for
-                <span style="color: #ede6da">{{ .Email }}</span>,
-                then choose a new password. It expires soon — don’t share it.
+                Click the button below to choose a new password for
+                <span style="color: #ede6da">{{ .Email }}</span>.
+                The link expires soon — don’t share it.
               </td>
             </tr>
             <tr>
@@ -117,31 +117,52 @@
                   cellpadding="0"
                   cellspacing="0"
                   border="0"
-                  style="
-                    margin: 0 auto;
-                    background-color: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(237, 230, 218, 0.1);
-                    border-radius: 14px;
-                    overflow: hidden;
-                  "
+                  style="margin: 0 auto"
                 >
                   <tr>
                     <td
+                      align="center"
                       style="
-                        padding: 28px 40px;
-                        border-left: 3px solid #1ce783;
-                        font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                        font-size: 36px;
-                        font-weight: 700;
-                        letter-spacing: 0.22em;
-                        color: #1ce783;
-                        text-align: center;
+                        border-radius: 999px;
+                        background-color: #ff4d1c;
                       "
                     >
-                      {{ .Token }}
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="
+                          display: inline-block;
+                          padding: 16px 36px;
+                          font-family: 'Space Mono', 'Courier New', Courier, monospace;
+                          font-size: 12px;
+                          font-weight: 700;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                          text-decoration: none;
+                          color: #0b0a0a;
+                        "
+                      >
+                        Choose new password
+                      </a>
                     </td>
                   </tr>
                 </table>
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 24px 32px 0 32px;
+                  font-size: 13px;
+                  line-height: 1.55;
+                  color: rgba(237, 230, 218, 0.38);
+                  word-break: break-all;
+                "
+              >
+                Button not working? Paste this link into your browser:<br />
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="color: rgba(237, 230, 218, 0.55); text-decoration: underline"
+                >{{ .ConfirmationURL }}</a>
               </td>
             </tr>
             <tr>

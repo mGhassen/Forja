@@ -77,7 +77,7 @@ subject = "Confirm your Forja account"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Your Forja password reset code"
+subject = "Reset your Forja password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.magic_link]
