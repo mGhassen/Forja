@@ -13,6 +13,7 @@ import 'package:forja/features/anime/widgets/anime_continue_watching_section.dar
 import 'anime_details_screen.dart';
 import 'anime_player_screen.dart';
 import 'anime_search_screen.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';

@@ -142,7 +142,8 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
       Duration? startPosition;
-      if (posMs > 5000) {
+      // Same as movies: ≥90% finished → restart at 0 (not near-credits).
+      if (posMs > 5000 && isInProgressResume(posMs, durMs)) {
         final clamped = (durMs > 0 && posMs > durMs - 30000)
             ? (durMs - 30000)
             : posMs;

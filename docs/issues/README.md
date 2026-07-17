@@ -96,7 +96,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [072-[fixed]-…](fixed/072-[fixed]-torrent-early-eof-false-completed-autonext.md) | Local torrent early EOF false completed / auto-next | P1 | High | fixed | Complete · 9/9 · A 4/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [073-[fixed]-…](fixed/073-[fixed]-stremio-provider-filter-stuck-on-failed-addon.md) | Stremio Filters stuck on failed addon (Torrentio 403) | P1 | High | fixed | Complete · 4/4 · A 2/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [074-[fixed]-…](fixed/074-[fixed]-vod-eof-seek-bar-stuck.md) | VOD EOF sticks seek bar / mislabels real end | P1 | High | fixed | Complete · 5/5 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [075-[fixed]-…](fixed/075-[fixed]-anime-dead-cache-empty-sources.md) | Anime dead session cache pins one stream / empty Sources | P1 | High | fixed | Complete · 6/6 · A 2/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [075-[fixed]-…](fixed/075-[fixed]-anime-dead-cache-empty-sources.md) | Anime dead session cache pins one stream / empty Sources | P1 | High | fixed | Complete · 12/12 · A 4/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [076-[fixed]-…](fixed/076-[fixed]-provider-score-negatives-floored.md) | Provider fail (−2) verdicts floored away from global Σ | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

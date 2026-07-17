@@ -765,7 +765,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
-                          color: selected ? Colors.white : Colors.white60,
+                          color: selected || focused
+                              ? Colors.white
+                              : Colors.white60,
                           fontSize: 13.5,
                           fontWeight: selected || focused
                               ? FontWeight.w700
@@ -920,7 +922,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 44),
+                  _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 54),
                   if (widget.health != null)
                     Positioned(
                       top: -2,
@@ -969,15 +971,9 @@ class _ChannelLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      clipBehavior: Clip.antiAlias,
-      alignment: Alignment.center,
       child: Image.network(
         url,
         width: size,
@@ -993,13 +989,9 @@ class _ChannelLogo extends StatelessWidget {
   }
 
   Widget _placeholder() {
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-      ),
       child: Icon(Icons.live_tv_rounded,
           color: Colors.white38, size: size * 0.5),
     );

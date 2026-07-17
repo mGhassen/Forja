@@ -79,6 +79,8 @@ abstract final class PlayerSourceResolve {
         isCancelled: isCancelled,
         onHitsUpdated: onHitsUpdated,
         onProgress: onProgress,
+        // Anime domain-host race + movie recovery need sibling hits for failover.
+        fillBackgroundHits: true,
       );
 
   static Future<List<String>> _movieSettingsOrder(Movie movie) async {

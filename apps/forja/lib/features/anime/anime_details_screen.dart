@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -166,7 +167,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     Duration? start;
     if (p != null && resumeEp == _selectedEpisode) {
       final posMs = (p['positionMs'] as num?)?.toInt() ?? 0;
-      if (posMs > 0) start = Duration(milliseconds: posMs);
+      final durMs = (p['durationMs'] as num?)?.toInt() ?? 0;
+      // Same as movies: ≥90% (or <2%) restarts at 0 — avoid credits seek.
+      if (posMs > 0 && isInProgressResume(posMs, durMs)) {
+        start = Duration(milliseconds: posMs);
+      }
     }
     _play(_selectedEpisode, startPosition: start);
   }
@@ -285,15 +290,14 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   Widget _buildScrollLayout() {
     final a = _data;
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
-    final canResumeSelected =
-        _progress != null && resumeEp == _selectedEpisode;
+    final rawPosMs = (_progress?['positionMs'] as num?)?.toInt();
+    final rawDurMs = (_progress?['durationMs'] as num?)?.toInt();
+    final canResumeSelected = _progress != null &&
+        resumeEp == _selectedEpisode &&
+        isInProgressResume(rawPosMs ?? 0, rawDurMs ?? 0);
     final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
-    final posMs = canResumeSelected
-        ? (_progress?['positionMs'] as num?)?.toInt()
-        : null;
-    final durMs = canResumeSelected
-        ? (_progress?['durationMs'] as num?)?.toInt()
-        : null;
+    final posMs = canResumeSelected ? rawPosMs : null;
+    final durMs = canResumeSelected ? rawDurMs : null;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 

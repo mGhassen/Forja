@@ -455,7 +455,9 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         movie: movie,
         providers: providers,
         season: widget.selectedSeason ?? 1,
-        episode: widget.selectedEpisode ?? 1,
+        episode: widget.hubEpisodeNumber?.toInt() ??
+            widget.selectedEpisode ??
+            1,
         isCancelled: () => _s._fallbackAborted(gen),
         onHitsUpdated: (hits) {
           if (!mounted || _s._fallbackAborted(gen)) return;

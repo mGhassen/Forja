@@ -462,6 +462,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   bool _launchedFromSavedOrCache = false;
   /// Once the player route is open, keep resolving remaining embeds.
   bool _playerLaunched = false;
+  /// Prefer writing source prefs only after real playback (not abortive open).
+  bool _prefWriteAllowed = false;
+  String? _pendingPrefKey;
+  String? _pendingPrefTitle;
 
   @override
   void initState() {
@@ -614,12 +618,38 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
   }
 
-  Future<bool> _anyHitPlayable(List<_AnimeResolvedHit> hits) async {
-    for (final h in hits) {
-      final headers = Map<String, String>.from(h.media.headers);
-      if (await _service.probeStreamUrl(h.media.url, headers)) return true;
-    }
-    return false;
+  /// Probe CDN reachability before open / cache write (movie I43 style).
+  Future<List<_AnimeResolvedHit>> _playableHits(
+    List<_AnimeResolvedHit> hits,
+  ) async {
+    if (hits.isEmpty) return const [];
+    final flags = await Future.wait(
+      hits.map((h) {
+        final headers = Map<String, String>.from(h.media.headers);
+        return _service.probeStreamUrl(h.media.url, headers);
+      }),
+    );
+    return [
+      for (var i = 0; i < hits.length; i++)
+        if (flags[i]) hits[i],
+    ];
+  }
+
+  Future<void> _flushPendingPreferredSource() async {
+    final key = _pendingPrefKey;
+    if (key == null || !_prefWriteAllowed) return;
+    final title = _pendingPrefTitle;
+    _pendingPrefKey = null;
+    _pendingPrefTitle = null;
+    await _service.recordPreferredSource(
+      animeId: widget.anime.id,
+      category: _category,
+      sourceKey: key,
+      sourceTitle: title,
+    );
+    await _dropAllStreamCaches();
+    _preferredSourceKey = key;
+    _preferredSourceTitle = title;
   }
 
   Future<void> _ensureEmbedsReady() async {
@@ -712,31 +742,45 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _preferredSourceKey,
         _preferredSourceTitle,
       );
-      _activeEmbed = ranked.first.embed;
-      if (kDebugMode) {
-        debugPrint(
-          '[AnimePlayer] stream cache hit ep ${widget.episodeNumber} '
-          '(${ranked.length} streams)',
-        );
-      }
-      // Same as movie dead-cache recovery: Source panel needs the full server
-      // list even when we resume from a cached stream URL.
-      await _ensureEmbedsReady();
-      if (!mounted || _cancelled) return;
-      _setPhase('Starting…');
-      _setStatusLine('Resuming stream');
-      _launchedFromSavedOrCache = true;
-      if (!await _anyHitPlayable(ranked)) {
+      // Pref is per show/ep/category — a bee-only cache cannot honor kiwi.
+      final pref = _preferredSourceKey;
+      if (pref != null &&
+          pref.isNotEmpty &&
+          !ranked.any((h) => h.embed.sourceKey == pref)) {
         if (kDebugMode) {
-          debugPrint('[AnimePlayer] cached streams stale — rechecking');
+          debugPrint(
+            '[AnimePlayer] cache misses preferred $pref — full resolve',
+          );
         }
-        await _handleStaleSavedStreams();
+        await _dropAllStreamCaches();
+      } else {
+        _activeEmbed = ranked.first.embed;
+        if (kDebugMode) {
+          debugPrint(
+            '[AnimePlayer] stream cache hit ep ${widget.episodeNumber} '
+            '(${ranked.length} streams)',
+          );
+        }
+        // Same as movie dead-cache recovery: Source panel needs the full server
+        // list even when we resume from a cached stream URL.
+        await _ensureEmbedsReady();
+        if (!mounted || _cancelled) return;
+        _setPhase('Starting…');
+        _setStatusLine('Resuming stream');
+        _launchedFromSavedOrCache = true;
+        final playable = await _playableHits(ranked);
+        if (playable.isEmpty) {
+          if (kDebugMode) {
+            debugPrint('[AnimePlayer] cached streams stale — rechecking');
+          }
+          await _handleStaleSavedStreams();
+          return;
+        }
+        // Do not pass usedSavedSource:true — that pins the stream and blocks
+        // Auto dead-cache re-resolve (movie I43). Session cache is resume, not pin.
+        await _launchPlayer(playable, fromSessionCache: true);
         return;
       }
-      // Do not pass usedSavedSource:true — that pins the stream and blocks
-      // Auto dead-cache re-resolve (movie I43). Session cache is resume, not pin.
-      await _launchPlayer(ranked, fromSessionCache: true);
-      return;
     }
 
     if (AnimeService.savedSourceNeedsAnikoto(_preferredSourceKey)) {
@@ -838,18 +882,23 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         );
         if (!mounted || _cancelled || _resolverStopped) return;
         if (prefHits.isNotEmpty) {
-          _activeEmbed = prefHits.first.embed;
-          await _launchPlayer(
-            prefHits,
-            usedSavedSource: true,
-          );
-          return;
+          final playable = await _playableHits(prefHits);
+          if (!mounted || _cancelled || _resolverStopped) return;
+          if (playable.isNotEmpty) {
+            _activeEmbed = playable.first.embed;
+            await _launchPlayer(
+              playable,
+              usedSavedSource: true,
+            );
+            return;
+          }
         }
         if (kDebugMode) {
           debugPrint(
             '[AnimePlayer] saved source ${_preferredSourceKey!} failed — full search',
           );
         }
+        _launchedFromSavedOrCache = false;
       }
     }
 
@@ -885,18 +934,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         ...providerSourcesCache.value,
         ..._hitsToProviderCache(all),
       };
-      _AnimeStreamSessionCache.write(
-        widget.anime.id,
-        widget.episodeNumber,
-        _category,
-        all,
-      );
-      unawaited(_service.cacheResolvedStreamsJson(
-        animeId: widget.anime.id,
-        episode: widget.episodeNumber,
-        category: _category,
-        hits: _hitsToJson(all),
-      ));
+      // Disk/session cache only after probe in _launchPlayer — do not store
+      // unprobed CDN URLs mid-race.
     }
 
     List<({AnimeEmbed embed, ExtractedMedia media})> hits = const [];
@@ -952,17 +991,34 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       return;
     }
     if (hits.isNotEmpty) {
-      _activeEmbed = hits.first.embed;
       syncLiveHits(hits);
-      await _launchPlayer(
-        hits,
-        usedSavedSource: !SourceEngine.isAuto(preferred),
-        sourcesListNotifier: sourcesListNotifier,
-        providerSourcesCache: providerSourcesCache,
-        urlToSourceKey: urlToSourceKey,
-        titleToSourceKey: titleToSourceKey,
-      );
-      // Notifiers disposed inside _launchPlayer after the player closes.
+      final playable = await _playableHits(hits);
+      if (!mounted || _cancelled) {
+        sourcesListNotifier.dispose();
+        providerSourcesCache.dispose();
+        return;
+      }
+      if (playable.isNotEmpty) {
+        _activeEmbed = playable.first.embed;
+        // Only pin when preferred race actually won with a playable URL.
+        final usedSaved = !SourceEngine.isAuto(preferred) &&
+            _preferredSourceKey != null &&
+            playable.any((h) => h.embed.sourceKey == _preferredSourceKey);
+        await _launchPlayer(
+          playable,
+          usedSavedSource: usedSaved,
+          sourcesListNotifier: sourcesListNotifier,
+          providerSourcesCache: providerSourcesCache,
+          urlToSourceKey: urlToSourceKey,
+          titleToSourceKey: titleToSourceKey,
+        );
+        // Notifiers disposed inside _launchPlayer after the player closes.
+        return;
+      }
+      // Extracts existed but every CDN failed probe — drop and recheck once.
+      sourcesListNotifier.dispose();
+      providerSourcesCache.dispose();
+      await _handleStaleSavedStreams();
       return;
     }
     sourcesListNotifier.dispose();
@@ -1001,19 +1057,23 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }) async {
     if (_cancelled || !mounted) return;
 
+    // Saved/cache paths re-probe here; fresh Auto/preferred already probed.
     if (usedSavedSource || fromSessionCache) {
       _launchedFromSavedOrCache = true;
-      if (!await _anyHitPlayable(hits)) {
+      final playable = await _playableHits(hits);
+      if (playable.isEmpty) {
         await _handleStaleSavedStreams();
         return;
       }
+      hits = playable;
     }
 
     // Keep filling remaining embeds after early launch.
     _playerLaunched = true;
 
     // Do not re-stamp session/disk cache on cache resume — a dead URL would
-    // overwrite a drop and poison the next Play. Fresh resolves still cache.
+    // overwrite a drop and poison the next Play. Fresh resolves still cache
+    // playable multi-provider hits only.
     if (!fromSessionCache) {
       _AnimeStreamSessionCache.write(
         widget.anime.id,
@@ -1173,15 +1233,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           }
           return;
         }
-        await _service.recordPreferredSource(
-          animeId: widget.anime.id,
-          category: _category,
-          sourceKey: key,
-          sourceTitle: title,
-        );
-        await _dropAllStreamCaches();
-        _preferredSourceKey = key;
-        _preferredSourceTitle = title;
+        // Do not overwrite pref during a failed / abortive open — wait until
+        // playback has been confirmed beyond the early-EOF window.
+        _pendingPrefKey = key;
+        _pendingPrefTitle = title;
+        if (_prefWriteAllowed) {
+          await _flushPendingPreferredSource();
+        }
       },
       pinSource: pinSource,
       hasNextEpisode: hasNext,
@@ -1193,6 +1251,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _autoRecheckUsed = 0;
         _awaitingManualRecheck = false;
         _launchedFromSavedOrCache = false;
+        // Brief demux can fire started then abortive EOF — defer pref write.
+        unawaited(Future<void>.delayed(const Duration(seconds: 12), () async {
+          if (!mounted || _cancelled) return;
+          _prefWriteAllowed = true;
+          await _flushPendingPreferredSource();
+        }));
       },
       onAllSourcesExhausted: () {
         if (mounted) _fadeOutNotifier.value = false;

@@ -511,7 +511,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       tmdbId: movie.id,
       mediaType: movie.mediaType,
       season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
+      episode: widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode,
     );
     await WebstreamingStreamCache.drop(key);
     if (_s._disposed) return;
@@ -536,7 +536,6 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     if (movie == null) return false;
 
     debugPrint('[Player] Dead sources — full Auto re-resolve like first Play');
-    PlaybackEngine.cancelAllPending();
     _s._statusController.upsert(
       'reresolve',
       'Finding servers…',
@@ -547,33 +546,203 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         widget.selectedEpisode ??
         1;
     final season = widget.selectedSeason ?? 1;
+    final animeHost = movie.mediaType.toLowerCase() == 'anime';
 
-    // Anime / host-owned resolve: reload via the screen callback (full embed
-    // race), same idea as movie resolveAutoForMovie.
-    if (widget.onReloadStreams != null) {
-      final fresh = await widget.onReloadStreams!();
+    // Clear temporary pins so recovery can hop servers (Auto Off / pinSource
+    // otherwise same-panel re-extract forever). Restore after the attempt.
+    final restoreProviderPin = _s._providerPinned;
+    final restoreSourcePin = _s._sourcePinned;
+    if (animeHost || widget.onReloadStreams != null) {
+      _s._providerPinned = false;
+      _s._sourcePinned = false;
+    }
+
+    try {
+      // Anime: race embeds via providers without cancelAllPending first —
+      // cancel kills the Miruro WebView pipe and cold reload often returns empty.
+      if (animeHost && providers != null && providers.isNotEmpty) {
+        final hit = await PlayerSourceResolve.resolveAutoForMovie(
+          movie: movie,
+          providers: providers,
+          season: season,
+          episode: episode,
+          isCancelled: () => _fallbackAborted(chainGen),
+          onProgress: (providerId, status) {
+            if (_fallbackAborted(chainGen)) return;
+            final label = PlayerProviderMenu.snackbarLabel(
+              providerId,
+              providers[providerId],
+            );
+            final kind = switch (status) {
+              'success' => StatusRouletteKind.success,
+              'failed' || 'skipped' => StatusRouletteKind.failed,
+              _ => StatusRouletteKind.loading,
+            };
+            _s._statusController.upsert(
+              'provider-$providerId',
+              label,
+              kind: kind,
+            );
+            _s._syncProbeStatus(providerId, switch (status) {
+              'success' => StreamProviderProbeStatus.success,
+              'failed' => StreamProviderProbeStatus.failed,
+              'skipped' => StreamProviderProbeStatus.skippedOnTv,
+              'trying' => StreamProviderProbeStatus.trying,
+              _ => StreamProviderProbeStatus.pending,
+            });
+          },
+          onHitsUpdated: (hits) {
+            if (_fallbackAborted(chainGen)) return;
+            _s._liveProviderSourcesCache.value = {
+              ..._s._liveProviderSourcesCache.value,
+              ...PlaybackEngine.hitsToProviderCache(hits),
+            };
+          },
+        );
+        if (_fallbackAborted(chainGen)) return false;
+        if (hit != null && hit.streamSources.isNotEmpty) {
+          final fresh = dedupeStreamSources(
+            hit.streamSources,
+          ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
+          if (fresh.isNotEmpty) {
+            _s._cacheProviderSources(hit.providerId, fresh);
+            _s._markProviderLoadSucceeded(hit.providerId);
+            setState(() {
+              _s._currentProvider = hit.providerId;
+              _s._currentSources = fresh;
+              _s._currentUrl = hit.streamUrl;
+              _s._currentPlayingCatalogUrl = fresh.first.url;
+              _s._currentFallbackSourceIndex = 0;
+              _s._failedSourceIndices.clear();
+              _s._checkingSourceIndices.clear();
+              _s._hasError = false;
+              _s._errorMessage = '';
+            });
+            return _trySourcesFromIndex(
+              0,
+              chainGen: chainGen,
+              seekAfterOpen: seekAfterOpen,
+            );
+          }
+        }
+      }
+
+      if (!animeHost) {
+        PlaybackEngine.cancelAllPending();
+      }
+
+      // Host-owned reload (anime callback): full embed race as fallback.
+      if (widget.onReloadStreams != null) {
+        final fresh = await widget.onReloadStreams!();
+        if (_fallbackAborted(chainGen)) return false;
+        if (fresh == null || fresh.isEmpty) {
+          _s._statusController.complete();
+          return false;
+        }
+        final playable = dedupeStreamSources(
+          fresh,
+        ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
+        if (playable.isEmpty) {
+          _s._statusController.complete();
+          return false;
+        }
+        String pid = '';
+        for (final e in _s._liveProviderSourcesCache.value.entries) {
+          if (e.value.any((s) => s.url == playable.first.url)) {
+            pid = e.key;
+            break;
+          }
+        }
+        if (pid.isEmpty) {
+          pid = _s._currentProvider ?? widget.activeProvider ?? '';
+        }
+        if (pid.isNotEmpty) {
+          _s._cacheProviderSources(pid, playable);
+          _s._markProviderLoadSucceeded(pid);
+        }
+        setState(() {
+          if (pid.isNotEmpty) _s._currentProvider = pid;
+          _s._currentSources = playable;
+          _s._currentUrl = playable.first.url;
+          _s._currentPlayingCatalogUrl = playable.first.url;
+          _s._currentFallbackSourceIndex = 0;
+          _s._failedSourceIndices.clear();
+          _s._checkingSourceIndices.clear();
+          _s._hasError = false;
+          _s._errorMessage = '';
+        });
+        return _trySourcesFromIndex(
+          0,
+          chainGen: chainGen,
+          seekAfterOpen: seekAfterOpen,
+        );
+      }
+
+      if (providers == null || providers.isEmpty) {
+        _s._statusController.complete();
+        return false;
+      }
+
+      final hit = await PlayerSourceResolve.resolveAutoForMovie(
+        movie: movie,
+        providers: providers,
+        season: season,
+        episode: episode,
+        isCancelled: () => _fallbackAborted(chainGen),
+        onProgress: (providerId, status) {
+          if (_fallbackAborted(chainGen)) return;
+          final label = PlayerProviderMenu.snackbarLabel(
+            providerId,
+            providers[providerId],
+          );
+          final kind = switch (status) {
+            'success' => StatusRouletteKind.success,
+            'failed' || 'skipped' => StatusRouletteKind.failed,
+            _ => StatusRouletteKind.loading,
+          };
+          _s._statusController.upsert(
+            'provider-$providerId',
+            label,
+            kind: kind,
+          );
+          _s._syncProbeStatus(providerId, switch (status) {
+            'success' => StreamProviderProbeStatus.success,
+            'failed' => StreamProviderProbeStatus.failed,
+            'skipped' => StreamProviderProbeStatus.skippedOnTv,
+            'trying' => StreamProviderProbeStatus.trying,
+            _ => StreamProviderProbeStatus.pending,
+          });
+        },
+        onHitsUpdated: (hits) {
+          if (_fallbackAborted(chainGen)) return;
+          _s._liveProviderSourcesCache.value = {
+            ..._s._liveProviderSourcesCache.value,
+            ...PlaybackEngine.hitsToProviderCache(hits),
+          };
+        },
+      );
+
       if (_fallbackAborted(chainGen)) return false;
-      if (fresh == null || fresh.isEmpty) {
+      if (hit == null || hit.streamSources.isEmpty) {
         _s._statusController.complete();
         return false;
       }
-      final playable = dedupeStreamSources(
-        fresh,
+
+      final fresh = dedupeStreamSources(
+        hit.streamSources,
       ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
-      if (playable.isEmpty) {
+      if (fresh.isEmpty) {
         _s._statusController.complete();
         return false;
       }
-      final pid = _s._currentProvider ?? widget.activeProvider ?? '';
-      if (pid.isNotEmpty) {
-        _s._cacheProviderSources(pid, playable);
-        _s._markProviderLoadSucceeded(pid);
-      }
+
+      _s._cacheProviderSources(hit.providerId, fresh);
+      _s._markProviderLoadSucceeded(hit.providerId);
       setState(() {
-        if (pid.isNotEmpty) _s._currentProvider = pid;
-        _s._currentSources = playable;
-        _s._currentUrl = playable.first.url;
-        _s._currentPlayingCatalogUrl = playable.first.url;
+        _s._currentProvider = hit.providerId;
+        _s._currentSources = fresh;
+        _s._currentUrl = hit.streamUrl;
+        _s._currentPlayingCatalogUrl = fresh.first.url;
         _s._currentFallbackSourceIndex = 0;
         _s._failedSourceIndices.clear();
         _s._checkingSourceIndices.clear();
@@ -585,86 +754,24 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         chainGen: chainGen,
         seekAfterOpen: seekAfterOpen,
       );
+    } finally {
+      if (animeHost || widget.onReloadStreams != null) {
+        _s._providerPinned = restoreProviderPin;
+        _s._sourcePinned = restoreSourcePin;
+      }
     }
-
-    if (providers == null || providers.isEmpty) {
-      _s._statusController.complete();
-      return false;
-    }
-
-    final hit = await PlayerSourceResolve.resolveAutoForMovie(
-      movie: movie,
-      providers: providers,
-      season: season,
-      episode: episode,
-      isCancelled: () => _fallbackAborted(chainGen),
-      onProgress: (providerId, status) {
-        if (_fallbackAborted(chainGen)) return;
-        final label = PlayerProviderMenu.snackbarLabel(
-          providerId,
-          providers[providerId],
-        );
-        final kind = switch (status) {
-          'success' => StatusRouletteKind.success,
-          'failed' || 'skipped' => StatusRouletteKind.failed,
-          _ => StatusRouletteKind.loading,
-        };
-        _s._statusController.upsert('provider-$providerId', label, kind: kind);
-        _s._syncProbeStatus(providerId, switch (status) {
-          'success' => StreamProviderProbeStatus.success,
-          'failed' => StreamProviderProbeStatus.failed,
-          'skipped' => StreamProviderProbeStatus.skippedOnTv,
-          'trying' => StreamProviderProbeStatus.trying,
-          _ => StreamProviderProbeStatus.pending,
-        });
-      },
-      onHitsUpdated: (hits) {
-        if (_fallbackAborted(chainGen)) return;
-        _s._liveProviderSourcesCache.value = {
-          ..._s._liveProviderSourcesCache.value,
-          ...PlaybackEngine.hitsToProviderCache(hits),
-        };
-      },
-    );
-
-    if (_fallbackAborted(chainGen)) return false;
-    if (hit == null || hit.streamSources.isEmpty) {
-      _s._statusController.complete();
-      return false;
-    }
-
-    final fresh = dedupeStreamSources(
-      hit.streamSources,
-    ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
-    if (fresh.isEmpty) {
-      _s._statusController.complete();
-      return false;
-    }
-
-    _s._cacheProviderSources(hit.providerId, fresh);
-    _s._markProviderLoadSucceeded(hit.providerId);
-    setState(() {
-      _s._currentProvider = hit.providerId;
-      _s._currentSources = fresh;
-      _s._currentUrl = hit.streamUrl;
-      _s._currentPlayingCatalogUrl = fresh.first.url;
-      _s._currentFallbackSourceIndex = 0;
-      _s._failedSourceIndices.clear();
-      _s._checkingSourceIndices.clear();
-      _s._hasError = false;
-      _s._errorMessage = '';
-    });
-    return _trySourcesFromIndex(
-      0,
-      chainGen: chainGen,
-      seekAfterOpen: seekAfterOpen,
-    );
   }
 
   /// Stop on failure — no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
-    debugPrint('[Player] Playback failed — no auto failover (pinned)');
+    final pinned =
+        _s._providerPinned || _s._sourcePinned || widget.pinSource;
+    debugPrint(
+      pinned
+          ? '[Player] Playback failed — no auto failover (pinned)'
+          : '[Player] Playback failed — recovery returned no playable streams',
+    );
     if (!mounted || _s._disposed) return;
     final pid = _s._currentProvider;
     if (pid != null && pid.isNotEmpty) {
@@ -762,7 +869,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           providers: providers,
           providerId: newProvider,
           season: widget.selectedSeason ?? 1,
-          episode: widget.selectedEpisode ?? 1,
+          episode: widget.hubEpisodeNumber?.toInt() ??
+              widget.selectedEpisode ??
+              1,
           isCancelled: () => _fallbackAborted(gen),
         );
         if (_fallbackAborted(gen)) return false;

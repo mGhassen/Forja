@@ -55,6 +55,8 @@ abstract final class DomainPlaybackResolve {
         effectiveRanks: effectiveRanks,
         isCancelled: isCancelled,
         onProgress: onProgress,
+        onHitsUpdated: onHitsUpdated,
+        fillBackgroundHits: fillBackgroundHits,
         animeService: animeService,
         kissKhExtractor: kissKhExtractor,
       );
@@ -85,6 +87,8 @@ abstract final class DomainPlaybackResolve {
     required Map<String, int> effectiveRanks,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
+    void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
+    bool fillBackgroundHits = false,
     AnimeService? animeService,
     KissKhExtractor? kissKhExtractor,
   }) async {
@@ -93,8 +97,10 @@ abstract final class DomainPlaybackResolve {
       kissKhExtractor: kissKhExtractor,
     );
     final cancelled = isCancelled ?? (() => false);
+    final hits = <PlaybackResolveHit>[];
+    PlaybackResolveHit? first;
     for (final entry in providers.entries) {
-      if (cancelled()) return null;
+      if (cancelled()) break;
       final key = entry.key;
       onProgress?.call(key, 'trying');
       final result = await resolver.resolve(
@@ -136,7 +142,7 @@ abstract final class DomainPlaybackResolve {
         continue;
       }
       onProgress?.call(key, 'success');
-      return PlaybackResolveHit(
+      final hit = PlaybackResolveHit(
         providerId: key,
         providerRank: rank,
         streamUrl: ranked.first.url,
@@ -145,8 +151,14 @@ abstract final class DomainPlaybackResolve {
         sources: ranked,
         subtitles: result.subtitles,
       );
+      hits.add(hit);
+      first ??= hit;
+      onHitsUpdated?.call(List<PlaybackResolveHit>.from(hits));
+      // First playable winner is enough unless caller wants siblings for
+      // failover / Source panel (anime Auto + dead-cache recovery).
+      if (!fillBackgroundHits) return hit;
     }
-    return null;
+    return first;
   }
 
   static List<String> failoverChain({
