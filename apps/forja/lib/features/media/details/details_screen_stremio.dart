@@ -18,13 +18,23 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   ///
   /// When [cancelEngineJobs] is false (closing Sources to start playback),
   /// generations still bump so late UI updates are ignored, but Engine resolve
-  /// jobs stay alive for the magnet / stream that starts next.
+  /// jobs stay alive for the magnet / stream that starts next — and Play /
+  /// webstreaming cancel flags stay clear so the new resolve is not aborted.
+  ///
+  /// When [cancelEngineJobs] is true (Cancel, leave title, dispose), also flip
+  /// those flags. `cancelAllPending` alone only kills the *current* host sniff;
+  /// without the flag the Auto loop keeps walking the next server after tab
+  /// switch (the Cancel button always set both).
   void _cancelActiveSourceFetch({bool cancelEngineJobs = true}) {
     final changed =
         _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
     _s._torrentSearchGen++;
     _s._stremioFetchGen++;
     _s._nuvioFetchGen++;
+    if (cancelEngineJobs) {
+      _s._webstreamingOnlyExtractionCancelled = true;
+      _s._streamCancelled = true;
+    }
     DomainStreamProviderResolver.cancelAllPending(
       cancelEngineJobs: cancelEngineJobs,
     );

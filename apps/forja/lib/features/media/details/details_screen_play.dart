@@ -286,7 +286,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       settings: _s._settings,
       season: isTv ? _s._selectedSeason : null,
       episode: isTv ? _s._selectedEpisode : null,
-      isCancelled: () => _s._streamCancelled,
+      isCancelled: () => !mounted || _s._streamCancelled,
     );
 
     if (_s._streamCancelled) {

@@ -440,7 +440,9 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
           preferredProvider: preferred,
           settingsOrder: _s._webstreamingProviderOrder,
           isCancelled: () =>
-              _s._webstreamingOnlyExtractionCancelled || switchingManualProvider,
+              !mounted ||
+              _s._webstreamingOnlyExtractionCancelled ||
+              switchingManualProvider,
           onHitsUpdated: syncResolvedHits,
           onProgress: applyProbeProgress,
         );
