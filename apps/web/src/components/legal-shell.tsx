@@ -103,6 +103,14 @@ export function SiteFooter() {
                     Download
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    to="/changelog"
+                    className="transition-colors hover:text-[#EDE6DA]"
+                  >
+                    Changelog
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>

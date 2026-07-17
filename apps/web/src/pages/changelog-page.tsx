@@ -94,7 +94,7 @@ function VersionLink({
 export function ChangelogPage() {
   const navigate = useNavigate({ from: '/changelog' })
   const { v: versionParam } = changelogRoute.useSearch()
-  const { data, isLoading, isError, error } = useAllReleases()
+  const { data, isError, error, isFetching } = useAllReleases()
 
   const releases = useMemo(
     () => (data ?? []).slice(0, CHANGELOG_MENU_LIMIT),
@@ -130,28 +130,27 @@ export function ChangelogPage() {
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
           What changed in each Forja release — notes stay on this site.
+          {isFetching ? (
+            <span className="ml-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.28)]">
+              Updating…
+            </span>
+          ) : null}
         </p>
 
-        {isLoading ? (
-          <p className="mt-14 font-mono-ui text-xs uppercase tracking-[0.16em] text-[rgba(237,230,218,0.4)]">
-            Loading releases…
-          </p>
-        ) : null}
-
-        {isError ? (
+        {isError && releases.length === 0 ? (
           <p className="mt-14 text-sm text-flame">
             Could not load releases
             {error instanceof Error ? `: ${error.message}` : '.'}
           </p>
         ) : null}
 
-        {!isLoading && !isError && releases.length === 0 ? (
+        {releases.length === 0 ? (
           <p className="mt-14 text-sm text-[rgba(237,230,218,0.45)]">
             No releases published yet.
           </p>
         ) : null}
 
-        {!isLoading && !isError && selected ? (
+        {selected ? (
           <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-14 lg:items-start">
             <aside className="min-w-0">
               <p className="mb-3 font-mono-ui text-[10px] font-bold uppercase tracking-[0.16em] text-forja-green lg:px-3">

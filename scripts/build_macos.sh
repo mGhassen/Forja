@@ -13,5 +13,7 @@ flutter pub get
 if [ ! -d macos ]; then
   flutter create --platforms=macos .
 fi
-flutter build macos --release
+# Match CI: compile unsigned, then deep ad-hoc sign (no paid Apple cert).
+FLUTTER_XCODE_CODE_SIGNING_ALLOWED=NO flutter build macos --release
+"$ROOT/scripts/codesign_macos_adhoc.sh"
 echo "Built: $APP/build/macos/Build/Products/Release/forja.app"

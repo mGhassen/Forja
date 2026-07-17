@@ -59,11 +59,10 @@ jobs:
       - run: ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
         env:
-          # Flutter forwards FLUTTER_XCODE_* to xcodebuild. Bare KEY=VALUE args are
-          # treated as --target (→ "Target file CODE_SIGN_IDENTITY=- not found").
-          # Ad-hoc sign — no Apple Developer certs in CI (see RFC-021 for notarization).
-          FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
-          FLUTTER_XCODE_CODE_SIGN_STYLE: Manual
+          # Compile without signing (no Apple certs on the runner). Frameworks are
+          # ad-hoc signed in the next step — CODE_SIGNING_ALLOWED=NO alone leaves
+          # them unsigned and dyld refuses to load them.
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
         run: |
           flutter pub get
           flutter build macos --release \
@@ -71,6 +70,8 @@ jobs:
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
+      - name: Ad-hoc codesign app bundle
+        run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-macOS

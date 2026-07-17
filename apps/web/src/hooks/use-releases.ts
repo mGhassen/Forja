@@ -257,19 +257,35 @@ export function useLatestRelease() {
 
 /**
  * Changelog entries: GitHub Releases merged with docs/changelog/done notes.
+ * Docs are bundled and shown immediately; GitHub only enriches dates/order.
  */
 export function useAllReleases() {
+  const docsOnly = mergeChangelogReleases([])
   return useQuery({
     queryKey: ['releases', 'changelog'],
     queryFn: async (): Promise<ReleaseWithAssets[]> => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 8_000)
       try {
-        const github = await fetchGitHubReleases()
+        const res = await fetch(GITHUB_RELEASES, {
+          headers: GH_HEADERS,
+          signal: controller.signal,
+        })
+        if (!res.ok) {
+          throw new Error(`GitHub releases ${res.status}`)
+        }
+        const list = (await res.json()) as GhRelease[]
+        if (!Array.isArray(list)) return docsOnly
+        const github = list.filter((r) => !r.draft && !r.prerelease).map(fromGitHub)
         return mergeChangelogReleases(github)
       } catch {
-        // Docs-only fallback when GitHub is unreachable.
-        return mergeChangelogReleases([])
+        return docsOnly
+      } finally {
+        clearTimeout(timer)
       }
     },
+    initialData: docsOnly,
+    initialDataUpdatedAt: 0,
     staleTime: 60_000,
   })
 }

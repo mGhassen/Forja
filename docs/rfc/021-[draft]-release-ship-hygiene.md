@@ -8,9 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 8** acceptance (v1.0 release gate) · **2 / 8** in progress |
-| **Current slice** | v1.0 — CI release pipeline + updater repo; notarization open |
-| **Backlog** | — |
+| **Progress** | **0 / 7** acceptance · **2** 🔄 · **1** ⏭️ notarize |
+| **Current slice** | CI ships ad-hoc unsigned-entitlements macOS DMG (sandbox off); Developer ID deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,7 +22,7 @@
 | 1 | R21-A01 | Git working tree clean; no root legacy folders | ⬜ |
 | 2 | R21-A02 | `melos bootstrap` + `flutter analyze` on app + packages | ⬜ |
 | 3 | R21-A03 | `flutter build macos --release` succeeds locally | ⬜ |
-| 4 | R21-A04 | Notarized DMG installs on clean Mac | ⬜ |
+| 4 | R21-A04 | Notarized DMG installs on clean Mac | ⏭️ |
 | 5 | R21-A05 | GitHub Release on tag with all platform assets | 🔄 |
 | 6 | R21-A06 | In-app update finds release (RFC-015) | 🔄 |
 | 7 | R21-A07 | Icon + splash show Forja branding | ⬜ |
@@ -71,22 +70,23 @@ Forja/
 
 Single commit message theme: `chore: remove legacy root app and UI packages`
 
-## 2. macOS release + notarization
+## 2. macOS release (unsigned DMG today · notarization deferred)
 
-Extend [`scripts/build_macos.sh`](../../scripts/build_macos.sh):
+**Shipped path (no paid Apple Developer ID):**
+
+- CI: build with `FLUTTER_XCODE_CODE_SIGNING_ALLOWED=NO`, then [`scripts/codesign_macos_adhoc.sh`](../../scripts/codesign_macos_adhoc.sh) (`codesign --deep --sign -`, **no entitlements**)
+- `macos/Runner/Release.entitlements`: **App Sandbox off** (if Xcode ever embeds entitlements locally)
+- Package via [`scripts/package_macos_dmg.sh`](../../scripts/package_macos_dmg.sh) → `Forja-{version}-macos-arm64.dmg`
+
+**Do not** ship Release with App Sandbox on under ad-hoc (Launch Services `kLSNoExecutableErr`). **Do not** ship with unsigned frameworks (`CODE_SIGNING_ALLOWED=NO` alone — dyld rejects them).
+
+**Deferred (R21-A04):** Developer ID + `notarytool` + staple — only if/when a paid Apple team is available.
 
 ```bash
 flutter build macos --release
-# codesign + notarize (Developer ID)
-# staple + create Forja-{version}-macos.dmg
+# optional later: codesign + notarize (Developer ID) + staple
+# create Forja-{version}-macos-arm64.dmg
 ```
-
-Requirements:
-- Apple Developer ID Application certificate
-- `NOTARY_APPLE_ID`, app-specific password in CI secrets
-- Hardened runtime entitlements in `macos/Runner/*.entitlements`
-
-Output artifact name per [RFC-015](015-[partial]-in-app-updates.md): `Forja-{version}-macos-arm64.dmg` (and intel if built).
 
 ## 3. CI pipeline
 

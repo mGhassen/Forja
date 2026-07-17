@@ -18,7 +18,7 @@ function NavLink({
   className,
   variant = 'desktop',
 }: {
-  to: '/' | '/iptv' | '/download' | '/account' | '/login'
+  to: '/' | '/iptv' | '/download' | '/account' | '/login' | '/changelog'
   children: string
   exact?: boolean
   onNavigate?: () => void

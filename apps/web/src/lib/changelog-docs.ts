@@ -1,8 +1,11 @@
 /**
  * Frozen release notes from docs/changelog/done/*-[released].md.
  * Bundled at build time so the web changelog never depends on GitHub note bodies.
+ *
+ * Note: do not put `[released]` in the glob itself — micromatch treats `[]` as a
+ * character class and would match nothing.
  */
-const DOC_MODULES = import.meta.glob('../../../../docs/changelog/done/*-[released].md', {
+const DOC_MODULES = import.meta.glob('../../../../docs/changelog/done/*.md', {
   query: '?raw',
   import: 'default',
   eager: true,
