@@ -595,7 +595,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
               child: Row(
                 children: [
-                  _ChannelLogo(url: playing.logoUrl ?? '', size: 32),
+                  _ChannelLogo(
+                    url: playing.logoUrl ?? '',
+                    width: 42,
+                    height: 32,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -922,7 +926,11 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 54),
+                  _ChannelLogo(
+                    url: widget.channel.logoUrl ?? '',
+                    width: 84,
+                    height: 56,
+                  ),
                   if (widget.health != null)
                     Positioned(
                       top: -2,
@@ -963,21 +971,26 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
 }
 
 class _ChannelLogo extends StatelessWidget {
-  const _ChannelLogo({required this.url, this.size = 40});
+  const _ChannelLogo({
+    required this.url,
+    this.width = 60,
+    this.height = 40,
+  });
 
   final String url;
-  final double size;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
     return SizedBox(
-      width: size,
-      height: size,
+      width: width,
+      height: height,
       child: Image.network(
         url,
-        width: size,
-        height: size,
+        width: width,
+        height: height,
         fit: BoxFit.contain,
         errorBuilder: (_, _, _) => _placeholder(),
         loadingBuilder: (ctx, child, prog) {
@@ -990,10 +1003,10 @@ class _ChannelLogo extends StatelessWidget {
 
   Widget _placeholder() {
     return SizedBox(
-      width: size,
-      height: size,
+      width: width,
+      height: height,
       child: Icon(Icons.live_tv_rounded,
-          color: Colors.white38, size: size * 0.5),
+          color: Colors.white38, size: height * 0.5),
     );
   }
 }
