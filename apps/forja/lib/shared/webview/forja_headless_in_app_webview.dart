@@ -37,6 +37,8 @@ class ForjaHeadlessInAppWebView {
       WebResourceError error,
     )?
     onReceivedError,
+    void Function(InAppWebViewController controller, int progress)?
+    onProgressChanged,
   }) : _delegate = HeadlessInAppWebView(
          initialData: initialData,
          initialUrlRequest: initialUrlRequest,
@@ -52,6 +54,7 @@ class ForjaHeadlessInAppWebView {
          shouldOverrideUrlLoading: shouldOverrideUrlLoading,
          onCreateWindow: onCreateWindow,
          onReceivedError: onReceivedError,
+         onProgressChanged: onProgressChanged,
        );
 
   final HeadlessInAppWebView _delegate;

@@ -13,10 +13,10 @@ const PIPE_OBF_KEY: [u8; 16] = [
 ];
 
 pub const OFFICIAL_DOMAINS: &[&str] = &[
+    "https://www.miruro.tv",
     "https://www.miruro.to",
     "https://www.miruro.bz",
     "https://www.miruro.ru",
-    "https://www.miruro.tv",
 ];
 
 pub const KNOWN_PROVIDERS: &[&str] = &[
@@ -245,9 +245,14 @@ fn api_get_version(
         }
     }
 
+    // Network errors must not abort the whole resolve — Miruro sits behind CF and
+    // reqwest often fails before a 403 body. Returning None triggers Dart WebView.
     for base in domain_order() {
         let uri = format!("{base}/api/secure/pipe?e={encoded}");
-        let direct = anime_get(&uri, &pipe_headers(&base), 20)?;
+        let direct = match anime_get(&uri, &pipe_headers(&base), 20) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
         if direct.status == 200 {
             if let Ok(decoded) = decode_pipe_body(
                 &direct.body,
@@ -258,6 +263,7 @@ fn api_get_version(
             }
         }
         if direct.status == 403 || direct.body.to_lowercase().contains("cloudflare") {
+            // CF on this host — don't burn timeout on the other mirrors.
             return Ok(None);
         }
     }
@@ -539,38 +545,6 @@ mod tests {
                 out.get("pipe_path").and_then(|v| v.as_str()),
                 Some("sources")
             );
-        }
-    }
-}
-
-#[cfg(test)]
-mod live_net_probe {
-    use super::*;
-    use crate::extractors::common::anime_get;
-
-    #[test]
-    fn probe_miruro_pipe_connectivity() {
-        let headers = pipe_headers("https://www.miruro.to");
-        let url = "https://www.miruro.to/api/secure/pipe?e=eyJ0ZXN0IjoxfQ";
-        match anime_get(url, &headers, 15) {
-            Ok(r) => println!("OK status={} body_len={} cloudflare={}", r.status, r.body.len(), r.body.to_lowercase().contains("cloudflare")),
-            Err(e) => println!("ERR {e}"),
-        }
-        // homepage
-        match anime_get("https://www.miruro.to/", &headers, 15) {
-            Ok(r) => println!("HOME status={} len={}", r.status, r.body.len()),
-            Err(e) => println!("HOME ERR {e}"),
-        }
-        // vidnest
-        let vh = HashMap::from([
-            ("User-Agent".into(), DEFAULT_UA.into()),
-            ("Accept".into(), "application/json".into()),
-            ("Origin".into(), "https://vidnest.fun".into()),
-            ("Referer".into(), "https://vidnest.fun/".into()),
-        ]);
-        match anime_get("https://new.vidnest.fun/hianime/anime/207141/1/sub", &vh, 15) {
-            Ok(r) => println!("VIDNEST status={} body={}", r.status, r.body.chars().take(80).collect::<String>()),
-            Err(e) => println!("VIDNEST ERR {e}"),
         }
     }
 }

@@ -1937,6 +1937,42 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
               const _LiveMatchCornerBadge(label: '● LIVE', live: true)
             else if (s.timeLabel.isNotEmpty)
               _LiveMatchCornerBadge(label: s.timeLabel, live: false),
+            if (s.viewers > 0)
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 7,
+                          color: Colors.red.shade400,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${s.viewers}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             // no iframe warning bottom
             if (!hasIframe)
               Positioned(

@@ -404,6 +404,8 @@ jobs:
             dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-arm64.apk
             dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-armeabi-v7a.apk
 
+  # Platforms are independent: publish whatever succeeded. Failed platforms do not
+  # block the GitHub Release — re-run with "Existing tag" + only the missing platforms.
   publish_release:
     name: Publish GitHub Release
     needs:
@@ -415,12 +417,34 @@ jobs:
     if: >
       !cancelled() &&
       needs.resolve_version.result == 'success' &&
-      (needs.build_macos.result == 'success' || needs.build_macos.result == 'skipped') &&
-      (needs.build_windows.result == 'success' || needs.build_windows.result == 'skipped') &&
-      (needs.build_linux.result == 'success' || needs.build_linux.result == 'skipped') &&
-      (needs.build_android_tv.result == 'success' || needs.build_android_tv.result == 'skipped')
+      (
+        needs.build_macos.result == 'success' ||
+        needs.build_windows.result == 'success' ||
+        needs.build_linux.result == 'success' ||
+        needs.build_android_tv.result == 'success'
+      )
     runs-on: ubuntu-latest
     steps:
+      - name: Platform build summary
+        run: |
+          echo "macOS:       ${{ needs.build_macos.result }}"
+          echo "Windows:     ${{ needs.build_windows.result }}"
+          echo "Linux:       ${{ needs.build_linux.result }}"
+          echo "Android TV:  ${{ needs.build_android_tv.result }}"
+          failed=0
+          for result in \
+            "${{ needs.build_macos.result }}" \
+            "${{ needs.build_windows.result }}" \
+            "${{ needs.build_linux.result }}" \
+            "${{ needs.build_android_tv.result }}"; do
+            if [[ "$result" == "failure" ]]; then
+              failed=1
+            fi
+          done
+          if [[ "$failed" -eq 1 ]]; then
+            echo "::warning::One or more platform builds failed. Publishing assets from successful platforms only."
+          fi
+
       - uses: actions/checkout@v4
         with:
           ref: v${{ needs.resolve_version.outputs.version }}
@@ -440,6 +464,15 @@ jobs:
             -name '*.apk' \
           \) -exec cp {} release-flat/ \;
           ls -la release-flat/
+          if ! find release-flat -type f \( \
+            -name '*.dmg' -o \
+            -name '*.exe' -o \
+            -name '*.AppImage' -o \
+            -name '*.apk' \
+          \) | grep -q .; then
+            echo "::error::No release assets found from successful platform builds."
+            exit 1
+          fi
 
       - name: Build release notes from changelog
         id: notes

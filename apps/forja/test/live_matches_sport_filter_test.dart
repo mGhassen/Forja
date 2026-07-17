@@ -157,4 +157,60 @@ void main() {
       expect(parsePpvAlwaysLive(null), isFalse);
     });
   });
+
+  group('parsePpvViewers', () {
+    test('parses numeric and string viewer counts from PPV API', () {
+      expect(parsePpvViewers(99), 99);
+      expect(parsePpvViewers('99'), 99);
+      expect(parsePpvViewers(''), 0);
+      expect(parsePpvViewers(null), 0);
+    });
+  });
+
+  group('ppvStreamIsLive', () {
+    const start = 1_000_000;
+    const end = 1_010_000;
+
+    test('true inside scheduled window', () {
+      expect(
+        ppvStreamIsLive(
+          isAlwaysOn: false,
+          status: '',
+          startsAt: start,
+          endsAt: end,
+          viewers: 0,
+          nowSecs: start + 5_000,
+        ),
+        isTrue,
+      );
+    });
+
+    test('true with viewers after start within grace past ends_at', () {
+      expect(
+        ppvStreamIsLive(
+          isAlwaysOn: false,
+          status: '',
+          startsAt: start,
+          endsAt: end,
+          viewers: 95,
+          nowSecs: end + 60,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false before start even with viewers', () {
+      expect(
+        ppvStreamIsLive(
+          isAlwaysOn: false,
+          status: '',
+          startsAt: start,
+          endsAt: end,
+          viewers: 50,
+          nowSecs: start - 10,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

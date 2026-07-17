@@ -60,6 +60,13 @@ bool parsePpvAlwaysLive(dynamic value) {
   return false;
 }
 
+/// PPV `viewers` is often a JSON string (`"99"`), not a number.
+int parsePpvViewers(dynamic value) {
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim()) ?? 0;
+  return 0;
+}
+
 /// PPV 24/7 playability — ignore expired windows when always-live / 24/7.
 bool ppvStreamIsAlwaysOn({
   required bool alwaysLive,
@@ -71,6 +78,34 @@ bool ppvStreamIsAlwaysOn({
   if (!hasIframe) return false;
   if (alwaysLive || isLive247Sport(categoryName)) return true;
   return startsAt == 0 && endsAt == 0;
+}
+
+/// Whether a PPV schedule row is airing (matches site **Live now**).
+///
+/// Uses start/end when present; also treats an active viewer count after start
+/// as live so long events stay playable if `ends_at` drifts.
+bool ppvStreamIsLive({
+  required bool isAlwaysOn,
+  required String status,
+  required int startsAt,
+  required int endsAt,
+  required int viewers,
+  int? nowSecs,
+}) {
+  if (isAlwaysOn) return true;
+  if (status.trim().toLowerCase() == 'live') return true;
+
+  final now = nowSecs ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  if (startsAt > 0 && endsAt > startsAt && now >= startsAt && now <= endsAt) {
+    return true;
+  }
+  // Live now on ppv.is is viewer-driven; keep airing while people are watching.
+  if (viewers > 0 && startsAt > 0 && now >= startsAt) {
+    if (endsAt <= startsAt) return true;
+    final graceEnd = endsAt + const Duration(hours: 3).inSeconds;
+    return now <= graceEnd;
+  }
+  return false;
 }
 
 /// PPV `24/7 Streams` category **or** always-on (`date` / start+end unset).

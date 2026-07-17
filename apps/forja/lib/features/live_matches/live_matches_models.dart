@@ -183,10 +183,6 @@ class _DamiTvStream {
 
     final league = (j['league'] ?? j['tag'] ?? j['source_tag'] ?? '')
         .toString();
-    final viewersRaw = j['viewers'];
-    final viewers = viewersRaw is num
-        ? viewersRaw.toInt()
-        : int.tryParse(viewersRaw?.toString() ?? '') ?? 0;
 
     return _DamiTvStream(
       id: (j['id'] ?? '').toString(),
@@ -201,7 +197,7 @@ class _DamiTvStream {
       homeBadge: abs((home?['badge'] ?? '').toString()),
       awayTeam: away?['name'] as String?,
       awayBadge: abs((away?['badge'] ?? '').toString()),
-      viewers: viewers,
+      viewers: parsePpvViewers(j['viewers']),
       iframe: (j['iframe'] ?? '').toString(),
       alwaysLive: parsePpvAlwaysLive(j['always_live']),
     );
@@ -218,15 +214,9 @@ class _DamiTvStream {
   );
 
   String get timeLabel {
-    if (isAlwaysOn) return 'live';
-
-    final statusLower = status.toLowerCase();
-    if (statusLower == 'live') return 'live';
+    if (isLive) return 'live';
 
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    if (startsAt > 0 && endsAt > startsAt && now >= startsAt && now <= endsAt) {
-      return 'live';
-    }
     if (startsAt > now) {
       final dt = DateTime.fromMillisecondsSinceEpoch(startsAt * 1000);
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -234,17 +224,13 @@ class _DamiTvStream {
     return '';
   }
 
-  bool get isLive {
-    if (isAlwaysOn) return true;
-
-    final statusLower = status.toLowerCase();
-    if (statusLower == 'live') return true;
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    return startsAt > 0 &&
-        endsAt > startsAt &&
-        now >= startsAt &&
-        now <= endsAt;
-  }
+  bool get isLive => ppvStreamIsLive(
+    isAlwaysOn: isAlwaysOn,
+    status: status,
+    startsAt: startsAt,
+    endsAt: endsAt,
+    viewers: viewers,
+  );
 }
 
 class _StreamedSourceRef {
@@ -381,8 +367,14 @@ int _liveFirstCompare({
   required bool bLive,
   required int aStart,
   required int bStart,
+  int aViewers = 0,
+  int bViewers = 0,
 }) {
   if (aLive != bLive) return aLive ? -1 : 1;
+  // PPV Live now orders by audience; keep the busiest airing cards first.
+  if (aLive && bLive && aViewers != bViewers) {
+    return bViewers.compareTo(aViewers);
+  }
   return aStart.compareTo(bStart);
 }
 
@@ -394,6 +386,8 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
       bLive: b.isLive,
       aStart: a.startsAt,
       bStart: b.startsAt,
+      aViewers: a.viewers,
+      bViewers: b.viewers,
     ),
   );
   return sorted;
@@ -447,6 +441,16 @@ int _gridEntryStartKey(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryStreamed(:final match) => match.dateMs,
   _LiveMatchGridEntryMerged(:final streamed) => streamed.dateMs,
   _LiveMatchGridEntryCdnSport(:final event) => _cdnSportStartKey(event),
+};
+
+int _gridEntryViewers(_LiveMatchGridEntry entry) => switch (entry) {
+  _LiveMatchGridEntryPpv(:final stream) => stream.viewers,
+  _LiveMatchGridEntryStreamed() => 0,
+  _LiveMatchGridEntryMerged(:final ppv) => ppv.viewers,
+  _LiveMatchGridEntryCdnSport(:final event) => event.channels.fold<int>(
+    0,
+    (sum, ch) => sum + ch.viewers,
+  ),
 };
 
 String _matchTextKey(String raw) {
@@ -543,6 +547,8 @@ List<_LiveMatchGridEntry> _sortGridEntriesLiveFirst(
       bLive: _gridEntryIsLive(b),
       aStart: _gridEntryStartKey(a),
       bStart: _gridEntryStartKey(b),
+      aViewers: _gridEntryViewers(a),
+      bViewers: _gridEntryViewers(b),
     ),
   );
   return sorted;
