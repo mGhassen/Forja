@@ -90,7 +90,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 28 | R28-A28 | Fresh installs enable Search, Home, Anime, Asian Drama, IPTV, Live Matches, and My List in that order on every profile; legacy untouched defaults migrate without overwriting custom layouts | ✅ |
+| 28 | R28-A28 | Fresh installs enable Search, Home, Asian Drama, Anime, IPTV, Live Matches, and My List in that order on every profile; legacy untouched defaults migrate without overwriting custom layouts | ✅ |
 
 ---
 

@@ -53,6 +53,8 @@ Not synced — device-specific or sensitive:
   profile menu — not as a peer of settings.
 - Create, rename, and delete profiles on the web, with 30 avatars organized
   into Characters, Creatures, Space, and Retro categories
+- The desktop chooser, rail, and Profile & account page use the same avatar
+  artwork selected on the web
 - Select the active profile from **Settings → Profile & account** or the web
   settings header
 - Add, edit, search, favorite, share, or remove IPTV portals and M3U URLs from

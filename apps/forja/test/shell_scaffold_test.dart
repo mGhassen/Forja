@@ -14,6 +14,7 @@ import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:rust/src/settings_service.dart';
 
 Widget _wrapShellScope(
@@ -347,6 +348,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Search'), findsOneWidget);
+    expect(
+      tester
+          .widget<NavDestinationIcon>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is NavDestinationIcon &&
+                  widget.destination.id == 'search',
+            ),
+          )
+          .color,
+      navDestinationAccentColors['search'],
+    );
 
     final searchItem = find.ancestor(
       of: searchIcon,
@@ -358,6 +371,76 @@ void main() {
       ),
     );
     expect(searchItem, findsWidgets);
+  });
+
+  testWidgets('desktop menu icon is grey idle and colored on hover', (
+    tester,
+  ) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pumpAndSettle();
+
+    Finder homeIconWidget() => find.byWidgetPredicate(
+      (widget) =>
+          widget is NavDestinationIcon && widget.destination.id == 'home',
+    );
+    final homeImage = find.image(
+      const AssetImage('assets/images/nav/home.png'),
+    );
+    expect(
+      tester.widget<NavDestinationIcon>(homeIconWidget()).color,
+      ForjaShellColors.iconMuted,
+    );
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(homeImage));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<NavDestinationIcon>(homeIconWidget()).color,
+      navDestinationAccentColors['home'],
+    );
+  });
+
+  testWidgets('desktop profile avatar is grey idle and colored on hover', (
+    tester,
+  ) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pumpAndSettle();
+
+    final greyAvatar = find.byKey(const ValueKey('nav-profile-avatar-grey'));
+    expect(greyAvatar, findsOneWidget);
+    final avatar = tester.widget<ForjaProfileAvatar>(
+      find.byType(ForjaProfileAvatar),
+    );
+    expect(avatar.showBorder, isFalse);
+    expect(
+      avatar.size,
+      shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) * 1.5,
+    );
+    expect(find.text('Guest'), findsOneWidget);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(greyAvatar));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('nav-profile-avatar-color')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('ShellScaffold body is inset by fixed rail width', (
@@ -602,8 +685,8 @@ void main() {
     expect(SettingsService.defaultVisibleNavIds, [
       'search',
       'home',
-      'anime',
       'asian_drama',
+      'anime',
       'iptv',
       'live_matches',
       'mylist',

@@ -29,8 +29,8 @@ class PlatformDefaults {
   static const List<String> defaultNavIds = [
     'search',
     'home',
-    'anime',
     'asian_drama',
+    'anime',
     'iptv',
     'live_matches',
     'mylist',

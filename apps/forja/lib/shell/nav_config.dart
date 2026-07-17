@@ -220,6 +220,31 @@ const Map<String, NavDestination> navDestinations = {
   ),
 };
 
+/// Desktop rail accents. Icons remain neutral while idle and reveal their
+/// destination color when selected or hovered.
+const Map<String, Color> navDestinationAccentColors = {
+  'home': Color(0xFF1CE783),
+  'discover': Color(0xFF2DD4BF),
+  'similar': Color(0xFFA78BFA),
+  'downloader': Color(0xFF38BDF8),
+  'search': Color(0xFF60A5FA),
+  'mylist': Color(0xFFFBBF24),
+  'magnet': Color(0xFFF472B6),
+  'live_matches': Color(0xFFFB923C),
+  'iptv': Color(0xFF22D3EE),
+  'audiobooks': Color(0xFFC084FC),
+  'books': Color(0xFFD97706),
+  'music': Color(0xFFEC4899),
+  'comics': Color(0xFFF97316),
+  'manga': Color(0xFFE879F9),
+  'jellyfin': Color(0xFF8B5CF6),
+  'anime': Color(0xFFFB7185),
+  'anime_arabic': Color(0xFF34D399),
+  'asian_drama': Color(0xFFC4B5FD),
+  'arabic': Color(0xFFF59E0B),
+  'settings': Color(0xFF94A3B8),
+};
+
 typedef TabBuilder = Widget Function();
 
 /// Lazy tab factories — widgets are created on first visit only.

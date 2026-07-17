@@ -189,6 +189,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
     final showDesktopProfile = ShellScope.inputPolicyOf(context).scaleOnHover;
+    final profileAvatarSize = shellNavRailIconSize(context) * 1.5;
 
     Widget buildNavColumn(double itemSpacing) {
       return Column(
@@ -272,12 +273,16 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           label: showDesktopProfile ? _profileLabel : null,
                           icon: showDesktopProfile
                               ? ForjaActiveProfileAvatar(
-                                  size: shellNavRailIconSize(context) * 1.15,
-                                  selected:
-                                      settingsIndex == widget.selectedIndex,
+                                  size: profileAvatarSize,
+                                  showBorder: false,
                                   onProfile: _onActiveProfile,
                                 )
                               : null,
+                          customIconSize: showDesktopProfile
+                              ? profileAvatarSize
+                              : null,
+                          alwaysShowLabel: showDesktopProfile,
+                          desaturateCustomIconWhenIdle: showDesktopProfile,
                           selected: settingsIndex == widget.selectedIndex,
                           onTap: () =>
                               widget.onDestinationSelected(settingsIndex),
@@ -432,6 +437,61 @@ class _TypewriterLabelState extends State<_TypewriterLabel> {
   }
 }
 
+class _AnimatedSaturation extends StatelessWidget {
+  const _AnimatedSaturation({required this.colorized, required this.child});
+
+  final bool colorized;
+  final Widget child;
+
+  static List<double> _matrix(double saturation) {
+    final inverse = 1 - saturation;
+    final red = 0.2126 * inverse;
+    final green = 0.7152 * inverse;
+    final blue = 0.0722 * inverse;
+    return [
+      red + saturation,
+      green,
+      blue,
+      0,
+      0,
+      red,
+      green + saturation,
+      blue,
+      0,
+      0,
+      red,
+      green,
+      blue + saturation,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: ValueKey(
+        colorized ? 'nav-profile-avatar-color' : 'nav-profile-avatar-grey',
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: colorized ? 1 : 0),
+        duration: ShellTokens.navSelectionAnimation,
+        curve: Curves.easeOutCubic,
+        child: child,
+        builder: (context, saturation, child) => ColorFiltered(
+          colorFilter: ColorFilter.matrix(_matrix(saturation)),
+          child: child!,
+        ),
+      ),
+    );
+  }
+}
+
 class _ShellNavRailItem extends StatefulWidget {
   const _ShellNavRailItem({
     required this.destination,
@@ -442,6 +502,9 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.onFocusChanged,
     this.label,
     this.icon,
+    this.customIconSize,
+    this.alwaysShowLabel = false,
+    this.desaturateCustomIconWhenIdle = false,
   });
 
   final NavDestination destination;
@@ -452,6 +515,9 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
+  final double? customIconSize;
+  final bool alwaysShowLabel;
+  final bool desaturateCustomIconWhenIdle;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -535,8 +601,17 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
   /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
-  double _contentHeight(BuildContext context) =>
-      shellNavRailItemContentHeight(context);
+  double _contentHeight(BuildContext context) {
+    final customIconSize = widget.customIconSize;
+    if (customIconSize == null) {
+      return shellNavRailItemContentHeight(context);
+    }
+    return customIconSize * ShellTokens.navRailIconHoverScale +
+        ShellTokens.navRailIconUnderlineGap +
+        ShellTokens.shellNavUnderlineHeight +
+        ShellTokens.navRailIconLabelGap +
+        shellNavRailLabelFontSize(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -544,17 +619,30 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final active = _activeFor(policy);
     final selectedFocused = widget.selected && active;
     final iconSize = shellNavRailIconSize(context);
+    final renderedIconSize = widget.customIconSize ?? iconSize;
     final labelFontSize = shellNavRailLabelFontSize(context);
     final contentHeight = _contentHeight(context);
     final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
-    final iconColor = selectedFocused
+    final desktopAccent =
+        navDestinationAccentColors[widget.destination.id] ??
+        ForjaShellColors.brandGreen;
+    final useDestinationAccent = policy.scaleOnHover && widget.icon == null;
+    final iconColor = useDestinationAccent
+        ? (widget.selected || active
+              ? desktopAccent
+              : ForjaShellColors.iconMuted)
+        : selectedFocused
         ? Colors.white
         : widget.selected
         ? ForjaShellColors.iconActive
         : active
         ? ForjaShellColors.iconHover
         : ForjaShellColors.iconMuted;
-    final labelColor = selectedFocused
+    final labelColor = useDestinationAccent
+        ? (widget.selected || active
+              ? desktopAccent
+              : ForjaShellColors.iconMuted)
+        : selectedFocused
         ? Colors.white
         : widget.selected
         ? ForjaShellColors.textPrimary
@@ -568,6 +656,25 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       height: 1,
     );
     final label = widget.label ?? widget.destination.label;
+    Widget icon =
+        widget.icon ??
+        TweenAnimationBuilder<Color?>(
+          tween: ColorTween(end: iconColor),
+          duration: ShellTokens.navSelectionAnimation,
+          curve: Curves.easeOutCubic,
+          builder: (context, color, _) => NavDestinationIcon(
+            destination: widget.destination,
+            selected: widget.selected,
+            color: color ?? iconColor,
+            size: iconSize,
+          ),
+        );
+    if (widget.icon != null && widget.desaturateCustomIconWhenIdle) {
+      icon = _AnimatedSaturation(
+        colorized: widget.selected || active,
+        child: icon,
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: widget.itemSpacing / 2),
@@ -625,7 +732,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                         children: [
                           SizedBox(
                             height:
-                                iconSize * ShellTokens.navRailIconHoverScale +
+                                renderedIconSize *
+                                    ShellTokens.navRailIconHoverScale +
                                 ShellTokens.navRailIconUnderlineGap +
                                 ShellTokens.shellNavUnderlineHeight,
                             child: Column(
@@ -638,14 +746,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                       duration:
                                           ShellTokens.navSelectionAnimation,
                                       curve: Curves.easeOutCubic,
-                                      child:
-                                          widget.icon ??
-                                          NavDestinationIcon(
-                                            destination: widget.destination,
-                                            selected: widget.selected,
-                                            color: iconColor,
-                                            size: iconSize,
-                                          ),
+                                      child: icon,
                                     ),
                                   ),
                                 ),
@@ -658,6 +759,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                     color: widget.selected
                                         ? (selectedFocused
                                               ? Colors.white
+                                              : useDestinationAccent
+                                              ? desktopAccent
                                               : ForjaShellColors.navUnderline)
                                         : Colors.transparent,
                                     borderRadius: BorderRadius.circular(2),
@@ -671,11 +774,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             height: labelFontSize,
                             width: ShellTokens.navRailWidth,
                             child: Center(
-                              child: _TypewriterLabel(
-                                text: label,
-                                active: _typing,
-                                style: labelStyle,
-                              ),
+                              child: widget.alwaysShowLabel
+                                  ? Text(
+                                      label,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: labelStyle,
+                                    )
+                                  : _TypewriterLabel(
+                                      text: label,
+                                      active: _typing,
+                                      style: labelStyle,
+                                    ),
                             ),
                           ),
                         ],

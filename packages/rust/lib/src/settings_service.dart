@@ -562,6 +562,7 @@ class SettingsService {
   static const String _navbarShell087Key = 'navbar_shell_087';
   static const String _navbarShell088Key = 'navbar_shell_088';
   static const String _navbarShell089Key = 'navbar_shell_089';
+  static const String _navbarShell090Key = 'navbar_shell_090';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
@@ -621,6 +622,17 @@ class SettingsService {
 
   static bool _isLegacyPlatformDefaultNav(List<String> ids) =>
       _isLegacyDefaultNav(ids) || _isLegacyAndroidTvNav(ids);
+
+  /// Interim default from shell 089 before Asian Drama was ordered ahead of Anime.
+  static const List<String> _legacyAnimeBeforeAsianDramaNavIds = [
+    'search',
+    'home',
+    'anime',
+    'asian_drama',
+    'iptv',
+    'live_matches',
+    'mylist',
+  ];
 
   static int initialShellTabIndex(
     List<String> visibleIds, {
@@ -735,6 +747,7 @@ class SettingsService {
       await kvSetString(_navbarShell087Key, '1');
       await kvSetString(_navbarShell088Key, '1');
       await kvSetString(_navbarShell089Key, '1');
+      await kvSetString(_navbarShell090Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -828,6 +841,18 @@ class SettingsService {
         }
       }
       await kvSetString(_navbarShell089Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell090Key)) {
+      if (await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        if (listEquals(raw, _legacyAnimeBeforeAsianDramaNavIds)) {
+          await kvSetStringList(
+            _navbarConfigKey,
+            List<String>.from(defaultVisibleNavIds),
+          );
+        }
+      }
+      await kvSetString(_navbarShell090Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

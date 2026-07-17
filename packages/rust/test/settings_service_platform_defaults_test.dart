@@ -58,8 +58,8 @@ void main() {
     expect(nav, [
       'search',
       'home',
-      'anime',
       'asian_drama',
+      'anime',
       'iptv',
       'live_matches',
       'mylist',
@@ -206,7 +206,7 @@ void main() {
   });
 
   test(
-    'Android TV search-first legacy is left unchanged once shell 088 applied',
+    'Android TV anime-before-asian legacy migrates once shell 088 applied',
     () async {
       await kvSetStringList('navbar_config', const [
         'search',
@@ -233,7 +233,38 @@ void main() {
       final service = SettingsService();
       final nav = await service.getNavbarConfig();
 
-      expect(nav.take(2), ['search', 'home']);
+      expect(nav, PlatformDefaults.defaultNavIds);
+    },
+  );
+
+  test(
+    'Android TV anime-before-asian migrates after shell 089 when shell 090 pending',
+    () async {
+      await kvSetStringList('navbar_config', const [
+        'search',
+        'home',
+        'anime',
+        'asian_drama',
+        'iptv',
+        'live_matches',
+        'mylist',
+      ]);
+      await kvSetStringList(
+        'navbar_known_ids',
+        List.from(SettingsService.allNavIds),
+      );
+      await kvSetString('navbar_shell_080', '1');
+      await kvSetString('navbar_shell_081', '1');
+      await kvSetString('navbar_shell_084', '1');
+      await kvSetString('navbar_shell_085', '1');
+      await kvSetString('navbar_shell_086', '1');
+      await kvSetString('navbar_shell_087', '1');
+      await kvSetString('navbar_shell_088', '1');
+      await kvSetString('navbar_shell_089', '1');
+
+      final nav = await SettingsService().getNavbarConfig();
+
+      expect(nav, PlatformDefaults.defaultNavIds);
     },
   );
 

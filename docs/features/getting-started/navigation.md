@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Search, Home, Anime, Asian Drama, IPTV, Live Matches, My List, and Settings. All are enabled on a fresh install. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Default tab order on every profile:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, and Settings. All are enabled on a fresh install. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -22,12 +22,12 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 ## Desktop shell layout
 
 - **Home menu (desktop):** Search, then Films / TV Shows / Categories overlaid on the hero; Categories opens a mood picker
-- **Left rail:** Forja logo (top), your configured tabs (center), active profile avatar / Guest (bottom); the avatar opens Settings
+- **Left rail:** Forja logo (top), your configured tabs (center), then a larger active profile avatar / Guest with its name always visible (bottom). Every destination is gray while idle and reveals its own accent color on hover or selection; the avatar uses its profile colors and opens Settings without a circular hover background.
 - **Body:** flat `bgDark`; Home hero is full-bleed with pill **Play** plus a combined **info | add** pill for details and My List
 
 ## Android TV
 
-- **Nav rail order:** Search, Home, Anime, Asian Drama, IPTV, Live Matches, My List, then Settings (Settings is always last and cannot be hidden)
+- **Nav rail order:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, then Settings (Settings is always last and cannot be hidden)
 - The app **opens on your chosen default tab** (Home unless you change it in Settings); **first focus** lands on that tab’s **nav rail** item (Home by default), not the hero Play button
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
 - **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present
