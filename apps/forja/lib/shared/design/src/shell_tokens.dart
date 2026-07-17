@@ -8,7 +8,7 @@ import 'package:flutter/scheduler.dart';
 ///
 /// Media-details layout lives in `DetailsTokens` (`details_tokens.dart`).
 abstract final class ShellTokens {
-  static const double bottomNavHeight = 80;
+  static const double bottomNavHeight = 88;
   static const double bottomNavItemWidth = 100;
   static const double bottomNavIconPaddingH = 20;
   static const double bottomNavIconPaddingV = 4;
@@ -43,7 +43,7 @@ abstract final class ShellTokens {
     return compactMenuLeadingInset(context) + shellNavMenuButtonWidth;
   }
 
-  static const double navRailIconSize = 30;
+  static const double navRailIconSize = 36;
 
   /// Resting rail icon scale (below [navRailIconSize]).
   static const double navRailIconIdleScale = 0.82;

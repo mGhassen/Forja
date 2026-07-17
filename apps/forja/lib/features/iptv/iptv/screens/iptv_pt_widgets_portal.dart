@@ -85,47 +85,63 @@ class _PortalListView extends StatelessWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.satellite_alt_rounded,
-                    size: 80,
-                    color: IptvShellStyle.accent,
+    return ListenableBuilder(
+      listenable: AccountFeatures.instance.revision,
+      builder: (context, _) {
+        final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.satellite_alt_rounded,
+                        size: 80,
+                        color: IptvShellStyle.accent,
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'No portals yet',
+                        style: IptvShellStyle.pageTitle.copyWith(fontSize: 36),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        ctrl.statusText.isEmpty
+                            ? (canScrape
+                                ? 'Find live Xtream portals,\nor add one manually.'
+                                : 'Add an Xtream portal to get started.')
+                            : ctrl.statusText,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(color: Colors.white60),
+                      ),
+                      const SizedBox(height: 28),
+                      if (canScrape)
+                        IptvPrimaryButton(
+                          icon: ctrl.isScraping
+                              ? Icons.stop_circle_rounded
+                              : Icons.travel_explore,
+                          label: ctrl.isScraping ? 'Stop' : 'Find Portals',
+                          onPressed:
+                              ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+                        )
+                      else
+                        IptvPrimaryButton(
+                          icon: Icons.add_rounded,
+                          label: 'Add portal',
+                          onPressed: () => _showAddDialog(context),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'No portals yet',
-                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 36),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    ctrl.statusText.isEmpty
-                        ? 'Find live Xtream portals,\nor add one manually.'
-                        : ctrl.statusText,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(color: Colors.white60),
-                  ),
-                  const SizedBox(height: 28),
-                  IptvPrimaryButton(
-                    icon: ctrl.isScraping
-                        ? Icons.stop_circle_rounded
-                        : Icons.travel_explore,
-                    label: ctrl.isScraping ? 'Stop' : 'Find Portals',
-                    onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -178,17 +194,22 @@ class _PortalListView extends StatelessWidget {
   }
 
   Widget _buildBottomBar(BuildContext context) {
-    final actions =
-        <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
-          (
-            icon: ctrl.isScraping
-                ? Icons.stop_circle_rounded
-                : Icons.travel_explore,
-            label: ctrl.isScraping ? 'Stop' : 'Scrape',
-            subtle: false,
-            onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-          ),
-          if (ctrl.canGetMore)
+    return ListenableBuilder(
+      listenable: AccountFeatures.instance.revision,
+      builder: (context, _) {
+        final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
+        final actions =
+            <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
+          if (canScrape)
+            (
+              icon: ctrl.isScraping
+                  ? Icons.stop_circle_rounded
+                  : Icons.travel_explore,
+              label: ctrl.isScraping ? 'Stop' : 'Scrape',
+              subtle: false,
+              onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+            ),
+          if (canScrape && ctrl.canGetMore)
             (
               icon: Icons.add_circle_outline,
               label: 'Get More',
@@ -209,42 +230,52 @@ class _PortalListView extends StatelessWidget {
               onPressed: ctrl.runVerification,
             ),
         ];
-    iptvSyncRow(
-      rowId: 'portal-actions',
-      sortOrder: 2,
-      itemCount: actions.length,
-    );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 0; i < actions.length; i++) ...[
-                  IptvPrimaryButton(
-                    icon: actions[i].icon,
-                    label: actions[i].label,
-                    subtle: actions[i].subtle,
-                    onPressed: actions[i].onPressed,
-                    tvRowId: 'portal-actions',
-                    tvItemIndex: i,
-                  ),
-                  if (i < actions.length - 1) const SizedBox(width: 8),
-                ],
-              ],
+        iptvSyncRow(
+          rowId: 'portal-actions',
+          sortOrder: 2,
+          itemCount: actions.length,
+        );
+        return Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
             ),
           ),
-        ],
-      ),
+          child: _buildBottomBarActions(context, actions),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomBarActions(
+    BuildContext context,
+    List<({IconData icon, String label, bool subtle, VoidCallback? onPressed})>
+        actions,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < actions.length; i++) ...[
+                IptvPrimaryButton(
+                  icon: actions[i].icon,
+                  label: actions[i].label,
+                  subtle: actions[i].subtle,
+                  onPressed: actions[i].onPressed,
+                  tvRowId: 'portal-actions',
+                  tvItemIndex: i,
+                ),
+                if (i < actions.length - 1) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv/m3u/m3u_models.dart';
 import 'package:forja/features/iptv/iptv/m3u/m3u_store.dart';
+import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
 
@@ -14,7 +15,6 @@ class SyncDomainBridge {
 
   static const _domainIptv = 'iptv';
   static const _domainPreferences = 'preferences';
-  static const _domainProviders = 'providers';
   static const _domainStremio = 'stremio';
   static const _domainNavigation = 'navigation';
 
@@ -36,7 +36,11 @@ class SyncDomainBridge {
   }
 
   Future<void> pullAndMergeAll() async {
-    if (!SyncService.instance.isSignedIn) return;
+    if (!SyncService.instance.isSignedIn) {
+      AccountFeatures.instance.clear();
+      return;
+    }
+    await SyncService.instance.pullAccountFeatures();
     final remote = await SyncService.instance.pullProfileSettings();
     if (remote == null) {
       await pushAllLocal();
@@ -67,10 +71,8 @@ class SyncDomainBridge {
     // Full playback prefs (incl. play_source_*) — never strip defaults.
     out['playback'] = await exportPreferences();
 
-    final providers = await _exportProvidersCompact();
     final stremio = await _exportStremioCompact();
     final connected = <String, dynamic>{};
-    if (providers.isNotEmpty) connected['providers'] = providers;
     if (stremio.isNotEmpty) connected['stremio'] = stremio;
     if (connected.isNotEmpty) out['connectedServices'] = connected;
 
@@ -92,10 +94,7 @@ class SyncDomainBridge {
 
     final connected = payload['connectedServices'];
     if (connected is Map) {
-      final providers = connected['providers'];
-      if (providers is Map) {
-        await importProviders(Map<String, dynamic>.from(providers));
-      }
+      // Provider order is device-local — ignore legacy cloud providers keys.
       final stremio = connected['stremio'];
       if (stremio is Map) {
         await importStremio(Map<String, dynamic>.from(stremio));
@@ -158,23 +157,6 @@ class SyncDomainBridge {
     }
     if (assignments.isEmpty) return;
     await SyncService.instance.replaceUserIptvPortals(assignments);
-  }
-
-  Future<Map<String, dynamic>> _exportProvidersCompact() async {
-    final stream = await _settings.getStreamProviderOrder();
-    final anime = await _settings.getAnimeProviderOrder();
-    final asian = await _settings.getAsianDramaProviderOrder();
-    final out = <String, dynamic>{};
-    if (!_listEquals(stream, SettingsService.defaultStreamProviderOrder)) {
-      out['stream_provider_order'] = stream;
-    }
-    if (!_listEquals(anime, SettingsService.defaultAnimeProviderOrder)) {
-      out['anime_provider_order'] = anime;
-    }
-    if (!_listEquals(asian, SettingsService.defaultAsianDramaProviderOrder)) {
-      out['asian_drama_provider_order'] = asian;
-    }
-    return out;
   }
 
   Future<Map<String, dynamic>> _exportStremioCompact() async {
@@ -451,14 +433,6 @@ class SyncDomainBridge {
       await _settings.saveStremioAddon(addon);
     }
   }
-
-  static bool _listEquals(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
 }
 
 void scheduleIptvSyncPush() =>
@@ -467,8 +441,9 @@ void scheduleIptvSyncPush() =>
 void schedulePreferencesSyncPush() => SyncDomainBridge.instance
     .schedulePush(SyncDomainBridge._domainPreferences);
 
-void scheduleProvidersSyncPush() =>
-    SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainProviders);
+void scheduleProvidersSyncPush() {
+  // Provider order is device-local — do not push to cloud.
+}
 
 void scheduleStremioSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainStremio);

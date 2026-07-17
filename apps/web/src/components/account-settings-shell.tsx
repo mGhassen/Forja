@@ -5,7 +5,6 @@ import {
   Check,
   ChevronDown,
   LayoutList,
-  ListOrdered,
   LogOut,
   PlayCircle,
   Puzzle,
@@ -45,12 +44,6 @@ const profileCategories = [
     title: 'Navigation',
     subtitle: 'Tabs and default menu',
     icon: LayoutList,
-  },
-  {
-    href: '/account/settings/providers',
-    title: 'Provider order',
-    subtitle: 'Film, anime, and Asian drama',
-    icon: ListOrdered,
   },
   {
     href: '/account/settings/stremio',

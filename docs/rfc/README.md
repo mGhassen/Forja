@@ -56,7 +56,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 7/7 · 10/10 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
-| [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 2/7 · 10/20 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 12/22 | [1.0.2](../backlog/1.0.2-[draft].md) |
 
 ## Related
 

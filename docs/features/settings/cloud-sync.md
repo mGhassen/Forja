@@ -22,7 +22,7 @@ another screen.
 - **Web:** sign in at `/login` or create an account at `/signup` (Turnstile captcha
   when configured), choose a profile on **Who's watching?**, then open **Remote
   settings**. The sidebar splits **Profile** (synced IPTV / playback / navigation /
-  providers / Stremio) from **Account** (email, log out, delete). Back returns to
+  Stremio) from **Account** (email, log out, delete). Back returns to
   Who's watching. Switch profiles from the header menu. **Log out** is under
   Account in the left nav.
 
@@ -32,10 +32,10 @@ Per profile:
 
 | Store | What it includes |
 |---------|------------------|
+| **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled keys only — e.g. `iptvScrape` for Reddit portal discovery in the app. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
 | **`profile_settings` → Navigation** | Visible shell tabs and default tab — editable on web under **Profile → Navigation** |
-| **`profile_settings` → Provider order** | Film/series, Anime, Asian drama host order — stored only when different from built-in defaults |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
 | **`profile_settings` → IPTV** | Reserved for device sync (M3U URLs). Not edited on the web portal. |
 
@@ -43,6 +43,7 @@ Per profile:
 
 Not synced — device-specific or sensitive:
 
+- Stream / anime / Asian drama **provider order** (Settings in the app only — not on the web portal)
 - My List / film lists (TMDB ids stay on the device)
 - M3U playlists uploaded from a file, and all M3U **channel** rows (URL playlists re-fetch channels on device)
 - Live IPTV connection counts (probed in-app; not stored in cloud)
@@ -102,11 +103,18 @@ Builds need the shared Supabase project:
 --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-Optional portal origin for **Web login** / signup links (defaults to local Vite):
+Optional portal origin for **Web login** / signup links:
 
 ```text
 --dart-define=FORJA_WEB_URL=https://your-portal.example
 ```
+
+Put the same key in repo-root `.env` (see `.env.example`) so local
+`flutter run --dart-define-from-file=../../.env` picks it up. Local default is
+`http://127.0.0.1:3000`. **Release / CI** must set GitHub secret `FORJA_WEB_URL`
+to the deployed portal (Vercel URL, custom domain, etc.) — builds fail if it is
+missing or still localhost. This does **not** go in `apps/web/.env` (that file
+configures the portal itself; the desktop app needs the portal’s public origin).
 
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
 For signup/sign-in captcha, also set `VITE_TURNSTILE_SITE_KEY` (Cloudflare Turnstile
@@ -122,11 +130,10 @@ When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
 web dev server after pulling Vite host changes so it binds IPv4 (not only
 `[::1]`).
 
-GitHub build/release workflows use repository secrets `SUPABASE_URL` and
-`SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`). The publishable key is a public client credential; never put a
-Supabase `service_role` / `sb_secret_…` key in a desktop build. Set
-`FORJA_WEB_URL` in release builds to the deployed portal origin so **Web login**
-does not point at localhost.
+GitHub build/release workflows use repository secrets `SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`), and **`FORJA_WEB_URL`**.
+The publishable key is a public client credential; never put a
+Supabase `service_role` / `sb_secret_…` key in a desktop build.
 
 ## Tips
 

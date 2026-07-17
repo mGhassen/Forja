@@ -6,6 +6,7 @@ import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/shared/sync/src/account_features.dart';
 part 'iptv_controller_portal.dart';
 part 'iptv_controller_browser.dart';
 part 'iptv_controller_live.dart';

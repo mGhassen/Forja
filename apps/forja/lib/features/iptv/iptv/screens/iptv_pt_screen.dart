@@ -23,6 +23,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/m3u/m3u_playlists_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_catalog_workspace.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'iptv_pt_player_screen.dart';
 
 part 'iptv_pt_catalog_shell.dart';

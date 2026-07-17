@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:rust/rust.dart';
 import 'models.dart';
 
@@ -583,6 +584,10 @@ class IptvScraper {
     String? after,
     CatalogSource? source,
   }) async {
+    if (!AccountFeatures.instance.isIptvScrapeEnabled) {
+      debugPrint('[Catalog] iptvScrape feature disabled — skipping scrape');
+      return const ScrapePage(portals: [], nextAfter: null);
+    }
     if (!_xml2ScrapeEnabled) {
       if (source == CatalogSource.works ||
           (after != null && after.startsWith('xml2:'))) {

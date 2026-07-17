@@ -1,6 +1,5 @@
 export {
   usePlaybackSetting,
-  useProvidersSetting,
   useStremioSetting,
   useIptvSetting,
   useNavigationSetting,

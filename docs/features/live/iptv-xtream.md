@@ -35,14 +35,14 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 ## Setup
 
 1. Get portal URL, username, and password from your IPTV provider
-2. Open **Portals** → **Add** (or **Scrape** to discover providers from Reddit IPTV posts)
+2. Open **Portals** → **Add** (or **Scrape** / **Find Portals** when your Forja account has the IPTV scrape feature enabled) to discover providers from Reddit IPTV posts
 3. To import from a share code: in the portal dialog (**Share code** title), paste or type the 8-character code into the tall **XXXX-XXXX** squares centered in the dialog — when the code resolves, the dialog asks for an optional **Portal name**, then connects after you confirm (or cancel to go back). Tap the **↓** control on the bottom edge to expand manual entry (title becomes **Add Portal**; optional **Portal name**, then URL, username, password as underline fields) — confirm with the green check icon or dismiss with the muted close icon at the bottom-right (only when expanded); use the header **X** to close without saving. **Edit portal** includes the same **Portal name** field. On the **web** remote settings page, add portals with the manual form, or **Export CSV** to download portals (credentials included) as a spreadsheet file; **Save** to sync.
 4. Tap a portal in the list to load its catalog
 
 ## Tips
 
 - Portal passwords on this device use Keychain / Keystore; CSV import/export files still contain passwords in plain text — keep those files private
-- **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by portal name, account name, or URL
+- **Portals** panel on the right (desktop / Android TV) holds add and the full portal list (plus scrape when the account feature is on) — search filters by portal name, account name, or URL
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit **Reload** on the selected shelf (or the centered **Reload** button when the catalog failed to load)
 - On **Android TV**, focusable controls (search, portals, dialogs, back/close, portal actions, group rows) use **brand green** when D-pad focused — **Live / Movies / Series** shelf chips keep their own section colors on focus (same as hover)
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
@@ -56,7 +56,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
-- **Scrape** walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now)
+- **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now)
 - Portal quality varies — timeouts usually mean provider or network issues
 - Clear stale alive checks / channel scan hits from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay)
 - Export or import Xtream portals as CSV from **Settings → Data & backup → IPTV portals** (same format as the web remote settings page; import adds only portals that are not already saved)

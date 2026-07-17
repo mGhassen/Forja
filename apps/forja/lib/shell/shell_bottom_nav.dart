@@ -62,6 +62,7 @@ class ShellBottomNav extends StatelessWidget {
                             destination: dest,
                             selected: isSelected,
                             color: isSelected ? Colors.white : Colors.white54,
+                            size: ShellTokens.navRailIconSize,
                           ),
                         ),
                         const SizedBox(height: 4),

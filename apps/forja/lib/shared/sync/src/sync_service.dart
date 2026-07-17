@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -104,6 +105,7 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
     await client.auth.signOut();
+    AccountFeatures.instance.clear();
     _notifyIdentityChanged();
   }
 
@@ -386,6 +388,33 @@ class SyncService {
     } catch (e) {
       debugPrint('[Sync] pullProfileSettings error: $e');
       return null;
+    }
+  }
+
+  /// Lean `accounts.features` — empty map means all flags off.
+  Future<Map<String, dynamic>> pullAccountFeatures() async {
+    final client = ForjaSupabase.clientOrNull;
+    final userId = client?.auth.currentUser?.id;
+    if (client == null || userId == null) {
+      AccountFeatures.instance.clear();
+      return const {};
+    }
+    try {
+      final row = await client
+          .from('accounts')
+          .select('features')
+          .eq('id', userId)
+          .maybeSingle();
+      final raw = row?['features'];
+      final map = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      AccountFeatures.instance.applyRemote(map);
+      return map;
+    } catch (e) {
+      debugPrint('[Sync] pullAccountFeatures error: $e');
+      AccountFeatures.instance.clear();
+      return const {};
     }
   }
 

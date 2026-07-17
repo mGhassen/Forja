@@ -301,88 +301,116 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
 
   Widget _buildHeader(BuildContext context) {
     final ctrl = widget.ctrl;
-    iptvSyncRow(rowId: 'iptv-portal-header', sortOrder: 0, itemCount: 3);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            'Portals',
-            style: IptvShellStyle.headerTitle.copyWith(fontSize: 18),
+    return ListenableBuilder(
+      listenable: AccountFeatures.instance.revision,
+      builder: (context, _) {
+        final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
+        final headerCount = canScrape ? 3 : 2;
+        iptvSyncRow(
+          rowId: 'iptv-portal-header',
+          sortOrder: 0,
+          itemCount: headerCount,
+        );
+        final addIndex = canScrape ? 2 : 1;
+        return Container(
+          padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+            ),
           ),
-          const Spacer(),
-          IptvIconAction(
-            tooltip: _searchOpen ? 'Close search' : 'Search portals',
-            onPressed: _toggleSearch,
-            icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
-            color: _searchOpen ? IptvShellStyle.accent : null,
-            tvRowId: 'iptv-portal-header',
-            tvItemIndex: 0,
-            tvZone: ShellTvZone.topBar,
-            onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-            onDownEdge: () => iptvFocusRowItem('portals', 0),
-            onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
+          child: Row(
+            children: [
+              Text(
+                'Portals',
+                style: IptvShellStyle.headerTitle.copyWith(fontSize: 18),
+              ),
+              const Spacer(),
+              IptvIconAction(
+                tooltip: _searchOpen ? 'Close search' : 'Search portals',
+                onPressed: _toggleSearch,
+                icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                color: _searchOpen ? IptvShellStyle.accent : null,
+                tvRowId: 'iptv-portal-header',
+                tvItemIndex: 0,
+                tvZone: ShellTvZone.topBar,
+                onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                onDownEdge: () => iptvFocusRowItem('portals', 0),
+                onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
+              ),
+              if (canScrape)
+                IptvIconAction(
+                  tooltip: ctrl.isScraping ? 'Stop scrape' : 'Scrape portals',
+                  onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+                  icon: ctrl.isScraping
+                      ? Icons.stop_circle_rounded
+                      : Icons.travel_explore_rounded,
+                  color: ctrl.isScraping ? IptvShellStyle.accent : null,
+                  tvRowId: 'iptv-portal-header',
+                  tvItemIndex: 1,
+                  tvZone: ShellTvZone.topBar,
+                  onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                  onDownEdge: () => iptvFocusRowItem('portals', 0),
+                  onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 0),
+                  onRightEdge: () =>
+                      iptvFocusRowItem('iptv-portal-header', addIndex),
+                ),
+              IptvIconAction(
+                tooltip: 'Add portal',
+                onPressed: () => _showAddDialog(context),
+                icon: Icons.add_rounded,
+                tvRowId: 'iptv-portal-header',
+                tvItemIndex: addIndex,
+                tvZone: ShellTvZone.topBar,
+                onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                onDownEdge: () => iptvFocusRowItem('portals', 0),
+                onLeftEdge: () => iptvFocusRowItem(
+                  'iptv-portal-header',
+                  canScrape ? 1 : 0,
+                ),
+              ),
+              iptvCloseButton(context, onTap: widget.onClose),
+            ],
           ),
-          IptvIconAction(
-            tooltip: ctrl.isScraping ? 'Stop scrape' : 'Scrape portals',
-            onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-            icon: ctrl.isScraping
-                ? Icons.stop_circle_rounded
-                : Icons.travel_explore_rounded,
-            color: ctrl.isScraping ? IptvShellStyle.accent : null,
-            tvRowId: 'iptv-portal-header',
-            tvItemIndex: 1,
-            tvZone: ShellTvZone.topBar,
-            onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-            onDownEdge: () => iptvFocusRowItem('portals', 0),
-            onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 0),
-            onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 2),
-          ),
-          IptvIconAction(
-            tooltip: 'Add portal',
-            onPressed: () => _showAddDialog(context),
-            icon: Icons.add_rounded,
-            tvRowId: 'iptv-portal-header',
-            tvItemIndex: 2,
-            tvZone: ShellTvZone.topBar,
-            onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-            onDownEdge: () => iptvFocusRowItem('portals', 0),
-            onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
-          ),
-          iptvCloseButton(context, onTap: widget.onClose),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.satellite_alt_rounded,
-              size: 48,
-              color: IptvShellStyle.accent,
+    return ListenableBuilder(
+      listenable: AccountFeatures.instance.revision,
+      builder: (context, _) {
+        final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.satellite_alt_rounded,
+                  size: 48,
+                  color: IptvShellStyle.accent,
+                ),
+                const SizedBox(height: 12),
+                Text('No portals yet', style: IptvShellStyle.headerTitle),
+                const SizedBox(height: 8),
+                Text(
+                  canScrape
+                      ? 'Scrape or add a portal to browse channels.'
+                      : 'Add a portal to browse channels.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white60,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text('No portals yet', style: IptvShellStyle.headerTitle),
-            const SizedBox(height: 8),
-            Text(
-              'Scrape or add a portal to browse channels.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

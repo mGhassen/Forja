@@ -89,10 +89,11 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `WYZIE_API_KEY` | Player subtitle search (`crates/anime` Wyzie) |
 | `SUPABASE_URL` | Shared Supabase project used by desktop accounts and settings sync |
 | `SUPABASE_PUBLISHABLE_KEY` | Public Supabase client key (`sb_publishable_…`); never use `service_role` / `sb_secret_…` in the app |
+| `FORJA_WEB_URL` | Deployed web portal origin for desktop **Web login** / signup links. Local default `http://127.0.0.1:3000`. **Required** as a GitHub secret for release/build CI (must not be localhost). |
 
 **Desktop reality:** anything baked into the binary can be extracted. `.env` keeps keys out of git; it does **not** hide them from someone who reverse-engineers a shipped build. Real options for production: a small backend proxy that holds the key, or user-supplied keys (WebStreamr already has a Settings TMDB token). TMDB’s v3 key is rate-limited per key — rotate if it leaks; prefer the read token only where Bearer is needed.
 
-CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_KEY`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY` (falls back to legacy `SUPABASE_ANON_KEY`) are injected by `.github/workflows/{build,release}.yml`. Flutter builds receive the Supabase pair through `--dart-define`; use the hosted project values in GitHub, never the local `127.0.0.1` URL.
+CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (falls back to legacy `SUPABASE_ANON_KEY`), and **`FORJA_WEB_URL`** are injected by `.github/workflows/{build,release}.yml`. Flutter builds receive Supabase + portal URL through `--dart-define`; use the hosted project values in GitHub, never the local `127.0.0.1` URL.
 
 **Debug badge:** In debug (`flutter run`), a small runtime **DEV** chip sits under the nav-rail wordmark (`kDebugMode`). macOS also sets a dock badge via `windowManager.setBadgeLabel('DEV')`. No alternate logo assets required.
 

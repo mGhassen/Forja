@@ -67,10 +67,6 @@ export function useProfileSettings() {
         connectedServices: {
           ...current.connectedServices,
           ...patch.connectedServices,
-          providers: {
-            ...current.connectedServices?.providers,
-            ...patch.connectedServices?.providers,
-          },
           stremio: patch.connectedServices?.stremio ?? current.connectedServices?.stremio,
         },
         navigation: patch.navigation

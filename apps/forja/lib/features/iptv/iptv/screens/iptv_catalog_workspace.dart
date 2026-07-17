@@ -14,6 +14,7 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
+import 'package:forja/shared/sync/sync.dart';
 
 part 'iptv_catalog_top_bar.dart';
 part 'iptv_catalog_portal_panel.dart';

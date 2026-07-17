@@ -1,7 +1,6 @@
 import { useProfileSettings } from '@/hooks/use-profile-settings'
 import type {
   PreferencesPayload,
-  ProvidersPayload,
   StremioPayload,
   IptvSettingsPayload,
   NavigationPayload,
@@ -19,27 +18,6 @@ export function usePlaybackSetting() {
       : undefined,
     save: async (payload: PreferencesPayload) => {
       await settings.patch({ playback: payload })
-    },
-  }
-}
-
-export function useProvidersSetting() {
-  const settings = useProfileSettings()
-  return {
-    ...settings,
-    data: settings.data
-      ? {
-          payload: settings.data.payload.connectedServices?.providers ?? {},
-          updated_at: settings.data.updated_at,
-        }
-      : undefined,
-    save: async (payload: ProvidersPayload) => {
-      await settings.patch({
-        connectedServices: {
-          ...settings.data?.payload.connectedServices,
-          providers: payload,
-        },
-      })
     },
   }
 }

@@ -26,12 +26,22 @@ jobs:
     name: Validate cloud config
     runs-on: ubuntu-latest
     steps:
-      - name: Require Supabase desktop client config
+      - name: Require Supabase + web portal desktop client config
         run: |
           if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
             echo "::error::Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY) repository secrets."
             exit 1
           fi
+          if [[ -z "$FORJA_WEB_URL" ]]; then
+            echo "::error::Set FORJA_WEB_URL repository secret to the deployed web portal origin (e.g. https://your-app.vercel.app)."
+            exit 1
+          fi
+          case "$FORJA_WEB_URL" in
+            http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*)
+              echo "::error::FORJA_WEB_URL must be the public portal URL for release builds, not localhost."
+              exit 1
+              ;;
+          esac
 
   macos:
     name: macOS
@@ -48,12 +58,10 @@ jobs:
         run: |
           flutter pub get
           # Ad-hoc sign — no Apple Developer certs in CI (see RFC-021 for notarization).
-          EXTRA=()
-          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            "${EXTRA[@]}" \
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGN_STYLE=Manual
       - uses: actions/upload-artifact@v4
@@ -77,12 +85,10 @@ jobs:
         shell: bash
         run: |
           flutter pub get
-          EXTRA=()
-          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            "${EXTRA[@]}"
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -110,12 +116,10 @@ jobs:
       - working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          EXTRA=()
-          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            "${EXTRA[@]}"
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -141,12 +145,10 @@ jobs:
           channel: ${{ env.FLUTTER_CHANNEL }}
       - run: flutter pub get
       - run: |
-          EXTRA=()
-          [[ -n "${FORJA_WEB_URL:-}" ]] && EXTRA+=(--dart-define=FORJA_WEB_URL="$FORJA_WEB_URL")
           flutter build apk --release --split-per-abi \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
-            "${EXTRA[@]}"
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

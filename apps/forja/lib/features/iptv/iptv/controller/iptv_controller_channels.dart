@@ -150,7 +150,8 @@ mixin _IptvControllerChannels on ChangeNotifier {
     // ── 2. Scrape fresh portals if requested or we're empty ──
     final needsBootstrap =
         _c.verified.isEmpty && pool.every((p) => attempted.contains(p.key));
-    if (scrapeMore || needsBootstrap) {
+    final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
+    if (canScrape && (scrapeMore || needsBootstrap)) {
       final pendingQueue =
           _c._channelPendingPortals.putIfAbsent(ch.id, () => <IptvPortal>[]);
       final pendingKeys =

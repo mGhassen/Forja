@@ -9,6 +9,7 @@
  * Correct model:
  * - iptv_portals = shared credentials (url, username, password, expiry, max)
  * - user_iptv_portals.portal_name = per-profile label
+ * - accounts.features = lean flags ({} default; e.g. { iptvScrape: true })
  * - profile_settings.playback = full prefs (incl. play_source_*)
  * - profile_settings.navigation = navbar visibleIds + defaultTab
  * - profile_settings.iptv = M3U URLs only (no portals)
@@ -252,17 +253,21 @@ async function ensureUser(admin, { email, password, label }) {
   return data.user.id
 }
 
-async function ensureAccount(admin, userId, email, isAdmin) {
+async function ensureAccount(admin, userId, email, isAdmin, features) {
   const now = new Date().toISOString()
   const { error } = await admin.from('accounts').upsert({
     id: userId,
     email,
     is_admin: isAdmin,
+    features: features && Object.keys(features).length ? features : {},
     updated_at: now,
   })
   if (error) throw error
   if (isAdmin) {
     console.log(`    · accounts.is_admin = true`)
+  }
+  if (features?.iptvScrape) {
+    console.log(`    · accounts.features.iptvScrape = true`)
   }
 }
 
@@ -411,7 +416,10 @@ async function main() {
 
   for (const user of TEST_USERS) {
     const userId = await ensureUser(admin, user)
-    await ensureAccount(admin, userId, user.email, user.isAdmin)
+    // Enable IPTV scrape on the full admin account for local QA.
+    const features =
+      user.seedVariant === 'full' ? { iptvScrape: true } : {}
+    await ensureAccount(admin, userId, user.email, user.isAdmin, features)
 
     if (!portalAId) {
       portalAId = await upsertIptvPortal(admin, PORTAL_A, userId)

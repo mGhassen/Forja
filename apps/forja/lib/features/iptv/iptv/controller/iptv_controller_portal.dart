@@ -4,6 +4,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
   IptvController get _c => this as IptvController;
 
   Future<void> scrape() async {
+    if (!AccountFeatures.instance.isIptvScrapeEnabled) return;
     if (_c.isScraping) return;
     _c.isScraping = true;
     _c._scrapeCancel = false;
@@ -20,6 +21,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
   }
 
   Future<void> getMore() async {
+    if (!AccountFeatures.instance.isIptvScrapeEnabled) return;
     if (_c.isScraping) return;
     _c.isScraping = true;
     _c._scrapeCancel = false;

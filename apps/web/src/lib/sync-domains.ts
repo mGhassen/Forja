@@ -1,5 +1,38 @@
 /** Profile settings payload — must match Flutter SyncDomainBridge (lean storage). */
 
+/** Account-level feature flags. Empty `{}` = all off. Only store enabled keys. */
+export type AccountFeaturesPayload = {
+  /** Reddit / Find Portals scrape in the IPTV tab. */
+  iptvScrape?: true
+}
+
+export type AccountFeaturesExpanded = {
+  iptvScrape: boolean
+}
+
+export function emptyAccountFeatures(): AccountFeaturesExpanded {
+  return { iptvScrape: false }
+}
+
+export function expandAccountFeatures(raw: unknown): AccountFeaturesExpanded {
+  const base = emptyAccountFeatures()
+  if (!raw || typeof raw !== 'object') return base
+  const p = raw as Record<string, unknown>
+  return {
+    iptvScrape: p.iptvScrape === true,
+  }
+}
+
+/** Lean write: omit disabled keys entirely. */
+export function compactAccountFeatures(
+  f: AccountFeaturesExpanded | AccountFeaturesPayload | undefined,
+): AccountFeaturesPayload {
+  if (!f) return {}
+  const out: AccountFeaturesPayload = {}
+  if (f.iptvScrape === true) out.iptvScrape = true
+  return out
+}
+
 export type PreferencesPayload = {
   play_source_torrent_enabled?: boolean
   play_source_stremio_enabled?: boolean
@@ -29,6 +62,7 @@ export type StremioPayload = {
 }
 
 export type ConnectedServicesPayload = {
+  /** @deprecated Provider order is device-local — never write to cloud. */
   providers?: ProvidersPayload
   stremio?: StremioPayload
 }
@@ -132,52 +166,6 @@ export function portalKey(row: Pick<IptvPortalRow, 'url' | 'username' | 'passwor
   return `${row.url}|${row.username}|${row.password}`.toLowerCase()
 }
 
-export const DEFAULT_STREAM_PROVIDER_ORDER = [
-  'videasy',
-  'vidlink',
-  'vidsrc',
-  'vidsrcwin',
-  'vixsrc',
-  'vidnest',
-  'vidzee',
-  'vidrock',
-  'vidfast',
-  '2embed',
-  'autoembed',
-  'vidlove',
-  'vidsrcsbs',
-  '111movies',
-  'moviesapi',
-  'service111477',
-  'webstreamr',
-] as const
-
-export const DEFAULT_ANIME_PROVIDER_ORDER = [
-  'miruro:bee',
-  'allanime:Default',
-  'allanime:Yt-mp4',
-  'allanime:S-mp4',
-  'allanime:Luf-Mp4',
-  'vidnest:hianime',
-  'vidnest:animepahe',
-  'megaplay',
-  'vidwish',
-  'miruro:zoro',
-  'miruro:kiwi',
-  'miruro:ally',
-  'miruro:hop',
-  'miruro:bonk',
-  'miruro:moo',
-] as const
-
-export const DEFAULT_ASIAN_DRAMA_PROVIDER_ORDER = [
-  'kisskh.co',
-  'kisskh.nl',
-  'kisskh.ovh',
-  'kisskh.la',
-  'kisskh.do',
-] as const
-
 export const MAX_PLAYBACK_HEIGHT_OPTIONS = [
   { label: 'Auto', value: 0 },
   { label: '4K (2160p)', value: 2160 },
@@ -202,7 +190,7 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 ] as const
 
 export type RemoteSettingSection = {
-  key: keyof ProfileSettingsPayload | 'providers' | 'stremio'
+  key: keyof ProfileSettingsPayload | 'stremio'
   title: string
   description: string
   href: string
@@ -230,12 +218,6 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     href: '/account/settings/navigation',
   },
   {
-    key: 'providers',
-    title: 'Provider order',
-    description: 'Priority for film and series, anime, and Asian drama hosts.',
-    href: '/account/settings/providers',
-  },
-  {
     key: 'stremio',
     title: 'Stremio addons',
     description: 'Addon manifest URLs installed on your account.',
@@ -247,7 +229,6 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
   return {
     playback: emptyPreferencesPayload(),
     connectedServices: {
-      providers: emptyProvidersPayload(),
       stremio: emptyStremioPayload(),
     },
     navigation: emptyNavigationPayload(),
@@ -302,21 +283,8 @@ export function emptyPreferencesPayload(): Required<PreferencesPayload> {
   }
 }
 
-export function emptyProvidersPayload(): Required<ProvidersPayload> {
-  return {
-    stream_provider_order: [...DEFAULT_STREAM_PROVIDER_ORDER],
-    anime_provider_order: [...DEFAULT_ANIME_PROVIDER_ORDER],
-    asian_drama_provider_order: [...DEFAULT_ASIAN_DRAMA_PROVIDER_ORDER],
-  }
-}
-
 export function emptyStremioPayload(): StremioPayload {
   return { addons: [] }
-}
-
-function arraysEqual(a: string[] | undefined, b: readonly string[]): boolean {
-  if (!a || a.length !== b.length) return false
-  return a.every((v, i) => v === b[i])
 }
 
 /** Persist full playback prefs (incl. play_source_* modes) — never strip to empty. */
@@ -324,30 +292,6 @@ function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload 
   if (!p) return undefined
   const d = emptyPreferencesPayload()
   return { ...d, ...p }
-}
-
-function compactProviders(p: ProvidersPayload | undefined): ProvidersPayload | undefined {
-  if (!p) return undefined
-  const out: ProvidersPayload = {}
-  if (
-    p.stream_provider_order &&
-    !arraysEqual(p.stream_provider_order, DEFAULT_STREAM_PROVIDER_ORDER)
-  ) {
-    out.stream_provider_order = p.stream_provider_order
-  }
-  if (
-    p.anime_provider_order &&
-    !arraysEqual(p.anime_provider_order, DEFAULT_ANIME_PROVIDER_ORDER)
-  ) {
-    out.anime_provider_order = p.anime_provider_order
-  }
-  if (
-    p.asian_drama_provider_order &&
-    !arraysEqual(p.asian_drama_provider_order, DEFAULT_ASIAN_DRAMA_PROVIDER_ORDER)
-  ) {
-    out.asian_drama_provider_order = p.asian_drama_provider_order
-  }
-  return Object.keys(out).length ? out : undefined
 }
 
 function compactStremio(s: StremioPayload | undefined): StremioPayload | undefined {
@@ -399,18 +343,17 @@ function compactIptv(i: IptvSettingsPayload | undefined): IptvSettingsPayload | 
   return { m3uPlaylists }
 }
 
-/** Compact before DB write: full playback; omit default provider orders; M3U only under iptv. */
+/** Compact before DB write: full playback; stremio only under connectedServices; M3U only under iptv.
+ * Provider order is device-local — never persist. */
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
 ): ProfileSettingsPayload {
   const playback = compactPlayback(full.playback)
-  const providers = compactProviders(full.connectedServices?.providers)
   const stremio = compactStremio(full.connectedServices?.stremio)
   const navigation = compactNavigation(full.navigation)
   const iptv = compactIptv(full.iptv)
 
   const connectedServices: ConnectedServicesPayload = {}
-  if (providers) connectedServices.providers = providers
   if (stremio) connectedServices.stremio = stremio
 
   const out: ProfileSettingsPayload = {}
@@ -427,10 +370,9 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
   if (!raw || typeof raw !== 'object') return base
   const p = raw as ProfileSettingsPayload & { films?: unknown }
 
-  const providers = {
-    ...base.connectedServices!.providers!,
-    ...p.connectedServices?.providers,
-  }
+  // Ignore legacy connectedServices.providers — device-local only.
+  void p.connectedServices?.providers
+
   const stremio = {
     addons: p.connectedServices?.stremio?.addons ?? [],
   }
@@ -454,7 +396,7 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
 
   return {
     playback: { ...base.playback, ...p.playback },
-    connectedServices: { providers, stremio },
+    connectedServices: { stremio },
     navigation: normalizeNavigationPayload(p.navigation),
     iptv: { m3uPlaylists },
   }

@@ -13,8 +13,9 @@ class DesktopBrowserAuth {
 
   /// Portal origin for browser login / signup.
   ///
-  /// Pass `--dart-define=FORJA_WEB_URL=https://…` in release builds.
-  /// Defaults to the local Vite port so `flutter run` + `pnpm dev` works.
+  /// Pass `--dart-define=FORJA_WEB_URL=https://…` (release: GitHub secret).
+  /// Local `.env` should set `FORJA_WEB_URL=http://127.0.0.1:3000` and load via
+  /// `--dart-define-from-file`.
   static const String webUrl = String.fromEnvironment(
     'FORJA_WEB_URL',
     defaultValue: 'http://127.0.0.1:3000',

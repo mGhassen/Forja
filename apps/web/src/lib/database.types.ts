@@ -14,6 +14,7 @@ export type Database = {
           id: string
           email: string | null
           is_admin: boolean
+          features: Json
           created_at: string
           updated_at: string
           created_by: string | null
@@ -23,6 +24,7 @@ export type Database = {
           id: string
           email?: string | null
           is_admin?: boolean
+          features?: Json
           created_at?: string
           updated_at?: string
           created_by?: string | null
@@ -32,6 +34,7 @@ export type Database = {
           id?: string
           email?: string | null
           is_admin?: boolean
+          features?: Json
           created_at?: string
           updated_at?: string
           created_by?: string | null
