@@ -67,7 +67,7 @@ class SyncService {
   Future<AuthResponse> signInWithPasskey({String? captchaToken}) async {
     if (!ForjaPasskeys.supported) {
       throw const AuthException(
-        'Passkeys are only available on macOS and Windows.',
+        'Passkeys are only available on Windows in this build.',
       );
     }
     await ForjaSupabase.ensureInitialized();
@@ -86,7 +86,7 @@ class SyncService {
   Future<Passkey> registerPasskey() async {
     if (!ForjaPasskeys.supported) {
       throw const AuthException(
-        'Passkeys are only available on macOS and Windows.',
+        'Passkeys are only available on Windows in this build.',
       );
     }
     await ForjaSupabase.ensureInitialized();
@@ -110,7 +110,7 @@ class SyncService {
   Future<void> deletePasskey(String passkeyId) async {
     if (!ForjaPasskeys.supported) {
       throw const AuthException(
-        'Passkeys are only available on macOS and Windows.',
+        'Passkeys are only available on Windows in this build.',
       );
     }
     await ForjaSupabase.ensureInitialized();

@@ -89,16 +89,31 @@ Enable in Dashboard → **Authentication** → **Passkeys**. Production RP:
 | Field | Value |
 |-------|-------|
 | Relying Party Display Name | `Forja` |
-| Relying Party ID | `forjahq.xyz` |
-| Relying Party Origins | `https://forjahq.xyz` (add `https://www.forjahq.xyz` if www is used) |
+| Relying Party ID | `www.forjahq.xyz` |
+| Relying Party Origins | `https://www.forjahq.xyz` |
 
-macOS desktop passkeys need Associated Domains. The portal serves:
+Use **www** as RP ID so Apple’s AASA fetch hits the live host (apex may 308
+to www; Apple rejects redirects on the RP ID host).
 
-`https://forjahq.xyz/.well-known/apple-app-site-association`
+macOS Associated Domains: `webcredentials:www.forjahq.xyz`. The portal serves:
+
+`https://www.forjahq.xyz/.well-known/apple-app-site-association`
 
 from [`public/.well-known/apple-app-site-association`](../public/.well-known/apple-app-site-association)
-(`7U77CJ4Q8T.com.forja.app`). Serve without redirects; JSON content-type.
+(`7U77CJ4Q8T.com.forjahq.app` — macOS bundle id). JSON content-type
+via `vercel.json`. Verify:
 
+```bash
+curl -sI https://www.forjahq.xyz/.well-known/apple-app-site-association
+# Expect: HTTP 200, content-type: application/json — NOT 308
+```
+
+**macOS native passkeys** also need the Associated Domains entitlement
+(`webcredentials:www.forjahq.xyz`). That capability is **not available on an
+Apple Personal Team** — only on a paid Apple Developer Program membership.
+Until then, keep Associated Domains out of the macOS entitlements so local
+signing works; use password or **Web login** for passkeys on Mac. Windows
+Hello and the web portal do not need Associated Domains.
 Logo URL in every template: `{{ .SiteURL }}/brand/logo-email.png`
 (served from `apps/web/public/brand/logo-email.png`). Hosted Site URL must be
 your public web origin so the logo loads in real inboxes.
@@ -137,7 +152,7 @@ node ../../scripts/create-forja-test-users.js
 
 ## Release installers (Cloudflare R2)
 
-Public R2 bucket **`releases`** holds DMG / EXE / AppImage / APK objects at
+Public R2 bucket **`forja-releases`** holds DMG / EXE / AppImage / APK objects at
 `v{version}/{filename}`. Supabase Storage is **not** used for installers
 (Free plan caps objects at 50 MiB).
 

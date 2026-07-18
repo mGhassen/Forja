@@ -29,6 +29,7 @@ class StreamExtractor {
 
   /// Count of internal server-chip switches during this sniff (dropdown / chips).
   int _serverSwitchCount = 0;
+  String? _lastServerClickLabel;
 
   // Amri integration
   AmriExtractor? _amriExtractor;
@@ -229,6 +230,7 @@ class StreamExtractor {
     _completing = false;
     _detectedVideoUrls.clear();
     _serverSwitchCount = 0;
+    _lastServerClickLabel = null;
 
     _timeoutTimer = Timer(effectiveTimeout, () {
       if (_completer != null && !_completer!.isCompleted) {
@@ -417,11 +419,18 @@ class StreamExtractor {
       // Server switch: drop the previous server's candidates so a dead default
       // (e.g. VidSrc.sbs Star) cannot win over a later working mirror.
       if (fullMsg.contains('[SERVER_CLICK]')) {
+        final label = streamUrl;
+        if (label.isNotEmpty &&
+            label.toLowerCase() == (_lastServerClickLabel ?? '').toLowerCase()) {
+          _log('Ignoring duplicate SERVER_CLICK: $label');
+          return;
+        }
+        _lastServerClickLabel = label;
         _serverSwitchCount++;
         _detectedVideoUrls.clear();
         _capturedVideo = null;
         _capturedAudio = null;
-        _log('Server chip switched (#$_serverSwitchCount): $streamUrl');
+        _log('Server chip switched (#$_serverSwitchCount): $label');
         return;
       }
       final fromBody =
@@ -1058,12 +1067,23 @@ class StreamExtractor {
 
       let serverChipIndex = 0;
       let lastServerClickAt = 0;
-      const chipText = (el) => (el.innerText || el.textContent || '').trim();
+      const triedServerLabels = new Set();
+      const chipText = (el) => (el.innerText || el.textContent || '').trim()
+        .replace(/\\s+/g, ' ');
       const isActiveChip = (el) => {
         const cls = (el.className || '').toString().toLowerCase();
         return cls.includes('active') ||
           el.getAttribute('aria-pressed') === 'true' ||
           el.getAttribute('aria-selected') === 'true';
+      };
+      const isDropdownToggle = (el) => {
+        const cls = (el.className || '').toString().toLowerCase();
+        const id = (el.id || '').toLowerCase();
+        return id === 'srvbtn' ||
+          cls.includes('srv-dropdown-btn') ||
+          cls.includes('srv-btn-label') ||
+          cls.includes('srv-chevron') ||
+          cls.includes('srv-dot');
       };
       const openServerDropdown = () => {
         const menu = document.getElementById('srvMenu') ||
@@ -1082,6 +1102,8 @@ class StreamExtractor {
       };
       const clickEl = (el) => {
         const label = chipText(el);
+        const lower = label.toLowerCase();
+        triedServerLabels.add(lower);
         console.log('PT_EXTRACT: [SERVER_CLICK] ' + label + ' | FRAME: ' + window.location.href);
         try { el.click(); } catch (e) {}
         try {
@@ -1100,50 +1122,73 @@ class StreamExtractor {
 
         openServerDropdown();
 
-        const nodes = Array.from(document.querySelectorAll(
-          'button.srv-menu-item, .srv-menu-item, button, [role="button"], a, div, span, li'
-        ));
-        const chips = [];
-        const labelSet = new Set(SERVER_CHIP_LABELS.map((s) => String(s).toLowerCase()));
-        nodes.forEach((el) => {
+        // VidSrc.sbs-style: only real menu rows. The closed dropdown button
+        // also shows the active label ("PRO Multi") and must not be re-clicked.
+        const menuItems = Array.from(document.querySelectorAll(
+          'button.srv-menu-item, .srv-menu-item[data-idx], .srv-menu-item'
+        )).filter((el) => {
           const text = chipText(el);
-          if (!text || text.length > 28) return;
-          const cls = (el.className || '').toString().toLowerCase();
-          const isMenuItem = cls.includes('srv-menu-item') ||
-            el.classList.contains('srv-menu-item') ||
-            el.hasAttribute('data-idx');
-          if (!isMenuItem) {
+          return text && text.length <= 28 && !isDropdownToggle(el);
+        });
+
+        let chips = menuItems;
+        if (chips.length === 0) {
+          const nodes = Array.from(document.querySelectorAll(
+            'button, [role="button"], a, div, span, li'
+          ));
+          const labelSet = new Set(SERVER_CHIP_LABELS.map((s) => String(s).toLowerCase()));
+          nodes.forEach((el) => {
+            if (isDropdownToggle(el)) return;
+            const text = chipText(el);
+            if (!text || text.length > 28) return;
             const rect = el.getBoundingClientRect();
             if (rect.width < 24 || rect.height < 18 || rect.width > 280) return;
-          }
-          const lower = text.toLowerCase();
-          const labeled = labelSet.size > 0 &&
-              Array.from(labelSet).some((label) => lower === label || lower.startsWith(label));
-          const generic = /^(server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i.test(text);
-          const classHit = cls.includes('server') || cls.includes('source-btn') || isMenuItem;
-          if (labeled || (labelSet.size === 0 && (generic || classHit))) chips.push(el);
-        });
+            const lower = text.toLowerCase();
+            const cls = (el.className || '').toString().toLowerCase();
+            const labeled = labelSet.size > 0 &&
+                Array.from(labelSet).some((label) => lower === label || lower.startsWith(label));
+            const generic = /^(server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i.test(text);
+            const classHit = cls.includes('server') || cls.includes('source-btn');
+            if (labeled || (labelSet.size === 0 && (generic || classHit))) chips.push(el);
+          });
+        }
         if (chips.length === 0) return;
 
-        // Prefer configured label order (skip the currently active chip).
+        // Treat the active row as already visited so we never re-click it
+        // (and so the closed dropdown button cannot steal the next prefer).
+        chips.forEach((c) => {
+          if (isActiveChip(c)) triedServerLabels.add(chipText(c).toLowerCase());
+        });
+
+        // Prefer configured label order: skip active + already-tried.
         let el = null;
         if (SERVER_CHIP_LABELS.length > 0) {
           for (let i = 0; i < SERVER_CHIP_LABELS.length; i++) {
             const want = String(SERVER_CHIP_LABELS[i]).toLowerCase();
             const match = chips.find((c) => {
               const lower = chipText(c).toLowerCase();
-              return (lower === want || lower.startsWith(want)) && !isActiveChip(c);
+              return (lower === want || lower.startsWith(want)) &&
+                !isActiveChip(c) &&
+                !triedServerLabels.has(lower);
             });
             if (match) { el = match; break; }
           }
         }
         if (!el) {
-          el = chips[serverChipIndex % chips.length];
-          serverChipIndex++;
-          if (isActiveChip(el) && chips.length > 1) {
-            el = chips[serverChipIndex % chips.length];
+          const untried = chips.filter((c) =>
+            !isActiveChip(c) && !triedServerLabels.has(chipText(c).toLowerCase())
+          );
+          if (untried.length > 0) {
+            el = untried[serverChipIndex % untried.length];
             serverChipIndex++;
           }
+        }
+        // All servers tried once — allow a second pass (do not spam the active one).
+        if (!el) {
+          if (triedServerLabels.size >= chips.length) {
+            triedServerLabels.clear();
+          }
+          return;
         }
 
         lastServerClickAt = now;

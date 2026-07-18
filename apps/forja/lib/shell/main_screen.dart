@@ -186,6 +186,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   void _selectTab(int index) {
+    // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
+    // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
+    popShellOverlayUntilRoot();
     final id = _visibleIds[index];
     setState(() {
       _mountedTabIds.add(id);

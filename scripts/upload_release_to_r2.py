@@ -6,7 +6,7 @@ Usage:
     ./scripts/upload_release_to_r2.py <version> <asset-dir>
 
 Optional env:
-  R2_BUCKET=releases
+  R2_BUCKET=forja-releases
   R2_ENDPOINT=https://{account}.r2.cloudflarestorage.com
   RELEASE_STORAGE_KEEP=3
 
@@ -279,7 +279,7 @@ def main() -> None:
     version = sys.argv[1].lstrip("v")
     asset_dir = Path(sys.argv[2])
     keep = max(1, int(os.environ.get("RELEASE_STORAGE_KEEP", "3")))
-    bucket = os.environ.get("R2_BUCKET", "releases")
+    bucket = os.environ.get("R2_BUCKET", "forja-releases")
     account_id = os.environ.get("R2_ACCOUNT_ID", _DEFAULT_R2_ACCOUNT_ID).strip()
     access_key = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
     secret_key = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()

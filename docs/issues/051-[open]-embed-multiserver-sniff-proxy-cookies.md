@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** fix tasks · **0 / 7** acceptance |
+| **Progress** | **13 / 13** fix tasks · **0 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,7 @@
 | 10 | I51-T10 | Source panel: tapping another server clears the previous spinner and cancels the in-flight host sniff | ✅ |
 | 11 | I51-T11 | VidSrc.sbs: rotate Server dropdown (`.srv-menu-item`); prefer PRO Multi / Cinesrc / Vlux over Star | ✅ |
 | 12 | I51-T12 | `rotateBeforeComplete` — do not early-complete on default-server dead playlists; clear captures on `SERVER_CLICK` | ✅ |
+| 13 | I51-T13 | VidSrc.sbs loading path: parse `CFG.servers` and sniff nested mirrors top-level (PRO Multi → Cinesrc → Vlux → Star) | ✅ |
 
 ---
 
@@ -52,9 +53,11 @@
 
 Browser works because users (or the page) pick a working internal server and the player keeps session cookies + correct Referer. Forja’s headless sniffer only clicked play overlays, ignored `/api/proxy` bodies without `.m3u8` in the URL, and opened CDN playlists with UA/Referer/Origin only (no Cookie). VidSrc.sbs nested into `1embed.cc` and never produced `VIDEO/STREAM DETECTED`. VidLove sometimes detected HLS then failed probe/open without cookies.
 
-### VidSrc.sbs Server dropdown (I51-T11–T12)
+### VidSrc.sbs Server dropdown (I51-T11–T13)
 
-`vidsrc.sbs/embed/tv/…` boots on **Star** (`1embed.cc`) and hides the other mirrors (PRO Multi / `web.nxsha.app`, Cinesrc, Vlux) in a closed `.srv-menu`. Star often emits dead proxy playlists that looked “strong” enough for early-complete, so Forja returned 1–2 broken streams and never switched. The sniffer now opens the dropdown, prefers PRO Multi → Cinesrc → Vlux → Star, clears captures on each `SERVER_CLICK`, and holds completion until after at least one server switch (`rotateBeforeComplete`).
+`vidsrc.sbs/embed/tv/…` boots on **Star** (`1embed.cc`) and hides the other mirrors (PRO Multi / `web.nxsha.app`, Cinesrc, Vlux) in a closed `.srv-menu`. Star often emits dead proxy playlists that looked “strong” enough for early-complete, so Forja returned 1–2 broken streams and never switched. Dropdown UI clicking also re-matched the closed `#srvBtn` label and spammed PRO Multi on the **loading screen** until timeout (`no streams`).
+
+**Loading-path fix (I51-T13):** parse `CFG.servers` from the outer embed HTML and sniff each nested mirror as a top-level WebView document in preferred order (PRO Multi → Cinesrc → Vlux → Star). Outer dropdown rotation remains a fallback only.
 
 ### Ad / redirect hardening (I51-T06–T07)
 

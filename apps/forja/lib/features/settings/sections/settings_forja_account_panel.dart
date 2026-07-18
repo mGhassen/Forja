@@ -181,11 +181,11 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         _captchaToken = null;
         _captchaKey++;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      debugPrint('[Settings] passkey sign-in failed: $e');
       setState(() {
-        _error =
-            'Passkey sign-in was cancelled or failed. Try password or web login.';
+        _error = ForjaPasskeys.userMessage(e);
         _captchaToken = null;
         _captchaKey++;
       });
@@ -206,12 +206,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(
-        () => _error =
-            'Could not add passkey. Cancelled or platform authenticator failed.',
-      );
+      debugPrint('[Settings] register passkey failed: $e');
+      setState(() => _error = ForjaPasskeys.userMessage(e));
     } finally {
       if (mounted) setState(() => _passkeysLoading = false);
     }
@@ -228,9 +226,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Could not remove passkey.');
+      debugPrint('[Settings] delete passkey failed: $e');
+      setState(() => _error = ForjaPasskeys.userMessage(e));
     } finally {
       if (mounted) setState(() => _passkeysLoading = false);
     }

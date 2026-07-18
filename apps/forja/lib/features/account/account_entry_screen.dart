@@ -170,11 +170,11 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         _captchaToken = null;
         _captchaKey++;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
+      debugPrint('[Account] passkey sign-in failed: $error');
       setState(() {
-        _message =
-            'Passkey sign-in was cancelled or failed. Try again, or use password.';
+        _message = ForjaPasskeys.userMessage(error);
         _messageIsError = true;
         _captchaToken = null;
         _captchaKey++;

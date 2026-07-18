@@ -7,6 +7,8 @@ import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
+import 'package:forja/shared/extractors/providers/vidsrcsbs/profile.dart';
+import 'package:forja/shared/extractors/providers/vidsrcsbs/vidsrcsbs_extractor.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -145,6 +147,83 @@ abstract final class HostProviderAdapter {
       );
     }
 
+    if (providerId == 'vidsrcsbs') {
+      if (isAndroidTvHeadlessWebViewBlocked) return null;
+      final fromPayload = payload['embedUrl']?.toString();
+      final outerEmbed = (fromPayload != null && fromPayload.isNotEmpty)
+          ? fromPayload
+          : (isTv
+                ? 'https://vidsrc.sbs/embed/tv/${movie.id}/$season/$episode'
+                : 'https://vidsrc.sbs/embed/movie/${movie.id}');
+
+      // Loading-page path: parse CFG.servers and sniff each nested mirror
+      // top-level (PRO Multi → Cinesrc → Vlux → Star). Avoids the outer
+      // dropdown UI that was stranding resolve with repeated PRO Multi clicks.
+      final discovered = await VidsrcsbsExtractor(onLog: debugPrint)
+          .discoverServers(embedUrl: outerEmbed, isCancelled: cancelled);
+      for (final server in discovered) {
+        if (cancelled()) return null;
+        final nested = server.resolveUrl(
+          isMovie: !isTv,
+          tmdbId: movie.id.toString(),
+          season: isTv ? season : null,
+          episode: isTv ? episode : null,
+        );
+        if (nested.isEmpty || !nested.startsWith('http')) continue;
+        debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
+        final sniffed = await _extractor.extract(
+          nested,
+          profile: vidsrcsbsNestedExtractProfile,
+          referer: outerEmbed,
+          isCancelled: cancelled,
+          providerId: 'vidsrcsbs',
+        );
+        if (sniffed != null && sniffed.url.isNotEmpty) {
+          final titled = sniffed.sources
+              ?.map(
+                (s) => StreamSource(
+                  url: s.url,
+                  title: s.title == 'Stream' || s.title.isEmpty
+                      ? server.name
+                      : '${server.name} · ${s.title}',
+                  type: s.type,
+                  headers: s.headers,
+                ),
+              )
+              .toList();
+          return _encodeResolveResult(
+            url: sniffed.url,
+            sources: titled ??
+                [
+                  StreamSource(
+                    url: sniffed.url,
+                    title: server.name,
+                    type: _typeFromUrl(sniffed.url),
+                    headers: sniffed.headers,
+                  ),
+                ],
+            headers: sniffed.headers,
+          );
+        }
+      }
+
+      if (cancelled()) return null;
+      debugPrint('[vidsrcsbs] nested empty — fallback outer $outerEmbed');
+      final outer = await _extractor.extract(
+        outerEmbed,
+        profile: vidsrcsbsExtractProfile,
+        referer: outerEmbed,
+        isCancelled: cancelled,
+        providerId: 'vidsrcsbs',
+      );
+      if (outer == null || outer.url.isEmpty) return null;
+      return _encodeResolveResult(
+        url: outer.url,
+        sources: outer.sources,
+        headers: outer.headers,
+      );
+    }
+
     if (providerId.startsWith('nuvio') || providerId == 'nuvio') {
       final scraperId = providerId.contains(':')
           ? providerId.split(':').last
@@ -234,6 +313,7 @@ abstract final class HostProviderAdapter {
     VidsrcExtractor.cancelPending();
     VideasyExtractor.cancelPending();
     VidnestExtractor.cancelPending();
+    VidsrcsbsExtractor.cancelPending();
     NuvioService.instance.cancelPending();
     if (cancelEngineJobs) {
       Engine.cancelPendingResolve();

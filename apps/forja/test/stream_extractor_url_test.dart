@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
+import 'package:forja/shared/extractors/providers/vidsrcsbs/profile.dart';
 
 void main() {
   group('StreamExtractor.isPlayableStreamUrl', () {
@@ -127,6 +128,13 @@ void main() {
         containsAll(['pro multi', 'cinesrc', 'vlux', 'star']),
       );
       expect(p.serverChipLabels.first, 'pro multi');
+    });
+
+    test('vidsrcsbs nested profile sniffs mirrors without dropdown rotation', () {
+      expect(vidsrcsbsNestedExtractProfile.rotateServerChips, isFalse);
+      expect(vidsrcsbsNestedExtractProfile.rotateBeforeComplete, isFalse);
+      expect(vidsrcsbsNestedExtractProfile.forceDirect, isTrue);
+      expect(vidsrcsbsNestedExtractProfile.timeout.inSeconds, lessThan(30));
     });
 
     test('autoembed forces player top-level load (anti-sandbox)', () {

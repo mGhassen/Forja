@@ -20,7 +20,9 @@ another screen.
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
   **Who’s watching?** when signed in), or open **Settings → Profile & account** —
   the page shows the active profile (**Watching now** — tap to switch), cloud
-  sync status, passkeys (macOS / Windows), and **Sign out**
+  sync status, passkeys (macOS / Windows), and **Sign out**. From Who’s watching,
+  **Account settings** opens Settings and dismisses any open media details so the
+  hub is visible.
 - **Web:** sign in at `/login` with email/password or **Sign in with passkey**, or
   create an account at `/signup` (Turnstile captcha when configured). Use
   **Forgot password?** on `/login` (or open `/forgot-password`) to email a reset
@@ -175,6 +177,10 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 - Profile selection is local to each device; profile settings remain remote and account-owned.
 - Per-domain merge by timestamp is still evolving — sign in after web edits to refresh the app.
 - Local **Backup & restore** still works for a full JSON export including device-only keys.
+- macOS passkeys on the **website** work with RP ID `www.forjahq.xyz`. Native
+  in-app passkeys on Mac need a paid Apple Developer team (Associated Domains);
+  on a Personal Team use password or **Web login**. Windows can use passkeys
+  in-app via Windows Hello.
 
 ## Related
 

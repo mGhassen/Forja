@@ -534,6 +534,6 @@ jobs:
             "${{ needs.resolve_version.outputs.version }}" \
             release-flat
         env:
-          # Default bucket name when secret unset (script also defaults to releases).
-          R2_BUCKET: ${{ secrets.R2_BUCKET || 'releases' }}
+          # Default bucket name when secret unset (script also defaults to forja-releases).
+          R2_BUCKET: ${{ secrets.R2_BUCKET || 'forja-releases' }}
           RELEASE_STORAGE_KEEP: '3'

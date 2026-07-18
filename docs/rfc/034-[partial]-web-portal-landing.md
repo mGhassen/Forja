@@ -94,8 +94,8 @@
 | 1 | R34-A24 | Web `createClient` opts into `auth.experimental.passkey` | ✅ |
 | 2 | R34-A25 | `/login` offers Sign in with passkey; desktop handoff still works after passkey session | ✅ |
 | 3 | R34-A26 | Account settings: enroll, list, and delete passkeys | ✅ |
-| 4 | R34-A27 | Flutter macOS + Windows: sign in with passkey + manage passkeys in Profile & account | ✅ |
-| 5 | R34-A28 | Portal hosts `/.well-known/apple-app-site-association` for `com.forja.app`; macOS Associated Domains `webcredentials:forjahq.xyz` | ✅ |
+| 4 | R34-A27 | Flutter Windows: sign in with passkey + manage passkeys in Profile & account (macOS native deferred — Personal Team cannot sign Associated Domains) | ✅ |
+| 5 | R34-A28 | Portal hosts `/.well-known/apple-app-site-association` for `com.forjahq.app`; RP ID `www.forjahq.xyz` | ✅ |
 | 6 | R34-A29 | Linux / mobile / TV hide native passkey UI (password and/or web login unchanged) | ✅ |
 | 7 | R34-A30 | iOS / Android native passkeys (Associated Domains + Digital Asset Links) | ⏭️ |
 

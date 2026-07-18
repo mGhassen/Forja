@@ -90,7 +90,7 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `SUPABASE_URL` | Shared Supabase project used by desktop accounts and settings sync |
 | `SUPABASE_PUBLISHABLE_KEY` | Public Supabase client key (`sb_publishable_…`); never use `service_role` / `sb_secret_…` in the app |
 | `RELEASE_CDN_URL` | Public base URL for release installers on Cloudflare R2 (custom domain or `pub-*.r2.dev`). Built into clients via `--dart-define` / `VITE_RELEASE_CDN_URL`. |
-| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | **CI only** — Release workflow uploads installers to R2 bucket `releases` and prunes to the newest 3 versions |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | **CI only** — Release workflow uploads installers to R2 bucket `forja-releases` and prunes to the newest 3 versions |
 | `FORJA_WEB_URL` | Deployed web portal origin for desktop **Web login** / signup links. Local default `http://127.0.0.1:3000`. **Required** as a GitHub secret for release/build CI (must not be localhost). |
 | `TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key for in-app email/password when Auth captcha is on. Local dummy `1x00000000000000000000AA`. Optional GitHub secret for release. |
 

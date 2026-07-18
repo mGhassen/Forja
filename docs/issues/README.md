@@ -72,7 +72,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [047-[fixed]-…](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) | Vidsrc: broken plugin request + vsembed.su host | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [049-[open]-…](049-[open]-live-embed-ad-hijack-crash.md) | Live embed ad main-frame hijack crash | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [050-[fixed]-…](fixed/050-[fixed]-template-embed-one-file-per-plugin.md) | Template embed one file per plugin | P2 | Medium | fixed | Complete · 2/2 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [051-[open]-…](051-[open]-embed-multiserver-sniff-proxy-cookies.md) | Embed multi-server sniff / proxy body / cookies | P1 | High | open | 12/12 · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [051-[open]-…](051-[open]-embed-multiserver-sniff-proxy-cookies.md) | Embed multi-server sniff / proxy body / cookies | P1 | High | open | 13/13 · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [052-[fixed]-…](fixed/052-[fixed]-extractor-ownership-playback-layout.md) | Host extractor ownership + playback package layout | P2 | Medium | fixed | 4/4 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [053-[workaround]-…](053-[workaround]-windows-live-embed-webview2-transparent.md) | Windows Live Matches WebView2 transparent / blank embed | P1 | High | workaround | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [054-[fixed]-…](fixed/054-[fixed]-vidsrc-cloudstream-referer-blocks-segments.md) | Vidsrc CloudStream Referer blocks HLS segments | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
