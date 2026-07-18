@@ -135,23 +135,22 @@ supabase db reset
 node ../../scripts/create-forja-test-users.js
 ```
 
-## Release installers (Storage)
+## Release installers (Cloudflare R2)
 
-Public bucket **`releases`** (migration `*_releases_storage_bucket.sql`) holds
-DMG / EXE / AppImage / APK objects at `v{version}/{filename}`.
+Public R2 bucket **`releases`** holds DMG / EXE / AppImage / APK objects at
+`v{version}/{filename}`. Supabase Storage is **not** used for installers
+(Free plan caps objects at 50 MiB).
 
-- **Upload:** Release CI runs `scripts/upload_release_to_supabase.sh` with
-  GitHub secret `SUPABASE_SERVICE_ROLE_KEY` (never ship the service role to
-  clients).
+- **Upload:** Release CI runs `scripts/upload_release_to_r2.py` with GitHub
+  secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
+  (never ship access keys to clients).
 - **Retention:** after each upload the script keeps only the **newest 3**
-  version folders (`RELEASE_STORAGE_KEEP`, default `3`) and deletes older
-  objects so Storage stays within plan limits.
-- **Download URL:**
-  `{SUPABASE_URL}/storage/v1/object/public/releases/v{version}/{filename}`
-- **Hosted size limit:** raise Dashboard → Storage global file size if uploads
-  fail (bucket allows up to 1 GiB). Local `config.toml` uses `file_size_limit = "1GiB"`.
-- **Custom domain (optional):** Dashboard → Storage → custom domain (e.g.
-  `downloads.forjahq.xyz`) so installers are not served from `*.supabase.co`.
+  version prefixes (`RELEASE_STORAGE_KEEP`, default `3`) and deletes older
+  objects so storage stays within the R2 free tier.
+- **Download URL:** `{RELEASE_CDN_URL}/v{version}/{filename}`
+  (custom domain preferred; `pub-*.r2.dev` only for testing).
+- **Clients:** Flutter `--dart-define=RELEASE_CDN_URL=…` and web
+  `VITE_RELEASE_CDN_URL` / root `RELEASE_CDN_URL`.
 
 ## Remote (production / shared project)
 

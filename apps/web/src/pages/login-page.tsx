@@ -29,8 +29,15 @@ import { supabase } from '@/lib/supabase'
 
 function LoginForm() {
   const navigate = useNavigate()
-  const { signIn, signInWithPasskey, session, user, loading, configured } =
-    useAuth()
+  const {
+    signIn,
+    signInWithPasskey,
+    session,
+    user,
+    loading,
+    configured,
+    isPasswordRecovery,
+  } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
@@ -87,6 +94,10 @@ function LoginForm() {
 
   useEffect(() => {
     if (loading || !user) return
+    if (isPasswordRecovery) {
+      void navigate({ to: '/reset-password', replace: true })
+      return
+    }
     if (isDesktopLogin && session?.access_token && session.refresh_token) {
       void handoffToDesktop(session.access_token, session.refresh_token)
       return
@@ -98,6 +109,7 @@ function LoginForm() {
     loading,
     user,
     session,
+    isPasswordRecovery,
     isDesktopLogin,
     handoffToDesktop,
     navigate,

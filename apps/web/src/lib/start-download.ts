@@ -1,7 +1,7 @@
 /**
  * Start a file download without opening a new tab / navigating away.
- * Uses a hidden iframe so cross-origin installers (Supabase Storage) are
- * handled in the background (`download` attrs are ignored cross-origin).
+ * Uses a hidden iframe so cross-origin installers (R2 CDN) are handled in
+ * the background (`download` attrs are ignored cross-origin).
  */
 export function startBackgroundDownload(url: string): void {
   if (typeof document === 'undefined') return

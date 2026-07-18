@@ -1,28 +1,25 @@
 /**
- * Public Supabase Storage URLs for Forja release installers.
- * Objects: releases/v{version}/{filename}
+ * Public CDN URLs for Forja release installers (Cloudflare R2).
+ * Objects: {RELEASE_CDN_URL}/v{version}/{filename}
  */
 
-const BUCKET = 'releases'
-
-export function releaseStoragePublicUrl(
-  supabaseUrl: string,
+export function releaseCdnPublicUrl(
+  cdnBase: string,
   version: string,
   filename: string,
 ): string {
-  const base = supabaseUrl.replace(/\/$/, '')
+  const base = cdnBase.replace(/\/$/, '')
   const ver = version.replace(/^v/, '')
-  const path = `v${ver}/${filename}`
-  return `${base}/storage/v1/object/public/${BUCKET}/${path}`
+  return `${base}/v${ver}/${filename}`
 }
 
-/** Rewrite a GitHub asset URL to Supabase Storage when VITE_SUPABASE_URL is set. */
+/** Rewrite a GitHub asset URL to the release CDN when VITE_RELEASE_CDN_URL is set. */
 export function preferReleaseStorageUrl(
   version: string,
   filename: string,
   githubDownloadUrl: string,
 ): string {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  if (!supabaseUrl?.trim()) return githubDownloadUrl
-  return releaseStoragePublicUrl(supabaseUrl.trim(), version, filename)
+  const cdn = import.meta.env.VITE_RELEASE_CDN_URL as string | undefined
+  if (!cdn?.trim()) return githubDownloadUrl
+  return releaseCdnPublicUrl(cdn.trim(), version, filename)
 }

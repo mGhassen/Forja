@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase, supabaseConfigured } from '@/lib/supabase'
+import {
+  setPasswordRecoveryLock,
+  supabase,
+  supabaseConfigured,
+} from '@/lib/supabase'
 
 /** Never expose env keys, paths, or backend names to end users. */
 export const AUTH_UNAVAILABLE_MESSAGE =
@@ -16,6 +20,45 @@ export const AUTH_UNAVAILABLE_MESSAGE =
 
 export const CAPTCHA_REQUIRED_MESSAGE =
   'Complete the captcha check, then try again.'
+
+/** Survives refresh so a recovery session cannot wander into the app as a normal login. */
+const PASSWORD_RECOVERY_STORAGE_KEY = 'forja.password_recovery'
+
+function urlIndicatesPasswordRecovery(): boolean {
+  if (typeof window === 'undefined') return false
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  if (hash.get('type') === 'recovery') return true
+  const query = new URLSearchParams(window.location.search)
+  if (query.get('type') === 'recovery') return true
+  // PKCE recovery redirects to `/reset-password?code=…` without `type=` in the URL.
+  // That path is only used for password reset in this app.
+  if (
+    window.location.pathname.endsWith('/reset-password') &&
+    query.has('code')
+  ) {
+    return true
+  }
+  return false
+}
+
+function readStoredPasswordRecovery(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return sessionStorage.getItem(PASSWORD_RECOVERY_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function persistPasswordRecovery(active: boolean) {
+  if (typeof window === 'undefined') return
+  try {
+    if (active) sessionStorage.setItem(PASSWORD_RECOVERY_STORAGE_KEY, '1')
+    else sessionStorage.removeItem(PASSWORD_RECOVERY_STORAGE_KEY)
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 export type ForjaPasskey = {
   id: string
@@ -58,6 +101,7 @@ type AuthContextValue = {
   /**
    * True after the user opens the recovery link (PASSWORD_RECOVERY).
    * Required before `updatePassword` on `/reset-password`.
+   * While true, `session` / `user` are hidden from the app — recovery is not a login.
    */
   isPasswordRecovery: boolean
   /** Set a new password while in a recovery session, then sign out. */
@@ -91,10 +135,28 @@ function mapPasskey(item: {
   }
 }
 
+function markPasswordRecovery(
+  setFlag: (value: boolean) => void,
+  active: boolean,
+) {
+  persistPasswordRecovery(active)
+  setPasswordRecoveryLock(active)
+  setFlag(active)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
+    if (urlIndicatesPasswordRecovery()) {
+      persistPasswordRecovery(true)
+      setPasswordRecoveryLock(true)
+      return true
+    }
+    const stored = readStoredPasswordRecovery()
+    if (stored) setPasswordRecoveryLock(true)
+    return stored
+  })
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -104,14 +166,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let mounted = true
 
+    // Catch recovery tokens in the URL before they are stripped by the client.
+    if (urlIndicatesPasswordRecovery()) {
+      markPasswordRecovery(setIsPasswordRecovery, true)
+    }
+
     // Subscribe first so PASSWORD_RECOVERY from the email redirect is not missed.
     const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
       if (!mounted) return
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsPasswordRecovery(true)
+      if (event === 'PASSWORD_RECOVERY' || urlIndicatesPasswordRecovery()) {
+        markPasswordRecovery(setIsPasswordRecovery, true)
       }
       if (event === 'SIGNED_OUT') {
-        setIsPasswordRecovery(false)
+        markPasswordRecovery(setIsPasswordRecovery, false)
       }
       setSession(next)
       setLoading(false)
@@ -257,7 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (updateError) return { error: updateError.message }
 
-      setIsPasswordRecovery(false)
+      markPasswordRecovery(setIsPasswordRecovery, false)
       await supabase.auth.signOut()
       return { error: null }
     },
@@ -271,11 +338,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) {
       return { error: AUTH_UNAVAILABLE_MESSAGE, passkey: null }
     }
+    if (isPasswordRecovery) {
+      return {
+        error: 'Finish resetting your password before managing passkeys.',
+        passkey: null,
+      }
+    }
     const { data, error } = await supabase.auth.registerPasskey()
     if (error) return { error: error.message, passkey: null }
     if (!data) return { error: 'Could not register passkey.', passkey: null }
     return { error: null, passkey: mapPasskey(data) }
-  }, [])
+  }, [isPasswordRecovery])
 
   const listPasskeys = useCallback(async (): Promise<{
     error: string | null
@@ -284,27 +357,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) {
       return { error: AUTH_UNAVAILABLE_MESSAGE, passkeys: [] }
     }
+    if (isPasswordRecovery) {
+      return {
+        error: 'Finish resetting your password before managing passkeys.',
+        passkeys: [],
+      }
+    }
     const { data, error } = await supabase.auth.passkey.list()
     if (error) return { error: error.message, passkeys: [] }
     return {
       error: null,
       passkeys: (data ?? []).map(mapPasskey),
     }
-  }, [])
+  }, [isPasswordRecovery])
 
   const deletePasskey = useCallback(
     async (passkeyId: string): Promise<{ error: string | null }> => {
       if (!supabaseConfigured) {
         return { error: AUTH_UNAVAILABLE_MESSAGE }
       }
+      if (isPasswordRecovery) {
+        return {
+          error: 'Finish resetting your password before managing passkeys.',
+        }
+      }
       const { error } = await supabase.auth.passkey.delete({ passkeyId })
       return { error: error?.message ?? null }
     },
-    [],
+    [isPasswordRecovery],
   )
 
   const signOut = useCallback(async () => {
     if (!supabaseConfigured) return
+    markPasswordRecovery(setIsPasswordRecovery, false)
     await supabase.auth.signOut()
   }, [])
 
@@ -312,6 +397,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (confirmEmail: string): Promise<{ error: string | null }> => {
       if (!supabaseConfigured) {
         return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      if (isPasswordRecovery) {
+        return {
+          error: 'Finish resetting your password before deleting the account.',
+        }
       }
       const {
         data: { session },
@@ -347,13 +437,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut()
       return { error: null }
     },
-    [],
+    [isPasswordRecovery],
   )
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      session,
-      user: session?.user ?? null,
+      // Recovery JWT must not look like a signed-in account anywhere in the UI.
+      session: isPasswordRecovery ? null : session,
+      user: isPasswordRecovery ? null : (session?.user ?? null),
       loading,
       configured: supabaseConfigured,
       signIn,

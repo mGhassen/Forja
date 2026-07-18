@@ -11,9 +11,9 @@ const repoRoot = path.resolve(webRoot, '../..')
 
 /**
  * Prefer apps/web/.env VITE_* keys; fall back to repo-root SUPABASE_* /
- * VITE_SUPABASE_* so one root .env can unlock web auth locally.
+ * VITE_SUPABASE_* / RELEASE_CDN_URL so one root .env unlocks web locally.
  */
-function bridgeSupabaseEnv(mode: string) {
+function bridgeWebEnv(mode: string) {
   const webEnv = loadEnv(mode, webRoot, '')
   const rootEnv = loadEnv(mode, repoRoot, '')
   const url =
@@ -26,16 +26,24 @@ function bridgeSupabaseEnv(mode: string) {
     rootEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
     rootEnv.SUPABASE_PUBLISHABLE_KEY ||
     ''
+  const releaseCdn =
+    webEnv.VITE_RELEASE_CDN_URL ||
+    rootEnv.VITE_RELEASE_CDN_URL ||
+    rootEnv.RELEASE_CDN_URL ||
+    ''
   if (url && !process.env.VITE_SUPABASE_URL) {
     process.env.VITE_SUPABASE_URL = url
   }
   if (key && !process.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY = key
   }
+  if (releaseCdn && !process.env.VITE_RELEASE_CDN_URL) {
+    process.env.VITE_RELEASE_CDN_URL = releaseCdn
+  }
 }
 
 export default defineConfig(({ mode }) => {
-  bridgeSupabaseEnv(mode)
+  bridgeWebEnv(mode)
 
   return {
     server: {

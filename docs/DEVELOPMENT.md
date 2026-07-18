@@ -87,15 +87,16 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `TMDB_API_KEY` | Catalog / Home / Search (`crates/tmdb`) |
 | `TMDB_READ_ACCESS_TOKEN` | WebStreamr TMDB lookups when Settings token is empty |
 | `WYZIE_API_KEY` | Player subtitle search (`crates/anime` Wyzie) |
-| `SUPABASE_URL` | Shared Supabase project used by desktop accounts, settings sync, and public release installer URLs |
-| `SUPABASE_SERVICE_ROLE_KEY` | **CI only** (never in client builds) — Release workflow uploads installers to Storage bucket `releases` and prunes to the newest 3 versions |
+| `SUPABASE_URL` | Shared Supabase project used by desktop accounts and settings sync |
 | `SUPABASE_PUBLISHABLE_KEY` | Public Supabase client key (`sb_publishable_…`); never use `service_role` / `sb_secret_…` in the app |
+| `RELEASE_CDN_URL` | Public base URL for release installers on Cloudflare R2 (custom domain or `pub-*.r2.dev`). Built into clients via `--dart-define` / `VITE_RELEASE_CDN_URL`. |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | **CI only** — Release workflow uploads installers to R2 bucket `releases` and prunes to the newest 3 versions |
 | `FORJA_WEB_URL` | Deployed web portal origin for desktop **Web login** / signup links. Local default `http://127.0.0.1:3000`. **Required** as a GitHub secret for release/build CI (must not be localhost). |
 | `TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key for in-app email/password when Auth captcha is on. Local dummy `1x00000000000000000000AA`. Optional GitHub secret for release. |
 
 **Desktop reality:** anything baked into the binary can be extracted. `.env` keeps keys out of git; it does **not** hide them from someone who reverse-engineers a shipped build. Real options for production: a small backend proxy that holds the key, or user-supplied keys (WebStreamr already has a Settings TMDB token). TMDB’s v3 key is rate-limited per key — rotate if it leaks; prefer the read token only where Bearer is needed.
 
-CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (falls back to legacy `SUPABASE_ANON_KEY`), **`SUPABASE_SERVICE_ROLE_KEY`** (release Storage upload), **`FORJA_WEB_URL`**, and optional **`TURNSTILE_SITE_KEY`** are injected by `.github/workflows/{build,release}.yml`. Flutter builds receive Supabase + portal URL (+ captcha site key) through `--dart-define`; use the hosted project values in GitHub, never the local `127.0.0.1` URL. Never put the service role in `--dart-define` or Vite env.
+CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (falls back to legacy `SUPABASE_ANON_KEY`), **`R2_ACCOUNT_ID`**, **`R2_ACCESS_KEY_ID`**, **`R2_SECRET_ACCESS_KEY`**, **`RELEASE_CDN_URL`**, **`FORJA_WEB_URL`**, and optional **`TURNSTILE_SITE_KEY`** / **`R2_BUCKET`** / **`R2_ENDPOINT`** are injected by `.github/workflows/{build,release}.yml`. Flutter builds receive Supabase + release CDN + portal URL (+ captcha site key) through `--dart-define`; use the hosted project values in GitHub, never the local `127.0.0.1` URL. Never put R2 access keys in `--dart-define` or Vite env.
 
 **Debug badge:** In debug (`flutter run`), a small runtime **DEV** chip sits under the nav-rail wordmark (`kDebugMode`). macOS also sets a dock badge via `windowManager.setBadgeLabel('DEV')`. No alternate logo assets required.
 

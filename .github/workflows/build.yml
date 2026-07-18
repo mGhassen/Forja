@@ -19,6 +19,7 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   # Prefer publishable; fall back to legacy anon secret until that secret is renamed.
   SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
+  RELEASE_CDN_URL: ${{ secrets.RELEASE_CDN_URL }}
   FORJA_WEB_URL: ${{ secrets.FORJA_WEB_URL }}
   # Public Turnstile site key — optional; empty hides in-app captcha (password login
   # fails if Auth captcha is enabled without a matching token).
@@ -68,6 +69,7 @@ jobs:
           flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - name: Ad-hoc codesign app bundle
@@ -96,6 +98,7 @@ jobs:
           flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - shell: bash
@@ -128,6 +131,7 @@ jobs:
           flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - run: ./scripts/embed_rust_in_release_output.sh linux
@@ -158,6 +162,7 @@ jobs:
           flutter build apk --release --split-per-abi \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
       - uses: actions/upload-artifact@v4

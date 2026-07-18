@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, isPasswordRecovery } = useAuth()
 
   if (loading) {
     return (
@@ -11,6 +11,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         Loading…
       </div>
     )
+  }
+
+  // Recovery session is not a normal login — finish password reset first.
+  if (isPasswordRecovery) {
+    return <Navigate to="/reset-password" />
   }
 
   if (!user) {

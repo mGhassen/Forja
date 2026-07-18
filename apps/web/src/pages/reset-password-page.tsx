@@ -147,8 +147,9 @@ function ResetPasswordForm() {
               Choose a new password
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Pick a new password (at least {MIN_PASSWORD_LENGTH} characters).
-              Then sign in with email + password.
+              Your account is on hold until you set a new password (at least{' '}
+              {MIN_PASSWORD_LENGTH} characters). This is not a normal sign-in —
+              after saving, you&apos;ll sign in with email + password.
             </CardDescription>
           </CardHeader>
 

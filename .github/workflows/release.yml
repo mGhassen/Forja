@@ -61,8 +61,14 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   # Prefer publishable; fall back to legacy anon secret until that secret is renamed.
   SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
-  # Service role — upload release installers to Storage (never ship to clients).
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  # Cloudflare R2 — CI upload of installers (never ship access keys to clients).
+  R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID || 'e8d83ffa2ffe56b9b95da0f8ba54e956' }}
+  R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+  R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  R2_BUCKET: ${{ secrets.R2_BUCKET }}
+  R2_ENDPOINT: ${{ secrets.R2_ENDPOINT || 'https://e8d83ffa2ffe56b9b95da0f8ba54e956.r2.cloudflarestorage.com' }}
+  # Public installer CDN base (R2 custom domain or pub-*.r2.dev) — safe for clients.
+  RELEASE_CDN_URL: ${{ secrets.RELEASE_CDN_URL }}
   # Required portal origin for desktop Web login / signup (never ship localhost).
   FORJA_WEB_URL: ${{ secrets.FORJA_WEB_URL }}
   # Public Turnstile site key for in-app email/password when Auth captcha is on.
@@ -81,8 +87,12 @@ jobs:
             echo "::error::Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY) repository secrets."
             exit 1
           fi
-          if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
-            echo "::error::Set SUPABASE_SERVICE_ROLE_KEY repository secret (Storage upload for release installers)."
+          if [[ -z "$R2_ACCESS_KEY_ID" || -z "$R2_SECRET_ACCESS_KEY" ]]; then
+            echo "::error::Set R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY repository secrets (installer upload)."
+            exit 1
+          fi
+          if [[ -z "$RELEASE_CDN_URL" ]]; then
+            echo "::error::Set RELEASE_CDN_URL repository secret to the public R2 base URL (custom domain or pub-*.r2.dev)."
             exit 1
           fi
           if [[ -z "$FORJA_WEB_URL" ]]; then
@@ -213,6 +223,7 @@ jobs:
           flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
 
@@ -258,6 +269,7 @@ jobs:
           flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
 
@@ -322,6 +334,7 @@ jobs:
           flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
 
@@ -403,6 +416,7 @@ jobs:
           flutter build apk --release --split-per-abi \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
@@ -513,9 +527,13 @@ jobs:
           generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           files: release-flat/*
 
-      - name: Upload installers to Supabase Storage
+      - name: Upload installers to Cloudflare R2
         run: |
-          chmod +x scripts/upload_release_to_supabase.sh
-          ./scripts/upload_release_to_supabase.sh \
+          chmod +x scripts/upload_release_to_r2.sh
+          ./scripts/upload_release_to_r2.sh \
             "${{ needs.resolve_version.outputs.version }}" \
             release-flat
+        env:
+          # Default bucket name when secret unset (script also defaults to releases).
+          R2_BUCKET: ${{ secrets.R2_BUCKET || 'releases' }}
+          RELEASE_STORAGE_KEEP: '3'

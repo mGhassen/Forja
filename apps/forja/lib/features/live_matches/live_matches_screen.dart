@@ -73,6 +73,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
 
+  /// Rebuilds the timeline each minute so airing Misc/Other cards stay on NOW.
+  Timer? _timelineLiveTick;
+
   /// The single hovered timeline card (bucket + index) lifted above neighbors.
   int? _timelineHoveredBucketMs;
   int? _timelineHoveredIndex;
@@ -113,12 +116,26 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   @override
   void dispose() {
+    _timelineLiveTick?.cancel();
     _refreshFocusNode.dispose();
     _viewFocusNode.dispose();
     _timelineScrollController.dispose();
     ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  void _syncTimelineLiveTick() {
+    final need = _view == _LiveMatchesView.timeline;
+    if (need) {
+      _timelineLiveTick ??= Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted || _view != _LiveMatchesView.timeline) return;
+        setState(() {});
+      });
+    } else {
+      _timelineLiveTick?.cancel();
+      _timelineLiveTick = null;
+    }
   }
 
   Future<void> _restoreViewPreference() async {
@@ -137,6 +154,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           _timelineAutoScrolled = false;
         }
       });
+      _syncTimelineLiveTick();
     }
   }
 
@@ -150,6 +168,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       _timelineHoveredBucketMs = null;
       _timelineHoveredIndex = null;
     });
+    _syncTimelineLiveTick();
     unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));
   }
 

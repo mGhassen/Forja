@@ -6,6 +6,7 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { PasswordRecoveryGate } from '@/components/password-recovery-gate'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProfilesProvider } from '@/hooks/use-profiles'
 import appCss from '@/index.css?url'
@@ -57,6 +58,7 @@ function RootComponent() {
     <RootDocument>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <PasswordRecoveryGate />
           <ProfilesProvider>
             <Outlet />
           </ProfilesProvider>

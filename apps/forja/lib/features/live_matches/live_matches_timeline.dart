@@ -37,8 +37,26 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         .millisecondsSinceEpoch;
   }
 
+  /// Misc / Other long events (Tour de France, etc.) stay airing for hours
+  /// after kickoff — pin them to NOW so they ride the playhead instead of
+  /// sitting in the past (users never scroll upward for history).
+  bool _timelinePinAiringMiscToNow(_LiveMatchGridEntry e) {
+    if (!_gridEntryIsLive(e)) return false;
+    final cats = switch (e) {
+      _LiveMatchGridEntryPpv(:final stream) => [stream.categoryName],
+      _LiveMatchGridEntryStreamed(:final match) => [match.category],
+      _LiveMatchGridEntryMerged(:final ppv, :final streamed) => [
+        ppv.categoryName,
+        streamed.category,
+      ],
+      _LiveMatchGridEntryCdnSport(:final event) => [event.sport],
+    };
+    return cats.any((c) => normalizeLiveSportId(c) == 'other');
+  }
+
   int _entryStartMs(_LiveMatchGridEntry e) {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (_timelinePinAiringMiscToNow(e)) return nowMs;
     final t = switch (e) {
       _LiveMatchGridEntryPpv(:final stream) =>
         stream.isAlwaysOn ? null : _epochToDate(stream.startsAt),
