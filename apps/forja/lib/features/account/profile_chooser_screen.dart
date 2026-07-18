@@ -1,8 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/app/boot_needs.dart';
-import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
@@ -60,8 +58,8 @@ class ProfileChooserScreen extends StatefulWidget {
   final bool showBack;
   final ProfileChooserMode initialMode;
 
-  /// Mid-session switches: push outgoing profile + show [ProfileSwitchSplash].
-  /// Fresh sign-in / cold-start: false → silent select+pull, then caller splash.
+  /// Mid-session: push outgoing profile before loading the next.
+  /// Cold sign-in / first pick: false — still shows [ProfileSwitchSplash].
   final bool prepareCurrentOnSwitch;
 
   /// When re-opening Who's watching, tapping the current profile just closes.
@@ -133,38 +131,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       _error = null;
     });
 
-    // Fresh sign-in / cold-start: activate + pull, then continue to intro splash.
-    // Profile-switch animation is mid-session only (prepareCurrentOnSwitch).
-    if (!widget.prepareCurrentOnSwitch) {
-      try {
-        final selected =
-            await SyncService.instance.selectProfile(profile.id);
-        if (!selected) {
-          throw StateError('Profile unavailable');
-        }
-        await SyncDomainBridge.instance.pullAndMergeAll();
-        // Intro splash will warm again (idempotent). Prefetch so BootNeeds
-        // matches this profile before SplashScreen mounts.
-        final needs = await BootNeeds.resolve();
-        await ProfileEngineWarm.warm(
-          needs,
-          startTorrent: false,
-          reason: 'cold-profile',
-        );
-        if (!mounted) return;
-        widget.onProfileSelected();
-      } catch (_) {
-        if (!mounted) return;
-        setState(() {
-          _busy = false;
-          _error =
-              'Could not open this profile. Check your connection and retry.';
-        });
-      }
-      return;
-    }
-
-    // Map avatar globals into the overlay space the fullscreen splash uses.
+    // Always profile splash — never the logo intro splash.
     Rect? splashOrigin = originRect;
     final overlayBox =
         Overlay.of(context).context.findRenderObject() as RenderBox?;
@@ -185,7 +152,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
             ProfileSwitchSplash(
           profile: profile,
           originRect: splashOrigin,
-          prepareCurrent: true,
+          prepareCurrent: widget.prepareCurrentOnSwitch,
         ),
       ),
     );

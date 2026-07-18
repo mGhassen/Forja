@@ -4,23 +4,29 @@ import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
-/// Official Miruro domains (miruro no Kuon status page).
+/// Official Miruro domains — overridable via [ProviderRuntimeConfig] (RFC-039).
 ///
 /// Prefer `.tv` first — it matches the public site users open in a browser;
 /// `.to` is still tried as a mirror.
 class MiruroDomains {
   MiruroDomains._();
 
-  static const List<String> official = [
-    'https://www.miruro.tv',
-    'https://www.miruro.to',
-    'https://www.miruro.bz',
-    'https://www.miruro.ru',
-  ];
+  static List<String> get official {
+    final remote = ProviderRuntimeConfig.instance.miruroOrigins;
+    if (remote.isNotEmpty) return List<String>.from(remote);
+    return const [
+      'https://www.miruro.tv',
+      'https://www.miruro.to',
+      'https://www.miruro.bz',
+      'https://www.miruro.ru',
+    ];
+  }
 
-  static const String primary = 'https://www.miruro.tv';
+  static String get primary =>
+      official.isNotEmpty ? official.first : 'https://www.miruro.tv';
 }
 
 /// Browser-session transport for Miruro's `secure/pipe` API.

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 
 class AnimeService {
   // ─── GraphQL helper ─────────────────────────────────────────────
@@ -421,25 +422,25 @@ class AnimeService {
   }
 
   // ─── Stream embed URLs (Megaplay / Vidwish) ────────────────────
-  // HD-1 = megaplay.buzz, HD-2 = vidwish.live. Both expose:
-  //   /stream/s-2/{anikoto_embed_id}/{sub|dub}  ← preferred when Anikoto matched
-  //   /stream/ani/{anilist_id}/{ep}/{sub|dub}   ← AniList-native (megaplay.buzz/api)
-  //
-  // Direct access to embeds is disabled; pass `referer: https://www.enma.lol/`
-  // to the extractor so getSources responds.
+  // Paths/hosts from [ProviderRuntimeConfig] (RFC-039); builtins match
+  // megaplay.buzz/api (s-2 catalog + /stream/ani/ AniList).
 
   String _embed({
-    required String host, // 'megaplay.buzz' | 'vidwish.live'
+    required String server, // 'megaplay' | 'vidwish'
     required int anilistId,
     required int episode,
     required String category,
     String? embedId, // anikoto episode_embed_id
   }) {
-    if (embedId != null && embedId.isNotEmpty) {
-      return 'https://$host/stream/s-2/$embedId/$category?autoPlay=1';
-    }
-    // AniList path — no Anikoto catalog id required (see megaplay.buzz/api).
-    return 'https://$host/stream/ani/$anilistId/$episode/$category?autoPlay=1';
+    final cfg = server == 'vidwish'
+        ? ProviderRuntimeConfig.instance.vidwish
+        : ProviderRuntimeConfig.instance.megaplay;
+    return cfg.buildUrl(
+      anilistId: anilistId,
+      episode: episode,
+      lang: category,
+      embedId: embedId,
+    );
   }
 
   /// Build Megaplay/Vidwish + Miruro/AllAnime/VidNest embeds for an episode.
@@ -468,7 +469,7 @@ class AnimeService {
         server: 'megaplay',
         category: 'sub',
         url: _embed(
-          host: 'megaplay.buzz',
+          server: 'megaplay',
           anilistId: anilistId,
           episode: episode,
           category: 'sub',
@@ -480,7 +481,7 @@ class AnimeService {
         server: 'vidwish',
         category: 'sub',
         url: _embed(
-          host: 'vidwish.live',
+          server: 'vidwish',
           anilistId: anilistId,
           episode: episode,
           category: 'sub',
@@ -492,7 +493,7 @@ class AnimeService {
         server: 'megaplay',
         category: 'dub',
         url: _embed(
-          host: 'megaplay.buzz',
+          server: 'megaplay',
           anilistId: anilistId,
           episode: episode,
           category: 'dub',
@@ -504,7 +505,7 @@ class AnimeService {
         server: 'vidwish',
         category: 'dub',
         url: _embed(
-          host: 'vidwish.live',
+          server: 'vidwish',
           anilistId: anilistId,
           episode: episode,
           category: 'dub',
@@ -578,7 +579,8 @@ class AnimeService {
 
   /// Referer to spoof when extracting megaplay/vidwish embeds. They block
   /// direct page loads — extraction only works when this header is present.
-  static const String embedReferer = 'https://www.enma.lol/';
+  static String get embedReferer =>
+      ProviderRuntimeConfig.instance.megaplay.scrapeReferer;
 
   /// Direct HTTP extractor for megaplay.buzz / vidwish.live embeds.
   ///
@@ -1304,9 +1306,10 @@ class AnimeEmbed {
   String get refererOrigin {
     switch (server) {
       case 'vidwish':
-        return 'https://vidwish.live';
+        return 'https://${ProviderRuntimeConfig.instance.vidwish.host}';
       case 'miruro':
-        return 'https://www.miruro.to';
+        final o = MiruroDomains.primary;
+        return o.endsWith('/') ? o.substring(0, o.length - 1) : o;
       case 'allanime':
         return 'https://allmanga.to';
       case 'vidnest':
@@ -1318,7 +1321,7 @@ class AnimeEmbed {
       case 'hentaini':
         return 'https://hentaini.com';
       default:
-        return 'https://megaplay.buzz';
+        return 'https://${ProviderRuntimeConfig.instance.megaplay.host}';
     }
   }
 }

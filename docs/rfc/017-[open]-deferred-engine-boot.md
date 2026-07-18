@@ -137,7 +137,7 @@ Errors: catch, log `[EngineRegistry] $id failed: $e`, surface once via `ShellBus
 | Service | Activates when |
 |---------|----------------|
 | Host (Flutter, Engine, MediaKit, theme, splash sound) | process start |
-| TMDB → BootCache | intro splash if `home` \| `search` \| `mylist` |
+| TMDB → BootCache | intro splash **or** profile splash if `home` \| `search` \| `mylist` |
 | LocalServer + WebStreamr | intro / profile splash if Webstreaming on **and** VOD tab; settings toggle always |
 | Nuvio refresh | intro / profile splash if Direct torrent on **and** VOD tab; settings toggle always |
 | TorrentStream | post intro-splash / profile splash if Direct torrent on **and** VOD tab (`home`/`search`/`anime`/`asian_drama`/`mylist`); settings toggle always |
@@ -152,7 +152,8 @@ Errors: catch, log `[EngineRegistry] $id failed: $e`, surface once via `ShellBus
 | [`boot_needs.dart`](../../apps/forja/lib/app/boot_needs.dart) | Resolve nav + play sources |
 | [`profile_engine_warm.dart`](../../apps/forja/lib/app/profile_engine_warm.dart) | Idempotent warm |
 | [`bootstrap.dart`](../../apps/forja/lib/app/bootstrap.dart) | Slim Phase 0; gated intro / post-splash |
-| Profile chooser / switch splash | Warm after `pullAndMergeAll` |
+| [`boot_catalog.dart`](../../apps/forja/lib/app/boot_catalog.dart) | Shared TMDB → BootCache prefetch |
+| Profile chooser / switch splash | Warm + catalog after `pullAndMergeAll`; cold pick skips logo intro |
 | Settings playback toggles | Warm on enable |
 
 Nuvio is Direct torrent (not webstreaming). WebStreamr + LocalServer are Webstreaming.

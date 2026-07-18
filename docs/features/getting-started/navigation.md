@@ -50,7 +50,7 @@ Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, M
 ## Tips
 
 - Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
-- Startup follows your profile: Home / Search / My List pull movie catalogs; torrent / Stremio / Webstreaming engines only start when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them at splash. The splash status line mirrors that (connection → home feed or Live & IPTV — not technical engine names)
+- Startup follows your profile: Home / Search / My List pull movie catalogs; torrent / Stremio / Webstreaming engines only start when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them at splash. Picking or switching a profile uses the avatar profile splash (not the logo boot splash); the logo splash is for guest / restored-session cold start only
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 
 ## Related

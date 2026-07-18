@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
@@ -103,30 +104,20 @@ Map<String, String> resolvePlaybackHttpHeaders(
     out.remove('origin');
   }
 
-  // Anime Megaplay / Vidwish / VidNest-HiAnime CDNs reject self-origin Referer
-  // (403 Cloudflare). Require the embed host Referer — never derive from the CDN.
-  if (streamUrl != null && _isAnimeMewstreamCdn(streamUrl)) {
-    final ref = take('Referer', 'referer') ?? '';
-    if (ref.isEmpty || _isAnimeMewstreamCdn(ref) || !_looksLikeMegaplayFamily(ref)) {
-      putCanonical('Referer', 'referer', 'https://megaplay.buzz/');
-      putCanonical('Origin', 'origin', 'https://megaplay.buzz');
-    }
-  }
-  if (streamUrl != null && _isAnimeVidwishCdn(streamUrl)) {
-    final ref = take('Referer', 'referer') ?? '';
-    if (ref.isEmpty || _isAnimeVidwishCdn(ref) || !_looksLikeVidwishFamily(ref)) {
-      putCanonical('Referer', 'referer', 'https://vidwish.live/');
-      putCanonical('Origin', 'origin', 'https://vidwish.live');
-    }
-  }
-  // AllAnime Yt-mp4 (tools.fast4speed.rsvp) requires allmanga.to Referer.
-  if (streamUrl != null && _isAllAnimeYtCdn(streamUrl)) {
-    final ref = take('Referer', 'referer') ?? '';
-    if (ref.isEmpty ||
-        _isAllAnimeYtCdn(ref) ||
-        !ref.toLowerCase().contains('allmanga')) {
-      putCanonical('Referer', 'referer', 'https://allmanga.to/');
-      putCanonical('Origin', 'origin', 'https://allmanga.to');
+  // Anime CDN Referer rules — remote overlay (RFC-039) over builtins.
+  if (streamUrl != null) {
+    for (final rule in ProviderRuntimeConfig.instance.cdnRefererRules) {
+      if (!rule.matchesStreamUrl(streamUrl)) continue;
+      final ref = take('Referer', 'referer') ?? '';
+      if (ref.isEmpty || !rule.refererAccepted(ref)) {
+        if (rule.referer.isNotEmpty) {
+          putCanonical('Referer', 'referer', rule.referer);
+        }
+        if (rule.origin.isNotEmpty) {
+          putCanonical('Origin', 'origin', rule.origin);
+        }
+      }
+      break;
     }
   }
 
@@ -170,44 +161,6 @@ bool _isVidnestMovieBoxCdn(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
   return host.contains('hakunaymatata.com');
-}
-
-/// Megaplay / VidNest-HiAnime HLS CDN (needs megaplay.buzz Referer).
-///
-/// Hosts rotate (`mewstream` → `nekostream`, …). Self-origin and embed-scrape
-/// Referers (`enma.lol`) return CDN 403 — only megaplay.buzz works.
-bool _isAnimeMewstreamCdn(String url) {
-  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return false;
-  return host.contains('mewstream.buzz') ||
-      host.contains('nekostream') ||
-      host.contains('lostproject.club') ||
-      host.contains('megaplay');
-}
-
-bool _looksLikeMegaplayFamily(String referer) {
-  final h = Uri.tryParse(referer)?.host.toLowerCase() ?? referer.toLowerCase();
-  // enma.lol is the scrape Referer only — nekostream rejects it (403).
-  return h.contains('megaplay');
-}
-
-/// Vidwish HLS CDN (needs vidwish.live Referer).
-bool _isAnimeVidwishCdn(String url) {
-  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return false;
-  return host.contains('watching.onl') || host.contains('vidwish');
-}
-
-bool _looksLikeVidwishFamily(String referer) {
-  final h = Uri.tryParse(referer)?.host.toLowerCase() ?? referer.toLowerCase();
-  return h.contains('vidwish');
-}
-
-/// AllAnime direct MP4 host used by Yt-mp4.
-bool _isAllAnimeYtCdn(String url) {
-  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return false;
-  return host.contains('fast4speed.rsvp') || host.contains('fast4speed');
 }
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on

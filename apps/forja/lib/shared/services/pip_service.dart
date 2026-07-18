@@ -4,9 +4,10 @@
 //          has `android:supportsPictureInPicture="true"` and
 //          `android:resizeableActivity="true"`.
 //
-// Windows / macOS: there is no OS-level PiP for arbitrary apps, so we
-//          simulate it: shrink the window to ~480x270, make it
-//          frameless + always-on-top, dock to the bottom-right corner.
+// Desktop (Windows / macOS): media_kit/mpv has no AVKit/WinUI PiP surface, so
+//          we shrink the app window to ~480x270, frameless + always-on-top.
+//          macOS also sets collectionBehavior.canJoinAllSpaces (+ fullScreen
+//          auxiliary) so the window follows Spaces / fullscreen apps.
 //          Toggling off restores the previous bounds and decorations.
 //
 // Linux/iOS: no-op (returns false).
@@ -28,8 +29,9 @@ class PipService {
 
   // ── Desktop state ──
   bool _desktopActive = false;
-  Rect? _savedBounds;       // pre-PiP window bounds
+  Rect? _savedBounds; // pre-PiP window bounds
   bool _savedAlwaysOnTop = false;
+  bool _savedVisibleOnAllWorkspaces = false;
   final TitleBarStyle _savedTitleBarStyle = TitleBarStyle.hidden;
 
   // Broadcasts desktop PiP on/off so the player UI can re-render.
@@ -108,14 +110,17 @@ class PipService {
       final size = await windowManager.getSize();
       _savedBounds = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
       _savedAlwaysOnTop = await windowManager.isAlwaysOnTop();
+      if (Platform.isMacOS) {
+        _savedVisibleOnAllWorkspaces =
+            await windowManager.isVisibleOnAllWorkspaces();
+      }
 
       // Pick a reasonable PiP size based on the requested aspect ratio.
       const pipWidth = 480.0;
       final pipHeight = pipWidth * height / width;
 
       // Stay near the user's current top-left so we don't fight a
-      // multi-monitor setup. Just nudge a little to the right/down so
-      // the smaller window isn't anchored to the same corner.
+      // multi-monitor setup.
       final dockX = pos.dx;
       final dockY = pos.dy;
 
@@ -131,6 +136,13 @@ class PipService {
       await windowManager.setSize(Size(pipWidth, pipHeight));
       await windowManager.setPosition(Offset(dockX, dockY));
       await windowManager.setAlwaysOnTop(true);
+      if (Platform.isMacOS) {
+        // Follow Mission Control Spaces + float over other fullscreen apps.
+        await windowManager.setVisibleOnAllWorkspaces(
+          true,
+          visibleOnFullScreen: true,
+        );
+      }
       // Hide the OS title bar / window chrome so only video shows.
       try {
         await windowManager.setTitleBarStyle(
@@ -157,6 +169,12 @@ class PipService {
         );
       } catch (_) {}
       await windowManager.setAlwaysOnTop(_savedAlwaysOnTop);
+      if (Platform.isMacOS) {
+        await windowManager.setVisibleOnAllWorkspaces(
+          _savedVisibleOnAllWorkspaces,
+          visibleOnFullScreen: false,
+        );
+      }
       final b = _savedBounds;
       if (b != null) {
         await windowManager.setSize(Size(b.width, b.height));
@@ -167,6 +185,7 @@ class PipService {
     } finally {
       _desktopActive = false;
       _savedBounds = null;
+      _savedVisibleOnAllWorkspaces = false;
       _desktopController.add(false);
     }
   }

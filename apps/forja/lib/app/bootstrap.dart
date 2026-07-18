@@ -21,7 +21,7 @@ import 'package:forja/shared/utils/webview_cleanup.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/app/boot_cache.dart';
+import 'package:forja/app/boot_catalog.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
@@ -36,6 +36,7 @@ import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/catalog/tmdb_user_region.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
@@ -121,6 +122,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaSupabase.ensureInitialized();
+  unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
   }
@@ -349,35 +351,6 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-/// Boot TMDB lists — retry a few times on transient "error sending request"
-/// failures (common when four calls race at splash).
-Future<List<Movie>> _bootTmdbFetch(
-  String label,
-  Future<List<Movie>> Function() fetch, {
-  VoidCallback? onRetry,
-}) async {
-  const attempts = 3;
-  Object? lastError;
-  for (var i = 0; i < attempts; i++) {
-    if (i > 0) onRetry?.call();
-    try {
-      final list = await fetch();
-      if (list.isNotEmpty) return list;
-      lastError = 'empty results';
-    } catch (e) {
-      lastError = e;
-      debugPrint('[Boot] ✗ TMDB $label attempt ${i + 1}/$attempts: $e');
-    }
-    if (i < attempts - 1) {
-      await Future<void>.delayed(Duration(milliseconds: 350 * (i + 1)));
-    }
-  }
-  debugPrint(
-    '[Boot] ✗ TMDB $label failed after $attempts attempts: $lastError',
-  );
-  return const <Movie>[];
-}
-
 /// User-facing hold line after boot work finishes early (min-splash wait).
 String _splashOpeningStatus(BootNeeds needs) {
   final nav = needs.visibleNavIds;
@@ -570,41 +543,9 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     _setBootStatus('Loading your home feed…');
-    debugPrint('[Init] TMDB start (trending, popular, top rated, now playing)');
-    void feedRetry() => _setBootStatus('Still loading your home feed…');
-    final api = TmdbApi();
-    final results = await Future.wait<List<Movie>>([
-      _bootTmdbFetch('trending', api.getTrending, onRetry: feedRetry),
-      _bootTmdbFetch('popular', api.getPopular, onRetry: feedRetry),
-      _bootTmdbFetch('top rated', api.getTopRated, onRetry: feedRetry),
-      _bootTmdbFetch('now playing', api.getNowPlaying, onRetry: feedRetry),
-    ]);
-
-    var trendingList = results[0];
-    final popularList = results[1];
-    final topRatedList = results[2];
-    final nowPlayingList = results[3];
-
-    // Hero uses trending — if that one call kept failing, seed from popular
-    // so Home is not an empty shimmer after splash.
-    if (trendingList.isEmpty && popularList.isNotEmpty) {
-      debugPrint(
-        '[Boot] TMDB trending empty after retries — using popular for hero',
-      );
-      trendingList = popularList;
-    }
-
-    BootCache.setTmdb(
-      trendingList: trendingList,
-      popularList: popularList,
-      topRatedList: topRatedList,
-      nowPlayingList: nowPlayingList,
+    await BootCatalog.prefetchTmdb(
+      onRetry: () => _setBootStatus('Still loading your home feed…'),
     );
-
-    debugPrint('[Init] TMDB trending: ${trendingList.length}');
-    debugPrint('[Init] TMDB popular: ${popularList.length}');
-    debugPrint('[Init] TMDB top rated: ${topRatedList.length}');
-    debugPrint('[Init] TMDB now playing: ${nowPlayingList.length}');
     _setBootStatus(_splashOpeningStatus(needs));
   }
 

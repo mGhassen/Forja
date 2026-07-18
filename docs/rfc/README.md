@@ -42,7 +42,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/5 | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
 | [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 5/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.0.1 | draft | 3/4 | [RFC-026](026-[draft]-media-details-player-ux.md) |
-| [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 17/18 · 22/27 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 17/18 · 23/28 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 0/7 · 2 🔄 · 1 ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [022-[draft]-…](022-[draft]-lan-server-client.md) | LAN server/client | post-v1.2 | draft | 3/7 · 0/12 | v2+ |
 | [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.x | fixed | Complete · 5/5 · 18/18 | [0.8.1](../backlog/done/0.8.1-[done].md) |
@@ -59,6 +59,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 16/26 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [038-[open]-…](038-[open]-simple-streaming-resolve.md) | Simple streaming resolve (experimental) | v1.0.1 | open | 3/3 · 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [039-[open]-…](039-[open]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | open | 3/4 · 5/5 · 1 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
 
 ## Related
 

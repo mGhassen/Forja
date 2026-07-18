@@ -143,6 +143,7 @@ void main() {
     });
 
     test('forces megaplay Referer for nekostream anime CDN when missing', () {
+      // Covered by ProviderRuntimeConfig builtins (RFC-039).
       const url =
           'https://9hjkrt.nekostream.site/abc/def/master.m3u8';
       final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
