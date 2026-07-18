@@ -731,6 +731,16 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   }
 
   Future<void> _loadStremioCatalogs() async {
+    final stremioOn = await SettingsService().isPlaySourceStremioEnabled();
+    if (!stremioOn) {
+      if (mounted) {
+        setState(() {
+          _s._stremioCatalogsLoading = false;
+          _s._catalogsLoaded = true;
+        });
+      }
+      return;
+    }
     if (mounted) setState(() => _s._stremioCatalogsLoading = true);
     try {
       final catalogs = await _s._stremio.getAllCatalogs();

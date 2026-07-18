@@ -42,7 +42,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     return iptvTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 8,
+      borderRadius: 0,
       listIndex: widget.listIndex,
       tvRowId: 'browser-categories',
       tvItemIndex: widget.listIndex,
@@ -53,11 +53,13 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
+        width: double.infinity,
         padding: EdgeInsets.symmetric(
-          horizontal: widget.compact ? 10 : 14,
-          vertical: widget.compact ? 9 : 10,
+          horizontal: widget.compact ? 12 : 16,
+          vertical: widget.compact ? 10 : 12,
         ),
         decoration: BoxDecoration(
+          borderRadius: BorderRadius.zero,
           color: _tvFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
               : selected
@@ -82,7 +84,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.plusJakartaSans(
             color: fg,
-            fontSize: widget.compact ? 11 : 12,
+            fontSize: widget.compact ? 13 : 14,
             fontWeight: selected || _tvFocused
                 ? FontWeight.w600
                 : FontWeight.w400,

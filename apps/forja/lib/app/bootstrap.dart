@@ -6,16 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:logging/logging.dart';
-import 'package:audio_service/audio_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
-import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
@@ -25,6 +22,8 @@ import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/app/boot_cache.dart';
+import 'package:forja/app/boot_needs.dart';
+import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
@@ -221,21 +220,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MediaKit.ensureInitialized();
   debugPrint('[Boot] MediaKit OK');
 
-  debugPrint('[Boot] Initializing AudioService...');
-  final audioHandler = await AudioService.init(
-    builder: () => AppAudioHandler(),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.forja.app.channel.audio',
-      androidNotificationChannelName: 'Music Playback',
-      androidNotificationOngoing: false,
-      androidStopForegroundOnPause: false,
-      androidResumeOnClick: true,
-    ),
-  );
-  debugPrint('[Boot] AudioService OK');
-
-  MusicPlayerService().setHandler(audioHandler);
-  AudiobookPlayerService().init(audioHandler);
+  // Music / Audiobooks AudioService stays off while those tabs are on hold.
+  // Profile-gated engines (WebStreamr, Nuvio, LocalServer, TorrentStream, TMDB)
+  // warm after profile settings are known — see ProfileEngineWarm / SplashScreen.
 
   // Hydrate theme preset before first frame
   await Engine.init();
@@ -245,21 +232,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   await AppTheme.initTheme();
 
   PlayerPoolService().warmUp();
-  // Pre-initialise the local WebStreamr pipeline so the first call is fast.
-  // Errors here are non-fatal — the service init() is also called lazily.
-  unawaited(
-    WebStreamrService.init().catchError((e) {
-      debugPrint('[Boot] WebStreamrService.init failed (non-fatal): $e');
-    }),
-  );
-  // Refresh every installed Nuvio addon's manifest in the background so new
-  // upstream providers / fixes flow in without the user reinstalling.
-  // Non-fatal — offline launches just keep the previously cached manifests.
-  unawaited(
-    NuvioService.instance.refreshAllInstalled().catchError((e) {
-      debugPrint('[Boot] Nuvio refresh failed (non-fatal): $e');
-    }),
-  );
   debugPrint('[Boot] Preloading splash sound...');
   await SplashSound.instance.preload();
   debugPrint('[Boot] Splash sound ready');
@@ -382,14 +354,12 @@ class SplashScreen extends StatefulWidget {
 Future<List<Movie>> _bootTmdbFetch(
   String label,
   Future<List<Movie>> Function() fetch, {
-  void Function(String status)? onRetryStatus,
+  VoidCallback? onRetry,
 }) async {
   const attempts = 3;
   Object? lastError;
   for (var i = 0; i < attempts; i++) {
-    if (i > 0) {
-      onRetryStatus?.call('Retrying $label (${i + 1}/$attempts)…');
-    }
+    if (i > 0) onRetry?.call();
     try {
       final list = await fetch();
       if (list.isNotEmpty) return list;
@@ -408,13 +378,22 @@ Future<List<Movie>> _bootTmdbFetch(
   return const <Movie>[];
 }
 
+/// User-facing hold line after boot work finishes early (min-splash wait).
+String _splashOpeningStatus(BootNeeds needs) {
+  final nav = needs.visibleNavIds;
+  final liveIptv =
+      !needs.vodTab &&
+      (nav.contains('iptv') || nav.contains('live_matches'));
+  if (liveIptv) return 'Opening Live & IPTV…';
+  if (needs.homeTab || needs.tmdb) return 'Opening Home…';
+  return 'Just a moment…';
+}
+
 class _SplashScreenState extends State<SplashScreen> {
   /// Hold the splash at least this long so MainScreen / Home can warm up.
   /// Also the hard cap — if boot work is still running past this, dismiss
   /// and toast; catalog/services keep loading in the background.
-  static Duration get _minSplashDuration => kDebugMode
-      ? const Duration(milliseconds: 800)
-      : const Duration(seconds: 8);
+  static const Duration _minSplashDuration = Duration(seconds: 8);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition
@@ -425,7 +404,8 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _showOverlay = true;
 
   /// Live boot step shown above the version on the splash.
-  final ValueNotifier<String> _bootStatus = ValueNotifier<String>('Starting…');
+  final ValueNotifier<String> _bootStatus =
+      ValueNotifier<String>('Getting things ready…');
 
   @override
   void initState() {
@@ -464,27 +444,35 @@ class _SplashScreenState extends State<SplashScreen> {
     // Let the slide-away and first interactive frames finish before Rust/network burst.
     await Future<void>.delayed(const Duration(milliseconds: 400));
 
-    final profile = PlatformPlayback.capabilities;
-    if (!profile.localTorrentEngine) return;
-
-    debugPrint('[Boot] Post-splash: Starting TorrentStream engine...');
+    final needs = await BootNeeds.resolve();
+    if (!needs.torrent) {
+      if (!needs.playSourceTorrent) {
+        debugPrint('[Init] TorrentStream skip (direct torrent off)');
+      } else {
+        debugPrint('[Init] TorrentStream skip (no VOD tab)');
+      }
+      return;
+    }
+    if (!PlatformPlayback.capabilities.localTorrentEngine) {
+      debugPrint('[Init] TorrentStream skip (platform has no local engine)');
+      return;
+    }
+    debugPrint('[Init] TorrentStream start (post-splash)');
     final ok = await TorrentStreamService()
         .start()
         .timeout(
           const Duration(seconds: 10),
           onTimeout: () {
-            debugPrint('[Boot] Post-splash: TorrentStream timed out after 10s');
+            debugPrint('[Init] TorrentStream timed out after 10s');
             return false;
           },
         )
         .catchError((e, st) {
-          debugPrint('[Boot] Post-splash: TorrentStream error: $e');
-          debugPrint('[Boot] Stack trace: $st');
+          debugPrint('[Init] TorrentStream error: $e');
+          debugPrint('[Init] Stack trace: $st');
           return false;
         });
-    debugPrint(
-      '[Boot] Post-splash: TorrentStream ${ok ? "✓ READY" : "✗ FAILED"}',
-    );
+    debugPrint('[Init] TorrentStream ${ok ? "ready" : "failed"}');
   }
 
   void _dismissSplash({bool showSlowBootToast = false}) {
@@ -512,7 +500,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (bootFinishedFirst) {
-      _setBootStatus('Almost ready…');
+      // Keep the opening status set by boot — do not overwrite with a vague hold.
       debugPrint(
         '[Boot] Step 4: Waiting for minimum splash time so the '
         'pre-built MainScreen / HomeScreen finishes its first paints...',
@@ -525,6 +513,7 @@ class _SplashScreenState extends State<SplashScreen> {
       );
       _dismissSplash();
     } else {
+      _setBootStatus('Finishing up…');
       debugPrint(
         '[Boot] Step 4: Min splash elapsed — boot still running; '
         'dismissing overlay and continuing in background',
@@ -540,56 +529,61 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initOfflineBoot() async {
-    debugPrint('[Boot] Device is offline, initializing local services only');
-    _setBootStatus('Starting music player…');
-    debugPrint('[Boot] Initializing MusicPlayer...');
-    await MusicPlayerService().init().catchError((e) {
-      debugPrint('[Boot] ✗ MusicPlayer error: $e');
-      return null;
-    });
-    debugPrint('[Boot] ✓ Local services initialized');
+    debugPrint('[Init] offline boot — skip network catalog');
+    final needs = await BootNeeds.resolve();
+    if (needs.webstreaming) {
+      _setBootStatus('Starting playback services…');
+      debugPrint('[Init] LocalServer start (webstreaming, offline)');
+      await LocalServerService().start().catchError((e) {
+        debugPrint('[Init] LocalServer error: $e');
+      });
+    } else if (!needs.playSourceWebstreaming) {
+      debugPrint('[Init] LocalServer skip (webstreaming off)');
+    } else {
+      debugPrint('[Init] LocalServer skip (no VOD tab)');
+    }
+    _setBootStatus('Ready offline…');
+    debugPrint('[Init] offline boot complete ($needs)');
   }
 
   Future<void> _initOnlineBoot() async {
-    debugPrint('[Boot] Step 2: Initializing splash-critical services...');
-    final api = TmdbApi();
+    debugPrint('[Init] resolving profile boot needs...');
+    final needs = await BootNeeds.resolve();
+    debugPrint('[Init] $needs');
 
-    _setBootStatus('Loading catalog & services…');
-    debugPrint('[Boot]   - Starting LocalServer...');
-    debugPrint('[Boot]   - Initializing MusicPlayer...');
-    debugPrint(
-      '[Boot]   - Fetching TMDB data (trending, popular, top rated, now playing)...',
+    final warmPlayback = needs.webstreaming || needs.torrent;
+    if (warmPlayback) {
+      _setBootStatus('Starting playback services…');
+    }
+
+    // Webstreaming + Nuvio under splash; TorrentStream waits for post-splash.
+    await ProfileEngineWarm.warm(
+      needs,
+      startTorrent: false,
+      reason: 'intro-splash',
     );
 
-    final results = await Future.wait([
-      LocalServerService().start().catchError((e) {
-        debugPrint('[Boot] ✗ LocalServer error: $e');
-      }),
-      MusicPlayerService().init().catchError((e) {
-        debugPrint('[Boot] ✗ MusicPlayer error: $e');
-      }),
-      _bootTmdbFetch(
-        'trending',
-        api.getTrending,
-        onRetryStatus: _setBootStatus,
-      ),
-      _bootTmdbFetch('popular', api.getPopular, onRetryStatus: _setBootStatus),
-      _bootTmdbFetch(
-        'top rated',
-        api.getTopRated,
-        onRetryStatus: _setBootStatus,
-      ),
-      _bootTmdbFetch(
-        'now playing',
-        api.getNowPlaying,
-        onRetryStatus: _setBootStatus,
-      ),
+    if (!needs.tmdb) {
+      debugPrint('[Init] TMDB skip (home/search/mylist not visible)');
+      _setBootStatus(_splashOpeningStatus(needs));
+      return;
+    }
+
+    _setBootStatus('Loading your home feed…');
+    debugPrint('[Init] TMDB start (trending, popular, top rated, now playing)');
+    void feedRetry() => _setBootStatus('Still loading your home feed…');
+    final api = TmdbApi();
+    final results = await Future.wait<List<Movie>>([
+      _bootTmdbFetch('trending', api.getTrending, onRetry: feedRetry),
+      _bootTmdbFetch('popular', api.getPopular, onRetry: feedRetry),
+      _bootTmdbFetch('top rated', api.getTopRated, onRetry: feedRetry),
+      _bootTmdbFetch('now playing', api.getNowPlaying, onRetry: feedRetry),
     ]);
 
-    var trendingList = results[2] as List<Movie>;
-    final popularList = results[3] as List<Movie>;
-    final topRatedList = results[4] as List<Movie>;
-    final nowPlayingList = results[5] as List<Movie>;
+    var trendingList = results[0];
+    final popularList = results[1];
+    final topRatedList = results[2];
+    final nowPlayingList = results[3];
 
     // Hero uses trending — if that one call kept failing, seed from popular
     // so Home is not an empty shimmer after splash.
@@ -607,22 +601,11 @@ class _SplashScreenState extends State<SplashScreen> {
       nowPlayingList: nowPlayingList,
     );
 
-    debugPrint('[Boot] Step 3: Service initialization results:');
-    debugPrint('[Boot]   LocalServer: ✓ READY');
-    debugPrint('[Boot]   MusicPlayer: ✓ READY');
-    debugPrint(
-      '[Boot]   TMDB Trending: ${trendingList.isNotEmpty ? "✓ ${trendingList.length} items" : "✗ Empty"}',
-    );
-    debugPrint(
-      '[Boot]   TMDB Popular: ${popularList.isNotEmpty ? "✓ ${popularList.length} items" : "✗ Empty"}',
-    );
-    debugPrint(
-      '[Boot]   TMDB Top Rated: ${topRatedList.isNotEmpty ? "✓ ${topRatedList.length} items" : "✗ Empty"}',
-    );
-    debugPrint(
-      '[Boot]   TMDB Now Playing: ${nowPlayingList.isNotEmpty ? "✓ ${nowPlayingList.length} items" : "✗ Empty"}',
-    );
-    _setBootStatus('Catalog ready');
+    debugPrint('[Init] TMDB trending: ${trendingList.length}');
+    debugPrint('[Init] TMDB popular: ${popularList.length}');
+    debugPrint('[Init] TMDB top rated: ${topRatedList.length}');
+    debugPrint('[Init] TMDB now playing: ${nowPlayingList.length}');
+    _setBootStatus(_splashOpeningStatus(needs));
   }
 
   Future<void> _initEngine() async {
@@ -630,7 +613,7 @@ class _SplashScreenState extends State<SplashScreen> {
     debugPrint('[Boot] Starting engine initialization...');
     debugPrint('═══════════════════════════════════════════════════════════');
 
-    _setBootStatus('Checking network…');
+    _setBootStatus('Checking connection…');
     debugPrint('[Boot] Step 1: Checking network connectivity...');
     final connectivityResult = await Connectivity().checkConnectivity();
     final isOffline = connectivityResult.contains(ConnectivityResult.none);

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/app/boot_needs.dart';
+import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
@@ -141,6 +143,14 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
           throw StateError('Profile unavailable');
         }
         await SyncDomainBridge.instance.pullAndMergeAll();
+        // Intro splash will warm again (idempotent). Prefetch so BootNeeds
+        // matches this profile before SplashScreen mounts.
+        final needs = await BootNeeds.resolve();
+        await ProfileEngineWarm.warm(
+          needs,
+          startTorrent: false,
+          reason: 'cold-profile',
+        );
         if (!mounted) return;
         widget.onProfileSelected();
       } catch (_) {

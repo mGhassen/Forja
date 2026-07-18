@@ -109,6 +109,8 @@ Not synced — device-specific or sensitive:
 - Add, edit, search, favorite, share, or remove IPTV portals from
   the web (share codes match the app peer-code flow). On the web IPTV page,
   portals are a compact list (expiry, name, URL, seats). Lists paginate every 10 items.
+  When your account has **Find Portals** (`iptvScrape`) enabled, the page shows a VIP
+  **Activated** banner above the portal list (read-only — unlock is account-side).
   **Export CSV** downloads portals (plain-text passwords in the file; on-device they use Keychain).
   Then **Save** to sync.
 - Change playback prefs and provider order from the web

@@ -151,7 +151,7 @@ impl ProviderHealthStore {
         *self.all_provider_totals().get(&norm).unwrap_or(&0)
     }
 
-    /// Provider id → sum of that provider's title scores (negatives included).
+    /// Provider id → sum of that provider's title scores (negatives reduce Σ; floor 0).
     pub fn all_provider_totals(&self) -> HashMap<String, i32> {
         self.ensure_loaded();
         let g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
@@ -262,6 +262,10 @@ fn aggregate_provider_totals(g: &HealthState) -> HashMap<String, i32> {
         }
         *out.entry(provider).or_default() += t;
     }
+    for score in out.values_mut() {
+        *score = (*score).max(0);
+    }
+    out.retain(|_, score| *score != 0);
     out
 }
 
@@ -462,6 +466,17 @@ mod tests {
         assert_eq!(store.server_verdict_for("movie:7:megaplay"), Some(-2));
         assert_eq!(store.stream_verdict_for("movie:7:megaplay"), Some(-2));
         assert_eq!(store.global_score_for("megaplay"), 18);
+    }
+
+    #[test]
+    fn global_score_floors_at_zero() {
+        let store = ProviderHealthStore::new();
+        store.reset_for_test();
+        store.record_server_failure("movie:1:cold");
+        store.record_stream_fail("movie:1:cold");
+        assert_eq!(store.score_for("movie:1:cold"), -4);
+        assert_eq!(store.global_score_for("cold"), 0);
+        assert!(!store.all_provider_totals().contains_key("cold"));
     }
 
     #[test]

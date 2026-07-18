@@ -67,6 +67,15 @@ void main() {
       expect(ProviderScoreMemory.globalScoreFor('megaplay'), 18);
     });
 
+    test('global score floors at zero', () async {
+      final cold = ProviderScoreScope.movie(tmdbId: 1);
+      await ProviderScoreMemory.recordServerFailure(cold, 'cold');
+      await ProviderScoreMemory.recordStreamFail(cold, 'cold');
+      expect(ProviderScoreMemory.scoreFor(cold, 'cold'), -4);
+      expect(ProviderScoreMemory.globalScoreFor('cold'), 0);
+      expect(ProviderScoreMemory.allGlobalScores().containsKey('cold'), isFalse);
+    });
+
     test('tv scores are per season and episode', () async {
       final otherEp = ProviderScoreScope.tv(
         tmdbId: 1399,

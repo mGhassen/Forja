@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Share2,
+  Sparkles,
   Star,
   Trash2,
   Users,
@@ -21,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
+import { useAccountFeatures } from '@/hooks/use-account-features'
 import { useUserIptvPortals } from '@/hooks/use-user-iptv-portals'
 import {
   downloadTextFile,
@@ -158,6 +160,8 @@ type DraftState = {
 
 export function AccountSettingsIptvPage() {
   const portalsHook = useUserIptvPortals()
+  const { data: accountFeatures } = useAccountFeatures()
+  const iptvScrapeActive = accountFeatures?.iptvScrape === true
   const profileId = portalsHook.profileId
   const isLoading = portalsHook.isLoading
   const isSaving = portalsHook.isSaving
@@ -409,6 +413,39 @@ export function AccountSettingsIptvPage() {
         </div>
       }
     >
+      {iptvScrapeActive ? (
+        <div
+          className={cn(
+            'mb-8 overflow-hidden rounded-xl border border-forja-green/35',
+            'bg-linear-to-r from-forja-green/15 via-forja-green/5 to-transparent',
+          )}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 sm:px-5">
+            <div className="min-w-0 flex items-start gap-3">
+              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-forja-green/40 bg-forja-green/15 text-forja-green">
+                <Sparkles className="size-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-forja-green/50 bg-forja-green px-2 py-0.5 font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-[#0B0A0A]">
+                    VIP
+                  </span>
+                  <h3 className="text-sm font-semibold tracking-tight text-[#EDE6DA]">
+                    Find Portals
+                  </h3>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-forja-muted">
+                  Reddit portal scrape is unlocked in the Forja IPTV tab.
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full border border-forja-green/40 bg-forja-green/10 px-2.5 py-1 font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-forja-green">
+              Activated
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       <SettingsSection
         label="Xtream portals"
         description="Favorites stay on top. Search filters name, URL, and username."

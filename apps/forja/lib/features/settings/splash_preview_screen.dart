@@ -34,7 +34,7 @@ class _SplashPreviewScreenState extends State<SplashPreviewScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.of(context).pop(),
         child: const SplashOverlayContent(
-          statusLabel: 'Loading catalog & services…',
+          statusLabel: 'Loading your home feed…',
         ),
       ),
     );

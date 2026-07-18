@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/app/boot_needs.dart';
+import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
@@ -96,6 +98,14 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
       }
       _setStatus('Syncing settings…');
       await SyncDomainBridge.instance.pullAndMergeAll();
+      if (!mounted) return;
+      _setStatus('Loading services…');
+      final needs = await BootNeeds.resolve();
+      await ProfileEngineWarm.warm(
+        needs,
+        startTorrent: true,
+        reason: 'profile-splash',
+      );
       if (!mounted) return;
       if (widget.prepareCurrent) {
         _prepareShellForIncomingProfile();

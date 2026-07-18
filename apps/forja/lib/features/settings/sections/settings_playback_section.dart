@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
@@ -94,6 +96,15 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                 await _settings.setPlaySourceTorrentEnabled(val);
                 setState(() => _playSourceTorrent = val);
                 schedulePreferencesSyncPush();
+                // Explicit toggle: start now even if no VOD tab is visible.
+                if (val) {
+                  debugPrint('[Init] Nuvio refresh (settings toggle)');
+                  unawaited(NuvioService.instance.refreshAllInstalled());
+                  if (PlatformPlayback.capabilities.localTorrentEngine) {
+                    debugPrint('[Init] TorrentStream start (settings toggle)');
+                    await TorrentStreamService().start();
+                  }
+                }
               },
             ),
             settingsFocusableToggle(
@@ -116,6 +127,12 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                 await _settings.setPlaySourceWebstreamingEnabled(val);
                 setState(() => _playSourceWebstreaming = val);
                 schedulePreferencesSyncPush();
+                if (val) {
+                  debugPrint('[Init] LocalServer start (settings toggle)');
+                  await LocalServerService().start();
+                  debugPrint('[Init] WebStreamr start (settings toggle)');
+                  await WebStreamrService.init();
+                }
               },
             ),
           ],

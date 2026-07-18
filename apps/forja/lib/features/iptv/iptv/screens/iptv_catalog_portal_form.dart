@@ -115,6 +115,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _importingShareCode = false;
   bool _showManualForm = false;
   bool _addSucceeded = false;
+  bool _submitInFlight = false;
   String? _successName;
   _PortalImportPhase _importPhase = _PortalImportPhase.shareCode;
   String? _shareCodeError;
@@ -447,10 +448,18 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     });
   }
 
-  Future<void> _submit({bool closePanel = true}) async {
+  void _trySubmitFromEnter() {
+    if (_addSucceeded || _submitInFlight || widget.ctrl.isAdding) return;
+    if (!_editing && !_showManualForm && !_namingImported) return;
+    _submit();
+  }
+
+  Future<void> _submit() async {
+    if (_addSucceeded || _submitInFlight || widget.ctrl.isAdding) return;
     final ctrl = widget.ctrl;
     final label = _labelCtrl.text;
     if (_editing) {
+      setState(() => _submitInFlight = true);
       await ctrl.updatePortal(
         existing: widget.existing!,
         url: _urlCtrl.text,
@@ -458,23 +467,32 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         password: _passCtrl.text,
         label: label,
       );
-      if (ctrl.addError == null && mounted) {
+      if (!mounted) return;
+      setState(() => _submitInFlight = false);
+      if (ctrl.addError == null) {
         Navigator.of(context).pop();
       }
       return;
     }
+    setState(() => _submitInFlight = true);
     await ctrl.addManual(
       url: _urlCtrl.text,
       username: _userCtrl.text,
       password: _passCtrl.text,
       label: label,
-      closePanel: closePanel,
+      // Keep panel (and this dialog) mounted; select portal without dismissing.
+      closePanel: false,
     );
-    if (ctrl.addError != null || !mounted) return;
+    if (!mounted) return;
+    if (ctrl.addError != null) {
+      setState(() => _submitInFlight = false);
+      return;
+    }
     final name = label.trim().isNotEmpty
         ? label.trim()
         : (ctrl.activePortal?.displayLabel ?? 'Portal');
     setState(() {
+      _submitInFlight = false;
       _addSucceeded = true;
       _successName = name;
     });
@@ -484,14 +502,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     });
   }
 
-  void _closeAfterSuccess() {
-    if (!mounted) return;
-    Navigator.of(context).pop();
-  }
-
   void _cancel() {
     if (_addSucceeded) {
-      _closeAfterSuccess();
+      Navigator.of(context).pop();
       return;
     }
     if (_namingImported) {
@@ -507,20 +520,30 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     return Column(
       key: const ValueKey<String>('success'),
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          Icons.check_circle_rounded,
-          color: ForjaShellColors.brandGreen,
-          size: _tv ? 42 : 48,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Portal added',
+                style: IptvShellStyle.overlayTitle.copyWith(
+                  fontSize: _tv ? 17 : 19,
+                ),
+              ),
+            ),
+            _portalDialogCloseButton(onTap: _cancel),
+          ],
         ),
-        SizedBox(height: _tv ? 10 : 14),
-        Text(
-          'Portal added',
-          style: IptvShellStyle.overlayTitle.copyWith(
-            fontSize: _tv ? 17 : 19,
+        SizedBox(height: _tv ? 18 : 22),
+        Center(
+          child: Icon(
+            Icons.check_circle_rounded,
+            color: ForjaShellColors.brandGreen,
+            size: _tv ? 42 : 48,
           ),
         ),
-        SizedBox(height: _tv ? 6 : 8),
+        SizedBox(height: _tv ? 10 : 12),
         Text(
           name,
           textAlign: TextAlign.center,
@@ -529,15 +552,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             fontSize: 13,
           ),
         ),
-        SizedBox(height: _tv ? 14 : 18),
-        _portalDialogActionIcon(
-          icon: Icons.check_rounded,
-          color: ForjaShellColors.brandGreen,
-          tooltip: 'Done',
-          focusNode: _submitFocus,
-          tvItemIndex: _dialogOkIndex,
-          onTap: _closeAfterSuccess,
-        ),
+        SizedBox(height: _tv ? 8 : 10),
       ],
     );
   }
@@ -645,7 +660,18 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         !_editing && !_namingImported && !_addSucceeded;
     return AnimatedBuilder(
       animation: ctrl,
-      builder: (_, _) => Dialog(
+      builder: (_, _) {
+        final adding = ctrl.isAdding || _submitInFlight;
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.enter):
+                _trySubmitFromEnter,
+            const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                _trySubmitFromEnter,
+          },
+          child: Focus(
+            autofocus: false,
+            child: Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.symmetric(
           horizontal: _tv ? 28 : (_compact ? 20 : 24),
@@ -692,7 +718,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                   ),
                                 ),
                                 _portalDialogCloseButton(
-                                  onTap: ctrl.isAdding ? null : _cancel,
+                                  onTap: adding ? null : _cancel,
                                 ),
                               ],
                             ),
@@ -716,7 +742,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                 ),
                               ),
                             ],
-                            if (!ctrl.isAdding) ...[
+                            if (!adding) ...[
                               SizedBox(height: gapBeforeActions),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
@@ -727,7 +753,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                     tooltip: 'Add',
                                     focusNode: _submitFocus,
                                     tvItemIndex: _dialogOkIndex,
-                                    onTap: () => _submit(closePanel: false),
+                                    onTap: _submit,
                                   ),
                                   const SizedBox(width: 4),
                                   _portalDialogActionIcon(
@@ -741,7 +767,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                 ],
                               ),
                             ],
-                            if (ctrl.isAdding) ...[
+                            if (adding) ...[
                               SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -794,7 +820,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                     top: 0,
                                     right: 0,
                                     child: _portalDialogCloseButton(
-                                      onTap: ctrl.isAdding ? null : _cancel,
+                                      onTap: adding ? null : _cancel,
                                     ),
                                   ),
                                 ],
@@ -812,7 +838,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                   ),
                                 ),
                                 _portalDialogCloseButton(
-                                  onTap: ctrl.isAdding ? null : _cancel,
+                                  onTap: adding ? null : _cancel,
                                 ),
                               ],
                             ),
@@ -905,7 +931,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               ),
                             ),
                           ],
-                          if (!ctrl.isAdding &&
+                          if (!adding &&
                               !_namingImported &&
                               (_editing || _showManualForm)) ...[
                             SizedBox(height: gapBeforeActions),
@@ -932,7 +958,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               ],
                             ),
                           ],
-                          if (ctrl.isAdding && !_namingImported) ...[
+                          if (adding && !_namingImported) ...[
                             SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -975,6 +1001,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           ),
         ),
       ),
+          ),
+        );
+      },
     );
   }
 
@@ -1229,12 +1258,15 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             ),
             onArrowUp: () => _focusDialogItem(dialogIndex - 1),
             onArrowDown: () => _focusDialogItem(dialogIndex + 1),
+            onSubmit: _trySubmitFromEnter,
           )
         else
           TextField(
             controller: c,
             focusNode: focusNode,
             obscureText: obscure,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _trySubmitFromEnter(),
             style: GoogleFonts.plusJakartaSans(
               color: IptvShellStyle.textPrimary,
               fontSize: _tv ? 12 : (compact ? 13 : 14),

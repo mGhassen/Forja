@@ -118,6 +118,8 @@ abstract final class ProviderScoreMemory {
       if (t == 0) continue;
       out[provider] = (out[provider] ?? 0) + t;
     }
+    out.updateAll((_, score) => score < 0 ? 0 : score);
+    out.removeWhere((_, score) => score == 0);
     return out;
   }
 

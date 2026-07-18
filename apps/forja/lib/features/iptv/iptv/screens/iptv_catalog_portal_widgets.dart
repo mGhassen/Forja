@@ -6,6 +6,7 @@ class _IptvPortalDialogField extends StatefulWidget {
     required this.focusNode,
     required this.onArrowUp,
     required this.onArrowDown,
+    this.onSubmit,
     this.obscureText = false,
     this.style,
     this.hintText,
@@ -17,6 +18,7 @@ class _IptvPortalDialogField extends StatefulWidget {
   final FocusNode focusNode;
   final VoidCallback onArrowUp;
   final VoidCallback onArrowDown;
+  final VoidCallback? onSubmit;
   final bool obscureText;
   final TextStyle? style;
   final String? hintText;
@@ -104,6 +106,8 @@ class _IptvPortalDialogFieldState extends State<_IptvPortalDialogField> {
       obscureText: widget.obscureText,
       readOnly: tv && !_editing,
       enableInteractiveSelection: !tv || _editing,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => widget.onSubmit?.call(),
       style: widget.style,
       decoration: iptvDialogFieldDecoration(
         focused: widget.focusNode.hasFocus,
@@ -145,13 +149,16 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   bool _focused = false;
   bool _sharing = false;
   bool _showShareCode = false;
+  bool _confirmingDelete = false;
   String? _shareCode;
   late final FocusNode _favoriteFocus;
   late final FocusNode _copyFocus;
   late final FocusNode _editFocus;
   late final FocusNode _deleteFocus;
+  late final FocusNode _confirmYesFocus;
+  late final FocusNode _confirmNoFocus;
 
-  bool get _reveal => _focused || _lineHover;
+  bool get _reveal => _focused || _lineHover || _confirmingDelete;
 
   double get _rowHeight => _rowH;
 
@@ -162,6 +169,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     _copyFocus = FocusNode(debugLabel: 'iptv-portal-copy');
     _editFocus = FocusNode(debugLabel: 'iptv-portal-edit');
     _deleteFocus = FocusNode(debugLabel: 'iptv-portal-delete');
+    _confirmYesFocus = FocusNode(debugLabel: 'iptv-portal-delete-yes');
+    _confirmNoFocus = FocusNode(debugLabel: 'iptv-portal-delete-no');
   }
 
   @override
@@ -170,6 +179,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     _copyFocus.dispose();
     _editFocus.dispose();
     _deleteFocus.dispose();
+    _confirmYesFocus.dispose();
+    _confirmNoFocus.dispose();
     super.dispose();
   }
 
@@ -217,46 +228,27 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     }
   }
 
+  void _askDelete() {
+    setState(() => _confirmingDelete = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _confirmYesFocus.requestFocus();
+    });
+  }
+
+  void _cancelDelete() {
+    setState(() => _confirmingDelete = false);
+  }
+
   Future<void> _confirmDelete() async {
-    final name = widget.portal.displayLabel;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => ShellScope.rehost(
-        context,
-        AlertDialog(
-          backgroundColor: IptvShellStyle.surface,
-          title: Text(
-            'Delete portal?',
-            style: IptvShellStyle.pageTitle.copyWith(fontSize: 24),
-          ),
-          content: Text(
-            'Are you sure you want to delete "$name"? This cannot be undone.',
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
-          ),
-          actions: [
-            IptvTextAction(
-              icon: Icons.close_rounded,
-              label: 'Cancel',
-              color: Colors.white70,
-              onPressed: () => Navigator.of(ctx).pop(false),
-            ),
-            IptvPrimaryButton(
-              icon: Icons.delete_rounded,
-              label: 'Delete',
-              onPressed: () => Navigator.of(ctx).pop(true),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok != true || !mounted) return;
+    setState(() => _confirmingDelete = false);
     await widget.ctrl.deletePortal(widget.portal.key);
   }
 
   void _onRowTap() {
+    if (_confirmingDelete) {
+      _cancelDelete();
+      return;
+    }
     if (_showShareCode) {
       setState(() => _showShareCode = false);
       return;
@@ -411,7 +403,10 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           ? () => _favoriteFocus.requestFocus()
                           : _focusCatalogFromPanel,
                       onRightEdge: _reveal
-                          ? () => _copyFocus.requestFocus()
+                          ? () => (_confirmingDelete
+                                  ? _confirmYesFocus
+                                  : _copyFocus)
+                              .requestFocus()
                           : null,
                       onFocusChange: (focused) {
                         setState(() => _focused = focused);
@@ -448,7 +443,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: _showShareCode || _sharing
+                              child: _confirmingDelete
+                                  ? _deleteConfirmLine()
+                                  : _showShareCode || _sharing
                                   ? _shareCodeLine()
                                   : Column(
                                       crossAxisAlignment:
@@ -524,7 +521,10 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 tvItemIndex: 0,
                                 onLeftEdge: _focusCatalogFromPanel,
                                 onRightEdge: _reveal
-                                    ? () => _copyFocus.requestFocus()
+                                    ? () => (_confirmingDelete
+                                            ? _confirmYesFocus
+                                            : _copyFocus)
+                                        .requestFocus()
                                     : null,
                                 child: Padding(
                                   padding: const EdgeInsets.all(4),
@@ -560,42 +560,74 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           height: _rowHeight,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              _IptvRailAction(
-                                tooltip: 'Copy share code',
-                                icon: _sharing
-                                    ? Icons.hourglass_top_rounded
-                                    : Icons.copy_rounded,
-                                color: Colors.white60,
-                                onTap: _sharing ? null : _copy,
-                                focusNode: _copyFocus,
-                                tvRowId: _actionsRowId,
-                                tvItemIndex: 1,
-                                onLeftEdge: () => _favoriteFocus.requestFocus(),
-                                onRightEdge: () => _editFocus.requestFocus(),
-                              ),
-                              _IptvRailAction(
-                                tooltip: 'Edit',
-                                icon: Icons.edit_rounded,
-                                color: Colors.white60,
-                                onTap: widget.onEdit,
-                                focusNode: _editFocus,
-                                tvRowId: _actionsRowId,
-                                tvItemIndex: 2,
-                                onLeftEdge: () => _copyFocus.requestFocus(),
-                                onRightEdge: () => _deleteFocus.requestFocus(),
-                              ),
-                              _IptvRailAction(
-                                tooltip: 'Delete',
-                                icon: Icons.delete_rounded,
-                                color: const Color(0xFFEF4444),
-                                onTap: _confirmDelete,
-                                focusNode: _deleteFocus,
-                                tvRowId: _actionsRowId,
-                                tvItemIndex: 3,
-                                onLeftEdge: () => _editFocus.requestFocus(),
-                              ),
-                            ],
+                            children: _confirmingDelete
+                                ? [
+                                    _IptvRailAction(
+                                      tooltip: 'Yes',
+                                      icon: Icons.check_rounded,
+                                      color: const Color(0xFFEF4444),
+                                      onTap: _confirmDelete,
+                                      focusNode: _confirmYesFocus,
+                                      tvRowId: _actionsRowId,
+                                      tvItemIndex: 1,
+                                      onLeftEdge: () =>
+                                          _favoriteFocus.requestFocus(),
+                                      onRightEdge: () =>
+                                          _confirmNoFocus.requestFocus(),
+                                    ),
+                                    _IptvRailAction(
+                                      tooltip: 'No',
+                                      icon: Icons.close_rounded,
+                                      color: Colors.white60,
+                                      onTap: _cancelDelete,
+                                      focusNode: _confirmNoFocus,
+                                      tvRowId: _actionsRowId,
+                                      tvItemIndex: 2,
+                                      onLeftEdge: () =>
+                                          _confirmYesFocus.requestFocus(),
+                                    ),
+                                  ]
+                                : [
+                                    _IptvRailAction(
+                                      tooltip: 'Copy share code',
+                                      icon: _sharing
+                                          ? Icons.hourglass_top_rounded
+                                          : Icons.copy_rounded,
+                                      color: Colors.white60,
+                                      onTap: _sharing ? null : _copy,
+                                      focusNode: _copyFocus,
+                                      tvRowId: _actionsRowId,
+                                      tvItemIndex: 1,
+                                      onLeftEdge: () =>
+                                          _favoriteFocus.requestFocus(),
+                                      onRightEdge: () =>
+                                          _editFocus.requestFocus(),
+                                    ),
+                                    _IptvRailAction(
+                                      tooltip: 'Edit',
+                                      icon: Icons.edit_rounded,
+                                      color: Colors.white60,
+                                      onTap: widget.onEdit,
+                                      focusNode: _editFocus,
+                                      tvRowId: _actionsRowId,
+                                      tvItemIndex: 2,
+                                      onLeftEdge: () =>
+                                          _copyFocus.requestFocus(),
+                                      onRightEdge: () =>
+                                          _deleteFocus.requestFocus(),
+                                    ),
+                                    _IptvRailAction(
+                                      tooltip: 'Delete',
+                                      icon: Icons.delete_rounded,
+                                      color: const Color(0xFFEF4444),
+                                      onTap: _askDelete,
+                                      focusNode: _deleteFocus,
+                                      tvRowId: _actionsRowId,
+                                      tvItemIndex: 3,
+                                      onLeftEdge: () =>
+                                          _editFocus.requestFocus(),
+                                    ),
+                                  ],
                           ),
                         ),
                       ),
@@ -607,6 +639,21 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           ),
         );
       },
+    );
+  }
+
+  Widget _deleteConfirmLine() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        'Delete this portal?',
+        style: GoogleFonts.plusJakartaSans(
+          color: const Color(0xFFEF4444),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          height: 1.25,
+        ),
+      ),
     );
   }
 

@@ -88,4 +88,4 @@ RFC-001, RFC-002, RFC-004 (core providers), RFC-021 (release ship hygiene)
 
 ## Follow-up (v1.0.1 performance)
 
-Before v1.1 UX work, ship a performance patch: [RFC-016](../016-[partial]-lazy-tab-mounting.md) (lazy tabs), [RFC-017](../017-[draft]-deferred-engine-boot.md) (deferred engines), [RFC-018](../018-[draft]-startup-splash-home.md) (splash + Home stagger).
+Before v1.1 UX work, ship a performance patch: [RFC-016](../016-[partial]-lazy-tab-mounting.md) (lazy tabs), [RFC-017](../017-[open]-deferred-engine-boot.md) (deferred / profile-gated engines), [RFC-018](../018-[draft]-startup-splash-home.md) (splash + Home stagger).

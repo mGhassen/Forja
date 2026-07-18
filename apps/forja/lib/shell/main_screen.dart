@@ -81,8 +81,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   final Map<String, Widget> _tabCache = {};
-  final Set<String> _mountedTabIds = {'home'};
-  final List<String> _tabLru = ['home'];
+  /// Empty until [_loadNavbarConfig] mounts the profile default tab.
+  final Set<String> _mountedTabIds = {};
+  final List<String> _tabLru = [];
   List<String> _visibleIds = _bootstrapVisibleNavIds();
   bool _initialNavResolved = false;
   BuildContext? _shellScopedContext;

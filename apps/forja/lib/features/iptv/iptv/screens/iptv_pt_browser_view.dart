@@ -343,8 +343,8 @@ class _BrowserViewState extends State<_BrowserView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final categoryWidth = widget.compact
-            ? (constraints.maxWidth * 0.34).clamp(132.0, 184.0)
-            : (widget.wide ? 240.0 : 200.0);
+            ? (constraints.maxWidth * 0.38).clamp(168.0, 220.0)
+            : (widget.wide ? 300.0 : 260.0);
 
         return Row(
           children: [
