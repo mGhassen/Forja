@@ -38,8 +38,8 @@ function DownloadTrigger({
 }
 
 /**
- * One download control per platform, wired to the latest GitHub release asset
- * (Supabase mirror if synced; otherwise GitHub Releases API).
+ * One download control per platform, wired to the latest release asset
+ * (version from GitHub Releases; file URL from Supabase Storage).
  * Platforms without a file in the latest release fall back to `/download`.
  */
 export function PlatformDownloadButtons({

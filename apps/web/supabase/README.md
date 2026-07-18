@@ -135,6 +135,24 @@ supabase db reset
 node ../../scripts/create-forja-test-users.js
 ```
 
+## Release installers (Storage)
+
+Public bucket **`releases`** (migration `*_releases_storage_bucket.sql`) holds
+DMG / EXE / AppImage / APK objects at `v{version}/{filename}`.
+
+- **Upload:** Release CI runs `scripts/upload_release_to_supabase.sh` with
+  GitHub secret `SUPABASE_SERVICE_ROLE_KEY` (never ship the service role to
+  clients).
+- **Retention:** after each upload the script keeps only the **newest 3**
+  version folders (`RELEASE_STORAGE_KEEP`, default `3`) and deletes older
+  objects so Storage stays within plan limits.
+- **Download URL:**
+  `{SUPABASE_URL}/storage/v1/object/public/releases/v{version}/{filename}`
+- **Hosted size limit:** raise Dashboard → Storage global file size if uploads
+  fail (bucket allows up to 1 GiB). Local `config.toml` uses `file_size_limit = "1GiB"`.
+- **Custom domain (optional):** Dashboard → Storage → custom domain (e.g.
+  `downloads.forjahq.xyz`) so installers are not served from `*.supabase.co`.
+
 ## Remote (production / shared project)
 
 ```bash

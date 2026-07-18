@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Release, ReleaseAsset } from '@/lib/database.types'
 import { compareSemverDesc, DOC_CHANGELOGS } from '@/lib/changelog-docs'
+import { preferReleaseStorageUrl } from '@/lib/release-storage'
 
 export type ReleaseWithAssets = Release & { assets: ReleaseAsset[] }
 
@@ -165,7 +166,12 @@ function fromGitHub(release: GhRelease): ReleaseWithAssets {
       release_id: releaseId,
       platform: detectPlatform(asset.name),
       name: asset.name,
-      download_url: asset.browser_download_url,
+      // Installers are hosted on Supabase Storage; GitHub stays discovery-only.
+      download_url: preferReleaseStorageUrl(
+        version,
+        asset.name,
+        asset.browser_download_url,
+      ),
       size_bytes: asset.size,
     })),
   }
@@ -245,7 +251,8 @@ export function mergeChangelogReleases(
 }
 
 /**
- * Latest release for download buttons — GitHub Releases only.
+ * Latest release for download buttons — version/assets from GitHub;
+ * download URLs point at Supabase Storage when configured.
  */
 export function useLatestRelease() {
   return useQuery({

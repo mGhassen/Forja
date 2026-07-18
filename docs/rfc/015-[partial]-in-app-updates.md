@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) |
-| **Current slice** | Multi-version changelog — dialog shows all GitHub release notes since the installed version |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads) |
+| **Current slice** | Installers on Supabase Storage (1 GiB/object, keep newest 3 versions); GitHub for discovery + notes |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -91,9 +91,21 @@
 
 ---
 
+## Acceptance (Supabase Storage downloads)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A28 | Public Storage bucket `releases` (1 GiB object limit) via migration | ✅ |
+| 2 | R15-A29 | Release CI uploads flattened installers to `releases/v{version}/` with service role | ✅ |
+| 3 | R15-A30 | Web `/download` + landing CTAs use Supabase public object URLs | ✅ |
+| 4 | R15-A31 | `AppUpdaterService` downloads installers from Supabase Storage (GitHub API for version/notes; GitHub asset URL fallback if `SUPABASE_URL` unset) | ✅ |
+| 5 | R15-A32 | After upload, prune Storage to newest 3 version folders (`RELEASE_STORAGE_KEEP`) | ✅ |
+
+---
+
 ## Summary
 
-Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. GitHub is the publish source of truth and the only in-app check path after RFC-036 dropped the Supabase `releases` mirror.
+Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. Version discovery stays on the GitHub Releases API; installer bytes are served from the public Supabase Storage bucket `releases` after each **Release Forja** run.
 
 ## Goals
 
@@ -122,10 +134,10 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 ┌───────────────────────────▼─────────────────────────────┐
 │  apps/forja/lib/shared/services/app_updater_service.dart │
 │    GET GitHub Releases API → semver compare → UpdateInfo │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-                    GitHub Releases
-              (tag vX.Y.Z + platform assets)
+└───────────────┬─────────────────────────┬───────────────┘
+                │                         │
+        GitHub Releases API        Supabase Storage
+     (version + notes + names)   public releases/vX.Y.Z/*
 ```
 
 
@@ -137,7 +149,9 @@ Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_u
 
 **Release tag:** `v1.2.3` (leading `v` stripped for compare).
 
-Latest install target = newest non-draft, non-prerelease release. Download assets come from that release only.
+Latest install target = newest non-draft, non-prerelease release. Asset **names** come from that GitHub release; download URLs are rewritten to Supabase Storage:
+
+`{SUPABASE_URL}/storage/v1/object/public/releases/v{version}/{filename}`
 
 **Required assets per platform:**
 
@@ -214,7 +228,7 @@ Add to `SettingsService` / `storage`:
 
 ## CI / release integration
 
-`.github/workflows/build.yml` is manual only (optional smoke builds, artifacts only). `.github/workflows/release.yml` (**Release Forja**) — new version or existing tag; publish GitHub Release with:
+`.github/workflows/build.yml` is manual only (optional smoke builds, artifacts only). `.github/workflows/release.yml` (**Release Forja**) — new version or existing tag; publish GitHub Release **and** upload the same flattened installers to Supabase Storage via `scripts/upload_release_to_supabase.sh`:
 
 ```
 Forja-1.2.3-android-tv-arm64.apk
@@ -224,9 +238,11 @@ Forja-1.2.3-macos-arm64.dmg
 Forja-1.2.3-linux-x86_64.AppImage
 ```
 
+Storage path: `releases/v{version}/{filename}`. Requires repo secret `SUPABASE_SERVICE_ROLE_KEY`. Hosted projects must allow ≥ installer size under Dashboard → Storage (bucket limit 1 GiB). After each upload, CI keeps only the newest 3 version folders and deletes older installer objects.
+
 Release workflow supports per-platform toggles (macOS, Windows, Linux, Android TV). Untagged commits: `.github/workflows/backfill-tags.yml`. Android TV requires signing secrets (`FORJA_KEYSTORE_*`).
 
-GitHub Release created from tag with these assets attached. App updater matches by filename patterns.
+GitHub Release keeps tags/notes (+ optional backup assets). App updater matches by filename patterns and downloads from Storage.
 
 ## Future (v1.2+)
 

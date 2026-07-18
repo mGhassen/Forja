@@ -61,6 +61,8 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   # Prefer publishable; fall back to legacy anon secret until that secret is renamed.
   SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
+  # Service role — upload release installers to Storage (never ship to clients).
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   # Required portal origin for desktop Web login / signup (never ship localhost).
   FORJA_WEB_URL: ${{ secrets.FORJA_WEB_URL }}
   # Public Turnstile site key for in-app email/password when Auth captcha is on.
@@ -77,6 +79,10 @@ jobs:
         run: |
           if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
             echo "::error::Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY) repository secrets."
+            exit 1
+          fi
+          if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            echo "::error::Set SUPABASE_SERVICE_ROLE_KEY repository secret (Storage upload for release installers)."
             exit 1
           fi
           if [[ -z "$FORJA_WEB_URL" ]]; then
@@ -506,3 +512,10 @@ jobs:
           body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'RELEASE_NOTES.md' || '' }}
           generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           files: release-flat/*
+
+      - name: Upload installers to Supabase Storage
+        run: |
+          chmod +x scripts/upload_release_to_supabase.sh
+          ./scripts/upload_release_to_supabase.sh \
+            "${{ needs.resolve_version.outputs.version }}" \
+            release-flat

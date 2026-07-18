@@ -37,8 +37,10 @@ smtp_port = 55325
 pop3_port = 55326
 
 [storage]
-# The maximum file size allowed (e.g. "5MB", "500KB").
-file_size_limit = "50MiB"
+# Global ceiling for local Storage. The `releases` bucket allows up to 1 GiB
+# per object (see migrations/*_releases_storage_bucket.sql). Hosted projects
+# must raise Dashboard → Storage → global file size if uploads fail at 50 MiB.
+file_size_limit = "1GiB"
 
 [auth]
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used

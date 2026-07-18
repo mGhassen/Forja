@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja can check for newer builds when the app starts and lets you check manually from Settings. Updates come from GitHub Releases. Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
+Forja can check for newer builds when the app starts and lets you check manually from Settings. Version discovery uses GitHub Releases; installer files download from Forja’s Supabase Storage. Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
 
 ## How to open it
 
@@ -33,7 +33,7 @@ Forja can check for newer builds when the app starts and lets you check manually
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI
 - macOS releases publish `Forja-{version}-macos-arm64.dmg`; the updater prefers the host arch and falls back to any macOS `.dmg`
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
-- Download latest builds from [GitHub Releases](https://github.com/mGhassen/Forja/releases) if in-app update fails or no platform asset is attached
+- Download latest builds from the [web download page](https://forjahq.xyz/download) if in-app update fails or no platform asset is attached
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats
 
 ## Related

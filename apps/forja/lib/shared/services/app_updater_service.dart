@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/services/app_updater_release_notes.dart';
+import 'package:forja/shared/services/release_storage_urls.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -83,6 +84,7 @@ class AppUpdaterService {
 
     String? downloadUrl;
     final assets = latest.assets;
+    final version = latest.version;
 
     if (Platform.isWindows) {
       final asset = assets.cast<dynamic>().firstWhere(
@@ -91,7 +93,7 @@ class AppUpdaterService {
                 (a['name'] as String).endsWith('.exe'),
             orElse: () => null,
           );
-      downloadUrl = asset?['browser_download_url'] as String?;
+      downloadUrl = _assetDownloadUrl(version, asset);
     } else if (Platform.isLinux) {
       final asset = assets.cast<dynamic>().firstWhere(
             (a) =>
@@ -100,11 +102,11 @@ class AppUpdaterService {
                     (a['name'] as String).endsWith('.deb')),
             orElse: () => null,
           );
-      downloadUrl = asset?['browser_download_url'] as String?;
+      downloadUrl = _assetDownloadUrl(version, asset);
     } else if (Platform.isMacOS) {
-      downloadUrl = _pickMacosDmgUrl(assets);
+      downloadUrl = _pickMacosDmgUrl(version, assets);
     } else if (Platform.isAndroid) {
-      downloadUrl = _pickAndroidApkUrl(assets);
+      downloadUrl = _pickAndroidApkUrl(version, assets);
     } else if (Platform.isIOS) {
       downloadUrl = latest.htmlUrl;
     }
@@ -120,7 +122,21 @@ class AppUpdaterService {
     );
   }
 
-  String? _pickAndroidApkUrl(List<dynamic> assets) {
+  /// Prefer Supabase Storage public URL; fall back to GitHub asset URL.
+  String? _assetDownloadUrl(String version, dynamic asset) {
+    if (asset == null) return null;
+    final name = asset['name'] as String?;
+    if (name == null || name.isEmpty) return null;
+    final github = asset['browser_download_url'] as String?;
+    final url = ReleaseStorageUrls.preferStorage(
+      version: version,
+      filename: name,
+      githubDownloadUrl: github,
+    );
+    return url.isEmpty ? null : url;
+  }
+
+  String? _pickAndroidApkUrl(String version, List<dynamic> assets) {
     final apks = assets
         .where((a) => (a['name'] as String).toLowerCase().endsWith('.apk'))
         .toList();
@@ -139,16 +155,16 @@ class AppUpdaterService {
       for (final asset in candidates) {
         final name = (asset['name'] as String).toLowerCase();
         if (name.contains(needle)) {
-          return asset['browser_download_url'] as String;
+          return _assetDownloadUrl(version, asset);
         }
       }
     }
 
-    return candidates.first['browser_download_url'] as String?;
+    return _assetDownloadUrl(version, candidates.first);
   }
 
   /// Prefer `Forja-*-macos-arm64.dmg` (CI), then any macOS `.dmg` / `.zip`.
-  String? _pickMacosDmgUrl(List<dynamic> assets) {
+  String? _pickMacosDmgUrl(String version, List<dynamic> assets) {
     final macosAssets = assets.where((a) {
       final name = (a['name'] as String).toLowerCase();
       return name.contains('macos') &&
@@ -160,16 +176,16 @@ class AppUpdaterService {
     for (final asset in macosAssets) {
       final name = (asset['name'] as String).toLowerCase();
       if (name.contains(archNeedle) && name.endsWith('.dmg')) {
-        return asset['browser_download_url'] as String;
+        return _assetDownloadUrl(version, asset);
       }
     }
     for (final asset in macosAssets) {
       final name = (asset['name'] as String).toLowerCase();
       if (name.endsWith('.dmg')) {
-        return asset['browser_download_url'] as String;
+        return _assetDownloadUrl(version, asset);
       }
     }
-    return macosAssets.first['browser_download_url'] as String?;
+    return _assetDownloadUrl(version, macosAssets.first);
   }
 
   String _macosArchNeedle() {

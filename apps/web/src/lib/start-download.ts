@@ -1,7 +1,7 @@
 /**
  * Start a file download without opening a new tab / navigating away.
- * Uses a hidden iframe so GitHub’s Content-Disposition: attachment
- * is handled in the background (cross-origin `download` attrs are ignored).
+ * Uses a hidden iframe so cross-origin installers (Supabase Storage) are
+ * handled in the background (`download` attrs are ignored cross-origin).
  */
 export function startBackgroundDownload(url: string): void {
   if (typeof document === 'undefined') return
