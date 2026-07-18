@@ -158,5 +158,27 @@ void main() {
         'stream-c',
       ]);
     });
+
+    test('playing a middle stream does not imply reorder of the list', () {
+      // Regression guard: panel must keep extraction order; active status is
+      // tracked by URL/index, not by moving the row to front.
+      final sources = [
+        _source('stream-a'),
+        _source('stream-b'),
+        _source('stream-c'),
+      ];
+      const playingUrl = 'https://example.com/stream-b';
+
+      final order = PlayerStreamMenu.orderedSourceEntriesForPanel(sources);
+      final playingIdx =
+          order.indexWhere((e) => e.value.url == playingUrl);
+
+      expect(playingIdx, 1);
+      expect(order.map((e) => e.value.title).toList(), [
+        'stream-a',
+        'stream-b',
+        'stream-c',
+      ]);
+    });
   });
 }

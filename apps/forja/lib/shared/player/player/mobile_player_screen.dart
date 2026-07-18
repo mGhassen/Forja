@@ -106,6 +106,7 @@ class MobilePlayerScreen extends StatefulWidget {
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
   final bool pinSource;
+  final bool streamsPrevalidated;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
@@ -143,6 +144,7 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,
+    this.streamsPrevalidated = false,
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
     this.onReloadStreams,

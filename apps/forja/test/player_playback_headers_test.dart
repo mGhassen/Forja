@@ -142,6 +142,35 @@ void main() {
       expect(h['Origin'], 'https://megaplay.buzz');
     });
 
+    test('forces megaplay Referer for nekostream anime CDN when missing', () {
+      const url =
+          'https://9hjkrt.nekostream.site/abc/def/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('rewrites nekostream self-Referer to megaplay', () {
+      const url =
+          'https://9hjkrt.nekostream.site/abc/def/master.m3u8';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://9hjkrt.nekostream.site/',
+      }, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('rewrites enma scrape Referer to megaplay for nekostream', () {
+      const url =
+          'https://9hjkrt.nekostream.site/abc/def/master.m3u8';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://www.enma.lol/',
+        'Origin': 'https://www.enma.lol',
+      }, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
     test('rewrites mewstream self-Referer to megaplay', () {
       const url = 'https://cdn.mewstream.buzz/anime/abc/master.m3u8';
       final h = resolvePlaybackHttpHeaders({

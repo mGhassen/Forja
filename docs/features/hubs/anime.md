@@ -27,7 +27,7 @@ Tap **Anime** in the navigation bar.
 
 - Anime uses its own player and history — separate from TMDB TV details
 - Reorder anime sources under **Settings → Playback → Anime provider order** (same real provider names as the in-player source menu)
-- Megaplay / Vidwish need Anikoto catalog linkage; Miruro works from AniList id alone (via a Cloudflare WebView pipe on `miruro.tv` / mirrors when plain HTTP is blocked)
+- Megaplay plays from AniList id via `/stream/ani/…` (Anikoto `s-2` embed ids still preferred when matched). Vidwish still prefers Anikoto. Megaplay HLS CDNs (`mewstream`, `nekostream`, …) always use a `megaplay.buzz` Referer. Miruro works from AniList id alone (Cloudflare WebView pipe on `miruro.tv` / mirrors — blank / failed challenge pages are not treated as unlocked)
 - **VidNest HiAnime** and **VidNest AnimePahe** resolve from AniList id via `new.vidnest.fun` (same decrypt as movie VidNest)
 - AllAnime **Default** tries Yt-mp4 first (direct MP4), then S-mp4 / Luf-Mp4 when those clock links still work
 - Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama) — progress shows `N / M CHECKED · K UP`; next to **Cancel**, open the layers icon for the server list and tap a source to check it manually. If nothing works, the same screen explains it in plain language (**No streams found**) with **Try again** and **Close**; a dead saved link offers **Search again**

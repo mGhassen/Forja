@@ -113,7 +113,8 @@ mixin _DesktopPlayerPlayback
         // Fast-fail dead CDN/extract links for every provider before mpv open.
         // Local torrent/loopback is validated by demux, not HTTP probe.
         final catalogUrl = source.url;
-        if (!isLocalTorrentStreamUrl(catalogUrl) &&
+        if (!widget.streamsPrevalidated &&
+            !isLocalTorrentStreamUrl(catalogUrl) &&
             !isLocalTorrentStreamUrl(openUrl) &&
             widget.magnetLink == null) {
           final reachable = await validateStreamSourceForCheck(
@@ -364,7 +365,8 @@ mixin _DesktopPlayerPlayback
         await _invalidateWebstreamingCacheForCurrent();
 
         final hostOwnsReload = widget.onReloadStreams != null;
-        if (_s._providerPinned && !hostOwnsReload) {
+        if (widget.streamsPrevalidated ||
+            (_s._providerPinned && !hostOwnsReload)) {
           await _failPlaybackNoFailover(
             message: 'Playback failed. Pick another server from Sources.',
           );

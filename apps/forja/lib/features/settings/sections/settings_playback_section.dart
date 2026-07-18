@@ -30,6 +30,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
+  bool _simpleStreamingResolve = false;
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _preferredAudioLang = 'None';
   bool _avoidUnsupportedAudio = true;
@@ -51,6 +52,8 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
     final playSourceWebstreaming = await _settings
         .isPlaySourceWebstreamingEnabled();
+    final simpleStreamingResolve =
+        await _settings.isSimpleStreamingResolveEnabled();
     final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final streamOrder = await _settings.getStreamProviderOrder();
     final animeOrder = await _settings.getAnimeProviderOrder();
@@ -66,6 +69,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _playSourceTorrent = playSourceTorrent;
       _playSourceStremio = playSourceStremio;
       _playSourceWebstreaming = playSourceWebstreaming;
+      _simpleStreamingResolve = simpleStreamingResolve;
       _builtInEngine = builtInEngine;
       _streamProviderOrder = streamOrder;
       _animeProviderOrder = animeOrder;
@@ -139,6 +143,17 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                   }
                 },
               ),
+              if (_playSourceWebstreaming)
+                settingsFocusableToggle(
+                  context,
+                  'Simple resolve (experimental)',
+                  'One provider at a time: filter streams, probe, then open the player once. Leaves the old race path off.',
+                  _simpleStreamingResolve,
+                  (val) async {
+                    await _settings.setSimpleStreamingResolveEnabled(val);
+                    setState(() => _simpleStreamingResolve = val);
+                  },
+                ),
             ],
           ),
         if (widget.visibility.showProviderScoring) _buildProviderScoringSection(),

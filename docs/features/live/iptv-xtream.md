@@ -56,7 +56,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
-- **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk
+- **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk. Scrape understands plain `get.php` links, Host/User/Pass cards (including common unicode spellings), and tabular `host:port user:pass` dumps — Stalker/MAC portal posts are ignored (Forja uses Xtream login, not device MAC)
 - Portal quality varies — timeouts usually mean provider or network issues
 - Clear stale alive checks / channel scan hits from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay)
 - Export or import Xtream portals as CSV from **Settings → Data & backup → IPTV portals** when the IPTV tab is visible (same format as the web remote settings page; import adds only portals that are not already saved)

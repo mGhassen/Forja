@@ -77,7 +77,12 @@ fn playback_headers(url: &str) -> (String, String) {
     if host.contains("hakunaymatata.com") {
         return (String::new(), String::new());
     }
-    if host.contains("mewstream.buzz") || host.contains("megaplay") {
+    // mewstream / nekostream / lostproject rotate; CDN rejects self + enma.
+    if host.contains("mewstream.buzz")
+        || host.contains("nekostream")
+        || host.contains("lostproject.club")
+        || host.contains("megaplay")
+    {
         return (
             "https://megaplay.buzz/".into(),
             "https://megaplay.buzz".into(),
@@ -177,6 +182,15 @@ mod tests {
     #[test]
     fn playback_headers_mewstream_uses_megaplay_referer() {
         let (r, o) = playback_headers("https://cdn.mewstream.buzz/anime/x/master.m3u8");
+        assert!(r.contains("megaplay"));
+        assert!(o.contains("megaplay"));
+    }
+
+    #[test]
+    fn playback_headers_nekostream_uses_megaplay_referer() {
+        let (r, o) = playback_headers(
+            "https://9hjkrt.nekostream.site/abc/def/master.m3u8",
+        );
         assert!(r.contains("megaplay"));
         assert!(o.contains("megaplay"));
     }

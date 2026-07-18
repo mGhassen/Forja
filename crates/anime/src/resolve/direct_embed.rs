@@ -95,12 +95,56 @@ pub fn direct_embed_extract(embed_url: &str, referer: Option<&str>) -> Result<Op
         }
     }
 
+    let (play_referer, play_origin) = stream_playback_headers(file, &origin);
     Ok(Some(StreamResultOut {
         url: file.to_string(),
-        referer: format!("{origin}/"),
-        origin,
+        referer: play_referer,
+        origin: play_origin,
         tracks,
         provider: String::new(),
         stream_label: None,
     }))
+}
+
+/// CDN hosts rotate (nekostream, mewstream, …). Self-origin / scrape Referer
+/// → 403; force the embed family host used by the player header rewrite.
+fn stream_playback_headers(file: &str, embed_origin: &str) -> (String, String) {
+    let host = file
+        .strip_prefix("https://")
+        .or_else(|| file.strip_prefix("http://"))
+        .and_then(|rest| rest.split('/').next())
+        .unwrap_or("")
+        .to_lowercase();
+    if host.contains("mewstream")
+        || host.contains("nekostream")
+        || host.contains("lostproject")
+        || host.contains("megaplay")
+    {
+        return (
+            "https://megaplay.buzz/".into(),
+            "https://megaplay.buzz".into(),
+        );
+    }
+    if host.contains("watching.onl") || host.contains("vidwish") {
+        return (
+            "https://vidwish.live/".into(),
+            "https://vidwish.live".into(),
+        );
+    }
+    (format!("{embed_origin}/"), embed_origin.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nekostream_file_forces_megaplay_referer() {
+        let (r, o) = stream_playback_headers(
+            "https://9hjkrt.nekostream.site/a/b/master.m3u8",
+            "https://megaplay.buzz",
+        );
+        assert!(r.contains("megaplay.buzz"));
+        assert!(o.contains("megaplay.buzz"));
+    }
 }

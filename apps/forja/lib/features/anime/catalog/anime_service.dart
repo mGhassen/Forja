@@ -420,33 +420,31 @@ class AnimeService {
     return out;
   }
 
-  // ─── Stream embed URLs (the 4 servers enma.lol uses) ───────────
+  // ─── Stream embed URLs (Megaplay / Vidwish) ────────────────────
   // HD-1 = megaplay.buzz, HD-2 = vidwish.live. Both expose:
-  //   /stream/s-2/{anikoto_embed_id}/{sub|dub}   ← preferred (catalog ID)
-  //   /stream/ani/{anilist_id}/{ep}/{sub|dub}    ← fallback (mapping incomplete)
+  //   /stream/s-2/{anikoto_embed_id}/{sub|dub}  ← preferred when Anikoto matched
+  //   /stream/ani/{anilist_id}/{ep}/{sub|dub}   ← AniList-native (megaplay.buzz/api)
   //
-  // Direct access to embeds is disabled by megaplay/vidwish; they only respond
-  // when loaded as an iframe with a referer from an embedding site. We pass
-  // `referer: https://www.enma.lol/` to the extractor for that reason.
+  // Direct access to embeds is disabled; pass `referer: https://www.enma.lol/`
+  // to the extractor so getSources responds.
 
-  String? _embed({
+  String _embed({
     required String host, // 'megaplay.buzz' | 'vidwish.live'
     required int anilistId,
     required int episode,
     required String category,
     String? embedId, // anikoto episode_embed_id
   }) {
-    // /stream/ani/{anilistId}/{ep}/{cat} consistently 404s — the only
-    // reliable URL pattern is /stream/s-2/{embedId}/{cat}. If we don't
-    // have an embedId from Anikoto, return null so the caller can skip
-    // this server entirely instead of building a dead URL.
-    if (embedId == null || embedId.isEmpty) return null;
-    return 'https://$host/stream/s-2/$embedId/$category?autoPlay=1';
+    if (embedId != null && embedId.isNotEmpty) {
+      return 'https://$host/stream/s-2/$embedId/$category?autoPlay=1';
+    }
+    // AniList path — no Anikoto catalog id required (see megaplay.buzz/api).
+    return 'https://$host/stream/ani/$anilistId/$episode/$category?autoPlay=1';
   }
 
-  /// Build all 4 server embeds for a given episode. Requires [series]
-  /// (Anikoto resolution) — without it the `/stream/s-2/` URL can't be
-  /// built and the returned list is empty.
+  /// Build Megaplay/Vidwish + Miruro/AllAnime/VidNest embeds for an episode.
+  ///
+  /// Megaplay/Vidwish always emit: Anikoto `s-2` when matched, else `/stream/ani/`.
   List<AnimeEmbed> buildAllEmbeds({
     required int anilistId,
     required int episode,
@@ -464,35 +462,56 @@ class AnimeService {
       embedId = ep?.embedId;
     }
 
-    final all = <AnimeEmbed>[];
-    if (embedId != null && embedId.isNotEmpty) {
-      all.addAll([
-        AnimeEmbed(
-          label: AnimeStreamProviders.displayName('megaplay'),
-          server: 'megaplay',
+    final all = <AnimeEmbed>[
+      AnimeEmbed(
+        label: AnimeStreamProviders.displayName('megaplay'),
+        server: 'megaplay',
+        category: 'sub',
+        url: _embed(
+          host: 'megaplay.buzz',
+          anilistId: anilistId,
+          episode: episode,
           category: 'sub',
-          url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
+          embedId: embedId,
         ),
-        AnimeEmbed(
-          label: AnimeStreamProviders.displayName('vidwish'),
-          server: 'vidwish',
+      ),
+      AnimeEmbed(
+        label: AnimeStreamProviders.displayName('vidwish'),
+        server: 'vidwish',
+        category: 'sub',
+        url: _embed(
+          host: 'vidwish.live',
+          anilistId: anilistId,
+          episode: episode,
           category: 'sub',
-          url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
+          embedId: embedId,
         ),
-        AnimeEmbed(
-          label: AnimeStreamProviders.displayName('megaplay'),
-          server: 'megaplay',
+      ),
+      AnimeEmbed(
+        label: AnimeStreamProviders.displayName('megaplay'),
+        server: 'megaplay',
+        category: 'dub',
+        url: _embed(
+          host: 'megaplay.buzz',
+          anilistId: anilistId,
+          episode: episode,
           category: 'dub',
-          url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
+          embedId: embedId,
         ),
-        AnimeEmbed(
-          label: AnimeStreamProviders.displayName('vidwish'),
-          server: 'vidwish',
+      ),
+      AnimeEmbed(
+        label: AnimeStreamProviders.displayName('vidwish'),
+        server: 'vidwish',
+        category: 'dub',
+        url: _embed(
+          host: 'vidwish.live',
+          anilistId: anilistId,
+          episode: episode,
           category: 'dub',
-          url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
+          embedId: embedId,
         ),
-      ]);
-    }
+      ),
+    ];
     // Miruro fallback — emit one embed per known provider per category. The
     // resolver fans them all out in parallel; whichever returns a stream
     // first wins. The episodes lookup is cached inside MiruroExtractor so all
@@ -810,10 +829,13 @@ class AnimeService {
     }
   }
 
-  /// Megaplay/vidwish need Anikoto embed ids; Miruro/AllAnime do not.
+  /// Vidwish still prefers Anikoto `s-2` ids (AniList mapping is spotty).
+  /// Megaplay works via `/stream/ani/` without Anikoto. Auto still resolves
+  /// Anikoto so Vidwish can use `s-2` when available.
   static bool savedSourceNeedsAnikoto(String? sourceKey) {
     if (sourceKey == null || sourceKey.isEmpty) return true;
-    return sourceKey == 'megaplay' || sourceKey == 'vidwish';
+    if (sourceKey == 'megaplay') return false;
+    return sourceKey == 'vidwish';
   }
 
   /// Lightweight reachability check before replaying cached stream URLs.

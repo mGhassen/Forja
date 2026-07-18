@@ -81,32 +81,42 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     providerId ??= _s._webstreamingActiveProviderId;
     providerSources ??= _s._webstreamingStreams;
     if (providerId == null || providerSources.isEmpty) return;
-    final selected = providerSources.firstWhere(
-      (s) => s.url == sourceUrl,
-      orElse: () => StreamSource(
-        url: sourceUrl,
-        title: sourceTitle,
-        type: sourceUrl.contains('.m3u8') ? 'hls' : 'video',
-      ),
-    );
-    final reordered = [
-      selected,
-      for (final s in providerSources)
-        if (s.url != sourceUrl) s,
-    ];
+    // Keep extraction order — player server panel must not reshuffle on play.
+    final hasSelected = providerSources.any((s) => s.url == sourceUrl);
+    final sources = hasSelected
+        ? List<StreamSource>.from(providerSources)
+        : [
+            ...providerSources,
+            StreamSource(
+              url: sourceUrl,
+              title: sourceTitle,
+              type: sourceUrl.contains('.m3u8') ? 'hls' : 'video',
+            ),
+          ];
     if (!mounted) return;
     setState(() {
       _s._webstreamingActiveProviderId = providerId;
-      _s._webstreamingStreams = reordered;
+      _s._webstreamingStreams = sources;
     });
-    await _persistWebstreamingCache(providerId: providerId, sources: reordered);
+    await _persistWebstreamingCache(providerId: providerId, sources: sources);
+  }
+
+  /// Prefer last-played URL when it still exists — do not reorder the list.
+  StreamSource _preferredWebstreamingSource(List<StreamSource> sources) {
+    final savedUrl = _s._lastProgress?['streamUrl'] as String?;
+    if (savedUrl != null && savedUrl.trim().isNotEmpty) {
+      for (final s in sources) {
+        if (s.url == savedUrl) return s;
+      }
+    }
+    return sources.first;
   }
 
   Future<void> _startWebstreamingOnlyPlayback() async {
     final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
     if (_s._webstreamingStreams.isNotEmpty) {
       await _playWebstreamingStream(
-        _s._webstreamingStreams.first,
+        _preferredWebstreamingSource(_s._webstreamingStreams),
         startPosition: startPosition,
       );
       return;
@@ -121,7 +131,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         '${cached.providerId} (${cached.sources.length})',
       );
       await _playWebstreamingStream(
-        cached.sources.first,
+        _preferredWebstreamingSource(cached.sources),
         startPosition: startPosition,
       );
       return;
@@ -426,26 +436,46 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         ];
       }
 
+      final useSimpleResolve =
+          await _s._settings.isSimpleStreamingResolveEnabled();
+
       PlaybackResolveHit? hit;
       while (mounted && !_s._webstreamingOnlyExtractionCancelled) {
         switchingManualProvider = false;
         final preferred = preferredProvider;
         prepareProbesForPreferred(preferred);
 
-        hit = await PlaybackService.resolveWebstreaming(
-          providers: providers,
-          movie: _s._movie,
-          season: _s._selectedSeason,
-          episode: _s._selectedEpisode,
-          preferredProvider: preferred,
-          settingsOrder: _s._webstreamingProviderOrder,
-          isCancelled: () =>
-              !mounted ||
-              _s._webstreamingOnlyExtractionCancelled ||
-              switchingManualProvider,
-          onHitsUpdated: syncResolvedHits,
-          onProgress: applyProbeProgress,
-        );
+        final cancelled = () =>
+            !mounted ||
+            _s._webstreamingOnlyExtractionCancelled ||
+            switchingManualProvider;
+
+        hit = useSimpleResolve
+            ? await SimpleStreamingResolve.resolve(
+                providers: providers,
+                movie: _s._movie,
+                season: _s._selectedSeason,
+                episode: _s._selectedEpisode,
+                preferredProvider: preferred,
+                settingsOrder: _s._webstreamingProviderOrder,
+                isCancelled: cancelled,
+                onProgress: applyProbeProgress,
+              )
+            : await PlaybackService.resolveWebstreaming(
+                providers: providers,
+                movie: _s._movie,
+                season: _s._selectedSeason,
+                episode: _s._selectedEpisode,
+                preferredProvider: preferred,
+                settingsOrder: _s._webstreamingProviderOrder,
+                isCancelled: cancelled,
+                onHitsUpdated: syncResolvedHits,
+                onProgress: applyProbeProgress,
+              );
+
+        if (useSimpleResolve && hit != null) {
+          syncResolvedHits([hit]);
+        }
 
         if (_s._webstreamingOnlyExtractionCancelled) {
           hit = null;
@@ -467,8 +497,14 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         found = true;
         await Future<void>.delayed(const Duration(milliseconds: 250));
 
-        final sources = hit.streamSources;
         final key = hit.providerId;
+        // Winner first — otherwise pin/failover can open a sibling instead.
+        final sources = <StreamSource>[
+          for (final s in hit.streamSources)
+            if (s.url == hit.streamUrl) s,
+          for (final s in hit.streamSources)
+            if (s.url != hit.streamUrl) s,
+        ];
         final result = StreamProviderResolveResult(
           streamUrl: hit.streamUrl,
           audioUrl: hit.audioUrl,
@@ -513,7 +549,9 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
                 providerSourcesCache: providerSourcesCache,
                 providerProbesNotifier: probeNotifier,
                 // Manual list pick pins; Auto race keeps failover on.
-                pinSource: manualPick,
+                // Simple resolve: streams already probed — no Auto re-race.
+                pinSource: manualPick || useSimpleResolve,
+                streamsPrevalidated: useSimpleResolve,
                 onSourcePinned: (sourceUrl, sourceTitle) =>
                     _rememberWebstreamingSelection(
                       sourceUrl,
@@ -617,9 +655,15 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         ? '${_s._movie.title} - S${_s._selectedSeason} E${_s._selectedEpisode}'
         : _s._movie.title;
     final providerId = _s._webstreamingActiveProviderId ?? 'videasy';
-    final resolvedSources = _s._webstreamingStreams.isNotEmpty
+    final pool = _s._webstreamingStreams.isNotEmpty
         ? _s._webstreamingStreams
         : <StreamSource>[source];
+    // Chosen stream first so player index 0 / pin sync cannot open a sibling.
+    final resolvedSources = <StreamSource>[
+      source,
+      for (final s in pool)
+        if (s.url != source.url) s,
+    ];
     final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
       {providerId: resolvedSources},
     );

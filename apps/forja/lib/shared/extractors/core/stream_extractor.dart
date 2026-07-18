@@ -421,7 +421,8 @@ class StreamExtractor {
       if (fullMsg.contains('[SERVER_CLICK]')) {
         final label = streamUrl;
         if (label.isNotEmpty &&
-            label.toLowerCase() == (_lastServerClickLabel ?? '').toLowerCase()) {
+            label.toLowerCase() ==
+                (_lastServerClickLabel ?? '').toLowerCase()) {
           _log('Ignoring duplicate SERVER_CLICK: $label');
           return;
         }
@@ -745,7 +746,8 @@ class StreamExtractor {
 
   /// Audio-only / secondary tracks that look like `.mp4` but are not the film.
   static bool isAudioOnlyStreamUrl(String url) {
-    final path = Uri.tryParse(url.trim())?.path.toLowerCase() ??
+    final path =
+        Uri.tryParse(url.trim())?.path.toLowerCase() ??
         url.trim().toLowerCase();
     return path.contains('/tran-audio/') ||
         path.contains('/audio/') ||

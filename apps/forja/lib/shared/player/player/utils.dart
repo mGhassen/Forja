@@ -173,17 +173,22 @@ bool _isVidnestMovieBoxCdn(String url) {
 }
 
 /// Megaplay / VidNest-HiAnime HLS CDN (needs megaplay.buzz Referer).
+///
+/// Hosts rotate (`mewstream` → `nekostream`, …). Self-origin and embed-scrape
+/// Referers (`enma.lol`) return CDN 403 — only megaplay.buzz works.
 bool _isAnimeMewstreamCdn(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
   return host.contains('mewstream.buzz') ||
+      host.contains('nekostream') ||
       host.contains('lostproject.club') ||
       host.contains('megaplay');
 }
 
 bool _looksLikeMegaplayFamily(String referer) {
   final h = Uri.tryParse(referer)?.host.toLowerCase() ?? referer.toLowerCase();
-  return h.contains('megaplay') || h.contains('enma.lol');
+  // enma.lol is the scrape Referer only — nekostream rejects it (403).
+  return h.contains('megaplay');
 }
 
 /// Vidwish HLS CDN (needs vidwish.live Referer).
@@ -195,7 +200,7 @@ bool _isAnimeVidwishCdn(String url) {
 
 bool _looksLikeVidwishFamily(String referer) {
   final h = Uri.tryParse(referer)?.host.toLowerCase() ?? referer.toLowerCase();
-  return h.contains('vidwish') || h.contains('enma.lol');
+  return h.contains('vidwish');
 }
 
 /// AllAnime direct MP4 host used by Yt-mp4.

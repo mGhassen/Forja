@@ -8,6 +8,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
+import 'package:forja/shared/playback/simple_streaming_resolve.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';

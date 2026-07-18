@@ -39,6 +39,8 @@ class SettingsService {
   static const String _playSourceStremioKey = 'play_source_stremio_enabled';
   static const String _playSourceWebstreamingKey =
       'play_source_webstreaming_enabled';
+  static const String _simpleStreamingResolveKey =
+      'simple_streaming_resolve_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
@@ -301,6 +303,14 @@ class SettingsService {
     await kvSetBool(_playSourceWebstreamingKey, enabled);
     playSourceChangeNotifier.value++;
   }
+
+  /// Experimental: provider → filter → probe → open once (RFC-038).
+  /// Off = production race / player failover path.
+  Future<bool> isSimpleStreamingResolveEnabled() async =>
+      kvGetBool(_simpleStreamingResolveKey, fallback: false);
+
+  Future<void> setSimpleStreamingResolveEnabled(bool enabled) async =>
+      kvSetBool(_simpleStreamingResolveKey, enabled);
 
   static const String _streamProviderOrderKey = 'stream_provider_order';
   static const List<String> defaultStreamProviderOrder = <String>[

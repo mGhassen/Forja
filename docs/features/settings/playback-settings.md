@@ -13,6 +13,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 ## What you can do
 
 - Enable **Play sources**: **Direct torrent** (Forja search + **Nuvio** scrapers in **Sources**), **Stremio**, and **Webstreaming** (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on Direct torrent or Stremio in this screen if you want **Sources**)
+- When **Webstreaming** is on: toggle **Simple resolve (experimental)** — tries one provider at a time, filters/probes streams, then opens the player once (old multi-provider race stays when this is off)
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)

@@ -264,6 +264,9 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         borderRadius: widget.size / 2,
         scaleOnFocus: 1.06,
         onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) {
+          if (hovered) playerChromeCancelSeekScrubs();
+        },
         child: _buildCore(highlight: highlight, tvFocused: tvFocused),
       );
     }
@@ -277,6 +280,9 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
+        // Center ±10 / play sit above the seek bar — drop scrub or the thumb
+        // stays magnetized to the cursor over these controls.
+        playerChromeCancelSeekScrubs();
         final policy =
             ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;

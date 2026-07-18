@@ -13,16 +13,30 @@ static URL_PARAM: LazyLock<Regex> = LazyLock::new(|| {
     .expect("url_param regex")
 });
 
-/// Label fallback for posts without a full get.php?username=…&password=… URL.
-/// Matches English / Portuguese / Spanish labels and unicode smallcaps variants.
-static LABEL: LazyLock<Regex> = LazyLock::new(|| {
-    // Keep close to Dart IptvScraper._label — Host/User/Pass (+ i18n / smallcaps).
-    // `(?s)` so `.` spans newlines. Use `\W+` (not `\W*?`) after labels so the
-    // value capture cannot swallow the colon.
+/// Host/Server → User → Pass (classic Reddit cards).
+/// Emoji may prefix a word label; bare emoji alone is not a label (avoids
+/// capturing `ꜱᴇʀᴠᴇʀ` as the URL when the line is `🌐 ꜱᴇʀᴠᴇʀ : http://…`).
+static LABEL_HOST_FIRST: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r#"(?is)(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Real|URL|🔗|🌍|🌐)\W+(https?://[^<\s"']+).{1,500}?(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|👤)\W+([^\s|<"'\n]+).{1,200}?(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|🔑)\W+([^\s|<"'\n]+)"#,
+        r#"(?is)(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?://[^<\s"']+).{1,500}?(?:(?:👤|👑)\s*)?(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n]+).{1,200}?(?:(?:🔑|🔐)\s*)?(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n]+)"#,
     )
-    .expect("label regex")
+    .expect("label_host_first regex")
+});
+
+/// User → Pass → Server (Hit Hunter–style cards).
+static LABEL_USER_FIRST: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?is)(?:(?:👤|👑)\s*)?(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n]+).{1,400}?(?:(?:🔑|🔐)\s*)?(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n]+).{1,400}?(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?://[^<\s"']+)"#,
+    )
+    .expect("label_user_first regex")
+});
+
+/// Tabular dumps: `host:port   user:pass   0/1 …`
+static TABLE_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?im)^[^\S\n]*((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64}):(\S{3,64})"#,
+    )
+    .expect("table_line regex")
 });
 
 static BLOCK_TAGS: LazyLock<Regex> =
@@ -92,12 +106,38 @@ pub fn extract_portals(raw_text: &str, source: &str) -> Vec<Portal> {
             source,
         );
     }
-    for caps in LABEL.captures_iter(&cleaned) {
+    for caps in LABEL_HOST_FIRST.captures_iter(&cleaned) {
         finalize(
             &mut acc,
             caps.get(1).map(|m| m.as_str()).unwrap_or(""),
             caps.get(2).map(|m| m.as_str()).unwrap_or(""),
             caps.get(3).map(|m| m.as_str()).unwrap_or(""),
+            source,
+        );
+    }
+    for caps in LABEL_USER_FIRST.captures_iter(&cleaned) {
+        // groups: user, pass, url
+        finalize(
+            &mut acc,
+            caps.get(3).map(|m| m.as_str()).unwrap_or(""),
+            caps.get(1).map(|m| m.as_str()).unwrap_or(""),
+            caps.get(2).map(|m| m.as_str()).unwrap_or(""),
+            source,
+        );
+    }
+    for caps in TABLE_LINE.captures_iter(&cleaned) {
+        let host = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let port = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        let user = caps.get(3).map(|m| m.as_str()).unwrap_or("");
+        let pass = caps.get(4).map(|m| m.as_str()).unwrap_or("");
+        if host.is_empty() || port.is_empty() {
+            continue;
+        }
+        finalize(
+            &mut acc,
+            &format!("{host}:{port}"),
+            user,
+            pass,
             source,
         );
     }
@@ -123,6 +163,23 @@ fn is_junk_code(text: &str) -> bool {
     false
 }
 
+fn is_stalker_junk(url: &str, user: &str, pass: &str) -> bool {
+    let lu = url.to_lowercase();
+    let lp = pass.to_lowercase();
+    let un = user.to_lowercase();
+    // Stalker/Ministra portal path or MAC-bridge fake M3U.
+    if lu.ends_with("/c") || lu.contains("/c/") {
+        return true;
+    }
+    if lp.contains("live.php") || lp.contains("mac=") || lp.starts_with("live.") {
+        return true;
+    }
+    if un == "play" && (lp.contains("live") || lp.contains("mac")) {
+        return true;
+    }
+    false
+}
+
 fn finalize(acc: &mut BTreeMap<String, Portal>, raw_url: &str, raw_user: &str, raw_pass: &str, source: &str) {
     let url = clean_portal_url(raw_url);
     let user = clean_cred(raw_user);
@@ -131,6 +188,9 @@ fn finalize(acc: &mut BTreeMap<String, Portal>, raw_url: &str, raw_user: &str, r
         return;
     }
     if user.contains("http") || pass.contains("http") {
+        return;
+    }
+    if is_stalker_junk(&url, &user, &pass) {
         return;
     }
     let lu = user.to_lowercase();
@@ -204,6 +264,57 @@ mod tests {
         assert_eq!(portals[0].url, "https://tv.example.com");
         assert_eq!(portals[0].username, "bobuser");
         assert_eq!(portals[0].password, "pass1234");
+    }
+
+    #[test]
+    fn extracts_unicode_user_first_card() {
+        let text = "\
+╭───✦
+├● 👑 ᴜꜱᴇʀ : cotty.812@gmail.com
+├● 🔐 ᴩᴀꜱꜱ : cotty.812@87
+├● ✅ ꜱᴛᴀᴛᴜꜱ : Active
+├● 🌐 ꜱᴇʀᴠᴇʀ : http://tvmate.icu:8080
+╰───✦
+";
+        let portals = extract_portals(text, "Catalog");
+        assert_eq!(portals.len(), 1, "got: {portals:?}");
+        assert_eq!(portals[0].url, "http://tvmate.icu:8080");
+        assert_eq!(portals[0].username, "cotty.812@gmail.com");
+        assert_eq!(portals[0].password, "cotty.812@87");
+    }
+
+    #[test]
+    fn extracts_table_host_user_pass() {
+        let text = "\
+009900.live:8080                      iFnzn9zOnd:P4gsG7edtl                                  0/500      no_expiry  Active
+0g7hljf4wx.sasa24.xyz:80              LUCIO-ACE:Afy6QeKUMY                                   1/1        Sep23      2026
+103.240.150.220:80                    4:987654321                                            1/1        Jul24      2026
+1.fu4-pro.cfd:80                      ogwv5yz53q2:sojjnxkwxr                                 1/1        May15      2027
+";
+        let portals = extract_portals(text, "Catalog");
+        assert_eq!(portals.len(), 3, "got: {portals:?}");
+        assert!(portals.iter().any(|p| {
+            p.url == "http://009900.live:8080"
+                && p.username == "iFnzn9zOnd"
+                && p.password == "P4gsG7edtl"
+        }));
+        assert!(portals.iter().any(|p| p.username == "LUCIO-ACE"));
+        assert!(portals.iter().any(|p| p.username == "ogwv5yz53q2"));
+        // user len < 3 rejected
+        assert!(!portals.iter().any(|p| p.username == "4"));
+    }
+
+    #[test]
+    fn rejects_stalker_mac_bridge() {
+        let text = "\
+Real: http://dinofox.sbs:80/c/
+Mac: 00:1A:79:9C:3D:9D
+m3uLink:http://dinofox.sbs:80/get.php?username=play&password=live.php?mac=00:1A:79:9C:3D:9D&stream=1&type=m3u_plus
+";
+        assert!(
+            extract_portals(text, "Catalog").is_empty(),
+            "stalker MAC bridge must not become Xtream portals"
+        );
     }
 
     #[test]

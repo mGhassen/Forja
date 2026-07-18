@@ -157,13 +157,36 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     _globalRouteAttached = false;
   }
 
+  /// Keep a global route while hover or press is live so a missed MouseRegion
+  /// exit (center transport / top chrome above the bar) cannot leave the thumb
+  /// magnetized to the cursor.
+  void _syncGlobalPointerRoute() {
+    if (_hovering || _activePointer != null || _isDragging) {
+      _attachGlobalPointerRoute();
+    } else {
+      _detachGlobalPointerRoute();
+    }
+  }
+
   void _onGlobalPointer(PointerEvent event) {
     if (!mounted) {
       _detachGlobalPointerRoute();
       return;
     }
+
+    // Hover-only: enforce the same leash so the thumb cannot follow the cursor
+    // over center play / ±10 or the top bar after onExit is skipped.
     final pointer = _activePointer;
-    if (pointer == null || event.pointer != pointer) return;
+    if (pointer == null) {
+      if (!_hovering) return;
+      if (event is! PointerHoverEvent && event is! PointerMoveEvent) return;
+      if (playerChromeOverlayBlocksSeek() ||
+          !_pointerWithinScrubLeash(event.position)) {
+        _endScrub(commit: false, clearHover: true);
+      }
+      return;
+    }
+    if (event.pointer != pointer) return;
 
     // Source / Audio / etc. overlays steal the cursor — release scrub so the
     // thumb does not stay magnetized to the pointer over the menu.
@@ -216,13 +239,16 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
             : _fracFromGlobal(event.position);
         widget.onSeek(Duration(milliseconds: (frac * total).round()));
       }
-      _endScrub(commit: false, clearHover: false);
+      // If the release is outside the track, drop hover — otherwise a drag that
+      // ended over center/top chrome leaves the thumb stuck to the cursor.
+      final clearHover = event is PointerCancelEvent ||
+          !_pointerWithinScrubLeash(event.position);
+      _endScrub(commit: false, clearHover: clearHover);
     }
   }
 
   void _endScrub({required bool commit, required bool clearHover}) {
     final wasDragging = _isDragging;
-    _detachGlobalPointerRoute();
     _activePointer = null;
     _downGlobal = null;
     _movedEnoughToScrub = false;
@@ -235,7 +261,10 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
         widget.onDragEnd?.call();
       } catch (_) {}
     }
-    if (!mounted) return;
+    if (!mounted) {
+      _detachGlobalPointerRoute();
+      return;
+    }
     setState(() {
       _isDragging = false;
       if (clearHover) {
@@ -243,20 +272,20 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
         _previewBytes = null;
       }
     });
+    _syncGlobalPointerRoute();
   }
 
   void _onPointerDown(PointerDownEvent event) {
     if (playerChromeOverlayBlocksSeek()) return;
     if (event.buttons != kPrimaryButton && event.buttons != 0) return;
-    _detachGlobalPointerRoute();
     _activePointer = event.pointer;
     _downGlobal = event.position;
     _movedEnoughToScrub = false;
-    _attachGlobalPointerRoute();
     setState(() {
       _hoverFrac = _fracFromLocal(event.localPosition.dx);
       _dragFrac = _hoverFrac;
     });
+    _syncGlobalPointerRoute();
   }
 
   @override
@@ -272,6 +301,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
           _hovering = true;
           _hoverFrac = _fracFromLocal(e.localPosition.dx);
         });
+        _syncGlobalPointerRoute();
         _schedulePreview();
       },
       onHover: (e) {
@@ -280,11 +310,15 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
         _schedulePreview();
       },
       onExit: (_) {
-        if (_isDragging) return;
-        setState(() {
-          _hovering = false;
-          _previewBytes = null;
-        });
+        // Always clear hover on leave. Drag updates use the global route; skipping
+        // this left the thumb magnetized after release over center/top chrome.
+        if (_hovering || _previewBytes != null) {
+          setState(() {
+            _hovering = false;
+            _previewBytes = null;
+          });
+        }
+        _syncGlobalPointerRoute();
       },
       child: Listener(
         behavior: HitTestBehavior.opaque,

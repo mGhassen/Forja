@@ -116,9 +116,9 @@ class MiruroPipeSession {
         markReady();
       },
       onProgressChanged: (_, progress) {
-        // CF challenge pages sometimes stall before onLoadStop; 90% is enough
-        // to start same-origin fetch (cookies usually already set).
-        if (progress >= 90) markReady();
+        // Only unblock after a real loadStop-ish completion. Mid-challenge
+        // progress≥90 used to mark ready on a blank CF page → false clear.
+        if (progress >= 100) markReady();
       },
       onReceivedError: (_, request, error) {
         if (kDebugMode) {
@@ -127,8 +127,8 @@ class MiruroPipeSession {
             '${error.description} (${error.type})',
           );
         }
-        // Main-frame failure — unblock the waiter so domain failover can run.
-        if (request.isForMainFrame ?? true) markReady();
+        // Do not markReady on main-frame errors — that skipped CF wait and
+        // piped immediately into 403. Let the boot timeout fail over domains.
       },
     );
     try {
@@ -136,7 +136,7 @@ class MiruroPipeSession {
       if (bootEpoch != _epoch) {
         throw StateError('MiruroPipe cancelled');
       }
-      await ready.future.timeout(const Duration(seconds: 20));
+      await ready.future.timeout(const Duration(seconds: 25));
       // Let Turnstile / managed challenge settle cookies before pipe fetch.
       await _waitForCfClearance(epoch: bootEpoch, origin: origin);
       if (bootEpoch != _epoch) {
@@ -158,31 +158,40 @@ class MiruroPipeSession {
   }) async {
     final controller = _controller;
     if (controller == null) return;
-    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    final deadline = DateTime.now().add(const Duration(seconds: 25));
     while (DateTime.now().isBefore(deadline)) {
       if (epoch != _epoch) return;
       try {
         final res = await controller.callAsyncJavaScript(
           functionBody: '''
-            const t = (document.title || '').toLowerCase();
+            const title = document.title || '';
+            const t = title.toLowerCase();
             const b = (document.body && document.body.innerText) || '';
+            // Empty title = blank/error document — not a cleared app shell.
             const blocked =
+              !title.trim() ||
               t.includes('just a moment') ||
               t.includes('attention required') ||
               b.includes('Checking your browser') ||
-              b.includes('Enable JavaScript and cookies');
-            return { blocked: blocked, title: document.title || '' };
+              b.includes('Enable JavaScript and cookies') ||
+              b.includes('Attention Required');
+            return { blocked: blocked, title: title };
           ''',
         );
         final value = res?.value;
         if (value is Map && value['blocked'] != true) {
-          if (kDebugMode) {
-            debugPrint('[MiruroPipe] CF clear on $origin (${value['title']})');
+          final title = value['title']?.toString() ?? '';
+          if (title.trim().isEmpty) {
+            // Keep polling — never treat blank docs as CF-cleared.
+          } else {
+            if (kDebugMode) {
+              debugPrint('[MiruroPipe] CF clear on $origin ($title)');
+            }
+            return;
           }
-          return;
         }
       } catch (_) {
-        return;
+        // JS bridge glitches (unsupported type) — keep polling, do not abort.
       }
       await Future.delayed(const Duration(milliseconds: 400));
     }

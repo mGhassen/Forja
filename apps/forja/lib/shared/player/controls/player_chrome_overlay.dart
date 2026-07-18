@@ -526,81 +526,84 @@ class PlayerTopBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final titleInset = constraints.maxWidth >= 600 ? 152.0 : 96.0;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
-          child: SizedBox(
-            width: double.infinity,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44),
-              child: Stack(
-                alignment: Alignment.topCenter,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: titleInset),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (_episodeLine != null) ...[
-                          const SizedBox(height: 2),
+        return MouseRegion(
+          onEnter: (_) => playerChromeCancelSeekScrubs(),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
+            child: SizedBox(
+              width: double.infinity,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: titleInset),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            _episodeLine!,
+                            title,
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: 12,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
-                        if (_hasStatusMessage) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            statusMessage!,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.72),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                          if (_episodeLine != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _episodeLine!,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
+                          ],
+                          if (_hasStatusMessage) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              statusMessage!,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.72),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          if (statusActions != null) ...[
+                            const SizedBox(height: 8),
+                            statusActions!,
+                          ],
                         ],
-                        if (statusActions != null) ...[
-                          const SizedBox(height: 8),
-                          statusActions!,
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: PlayerFlatIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      onPressed: onBack,
-                      size: 44,
-                      tvFocusable: tvFocusable,
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: PlayerFlatIconButton(
+                        icon: Icons.arrow_back_rounded,
+                        onPressed: onBack,
+                        size: 44,
+                        tvFocusable: tvFocusable,
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: trailing ?? const SizedBox(width: 44, height: 44),
-                  ),
-                ],
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: trailing ?? const SizedBox(width: 44, height: 44),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

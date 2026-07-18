@@ -56,6 +56,9 @@ class PlayerScreen extends StatefulWidget {
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
   final bool pinSource;
+  /// Sources were probed before open (RFC-038 simple resolve) — skip re-probe
+  /// and do not Auto re-race when the list is exhausted.
+  final bool streamsPrevalidated;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
@@ -90,6 +93,7 @@ class PlayerScreen extends StatefulWidget {
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,
+    this.streamsPrevalidated = false,
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
     this.onReloadStreams,
@@ -409,6 +413,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
+        streamsPrevalidated: widget.streamsPrevalidated,
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
@@ -478,6 +483,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
+        streamsPrevalidated: widget.streamsPrevalidated,
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
@@ -517,6 +523,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
+        streamsPrevalidated: widget.streamsPrevalidated,
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,

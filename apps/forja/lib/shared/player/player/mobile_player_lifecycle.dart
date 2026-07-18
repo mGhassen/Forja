@@ -70,11 +70,17 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       ]),
     );
     _s._currentUrl = widget.mediaPath;
+    if (widget.magnetLink == null || widget.magnetLink!.isEmpty) {
+      _s._currentPlayingCatalogUrl = widget.mediaPath;
+    }
     _s._activeMagnet = widget.magnetLink;
     if (_s._currentProvider == 'service111477' &&
         widget.sources != null &&
         widget.sources!.isNotEmpty) {
-      _s._current111477FileUrl = widget.sources!.first.url;
+      final match = widget.sources!.indexWhere((s) => s.url == widget.mediaPath);
+      _s._current111477FileUrl = match >= 0
+          ? widget.sources![match].url
+          : widget.sources!.first.url;
     }
     widget.sourcesListNotifier?.addListener(_s._onLiveSourcesUpdated);
     widget.providerProbesNotifier?.addListener(_s._onLiveSourcesUpdated);
@@ -323,6 +329,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     return _s._currentSources;
   }
 
+  /// Keeps extraction order — never promote the playing/checking row to front.
   void _refreshPanelPlayingStream() {
     if (!_s._playbackConfirmed) return;
     final pid = _s._currentProvider ?? widget.activeProvider;
@@ -342,7 +349,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     );
     sources.removeWhere((s) => isUnplayableCachedStreamUrl(s.url));
 
-    final matchIdx = sources.indexWhere(
+    var matchIdx = sources.indexWhere(
       (s) =>
           s.url == playUrl ||
           (catalogUrl != null &&
@@ -350,17 +357,14 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
               s.url == catalogUrl),
     );
 
-    late final StreamSource playingRow;
-    if (matchIdx >= 0) {
-      playingRow = sources.removeAt(matchIdx);
-    } else {
+    if (matchIdx < 0) {
       final label = widget.providers != null
           ? PlayerProviderMenu.snackbarLabel(pid, widget.providers![pid])
           : StreamProviderDisplay.playerLabel(pid);
       final identity =
           (catalogUrl != null && catalogUrl.isNotEmpty) ? catalogUrl : playUrl;
       final lower = playUrl.toLowerCase();
-      playingRow = StreamSource(
+      final playingRow = StreamSource(
         url: identity,
         title: label,
         type: lower.contains('.m3u8')
@@ -370,17 +374,22 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
                 : 'mp4',
         headers: widget.headers,
       );
+      // Append missing row — do not insert at front (panel order stays stable).
+      sources = dedupeStreamSources([...sources, playingRow]);
+      matchIdx = sources.indexWhere((s) => s.url == identity);
+      if (matchIdx < 0) matchIdx = sources.isEmpty ? -1 : sources.length - 1;
     }
+    if (matchIdx < 0 || matchIdx >= sources.length) return;
 
-    final deduped = dedupeStreamSources([playingRow, ...sources]);
+    final playingUrl = sources[matchIdx].url;
     setState(() {
-      _s._currentSources = deduped;
-      _s._currentPlayingCatalogUrl = playingRow.url;
-      _s._currentFallbackSourceIndex = 0;
+      _s._currentSources = sources;
+      _s._currentPlayingCatalogUrl = playingUrl;
+      _s._currentFallbackSourceIndex = matchIdx;
     });
-    _s._cacheProviderSources(pid, deduped);
+    _s._cacheProviderSources(pid, sources);
     unawaited(_persistWebstreamingCacheForCurrent());
-    _s._markSourceActive(0);
+    _s._markSourceActive(matchIdx);
     _s._notifySourceMenuChanged();
   }
 

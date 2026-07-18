@@ -698,7 +698,11 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         setState(() {
           _s._currentUrl = openUrl;
           _s._current111477FileUrl = source.url;
-          _s._currentFallbackSourceIndex = 0;
+          // Keep the selected index — resetting to 0 played a different stream.
+          _s._currentFallbackSourceIndex = index.clamp(
+            0,
+            (_s._currentSources?.length ?? 1) - 1,
+          );
           _s._hasError = false;
           _s._errorMessage = '';
         });
@@ -711,7 +715,10 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         setState(() {
           _s._currentUrl = openUrl;
           _s._currentPlayingCatalogUrl = source.url;
-          _s._currentFallbackSourceIndex = 0;
+          _s._currentFallbackSourceIndex = index.clamp(
+            0,
+            (_s._currentSources?.length ?? 1) - 1,
+          );
           _s._hasError = false;
           _s._errorMessage = '';
         });

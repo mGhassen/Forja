@@ -593,6 +593,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -601,6 +602,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: IptvShellStyle.overlayTitle.copyWith(
                       fontSize: compact ? 16 : 18,
+                      height: 1.15,
                     ),
                   ),
                   if ((_s._subtitle ?? '').isNotEmpty)
@@ -611,6 +613,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         color: Colors.white70,
                         fontSize: 12,
+                        height: 1.15,
                       ),
                     ),
                 ],
