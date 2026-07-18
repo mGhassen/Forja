@@ -426,10 +426,11 @@ class SyncService {
           connected['providers'] = e.value;
         case 'stremio':
           connected['stremio'] = e.value;
-        case 'iptv':
-          merged['iptv'] = e.value;
         case 'navigation':
           merged['navigation'] = e.value;
+        case 'iptv':
+          // Ignored — portals use user_iptv_portals; M3U is device-local.
+          break;
       }
     }
     if (connected.isNotEmpty) merged['connectedServices'] = connected;
@@ -541,9 +542,7 @@ class SyncService {
         };
       }
     }
-    if (payload['iptv'] is Map) {
-      out['iptv'] = {'payload': payload['iptv'], 'updated_at': null};
-    }
+    // Legacy payload.iptv is ignored (M3U device-local; portals in tables).
     return out;
   }
 

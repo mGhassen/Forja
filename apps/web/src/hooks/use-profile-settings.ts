@@ -72,12 +72,6 @@ export function useProfileSettings() {
         navigation: patch.navigation
           ? { ...current.navigation, ...patch.navigation }
           : current.navigation,
-        iptv: patch.iptv
-          ? {
-              m3uPlaylists:
-                patch.iptv.m3uPlaylists ?? current.iptv?.m3uPlaylists,
-            }
-          : current.iptv,
       }
       await saveMutation.mutateAsync(next)
       return expandProfileSettingsPayload(compactProfileSettingsPayload(next))

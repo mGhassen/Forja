@@ -48,7 +48,6 @@ Per profile:
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
 | **`profile_settings` → Navigation** | Visible shell tabs and default tab — editable on web under **Profile → Navigation** |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
-| **`profile_settings` → IPTV** | Reserved for device sync (M3U URLs). Not edited on the web portal. |
 
 ## What stays local
 
@@ -56,7 +55,7 @@ Not synced — device-specific or sensitive:
 
 - Stream / anime / Asian drama **provider order** (Settings in the app only — not on the web portal)
 - My List / film lists (TMDB ids stay on the device)
-- M3U playlists uploaded from a file, and all M3U **channel** rows (URL playlists re-fetch channels on device)
+- **All M3U playlists** (URL and file) and their channel rows — re-fetch URL playlists on each device
 - Live IPTV connection counts (probed in-app; not stored in cloud)
 - Torrent cache size, connections, and learned provider scores
 - Debrid and indexer API keys (for now)
@@ -177,7 +176,7 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 ## Tips
 
 - IPTV credentials live on shared `iptv_portals` rows with passwords encrypted at rest. Your per-profile **portal name** is only on `user_iptv_portals`.
-- Cloud settings omit default provider orders and never store M3U channel lists or My List — those stay on each device. Playback prefs (including play sources) sync in full.
+- Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources) sync in full.
 - Portal **share codes** are a separate peer handoff (encrypted ciphertext on
   rentry) — they are not stored in your sync payload.
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.

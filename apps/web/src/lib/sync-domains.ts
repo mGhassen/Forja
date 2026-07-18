@@ -91,15 +91,6 @@ export const DEFAULT_NAV_TAB = 'home'
 
 const SYNCABLE_NAV_ID_SET = new Set<string>(DEFAULT_NAV_VISIBLE_IDS)
 
-/** Cloud M3U row — metadata only (no channels[]). Portals live in user_iptv_portals. */
-export type M3uPlaylistCloudRow = {
-  id: string
-  name: string
-  sourceUrl: string
-  addedAt: number
-  updatedAt: number
-}
-
 export type M3uChannelRow = {
   n: string
   u: string
@@ -109,7 +100,7 @@ export type M3uChannelRow = {
   tn?: string
 }
 
-/** Local/UI playlist; channels are device-local and never written to cloud. */
+/** Local/UI playlist; never written to cloud (device-local only). */
 export type M3uPlaylistRow = {
   id: string
   name: string
@@ -119,16 +110,10 @@ export type M3uPlaylistRow = {
   channels?: M3uChannelRow[]
 }
 
-/** Settings-only IPTV slice: M3U URLs. Portal assignments are user_iptv_portals. */
-export type IptvSettingsPayload = {
-  m3uPlaylists?: M3uPlaylistCloudRow[]
-}
-
 export type ProfileSettingsPayload = {
   playback?: PreferencesPayload
   connectedServices?: ConnectedServicesPayload
   navigation?: NavigationPayload
-  iptv?: IptvSettingsPayload
 }
 
 /**
@@ -190,7 +175,7 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 ] as const
 
 export type RemoteSettingSection = {
-  key: keyof ProfileSettingsPayload | 'stremio'
+  key: keyof ProfileSettingsPayload | 'stremio' | 'iptv'
   title: string
   description: string
   href: string
@@ -232,7 +217,6 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
       stremio: emptyStremioPayload(),
     },
     navigation: emptyNavigationPayload(),
-    iptv: emptyIptvSettingsPayload(),
   }
 }
 
@@ -263,10 +247,6 @@ export function normalizeNavigationPayload(
       : (visibleIds[0] ?? DEFAULT_NAV_TAB)
   }
   return { visibleIds, defaultTab }
-}
-
-export function emptyIptvSettingsPayload(): IptvSettingsPayload {
-  return { m3uPlaylists: [] }
 }
 
 export function emptyPreferencesPayload(): Required<PreferencesPayload> {
@@ -321,37 +301,14 @@ function compactNavigation(n: NavigationPayload | undefined): NavigationPayload 
   return out
 }
 
-/** M3U URL metadata only — portal assignments are user_iptv_portals. */
-function compactIptv(i: IptvSettingsPayload | undefined): IptvSettingsPayload | undefined {
-  if (!i) return undefined
-  const m3uPlaylists = (i.m3uPlaylists ?? [])
-    .map((pl) => {
-      const sourceUrl =
-        typeof pl.sourceUrl === 'string' ? pl.sourceUrl.trim() : ''
-      if (!sourceUrl) return null
-      return {
-        id: pl.id,
-        name: pl.name,
-        sourceUrl,
-        addedAt: pl.addedAt,
-        updatedAt: pl.updatedAt,
-      } satisfies M3uPlaylistCloudRow
-    })
-    .filter((pl): pl is M3uPlaylistCloudRow => pl != null)
-
-  if (!m3uPlaylists.length) return undefined
-  return { m3uPlaylists }
-}
-
-/** Compact before DB write: full playback; stremio only under connectedServices; M3U only under iptv.
- * Provider order is device-local — never persist. */
+/** Compact before DB write: full playback; stremio only under connectedServices.
+ * Provider order is device-local — never persist. Never write iptv (portals/M3U). */
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
 ): ProfileSettingsPayload {
   const playback = compactPlayback(full.playback)
   const stremio = compactStremio(full.connectedServices?.stremio)
   const navigation = compactNavigation(full.navigation)
-  const iptv = compactIptv(full.iptv)
 
   const connectedServices: ConnectedServicesPayload = {}
   if (stremio) connectedServices.stremio = stremio
@@ -360,7 +317,6 @@ export function compactProfileSettingsPayload(
   if (playback) out.playback = playback
   if (Object.keys(connectedServices).length) out.connectedServices = connectedServices
   if (navigation) out.navigation = navigation
-  if (iptv) out.iptv = iptv
   return out
 }
 
@@ -368,29 +324,16 @@ export function compactProfileSettingsPayload(
 export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPayload {
   const base = emptyProfileSettingsPayload()
   if (!raw || typeof raw !== 'object') return base
-  const p = raw as ProfileSettingsPayload & { films?: unknown }
+  const p = raw as ProfileSettingsPayload & { films?: unknown; iptv?: unknown }
 
   // Ignore legacy connectedServices.providers — device-local only.
   void p.connectedServices?.providers
+  // Ignore legacy payload.iptv — portals/M3U are not in profile_settings.
+  void p.iptv
 
   const stremio = {
     addons: p.connectedServices?.stremio?.addons ?? [],
   }
-
-  const m3uPlaylists = (p.iptv?.m3uPlaylists ?? [])
-    .map((pl) => {
-      const sourceUrl =
-        typeof pl.sourceUrl === 'string' ? pl.sourceUrl.trim() : ''
-      if (!sourceUrl) return null
-      return {
-        id: pl.id,
-        name: pl.name,
-        sourceUrl,
-        addedAt: pl.addedAt,
-        updatedAt: pl.updatedAt,
-      } satisfies M3uPlaylistCloudRow
-    })
-    .filter((pl): pl is M3uPlaylistCloudRow => pl != null)
 
   void p.films
 
@@ -398,14 +341,7 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
     playback: { ...base.playback, ...p.playback },
     connectedServices: { stremio },
     navigation: normalizeNavigationPayload(p.navigation),
-    iptv: { m3uPlaylists },
   }
-}
-
-/** @deprecated legacy alias */
-export type IptvPayload = IptvSettingsPayload
-export function emptyIptvPayload(): IptvPayload {
-  return emptyIptvSettingsPayload()
 }
 
 /** @deprecated films no longer synced */

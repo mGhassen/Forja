@@ -5,7 +5,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,7 +35,7 @@ class M3uStore {
       _key,
       json.encode(list.map((p) => p.toJson()).toList()),
     );
-    scheduleIptvSyncPush();
+    // M3U is device-local — do not push to profile_settings / cloud.
   }
 
   static String newId() {

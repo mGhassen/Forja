@@ -936,13 +936,24 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       };
     }
 
-    List<({AnimeEmbed embed, ExtractedMedia media})> hits = const [];
+    // First *CDN-playable* wins: try providers in order, probe each extract,
+    // drop dead CDNs and continue. Stop as soon as one probes OK — no
+    // background scan of the rest after launch.
+    var remaining = List<AnimeEmbed>.from(pair);
     var preferred = SourceEngine.auto;
-    while (mounted && !_cancelled && !_resolverStopped) {
+
+    while (mounted &&
+        !_cancelled &&
+        !_resolverStopped &&
+        remaining.isNotEmpty) {
       _manualSwitchRequested = false;
       final manualKey = _manualPreferredSourceKey;
       preferred = manualKey ?? SourceEngine.auto;
       if (manualKey != null) {
+        remaining = pair
+            .where((e) => e.sourceKey == manualKey)
+            .toList(growable: true);
+        if (remaining.isEmpty) remaining = List<AnimeEmbed>.from(pair);
         _probeNotifier.value = [
           for (final p in _probeNotifier.value)
             StreamProviderProbe(
@@ -959,9 +970,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _setPhase('Checking ${manualKey.toUpperCase()}…');
       }
 
-      // First playable extract wins — race stops (no background sibling fill).
-      hits = await AnimePlaybackBridge.raceEmbeds(
-        embeds: pair,
+      final hits = await AnimePlaybackBridge.raceEmbeds(
+        embeds: remaining,
         hubMovie: _hubMovieFromAnime(widget.anime),
         settingsOrder: _providerOrder,
         animeService: _service,
@@ -970,7 +980,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
             _cancelled || _resolverStopped || _manualSwitchRequested,
         onProgress: _animeResolveProgress(pair),
         maxInFlight: 1,
-        onHitsUpdated: syncLiveHits,
       );
 
       if (_cancelled || _resolverStopped) {
@@ -981,16 +990,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       if (_manualSwitchRequested && _manualPreferredSourceKey != null) {
         continue;
       }
-      break;
-    }
+      if (hits.isEmpty) {
+        break;
+      }
 
-    if (!mounted || _cancelled) {
-      sourcesListNotifier.dispose();
-      providerSourcesCache.dispose();
-      return;
-    }
-    if (hits.isNotEmpty) {
-      syncLiveHits(hits);
       final playable = await _playableHits(hits);
       if (!mounted || _cancelled) {
         sourcesListNotifier.dispose();
@@ -998,6 +1001,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         return;
       }
       if (playable.isNotEmpty) {
+        syncLiveHits(playable);
         _activeEmbed = playable.first.embed;
         final usedSaved = !SourceEngine.isAuto(preferred) &&
             _preferredSourceKey != null &&
@@ -1012,9 +1016,27 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         );
         return;
       }
+
+      // Extracted but CDN dead — skip these keys and try the next server.
+      final deadKeys = <String>{};
+      for (final h in hits) {
+        deadKeys.add(h.embed.sourceKey);
+        _markProbeStatus(h.embed.panelKey, StreamProviderProbeStatus.failed);
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '[AnimePlayer] CDN probe failed for ${deadKeys.join(", ")} — next',
+        );
+      }
+      remaining = [
+        for (final e in remaining)
+          if (!deadKeys.contains(e.sourceKey)) e,
+      ];
+    }
+
+    if (!mounted || _cancelled) {
       sourcesListNotifier.dispose();
       providerSourcesCache.dispose();
-      await _handleStaleSavedStreams();
       return;
     }
     sourcesListNotifier.dispose();

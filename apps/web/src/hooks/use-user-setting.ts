@@ -1,7 +1,6 @@
 export {
   usePlaybackSetting,
   useStremioSetting,
-  useIptvSetting,
   useNavigationSetting,
 } from '@/hooks/use-profile-settings-sections'
 

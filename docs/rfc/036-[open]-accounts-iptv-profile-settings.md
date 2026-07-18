@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 8** components · **13 / 23** acceptance (account `features` + IPTV scrape flag; web navigation settings; no default profile on signup) |
-| **Current slice** | Account feature flags (`iptvScrape`) shipped — admin UI for toggling still open |
+| **Progress** | **3 / 8** components · **14 / 24** acceptance (account `features` + IPTV scrape flag; web navigation settings; no default profile on signup; M3U out of profile_settings) |
+| **Current slice** | Account feature flags (`iptvScrape`) shipped — admin UI for toggling still open; M3U device-local only |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,6 +64,7 @@
 | 21 | R36-A14 | Existing multi-domain settings migrate into `profile_settings` without loss | ⬜ |
 | 22 | R36-A22 | IPTV Scrape / Find Portals hidden and blocked unless `accounts.features.iptvScrape` | ✅ |
 | 23 | R36-A23 | Signup creates `accounts` only — no auto `Profile 1`; user creates first profile; `profile_settings` defaults on profile insert | ✅ |
+| 24 | R36-A24 | `profile_settings.payload` has no `iptv` key; M3U playlists are device-local only (portals remain in `iptv_portals` / `user_iptv_portals`) | ✅ |
 
 ---
 
@@ -100,6 +101,10 @@ On write, clients call compact helpers:
 - Never store `"iptvScrape": false`
 - First flag: **`iptvScrape`** gates Reddit / Find Portals scrape in the app
 - Activation this slice: SQL / seed / service-role; admin UI later (R36-A08)
+
+## Correction (M3U out of settings)
+
+`profile_settings.payload` must **not** contain an `iptv` key. M3U URL/file playlists are device-local only. Portal credentials and assignments stay on `iptv_portals` + `user_iptv_portals`. Migration `20260718120000_strip_iptv_from_profile_settings.sql` strips legacy `iptv` blobs.
 
 ## Correction (portal naming)
 

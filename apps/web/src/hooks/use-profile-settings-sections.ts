@@ -2,7 +2,6 @@ import { useProfileSettings } from '@/hooks/use-profile-settings'
 import type {
   PreferencesPayload,
   StremioPayload,
-  IptvSettingsPayload,
   NavigationPayload,
 } from '@/lib/sync-domains'
 
@@ -55,23 +54,6 @@ export function useNavigationSetting() {
       : undefined,
     save: async (payload: NavigationPayload) => {
       await settings.patch({ navigation: payload })
-    },
-  }
-}
-
-/** M3U URL metadata only — portal assignments use `useUserIptvPortals`. */
-export function useIptvSetting() {
-  const settings = useProfileSettings()
-  return {
-    ...settings,
-    data: settings.data
-      ? {
-          payload: settings.data.payload.iptv ?? { m3uPlaylists: [] },
-          updated_at: settings.data.updated_at,
-        }
-      : undefined,
-    save: async (payload: IptvSettingsPayload) => {
-      await settings.patch({ iptv: { m3uPlaylists: payload.m3uPlaylists } })
     },
   }
 }

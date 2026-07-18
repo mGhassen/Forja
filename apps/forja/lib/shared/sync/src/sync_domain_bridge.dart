@@ -2,17 +2,19 @@ import 'dart:async';
 
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
-import 'package:forja/features/iptv/iptv/m3u/m3u_models.dart';
-import 'package:forja/features/iptv/iptv/m3u/m3u_store.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
 
 /// Export/import between local stores and lean `profile_settings.payload`.
+///
+/// IPTV portals sync via `user_iptv_portals` / `iptv_portals` — never
+/// `profile_settings`. M3U playlists are device-local only.
 class SyncDomainBridge {
   SyncDomainBridge._();
   static final SyncDomainBridge instance = SyncDomainBridge._();
 
+  /// Debounce key for portal assignment pushes (not profile_settings.iptv).
   static const _domainIptv = 'iptv';
   static const _domainPreferences = 'preferences';
   static const _domainStremio = 'stremio';
@@ -79,10 +81,8 @@ class SyncDomainBridge {
     final navigation = await _exportNavigationCompact();
     if (navigation.isNotEmpty) out['navigation'] = navigation;
 
-    // Settings iptv = M3U only. Portals use user_iptv_portals.
-    final iptv = await _exportIptvM3uCompact();
-    if (iptv.isNotEmpty) out['iptv'] = iptv;
-
+    // Never write iptv into profile_settings — portals use user_iptv_portals;
+    // M3U stays device-local.
     return out;
   }
 
@@ -106,57 +106,7 @@ class SyncDomainBridge {
       await _importNavigation(Map<String, dynamic>.from(navigation));
     }
 
-    final iptv = payload['iptv'];
-    if (iptv is Map) {
-      final iptvMap = Map<String, dynamic>.from(iptv);
-      await _importIptvM3uLean(iptvMap);
-      // One-shot: migrate legacy settings.iptv.portals → user_iptv_portals.
-      if (iptvMap['portals'] is List &&
-          (iptvMap['portals'] as List).isNotEmpty) {
-        await _migrateLegacyIptvPortalsFromSettings(iptvMap);
-      }
-    }
-  }
-
-  Future<void> _migrateLegacyIptvPortalsFromSettings(
-    Map<String, dynamic> iptv,
-  ) async {
-    final rawAssignments = iptv['portals'] as List? ?? const [];
-    if (rawAssignments.isEmpty) return;
-    final existing = await SyncService.instance.pullUserIptvPortals();
-    if (existing.isNotEmpty) return; // table already owns assignments
-
-    final ids = <String>[];
-    final nameById = <String, String>{};
-    final favoriteIds = <String>{};
-    for (final raw in rawAssignments) {
-      final o = Map<String, dynamic>.from(raw as Map);
-      final id = o['portalId'] as String? ?? '';
-      if (id.isEmpty) continue;
-      ids.add(id);
-      final portalName =
-          ((o['portal_name'] as String?) ?? (o['label'] as String?))?.trim() ??
-          '';
-      if (portalName.isNotEmpty) nameById[id] = portalName;
-      if (o['favorite'] == true) favoriteIds.add(id);
-    }
-    if (ids.isEmpty) return;
-
-    final globals = await SyncService.instance.getIptvPortals(ids);
-    final assignments =
-        <({String portalId, String portalName, bool favorite})>[];
-    for (final g in globals) {
-      final id = g['id'] as String? ?? '';
-      if (id.isEmpty) continue;
-      final username = g['username'] as String? ?? '';
-      assignments.add((
-        portalId: id,
-        portalName: nameById[id] ?? username,
-        favorite: favoriteIds.contains(id),
-      ));
-    }
-    if (assignments.isEmpty) return;
-    await SyncService.instance.replaceUserIptvPortals(assignments);
+    // Ignore legacy payload.iptv (M3U / portals) — tables + local store own IPTV.
   }
 
   Future<Map<String, dynamic>> _exportStremioCompact() async {
@@ -198,24 +148,6 @@ class SyncDomainBridge {
     if (payload['defaultTab'] is String) {
       await _settings.setDefaultNavTab(payload['defaultTab'] as String);
     }
-  }
-
-  Future<Map<String, dynamic>> _exportIptvM3uCompact() async {
-    final m3u = await M3uStore.loadAll();
-    final cloudM3u = <Map<String, dynamic>>[];
-    for (final p in m3u) {
-      final url = p.sourceUrl?.trim();
-      if (url == null || url.isEmpty) continue; // file playlists stay local
-      cloudM3u.add({
-        'id': p.id,
-        'name': p.name,
-        'sourceUrl': url,
-        'addedAt': p.addedAt,
-        'updatedAt': p.updatedAt,
-      });
-    }
-    if (cloudM3u.isEmpty) return {};
-    return {'m3uPlaylists': cloudM3u};
   }
 
   Future<void> _pushUserIptvPortals() async {
@@ -280,48 +212,6 @@ class SyncDomainBridge {
     }
     await IptvStore.save(portals);
     await IptvStore.saveFavorites(favoriteKeys);
-  }
-
-  Future<void> _importIptvM3uLean(Map<String, dynamic> payload) async {
-    // Legacy: if portals still present in settings JSON, ignore — table owns them.
-    final localM3u = await M3uStore.loadAll();
-    final fileLocal = localM3u
-        .where((p) => p.sourceUrl == null || p.sourceUrl!.trim().isEmpty)
-        .toList();
-    final localById = {for (final p in localM3u) p.id: p};
-
-    final remoteM3u = payload['m3uPlaylists'] as List? ?? const [];
-    final mergedUrl = <M3uPlaylist>[];
-    for (final raw in remoteM3u) {
-      final o = Map<String, dynamic>.from(raw as Map);
-      final sourceUrl = (o['sourceUrl'] as String?)?.trim() ?? '';
-      if (sourceUrl.isEmpty) continue;
-      final id = o['id'] as String? ?? '';
-      final existing = localById[id];
-      mergedUrl.add(
-        M3uPlaylist(
-          id: id.isEmpty ? existing?.id ?? '' : id,
-          name: o['name'] as String? ?? existing?.name ?? 'Playlist',
-          sourceUrl: sourceUrl,
-          addedAt: (o['addedAt'] as num?)?.toInt() ?? existing?.addedAt ?? 0,
-          updatedAt:
-              (o['updatedAt'] as num?)?.toInt() ?? existing?.updatedAt ?? 0,
-          channels: existing?.channels ?? const [],
-        ),
-      );
-    }
-    await M3uStore.saveAll([...fileLocal, ...mergedUrl]);
-  }
-
-  Future<Map<String, dynamic>> exportIptv() async {
-    // Legacy export shape for debugging — assignments + m3u.
-    final m3u = await _exportIptvM3uCompact();
-    return m3u;
-  }
-
-  Future<void> importIptv(Map<String, dynamic> payload) async {
-    await _importIptvM3uLean(payload);
-    await _pullAndApplyUserIptvPortals();
   }
 
   Future<Map<String, dynamic>> exportPreferences() async {

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix tasks · **0 / 3** acceptance |
+| **Progress** | **4 / 4** fix tasks · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -19,9 +19,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I83-T01 | Anime race: `fillBackgroundHits: false` — stop after first playable extract | ✅ |
+| 1 | I83-T01 | Anime race: stop after first **CDN-playable** stream (not first extract) | ✅ |
 | 2 | I83-T02 | Loading → player: do not reset probe list (no fake full re-scan UI) | ✅ |
 | 3 | I83-T03 | Anime Auto recovery also first-hit (no sibling background fill while playing) | ✅ |
+| 4 | I83-T04 | Dead CDN on first extract: skip that server and try next (do not burn “Search again”) | ✅ |
 
 ---
 
@@ -37,7 +38,7 @@
 
 ## Summary
 
-Anime Auto had been walking every provider (`fillBackgroundHits`) before open, then the player probe handoff reset chips so it looked like a second full scan. Policy now: **first playable wins** — open and stop. Other servers stay for explicit Source taps or dead-stream recovery only (also first-hit for anime).
+Anime Auto had been walking every provider (`fillBackgroundHits`) before open, then the player probe handoff reset chips so it looked like a second full scan. Policy now: **first CDN-playable wins** — try servers in order, probe each extract, open on the first that works, then stop. A dead CDN on an early extract no longer stops the whole search or dumps you on “Search again” after one miss. Other servers stay for explicit Source taps or dead-stream recovery.
 
 ## Related
 

@@ -32,7 +32,7 @@ That will:
 | `user@forja.local` | `password123` | `accounts.is_admin` — open `/admin` |
 | `demo@forja.local` | `password123` | Non-admin |
 
-The script seeds lean `profile_settings` + shared `iptv_portals` (no `user_settings`, no M3U channel lists).
+The script seeds lean `profile_settings` + shared `iptv_portals` / `user_iptv_portals` (no `user_settings`, no M3U in cloud).
 Signup creates an `accounts` row only — test users get named profiles from the seed script, not an auto `Profile 1`.
 
 Then put the printed `VITE_SUPABASE_*` values into `apps/web/.env` (or run `supabase status` from `apps/web`).

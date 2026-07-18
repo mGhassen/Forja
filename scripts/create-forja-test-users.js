@@ -12,7 +12,7 @@
  * - accounts.features = lean flags ({} default; e.g. { iptvScrape: true })
  * - profile_settings.playback = full prefs (incl. play_source_*)
  * - profile_settings.navigation = navbar visibleIds + defaultTab
- * - profile_settings.iptv = M3U URLs only (no portals)
+ * - M3U playlists are device-local (never in profile_settings)
  */
 
 const path = require('path')
@@ -177,20 +177,6 @@ function settingsPayloadFor(variant) {
       variant === 'full' ? fullPlaybackPayload() : lightPlaybackPayload(),
     navigation: navigationPayload(variant),
     connectedServices: { stremio: { addons: stremioAddons } },
-  }
-
-  if (variant === 'full') {
-    payload.iptv = {
-      m3uPlaylists: [
-        {
-          id: `seed_m3u_${nowMs.toString(16)}`,
-          name: 'Public demo M3U',
-          sourceUrl: 'https://iptv-org.github.io/iptv/countries/us.m3u',
-          addedAt: nowMs - 86_400_000,
-          updatedAt: nowMs,
-        },
-      ],
-    }
   }
 
   return payload
