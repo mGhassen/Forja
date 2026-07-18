@@ -162,10 +162,13 @@ Public R2 bucket **`forja-releases`** holds DMG / EXE / AppImage / APK objects a
 - **Retention:** after each upload the script keeps only the **newest 3**
   version prefixes (`RELEASE_STORAGE_KEEP`, default `3`) and deletes older
   objects so storage stays within the R2 free tier.
-- **Download URL:** `{RELEASE_CDN_URL}/v{version}/{filename}`
+- **Download URL (site + in-app updater):** `{RELEASE_CDN_URL}/latest/{filename}`
+- **Download URL (versioned archive):** `{RELEASE_CDN_URL}/v{version}/{filename}`
   (custom domain preferred; `pub-*.r2.dev` only for testing).
 - **Clients:** Flutter `--dart-define=RELEASE_CDN_URL=…` and web
   `VITE_RELEASE_CDN_URL` / root `RELEASE_CDN_URL`.
+- **Upload:** each release also mirrors into `latest/` and removes stale
+  `latest/` objects so the site and updater always hit current installers.
 
 ## Remote (production / shared project)
 

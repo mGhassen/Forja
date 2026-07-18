@@ -10,7 +10,7 @@ type TurnstileCaptchaProps = {
 
 /**
  * Client-only Turnstile widget. Renders nothing when `VITE_TURNSTILE_SITE_KEY`
- * is unset (local without captcha). Resets token on expire / error.
+ * is unset. No host chrome — clips Cloudflare’s 1px dark iframe border only.
  */
 export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) {
   const [mounted, setMounted] = useState(false)
@@ -29,7 +29,7 @@ export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) 
     return (
       <div
         className={cn(
-          'flex h-[65px] items-center rounded-lg border border-[rgba(237,230,218,0.12)] bg-forja-bg px-3 text-xs text-[rgba(237,230,218,0.4)]',
+          'flex h-[65px] items-center text-xs text-[rgba(237,230,218,0.4)]',
           className,
         )}
       >
@@ -39,7 +39,12 @@ export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) 
   }
 
   return (
-    <div className={cn('relative z-10 overflow-visible', className)}>
+    <div
+      className={cn(
+        'w-fit max-w-full overflow-hidden leading-[0] [clip-path:inset(1px_round_0)]',
+        className,
+      )}
+    >
       <Turnstile
         siteKey={turnstileSiteKey!}
         options={{ theme: 'dark', size: 'normal' }}

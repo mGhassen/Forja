@@ -65,8 +65,21 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       height: ${_widgetHeight.toInt()}px;
       background: $pageBg;
       overflow: hidden;
+      line-height: 0;
     }
-    #cf-turnstile { display: block; width: 300px; height: 65px; }
+    /* CF dark Turnstile paints a 1px light border inside the iframe — clip it. */
+    #cf-turnstile {
+      display: block;
+      width: 300px;
+      height: 65px;
+      overflow: hidden;
+      line-height: 0;
+      clip-path: inset(1px round 0);
+    }
+    #cf-turnstile iframe {
+      border: 0 !important;
+      outline: none !important;
+    }
   </style>
 </head>
 <body>
@@ -87,6 +100,7 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
         sitekey: siteKey,
         theme: 'dark',
         size: 'normal',
+        appearance: 'always',
         callback: function (token) { postToken(token); },
         'expired-callback': function () { postToken(null); },
         'error-callback': function () { postToken(null); }

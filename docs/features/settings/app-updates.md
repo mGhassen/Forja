@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja can check for newer builds when the app starts and lets you check manually from Settings. Version discovery uses GitHub Releases; installer files download from Forja’s release CDN (Cloudflare R2). Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
+Forja can check for newer builds when the app starts and lets you check manually from Settings. Version discovery uses GitHub Releases; installer files download from Forja’s release CDN (`latest/` on Cloudflare R2). Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
 
 ## How to open it
 

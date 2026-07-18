@@ -107,10 +107,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R15-A33 | Release CI uploads flattened installers to R2 `releases` at `v{version}/` (S3 API) | 🔄 |
-| 2 | R15-A34 | Web `/download` + landing CTAs use `{RELEASE_CDN_URL}/v{version}/…` | 🔄 |
-| 3 | R15-A35 | `AppUpdaterService` prefers `RELEASE_CDN_URL` (GitHub asset URL fallback if unset) | 🔄 |
-| 4 | R15-A36 | After upload, prune R2 to newest 3 version prefixes (`RELEASE_STORAGE_KEEP`) | 🔄 |
+| 1 | R15-A33 | Release CI uploads flattened installers to R2 `forja-releases` at `v{version}/` and mirrors `latest/` (S3 API) | 🔄 |
+| 2 | R15-A34 | Web `/download` + landing CTAs use `{RELEASE_CDN_URL}/latest/…` | 🔄 |
+| 3 | R15-A35 | `AppUpdaterService` prefers `{RELEASE_CDN_URL}/latest/…` (versioned path fallback; GitHub asset if CDN unset) | 🔄 |
+| 4 | R15-A36 | After upload, prune R2 to newest 3 version prefixes (`RELEASE_STORAGE_KEEP`); refresh `latest/` | 🔄 |
 | 5 | R15-A37 | Hosted release smoke: DMG/EXE/AppImage/APK download from CDN succeeds | ⬜ |
 
 ---
@@ -163,7 +163,9 @@ Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_u
 
 Latest install target = newest non-draft, non-prerelease release. Asset **names** come from that GitHub release; download URLs are rewritten to the release CDN:
 
-`{RELEASE_CDN_URL}/v{version}/{filename}`
+`{RELEASE_CDN_URL}/latest/{filename}`
+
+(Versioned `{RELEASE_CDN_URL}/v{version}/{filename}` remains available as a fallback.)
 
 **Required assets per platform:**
 

@@ -122,7 +122,7 @@ class AppUpdaterService {
     );
   }
 
-  /// Prefer Supabase Storage public URL; fall back to GitHub asset URL.
+  /// Prefer R2 CDN `latest/` URL; fall back to GitHub asset URL.
   String? _assetDownloadUrl(String version, dynamic asset) {
     if (asset == null) return null;
     final name = asset['name'] as String?;

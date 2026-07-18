@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { Fingerprint } from 'lucide-react'
 import { LiquidGlass } from '@/components/liquid-glass'
 import { Reveal } from '@/components/reveal'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
@@ -296,10 +297,7 @@ function LoginForm() {
                 </div>
 
                 {configured && captchaConfigured && !showReturnButton ? (
-                  <div className="space-y-2">
-                    <Label>Verification</Label>
-                    <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
-                  </div>
+                  <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
                 ) : null}
 
                 {error ? (
@@ -323,7 +321,7 @@ function LoginForm() {
                     {handoffBusy ? 'Connecting to Forja…' : 'Return to Forja'}
                   </Button>
                 ) : configured ? (
-                  <>
+                  <div className="flex items-stretch gap-2">
                     <Button
                       type="submit"
                       disabled={
@@ -331,7 +329,7 @@ function LoginForm() {
                         loading ||
                         (captchaConfigured && !captchaToken)
                       }
-                      className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                      className="h-12 min-w-0 flex-1 rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                     >
                       {submitting
                         ? isDesktopLogin
@@ -341,32 +339,30 @@ function LoginForm() {
                           ? 'Sign in & return to app'
                           : 'Sign in'}
                     </Button>
-                    <div className="relative py-1">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-[rgba(237,230,218,0.12)]" />
-                      </div>
-                      <div className="relative flex justify-center text-[10px] uppercase tracking-[0.16em]">
-                        <span className="bg-transparent px-3 font-mono-ui text-[rgba(237,230,218,0.35)]">
-                          or
-                        </span>
-                      </div>
-                    </div>
                     <Button
                       type="button"
                       variant="outline"
+                      title={
+                        passkeySubmitting
+                          ? 'Waiting for passkey…'
+                          : 'Sign in with passkey'
+                      }
+                      aria-label={
+                        passkeySubmitting
+                          ? 'Waiting for passkey'
+                          : 'Sign in with passkey'
+                      }
                       disabled={
                         authBusy ||
                         loading ||
                         (captchaConfigured && !captchaToken)
                       }
                       onClick={() => void onPasskeySignIn()}
-                      className="h-12 w-full rounded-full border-[rgba(237,230,218,0.22)] font-mono-ui text-xs font-bold uppercase tracking-[0.12em] text-[#EDE6DA] hover:border-forja-green/50 hover:bg-forja-green/10"
+                      className="size-12 shrink-0 rounded-full border-[rgba(237,230,218,0.22)] p-0 text-[#EDE6DA] hover:border-forja-green/50 hover:bg-forja-green/10"
                     >
-                      {passkeySubmitting
-                        ? 'Waiting for passkey…'
-                        : 'Sign in with passkey'}
+                      <Fingerprint className="size-5" aria-hidden />
                     </Button>
-                  </>
+                  </div>
                 ) : (
                   <Link
                     to="/download"
@@ -390,14 +386,6 @@ function LoginForm() {
                     Create one
                   </Link>
                 </p>
-                {!isDesktopLogin ? (
-                  <Link
-                    to="/download"
-                    className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-                  >
-                    Or download and play without signing in →
-                  </Link>
-                ) : null}
               </div>
             ) : null}
           </CardContent>

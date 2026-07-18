@@ -1,32 +1,47 @@
 /// Public CDN URLs for release installers (Cloudflare R2).
 ///
 /// Pass at run/build time: `--dart-define=RELEASE_CDN_URL=https://…`
-/// Objects: `{RELEASE_CDN_URL}/v{version}/{filename}`
+///
+/// - Latest (in-app update + site): `{RELEASE_CDN_URL}/latest/{filename}`
+/// - Versioned (optional): `{RELEASE_CDN_URL}/v{version}/{filename}`
 class ReleaseStorageUrls {
   ReleaseStorageUrls._();
 
   /// Public base URL for installers (no trailing slash). Empty → GitHub fallback.
   static const String cdnBase = String.fromEnvironment('RELEASE_CDN_URL');
 
+  static String? get _root {
+    final base = cdnBase.trim();
+    if (base.isEmpty) return null;
+    return base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+  }
+
+  /// `{RELEASE_CDN_URL}/latest/{filename}` — current release mirror.
+  static String? latestUrl({required String filename}) {
+    final root = _root;
+    if (root == null) return null;
+    return '$root/latest/$filename';
+  }
+
   /// `{RELEASE_CDN_URL}/v{version}/{filename}`
   static String? publicUrl({
     required String version,
     required String filename,
   }) {
-    final base = cdnBase.trim();
-    if (base.isEmpty) return null;
+    final root = _root;
+    if (root == null) return null;
     final ver = version.startsWith('v') ? version.substring(1) : version;
-    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
     return '$root/v$ver/$filename';
   }
 
-  /// Prefer R2 CDN; fall back to the GitHub asset URL.
+  /// Prefer R2 `latest/`; fall back to the GitHub asset URL.
   static String preferStorage({
     required String version,
     required String filename,
     required String? githubDownloadUrl,
   }) {
-    return publicUrl(version: version, filename: filename) ??
+    return latestUrl(filename: filename) ??
+        publicUrl(version: version, filename: filename) ??
         githubDownloadUrl ??
         '';
   }

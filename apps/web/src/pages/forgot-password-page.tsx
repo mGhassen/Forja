@@ -192,13 +192,10 @@ function ForgotPasswordForm() {
                 </div>
 
                 {configured && captchaConfigured ? (
-                  <div className="space-y-2">
-                    <Label>Verification</Label>
-                    <TurnstileCaptcha
-                      key={captchaKey}
-                      onToken={onCaptchaToken}
-                    />
-                  </div>
+                  <TurnstileCaptcha
+                    key={captchaKey}
+                    onToken={onCaptchaToken}
+                  />
                 ) : null}
 
                 {error ? (

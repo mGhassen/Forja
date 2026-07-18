@@ -166,7 +166,7 @@ function fromGitHub(release: GhRelease): ReleaseWithAssets {
       release_id: releaseId,
       platform: detectPlatform(asset.name),
       name: asset.name,
-      // Installers are hosted on Supabase Storage; GitHub stays discovery-only.
+      // Installers on R2 (`latest/` + versioned); GitHub stays discovery-only.
       download_url: preferReleaseStorageUrl(
         version,
         asset.name,

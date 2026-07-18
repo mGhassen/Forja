@@ -10,8 +10,8 @@ Optional env:
   R2_ENDPOINT=https://{account}.r2.cloudflarestorage.com
   RELEASE_STORAGE_KEEP=3
 
-Objects: v{version}/{filename}
-Public URL (clients): {RELEASE_CDN_URL}/v{version}/{filename}
+Objects: v{version}/{filename} and latest/{filename}
+Public URL (site + app updater): {RELEASE_CDN_URL}/latest/{filename}
 """
 
 from __future__ import annotations
@@ -310,6 +310,7 @@ def main() -> None:
 
     prefix = f"v{version}"
     uploaded = 0
+    latest_names: list[str] = []
     for path in files:
         key = f"{prefix}/{path.name}"
         size = path.stat().st_size
@@ -322,17 +323,47 @@ def main() -> None:
             access_key=access_key,
             secret_key=secret_key,
         )
+        latest_key = f"latest/{path.name}"
+        print(f"  mirror → s3://{bucket}/{latest_key}")
+        put_object(
+            endpoint=endpoint,
+            bucket=bucket,
+            key=latest_key,
+            path=path,
+            access_key=access_key,
+            secret_key=secret_key,
+        )
+        latest_names.append(path.name)
         uploaded += 1
 
-    print(f"Uploaded {uploaded} release asset(s) to R2 ({bucket}/{prefix}/).")
-    print(f"Pruning R2 to newest {keep} version(s)…")
+    print(f"Uploaded {uploaded} release asset(s) to R2 ({bucket}/{prefix}/ + latest/).")
 
-    keys = list_keys(
+    # Drop stale objects under latest/ that are not part of this release.
+    all_keys = list_keys(
         endpoint=endpoint,
         bucket=bucket,
         access_key=access_key,
         secret_key=secret_key,
     )
+    latest_keep = {f"latest/{n}" for n in latest_names}
+    stale_latest = [
+        k
+        for k in all_keys
+        if k.startswith("latest/") and k not in latest_keep
+    ]
+    if stale_latest:
+        print(f"Removing {len(stale_latest)} stale latest/ object(s)…")
+        delete_keys(
+            endpoint=endpoint,
+            bucket=bucket,
+            keys=stale_latest,
+            access_key=access_key,
+            secret_key=secret_key,
+        )
+
+    print(f"Pruning R2 to newest {keep} version(s)…")
+
+    keys = all_keys
     versions = sorted(
         {
             k.split("/", 1)[0]
