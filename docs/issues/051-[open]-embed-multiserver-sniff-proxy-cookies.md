@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix tasks · **0 / 6** acceptance |
+| **Progress** | **12 / 12** fix tasks · **0 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,8 @@
 | 8 | I51-T08 | Cancel mid-sniff keeps a captured playable URL (complete + cookies) instead of discarding as `null` | ✅ |
 | 9 | I51-T09 | Deferred-strong sniff ignores audio-only CDN clips (`tran-audio`) and waits for HLS/DASH before early-complete | ✅ |
 | 10 | I51-T10 | Source panel: tapping another server clears the previous spinner and cancels the in-flight host sniff | ✅ |
+| 11 | I51-T11 | VidSrc.sbs: rotate Server dropdown (`.srv-menu-item`); prefer PRO Multi / Cinesrc / Vlux over Star | ✅ |
+| 12 | I51-T12 | `rotateBeforeComplete` — do not early-complete on default-server dead playlists; clear captures on `SERVER_CLICK` | ✅ |
 
 ---
 
@@ -42,12 +44,17 @@
 | 4 | I51-A04 | Template embed with popup/ad redirect: headless sniff blocks popup/main-frame hijack and still captures a playable stream | ⬜ |
 | 5 | I51-A05 | Manual switch to another provider after a stream was detected: previous provider still returns that hit (not hard-null discard) | ⬜ |
 | 6 | I51-A06 | Source panel: tap server A then B — only B shows the checking spinner; A stops loading | ⬜ |
+| 7 | I51-A07 | VidSrc.sbs TMDB 279323 S1E1: sniff logs `SERVER_CLICK` for PRO Multi (or later) and opens a working stream (not only Star/1embed dead hits) | ⬜ |
 
 ---
 
 ## Summary
 
 Browser works because users (or the page) pick a working internal server and the player keeps session cookies + correct Referer. Forja’s headless sniffer only clicked play overlays, ignored `/api/proxy` bodies without `.m3u8` in the URL, and opened CDN playlists with UA/Referer/Origin only (no Cookie). VidSrc.sbs nested into `1embed.cc` and never produced `VIDEO/STREAM DETECTED`. VidLove sometimes detected HLS then failed probe/open without cookies.
+
+### VidSrc.sbs Server dropdown (I51-T11–T12)
+
+`vidsrc.sbs/embed/tv/…` boots on **Star** (`1embed.cc`) and hides the other mirrors (PRO Multi / `web.nxsha.app`, Cinesrc, Vlux) in a closed `.srv-menu`. Star often emits dead proxy playlists that looked “strong” enough for early-complete, so Forja returned 1–2 broken streams and never switched. The sniffer now opens the dropdown, prefers PRO Multi → Cinesrc → Vlux → Star, clears captures on each `SERVER_CLICK`, and holds completion until after at least one server switch (`rotateBeforeComplete`).
 
 ### Ad / redirect hardening (I51-T06–T07)
 

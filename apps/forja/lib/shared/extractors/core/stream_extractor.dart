@@ -27,6 +27,9 @@ class StreamExtractor {
   // Track all detected video URLs to select best quality
   final List<String> _detectedVideoUrls = [];
 
+  /// Count of internal server-chip switches during this sniff (dropdown / chips).
+  int _serverSwitchCount = 0;
+
   // Amri integration
   AmriExtractor? _amriExtractor;
   final TmdbService _tmdbService = TmdbService();
@@ -225,6 +228,7 @@ class StreamExtractor {
     _originalEmbedUrl = url;
     _completing = false;
     _detectedVideoUrls.clear();
+    _serverSwitchCount = 0;
 
     _timeoutTimer = Timer(effectiveTimeout, () {
       if (_completer != null && !_completer!.isCompleted) {
@@ -410,8 +414,16 @@ class StreamExtractor {
           .replaceFirst('[WORKER]', '')
           .replaceFirst('[SERVER_CLICK]', '')
           .trim();
-      // Server-chip click logs are diagnostic only.
-      if (fullMsg.contains('[SERVER_CLICK]')) return;
+      // Server switch: drop the previous server's candidates so a dead default
+      // (e.g. VidSrc.sbs Star) cannot win over a later working mirror.
+      if (fullMsg.contains('[SERVER_CLICK]')) {
+        _serverSwitchCount++;
+        _detectedVideoUrls.clear();
+        _capturedVideo = null;
+        _capturedAudio = null;
+        _log('Server chip switched (#$_serverSwitchCount): $streamUrl');
+        return;
+      }
       final fromBody =
           fullMsg.contains('[FETCH_BODY]') || fullMsg.contains('[XHR_BODY]');
       _processUrl(
@@ -628,9 +640,17 @@ class StreamExtractor {
           isDeferredStrongStreamUrl(_capturedVideo!) ||
           (_profile.acceptProxyPlaylistBodies &&
               _isEmbedProxyPlaylistUrl(_capturedVideo!));
-      if (strong) {
-        _completeWithCaptured(playbackReferer);
+      if (!strong) return;
+      // Default server often emits a dead playlist (VidSrc.sbs Star). Keep
+      // rotating until we have switched chips at least once.
+      if (_profile.rotateBeforeComplete && _serverSwitchCount == 0) {
+        _log(
+          'Holding strong stream until server rotation '
+          '(rotateBeforeComplete): $_capturedVideo',
+        );
+        return;
       }
+      _completeWithCaptured(playbackReferer);
       return;
     }
 
@@ -1038,33 +1058,30 @@ class StreamExtractor {
 
       let serverChipIndex = 0;
       let lastServerClickAt = 0;
-      const clickServerChips = () => {
-        if (!ROTATE_SERVER_CHIPS) return;
-        const nodes = Array.from(document.querySelectorAll(
-          'button, [role="button"], a, div, span, li'
-        ));
-        const chips = [];
-        const labelSet = new Set(SERVER_CHIP_LABELS.map((s) => String(s).toLowerCase()));
-        nodes.forEach((el) => {
-          const text = (el.innerText || el.textContent || '').trim();
-          if (!text || text.length > 28) return;
-          const rect = el.getBoundingClientRect();
-          if (rect.width < 24 || rect.height < 18 || rect.width > 280) return;
-          const lower = text.toLowerCase();
-          const cls = (el.className || '').toString().toLowerCase();
-          const labeled = labelSet.size > 0 &&
-              Array.from(labelSet).some((label) => lower === label || lower.startsWith(label));
-          const generic = /^(server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i.test(text);
-          const classHit = cls.includes('server') || cls.includes('source-btn');
-          if (labeled || (labelSet.size === 0 && (generic || classHit))) chips.push(el);
-        });
-        if (chips.length === 0) return;
-        const now = Date.now();
-        if (now - lastServerClickAt < 2500) return;
-        lastServerClickAt = now;
-        const el = chips[serverChipIndex % chips.length];
-        serverChipIndex++;
-        const label = (el.innerText || el.textContent || '').trim();
+      const chipText = (el) => (el.innerText || el.textContent || '').trim();
+      const isActiveChip = (el) => {
+        const cls = (el.className || '').toString().toLowerCase();
+        return cls.includes('active') ||
+          el.getAttribute('aria-pressed') === 'true' ||
+          el.getAttribute('aria-selected') === 'true';
+      };
+      const openServerDropdown = () => {
+        const menu = document.getElementById('srvMenu') ||
+          document.querySelector('.srv-menu');
+        const btn = document.getElementById('srvBtn') ||
+          document.querySelector('.srv-dropdown-btn');
+        if (!btn || !menu) return;
+        if (!menu.classList.contains('open')) {
+          try { btn.click(); } catch (e) {}
+          try {
+            btn.dispatchEvent(new MouseEvent('click', {
+              view: window, bubbles: true, cancelable: true
+            }));
+          } catch (e) {}
+        }
+      };
+      const clickEl = (el) => {
+        const label = chipText(el);
         console.log('PT_EXTRACT: [SERVER_CLICK] ' + label + ' | FRAME: ' + window.location.href);
         try { el.click(); } catch (e) {}
         try {
@@ -1072,6 +1089,65 @@ class StreamExtractor {
             view: window, bubbles: true, cancelable: true
           }));
         } catch (e) {}
+      };
+      const clickServerChips = () => {
+        if (!ROTATE_SERVER_CHIPS) return;
+        const now = Date.now();
+        // Named multi-server dropdowns need longer dwell so a working mirror
+        // (e.g. PRO Multi) can emit HLS before we abandon it for the next chip.
+        const rotateGapMs = SERVER_CHIP_LABELS.length > 0 ? 5500 : 2500;
+        if (now - lastServerClickAt < rotateGapMs) return;
+
+        openServerDropdown();
+
+        const nodes = Array.from(document.querySelectorAll(
+          'button.srv-menu-item, .srv-menu-item, button, [role="button"], a, div, span, li'
+        ));
+        const chips = [];
+        const labelSet = new Set(SERVER_CHIP_LABELS.map((s) => String(s).toLowerCase()));
+        nodes.forEach((el) => {
+          const text = chipText(el);
+          if (!text || text.length > 28) return;
+          const cls = (el.className || '').toString().toLowerCase();
+          const isMenuItem = cls.includes('srv-menu-item') ||
+            el.classList.contains('srv-menu-item') ||
+            el.hasAttribute('data-idx');
+          if (!isMenuItem) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width < 24 || rect.height < 18 || rect.width > 280) return;
+          }
+          const lower = text.toLowerCase();
+          const labeled = labelSet.size > 0 &&
+              Array.from(labelSet).some((label) => lower === label || lower.startsWith(label));
+          const generic = /^(server\\s*\\d+|source\\s*\\d+|hd\\s*\\d*|sd\\s*\\d*|cam|ts|hd|sd)\$/i.test(text);
+          const classHit = cls.includes('server') || cls.includes('source-btn') || isMenuItem;
+          if (labeled || (labelSet.size === 0 && (generic || classHit))) chips.push(el);
+        });
+        if (chips.length === 0) return;
+
+        // Prefer configured label order (skip the currently active chip).
+        let el = null;
+        if (SERVER_CHIP_LABELS.length > 0) {
+          for (let i = 0; i < SERVER_CHIP_LABELS.length; i++) {
+            const want = String(SERVER_CHIP_LABELS[i]).toLowerCase();
+            const match = chips.find((c) => {
+              const lower = chipText(c).toLowerCase();
+              return (lower === want || lower.startsWith(want)) && !isActiveChip(c);
+            });
+            if (match) { el = match; break; }
+          }
+        }
+        if (!el) {
+          el = chips[serverChipIndex % chips.length];
+          serverChipIndex++;
+          if (isActiveChip(el) && chips.length > 1) {
+            el = chips[serverChipIndex % chips.length];
+            serverChipIndex++;
+          }
+        }
+
+        lastServerClickAt = now;
+        clickEl(el);
       };
 
       const interact = () => {

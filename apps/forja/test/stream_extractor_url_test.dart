@@ -120,6 +120,13 @@ void main() {
       expect(p.acceptProxyPlaylistBodies, isTrue);
       expect(p.forceDirect, isTrue);
       expect(p.deferUntilStrongStream, isTrue);
+      expect(p.rotateServerChips, isTrue);
+      expect(p.rotateBeforeComplete, isTrue);
+      expect(
+        p.serverChipLabels,
+        containsAll(['pro multi', 'cinesrc', 'vlux', 'star']),
+      );
+      expect(p.serverChipLabels.first, 'pro multi');
     });
 
     test('autoembed forces player top-level load (anti-sandbox)', () {

@@ -11,6 +11,7 @@ class EmbedExtractProfile {
     this.deferUntilStrongStream = false,
     this.rotateServerChips = false,
     this.serverChipLabels = const [],
+    this.rotateBeforeComplete = false,
     this.acceptProxyPlaylistBodies = false,
     this.cdnHostsPreferEmbedReferer = const [],
     this.harvestCookies = true,
@@ -32,7 +33,14 @@ class EmbedExtractProfile {
 
   /// Exact chip labels (lowercased match), e.g. `neta`, `gogo`. Empty = generic
   /// `server N` / class heuristics only when [rotateServerChips] is true.
+  /// Order matters when [rotateBeforeComplete] is true — earlier labels are
+  /// preferred (e.g. VidSrc.sbs `pro multi` before default `star`).
   final List<String> serverChipLabels;
+
+  /// Do not early-complete on the default server's first `.m3u8`. Keep rotating
+  /// chips and only finish after a server switch (or timeout with best capture).
+  /// Used when the site default (e.g. VidSrc.sbs Star/1embed) emits dead streams.
+  final bool rotateBeforeComplete;
 
   /// Accept `/api/proxy?…` URLs whose response body was `#EXTM3U`.
   final bool acceptProxyPlaylistBodies;
