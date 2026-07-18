@@ -1,12 +1,9 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
 import 'package:forja/shared/sync/src/forja_captcha.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
 /// Compact Turnstile challenge for desktop email/password sign-in.
@@ -17,6 +14,10 @@ import 'package:forja/shared/webview/forja_webview.dart';
 /// Uses Turnstile `appearance: interaction-only` so the grey widget plate stays
 /// hidden unless Cloudflare needs a click. After a silent token, the slot
 /// collapses; the WebView stays alive offstage for expire / refresh.
+///
+/// Cloudflare paints a light rim inside its iframe (not styleable). We crop a
+/// few pixels on every side in HTML and again in Flutter so that rim never
+/// reaches the form.
 class TurnstileCaptcha extends StatefulWidget {
   const TurnstileCaptcha({
     super.key,
@@ -35,14 +36,19 @@ class TurnstileCaptcha extends StatefulWidget {
 
 class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
   static const _handlerName = 'turnstileToken';
-  /// Cloudflare "normal" widget is 300×65 when interaction is required.
-  static const _widgetWidth = 300.0;
-  static const _widgetHeight = 65.0;
 
-  /// Windows WebView2 keeps an opaque surface even when
-  /// [InAppWebViewSettings.transparentBackground] is true (see
-  /// [patchWindowsWebViewSettings]); page CSS must paint a solid color there.
-  static bool get _needsOpaquePageBg => !kIsWeb && Platform.isWindows;
+  /// Cloudflare "normal" widget is 300×65 before rim crop.
+  static const _srcWidth = 300.0;
+  static const _srcHeight = 65.0;
+
+  /// Pixels trimmed from each edge (CF light rim + WKWebView fringe).
+  static const _rimCrop = 4.0;
+
+  static const _viewWidth = _srcWidth - _rimCrop * 2;
+  static const _viewHeight = _srcHeight - _rimCrop * 2;
+
+  /// Match CF dark-theme plate so any leftover hairline is dark, not white.
+  static const _plateBg = '#232323';
 
   /// True after a usable token arrives; form slot collapses (no grey plate).
   bool _tokenReady = false;
@@ -57,16 +63,9 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
     }
   }
 
-  static String get _pageBgCss {
-    if (!_needsOpaquePageBg) return 'transparent';
-    final argb = AppTheme.appBackground.toARGB32();
-    final hex = (argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0');
-    return '#$hex';
-  }
-
   String get _html {
     final siteKeyJson = jsonEncode(ForjaCaptcha.siteKey);
-    final pageBg = _pageBgCss;
+    final crop = _rimCrop.toInt();
     return '''
 <!DOCTYPE html>
 <html>
@@ -78,28 +77,26 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
     html, body {
       margin: 0;
       padding: 0;
-      width: ${_widgetWidth.toInt()}px;
-      height: ${_widgetHeight.toInt()}px;
-      background: $pageBg;
+      width: ${_srcWidth.toInt()}px;
+      height: ${_srcHeight.toInt()}px;
+      background: $_plateBg;
       overflow: hidden;
       line-height: 0;
     }
-    /* CF paints a 1–2px rim inside the iframe — crop it (clip-path alone
-       is flaky in WKWebView). */
     .cf-outer {
       overflow: hidden;
-      width: fit-content;
-      max-width: 100%;
+      width: ${_viewWidth.toInt()}px;
+      height: ${_viewHeight.toInt()}px;
       line-height: 0;
     }
     .cf-inner {
-      margin: -2px;
+      margin: -${crop}px;
       line-height: 0;
     }
     #cf-turnstile {
       display: block;
-      width: 300px;
-      height: 65px;
+      width: ${_srcWidth.toInt()}px;
+      height: ${_srcHeight.toInt()}px;
       overflow: hidden;
       line-height: 0;
     }
@@ -159,7 +156,8 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
         supportZoom: false,
         disableHorizontalScroll: true,
         disableVerticalScroll: true,
-        transparentBackground: true,
+        // Opaque host — transparent macOS/WebView2 edges read as a white rim.
+        transparentBackground: false,
       ),
       initialData: InAppWebViewInitialData(
         data: _html,
@@ -200,6 +198,27 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       return s.endsWith('/') ? s : '$s/';
     }();
 
+    // Flutter crop mirrors the HTML rim crop — WKWebView overflow:hidden alone
+    // still left a white L on the trailing edges.
+    final captcha = SizedBox(
+      width: _viewWidth,
+      height: _viewHeight,
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.center,
+          minWidth: _srcWidth,
+          maxWidth: _srcWidth,
+          minHeight: _srcHeight,
+          maxHeight: _srcHeight,
+          child: SizedBox(
+            width: _srcWidth,
+            height: _srcHeight,
+            child: _buildWebView(normalized),
+          ),
+        ),
+      ),
+    );
+
     // Same element tree whether visible or not — swapping to a different
     // parent would recreate the WebView and drop the Turnstile session.
     return Offstage(
@@ -208,11 +227,7 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
         padding: EdgeInsets.only(top: widget.topPadding),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: SizedBox(
-            height: _widgetHeight,
-            width: _widgetWidth,
-            child: ClipRect(child: _buildWebView(normalized)),
-          ),
+          child: captcha,
         ),
       ),
     );
