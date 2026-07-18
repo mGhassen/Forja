@@ -12,6 +12,13 @@ use serde_json::json;
 use tokio::time::sleep;
 
 const BASE_URL: &str = "https://a.111477.xyz";
+
+fn base_url() -> String {
+    utils::provider_runtime::api_base("index111477")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| BASE_URL.to_string())
+}
+
 const CACHE_TTL_SECS: u64 = 24 * 3600;
 const RATE_LIMIT_WAIT_MS: u64 = 7200;
 const MAX_RATE_LIMIT_RETRIES: u32 = 6;
@@ -238,12 +245,12 @@ async fn load_or_fetch(kind: &str, cache_dir: Option<&str>) -> Result<Vec<Entry>
                 }
             }
         }
-        let fetched = fetch_html(&format!("{BASE_URL}/{kind}/")).await?;
+        let fetched = fetch_html(&format!("{}/{kind}/", base_url())).await?;
         let _ = fs::create_dir_all(dir);
         let _ = fs::write(&path, &fetched);
         fetched
     } else {
-        fetch_html(&format!("{BASE_URL}/{kind}/")).await?
+        fetch_html(&format!("{}/{kind}/", base_url())).await?
     };
     Ok(parse_entries(&html))
 }
@@ -412,7 +419,7 @@ fn absolute(maybe_relative: &str) -> String {
     if maybe_relative.starts_with("http") {
         maybe_relative.to_string()
     } else {
-        format!("{BASE_URL}{maybe_relative}")
+        format!("{}{maybe_relative}", base_url())
     }
 }
 

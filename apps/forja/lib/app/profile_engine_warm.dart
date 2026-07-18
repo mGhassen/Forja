@@ -14,14 +14,17 @@ class ProfileEngineWarm {
     BootNeeds needs, {
     bool startTorrent = true,
     String reason = 'boot',
+    void Function(String status)? onStatus,
   }) async {
     debugPrint('[Init] warm ($reason): $needs');
 
     if (needs.webstreaming) {
+      onStatus?.call('Starting stream proxy…');
       debugPrint('[Init] LocalServer start (webstreaming)');
       await LocalServerService().start().catchError((e) {
         debugPrint('[Init] LocalServer error: $e');
       });
+      onStatus?.call('Starting WebStreamr…');
       debugPrint('[Init] WebStreamr start');
       unawaited(
         WebStreamrService.init().catchError((e) {
@@ -37,6 +40,7 @@ class ProfileEngineWarm {
     }
 
     if (needs.torrent) {
+      onStatus?.call('Refreshing torrent addons…');
       debugPrint('[Init] Nuvio refresh (direct torrent)');
       unawaited(
         NuvioService.instance.refreshAllInstalled().catchError((e) {
@@ -44,6 +48,7 @@ class ProfileEngineWarm {
         }),
       );
       if (startTorrent && PlatformPlayback.capabilities.localTorrentEngine) {
+        onStatus?.call('Starting torrent engine…');
         debugPrint('[Init] TorrentStream start (direct torrent)');
         final ok = await TorrentStreamService()
             .start()

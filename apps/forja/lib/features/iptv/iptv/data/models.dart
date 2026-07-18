@@ -86,6 +86,21 @@ class IptvCategory {
 
 enum IptvSection { live, vod, series }
 
+/// Live catalog sort — playlist = API order; nameAsc/nameDesc by display name.
+enum IptvCatalogSort {
+  playlist,
+  nameAsc,
+  nameDesc;
+
+  static IptvCatalogSort fromPrefs(String? raw) => switch (raw) {
+        'nameAsc' => nameAsc,
+        'nameDesc' => nameDesc,
+        _ => playlist,
+      };
+
+  String get prefsValue => name;
+}
+
 /// Single playable stream entry. `kind` = "live" / "vod" / "series".
 class IptvStream {
   final String streamId;

@@ -95,6 +95,11 @@ pub unsafe extern "C" fn ffi_unpack_js(source: *const c_char) -> *mut c_char {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_set_provider_runtime_overlay(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::set_provider_runtime_overlay(from_c_str(json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_build_movie_url(
     provider_id: *const c_char,
     tmdb_id: i64,

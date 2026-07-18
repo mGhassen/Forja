@@ -31,6 +31,8 @@ class IptvStore {
   static const _favKey = 'pt_iptv_favorite_portal_keys';
   static const _lastPortalKey = 'pt_iptv_last_portal_key';
   static const _lastSectionKey = 'pt_iptv_last_section';
+  static const _liveCategorySortKey = 'pt_iptv_live_category_sort';
+  static const _liveContentSortKey = 'pt_iptv_live_content_sort';
 
   /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
   static final ValueNotifier<int> listRevision = ValueNotifier(0);
@@ -211,6 +213,26 @@ class IptvStore {
       IptvSection.live => 'live',
     };
     await prefs.setString(_lastSectionKey, raw);
+  }
+
+  static Future<IptvCatalogSort> loadLiveCategorySort() async {
+    final prefs = await SharedPreferences.getInstance();
+    return IptvCatalogSort.fromPrefs(prefs.getString(_liveCategorySortKey));
+  }
+
+  static Future<void> saveLiveCategorySort(IptvCatalogSort sort) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveCategorySortKey, sort.prefsValue);
+  }
+
+  static Future<IptvCatalogSort> loadLiveContentSort() async {
+    final prefs = await SharedPreferences.getInstance();
+    return IptvCatalogSort.fromPrefs(prefs.getString(_liveContentSortKey));
+  }
+
+  static Future<void> saveLiveContentSort(IptvCatalogSort sort) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveContentSortKey, sort.prefsValue);
   }
 }
 

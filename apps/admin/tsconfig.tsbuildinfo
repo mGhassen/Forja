@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/layout.tsx","./src/hooks/use-auth.ts","./src/hooks/use-is-admin.ts","./src/lib/supabase.ts","./src/pages/accountspage.tsx","./src/pages/dashboardpage.tsx","./src/pages/loginpage.tsx","./src/pages/poolpage.tsx","./src/pages/scraperunspage.tsx"],"errors":true,"version":"6.0.3"}

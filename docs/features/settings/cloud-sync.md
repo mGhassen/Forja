@@ -68,11 +68,13 @@ Not synced — device-specific or sensitive:
   when Auth captcha is configured), **Sign in with passkey** on macOS and Windows
   (Touch ID / Windows Hello), or use **Web login** to authenticate in the
   browser (one portal tab; the app finishes when you sign in there — no second
-  localhost page). After a successful handoff the portal tries to close the
-  tab; if the browser keeps it open, you can close it yourself. If the browser
-  signed you in but the app is still waiting, tap **Return to Forja** on the
-  portal (allow local network access if Chrome asks). If the browser does not
-  open or you change your mind, tap
+  localhost page). Already signed in on the portal? The handoff still completes
+  (or use **Return to Forja**). After a successful handoff the portal shows a
+  short confirmation and tries to close the tab; if the browser keeps it open,
+  close it yourself. If Chrome asks to allow local network access to reach the
+  app, allow it. If the portal says Forja received sign-in but could not apply
+  the session, tap **Return to Forja** again or restart **Web login** from the
+  app. If the browser does not open or you change your mind, tap
   **Cancel web login** (or **Continue without an account**) to unlock the
   screen. Create accounts only on the web (`/signup`); the app does not offer
   in-app signup. Web signup and sign-in show a Cloudflare Turnstile check when

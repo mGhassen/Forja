@@ -12,6 +12,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 
@@ -20,9 +21,17 @@ class VideasyExtractor {
 
   final void Function(String) onLog;
 
-  static const _apiHost = 'api.wingsdatabase.com';
-  static const _dbHost = 'db.wingsdatabase.com';
-  static const _playerOrigin = 'https://player.videasy.to';
+  static const _apiHostDefault = 'api.wingsdatabase.com';
+  static const _dbHostDefault = 'db.wingsdatabase.com';
+  static const _playerOriginDefault = 'https://player.videasy.to';
+
+  static String get _apiHost =>
+      ProviderRuntimeConfig.instance.api('videasyApiHost') ?? _apiHostDefault;
+  static String get _dbHost =>
+      ProviderRuntimeConfig.instance.api('videasyDbHost') ?? _dbHostDefault;
+  static String get _playerOrigin =>
+      ProviderRuntimeConfig.instance.api('videasyPlayerOrigin') ??
+      _playerOriginDefault;
   // Fail hung mirrors fast — neon2/m4uhd often stall with 0 bytes while cdn
   // (Yoru) answers in ~100ms. A long timeout here prevents ever reaching cdn.
   static const _fetchTimeout = Duration(seconds: 12);

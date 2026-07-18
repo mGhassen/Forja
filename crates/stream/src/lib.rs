@@ -130,6 +130,9 @@ pub fn list_providers() -> Vec<ProviderDef> {
 }
 
 pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
+    if let Some(tpl) = utils::provider_runtime::movie_template(provider_id) {
+        return Some(utils::provider_runtime::expand_template(&tpl, tmdb_id, 0, 0));
+    }
     match provider_id {
         "vidlink" => Some(format!("https://vidlink.pro/movie/{tmdb_id}")),
         "vixsrc" => Some(format!("https://vixsrc.to/movie/{tmdb_id}/")),
@@ -160,6 +163,11 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
 }
 
 pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) -> Option<String> {
+    if let Some(tpl) = utils::provider_runtime::tv_template(provider_id) {
+        return Some(utils::provider_runtime::expand_template(
+            &tpl, tmdb_id, season, episode,
+        ));
+    }
     match provider_id {
         "vidlink" => Some(format!(
             "https://vidlink.pro/tv/{tmdb_id}/{season}/{episode}"
@@ -210,6 +218,7 @@ mod tests {
 
     #[test]
     fn vidlink_movie_url() {
+        utils::provider_runtime::clear_overlay();
         assert_eq!(
             build_movie_url("vidlink", 550),
             Some("https://vidlink.pro/movie/550".into())
@@ -218,6 +227,7 @@ mod tests {
 
     #[test]
     fn vidnest_movie_url() {
+        utils::provider_runtime::clear_overlay();
         assert_eq!(
             build_movie_url("vidnest", 99),
             Some("https://vidnest.fun/movie/99".into())
@@ -226,6 +236,7 @@ mod tests {
 
     #[test]
     fn vidlink_tv_url() {
+        utils::provider_runtime::clear_overlay();
         assert_eq!(
             build_tv_url("vidlink", 1399, 2, 5),
             Some("https://vidlink.pro/tv/1399/2/5".into())
@@ -234,7 +245,27 @@ mod tests {
 
     #[test]
     fn unknown_provider_returns_none() {
+        utils::provider_runtime::clear_overlay();
         assert_eq!(build_movie_url("unknown", 1), None);
+    }
+
+    #[test]
+    fn overlay_movie_template_overrides_builtin() {
+        utils::provider_runtime::clear_overlay();
+        utils::provider_runtime::set_overlay_json(
+            r#"{
+              "schema": 1,
+              "templates": {
+                "vidlink": { "movie": "https://ops.test/movie/{tmdb}" }
+              }
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            build_movie_url("vidlink", 550),
+            Some("https://ops.test/movie/550".into())
+        );
+        utils::provider_runtime::clear_overlay();
     }
 
     #[test]

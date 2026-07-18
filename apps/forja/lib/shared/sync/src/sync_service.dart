@@ -194,6 +194,11 @@ class SyncService {
   }
 
   /// Applies tokens from [DesktopBrowserAuth] (web portal → localhost callback).
+  ///
+  /// Refresh-only on purpose: a non-expired [accessToken] makes gotrue call
+  /// `getUser`, which fails with `session_not_found` when the JWT's session
+  /// row is gone (common for an already-open web tab) even though refresh
+  /// still works.
   Future<AuthResponse> signInWithBrowserTokens({
     required String accessToken,
     required String refreshToken,
@@ -203,10 +208,10 @@ class SyncService {
     if (client == null) {
       throw const AuthException('Supabase is not configured for this build.');
     }
-    final response = await client.auth.setSession(
-      refreshToken,
-      accessToken: accessToken,
-    );
+    if (accessToken.isEmpty || refreshToken.isEmpty) {
+      throw const AuthException('Web login did not return usable tokens.');
+    }
+    final response = await client.auth.setSession(refreshToken);
     if (response.session == null) {
       throw const AuthException('Web login did not return a usable session.');
     }
@@ -503,16 +508,32 @@ class SyncService {
       return const {};
     }
     try {
-      final row = await client
-          .from('accounts')
-          .select('features')
-          .eq('id', userId)
-          .maybeSingle();
+      Map<String, dynamic>? row;
+      try {
+        row = await client
+            .from('accounts')
+            .select('features, iptv_credits')
+            .eq('id', userId)
+            .maybeSingle();
+      } catch (_) {
+        // Column missing until RFC-040 migration is applied.
+        row = await client
+            .from('accounts')
+            .select('features')
+            .eq('id', userId)
+            .maybeSingle();
+      }
       final raw = row?['features'];
       final map = raw is Map
           ? Map<String, dynamic>.from(raw)
           : <String, dynamic>{};
-      AccountFeatures.instance.applyRemote(map);
+      final credits = switch (row?['iptv_credits']) {
+        int n => n,
+        num n => n.toInt(),
+        String s => int.tryParse(s) ?? 0,
+        _ => 0,
+      };
+      AccountFeatures.instance.applyRemote(map, iptvCredits: credits);
       return map;
     } catch (e) {
       debugPrint('[Sync] pullAccountFeatures error: $e');
@@ -550,6 +571,31 @@ class SyncService {
     }
     // Legacy payload.iptv is ignored (M3U device-local; portals in tables).
     return out;
+  }
+
+  /// Deal portals from the catalog pool (burns 1 credit). Returns portal UUIDs.
+  Future<List<String>> dealIptvPortals({
+    required String profileId,
+    String region = 'ANY',
+    int count = 5,
+  }) async {
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) {
+      throw StateError('Not signed in');
+    }
+    final rows = await client.rpc(
+      'deal_iptv_portals',
+      params: {
+        'p_profile_id': profileId,
+        'p_region': region,
+        'p_count': count,
+      },
+    );
+    if (rows is! List) return const [];
+    return [
+      for (final id in rows)
+        if (id != null) id.toString(),
+    ];
   }
 
   Future<String?> upsertIptvPortal({

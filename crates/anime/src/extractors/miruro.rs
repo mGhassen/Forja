@@ -144,9 +144,13 @@ fn domain_order() -> Vec<String> {
             out.push(b.clone());
         }
     }
-    for d in OFFICIAL_DOMAINS {
-        if !out.iter().any(|x| x == d) {
-            out.push((*d).to_string());
+    let remote = utils::provider_runtime::miruro_origins();
+    let domains: Vec<String> = remote.unwrap_or_else(|| {
+        OFFICIAL_DOMAINS.iter().map(|d| (*d).to_string()).collect()
+    });
+    for d in domains {
+        if !out.iter().any(|x| x == &d) {
+            out.push(d);
         }
     }
     out

@@ -24,6 +24,12 @@ const LEGACY_CDN_HOST: &str = "cloudnestra.com";
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
+fn embed_host() -> String {
+    utils::provider_runtime::api_base("vidsrcEmbed")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| EMBED_HOST.to_string())
+}
+
 /// CDN host from an absolute or protocol-relative rcp / iframe URL (e.g. cloudorchestranova.com).
 fn cdn_host_from_url(url: &str) -> Option<String> {
     let normalized = if url.starts_with("//") {
@@ -55,11 +61,12 @@ pub fn build_embed_url(
     season: Option<i32>,
     episode: Option<i32>,
 ) -> String {
+    let host = embed_host();
     if is_movie {
-        format!("{EMBED_HOST}/embed/movie?tmdb={tmdb_id}")
+        format!("{host}/embed/movie?tmdb={tmdb_id}")
     } else {
         format!(
-            "{EMBED_HOST}/embed/tv?tmdb={tmdb_id}&season={}&episode={}",
+            "{host}/embed/tv?tmdb={tmdb_id}&season={}&episode={}",
             season.unwrap_or(1),
             episode.unwrap_or(1)
         )
@@ -90,7 +97,7 @@ fn absolutize_src(raw: &str) -> String {
     } else if raw.starts_with("//") {
         format!("https:{raw}")
     } else if raw.starts_with('/') {
-        format!("{EMBED_HOST}{raw}")
+        format!("{}{raw}", embed_host())
     } else {
         raw.to_string()
     }
@@ -262,7 +269,7 @@ pub fn resolve_vidsrc_embed_json(request_json: &str) -> String {
         None => return serde_json::json!({ "error": "no_iframe" }).to_string(),
     };
 
-    let rcp_html = match fetch_text(&rcp_url, &fetch_cfg(Some(&format!("{EMBED_HOST}/")))) {
+    let rcp_html = match fetch_text(&rcp_url, &fetch_cfg(Some(&format!("{}/", embed_host())))) {
         Ok(h) if !h.is_empty() => h,
         Ok(_) => return serde_json::json!({ "error": "empty_rcp" }).to_string(),
         Err(e) => return serde_json::json!({ "error": e }).to_string(),

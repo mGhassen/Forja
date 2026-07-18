@@ -229,6 +229,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Hydrate theme preset before first frame
   await Engine.init();
   _warnIfRustMissing();
+  ProviderRuntimeConfig.instance.pushToRust();
   await PlatformChannel.seedPlatformDefaultsAfterEngine();
 
   await AppTheme.initTheme();
@@ -460,6 +461,29 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
+  /// Rotate hold lines while waiting out the remaining min-splash time.
+  Future<void> _awaitMinSplashWithHoldStatus(Future<void> minSplashFuture) async {
+    final opening = _bootStatus.value.trim().isEmpty
+        ? 'Just a moment…'
+        : _bootStatus.value;
+    final steps = <String>[
+      opening,
+      'Warming up the shell…',
+      'Almost ready…',
+    ];
+    var index = 0;
+
+    while (mounted && _showOverlay) {
+      final finished = await Future.any<bool>([
+        minSplashFuture.then((_) => true),
+        Future<void>.delayed(const Duration(milliseconds: 1800)).then((_) => false),
+      ]);
+      if (finished) return;
+      index = (index + 1) % steps.length;
+      _setBootStatus(steps[index]);
+    }
+  }
+
   /// Dismiss when the min splash timer elapses. If [bootFuture] is still
   /// running, show the slow-boot toast; otherwise wait out any remaining
   /// min time after boot finishes early.
@@ -473,12 +497,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (bootFinishedFirst) {
-      // Keep the opening status set by boot — do not overwrite with a vague hold.
       debugPrint(
         '[Boot] Step 4: Waiting for minimum splash time so the '
         'pre-built MainScreen / HomeScreen finishes its first paints...',
       );
-      await minSplashFuture;
+      await _awaitMinSplashWithHoldStatus(minSplashFuture);
       if (!mounted) return;
       debugPrint(
         '[Boot] Step 5: Dismissing splash overlay (MainScreen '
@@ -521,19 +544,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initOnlineBoot() async {
     debugPrint('[Init] resolving profile boot needs...');
+    _setBootStatus('Loading your profile…');
     final needs = await BootNeeds.resolve();
     debugPrint('[Init] $needs');
-
-    final warmPlayback = needs.webstreaming || needs.torrent;
-    if (warmPlayback) {
-      _setBootStatus('Starting playback services…');
-    }
 
     // Webstreaming + Nuvio under splash; TorrentStream waits for post-splash.
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: false,
       reason: 'intro-splash',
+      onStatus: _setBootStatus,
     );
 
     if (!needs.tmdb) {
@@ -543,9 +563,7 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     _setBootStatus('Loading your home feed…');
-    await BootCatalog.prefetchTmdb(
-      onRetry: () => _setBootStatus('Still loading your home feed…'),
-    );
+    await BootCatalog.prefetchTmdb(onStatus: _setBootStatus);
     _setBootStatus(_splashOpeningStatus(needs));
   }
 

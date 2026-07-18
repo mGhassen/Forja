@@ -6,6 +6,13 @@ use serde_json::{json, Value};
 use super::common::{anime_get, decode_html_entities, jaccard, tokenize, StreamResultOut};
 
 const ORIGIN: &str = "https://watchhentai.net";
+
+fn origin() -> String {
+    utils::provider_runtime::api_base("watchhentaiOrigin")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| ORIGIN.to_string())
+}
+
 const UA: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
      (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -165,7 +172,7 @@ fn find_series(titles: &[String]) -> Result<Option<String>, String> {
         if !tried.insert(key) {
             continue;
         }
-        let url = format!("{ORIGIN}/?s={}", urlencoding::encode(q));
+        let url = format!("{}/?s={}", origin(), urlencoding::encode(q));
         if let Some(html) = get(&url, None)? {
             for h in parse_hits(&html) {
                 if !all_hits.iter().any(|x: &SearchHit| x.url == h.url) {
@@ -227,7 +234,7 @@ fn pick_episode(series_html: &str, ep: i32) -> Option<String> {
         }
         s
     });
-    Some(format!("{ORIGIN}{}", matching[0]))
+    Some(format!("{}{}", origin(), matching[0]))
 }
 
 fn extract_stream_url(video_html: &str) -> Option<String> {
@@ -281,7 +288,7 @@ pub fn watchhentai_streams(title_candidates: &[String], episode: i32) -> Result<
         Some(u) => u,
         None => return Ok(json!({ "result": null })),
     };
-    let video_html = match get(&video_url, Some(ORIGIN))? {
+    let video_html = match get(&video_url, Some(&origin()))? {
         Some(h) => h,
         None => return Ok(json!({ "result": null })),
     };
@@ -301,8 +308,8 @@ pub fn watchhentai_streams(title_candidates: &[String], episode: i32) -> Result<
     Ok(json!({
         "result": StreamResultOut {
             url: stream,
-            referer: format!("{ORIGIN}/"),
-            origin: ORIGIN.to_string(),
+            referer: format!("{}/", origin()),
+            origin: origin(),
             tracks: vec![],
             provider: String::new(),
             stream_label: None,

@@ -84,16 +84,23 @@ function LoginForm() {
       }
       setHandoffBusy(true)
       setError(null)
-      const ok = await handoffSessionToDesktop({
+      const result = await handoffSessionToDesktop({
         callback: params.callback,
         state: params.state,
         accessToken,
         refreshToken,
       })
       setHandoffBusy(false)
-      if (!ok) {
+      if (result.status === 'unreachable') {
         setError(
           'Could not reach the Forja app. Keep this tab open, make sure Forja is still waiting on Web login, then tap Return to Forja. If Chrome asks to allow local network access, allow it.',
+        )
+        return false
+      }
+      if (result.status === 'rejected') {
+        setError(
+          result.body?.trim() ||
+            'Forja received the sign-in but could not apply the session. Keep this tab open and tap Return to Forja, or start Web login again from the app.',
         )
         return false
       }

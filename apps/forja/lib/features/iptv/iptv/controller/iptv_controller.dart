@@ -7,6 +7,8 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
+import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:forja/shared/sync/src/sync_service.dart';
 part 'iptv_controller_portal.dart';
 part 'iptv_controller_browser.dart';
 part 'iptv_controller_live.dart';
@@ -131,16 +133,83 @@ class IptvController extends ChangeNotifier
   String browserSearch = '';
   bool browserSearchOpen = false;
 
+  /// Live catalog only — Movies/Series keep API order.
+  IptvCatalogSort liveCategorySort = IptvCatalogSort.playlist;
+  IptvCatalogSort liveContentSort = IptvCatalogSort.playlist;
+
   /// Categories shown in the catalog sidebar (respects active search filter).
   List<IptvCategory> get browserSidebarCategories {
     final q = browserSearch.trim().toLowerCase();
-    if (q.isEmpty) return categories;
     final selected = browserSelectedCategoryId;
-    return categories.where((c) {
-      if (c.id == selected) return true;
-      if (c.id.isEmpty) return true;
-      return c.name.toLowerCase().contains(q);
-    }).toList();
+    final filtered = q.isEmpty
+        ? categories
+        : categories.where((c) {
+            if (c.id == selected) return true;
+            if (c.id.isEmpty) return true;
+            return c.name.toLowerCase().contains(q);
+          }).toList();
+    if (activeSection != IptvSection.live) return filtered;
+    return sortCategories(filtered, liveCategorySort);
+  }
+
+  /// Categories with Live sort applied (no search filter) — channel guide.
+  List<IptvCategory> get liveSortedCategories {
+    if (activeSection != IptvSection.live) return categories;
+    return sortCategories(categories, liveCategorySort);
+  }
+
+  /// Streams with Live content sort applied — channel guide / catalog.
+  List<IptvStream> liveSortedStreams(List<IptvStream> streams) {
+    if (activeSection != IptvSection.live) return streams;
+    return sortStreams(streams, liveContentSort);
+  }
+
+  static List<IptvCategory> sortCategories(
+    List<IptvCategory> input,
+    IptvCatalogSort sort,
+  ) {
+    if (sort == IptvCatalogSort.playlist || input.length < 2) return input;
+    final all = <IptvCategory>[];
+    final rest = <IptvCategory>[];
+    for (final c in input) {
+      if (c.id.isEmpty) {
+        all.add(c);
+      } else {
+        rest.add(c);
+      }
+    }
+    rest.sort((a, b) {
+      final cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      return sort == IptvCatalogSort.nameAsc ? cmp : -cmp;
+    });
+    return [...all, ...rest];
+  }
+
+  static List<IptvStream> sortStreams(
+    List<IptvStream> input,
+    IptvCatalogSort sort,
+  ) {
+    if (sort == IptvCatalogSort.playlist || input.length < 2) return input;
+    final out = List<IptvStream>.of(input);
+    out.sort((a, b) {
+      final cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      return sort == IptvCatalogSort.nameAsc ? cmp : -cmp;
+    });
+    return out;
+  }
+
+  Future<void> setLiveCategorySort(IptvCatalogSort sort) async {
+    if (liveCategorySort == sort) return;
+    liveCategorySort = sort;
+    notifyListeners();
+    await IptvStore.saveLiveCategorySort(sort);
+  }
+
+  Future<void> setLiveContentSort(IptvCatalogSort sort) async {
+    if (liveContentSort == sort) return;
+    liveContentSort = sort;
+    notifyListeners();
+    await IptvStore.saveLiveContentSort(sort);
   }
 
   /// D-pad focus index for the selected category in [browserSidebarCategories].
@@ -204,6 +273,16 @@ class IptvController extends ChangeNotifier
     SettingsService.iptvEpgEnabledNotifier.addListener(_onEpgPrefChanged);
     IptvStore.listRevision.addListener(_onStoreListRevision);
     unawaited(_syncEpgPref());
+    unawaited(_loadLiveSortPrefs());
+  }
+
+  Future<void> _loadLiveSortPrefs() async {
+    final category = await IptvStore.loadLiveCategorySort();
+    final content = await IptvStore.loadLiveContentSort();
+    if (liveCategorySort == category && liveContentSort == content) return;
+    liveCategorySort = category;
+    liveContentSort = content;
+    notifyListeners();
   }
 
   bool get epgEnabled => _epgEnabled;

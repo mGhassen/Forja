@@ -7,17 +7,30 @@ use super::common::{anime_get, AnimeTrackOut, StreamResultOut, DEFAULT_UA};
 const API_BASE: &str = "https://new.vidnest.fun";
 const EMBED_ORIGIN: &str = "https://vidnest.fun";
 
+fn api_base() -> String {
+    utils::provider_runtime::api_base("vidnestApi")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| API_BASE.to_string())
+}
+
+fn embed_origin() -> String {
+    utils::provider_runtime::api_base("vidnestEmbed")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| EMBED_ORIGIN.to_string())
+}
+
 /// Custom alphabet from vidnest.fun player (`decryptCipherResponse`).
 const CIPHER_ALPHABET: &str = "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=";
 
 pub const KNOWN_PROVIDERS: &[&str] = &["hianime", "animepahe"];
 
 fn headers() -> HashMap<String, String> {
+    let origin = embed_origin();
     HashMap::from([
         ("User-Agent".into(), DEFAULT_UA.into()),
         ("Accept".into(), "application/json, text/plain, */*".into()),
-        ("Origin".into(), EMBED_ORIGIN.into()),
-        ("Referer".into(), format!("{EMBED_ORIGIN}/")),
+        ("Origin".into(), origin.clone()),
+        ("Referer".into(), format!("{origin}/")),
     ])
 }
 
@@ -112,7 +125,7 @@ pub fn vidnest_streams(
     } else {
         "sub"
     };
-    let url = format!("{API_BASE}/{provider}/anime/{anilist_id}/{episode}/{cat}");
+    let url = format!("{}/{provider}/anime/{anilist_id}/{episode}/{cat}", api_base());
     let resp = anime_get(&url, &headers(), 15)?;
     if resp.status != 200 {
         return Ok(json!({ "result": null }));

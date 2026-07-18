@@ -538,4 +538,44 @@ mixin _IptvControllerPortal on ChangeNotifier {
     return (added: added, skipped: skipped, failed: failed, error: null);
   }
 
+  /// Deal portals from the central catalog pool (RFC-040). Burns 1 credit.
+  Future<({int assigned, String? error})> dealFromPool({
+    String region = 'ANY',
+    int count = 5,
+  }) async {
+    if (!SyncService.instance.isSignedIn) {
+      return (assigned: 0, error: 'Sign in to deal portals.');
+    }
+    if (AccountFeatures.instance.iptvCredits < 1) {
+      return (assigned: 0, error: 'No credits left.');
+    }
+    final profile = await SyncService.instance.activeProfile();
+    if (profile == null) {
+      return (assigned: 0, error: 'No active profile.');
+    }
+    _c.statusText = 'Dealing $count portals ($region)…';
+    notifyListeners();
+    try {
+      final ids = await SyncService.instance.dealIptvPortals(
+        profileId: profile.id,
+        region: region,
+        count: count,
+      );
+      await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
+      await SyncService.instance.pullAccountFeatures();
+      await _c._softReloadPortalsFromStore();
+      final n = ids.length;
+      _c.statusText = n == 0
+          ? 'Deal returned no portals.'
+          : 'Dealt $n portal${n == 1 ? '' : 's'} ($region).';
+      notifyListeners();
+      return (assigned: n, error: null);
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      _c.statusText = 'Deal failed: $msg';
+      notifyListeners();
+      return (assigned: 0, error: msg);
+    }
+  }
+
 }

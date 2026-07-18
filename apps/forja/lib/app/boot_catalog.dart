@@ -9,12 +9,14 @@ class BootCatalog {
   static Future<List<Movie>> _fetch(
     String label,
     Future<List<Movie>> Function() fetch, {
-    VoidCallback? onRetry,
+    void Function(String status)? onStatus,
   }) async {
     const attempts = 3;
     Object? lastError;
     for (var i = 0; i < attempts; i++) {
-      if (i > 0) onRetry?.call();
+      if (i > 0) {
+        onStatus?.call('Retrying $label (${i + 1}/$attempts)…');
+      }
       try {
         final list = await fetch();
         if (list.isNotEmpty) return list;
@@ -34,14 +36,16 @@ class BootCatalog {
   }
 
   /// Fills [BootCache] with trending / popular / top rated / now playing.
-  static Future<void> prefetchTmdb({VoidCallback? onRetry}) async {
+  static Future<void> prefetchTmdb({
+    void Function(String status)? onStatus,
+  }) async {
     debugPrint('[Init] TMDB start (trending, popular, top rated, now playing)');
     final api = TmdbApi();
     final results = await Future.wait<List<Movie>>([
-      _fetch('trending', api.getTrending, onRetry: onRetry),
-      _fetch('popular', api.getPopular, onRetry: onRetry),
-      _fetch('top rated', api.getTopRated, onRetry: onRetry),
-      _fetch('now playing', api.getNowPlaying, onRetry: onRetry),
+      _fetch('trending', api.getTrending, onStatus: onStatus),
+      _fetch('popular', api.getPopular, onStatus: onStatus),
+      _fetch('top rated', api.getTopRated, onStatus: onStatus),
+      _fetch('now playing', api.getNowPlaying, onStatus: onStatus),
     ]);
 
     var trendingList = results[0];

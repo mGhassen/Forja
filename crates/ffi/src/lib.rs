@@ -115,6 +115,13 @@ fn decrypt_kisskh_body(body: String, source_url: Option<String>) -> String {
     kisskh_subtitle::decrypt_body(&body, source_url.as_deref())
 }
 
+fn set_provider_runtime_overlay(json: String) -> String {
+    match utils::provider_runtime::set_overlay_json(&json) {
+        Ok(()) => String::new(),
+        Err(e) => e,
+    }
+}
+
 fn build_movie_url(provider_id: String, tmdb_id: i64) -> String {
     stream::build_movie_url(&provider_id, tmdb_id).unwrap_or_default()
 }

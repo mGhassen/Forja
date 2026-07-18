@@ -5,6 +5,7 @@ members = [
     "utils",
     "stream",
     "iptv",
+    "iptv-worker",
     "stremio",
     "webstreamr",
     "scrapers",

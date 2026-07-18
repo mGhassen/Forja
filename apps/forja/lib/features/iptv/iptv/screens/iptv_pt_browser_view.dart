@@ -201,7 +201,7 @@ class _BrowserViewState extends State<_BrowserView> {
         ctrl.aliveStreamIds.isNotEmpty) {
       s = s.where((x) => ctrl.aliveStreamIds.contains(x.streamId)).toList();
     }
-    return s;
+    return ctrl.liveSortedStreams(s);
   }
 
   @override
@@ -581,8 +581,8 @@ class _BrowserViewState extends State<_BrowserView> {
     final channelGuide = s.kind == 'live'
         ? IptvChannelGuide.fromXtreamLive(
             portal: p,
-            categories: ctrl.categories,
-            streams: ctrl.browserAllStreams,
+            categories: ctrl.liveSortedCategories,
+            streams: ctrl.liveSortedStreams(ctrl.browserAllStreams),
             initialStream: s,
             streamHealth: Map<String, bool>.from(ctrl.streamHealth),
           )

@@ -8,6 +8,18 @@ use crate::extractors::common::{anime_get, jaccard, tokenize};
 
 const ANIKOTO_API: &str = "https://anikotoapi.site";
 const ANIKOTO_TV: &str = "https://anikototv.to";
+
+fn anikoto_api() -> String {
+    utils::provider_runtime::api_base("anikotoApi")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| ANIKOTO_API.to_string())
+}
+
+fn anikoto_tv() -> String {
+    utils::provider_runtime::api_base("anikotoTv")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| ANIKOTO_TV.to_string())
+}
 const UA: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
      (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
@@ -54,7 +66,7 @@ fn html_headers() -> HashMap<String, String> {
 }
 
 fn anikoto_get(path: &str) -> Result<Value, String> {
-    let url = format!("{ANIKOTO_API}{path}");
+    let url = format!("{}{path}", anikoto_api());
     let resp = anime_get(&url, &json_headers(), 15)?;
     if resp.status != 200 {
         return Err(format!("HTTP {}", resp.status));
@@ -77,7 +89,8 @@ fn search_slugs(query: &str) -> Vec<String> {
         return vec![];
     }
     let url = format!(
-        "{ANIKOTO_TV}/search?keyword={}",
+        "{}/search?keyword={}",
+        anikoto_tv(),
         urlencoding::encode(q)
     );
     let Ok(resp) = anime_get(&url, &html_headers(), 15) else {
@@ -104,7 +117,7 @@ fn search_slugs(query: &str) -> Vec<String> {
 }
 
 fn id_from_slug(slug: &str) -> Option<i64> {
-    let url = format!("{ANIKOTO_TV}/watch/{slug}");
+    let url = format!("{}/watch/{slug}", anikoto_tv());
     let resp = anime_get(&url, &html_headers(), 15).ok()?;
     if resp.status != 200 {
         return None;

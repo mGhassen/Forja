@@ -14,13 +14,30 @@ export function useAccountFeatures() {
     queryKey: ['account_features', user?.id],
     enabled: Boolean(user?.id && supabaseConfigured),
     queryFn: async (): Promise<AccountFeaturesExpanded> => {
-      const { data, error } = await supabase
+      let data: { features?: unknown; iptv_credits?: number | null } | null =
+        null
+      const withCredits = await supabase
         .from('accounts')
-        .select('features')
+        .select('features, iptv_credits')
         .eq('id', user!.id)
         .maybeSingle()
-      if (error) throw error
-      return expandAccountFeatures(data?.features)
+      if (withCredits.error) {
+        // Column missing until RFC-040 migration is applied.
+        const fallback = await supabase
+          .from('accounts')
+          .select('features')
+          .eq('id', user!.id)
+          .maybeSingle()
+        if (fallback.error) throw fallback.error
+        data = fallback.data
+      } else {
+        data = withCredits.data
+      }
+      const credits = Number(data?.iptv_credits ?? 0)
+      return expandAccountFeatures(
+        data?.features,
+        Number.isFinite(credits) ? credits : 0,
+      )
     },
     staleTime: 60_000,
     placeholderData: emptyAccountFeatures(),

@@ -51,6 +51,29 @@ void main() {
         isNull,
       );
     });
+
+    test('merge overlays movie template + api base', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'templates': {
+          'vidlink': {'movie': 'https://ops.test/movie/{tmdb}'},
+        },
+        'apis': {'vidnestApi': 'https://ops-vidnest.test'},
+      });
+      expect(remote, isNotNull);
+      final merged =
+          ProviderRuntimeSnapshot.builtins().merged(remote!);
+      expect(
+        merged.templates['vidlink']!.movie,
+        'https://ops.test/movie/{tmdb}',
+      );
+      expect(
+        merged.templates['vidlink']!.tv,
+        contains('vidlink.pro/tv/'),
+      );
+      expect(merged.apis['vidnestApi'], 'https://ops-vidnest.test');
+      expect(merged.apis['anikotoApi'], contains('anikotoapi'));
+    });
   });
 
   group('resolvePlaybackHttpHeaders + runtime CDN rules', () {

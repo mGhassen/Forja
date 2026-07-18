@@ -59,7 +59,8 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 16/26 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [038-[open]-…](038-[open]-simple-streaming-resolve.md) | Simple streaming resolve (experimental) | v1.0.1 | open | 3/3 · 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [039-[open]-…](039-[open]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | open | 3/4 · 5/5 · 1 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
+| [039-[open]-…](039-[open]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | open | 4/5 · 8/8 · 1 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
+| [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 10/12 | [1.0.5](../backlog/1.0.5-[draft].md) |
 
 ## Related
 

@@ -121,6 +121,13 @@ class RustLib {
         return _readString(_native.ffi_unpack_js(ptr));
       });
 
+  /// Push merged provider runtime JSON into the Rust process overlay (RFC-039).
+  /// Returns empty on success, otherwise an error message.
+  String setProviderRuntimeOverlay(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_set_provider_runtime_overlay(ptr));
+      });
+
   String buildMovieUrl(String providerId, int tmdbId) => using((arena) {
         final ptr = providerId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_build_movie_url(ptr, tmdbId));
@@ -760,6 +767,11 @@ final class _FfiNative {
         ffi_unpack_js = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>('ffi_unpack_js')
             .asFunction(),
+        ffi_set_provider_runtime_overlay = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_set_provider_runtime_overlay',
+            )
+            .asFunction(),
         ffi_build_movie_url = lib
             .lookup<ffi.NativeFunction<_BuildMovieUrlNative>>(
               'ffi_build_movie_url',
@@ -1210,6 +1222,8 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_normalize_torrent_title;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_unpack_js;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_set_provider_runtime_overlay;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
       ffi_build_movie_url;
   final ffi.Pointer<ffi.Char> Function(

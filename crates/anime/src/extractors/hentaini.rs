@@ -7,6 +7,19 @@ use super::common::{anime_get, jaccard, tokenize, StreamResultOut};
 
 const SITE: &str = "https://hentaini.com";
 const API: &str = "https://admin.hentaini.com/api";
+
+fn site() -> String {
+    utils::provider_runtime::api_base("hentainiSite")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| SITE.to_string())
+}
+
+fn api() -> String {
+    utils::provider_runtime::api_base("hentainiApi")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| API.to_string())
+}
+
 const UA: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
      (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -42,7 +55,7 @@ fn get(url: &str) -> Result<Option<String>, String> {
         ("User-Agent".into(), UA.into()),
         ("Accept".into(), "application/json".into()),
         ("Accept-Language".into(), "en-US,en;q=0.9".into()),
-        ("Referer".into(), format!("{SITE}/")),
+        ("Referer".into(), format!("{}/", site())),
     ]);
     let resp = anime_get(url, &headers, 25)?;
     if resp.status != 200 {
@@ -187,7 +200,8 @@ fn find_series(titles: &[String]) -> Result<Option<HSeries>, String> {
         }
         let enc = urlencoding::encode(q);
         let url1 = format!(
-            "{API}/series?filters%5Btitle%5D%5B%24containsi%5D={enc}&pagination%5Blimit%5D=20"
+            "{}/series?filters%5Btitle%5D%5B%24containsi%5D={enc}&pagination%5Blimit%5D=20",
+            api()
         );
         if let Some(body) = get(&url1)? {
             for h in parse_series_list(&body) {
@@ -197,7 +211,8 @@ fn find_series(titles: &[String]) -> Result<Option<HSeries>, String> {
             }
         }
         let url2 = format!(
-            "{API}/series?filters%5Btitle_english%5D%5B%24containsi%5D={enc}&pagination%5Blimit%5D=20"
+            "{}/series?filters%5Btitle_english%5D%5B%24containsi%5D={enc}&pagination%5Blimit%5D=20",
+            api()
         );
         if let Some(body) = get(&url2)? {
             for h in parse_series_list(&body) {
@@ -260,7 +275,11 @@ pub fn hentaini_streams(title_candidates: &[String], episode: i32) -> Result<Val
         None => return Ok(json!({ "result": null })),
     };
 
-    let url = format!("{API}/series?filters%5Bid%5D={}&populate=episodes", series.id);
+    let url = format!(
+        "{}/series?filters%5Bid%5D={}&populate=episodes",
+        api(),
+        series.id
+    );
     let body = match get(&url)? {
         Some(b) => b,
         None => return Ok(json!({ "result": null })),
@@ -295,8 +314,8 @@ pub fn hentaini_streams(title_candidates: &[String], episode: i32) -> Result<Val
     Ok(json!({
         "result": StreamResultOut {
             url: stream,
-            referer: format!("{SITE}/"),
-            origin: SITE.to_string(),
+            referer: format!("{}/", site()),
+            origin: site(),
             tracks: vec![],
             provider: String::new(),
             stream_label: None,

@@ -305,13 +305,22 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       listenable: AccountFeatures.instance.revision,
       builder: (context, _) {
         final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
-        final headerCount = canScrape ? 3 : 2;
+        final signedIn = SyncService.instance.isSignedIn;
+        final credits = AccountFeatures.instance.iptvCredits;
+        // search (+ scrape?) (+ deal?) + add
+        var headerCount = 2;
+        if (canScrape) headerCount++;
+        if (signedIn) headerCount++;
         iptvSyncRow(
           rowId: 'iptv-portal-header',
           sortOrder: 0,
           itemCount: headerCount,
         );
-        final addIndex = canScrape ? 2 : 1;
+        var idx = 0;
+        final searchIndex = idx++;
+        final scrapeIndex = canScrape ? idx++ : -1;
+        final dealIndex = signedIn ? idx++ : -1;
+        final addIndex = idx;
         return Container(
           padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
           decoration: BoxDecoration(
@@ -325,6 +334,19 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 'Portals',
                 style: IptvShellStyle.headerTitle.copyWith(fontSize: 18),
               ),
+              if (signedIn) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '$credits cr',
+                  style: TextStyle(
+                    color: credits > 0
+                        ? IptvShellStyle.accent
+                        : Colors.white38,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const Spacer(),
               IptvIconAction(
                 tooltip: _searchOpen ? 'Close search' : 'Search portals',
@@ -332,11 +354,14 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
                 color: _searchOpen ? IptvShellStyle.accent : null,
                 tvRowId: 'iptv-portal-header',
-                tvItemIndex: 0,
+                tvItemIndex: searchIndex,
                 tvZone: ShellTvZone.topBar,
                 onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
                 onDownEdge: () => iptvFocusRowItem('portals', 0),
-                onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
+                onRightEdge: () => iptvFocusRowItem(
+                  'iptv-portal-header',
+                  canScrape ? scrapeIndex : (signedIn ? dealIndex : addIndex),
+                ),
               ),
               if (canScrape)
                 IptvIconAction(
@@ -347,11 +372,34 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       : Icons.travel_explore_rounded,
                   color: ctrl.isScraping ? IptvShellStyle.accent : null,
                   tvRowId: 'iptv-portal-header',
-                  tvItemIndex: 1,
+                  tvItemIndex: scrapeIndex,
                   tvZone: ShellTvZone.topBar,
                   onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
                   onDownEdge: () => iptvFocusRowItem('portals', 0),
-                  onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 0),
+                  onLeftEdge: () =>
+                      iptvFocusRowItem('iptv-portal-header', searchIndex),
+                  onRightEdge: () => iptvFocusRowItem(
+                    'iptv-portal-header',
+                    signedIn ? dealIndex : addIndex,
+                  ),
+                ),
+              if (signedIn)
+                IptvIconAction(
+                  tooltip: credits > 0
+                      ? 'Deal portals from pool ($credits credits)'
+                      : 'Deal portals (no credits)',
+                  onPressed: () => _showDealDialog(context),
+                  icon: Icons.casino_rounded,
+                  color: credits > 0 ? IptvShellStyle.accent : null,
+                  tvRowId: 'iptv-portal-header',
+                  tvItemIndex: dealIndex,
+                  tvZone: ShellTvZone.topBar,
+                  onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                  onDownEdge: () => iptvFocusRowItem('portals', 0),
+                  onLeftEdge: () => iptvFocusRowItem(
+                    'iptv-portal-header',
+                    canScrape ? scrapeIndex : searchIndex,
+                  ),
                   onRightEdge: () =>
                       iptvFocusRowItem('iptv-portal-header', addIndex),
                 ),
@@ -366,7 +414,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 onDownEdge: () => iptvFocusRowItem('portals', 0),
                 onLeftEdge: () => iptvFocusRowItem(
                   'iptv-portal-header',
-                  canScrape ? 1 : 0,
+                  signedIn
+                      ? dealIndex
+                      : (canScrape ? scrapeIndex : searchIndex),
                 ),
               ),
               iptvCloseButton(context, onTap: widget.onClose),
@@ -374,6 +424,127 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _showDealDialog(BuildContext context) async {
+    const regions = ['ANY', 'EU', 'US', 'UK', 'TR', 'DE', 'FR', 'MIXED'];
+    var region = 'ANY';
+    var busy = false;
+    String? error;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        StatefulBuilder(
+          builder: (ctx, setLocal) {
+            final credits = AccountFeatures.instance.iptvCredits;
+            return AlertDialog(
+              backgroundColor: const Color(0xFF141414),
+              title: const Text('Deal portals'),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Spend 1 credit for up to 5 alive portals from the pool.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Credits: $credits',
+                      style: TextStyle(
+                        color: credits > 0
+                            ? IptvShellStyle.accent
+                            : Colors.white54,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Region',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final r in regions)
+                          ChoiceChip(
+                            label: Text(r),
+                            selected: region == r,
+                            onSelected: busy
+                                ? null
+                                : (_) => setLocal(() => region = r),
+                            selectedColor: IptvShellStyle.accent
+                                .withValues(alpha: 0.35),
+                            labelStyle: TextStyle(
+                              color: region == r
+                                  ? Colors.white
+                                  : Colors.white70,
+                              fontSize: 12,
+                            ),
+                            backgroundColor: Colors.white10,
+                          ),
+                      ],
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        error!,
+                        style: const TextStyle(
+                          color: Color(0xFFF87171),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: busy || credits < 1
+                      ? null
+                      : () async {
+                          setLocal(() {
+                            busy = true;
+                            error = null;
+                          });
+                          final result = await widget.ctrl.dealFromPool(
+                            region: region,
+                            count: 5,
+                          );
+                          if (!ctx.mounted) return;
+                          if (result.error != null) {
+                            setLocal(() {
+                              busy = false;
+                              error = result.error;
+                            });
+                            return;
+                          }
+                          Navigator.pop(ctx);
+                        },
+                  child: Text(busy ? 'Dealing…' : 'Deal 5'),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 

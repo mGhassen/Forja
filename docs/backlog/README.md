@@ -93,10 +93,11 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File / source | App semver | Codename | Status |
 |---------------|------------|----------|--------|
-| [1.0.1-[open].md](1.0.1-[open].md) | 1.0.x patch checklist | Bab Souika | open — details & player UX (73/87 shipped) |
+| [1.0.1-[open].md](1.0.1-[open].md) | 1.0.x patch checklist | Bab Souika | open — details & player UX (74/87 shipped) |
 | [1.0.2-[draft].md](1.0.2-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — overlay, providers, casting, settings UX, passkeys (17/28) |
 | [1.0.3-[draft].md](1.0.3-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — Resolver Engine (5/8) |
 | [1.0.4-[draft].md](1.0.4-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — web portal + desktop account/profile shell + i18n (18/23; hosted secrets + Edge/Turnstile/recovery ops; RFC-037) |
+| [1.0.5-[draft].md](1.0.5-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV catalog ops + Deal UX (7/8; RFC-040) |
 | `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |
 
 ## Done — v1

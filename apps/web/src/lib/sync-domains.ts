@@ -8,18 +8,32 @@ export type AccountFeaturesPayload = {
 
 export type AccountFeaturesExpanded = {
   iptvScrape: boolean
+  /** Catalog pool deal balance (accounts.iptv_credits). */
+  iptvCredits: number
 }
 
 export function emptyAccountFeatures(): AccountFeaturesExpanded {
-  return { iptvScrape: false }
+  return { iptvScrape: false, iptvCredits: 0 }
 }
 
-export function expandAccountFeatures(raw: unknown): AccountFeaturesExpanded {
+export function expandAccountFeatures(
+  raw: unknown,
+  iptvCredits?: number,
+): AccountFeaturesExpanded {
   const base = emptyAccountFeatures()
-  if (!raw || typeof raw !== 'object') return base
+  if (!raw || typeof raw !== 'object') {
+    return {
+      ...base,
+      iptvCredits: Number.isFinite(iptvCredits) ? Math.max(0, iptvCredits!) : 0,
+    }
+  }
   const p = raw as Record<string, unknown>
+  const credits = Number.isFinite(iptvCredits)
+    ? Math.max(0, Math.trunc(iptvCredits!))
+    : 0
   return {
     iptvScrape: p.iptvScrape === true,
+    iptvCredits: credits,
   }
 }
 

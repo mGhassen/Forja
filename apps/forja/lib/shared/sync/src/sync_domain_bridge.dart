@@ -52,6 +52,12 @@ class SyncDomainBridge {
     await _pullAndApplyUserIptvPortals();
   }
 
+  /// Pull cloud portal assignments into local IPTV store (after deal / remote edit).
+  Future<void> pullIptvPortalsFromCloud() async {
+    if (!SyncService.instance.isSignedIn) return;
+    await _pullAndApplyUserIptvPortals();
+  }
+
   Future<void> pushAllLocal() async {
     if (!SyncService.instance.isSignedIn) return;
     final payload = await _buildLeanPayload();

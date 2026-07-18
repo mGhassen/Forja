@@ -105,21 +105,17 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
       BootCache.clear();
       final needs = await BootNeeds.resolve();
 
-      if (needs.webstreaming || needs.torrent) {
-        _setStatus('Starting playback services…');
-      }
       await ProfileEngineWarm.warm(
         needs,
         startTorrent: true,
         reason: 'profile-splash',
+        onStatus: _setStatus,
       );
       if (!mounted) return;
 
       if (needs.tmdb) {
         _setStatus('Loading your home feed…');
-        await BootCatalog.prefetchTmdb(
-          onRetry: () => _setStatus('Still loading your home feed…'),
-        );
+        await BootCatalog.prefetchTmdb(onStatus: _setStatus);
         if (!mounted) return;
       }
 

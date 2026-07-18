@@ -3,18 +3,25 @@ use crate::types::MediaType;
 
 const BASE_URL: &str = "https://vixsrc.to";
 
+fn base_url() -> String {
+    utils::provider_runtime::api_base("vixsrcBase")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| BASE_URL.to_string())
+}
+
 pub fn resolve(req: &SourceRequest) -> Vec<SourceEmbed> {
     let Some(tmdb_id) = req.tmdb_id else {
         return Vec::new();
     };
     let title = req.title.as_deref();
     let year = req.year;
+    let base = base_url();
     let url = match req.media_type {
-        MediaType::Movie => format!("{BASE_URL}/movie/{tmdb_id}/"),
+        MediaType::Movie => format!("{base}/movie/{tmdb_id}/"),
         MediaType::Series => {
             let season = req.season.unwrap_or(1);
             let episode = req.episode.unwrap_or(1);
-            format!("{BASE_URL}/tv/{tmdb_id}/{season}/{episode}/")
+            format!("{base}/tv/{tmdb_id}/{season}/{episode}/")
         }
     };
     let formatted_title = title.and_then(|name| match req.media_type {

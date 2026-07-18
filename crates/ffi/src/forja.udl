@@ -12,6 +12,7 @@ namespace forja {
     string unpack_js(string source);
     string parse_hls_master_json(string master_url, string body);
     string decrypt_kisskh_body(string body, string? source_url);
+    string set_provider_runtime_overlay(string json);
     string build_movie_url(string provider_id, i64 tmdb_id);
     string build_tv_url(string provider_id, i64 tmdb_id, i32 season, i32 episode);
     string list_providers_json();

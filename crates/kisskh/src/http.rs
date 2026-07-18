@@ -13,6 +13,16 @@ pub const MIRROR_BASE_URLS: &[&str] = &[
     "https://kisskh.la",
     "https://kisskh.do",
 ];
+
+fn mirror_list() -> Vec<String> {
+    utils::provider_runtime::kisskh_mirrors().unwrap_or_else(|| {
+        MIRROR_BASE_URLS.iter().map(|s| (*s).to_string()).collect()
+    })
+}
+
+fn is_known_mirror(base: &str) -> bool {
+    mirror_list().iter().any(|m| m == base)
+}
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
      (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const CACHE_TTL: Duration = Duration::from_secs(600);
@@ -127,7 +137,7 @@ fn set_active_base(base: &str) {
 
 pub fn activate_base_url(base: &str) -> Result<String, String> {
     let normalized = base.trim().trim_end_matches('/');
-    if !MIRROR_BASE_URLS.contains(&normalized) {
+    if !is_known_mirror(normalized) {
         return Err(format!("Unsupported KissKh mirror: {normalized}"));
     }
     set_active_base(normalized);
@@ -139,14 +149,19 @@ pub fn current_base_url() -> String {
         .lock()
         .ok()
         .and_then(|guard| guard.clone())
-        .unwrap_or_else(|| PRIMARY_BASE_URL.to_string())
+        .unwrap_or_else(|| {
+            mirror_list()
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| PRIMARY_BASE_URL.to_string())
+        })
 }
 
 fn domain_order() -> Vec<String> {
     let mut out = vec![current_base_url()];
-    for base in MIRROR_BASE_URLS {
-        if !out.iter().any(|item| item == base) {
-            out.push((*base).to_string());
+    for base in mirror_list() {
+        if !out.iter().any(|item| item == &base) {
+            out.push(base);
         }
     }
     out
@@ -182,7 +197,7 @@ fn probe_base(base: &str) -> bool {
 /// Probe one verified mirror on the calling thread.
 pub fn probe_one(base: &str) -> Result<(String, bool), String> {
     let normalized = base.trim().trim_end_matches('/');
-    if !MIRROR_BASE_URLS.contains(&normalized) {
+    if !is_known_mirror(normalized) {
         return Err(format!("Unsupported KissKh mirror: {normalized}"));
     }
     Ok((normalized.to_string(), probe_base(normalized)))
@@ -192,12 +207,11 @@ pub fn probe_one(base: &str) -> Result<(String, bool), String> {
 /// Parallelism belongs in Dart (`Future.wait` of `probe_one`) so each job
 /// owns a single `block_on` on an engine worker isolate.
 pub fn probe_mirrors() -> Vec<(String, bool)> {
-    MIRROR_BASE_URLS
-        .iter()
+    mirror_list()
+        .into_iter()
         .map(|base| {
-            let url = (*base).to_string();
-            let ok = probe_base(base);
-            (url, ok)
+            let ok = probe_base(&base);
+            (base, ok)
         })
         .collect()
 }
@@ -221,10 +235,10 @@ pub fn select_base_url() -> Result<String, String> {
         }
     }
 
-    for &base in MIRROR_BASE_URLS {
-        if probe_base(base) {
-            set_active_base(base);
-            return Ok(base.to_string());
+    for base in mirror_list() {
+        if probe_base(&base) {
+            set_active_base(&base);
+            return Ok(base);
         }
     }
     Err("No compatible KissKh mirror responded".to_string())

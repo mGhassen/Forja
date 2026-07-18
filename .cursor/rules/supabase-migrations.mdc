@@ -1,5 +1,5 @@
 ---
-description: Supabase is production — immutable migrations, no silent resets
+description: Supabase is production — immutable migrations, no reset, no push
 alwaysApply: true
 ---
 
@@ -9,25 +9,42 @@ The Forja web portal is **released**. Hosted Supabase is live data. Treat schema
 
 ## Mandatory
 
-1. **Schema changes only via new migrations** — never edit tables/RLS/functions/triggers by hand in Studio (or SQL that bypasses the migration history) as the way to “fix” prod/local parity. Add a new file under `apps/web/supabase/migrations/`.
+1. **Schema changes only via new migrations** — never edit tables/RLS/functions/triggers by hand in Studio (or SQL that bypasses the migration history) as the way to “fix” prod/local parity. Add a new file under `apps/web/supabase/migrations/` using:
+
+   ```bash
+   cd apps/web && supabase migration new <name>
+   ```
+
+   Then write SQL into the file the CLI created. Do **not** hand-create migration filenames.
+
 2. **Pushed migrations are immutable** — once a migration has been committed and applied (local history or remote), **do not edit, rename, reorder, or delete it**. Fix mistakes with a **new** forward migration.
-3. **Never reset without asking** — do not run `supabase db reset`, `node scripts/reset-forja-supabase.js`, or any destructive wipe/recreate of local or remote DB unless the user explicitly approved that reset in the conversation.
+
+3. **Never reset or push without explicit user approval in the same conversation** — do **not** run any of:
+
+   - `supabase db reset`
+   - `supabase db push`
+   - `supabase db push --linked` / remote migrate
+   - `node scripts/reset-forja-supabase.js`
+   - any destructive wipe/recreate of local or remote DB
+
+   Creating a migration file with `supabase migration new` is fine. Applying it (`reset` / `push` / hosted migrate) requires the user to say so.
 
 ## Allowed
 
-- Add a new timestamped migration SQL file for additive/altering changes
-- Update `seed.sql` for **local-only** seed data (still never rewrite old migrations to change seed assumptions that already shipped)
-- Ask before any reset, link, push, or remote `db` command that mutates hosted data
+- `supabase migration new <name>` then edit that new file
+- Update `seed.sql` for **local-only** seed data (still never rewrite old migrations)
+- Ask before any reset, link, push, or remote `db` command that mutates data
 
 ## Forbidden
 
 | Action | Why |
 |--------|-----|
-| Edit an existing `migrations/*.sql` that already shipped | Breaks checksums / history on every environment that already applied it |
-| `db reset` / wipe without user OK | Destroys local (or worse, remote) state silently |
-| “Just change it in Studio” as the source of truth | Drift; next reset or teammate loses the change |
+| Edit an existing `migrations/*.sql` that already shipped | Breaks checksums / history |
+| `db reset` without user OK | Destroys local (or worse, remote) state |
+| `db push` without user OK | Mutates remote/local schema outside explicit ops |
+| “Just change it in Studio” as source of truth | Drift |
 | Squash / rewrite migration history on a released project | Same as editing old migrations |
 
 ## When stuck
 
-If local and remote disagree, **stop and ask**. Do not “fix” by resetting or rewriting history.
+If local and remote disagree, **stop and ask**. Do not “fix” by resetting or pushing.

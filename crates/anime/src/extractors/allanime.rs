@@ -16,6 +16,24 @@ const API: &str = "https://api.allanime.day/api";
 const REFR: &str = "https://allmanga.to";
 const YT_CHAN: &str = "https://youtu-chan.com";
 const CLOCK_HOST: &str = "https://allanime.day";
+
+fn api_url() -> String {
+    utils::provider_runtime::api_base("allanimeApi")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| API.to_string())
+}
+
+fn refr() -> String {
+    utils::provider_runtime::api_base("allanimeReferer")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| REFR.to_string())
+}
+
+fn clock_host() -> String {
+    utils::provider_runtime::api_base("allanimeClock")
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| CLOCK_HOST.to_string())
+}
 const AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0";
 const EPISODE_QUERY_HASH: &str = "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec";
@@ -121,7 +139,7 @@ fn search_one(query: &str, cat: &str) -> Result<Option<String>, String> {
         },
         "query": SEARCH_GQL,
     });
-    let resp = anime_post(API, &post_headers(REFR), &body.to_string(), 15)?;
+    let resp = anime_post(&api_url(), &post_headers(&refr()), &body.to_string(), 15)?;
     if resp.status != 200 {
         return Ok(None);
     }
@@ -200,7 +218,8 @@ fn episode_sources(show_id: &str, episode: i32, cat: &str) -> Result<Vec<Value>,
         }
     });
     let url = format!(
-        "{API}?variables={}&extensions={}",
+        "{}?variables={}&extensions={}",
+        api_url(),
         urlencoding::encode(&vars.to_string()),
         urlencoding::encode(&ext.to_string())
     );
@@ -242,10 +261,10 @@ fn resolve_decoded_path(path: &str, provider: &str) -> Result<Option<StreamResul
     let uri = if p.starts_with("http") {
         p
     } else {
-        format!("{CLOCK_HOST}{p}")
+        format!("{}{p}", clock_host())
     };
 
-    let resp = anime_get(&uri, &get_headers(&format!("{REFR}/"), REFR), 15)?;
+    let resp = anime_get(&uri, &get_headers(&format!("{}/", refr()), &refr()), 15)?;
     if resp.status != 200 {
         return Ok(None);
     }
@@ -315,17 +334,18 @@ fn resolve_decoded_path(path: &str, provider: &str) -> Result<Option<StreamResul
         }
     }
 
+    let default_referer = format!("{}/", refr());
     let referer = pick
         .get("Referer")
         .and_then(|v| v.as_str())
         .filter(|s| !s.trim().is_empty())
-        .unwrap_or(&format!("{REFR}/"))
+        .unwrap_or(&default_referer)
         .to_string();
     let origin = referer
         .strip_prefix("https://")
         .and_then(|s| s.split('/').next())
         .map(|h| format!("https://{h}"))
-        .unwrap_or_else(|| REFR.to_string());
+        .unwrap_or_else(refr);
 
     Ok(Some(StreamResultOut {
         url: url.to_string(),
@@ -366,8 +386,8 @@ fn resolve_source_url(raw: &str, provider_label: &str) -> Result<Option<StreamRe
     if raw.starts_with("http") && !is_iframe_embed_url(raw) {
         return Ok(Some(StreamResultOut {
             url: raw.to_string(),
-            referer: format!("{REFR}/"),
-            origin: REFR.to_string(),
+            referer: format!("{}/", refr()),
+            origin: refr(),
             tracks: Vec::new(),
             provider: provider_label.to_string(),
             stream_label: None,

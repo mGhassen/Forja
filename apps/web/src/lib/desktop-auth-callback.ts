@@ -120,15 +120,22 @@ export function resolveDesktopAuthParams(
   return { callback: null, state: null }
 }
 
+export type DesktopHandoffResult =
+  | { status: 'ok' }
+  /** fetch failed (app not listening / Chrome local-network block). */
+  | { status: 'unreachable' }
+  /** Loopback answered but refused or failed to apply the session. */
+  | { status: 'rejected'; title?: string; body?: string }
+
 /** Notify the desktop loopback listener without leaving the portal tab. */
 export async function handoffSessionToDesktop(options: {
   callback: string
   state: string | null
   accessToken: string
   refreshToken: string
-}): Promise<boolean> {
+}): Promise<DesktopHandoffResult> {
   const target = buildDesktopCallbackUrl(options)
-  if (!target) return false
+  if (!target) return { status: 'unreachable' }
   try {
     const res = await fetch(target, {
       method: 'GET',
@@ -136,18 +143,28 @@ export async function handoffSessionToDesktop(options: {
       cache: 'no-store',
       headers: { Accept: 'application/json' },
     })
-    if (!res.ok) return false
+    if (!res.ok) return { status: 'unreachable' }
     const contentType = res.headers.get('content-type') ?? ''
     if (contentType.includes('application/json')) {
-      const body = (await res.json()) as { ok?: boolean }
-      return body.ok === true
+      const body = (await res.json()) as {
+        ok?: boolean
+        title?: string
+        body?: string
+      }
+      if (body.ok === true) return { status: 'ok' }
+      return {
+        status: 'rejected',
+        title: typeof body.title === 'string' ? body.title : undefined,
+        body: typeof body.body === 'string' ? body.body : undefined,
+      }
     }
     // Older desktop builds may return HTML. Only treat as success when the
     // page title says so — never assume any HTML means the app got tokens.
     const html = await res.text()
-    return /<title>\s*Signed in\b/i.test(html)
+    if (/<title>\s*Signed in\b/i.test(html)) return { status: 'ok' }
+    return { status: 'rejected' }
   } catch {
-    return false
+    return { status: 'unreachable' }
   }
 }
 

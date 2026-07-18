@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 4** components · **5 / 5** acceptance · **1** deferred (web admin) |
-| **Current slice** | Anime Megaplay/Vidwish paths + Miruro origins + CDN Referer rules via Supabase JSON |
+| **Progress** | **4 / 5** components · **8 / 8** acceptance (registry slice) · **1** deferred (web admin) |
+| **Current slice** | Full movie/TV templates + anime/API bases + CDN rules via Supabase → Dart + Rust overlay |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,6 +23,7 @@
 | 2 | R39-C02 | Host `ProviderRuntimeConfig`: fetch, disk cache, merge over builtins | ✅ |
 | 3 | R39-C03 | Wire anime Megaplay/Vidwish embeds + Miruro origins + CDN Referer rewrite | ✅ |
 | 4 | R39-C04 | Web admin editor for the JSON row | ⏭️ |
+| 5 | R39-C05 | Full registry: `templates.*` + `apis.*` + KissKh mirrors; push overlay to Rust FFI | ✅ |
 
 ---
 
@@ -38,6 +39,16 @@
 
 ---
 
+## Acceptance (full registry slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R39-A06 | Remote `templates.{provider}.movie/tv` used by `stream::build_*_url` | ✅ |
+| 2 | R39-A07 | Remote `apis.*` used by VidNest/Anikoto/AllAnime/VidSrc/Videasy/111477 | ✅ |
+| 3 | R39-A08 | Dart pushes merged JSON to Rust after boot / refresh | ✅ |
+
+---
+
 ## Summary
 
 Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without shipping an app build. **Extract logic** (decrypt, CF pipe, sniff) stays in Rust/Dart plugins.
@@ -47,6 +58,16 @@ Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without s
 ```json
 {
   "schema": 1,
+  "templates": {
+    "vidlink": {
+      "movie": "https://vidlink.pro/movie/{tmdb}",
+      "tv": "https://vidlink.pro/tv/{tmdb}/{season}/{episode}"
+    }
+  },
+  "apis": {
+    "vidnestApi": "https://new.vidnest.fun",
+    "vidsrcEmbed": "https://vsembed.su"
+  },
   "anime": {
     "megaplay": {
       "host": "megaplay.buzz",
@@ -55,7 +76,8 @@ Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without s
       "scrapeReferer": "https://www.enma.lol/"
     },
     "vidwish": { "...": "same shape" },
-    "miruroOrigins": ["https://www.miruro.tv", "..."]
+    "miruroOrigins": ["https://www.miruro.tv", "..."],
+    "kisskhMirrors": ["https://kisskh.co", "..."]
   },
   "cdnRefererRules": [
     {
@@ -69,10 +91,9 @@ Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without s
 
 Unknown schema → ignore remote, keep builtins. Partial remote objects deep-merge over builtins.
 
-### Non-goals (this slice)
+### Non-goals
 
 - Shipping extract JS from the DB
-- Movie/TV template plugin defs (later overlay on RFC-004)
 - Signed / E2E encrypted payloads
 
 ## Goals
@@ -85,3 +106,4 @@ Unknown schema → ignore remote, keep builtins. Partial remote objects deep-mer
 - [RFC-004](004-[partial]-provider-registry.md)
 - [issue 084](../issues/084-[open]-megaplay-nekostream-cdn-referer.md)
 - [anime hub](../features/hubs/anime.md)
+- [stream providers](../features/sources/stream-providers.md)

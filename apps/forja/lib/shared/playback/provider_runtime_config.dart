@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Remote overlay for provider hosts / paths / CDN Referer rules (RFC-039).
@@ -27,11 +28,21 @@ class ProviderRuntimeConfig {
   AnimeEmbedHostConfig get megaplay => _snap.megaplay;
   AnimeEmbedHostConfig get vidwish => _snap.vidwish;
   List<String> get miruroOrigins => _snap.miruroOrigins;
+  List<String> get kisskhMirrors => _snap.kisskhMirrors;
   List<CdnRefererRule> get cdnRefererRules => _snap.cdnRefererRules;
+  Map<String, ProviderUrlTemplates> get templates => _snap.templates;
+  Map<String, String> get apis => _snap.apis;
+
+  String? api(String key) {
+    final v = _snap.apis[key]?.trim();
+    if (v == null || v.isEmpty) return null;
+    return v;
+  }
 
   /// Load disk cache (if any), then refresh from Supabase when configured.
   Future<void> ensureLoaded() async {
     await _loadDiskCache();
+    _pushRustOverlay();
     unawaited(refresh());
   }
 
@@ -96,6 +107,7 @@ class ProviderRuntimeConfig {
       final p = await SharedPreferences.getInstance();
       await p.setString(_cacheKey, jsonEncode(_snap.toJson()));
       await p.setInt(_cacheAtKey, _fetchedAt!.millisecondsSinceEpoch);
+      _pushRustOverlay();
       if (kDebugMode) {
         debugPrint('[ProviderRuntime] remote applied schema=${_snap.schema}');
       }
@@ -104,10 +116,28 @@ class ProviderRuntimeConfig {
     }
   }
 
+  /// Push current snapshot into the Rust process (call after [Engine.init]).
+  void pushToRust() => _pushRustOverlay();
+
+  void _pushRustOverlay() {
+    if (!RustLib.isInitialized) return;
+    try {
+      final err = RustLib.instance.setProviderRuntimeOverlay(
+        jsonEncode(_snap.toJson()),
+      );
+      if (err.isNotEmpty && kDebugMode) {
+        debugPrint('[ProviderRuntime] rust overlay: $err');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[ProviderRuntime] rust overlay skip: $e');
+    }
+  }
+
   /// Test-only: replace snapshot without network.
   @visibleForTesting
   void debugSetSnapshot(ProviderRuntimeSnapshot snap) {
     _snap = snap;
+    _pushRustOverlay();
   }
 
   @visibleForTesting
@@ -160,7 +190,10 @@ class AnimeEmbedHostConfig {
     );
   }
 
-  factory AnimeEmbedHostConfig.fromJson(Map<String, dynamic>? j, AnimeEmbedHostConfig fallback) {
+  factory AnimeEmbedHostConfig.fromJson(
+    Map<String, dynamic>? j,
+    AnimeEmbedHostConfig fallback,
+  ) {
     if (j == null) return fallback;
     return AnimeEmbedHostConfig(
       host: (j['host'] as String?)?.trim().isNotEmpty == true
@@ -187,6 +220,31 @@ class AnimeEmbedHostConfig {
 }
 
 @immutable
+class ProviderUrlTemplates {
+  final String movie;
+  final String tv;
+
+  const ProviderUrlTemplates({required this.movie, required this.tv});
+
+  ProviderUrlTemplates merged(ProviderUrlTemplates? o) {
+    if (o == null) return this;
+    return ProviderUrlTemplates(
+      movie: o.movie.isNotEmpty ? o.movie : movie,
+      tv: o.tv.isNotEmpty ? o.tv : tv,
+    );
+  }
+
+  factory ProviderUrlTemplates.fromJson(Map<String, dynamic>? j) {
+    return ProviderUrlTemplates(
+      movie: (j?['movie'] as String?)?.trim() ?? '',
+      tv: (j?['tv'] as String?)?.trim() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'movie': movie, 'tv': tv};
+}
+
+@immutable
 class CdnRefererRule {
   final List<String> hostContains;
   final String referer;
@@ -203,7 +261,8 @@ class CdnRefererRule {
   bool matchesStreamUrl(String url) {
     final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
     if (host.isEmpty) return false;
-    return hostContains.any((p) => p.isNotEmpty && host.contains(p.toLowerCase()));
+    return hostContains
+        .any((p) => p.isNotEmpty && host.contains(p.toLowerCase()));
   }
 
   bool refererAccepted(String refererUrl) {
@@ -250,21 +309,99 @@ class CdnRefererRule {
 @immutable
 class ProviderRuntimeSnapshot {
   final int schema;
+  final Map<String, ProviderUrlTemplates> templates;
+  final Map<String, String> apis;
   final AnimeEmbedHostConfig megaplay;
   final AnimeEmbedHostConfig vidwish;
   final List<String> miruroOrigins;
+  final List<String> kisskhMirrors;
   final List<CdnRefererRule> cdnRefererRules;
 
   const ProviderRuntimeSnapshot({
     required this.schema,
+    required this.templates,
+    required this.apis,
     required this.megaplay,
     required this.vidwish,
     required this.miruroOrigins,
+    required this.kisskhMirrors,
     required this.cdnRefererRules,
   });
 
   factory ProviderRuntimeSnapshot.builtins() => ProviderRuntimeSnapshot(
         schema: ProviderRuntimeConfig.supportedSchema,
+        templates: const {
+          'vidlink': ProviderUrlTemplates(
+            movie: 'https://vidlink.pro/movie/{tmdb}',
+            tv: 'https://vidlink.pro/tv/{tmdb}/{season}/{episode}',
+          ),
+          'vixsrc': ProviderUrlTemplates(
+            movie: 'https://vixsrc.to/movie/{tmdb}/',
+            tv: 'https://vixsrc.to/tv/{tmdb}/{season}/{episode}/',
+          ),
+          'vidnest': ProviderUrlTemplates(
+            movie: 'https://vidnest.fun/movie/{tmdb}',
+            tv: 'https://vidnest.fun/tv/{tmdb}/{season}/{episode}',
+          ),
+          'vidzee': ProviderUrlTemplates(
+            movie: 'https://player.vidzee.wtf/embed/movie/{tmdb}',
+            tv: 'https://player.vidzee.wtf/embed/tv/{tmdb}/{season}/{episode}',
+          ),
+          'vidrock': ProviderUrlTemplates(
+            movie: 'https://vidrock.ru/movie/{tmdb}',
+            tv: 'https://vidrock.ru/tv/{tmdb}/{season}/{episode}',
+          ),
+          'vidfast': ProviderUrlTemplates(
+            movie: 'https://vidfast.vc/movie/{tmdb}?autoPlay=true',
+            tv: 'https://vidfast.vc/tv/{tmdb}/{season}/{episode}?autoPlay=true',
+          ),
+          '2embed': ProviderUrlTemplates(
+            movie: 'https://2embed.stream/embed/movie/{tmdb}',
+            tv: 'https://2embed.stream/embed/tv/{tmdb}/{season}/{episode}',
+          ),
+          'autoembed': ProviderUrlTemplates(
+            movie: 'https://player.autoembed.co/embed/movie/{tmdb}',
+            tv: 'https://player.autoembed.co/embed/tv/{tmdb}/{season}-{episode}/',
+          ),
+          'vidlove': ProviderUrlTemplates(
+            movie: 'https://player.vidlove.cc/embed/movie/{tmdb}',
+            tv: 'https://player.vidlove.cc/embed/tv/{tmdb}/{season}/{episode}',
+          ),
+          'vidsrcsbs': ProviderUrlTemplates(
+            movie: 'https://vidsrc.sbs/embed/movie/{tmdb}',
+            tv: 'https://vidsrc.sbs/embed/tv/{tmdb}/{season}/{episode}',
+          ),
+          'vidsrcwin': ProviderUrlTemplates(
+            movie: 'https://video.moviepire.co/embed/movie/{tmdb}',
+            tv: 'https://video.moviepire.co/embed/tv/{tmdb}/{season}/{episode}',
+          ),
+          '111movies': ProviderUrlTemplates(
+            movie: 'https://player.vidlove.cc/embed/movie/{tmdb}',
+            tv: 'https://player.vidlove.cc/embed/tv/{tmdb}/{season}/{episode}',
+          ),
+          'moviesapi': ProviderUrlTemplates(
+            movie: 'https://moviesapi.to/movie/{tmdb}',
+            tv: 'https://moviesapi.to/tv/{tmdb}-{season}-{episode}',
+          ),
+        },
+        apis: const {
+          'vidnestApi': 'https://new.vidnest.fun',
+          'vidnestEmbed': 'https://vidnest.fun',
+          'anikotoApi': 'https://anikotoapi.site',
+          'anikotoTv': 'https://anikototv.to',
+          'allanimeApi': 'https://api.allanime.day/api',
+          'allanimeReferer': 'https://allmanga.to',
+          'allanimeClock': 'https://allanime.day',
+          'watchhentaiOrigin': 'https://watchhentai.net',
+          'hentainiSite': 'https://hentaini.com',
+          'hentainiApi': 'https://admin.hentaini.com/api',
+          'videasyApiHost': 'api.wingsdatabase.com',
+          'videasyDbHost': 'db.wingsdatabase.com',
+          'videasyPlayerOrigin': 'https://player.videasy.to',
+          'vidsrcEmbed': 'https://vsembed.su',
+          'vixsrcBase': 'https://vixsrc.to',
+          'index111477': 'https://a.111477.xyz',
+        },
         megaplay: const AnimeEmbedHostConfig(
           host: 'megaplay.buzz',
           pathCatalog: '/stream/s-2/{embedId}/{lang}',
@@ -282,6 +419,13 @@ class ProviderRuntimeSnapshot {
           'https://www.miruro.to',
           'https://www.miruro.bz',
           'https://www.miruro.ru',
+        ],
+        kisskhMirrors: const [
+          'https://kisskh.co',
+          'https://kisskh.nl',
+          'https://kisskh.ovh',
+          'https://kisskh.la',
+          'https://kisskh.do',
         ],
         cdnRefererRules: const [
           CdnRefererRule(
@@ -330,6 +474,11 @@ class ProviderRuntimeSnapshot {
             .where((s) => s.startsWith('http'))
             .toList() ??
         const <String>[];
+    final kisskh = (anime?['kisskhMirrors'] as List?)
+            ?.map((e) => e.toString().trim())
+            .where((s) => s.startsWith('http'))
+            .toList() ??
+        const <String>[];
     final rules = <CdnRefererRule>[];
     final rawRules = j['cdnRefererRules'] as List?;
     if (rawRules != null) {
@@ -340,23 +489,58 @@ class ProviderRuntimeSnapshot {
         rules.add(rule);
       }
     }
+    final templates = <String, ProviderUrlTemplates>{};
+    final rawTpl = j['templates'] as Map?;
+    if (rawTpl != null) {
+      for (final e in rawTpl.entries) {
+        final id = e.key.toString();
+        if (e.value is! Map) continue;
+        final t = ProviderUrlTemplates.fromJson(
+          (e.value as Map).cast<String, dynamic>(),
+        );
+        if (t.movie.isEmpty && t.tv.isEmpty) continue;
+        templates[id] = t;
+      }
+    }
+    final apis = <String, String>{};
+    final rawApis = j['apis'] as Map?;
+    if (rawApis != null) {
+      for (final e in rawApis.entries) {
+        final v = e.value?.toString().trim() ?? '';
+        if (v.isEmpty) continue;
+        apis[e.key.toString()] = v;
+      }
+    }
     return ProviderRuntimeSnapshot(
       schema: schema,
+      templates: templates,
+      apis: apis,
       megaplay: megaplay,
       vidwish: vidwish,
       miruroOrigins: origins,
+      kisskhMirrors: kisskh,
       cdnRefererRules: rules,
     );
   }
 
   ProviderRuntimeSnapshot merged(ProviderRuntimeSnapshot overlay) {
+    final tpl = Map<String, ProviderUrlTemplates>.from(templates);
+    for (final e in overlay.templates.entries) {
+      tpl[e.key] = (tpl[e.key] ?? e.value).merged(e.value);
+    }
+    final api = Map<String, String>.from(apis)..addAll(overlay.apis);
     return ProviderRuntimeSnapshot(
       schema: overlay.schema,
+      templates: tpl,
+      apis: api,
       megaplay: megaplay.merged(overlay.megaplay),
       vidwish: vidwish.merged(overlay.vidwish),
       miruroOrigins: overlay.miruroOrigins.isNotEmpty
           ? overlay.miruroOrigins
           : miruroOrigins,
+      kisskhMirrors: overlay.kisskhMirrors.isNotEmpty
+          ? overlay.kisskhMirrors
+          : kisskhMirrors,
       cdnRefererRules: overlay.cdnRefererRules.isNotEmpty
           ? overlay.cdnRefererRules
           : cdnRefererRules,
@@ -365,10 +549,15 @@ class ProviderRuntimeSnapshot {
 
   Map<String, dynamic> toJson() => {
         'schema': schema,
+        'templates': {
+          for (final e in templates.entries) e.key: e.value.toJson(),
+        },
+        'apis': apis,
         'anime': {
           'megaplay': megaplay.toJson(),
           'vidwish': vidwish.toJson(),
           'miruroOrigins': miruroOrigins,
+          'kisskhMirrors': kisskhMirrors,
         },
         'cdnRefererRules': cdnRefererRules.map((r) => r.toJson()).toList(),
       };

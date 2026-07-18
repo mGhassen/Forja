@@ -65,15 +65,22 @@ function SignupForm() {
       const { data } = await supabase.auth.getSession()
       const next = data.session
       if (next?.access_token && next.refresh_token) {
-        const ok = await handoffSessionToDesktop({
+        const result = await handoffSessionToDesktop({
           callback: desktopParams.callback,
           state: desktopParams.state,
           accessToken: next.access_token,
           refreshToken: next.refresh_token,
         })
-        if (ok) {
+        if (result.status === 'ok') {
           clearDesktopAuthParams()
           setDesktopHandoffDone(true)
+          return
+        }
+        if (result.status === 'rejected') {
+          setError(
+            result.body?.trim() ||
+              'Account ready, but Forja could not apply the session. Open Web login from the app again, or tap Return to Forja on the login page.',
+          )
           return
         }
         setError(

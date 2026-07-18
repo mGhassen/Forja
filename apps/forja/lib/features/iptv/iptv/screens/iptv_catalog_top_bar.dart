@@ -26,10 +26,19 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   bool _searchDialogOpen = false;
   bool _searchToolFocused = false;
   bool _searchToolHovered = false;
+  bool _sortToolFocused = false;
+  bool _sortToolHovered = false;
   bool _portalToolFocused = false;
   bool _portalToolHovered = false;
+  final GlobalKey _sortAnchorKey = GlobalKey();
 
   IptvController get ctrl => widget.ctrl;
+
+  bool get _showLiveSort => ctrl.activeSection == IptvSection.live;
+
+  int get _topToolsCount => _showLiveSort ? 3 : 2;
+
+  int get _portalToolIndex => _showLiveSort ? 2 : 1;
 
   @override
   void initState() {
@@ -190,7 +199,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       sortOrder: 0,
       itemCount: _kSectionShelf.length,
     );
-    iptvSyncRow(rowId: 'iptv-top-tools', sortOrder: 1, itemCount: 2);
+    iptvSyncRow(
+      rowId: 'iptv-top-tools',
+      sortOrder: 1,
+      itemCount: _topToolsCount,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -216,6 +229,10 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
               compact
                   ? _buildSearchIcon(context, compact: true)
                   : _buildExpandingSearch(context),
+              if (_showLiveSort) ...[
+                const SizedBox(width: 8),
+                _buildSortButton(context),
+              ],
               const SizedBox(width: 8),
               _buildPortalButton(context, compact: compact),
             ],
@@ -358,6 +375,89 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     );
   }
 
+  Widget _buildSortButton(BuildContext context) {
+    final active = iptvFocusActive(
+      context,
+      hovered: _sortToolHovered,
+      focused: _sortToolFocused,
+    );
+    final tvFocused = iptvTvFocused(context, focused: _sortToolFocused);
+    final customSort = ctrl.liveCategorySort != IptvCatalogSort.playlist ||
+        ctrl.liveContentSort != IptvCatalogSort.playlist;
+    return KeyedSubtree(
+      key: _sortAnchorKey,
+      child: iptvTap(
+        context: context,
+        onTap: () => _openSortMenu(context),
+        borderRadius: _kSearchCollapsed / 2,
+        tvZone: ShellTvZone.topBar,
+        tvRowId: 'iptv-top-tools',
+        tvItemIndex: 1,
+        onDownEdge: _focusDownFromTopTools,
+        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
+        onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 2),
+        onFocusChange: (focused) => setState(() => _sortToolFocused = focused),
+        onHoverChange: (hovered) => setState(() => _sortToolHovered = hovered),
+        child: Tooltip(
+          message: 'Sort',
+          child: Container(
+            width: _kSearchCollapsed,
+            height: _kSearchCollapsed,
+            decoration: BoxDecoration(
+              color: iptvFocusSurfaceColor(
+                active: active || customSort,
+                tvFocused: tvFocused,
+                idleAlpha: customSort ? 0.12 : 0.08,
+              ),
+              borderRadius: BorderRadius.circular(_kSearchCollapsed / 2),
+              border: Border.all(
+                color: iptvFocusOutlineColor(
+                  active: active || customSort,
+                  tvFocused: tvFocused,
+                  idleAlpha: customSort ? 0.22 : 0.12,
+                  hoverAlpha: 0.22,
+                ),
+                width: tvFocused ? 1.5 : 1,
+              ),
+            ),
+            child: Icon(
+              Icons.sort_rounded,
+              color: iptvFocusFg(
+                customSort ? Colors.white : Colors.white60,
+                active: active,
+                tvFocused: tvFocused,
+              ),
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openSortMenu(BuildContext context) {
+    PlayerPopupPanel.show(
+      context: context,
+      title: 'Sort',
+      leadingIcon: Icons.sort_rounded,
+      anchorContext: _sortAnchorKey.currentContext,
+      alignment: Alignment.topRight,
+      margin: const EdgeInsets.only(right: 12, top: 56),
+      width: 280,
+      maxHeight: 420,
+      child: _IptvLiveSortMenu(
+        categorySort: ctrl.liveCategorySort,
+        contentSort: ctrl.liveContentSort,
+        onCategorySort: (sort) {
+          unawaited(ctrl.setLiveCategorySort(sort));
+        },
+        onContentSort: (sort) {
+          unawaited(ctrl.setLiveContentSort(sort));
+        },
+      ),
+    );
+  }
+
   Widget _buildSearchField(BuildContext context) {
     return Container(
       height: _kSearchCollapsed,
@@ -437,9 +537,10 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         borderRadius: _kShelfTabRadius,
         tvZone: ShellTvZone.topBar,
         tvRowId: 'iptv-top-tools',
-        tvItemIndex: 1,
+        tvItemIndex: _portalToolIndex,
         onDownEdge: _focusDownFromPortalTool,
-        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
+        onLeftEdge: () =>
+            iptvFocusRowItem('iptv-top-tools', _portalToolIndex - 1),
         onRightEdge: selected
             ? () => iptvFocusRowItem('portals', 0)
             : null,
@@ -598,6 +699,155 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         fontSize: 12,
         fontWeight: FontWeight.w700,
         height: 1,
+      ),
+    );
+  }
+}
+
+class _IptvLiveSortMenu extends StatefulWidget {
+  const _IptvLiveSortMenu({
+    required this.categorySort,
+    required this.contentSort,
+    required this.onCategorySort,
+    required this.onContentSort,
+  });
+
+  final IptvCatalogSort categorySort;
+  final IptvCatalogSort contentSort;
+  final ValueChanged<IptvCatalogSort> onCategorySort;
+  final ValueChanged<IptvCatalogSort> onContentSort;
+
+  @override
+  State<_IptvLiveSortMenu> createState() => _IptvLiveSortMenuState();
+}
+
+class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
+  static const _options = <(IptvCatalogSort, String, IconData)>[
+    (
+      IptvCatalogSort.playlist,
+      'Playlist Order',
+      Icons.format_list_numbered_rounded,
+    ),
+    (IptvCatalogSort.nameAsc, 'Name (A–Z)', Icons.sort_by_alpha_rounded),
+    (IptvCatalogSort.nameDesc, 'Name (Z–A)', Icons.sort_by_alpha_rounded),
+  ];
+
+  late IptvCatalogSort _categorySort = widget.categorySort;
+  late IptvCatalogSort _contentSort = widget.contentSort;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionLabel('Categories'),
+          for (final (sort, label, icon) in _options)
+            _sortRow(
+              icon: icon,
+              label: label,
+              selected: _categorySort == sort,
+              onTap: () {
+                setState(() => _categorySort = sort);
+                widget.onCategorySort(sort);
+              },
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Divider(height: 1, color: PlayerPopupTokens.border),
+          ),
+          _sectionLabel('Content'),
+          for (final (sort, label, icon) in _options)
+            _sortRow(
+              icon: icon,
+              label: label,
+              selected: _contentSort == sort,
+              onTap: () {
+                setState(() => _contentSort = sort);
+                widget.onContentSort(sort);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+      child: Text(
+        text,
+        style: GoogleFonts.plusJakartaSans(
+          color: PlayerPopupTokens.muted,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+
+  Widget _sortRow({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final row = Material(
+      color: selected ? PlayerPopupTokens.accentFill : Colors.transparent,
+      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+        hoverColor: ForjaShellColors.inkHover,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? PlayerPopupTokens.accent
+                    : Colors.white.withValues(alpha: 0.75),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (selected)
+                Icon(
+                  Icons.check_rounded,
+                  size: 18,
+                  color: PlayerPopupTokens.accent,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!tvFocus) {
+      return Padding(padding: const EdgeInsets.only(bottom: 4), child: row);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: FocusableControl(
+        onTap: onTap,
+        borderRadius: PlayerPopupTokens.cardRadius,
+        showFocusBorder: true,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        child: row,
       ),
     );
   }

@@ -6,7 +6,7 @@
 
 Forja resolves streams through the **Rust Resolver Engine** (`crates/resolver-engine`). Movie/TV scrapers never compete with anime or Asian Drama scrapers. Each domain has provider **profiles** (configured domain scores). Your **settings order** is the baseline; domain scores plus a **live reliability Σ** (sum of per-title check scores for that provider, clamped ±20 when ranking) may adjust each provider by at most **±2** ranks before checking. The engine scores resolved URLs against your device (codec, resolution, latency) and returns a **playable URL + headers** — the player does not know which scraper produced it.
 
-Anime embed **hosts**, **path templates**, **Miruro mirrors**, and **CDN Referer rules** can also be overlaid from cloud `provider_runtime_config` (RFC-039) so ops can retarget URLs without shipping a new build. Extract logic (decrypt, Cloudflare pipes, WebView sniff) still ships in the app.
+Movie/TV embed **URL templates**, anime **hosts / APIs / mirrors**, and **CDN Referer rules** can be overlaid from cloud `provider_runtime_config` (RFC-039) so ops can retarget URLs without shipping a new build. Extract logic (decrypt, Cloudflare pipes, WebView sniff) still ships in the app.
 
 Green **Play** calls `PlaybackService.resolve()` → Resolver Engine job. Host-only providers (WebView embed sniff, Videasy WASM, Nuvio) are fulfilled by a host adapter after the engine requests them.
 
