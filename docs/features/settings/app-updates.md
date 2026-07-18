@@ -22,6 +22,7 @@ Forja can check for newer builds when the app starts and lets you check manually
 - During a desktop download, choose **Continue in background** to return to Forja; a sticky progress toast stays visible (you can close it) and an **Install** toast appears when it finishes. Progress is hidden while a video player is open.
 - Checking for the same update again reuses a completed installer already on disk instead of downloading it again
 - If a Windows or macOS download fails, use **Open download URL** in the error message to retry in your browser
+- Builds from before the CDN cutover may still open a Supabase Storage link in the browser; download once from [forjahq.xyz/download](https://forjahq.xyz/download) or GitHub, then later updates use in-app CDN downloads
 - **Settings → Data & backup → Downloaded updates** removes saved installer files from in-app update
 - See the app version at the bottom of About
 

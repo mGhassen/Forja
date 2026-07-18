@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Fingerprint } from 'lucide-react'
+import { DesktopAuthDone } from '@/components/desktop-auth-done'
 import { LiquidGlass } from '@/components/liquid-glass'
 import { Reveal } from '@/components/reveal'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
@@ -23,7 +24,6 @@ import {
 import { captchaConfigured } from '@/lib/captcha'
 import {
   clearDesktopAuthParams,
-  closeDesktopHandoffWindow,
   handoffSessionToDesktop,
   isSafeDesktopCallback,
   rememberDesktopAuthParams,
@@ -99,7 +99,6 @@ function LoginForm() {
       }
       clearDesktopAuthParams()
       setDesktopHandoff(true)
-      closeDesktopHandoffWindow()
       return true
     },
     [],
@@ -225,6 +224,10 @@ function LoginForm() {
   const showReturnButton =
     isDesktopLogin && !!user && !desktopHandoff && !loading
 
+  if (desktopHandoff) {
+    return <DesktopAuthDone />
+  }
+
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="reveal-slow w-full max-w-md">
@@ -239,155 +242,146 @@ function LoginForm() {
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
               {isDesktopLogin
-                ? 'After you sign in here, Forja on your desktop finishes automatically. You can close this tab.'
+                ? 'After you sign in here, Forja on your desktop finishes automatically.'
                 : 'Your player settings, synced. Download stays free - account is optional.'}
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            {desktopHandoff ? (
-              <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.7)]">
-                Signed in — returning to Forja. You can close this tab if it
-                stays open.
-              </p>
-            ) : (
-              <form onSubmit={onSubmit} className="space-y-5">
-                {!configured ? (
-                  <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
-                    Web sign-in is not open yet. Download Forja - you can watch
-                    without an account.
-                  </p>
-                ) : null}
+            <form onSubmit={onSubmit} className="space-y-5">
+              {!configured ? (
+                <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
+                  Web sign-in is not open yet. Download Forja - you can watch
+                  without an account.
+                </p>
+              ) : null}
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    required={configured}
-                    disabled={!configured || showReturnButton}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
-                  />
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required={configured}
+                  disabled={!configured || showReturnButton}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="password">Password</Label>
+                  {configured && !isDesktopLogin ? (
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs text-[rgba(237,230,218,0.45)] transition-colors hover:text-forja-green hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  ) : null}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="password">Password</Label>
-                    {configured && !isDesktopLogin ? (
-                      <Link
-                        to="/forgot-password"
-                        className="text-xs text-[rgba(237,230,218,0.45)] transition-colors hover:text-forja-green hover:underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    ) : null}
-                  </div>
-                  <PasswordInput
-                    id="password"
-                    autoComplete="current-password"
-                    required={configured}
-                    disabled={!configured || showReturnButton}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
-                  />
-                </div>
+                <PasswordInput
+                  id="password"
+                  autoComplete="current-password"
+                  required={configured}
+                  disabled={!configured || showReturnButton}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
+                />
+              </div>
 
-                {configured && captchaConfigured && !showReturnButton ? (
-                  <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
-                ) : null}
+              {configured && captchaConfigured && !showReturnButton ? (
+                <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
+              ) : null}
 
-                {error ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+              {error ? (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                >
+                  {error === AUTH_UNAVAILABLE_MESSAGE
+                    ? 'Sign-in is not available right now. Download Forja and play without an account.'
+                    : error}
+                </p>
+              ) : null}
+
+              {showReturnButton ? (
+                <Button
+                  type="button"
+                  disabled={handoffBusy}
+                  onClick={() => void onReturnToForja()}
+                  className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                >
+                  {handoffBusy ? 'Connecting to Forja…' : 'Return to Forja'}
+                </Button>
+              ) : configured ? (
+                <div className="flex items-stretch gap-2">
+                  <Button
+                    type="submit"
+                    disabled={
+                      authBusy ||
+                      loading ||
+                      (captchaConfigured && !captchaToken)
+                    }
+                    className="h-12 min-w-0 flex-1 rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
                   >
-                    {error === AUTH_UNAVAILABLE_MESSAGE
-                      ? 'Sign-in is not available right now. Download Forja and play without an account.'
-                      : error}
-                  </p>
-                ) : null}
-
-                {showReturnButton ? (
+                    {submitting
+                      ? isDesktopLogin
+                        ? 'Signing in for desktop…'
+                        : 'Signing in…'
+                      : isDesktopLogin
+                        ? 'Sign in & return to app'
+                        : 'Sign in'}
+                  </Button>
                   <Button
                     type="button"
-                    disabled={handoffBusy}
-                    onClick={() => void onReturnToForja()}
-                    className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    variant="outline"
+                    title={
+                      passkeySubmitting
+                        ? 'Waiting for passkey…'
+                        : 'Sign in with passkey'
+                    }
+                    aria-label={
+                      passkeySubmitting
+                        ? 'Waiting for passkey'
+                        : 'Sign in with passkey'
+                    }
+                    disabled={
+                      authBusy ||
+                      loading ||
+                      (captchaConfigured && !captchaToken)
+                    }
+                    onClick={() => void onPasskeySignIn()}
+                    className="size-12 shrink-0 rounded-full border-[rgba(237,230,218,0.22)] p-0 text-[#EDE6DA] hover:border-forja-green/50 hover:bg-forja-green/10"
                   >
-                    {handoffBusy ? 'Connecting to Forja…' : 'Return to Forja'}
+                    <Fingerprint className="size-5" aria-hidden />
                   </Button>
-                ) : configured ? (
-                  <div className="flex items-stretch gap-2">
-                    <Button
-                      type="submit"
-                      disabled={
-                        authBusy ||
-                        loading ||
-                        (captchaConfigured && !captchaToken)
-                      }
-                      className="h-12 min-w-0 flex-1 rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                    >
-                      {submitting
-                        ? isDesktopLogin
-                          ? 'Signing in for desktop…'
-                          : 'Signing in…'
-                        : isDesktopLogin
-                          ? 'Sign in & return to app'
-                          : 'Sign in'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      title={
-                        passkeySubmitting
-                          ? 'Waiting for passkey…'
-                          : 'Sign in with passkey'
-                      }
-                      aria-label={
-                        passkeySubmitting
-                          ? 'Waiting for passkey'
-                          : 'Sign in with passkey'
-                      }
-                      disabled={
-                        authBusy ||
-                        loading ||
-                        (captchaConfigured && !captchaToken)
-                      }
-                      onClick={() => void onPasskeySignIn()}
-                      className="size-12 shrink-0 rounded-full border-[rgba(237,230,218,0.22)] p-0 text-[#EDE6DA] hover:border-forja-green/50 hover:bg-forja-green/10"
-                    >
-                      <Fingerprint className="size-5" aria-hidden />
-                    </Button>
-                  </div>
-                ) : (
-                  <Link
-                    to="/download"
-                    data-hover=""
-                    className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                  >
-                    Download Forja
-                  </Link>
-                )}
-              </form>
-            )}
+                </div>
+              ) : (
+                <Link
+                  to="/download"
+                  data-hover=""
+                  className="btn-magnet inline-flex h-12 w-full items-center justify-center rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                >
+                  Download Forja
+                </Link>
+              )}
+            </form>
 
-            {!desktopHandoff ? (
-              <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
-                <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
-                  No account yet?{' '}
-                  <Link
-                    to="/signup"
-                    className="text-forja-green hover:text-flame hover:underline"
-                  >
-                    Create one
-                  </Link>
-                </p>
-              </div>
-            ) : null}
+            <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+              <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">
+                No account yet?{' '}
+                <Link
+                  to="/signup"
+                  className="text-forja-green hover:text-flame hover:underline"
+                >
+                  Create one
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
         </LiquidGlass>

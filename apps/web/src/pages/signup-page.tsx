@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { DesktopAuthDone } from '@/components/desktop-auth-done'
 import { LiquidGlass } from '@/components/liquid-glass'
 import { Reveal } from '@/components/reveal'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
@@ -22,7 +23,6 @@ import {
 import { captchaConfigured } from '@/lib/captcha'
 import {
   clearDesktopAuthParams,
-  closeDesktopHandoffWindow,
   handoffSessionToDesktop,
   isSafeDesktopCallback,
   rememberDesktopAuthParams,
@@ -74,7 +74,6 @@ function SignupForm() {
         if (ok) {
           clearDesktopAuthParams()
           setDesktopHandoffDone(true)
-          closeDesktopHandoffWindow()
           return
         }
         setError(
@@ -153,22 +152,10 @@ function SignupForm() {
 
   if (desktopHandoffDone) {
     return (
-      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
-        <Reveal variant="right" className="reveal-slow w-full max-w-md">
-          <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
-            <Card className="border-0 bg-transparent shadow-none">
-              <CardHeader className="space-y-2 pb-2">
-                <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                  Signed in
-                </CardTitle>
-                <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                  Returning to Forja. You can close this tab if it stays open.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </LiquidGlass>
-        </Reveal>
-      </section>
+      <DesktopAuthDone
+        title="Account ready"
+        body="Forja on your desktop has your new session. You can return to the app now."
+      />
     )
   }
 

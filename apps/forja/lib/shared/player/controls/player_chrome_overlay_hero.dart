@@ -385,6 +385,7 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
   Widget build(BuildContext context) {
     return MouseRegion(
       onEnter: (_) {
+        playerChromeCancelSeekScrubs();
         setState(() => _hovering = true);
         _hideSliderTimer?.cancel();
       },

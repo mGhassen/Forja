@@ -45,4 +45,16 @@ class ReleaseStorageUrls {
         githubDownloadUrl ??
         '';
   }
+
+  /// True for a direct installer object (CDN, GitHub asset, etc.).
+  /// False for HTML release pages — those must open in a browser.
+  static bool isDirectInstallerUrl(String url) {
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
+    return path.endsWith('.dmg') ||
+        path.endsWith('.zip') ||
+        path.endsWith('.exe') ||
+        path.endsWith('.appimage') ||
+        path.endsWith('.apk') ||
+        path.endsWith('.deb');
+  }
 }

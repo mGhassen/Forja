@@ -82,13 +82,14 @@ Not synced — device-specific or sensitive:
 - Select the active profile from the desktop rail avatar, or tap **Watching now**
   under **Settings → Profile & account** to open **Who’s watching?** / **Manage
   profiles** (same Netflix-style grid as the web). Choosing a profile shows a
-  dedicated splash while settings sync — not an in-settings dropdown. After the
-  splash, the app opens that profile’s **default menu** tab (the starred tab
+  ~5s splash where that avatar scales from its tile into the center while settings
+  sync — not the boot intro splash, and not an in-settings dropdown. After it
+  finishes, the app opens that profile’s **default menu** tab (the starred tab
   under **Settings → Navigation**), not the screen you were on before switching.
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
   If the account has no profiles yet, you create one before continuing. Tapping a
-  profile shows the profile-switch splash, then the boot splash.
+  profile shows the quick avatar switch splash, then the boot intro splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for
@@ -164,8 +165,8 @@ flutter run -d macos --dart-define-from-file=../../.env
 When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
 `http://127.0.0.1:3000`) and keep `FORJA_WEB_URL` at that default. Restart the
 web dev server after pulling Vite host changes so it binds IPv4 (not only
-`[::1]`). Stay on the account screen until the app finishes signing in — the
-browser tab closes only after Forja has applied the session.
+`[::1]`). After a successful handoff the portal shows a confirmation page with
+a short countdown (or **Close tab**); you can close the tab yourself anytime.
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`), and **`FORJA_WEB_URL`**.

@@ -131,6 +131,20 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     return _fracFromLocal(box.globalToLocal(global).dx);
   }
 
+  /// Global scrub follows cursor X anywhere; keep a tight vertical leash so
+  /// moving onto Quality / Settings (under the bar) does not magnetize the thumb.
+  bool _pointerWithinScrubLeash(Offset global) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return false;
+    final local = box.globalToLocal(global);
+    const xPad = 24.0;
+    const yPad = 12.0;
+    return local.dx >= -xPad &&
+        local.dx <= box.size.width + xPad &&
+        local.dy >= -yPad &&
+        local.dy <= box.size.height + yPad;
+  }
+
   void _attachGlobalPointerRoute() {
     if (_globalRouteAttached) return;
     GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
@@ -159,6 +173,12 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     }
 
     if (event is PointerMoveEvent) {
+      // Quality / Settings sit under the right end of the bar — leave the track
+      // (or press-and-slide onto those icons) must drop capture immediately.
+      if (!_pointerWithinScrubLeash(event.position)) {
+        _endScrub(commit: false, clearHover: true);
+        return;
+      }
       final down = _downGlobal;
       if (!_movedEnoughToScrub && down != null) {
         final dist = (event.position - down).distance;

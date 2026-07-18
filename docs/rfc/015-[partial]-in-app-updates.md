@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **0 / 5** acceptance (Cloudflare R2 downloads) |
-| **Current slice** | Move installers to Cloudflare R2 (Supabase Free 50 MiB cap); GitHub for discovery + notes |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) |
+| **Current slice** | R2 CDN live; macOS treats CDN `.dmg` as in-app download (not browser); hosted smoke A37 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -107,11 +107,12 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R15-A33 | Release CI uploads flattened installers to R2 `forja-releases` at `v{version}/` and mirrors `latest/` (S3 API) | 🔄 |
-| 2 | R15-A34 | Web `/download` + landing CTAs use `{RELEASE_CDN_URL}/latest/…` | 🔄 |
-| 3 | R15-A35 | `AppUpdaterService` prefers `{RELEASE_CDN_URL}/latest/…` (versioned path fallback; GitHub asset if CDN unset) | 🔄 |
-| 4 | R15-A36 | After upload, prune R2 to newest 3 version prefixes (`RELEASE_STORAGE_KEEP`); refresh `latest/` | 🔄 |
+| 1 | R15-A33 | Release CI uploads flattened installers to R2 `forja-releases` at `v{version}/` and mirrors `latest/` (S3 API) | ✅ |
+| 2 | R15-A34 | Web `/download` + landing CTAs use `{RELEASE_CDN_URL}/latest/…` | ✅ |
+| 3 | R15-A35 | `AppUpdaterService` prefers `{RELEASE_CDN_URL}/latest/…` (versioned path fallback; GitHub asset if CDN unset) | ✅ |
+| 4 | R15-A36 | After upload, prune R2 to newest 3 version prefixes (`RELEASE_STORAGE_KEEP`); refresh `latest/` | ✅ |
 | 5 | R15-A37 | Hosted release smoke: DMG/EXE/AppImage/APK download from CDN succeeds | ⬜ |
+| 6 | R15-A38 | macOS update dialog treats CDN (and any direct `.dmg`/installer URL) as in-app download — not GitHub `/releases/download/` only | ✅ |
 
 ---
 

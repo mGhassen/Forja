@@ -449,12 +449,15 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                 const SizedBox(height: 10),
                 // Full-width opaque hit target so empty space between left/right
                 // clusters (and the wide anime/drama Source chip) cannot start a
-                // seek scrub on the bar above.
+                // seek scrub on the bar above. Cancel any live scrub on enter —
+                // Quality / Settings sit under the right end of the bar.
                 Material(
                   type: MaterialType.transparency,
                   child: SizedBox(
                     width: double.infinity,
-                    child: Listener(
+                    child: MouseRegion(
+                      onEnter: (_) => playerChromeCancelSeekScrubs(),
+                      child: Listener(
                       behavior: HitTestBehavior.opaque,
                       child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -574,6 +577,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                     ),
                   ],
                 ),
+                    ),
                     ),
                   ),
                 ),

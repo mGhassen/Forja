@@ -153,8 +153,8 @@ export async function handoffSessionToDesktop(options: {
 
 /**
  * Best-effort close after desktop handoff. Browsers only allow this for
- * script-opened windows; tabs opened by the OS may stay open — caller should
- * keep a short fallback message.
+ * script-opened windows; tabs opened by the OS often stay open — the
+ * DesktopAuthDone page asks the user to close manually in that case.
  */
 export function closeDesktopHandoffWindow(): void {
   if (typeof window === 'undefined') return

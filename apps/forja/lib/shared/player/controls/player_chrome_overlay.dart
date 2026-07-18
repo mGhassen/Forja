@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
@@ -189,11 +190,19 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
             borderRadius: borderRadius,
             scaleOnFocus: 1.06,
             onFocusChange: (focused) => setState(() => _focused = focused),
-            onHoverChange: (hovered) => setState(() => _hovered = hovered),
+            onHoverChange: (hovered) {
+              if (hovered) playerChromeCancelSeekScrubs();
+              setState(() => _hovered = hovered);
+            },
             child: child,
           )
         : MouseRegion(
-            onEnter: (_) => setState(() => _hovered = true),
+            onEnter: (_) {
+              // Drop seek-bar scrub capture before Quality / Settings hover —
+              // otherwise the thumb stays magnetized to the pointer over chrome.
+              playerChromeCancelSeekScrubs();
+              setState(() => _hovered = true);
+            },
             onExit: (_) => setState(() {
               _hovered = false;
             }),
@@ -328,10 +337,23 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             borderRadius: 8,
             scaleOnFocus: 1.04,
             onFocusChange: (focused) => setState(() => _focused = focused),
-            onHoverChange: (hovered) => setState(() => _hovered = hovered),
+            onHoverChange: (hovered) {
+              if (hovered) playerChromeCancelSeekScrubs();
+              setState(() => _hovered = hovered);
+            },
             child: child,
           )
-        : child;
+        : MouseRegion(
+            onEnter: (_) {
+              playerChromeCancelSeekScrubs();
+              setState(() => _hovered = true);
+            },
+            onExit: (_) => setState(() => _hovered = false),
+            cursor: widget.enabled
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: child,
+          );
     return Tooltip(message: 'Source — ${widget.label}', child: button);
   }
 }

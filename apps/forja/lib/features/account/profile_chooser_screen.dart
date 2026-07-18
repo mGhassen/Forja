@@ -118,11 +118,23 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     });
   }
 
-  Future<void> _select(SyncProfile profile) async {
+  Future<void> _select(SyncProfile profile, {Rect? originRect}) async {
     if (_busy) return;
     if (widget.closeIfAlreadyActive && profile.id == _activeProfileId) {
       widget.onProfileSelected();
       return;
+    }
+
+    // Map avatar globals into the overlay space the fullscreen splash uses.
+    Rect? splashOrigin = originRect;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (originRect != null &&
+        overlayBox != null &&
+        overlayBox.hasSize &&
+        overlayBox.attached) {
+      final localTopLeft = overlayBox.globalToLocal(originRect.topLeft);
+      splashOrigin = localTopLeft & originRect.size;
     }
 
     setState(() {
@@ -133,10 +145,11 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       PageRouteBuilder<bool>(
         opaque: true,
         transitionDuration: Duration.zero,
-        reverseTransitionDuration: const Duration(milliseconds: 200),
+        reverseTransitionDuration: const Duration(milliseconds: 280),
         pageBuilder: (context, animation, secondaryAnimation) =>
             ProfileSwitchSplash(
           profile: profile,
+          originRect: splashOrigin,
           prepareCurrent: widget.prepareCurrentOnSwitch,
         ),
       ),
@@ -377,9 +390,13 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                             active: profile.id == _activeProfileId,
                             managing: managing,
                             enabled: !_busy,
-                            onTap: () => managing
-                                ? _beginEdit(profile)
-                                : _select(profile),
+                            onTap: (originRect) {
+                              if (managing) {
+                                _beginEdit(profile);
+                              } else {
+                                _select(profile, originRect: originRect);
+                              }
+                            },
                           ),
                         if (managing || _profiles.isEmpty)
                           _AddProfileTile(
@@ -543,15 +560,28 @@ class _ProfileChoice extends StatefulWidget {
   final bool active;
   final bool managing;
   final bool enabled;
-  final VoidCallback onTap;
+  final void Function(Rect? avatarOrigin) onTap;
 
   @override
   State<_ProfileChoice> createState() => _ProfileChoiceState();
 }
 
 class _ProfileChoiceState extends State<_ProfileChoice> {
+  final GlobalKey _avatarKey = GlobalKey();
   bool _hovered = false;
   bool _focused = false;
+
+  Rect? _avatarOriginRect() {
+    final box = _avatarKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !box.attached) return null;
+    final topLeft = box.localToGlobal(Offset.zero);
+    return topLeft & box.size;
+  }
+
+  void _handleTap() {
+    if (!widget.enabled) return;
+    widget.onTap(_avatarOriginRect());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -566,13 +596,13 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
           onInvoke: (_) {
-            widget.onTap();
+            _handleTap();
             return null;
           },
         ),
       },
       child: GestureDetector(
-        onTap: widget.enabled ? widget.onTap : null,
+        onTap: widget.enabled ? _handleTap : null,
         child: AnimatedScale(
           scale: highlighted ? 1.06 : 1,
           duration: ShellTokens.navSelectionAnimation,
@@ -581,13 +611,16 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
             width: 132,
             child: Column(
               children: [
-                ForjaProfileAvatar(
-                  avatarKey: widget.profile.avatarKey,
-                  name: widget.profile.name,
-                  size: 112,
-                  selected: highlighted ||
-                      (!widget.managing && widget.active),
-                  editing: widget.managing,
+                KeyedSubtree(
+                  key: _avatarKey,
+                  child: ForjaProfileAvatar(
+                    avatarKey: widget.profile.avatarKey,
+                    name: widget.profile.name,
+                    size: 112,
+                    selected: highlighted ||
+                        (!widget.managing && widget.active),
+                    editing: widget.managing,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(

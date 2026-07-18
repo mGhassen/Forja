@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
+import 'package:forja/shared/services/release_storage_urls.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -241,7 +242,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       _downloadProgress = current.progress;
     } else if (Platform.isWindows ||
         Platform.isLinux ||
-        (Platform.isMacOS && _hasDirectAsset)) {
+        (Platform.isMacOS && _hasDirectInstaller)) {
       // Always re-check disk: Settings may have cleared installers while the
       // in-memory service still said "completed".
       unawaited(_reconcileCachedInstaller());
@@ -573,15 +574,16 @@ class _UpdateDialogState extends State<UpdateDialog> {
     );
   }
 
-  bool get _hasDirectAsset =>
-      widget.updateInfo.downloadUrl.contains('/releases/download/');
+  /// CDN / GitHub asset / any direct installer — not an HTML release page.
+  bool get _hasDirectInstaller =>
+      ReleaseStorageUrls.isDirectInstallerUrl(widget.updateInfo.downloadUrl);
 
   String? get _platformNotice {
     if (widget.updateInfo.isIOS) {
       return 'Install opens GitHub in your browser.';
     }
-    if (widget.updateInfo.isMacOS && !_hasDirectAsset) {
-      return 'Install opens GitHub in your browser.';
+    if (widget.updateInfo.isMacOS && !_hasDirectInstaller) {
+      return 'Install opens the download page in your browser.';
     }
     return null;
   }
@@ -613,7 +615,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       await _downloadAndInstallAndroid();
     } else if (Platform.isWindows ||
         Platform.isLinux ||
-        (Platform.isMacOS && _hasDirectAsset)) {
+        (Platform.isMacOS && _hasDirectInstaller)) {
       await _desktopDownload.start(widget.updateInfo);
     } else {
       await AppUpdaterService().openDownloadPage(widget.updateInfo.downloadUrl);
