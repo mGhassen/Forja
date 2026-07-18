@@ -773,7 +773,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                         label: webBusy ? 'Cancel web login' : 'Web login',
                         icon: webBusy
                             ? Icons.close_rounded
-                            : Icons.open_in_browser_rounded,
+                            : Icons.language_rounded,
                         onPressed: passwordLocked
                             ? null
                             : (webBusy ? onCancelWebLogin : onWebLogin),

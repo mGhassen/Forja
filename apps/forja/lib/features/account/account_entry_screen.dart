@@ -551,7 +551,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                             : 'Web login',
                         icon: _webBusy
                             ? Icons.close_rounded
-                            : Icons.open_in_browser_rounded,
+                            : Icons.language_rounded,
                         onPressed: _passwordLocked
                             ? null
                             : (_webBusy ? _cancelWebLogin : _webLogin),
