@@ -10,7 +10,8 @@ type TurnstileCaptchaProps = {
 
 /**
  * Client-only Turnstile widget. Renders nothing when `VITE_TURNSTILE_SITE_KEY`
- * is unset. No host chrome — clips Cloudflare’s 1px dark iframe border only.
+ * is unset. Clips Cloudflare’s iframe rim; the plate itself is Cloudflare’s
+ * dark theme (not restylable cross-origin).
  */
 export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) {
   const [mounted, setMounted] = useState(false)
@@ -39,20 +40,17 @@ export function TurnstileCaptcha({ onToken, className }: TurnstileCaptchaProps) 
   }
 
   return (
-    <div
-      className={cn(
-        'w-fit max-w-full overflow-hidden leading-[0] [clip-path:inset(1px_round_0)]',
-        className,
-      )}
-    >
-      <Turnstile
-        siteKey={turnstileSiteKey!}
-        options={{ theme: 'dark', size: 'normal' }}
-        onSuccess={(token) => onToken(token)}
-        onExpire={() => onToken(null)}
-        onError={() => onToken(null)}
-        onTimeout={() => onToken(null)}
-      />
+    <div className={cn('forja-turnstile w-fit max-w-full', className)}>
+      <div className="forja-turnstile__clip">
+        <Turnstile
+          siteKey={turnstileSiteKey!}
+          options={{ theme: 'dark', size: 'normal' }}
+          onSuccess={(token) => onToken(token)}
+          onExpire={() => onToken(null)}
+          onError={() => onToken(null)}
+          onTimeout={() => onToken(null)}
+        />
+      </div>
     </div>
   )
 }

@@ -14,13 +14,18 @@ import 'package:passkeys/exceptions.dart';
 class ForjaPasskeys {
   ForjaPasskeys._();
 
+  /// Kill switch for passkey buttons / manage UI. Keep implementation; flip to
+  /// `true` when native Associated Domains (or Windows) are ready again.
+  static const bool uiEnabled = false;
+
   /// Shared authenticator. Debug builds enable Corbado doctor diagnostics.
   static final PasskeyAuthenticator authenticator = PasskeyAuthenticator(
     debugMode: kDebugMode,
   );
 
-  /// True when this build can run a native passkey ceremony.
+  /// True when this build should expose passkey UI and run a ceremony.
   static bool get supported {
+    if (!uiEnabled) return false;
     if (kIsWeb) return false;
     try {
       return Platform.isMacOS || Platform.isWindows;

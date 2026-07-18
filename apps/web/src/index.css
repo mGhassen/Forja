@@ -307,6 +307,27 @@
   will-change: auto;
 }
 
+/*
+ * Turnstile rim clip — CF paints the plate inside a cross-origin iframe;
+ * we can only crop the 1–2px edge, not restyle the fill.
+ */
+.forja-turnstile {
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.forja-turnstile__clip {
+  margin: -2px;
+  line-height: 0;
+}
+
+.forja-turnstile iframe {
+  border: 0 !important;
+  outline: none !important;
+}
+
 /* Same slide; fade uses an even curve so it doesn’t pop opaque mid-move. */
 .reveal-slow {
   transition:

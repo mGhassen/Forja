@@ -472,8 +472,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     ),
                   ),
                 ),
-                if (ForjaCaptcha.isConfigured) ...[
-                  const SizedBox(height: 18),
+                if (ForjaCaptcha.isConfigured)
                   IgnorePointer(
                     ignoring: _formLocked,
                     child: Opacity(
@@ -487,7 +486,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                       ),
                     ),
                   ),
-                ],
                 if (_message != null) ...[
                   const SizedBox(height: 16),
                   Text(

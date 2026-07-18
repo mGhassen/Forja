@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
@@ -11,13 +13,21 @@ import 'package:forja/shared/webview/forja_webview.dart';
 ///
 /// Renders nothing when [ForjaCaptcha.isConfigured] is false. Remount with a
 /// new [Key] after a failed auth attempt to mint a fresh token.
+///
+/// Uses Turnstile `appearance: interaction-only` so the grey widget plate stays
+/// hidden unless Cloudflare needs a click. After a silent token, the slot
+/// collapses; the WebView stays alive offstage for expire / refresh.
 class TurnstileCaptcha extends StatefulWidget {
   const TurnstileCaptcha({
     super.key,
     required this.onToken,
+    this.topPadding = 18,
   });
 
   final ValueChanged<String?> onToken;
+
+  /// Applied only while the challenge slot is visible (not after silent token).
+  final double topPadding;
 
   @override
   State<TurnstileCaptcha> createState() => _TurnstileCaptchaState();
@@ -25,9 +35,17 @@ class TurnstileCaptcha extends StatefulWidget {
 
 class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
   static const _handlerName = 'turnstileToken';
-  /// Cloudflare "normal" widget is 300×65; pad height slightly for WebView chrome.
+  /// Cloudflare "normal" widget is 300×65 when interaction is required.
   static const _widgetWidth = 300.0;
   static const _widgetHeight = 65.0;
+
+  /// Windows WebView2 keeps an opaque surface even when
+  /// [InAppWebViewSettings.transparentBackground] is true (see
+  /// [patchWindowsWebViewSettings]); page CSS must paint a solid color there.
+  static bool get _needsOpaquePageBg => !kIsWeb && Platform.isWindows;
+
+  /// True after a usable token arrives; form slot collapses (no grey plate).
+  bool _tokenReady = false;
 
   @override
   void initState() {
@@ -39,9 +57,8 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
     }
   }
 
-  /// Match [AppTheme.appBackground] so the WebView host does not flash a
-  /// darker full-bleed rectangle behind the 300px Turnstile frame.
   static String get _pageBgCss {
+    if (!_needsOpaquePageBg) return 'transparent';
     final argb = AppTheme.appBackground.toARGB32();
     final hex = (argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0');
     return '#$hex';
@@ -67,14 +84,24 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       overflow: hidden;
       line-height: 0;
     }
-    /* CF dark Turnstile paints a 1px light border inside the iframe — clip it. */
+    /* CF paints a 1–2px rim inside the iframe — crop it (clip-path alone
+       is flaky in WKWebView). */
+    .cf-outer {
+      overflow: hidden;
+      width: fit-content;
+      max-width: 100%;
+      line-height: 0;
+    }
+    .cf-inner {
+      margin: -2px;
+      line-height: 0;
+    }
     #cf-turnstile {
       display: block;
       width: 300px;
       height: 65px;
       overflow: hidden;
       line-height: 0;
-      clip-path: inset(1px round 0);
     }
     #cf-turnstile iframe {
       border: 0 !important;
@@ -83,7 +110,11 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
   </style>
 </head>
 <body>
-  <div id="cf-turnstile"></div>
+  <div class="cf-outer">
+    <div class="cf-inner">
+      <div id="cf-turnstile"></div>
+    </div>
+  </div>
   <script>
     const siteKey = $siteKeyJson;
     function postToken(token) {
@@ -100,7 +131,7 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
         sitekey: siteKey,
         theme: 'dark',
         size: 'normal',
-        appearance: 'always',
+        appearance: 'interaction-only',
         callback: function (token) { postToken(token); },
         'expired-callback': function () { postToken(null); },
         'error-callback': function () { postToken(null); }
@@ -113,6 +144,43 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
 ''';
   }
 
+  void _handleToken(String? token) {
+    final ready = token != null && token.isNotEmpty;
+    if (mounted && _tokenReady != ready) {
+      setState(() => _tokenReady = ready);
+    }
+    widget.onToken(token);
+  }
+
+  Widget _buildWebView(String baseUrl) {
+    return ForjaInAppWebView(
+      initialSettings: InAppWebViewSettings(
+        javaScriptEnabled: true,
+        supportZoom: false,
+        disableHorizontalScroll: true,
+        disableVerticalScroll: true,
+        transparentBackground: true,
+      ),
+      initialData: InAppWebViewInitialData(
+        data: _html,
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+        baseUrl: WebUri(baseUrl),
+      ),
+      onWebViewCreated: (controller) {
+        controller.addJavaScriptHandler(
+          handlerName: _handlerName,
+          callback: (args) {
+            final raw = args.isEmpty ? null : args.first;
+            final token = raw is String && raw.isNotEmpty ? raw : null;
+            _handleToken(token);
+            return null;
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!ForjaCaptcha.isConfigured) return const SizedBox.shrink();
@@ -123,7 +191,6 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       if (uri == null || !uri.hasScheme) {
         return base.endsWith('/') ? base : '$base/';
       }
-      // Turnstile host checks expect the portal origin; prefer https off-loopback.
       final host = uri.host;
       final useHttps = host != '127.0.0.1' &&
           host != 'localhost' &&
@@ -133,37 +200,19 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       return s.endsWith('/') ? s : '$s/';
     }();
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        height: _widgetHeight,
-        width: _widgetWidth,
-        child: ForjaInAppWebView(
-          initialSettings: InAppWebViewSettings(
-            javaScriptEnabled: true,
-            supportZoom: false,
-            disableHorizontalScroll: true,
-            disableVerticalScroll: true,
-            transparentBackground: false,
-            // Avoid Windows WebView2 create-time transparent bug path.
+    // Same element tree whether visible or not — swapping to a different
+    // parent would recreate the WebView and drop the Turnstile session.
+    return Offstage(
+      offstage: _tokenReady,
+      child: Padding(
+        padding: EdgeInsets.only(top: widget.topPadding),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            height: _widgetHeight,
+            width: _widgetWidth,
+            child: ClipRect(child: _buildWebView(normalized)),
           ),
-          initialData: InAppWebViewInitialData(
-            data: _html,
-            mimeType: 'text/html',
-            encoding: 'utf-8',
-            baseUrl: WebUri(normalized),
-          ),
-          onWebViewCreated: (controller) {
-            controller.addJavaScriptHandler(
-              handlerName: _handlerName,
-              callback: (args) {
-                final raw = args.isEmpty ? null : args.first;
-                final token = raw is String && raw.isNotEmpty ? raw : null;
-                widget.onToken(token);
-                return null;
-              },
-            );
-          },
         ),
       ),
     );

@@ -725,19 +725,18 @@ class _SignedOutAccountBody extends StatelessWidget {
                     onSubmitted:
                         canSubmitPassword ? (_) => onSignIn() : null,
                   ),
-                  if (ForjaCaptcha.isConfigured) ...[
-                    const SizedBox(height: 10),
+                  if (ForjaCaptcha.isConfigured)
                     IgnorePointer(
                       ignoring: formLocked,
                       child: Opacity(
                         opacity: formLocked ? 0.55 : 1,
                         child: TurnstileCaptcha(
                           key: ValueKey(captchaKey),
+                          topPadding: 10,
                           onToken: onCaptchaToken,
                         ),
                       ),
                     ),
-                  ],
                   if (error != null) ...[
                     const SizedBox(height: 10),
                     Text(
