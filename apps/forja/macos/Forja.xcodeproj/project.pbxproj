@@ -245,6 +245,7 @@
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				A4RUST001COPY0000000001 /* Copy Rust Engine */,
 				65284DF0D137329AFE4C2A9B /* [CP] Embed Pods Frameworks */,
+				A4SIGN001FRAMEWORKS00001 /* Sign Embedded Frameworks */,
 			);
 			buildRules = (
 			);
@@ -427,6 +428,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/copy_rust_dylib.sh\"\n";
+		};
+		A4SIGN001FRAMEWORKS00001 /* Sign Embedded Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Sign Embedded Frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/sign_embedded_frameworks.sh\"\n";
 		};
 		C1B3890C24BCF47DFC4E04DD /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

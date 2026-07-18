@@ -29,7 +29,7 @@ Download builds from the [web download page](https://forjahq.xyz/download) (file
 
 - **Android:** Picture-in-picture, background music playback, immersive navigation
 - **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back). First-run **Play sources** default to **Webstreaming** only (green hero **Play**); enable Direct torrent or Stremio under **Settings → Playback** for the **Sources** panel. **Stream play** uses Rust providers (WebStreamr, VSEmbed, 111477) — headless WebView sniffers, including VidSrc, are disabled on TV. Embedded WebViews (trailers, live) need software GPU on emulators — use [`scripts/atv-run.sh`](../../scripts/atv-run.sh).
-- **macOS:** Hidden title bar with draggable window chrome; in-app updates download the DMG and open it
+- **macOS:** Hidden title bar with draggable window chrome; in-app updates download the DMG and open it. Local `flutter run -d macos` (Debug/Release) codesigns embedded media_kit frameworks in the Xcode build so dyld can load them; packaged DMGs still use `scripts/codesign_macos_adhoc.sh` after `scripts/build_macos.sh`.
 - **Windows / Linux:** Custom window caption on desktop; in-app updates download the installer with progress
 
 ## Android TV development

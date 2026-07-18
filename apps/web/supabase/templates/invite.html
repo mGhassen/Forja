@@ -3,15 +3,40 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" />
     <meta name="color-scheme" content="dark only" />
     <meta name="supported-color-schemes" content="dark" />
     <title>You're invited to Forja</title>
+    <style>
+      html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+      * { -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+      table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+      img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+      a { text-decoration: none; }
+      @media only screen and (max-width: 620px) {
+        .email-shell { padding: 24px 12px !important; }
+        .email-card { width: 100% !important; max-width: 100% !important; }
+        .email-pad { padding-left: 20px !important; padding-right: 20px !important; }
+        .email-pad-top { padding-top: 28px !important; }
+        .email-pad-footer { padding-top: 28px !important; padding-bottom: 32px !important; }
+        .email-title { font-size: 26px !important; line-height: 1.2 !important; }
+        .email-body { font-size: 15px !important; }
+        .email-code-table { width: 100% !important; }
+        .email-code {
+          font-size: 28px !important;
+          letter-spacing: 0.14em !important;
+          padding: 22px 16px !important;
+        }
+      }
+    </style>
     <!--[if mso]><style>body,table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
   </head>
   <body
     style="
       margin: 0;
       padding: 0;
+      width: 100%;
       background-color: #0b0a0a;
       color: #ede6da;
       font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
@@ -36,10 +61,14 @@
       "
     >
       <tr>
-        <td align="center" style="padding: 48px 20px">
+        <td align="center" class="email-shell" style="padding: 48px 20px">
+          <!--[if mso]>
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td>
+          <![endif]-->
           <table
             role="presentation"
-            width="560"
+            class="email-card"
+            width="100%"
             cellpadding="0"
             cellspacing="0"
             border="0"
@@ -56,18 +85,18 @@
               <td style="height: 3px; line-height: 3px; font-size: 0; background-color: #1ce783">&nbsp;</td>
             </tr>
             <tr>
-              <td style="padding: 40px 32px 0 32px">
+              <td class="email-pad email-pad-top" style="padding: 40px 32px 0 32px">
                 <img
                   src="{{ .SiteURL }}/brand/logo-email.png"
                   alt="Forja"
                   width="120"
                   height="52"
-                  style="display: block; width: 120px; height: auto; border: 0"
+                  style="display: block; width: 120px; max-width: 100%; height: auto; border: 0"
                 />
               </td>
             </tr>
             <tr>
-              <td style="padding: 36px 32px 0 32px">
+              <td class="email-pad" style="padding: 36px 32px 0 32px">
                 <p
                   style="
                     margin: 0 0 12px 0;
@@ -82,6 +111,7 @@
                   Invite
                 </p>
                 <h1
+                  class="email-title"
                   style="
                     margin: 0;
                     font-family: Georgia, 'Times New Roman', serif;
@@ -98,6 +128,7 @@
             </tr>
             <tr>
               <td
+                class="email-pad email-body"
                 style="
                   padding: 18px 32px 0 32px;
                   font-size: 16px;
@@ -111,13 +142,16 @@
               </td>
             </tr>
             <tr>
-              <td style="padding: 32px 32px 0 32px" align="center">
+              <td class="email-pad" style="padding: 32px 32px 0 32px" align="center">
                 <table
                   role="presentation"
+                  class="email-code-table"
+                  width="100%"
                   cellpadding="0"
                   cellspacing="0"
                   border="0"
                   style="
+                    width: 100%;
                     margin: 0 auto;
                     background-color: rgba(255, 255, 255, 0.04);
                     border: 1px solid rgba(237, 230, 218, 0.1);
@@ -127,8 +161,9 @@
                 >
                   <tr>
                     <td
+                      class="email-code"
                       style="
-                        padding: 28px 40px;
+                        padding: 28px 24px;
                         border-left: 3px solid #1ce783;
                         font-family: 'Space Mono', 'Courier New', Courier, monospace;
                         font-size: 36px;
@@ -136,6 +171,7 @@
                         letter-spacing: 0.22em;
                         color: #1ce783;
                         text-align: center;
+                        word-break: break-all;
                       "
                     >
                       {{ .Token }}
@@ -145,7 +181,7 @@
               </td>
             </tr>
             <tr>
-              <td style="padding: 40px 32px 48px 32px">
+              <td class="email-pad email-pad-footer" style="padding: 40px 32px 48px 32px">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   <tr>
                     <td style="height: 1px; line-height: 1px; font-size: 0; background-color: rgba(237, 230, 218, 0.12)">&nbsp;</td>
@@ -159,6 +195,9 @@
               </td>
             </tr>
           </table>
+          <!--[if mso]>
+          </td></tr></table>
+          <![endif]-->
         </td>
       </tr>
     </table>
