@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -68,6 +69,49 @@ void main() {
     final result = await future;
     expect(result.isSuccess, isFalse);
     expect(result.error, 'Web login cancelled.');
+  });
+
+  test('signIn applies onTokens before returning ok to the browser', () async {
+    var applied = false;
+    String? body;
+    final future = DesktopBrowserAuth.signIn(
+      timeout: const Duration(seconds: 8),
+      onTokens: (access, refresh) async {
+        expect(access, 'access-token');
+        expect(refresh, 'refresh-token');
+        // Simulate slow setSession — response must wait.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        applied = true;
+      },
+      launchBrowser: (loginUrl) async {
+        final callback = Uri.parse(
+          loginUrl.queryParameters['desktop_callback']!,
+        );
+        final state = loginUrl.queryParameters['desktop_state']!;
+        final handoff = callback.replace(
+          queryParameters: {
+            'access_token': 'access-token',
+            'refresh_token': 'refresh-token',
+            'state': state,
+          },
+        );
+        final client = HttpClient();
+        try {
+          final request = await client.getUrl(handoff);
+          request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+          final response = await request.close();
+          expect(response.statusCode, HttpStatus.ok);
+          body = await response.transform(utf8.decoder).join();
+        } finally {
+          client.close(force: true);
+        }
+      },
+    );
+
+    final result = await future;
+    expect(result.isSuccess, isTrue);
+    expect(applied, isTrue);
+    expect(body, contains('"ok":true'));
   });
 
   test('signIn keeps waiting after incomplete callback', () async {
@@ -153,6 +197,48 @@ void main() {
     );
 
     final result = await future;
+    expect(result.isSuccess, isTrue);
+  });
+
+  test('cancel during onTokens does not abort a successful handoff', () async {
+    final cancel = Completer<void>();
+    var applied = false;
+    final future = DesktopBrowserAuth.signIn(
+      timeout: const Duration(seconds: 8),
+      cancel: cancel.future,
+      onTokens: (access, refresh) async {
+        cancel.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        applied = true;
+      },
+      launchBrowser: (loginUrl) async {
+        final callback = Uri.parse(
+          loginUrl.queryParameters['desktop_callback']!,
+        );
+        final state = loginUrl.queryParameters['desktop_state']!;
+        final handoff = callback.replace(
+          queryParameters: {
+            'access_token': 'access-token',
+            'refresh_token': 'refresh-token',
+            'state': state,
+          },
+        );
+        final client = HttpClient();
+        try {
+          final request = await client.getUrl(handoff);
+          request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+          final response = await request.close();
+          final body = await response.transform(utf8.decoder).join();
+          expect(response.statusCode, HttpStatus.ok);
+          expect(body, contains('"ok":true'));
+        } finally {
+          client.close(force: true);
+        }
+      },
+    );
+
+    final result = await future;
+    expect(applied, isTrue);
     expect(result.isSuccess, isTrue);
   });
 }

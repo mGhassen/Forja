@@ -29,10 +29,16 @@ class DesktopBrowserAuth {
   ///
   /// Complete [cancel] to abort early (closes the loopback server and unlocks
   /// the UI). Prefer this over leaving the user stuck until [timeout].
+  ///
+  /// When [onTokens] is set, it runs **before** the portal gets `ok: true`, so
+  /// the browser only closes after the session is actually applied. Tokens are
+  /// still applied even if [cancel] already completed the wait (dispose /
+  /// accidental cancel race).
   static Future<DesktopBrowserAuthResult> signIn({
     Duration timeout = const Duration(minutes: 5),
     Future<void> Function(Uri loginUrl)? launchBrowser,
     Future<void>? cancel,
+    Future<void> Function(String accessToken, String refreshToken)? onTokens,
   }) async {
     final state = _randomState();
     HttpServer? server;
@@ -54,6 +60,7 @@ class DesktopBrowserAuth {
       final completer = Completer<DesktopBrowserAuthResult>();
       late final StreamSubscription<HttpRequest> sub;
       Timer? timer;
+      var applyingTokens = false;
 
       void finish(DesktopBrowserAuthResult result) {
         if (completer.isCompleted) return;
@@ -61,6 +68,7 @@ class DesktopBrowserAuth {
       }
 
       timer = Timer(timeout, () {
+        if (applyingTokens) return;
         finish(
           const DesktopBrowserAuthResult.failure(
             'Web login timed out. Try again, or sign in with email here.',
@@ -71,6 +79,9 @@ class DesktopBrowserAuth {
       if (cancel != null) {
         unawaited(
           cancel.then((_) {
+            // Do not abort while setSession is in flight — that was closing the
+            // browser (ok:true) while the app had already given up.
+            if (applyingTokens) return;
             finish(
               const DesktopBrowserAuthResult.failure('Web login cancelled.'),
             );
@@ -135,18 +146,42 @@ class DesktopBrowserAuth {
               return;
             }
 
-            await _writeCallbackResponse(
-              request,
-              title: 'Signed in',
-              body: 'You can close this tab and return to Forja.',
-              ok: true,
-            );
-            finish(
-              DesktopBrowserAuthResult.success(
-                accessToken: access,
-                refreshToken: refresh,
-              ),
-            );
+            applyingTokens = true;
+            try {
+              if (onTokens != null) {
+                await onTokens(access, refresh);
+              }
+              await _writeCallbackResponse(
+                request,
+                title: 'Signed in',
+                body: 'You can close this tab and return to Forja.',
+                ok: true,
+              );
+              debugPrint('[DesktopBrowserAuth] session handoff ok');
+              finish(
+                DesktopBrowserAuthResult.success(
+                  accessToken: access,
+                  refreshToken: refresh,
+                ),
+              );
+            } catch (e, st) {
+              debugPrint('[DesktopBrowserAuth] apply tokens failed: $e\n$st');
+              await _writeCallbackResponse(
+                request,
+                title: 'Sign-in failed',
+                body:
+                    'Forja could not apply the session. Keep this tab open and '
+                    'tap Return to Forja, or try Web login again from the app.',
+                ok: false,
+              );
+              finish(
+                DesktopBrowserAuthResult.failure(
+                  'Web login failed to apply the session. Try again.',
+                ),
+              );
+            } finally {
+              applyingTokens = false;
+            }
             return;
           }
 

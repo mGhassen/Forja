@@ -50,7 +50,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 
   @override
   void dispose() {
-    _cancelWebLogin();
+    // Do not cancel web login on dispose — leaving Settings mid-handoff used
+    // to abort after the browser already closed on ok:true.
     SyncService.instance.identityRevision.removeListener(_onIdentity);
     _emailCtrl.dispose();
     _passwordCtrl.dispose();

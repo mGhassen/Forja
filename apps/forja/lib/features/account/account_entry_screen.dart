@@ -65,7 +65,9 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   @override
   void dispose() {
     _wordTimer?.cancel();
-    _cancelWebLogin();
+    // Do not cancel web login here — disposing during browser handoff used to
+    // abort the wait after the portal already got ok:true (browser closes,
+    // app stays signed out). Explicit Cancel / Continue as guest still abort.
     _breathe.dispose();
     _enter.dispose();
     _emailController.dispose();

@@ -142,8 +142,10 @@ export async function handoffSessionToDesktop(options: {
       const body = (await res.json()) as { ok?: boolean }
       return body.ok === true
     }
-    // HTML fallback from older desktop builds
-    return true
+    // Older desktop builds may return HTML. Only treat as success when the
+    // page title says so — never assume any HTML means the app got tokens.
+    const html = await res.text()
+    return /<title>\s*Signed in\b/i.test(html)
   } catch {
     return false
   }

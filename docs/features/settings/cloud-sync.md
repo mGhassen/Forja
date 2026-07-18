@@ -164,7 +164,8 @@ flutter run -d macos --dart-define-from-file=../../.env
 When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
 `http://127.0.0.1:3000`) and keep `FORJA_WEB_URL` at that default. Restart the
 web dev server after pulling Vite host changes so it binds IPv4 (not only
-`[::1]`).
+`[::1]`). Stay on the account screen until the app finishes signing in — the
+browser tab closes only after Forja has applied the session.
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`), and **`FORJA_WEB_URL`**.

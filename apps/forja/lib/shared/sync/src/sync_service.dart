@@ -219,7 +219,19 @@ class SyncService {
   /// Complete [cancel] to abort the wait (e.g. user tapped Cancel on the
   /// account entry screen).
   Future<AuthResponse> signInWithBrowser({Future<void>? cancel}) async {
-    final result = await DesktopBrowserAuth.signIn(cancel: cancel);
+    AuthResponse? applied;
+    final result = await DesktopBrowserAuth.signIn(
+      cancel: cancel,
+      onTokens: (accessToken, refreshToken) async {
+        applied = await signInWithBrowserTokens(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+      },
+    );
+    // Session may already be applied inside the callback (preferred). If the
+    // wait ended as "cancelled" but tokens still landed, prefer the session.
+    if (applied != null) return applied!;
     if (!result.isSuccess) {
       throw AuthException(result.error ?? 'Web login failed.');
     }
