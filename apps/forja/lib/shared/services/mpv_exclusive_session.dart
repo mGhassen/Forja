@@ -75,7 +75,10 @@ class MpvExclusiveSession {
     }
 
     if (players.isNotEmpty) {
-      await Future.delayed(const Duration(milliseconds: 200));
+      // macOS: demux / msg_wakeup can still run briefly after dispose returns.
+      await Future.delayed(
+        Duration(milliseconds: required ? 400 : 200),
+      );
     }
   }
 }

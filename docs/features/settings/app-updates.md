@@ -8,7 +8,7 @@ Forja can check for newer builds when the app starts and lets you check manually
 
 ## How to open it
 
-**Settings → About** — manual check. Auto-check runs after the splash screen finishes on launch.
+**Settings → About** — manual check. Auto-check runs on launch **before** desktop sign-in (and before the splash), so an update prompt is not delayed until after authentication or Home.
 
 ## What you can do
 

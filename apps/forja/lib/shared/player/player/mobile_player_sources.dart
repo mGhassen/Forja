@@ -334,6 +334,9 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   }
 
   void _syncPanelAfterPlaybackConfirmed() {
+    // Playing — stop leftover Auto / host extracts; do not keep checking
+    // other providers in the background.
+    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     _s._refreshPanelPlayingStream();
     final pid = _s._currentProvider;
     if (pid == null) return;

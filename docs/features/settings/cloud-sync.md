@@ -13,7 +13,8 @@ another screen.
 
 ## How to open it
 
-- **Desktop startup:** sign in with email/password, **Sign in with passkey** (macOS /
+- **Desktop startup:** if a newer build is available, the update prompt appears
+  first; then sign in with email/password, **Sign in with passkey** (macOS /
   Windows), use **Web login** (browser handoff), or choose **Continue without an
   account**. New accounts are created only on the web (**Create an account on the
   web**). Linux, phones, and TV keep password and/or web login only.

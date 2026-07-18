@@ -5,10 +5,10 @@ import 'package:http/http.dart' as http;
 
 /// Discovers VidSrc.sbs multi-server mirrors from the outer embed HTML.
 ///
-/// The public page boots on Star (`1embed`) and hides working mirrors
-/// (PRO Multi / Cinesrc / Vlux) in a dropdown. During the loading sniff we
-/// parse `CFG.servers` and open each nested embed top-level instead of
-/// clicking the dropdown UI (which was stranding the loading screen).
+/// The public page boots on Star (`1embed`) and hides other mirrors
+/// (PRO Multi / Cinesrc / Vlux) in a dropdown. During resolve we parse
+/// `CFG.servers` and sniff every nested embed (bounded parallel) so the
+/// Source panel lists all responsive mirrors — site order, no preferred reorder.
 class VidsrcsbsExtractor {
   VidsrcsbsExtractor({this.onLog, http.Client? client})
     : _client = client ?? http.Client();
@@ -19,9 +19,6 @@ class VidsrcsbsExtractor {
   static const userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
-
-  /// Preferred try order — working mirrors before default Star/1embed.
-  static const preferredNames = ['pro multi', 'cinesrc', 'vlux', 'star'];
 
   static var _generation = 0;
 
@@ -98,26 +95,10 @@ class VidsrcsbsExtractor {
           ),
         );
       }
-      return orderServers(parsed);
+      return parsed;
     } catch (_) {
       return const [];
     }
-  }
-
-  /// Prefer PRO Multi / Cinesrc / Vlux before Star.
-  static List<VidsrcsbsServer> orderServers(List<VidsrcsbsServer> input) {
-    if (input.isEmpty) return const [];
-    final remaining = List<VidsrcsbsServer>.from(input);
-    final ordered = <VidsrcsbsServer>[];
-    for (final want in preferredNames) {
-      final idx = remaining.indexWhere(
-        (s) => s.name.toLowerCase() == want || s.name.toLowerCase().startsWith(want),
-      );
-      if (idx < 0) continue;
-      ordered.add(remaining.removeAt(idx));
-    }
-    ordered.addAll(remaining);
-    return ordered;
   }
 
   static String? _extractServersJson(String html) {

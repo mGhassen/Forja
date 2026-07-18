@@ -3,7 +3,7 @@ import 'package:forja/shared/extractors/providers/vidsrcsbs/vidsrcsbs_extractor.
 
 void main() {
   group('VidsrcsbsExtractor.parseServersHtml', () {
-    test('orders PRO Multi before Star from live CFG shape', () {
+    test('keeps CFG.servers order (no preferred reorder)', () {
       const html = '''
 <script>
 var CFG = {
@@ -14,10 +14,10 @@ var CFG = {
 ''';
       final servers = VidsrcsbsExtractor.parseServersHtml(html);
       expect(servers.map((s) => s.name).toList(), [
+        'Star',
         'PRO Multi',
         'Cinesrc',
         'Vlux',
-        'Star',
       ]);
       expect(
         servers.first.resolveUrl(
@@ -26,7 +26,7 @@ var CFG = {
           season: 1,
           episode: 1,
         ),
-        'https://web.nxsha.app/embed/tv/279323/1/1',
+        'https://1embed.cc/embed/tv/279323/1/1',
       );
     });
   });

@@ -650,8 +650,10 @@ class StreamExtractor {
           (_profile.acceptProxyPlaylistBodies &&
               _isEmbedProxyPlaylistUrl(_capturedVideo!));
       if (!strong) return;
-      // Default server often emits a dead playlist (VidSrc.sbs Star). Keep
-      // rotating until we have switched chips at least once.
+      // Chip-rotate hosts: keep sniffing every server chip until timeout so
+      // all detected playlists land in `sources` — no first-hit early complete.
+      if (_profile.rotateServerChips) return;
+      // Legacy hold: wait for at least one chip switch before completing.
       if (_profile.rotateBeforeComplete && _serverSwitchCount == 0) {
         _log(
           'Holding strong stream until server rotation '

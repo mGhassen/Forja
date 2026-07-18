@@ -33,13 +33,13 @@ class EmbedExtractProfile {
 
   /// Exact chip labels (lowercased match), e.g. `neta`, `gogo`. Empty = generic
   /// `server N` / class heuristics only when [rotateServerChips] is true.
-  /// Order matters when [rotateBeforeComplete] is true — earlier labels are
-  /// preferred (e.g. VidSrc.sbs `pro multi` before default `star`).
+  /// Labels are visited in list order during rotation; every responsive chip's
+  /// streams are kept until the sniff timeout (no first-hit early complete).
   final List<String> serverChipLabels;
 
-  /// Do not early-complete on the default server's first `.m3u8`. Keep rotating
-  /// chips and only finish after a server switch (or timeout with best capture).
-  /// Used when the site default (e.g. VidSrc.sbs Star/1embed) emits dead streams.
+  /// Hold completion until at least one chip switch when [rotateServerChips]
+  /// is false but multi-server rotation still applies. Prefer enabling
+  /// [rotateServerChips] so every chip is collected until timeout.
   final bool rotateBeforeComplete;
 
   /// Accept `/api/proxy?…` URLs whose response body was `#EXTM3U`.

@@ -460,8 +460,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   int _autoRecheckUsed = 0;
   bool _awaitingManualRecheck = false;
   bool _launchedFromSavedOrCache = false;
-  /// Once the player route is open, keep resolving remaining embeds.
-  bool _playerLaunched = false;
   /// Prefer writing source prefs only after real playback (not abortive open).
   bool _prefWriteAllowed = false;
   String? _pendingPrefKey;
@@ -936,8 +934,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         ...providerSourcesCache.value,
         ..._hitsToProviderCache(all),
       };
-      // Disk/session cache only after probe in _launchPlayer — do not store
-      // unprobed CDN URLs mid-race.
     }
 
     List<({AnimeEmbed embed, ExtractedMedia media})> hits = const [];
@@ -963,6 +959,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _setPhase('Checking ${manualKey.toUpperCase()}…');
       }
 
+      // First playable extract wins — race stops (no background sibling fill).
       hits = await AnimePlaybackBridge.raceEmbeds(
         embeds: pair,
         hubMovie: _hubMovieFromAnime(widget.anime),
@@ -1002,7 +999,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
       if (playable.isNotEmpty) {
         _activeEmbed = playable.first.embed;
-        // Only pin when preferred race actually won with a playable URL.
         final usedSaved = !SourceEngine.isAuto(preferred) &&
             _preferredSourceKey != null &&
             playable.any((h) => h.embed.sourceKey == _preferredSourceKey);
@@ -1014,10 +1010,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           urlToSourceKey: urlToSourceKey,
           titleToSourceKey: titleToSourceKey,
         );
-        // Notifiers disposed inside _launchPlayer after the player closes.
         return;
       }
-      // Extracts existed but every CDN failed probe — drop and recheck once.
       sourcesListNotifier.dispose();
       providerSourcesCache.dispose();
       await _handleStaleSavedStreams();
@@ -1070,8 +1064,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       hits = playable;
     }
 
-    // Keep filling remaining embeds after early launch.
-    _playerLaunched = true;
+    // Winner is ready — stop scanning; remaining servers stay available for
+    // manual Source taps / dead-stream recovery only.
 
     // Do not re-stamp session/disk cache on cache resume — a dead URL would
     // overwrite a drop and poison the next Play. Fresh resolves still cache
@@ -1175,7 +1169,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     _fadeOutNotifier.value = true;
-    _initProbes(_sortEmbedsByProviderOrder(_allEmbeds, _providerOrder));
+    // Do not re-init probes — that resets every server to pending and looks
+    // like a full re-scan. Keep race progress; mark winners success.
     for (final h in hits) {
       _markProbeStatus(
         h.embed.panelKey,

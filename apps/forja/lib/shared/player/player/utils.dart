@@ -258,11 +258,25 @@ Future<void> silenceMediaKitPlayer(Player player) async {
 
 /// Stop then dispose with timeouts so a hung media_kit lock cannot leave
 /// audio forever. Always silences first.
+///
+/// On macOS quit, a short [Player.stop] timeout raced [Player.dispose]: Dart
+/// cleared mpv's `msg_wakeup` NativeCallable while `*/demux` was still in
+/// `demux_free` / `av_log` → SIGSEGV in `msg_wakeup` (issue 081). Quiet logs
+/// first, give stop longer to finish demux join, then dispose.
 Future<void> teardownMediaKitPlayer(Player player) async {
   await silenceMediaKitPlayer(player);
   try {
-    await player.stop().timeout(const Duration(milliseconds: 800));
+    if (player.platform is NativePlayer) {
+      final mpv = player.platform as NativePlayer;
+      await mpv.setProperty('msg-level', 'all=no', waitForInitialization: false);
+      await mpv.setProperty('quiet', 'yes', waitForInitialization: false);
+    }
   } catch (_) {}
+  try {
+    await player.stop().timeout(const Duration(seconds: 2));
+  } catch (_) {}
+  // Let demux_thread finish demux_free before dispose clears wakeup.
+  await Future.delayed(const Duration(milliseconds: 80));
   try {
     await player.dispose().timeout(const Duration(seconds: 2));
   } catch (_) {}

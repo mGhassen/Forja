@@ -39,6 +39,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/catalog/tmdb_user_region.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
+import 'package:forja/shell/macos_shell_channel.dart';
 
 bool _appShutdownStarted = false;
 
@@ -57,6 +58,59 @@ Future<void> _shutdownMediaKitPlayers() async {
   try {
     await PlayerPoolService().dispose();
   } catch (_) {}
+}
+
+/// Shared desktop quit: red-X ([WindowListener.onWindowClose]) and macOS ⌘Q
+/// ([MacOsShellChannel] `prepareQuit` from `applicationShouldTerminate`).
+Future<void> _runDesktopQuit() async {
+  if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+  if (_appShutdownStarted) {
+    // ⌘Q while red-X teardown is already running — still unblock AppKit.
+    if (Platform.isMacOS) {
+      await MacOsShellChannel.replyReadyToTerminate();
+    }
+    return;
+  }
+  _appShutdownStarted = true;
+
+  try {
+    await windowManager.hide();
+  } catch (_) {}
+
+  final mediaTimeout =
+      Platform.isMacOS ? const Duration(seconds: 5) : const Duration(seconds: 3);
+  try {
+    await _shutdownMediaKitPlayers().timeout(mediaTimeout);
+  } catch (_) {}
+  try {
+    await Engine.shutdown().timeout(const Duration(seconds: 2));
+  } catch (_) {}
+
+  try {
+    unawaited(WebViewCleanup.cleanupWebView2Cache());
+  } catch (_) {}
+
+  // macOS needs longer settle — demux msg_wakeup UAF if we terminate mid-join.
+  await Future.delayed(
+    Duration(milliseconds: Platform.isMacOS ? 400 : 150),
+  );
+
+  if (Platform.isMacOS) {
+    // Allow AppKit to close the window during terminate (preventClose blocks it).
+    try {
+      await windowManager.setPreventClose(false);
+    } catch (_) {}
+    // AppKit owns terminate (⌘Q already in terminateLater; red-X calls terminate).
+    await MacOsShellChannel.replyReadyToTerminate();
+    return;
+  }
+
+  try {
+    await windowManager.setPreventClose(false);
+    await windowManager.destroy();
+  } catch (_) {
+    exit(0);
+  }
 }
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
@@ -232,6 +286,8 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       windowManager.addListener(this);
       windowManager.setPreventClose(true);
     }
+    // ⌘Q / Quit menu never hits onWindowClose — AppKit calls prepareQuit.
+    MacOsShellChannel.listenPrepareQuit(_runDesktopQuit);
   }
 
   @override
@@ -248,49 +304,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     final bool isPreventClose = await windowManager.isPreventClose();
     if (!isPreventClose) return;
-    if (_appShutdownStarted) return;
-    _appShutdownStarted = true;
-
-    // Hide first so a slow teardown does not look like a frozen close button.
-    // (Windows 1.2.192 still froze here when media_kit stop/dispose hung.)
-    try {
-      await windowManager.hide();
-    } catch (_) {}
-
-    // Graceful shutdown — calling exit(0) while media_kit (mpv)
-    // / WebView2 native threads are still running races their teardown and
-    // produces the Windows "system error unknown hard error" dialog
-    // (STATUS_ASSERTION_FAILURE in ntdll). Dispose the heavy native plugins
-    // first, then ask windowManager to destroy the window which lets Flutter
-    // shut down its engine cleanly.
-    //
-    // Every step is timed: unbounded awaits (stuck Player.dispose / pending
-    // video teardown) previously kept setPreventClose(true) forever.
-    try {
-      await _shutdownMediaKitPlayers().timeout(const Duration(seconds: 3));
-    } catch (_) {}
-    try {
-      await Engine.shutdown().timeout(const Duration(seconds: 2));
-    } catch (_) {}
-
-    // Torrent engine stop is sync FFI (block_on) — must not run on this isolate
-    // before destroy, or a stuck librqbit session freezes quit with no timeout.
-    // Process exit reclaims the engine; cache wipe is best-effort after destroy.
-    try {
-      // Fire-and-forget — WebView2 cache wipe must not block close.
-      unawaited(WebViewCleanup.cleanupWebView2Cache());
-    } catch (_) {}
-
-    // Small grace period so mpv threads can unwind after timed dispose.
-    await Future.delayed(const Duration(milliseconds: 150));
-
-    try {
-      await windowManager.setPreventClose(false);
-      await windowManager.destroy();
-    } catch (_) {
-      // Last-resort fallback if windowManager is in a bad state.
-      exit(0);
-    }
+    // Graceful shutdown — timed media_kit + engine teardown before destroy /
+    // AppKit terminate. See issue 062 (Windows freeze) and 081 (macOS demux
+    // SIGSEGV on ⌘Q / close while mpv alive).
+    await _runDesktopQuit();
   }
 
   @override

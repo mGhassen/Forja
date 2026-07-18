@@ -140,6 +140,10 @@ mixin _DesktopPlayerTracks on State<DesktopPlayerScreen>, WidgetsBindingObserver
           _maybeAutoPickExternalSubtitle();
         }
       },
+      onError: (e) {
+        debugPrint('Subtitle fetch error: $e');
+        if (mounted) setState(() => _s._isFetchingSubs = false);
+      },
       onDone: () {
         if (mounted) setState(() => _s._isFetchingSubs = false);
         _maybeAutoPickExternalSubtitle();

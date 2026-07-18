@@ -26,9 +26,7 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
-import 'package:forja/shared/widgets/update_dialog.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -87,9 +85,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final List<String> _tabLru = ['home'];
   List<String> _visibleIds = _bootstrapVisibleNavIds();
   bool _initialNavResolved = false;
-  UpdateInfo? _pendingUpdate;
-  bool _updateDialogShown = false;
-  VoidCallback? _splashDismissedForUpdateListener;
   BuildContext? _shellScopedContext;
 
   String? get _currentTabId =>
@@ -240,47 +235,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     _loadNavbarConfig();
     _syncCurrentNavTab();
-    _scheduleStartupUpdateCheck();
-  }
-
-  void _scheduleStartupUpdateCheck() {
-    unawaited(_loadPendingUpdate());
-    if (ShellBus.splashDismissed.value) {
-      _presentPendingUpdateIfAny();
-      return;
-    }
-    _splashDismissedForUpdateListener = () {
-      if (!ShellBus.splashDismissed.value) return;
-      ShellBus.splashDismissed.removeListener(_splashDismissedForUpdateListener!);
-      _splashDismissedForUpdateListener = null;
-      _presentPendingUpdateIfAny();
-    };
-    ShellBus.splashDismissed.addListener(_splashDismissedForUpdateListener!);
-  }
-
-  Future<void> _loadPendingUpdate() async {
-    try {
-      final updateInfo = await AppUpdaterService().checkForUpdates();
-      if (!mounted) return;
-      _pendingUpdate = updateInfo;
-      _presentPendingUpdateIfAny();
-    } catch (e) {
-      debugPrint('[MainScreen] Update check failed: $e');
-    }
-  }
-
-  void _presentPendingUpdateIfAny() {
-    if (_updateDialogShown || _pendingUpdate == null || !mounted) return;
-    if (!ShellBus.splashDismissed.value) return;
-
-    _updateDialogShown = true;
-    final updateInfo = _pendingUpdate!;
-    Future<void>.delayed(const Duration(milliseconds: 350), () {
-      if (!mounted || _pendingUpdate == null) return;
-      final hostContext = _shellScopedContext ?? context;
-      if (!hostContext.mounted) return;
-      unawaited(UpdateDialog.show(hostContext, updateInfo));
-    });
   }
 
   Future<void> _loadNavbarConfig() async {
@@ -440,9 +394,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.clearHideGlobalNav();
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
     MacOsShellChannel.dispose();
-    if (_splashDismissedForUpdateListener != null) {
-      ShellBus.splashDismissed.removeListener(_splashDismissedForUpdateListener!);
-    }
     super.dispose();
   }
 

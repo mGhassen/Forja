@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) |
-| **Current slice** | R2 CDN live; macOS treats CDN `.dmg` as in-app download (not browser); hosted smoke A37 |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) |
+| **Current slice** | R2 CDN live; update prompt before auth/splash (R15-A39); hosted smoke A37 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -116,6 +116,14 @@
 
 ---
 
+## Acceptance (startup order)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A39 | Startup update check runs in `DesktopStartupGate` before desktop auth and before splash (not after MainScreen splash dismiss) | ✅ |
+
+---
+
 ## Summary
 
 Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. Version discovery stays on the GitHub Releases API; installer bytes are served from Cloudflare R2 after each **Release Forja** run (Supabase Storage abandoned — Free plan 50 MiB object cap).
@@ -139,7 +147,8 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  apps/forja                                              │
-│    shell/main_screen.dart     → check on startup         │
+│    app/desktop_startup_gate.dart → check on cold start   │
+│    shell/main_screen.dart     → (historical; R15-A07)    │
 │    features/settings/         → manual check             │
 │    shared/widgets/update_dialog.dart                     │
 └───────────────────────────┬─────────────────────────────┘
@@ -190,9 +199,10 @@ Build number (`1.0.0+42` from pubspec) ignored for GitHub tag compare; optional 
 
 ### Auto-check (startup)
 
-1. App launches → `MainScreen.initState` → `AppUpdaterService.checkForUpdates()`
-2. If newer version → non-dismissible-on-first-show dialog (`UpdateDialog`)
+1. App launches → `DesktopStartupGate` → `AppUpdaterService.checkForUpdates()` (before account entry and before splash)
+2. If newer version → non-dismissible-on-first-show dialog (`UpdateDialog`); user dismisses before auth/splash continues
 3. User: **Update Now** | **Later**
+4. Historical: v1.0 also checked from `MainScreen` after splash dismiss (R15-A07) — superseded by R15-A39
 
 Throttle: do not re-prompt same version within 24h if user tapped Later (v1.1 — persist in `SettingsService`).
 

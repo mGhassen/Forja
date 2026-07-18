@@ -34,8 +34,7 @@ class VideasyExtractor {
   static const _seedTtl = Duration(seconds: 25);
 
   /// Servers tab from player chunk 8351 (Yoru→cdn, Neon→neon2, …).
-  /// Order matches the website default: fast working mirrors first so hung
-  /// upstreams (neon2/m4uhd) cannot eat the whole extract budget.
+  /// Listed order only — every mirror is probed (bounded parallel).
   static const _mirrors = <_VideasyMirror>[
     _VideasyMirror('cdn', displayName: 'Yoru'),
     _VideasyMirror('neon2', slow: true, displayName: 'Neon'),
@@ -381,9 +380,8 @@ class VideasyExtractor {
 
   static void _invalidateSeed(String tmdbId) => _seedCache.remove(tmdbId);
 
-  /// Race mirrors (cdn/Yoru first). Return the first success immediately so hung
-  /// neon2/m4uhd probes cannot burn the extract timeout. Keep probing briefly
-  /// after the first hit to fill the Sources list when upstream is healthy.
+  /// Probe every mirror with bounded in-flight. Collect all hits — no
+  /// post-first-hit grace abort that drops siblings still in flight.
   Future<ExtractedMedia?> _collectProviders({
     required _VideasyDecryptHost crypto,
     required String tmdbId,
@@ -394,26 +392,11 @@ class VideasyExtractor {
     final hits = <ExtractedMedia>[];
     var nextIndex = 0;
     var inFlight = 0;
-    var stopLaunching = false;
-    var graceExpired = false;
     final done = Completer<void>();
-    Timer? grace;
 
     void finish() {
       if (done.isCompleted) return;
-      grace?.cancel();
-      stopLaunching = true;
       done.complete();
-    }
-
-    void onFirstHit() {
-      if (grace != null) return;
-      // Allow a short window for sibling mirrors, then stop hung probes.
-      grace = Timer(const Duration(seconds: 8), () {
-        graceExpired = true;
-        _stopInFlightRequests(gen);
-        finish();
-      });
     }
 
     void maybeFinish() {
@@ -427,7 +410,6 @@ class VideasyExtractor {
 
     void pump() {
       while (!cancelled() &&
-          !stopLaunching &&
           !done.isCompleted &&
           inFlight < _maxInFlight &&
           nextIndex < jobs.length) {
@@ -438,7 +420,6 @@ class VideasyExtractor {
               inFlight--;
               if (hit != null) {
                 hits.add(hit);
-                onFirstHit();
               }
               pump();
               maybeFinish();
@@ -456,12 +437,8 @@ class VideasyExtractor {
     pump();
     await done.future;
 
-    if (_shouldDiscardCollectedHits(
-      hasHits: hits.isNotEmpty,
-      cancelled: cancelled(),
-      graceExpired: graceExpired,
-    )) {
-      if (hits.isEmpty) onLog('[Videasy] No sources from any mirror');
+    if (hits.isEmpty) {
+      if (!cancelled()) onLog('[Videasy] No sources from any mirror');
       return null;
     }
 
@@ -481,7 +458,6 @@ class VideasyExtractor {
     }
     if (allSources.isEmpty) return null;
 
-    allSources.sort((a, b) => _qualityRank(b.title) - _qualityRank(a.title));
     final primary = allSources.first;
     onLog('[Videasy] ${hits.length} mirror(s) → ${allSources.length} sources');
     return ExtractedMedia(
@@ -492,34 +468,6 @@ class VideasyExtractor {
       externalSubtitles: allSubs.isEmpty ? null : allSubs,
     );
   }
-
-  void _stopInFlightRequests(int gen) {
-    if (gen == _generation) _generation++;
-    _sharedClient?.close();
-    _sharedClient = null;
-  }
-
-  static bool _shouldDiscardCollectedHits({
-    required bool hasHits,
-    required bool cancelled,
-    required bool graceExpired,
-  }) {
-    if (!hasHits) return true;
-    // Grace expiry deliberately bumps the generation to abort hung mirror
-    // requests. It must not discard mirrors collected before that cutoff.
-    return cancelled && !graceExpired;
-  }
-
-  @visibleForTesting
-  static bool shouldDiscardCollectedHitsForTest({
-    required bool hasHits,
-    required bool cancelled,
-    required bool graceExpired,
-  }) => _shouldDiscardCollectedHits(
-    hasHits: hasHits,
-    cancelled: cancelled,
-    graceExpired: graceExpired,
-  );
 
   Future<ExtractedMedia?> _probeProvider({
     required _VideasyDecryptHost crypto,

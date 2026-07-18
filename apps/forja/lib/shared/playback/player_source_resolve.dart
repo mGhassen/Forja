@@ -67,6 +67,7 @@ abstract final class PlayerSourceResolve {
     bool Function()? isCancelled,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
     void Function(String providerId, String status)? onProgress,
+    bool? fillBackgroundHits,
   }) =>
       PlaybackService.resolveDomain(
         domain: domain,
@@ -79,8 +80,9 @@ abstract final class PlayerSourceResolve {
         isCancelled: isCancelled,
         onHitsUpdated: onHitsUpdated,
         onProgress: onProgress,
-        // Anime domain-host race + movie recovery need sibling hits for failover.
-        fillBackgroundHits: true,
+        // First playable wins — never keep scanning siblings in the background
+        // after a working stream is found (manual Source taps still resolve).
+        fillBackgroundHits: fillBackgroundHits ?? false,
       );
 
   static Future<List<String>> _movieSettingsOrder(Movie movie) async {

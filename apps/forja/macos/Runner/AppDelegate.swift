@@ -4,6 +4,10 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
   private var shellChannel: FlutterMethodChannel?
+  /// Set after Flutter finishes mpv / engine teardown so terminate can proceed.
+  private var allowTerminate = false
+  /// True while waiting for Flutter `prepareQuit` after returning `.terminateLater`.
+  private var waitingForFlutterQuit = false
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     return true
@@ -13,15 +17,55 @@ class AppDelegate: FlutterAppDelegate {
     return true
   }
 
-  /// Wire Edit → Find… (⌘F) to Flutter. The stock MainMenu uses
-  /// `performFindPanelAction:`, which stays disabled with no NSTextView —
-  /// macOS then eats ⌘F and plays the system beep.
+  /// ⌘Q / Quit menu skips `windowShouldClose` / Flutter `onWindowClose`.
+  /// Ask Dart to stop media_kit (mpv) first — otherwise demux SIGSEGVs in
+  /// `msg_wakeup` while Flutter joins threads during `NSApplication.terminate`.
+  override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    if allowTerminate {
+      return .terminateNow
+    }
+    if waitingForFlutterQuit {
+      return .terminateLater
+    }
+    waitingForFlutterQuit = true
+    shellChannel?.invokeMethod("prepareQuit", arguments: nil)
+    // Failsafe if Flutter never replies (engine already torn down).
+    DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
+      guard let self, self.waitingForFlutterQuit else { return }
+      self.allowTerminate = true
+      self.waitingForFlutterQuit = false
+      NSApp.reply(toApplicationShouldTerminate: true)
+    }
+    return .terminateLater
+  }
+
+  /// Wire Edit → Find… (⌘F) and quit-ready reply to Flutter.
   func configureShellChannel(with controller: FlutterViewController) {
     shellChannel = FlutterMethodChannel(
       name: "forja.macos/shell",
       binaryMessenger: controller.engine.binaryMessenger
     )
+    shellChannel?.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "replyReadyToTerminate":
+        self?.finishTerminateAfterFlutterQuit()
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
     rewireFindMenuItem()
+  }
+
+  private func finishTerminateAfterFlutterQuit() {
+    allowTerminate = true
+    if waitingForFlutterQuit {
+      waitingForFlutterQuit = false
+      NSApp.reply(toApplicationShouldTerminate: true)
+    } else {
+      // Red-X path: Flutter already tore down via onWindowClose — terminate now.
+      NSApp.terminate(nil)
+    }
   }
 
   @objc func openFind(_ sender: Any?) {

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** components · **21 / 26** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
-| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + auto stream probe + Stremio/Nuvio Sources; next: play-flow handoff + issue 018 gate |
+| **Progress** | **17 / 18** components · **22 / 27** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
+| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + no background stream probe while playing + Stremio/Nuvio Sources; next: play-flow handoff + issue 018 gate |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -77,6 +77,7 @@
 | 17 | R26-A24 | Source panel — after a manual server check succeeds, auto-probe that server’s streams (no playback interrupt) | ✅ |
 | 18 | R26-A25 | Stremio Direct / Nuvio play — Sources (link) panel available without magnet; no synthetic `stremio_direct` layers picker | ✅ |
 | 19 | R26-A26 | Player Sources panel — Nuvio kind chip + scraper toggles (parity with media-details) | ✅ |
+| 20 | R26-A27 | Once a stream is playing, do not auto-probe sibling streams or keep scanning other providers in the background | ✅ |
 
 ---
 

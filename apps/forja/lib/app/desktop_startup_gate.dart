@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum DesktopStartupDestination { account, splash }
@@ -22,13 +25,13 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
-enum _StartupStage { account, profiles, splash }
+enum _StartupStage { update, account, profiles, splash }
 
-/// Optional account entry for desktop. Guest and unconfigured builds preserve
-/// the existing splash-first startup; restored sessions skip this gate.
+/// Cold-start gate: update check first, then optional account entry, then splash.
 ///
-/// Sign-out (from settings or the profile chooser) returns here so the main
-/// app is torn down until the user signs in again or continues as guest.
+/// Guest and unconfigured builds skip account but still run the update gate
+/// before splash. Restored sessions skip account and go update → splash.
+/// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends StatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
 
@@ -39,23 +42,16 @@ class DesktopStartupGate extends StatefulWidget {
 }
 
 class _DesktopStartupGateState extends State<DesktopStartupGate> {
-  late _StartupStage _stage;
+  _StartupStage _stage = _StartupStage.update;
   StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
-    final isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    final destination = resolveDesktopStartupDestination(
-      isDesktop: isDesktop,
-      supabaseConfigured: ForjaSupabase.isConfigured,
-      hasSession: SyncService.instance.isSignedIn,
-    );
-    _stage = destination == DesktopStartupDestination.account
-        ? _StartupStage.account
-        : _StartupStage.splash;
     _authSub = SyncService.instance.authChanges.listen(_onAuthState);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_runUpdateGate());
+    });
   }
 
   @override
@@ -64,6 +60,35 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     _authSub = null;
     if (sub != null) unawaited(sub.cancel());
     super.dispose();
+  }
+
+  Future<void> _runUpdateGate() async {
+    try {
+      final updateInfo = await AppUpdaterService().checkForUpdates();
+      if (!mounted) return;
+      if (updateInfo != null) {
+        await UpdateDialog.show(context, updateInfo);
+      }
+    } catch (e) {
+      debugPrint('[DesktopStartupGate] Update check failed: $e');
+    }
+    if (!mounted) return;
+    _enterPostUpdateDestination();
+  }
+
+  void _enterPostUpdateDestination() {
+    final isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    final destination = resolveDesktopStartupDestination(
+      isDesktop: isDesktop,
+      supabaseConfigured: ForjaSupabase.isConfigured,
+      hasSession: SyncService.instance.isSignedIn,
+    );
+    setState(() {
+      _stage = destination == DesktopStartupDestination.account
+          ? _StartupStage.account
+          : _StartupStage.splash;
+    });
   }
 
   void _onAuthState(AuthState state) {
@@ -91,6 +116,10 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   @override
   Widget build(BuildContext context) {
     return switch (_stage) {
+      _StartupStage.update => const ColoredBox(
+        color: AppTheme.appBackground,
+        child: SizedBox.expand(),
+      ),
       _StartupStage.account => AccountEntryScreen(
         onAuthenticated: () => setState(() => _stage = _StartupStage.profiles),
         onContinueAsGuest: () => setState(() => _stage = _StartupStage.splash),

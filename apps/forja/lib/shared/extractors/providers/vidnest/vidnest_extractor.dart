@@ -3,7 +3,7 @@
 // Pipeline:
 //   1. GET https://new.vidnest.fun/{server}/movie|tv/{tmdb}[/{s}/{e}]
 //   2. Decrypt custom-alphabet base64 when `encrypted: true`
-//   3. Parse Gama (MovieBox) url[].link first (website default), then siblings
+//   3. Parse every server that responds (bounded parallel) — show all streams
 //
 // MovieBox CDN (`*.hakunaymatata.com`) returns HTTP 429 if Referer is set —
 // playback headers are User-Agent only for those URLs.
@@ -12,6 +12,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/extractors/core/bounded_parallel.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 
@@ -24,6 +25,7 @@ class VidnestExtractor {
   static const _embedOrigin = 'https://vidnest.fun';
   static const _fetchTimeout = Duration(seconds: 15);
   static const _defaultTimeout = Duration(seconds: 45);
+  static const _maxInFlight = 3;
 
   /// Custom alphabet from player chunk `decryptCipherResponse`.
   static const _cipherAlphabet =
@@ -33,7 +35,7 @@ class VidnestExtractor {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-  /// Website default is Gama; try siblings when MovieBox is empty/down.
+  /// Every listed API server — collect all responsive streams (no first-hit stop).
   static const _servers = <_VidnestServer>[
     _VidnestServer('gama', 'Gama', 'moviebox/movie', 'moviebox/tv'),
     _VidnestServer('hexa', 'Hexa', 'vidlink/movie', 'vidlink/tv'),
@@ -79,57 +81,78 @@ class VidnestExtractor {
     final deadline = DateTime.now().add(timeout);
     final client = _sharedClient ??= http.Client();
 
-    for (final server in _servers) {
-      if (cancelled()) return null;
-      if (DateTime.now().isAfter(deadline)) {
-        _log('timed out before ${server.id}');
-        return null;
-      }
-      try {
-        final path = server.pathFor(isMovie: isMovie, tmdbId: id, season: season, episode: episode);
-        final uri = Uri.parse('$_apiBase/$path');
-        _log('GET $uri');
-        final res = await client
-            .get(
-              uri,
-              headers: {
-                'User-Agent': userAgent,
-                'Accept': 'application/json, text/plain, */*',
-                'Origin': _embedOrigin,
-                'Referer': '$_embedOrigin/',
-              },
-            )
-            .timeout(_fetchTimeout);
+    final batches = await mapBoundedParallel<_VidnestServer, List<StreamSource>>(
+      items: _servers,
+      concurrency: _maxInFlight,
+      isCancelled: cancelled,
+      work: (server, _) async {
         if (cancelled()) return null;
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          _log('${server.id} HTTP ${res.statusCode}');
-          continue;
+        if (DateTime.now().isAfter(deadline)) {
+          _log('timed out before ${server.id}');
+          return null;
         }
-        final decoded = _decodeBody(res.body);
-        if (decoded == null) {
-          _log('${server.id} decrypt/parse failed');
-          continue;
+        try {
+          final path = server.pathFor(
+            isMovie: isMovie,
+            tmdbId: id,
+            season: season,
+            episode: episode,
+          );
+          final uri = Uri.parse('$_apiBase/$path');
+          _log('GET $uri');
+          final res = await client
+              .get(
+                uri,
+                headers: {
+                  'User-Agent': userAgent,
+                  'Accept': 'application/json, text/plain, */*',
+                  'Origin': _embedOrigin,
+                  'Referer': '$_embedOrigin/',
+                },
+              )
+              .timeout(_fetchTimeout);
+          if (cancelled()) return null;
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            _log('${server.id} HTTP ${res.statusCode}');
+            return null;
+          }
+          final decoded = _decodeBody(res.body);
+          if (decoded == null) {
+            _log('${server.id} decrypt/parse failed');
+            return null;
+          }
+          final sources = _parseSources(decoded, server);
+          if (sources.isEmpty) {
+            _log('${server.id} no streams');
+            return null;
+          }
+          _log('${server.id} → ${sources.length} source(s)');
+          return sources;
+        } on TimeoutException {
+          _log('${server.id} fetch timeout');
+          return null;
+        } catch (e) {
+          _log('${server.id} error: $e');
+          return null;
         }
-        final sources = _parseSources(decoded, server);
-        if (sources.isEmpty) {
-          _log('${server.id} no streams');
-          continue;
-        }
-        final playable = dedupeStreamSources(sources);
-        _log('${server.id} → ${playable.length} source(s)');
-        return ExtractedMedia(
-          url: playable.first.url,
-          headers: Map<String, String>.from(playable.first.headers ?? _uaOnlyHeaders()),
-          sources: playable,
-          provider: 'vidnest',
-        );
-      } on TimeoutException {
-        _log('${server.id} fetch timeout');
-      } catch (e) {
-        _log('${server.id} error: $e');
-      }
-    }
-    return null;
+      },
+    );
+
+    if (cancelled()) return null;
+    final allSources = <StreamSource>[
+      for (final batch in batches) ...batch,
+    ];
+    if (allSources.isEmpty) return null;
+    final playable = dedupeStreamSources(allSources);
+    _log('${batches.length} server(s) → ${playable.length} source(s)');
+    return ExtractedMedia(
+      url: playable.first.url,
+      headers: Map<String, String>.from(
+        playable.first.headers ?? _uaOnlyHeaders(),
+      ),
+      sources: playable,
+      provider: 'vidnest',
+    );
   }
 
   Map<String, dynamic>? _decodeBody(String body) {

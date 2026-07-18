@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
+import 'package:forja/shared/extractors/core/bounded_parallel.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
@@ -18,6 +19,12 @@ import 'package:rust/rust.dart';
 /// Host-side provider resolution for C3/C4/C5 plugins (WebView, WASM, Nuvio).
 abstract final class HostProviderAdapter {
   static final _extractor = StreamExtractor();
+
+  /// Extra headless sniffs for bounded parallel multi-mirror collect.
+  static final _parallelExtractors = <StreamExtractor>[];
+
+  /// Cap concurrent nested WebView sniffs (VidSrc.sbs mirrors, …).
+  static const _webviewSniffConcurrency = 2;
 
   static Future<String?> resolveToSourcesJson({
     required String providerId,
@@ -156,53 +163,75 @@ abstract final class HostProviderAdapter {
                 ? 'https://vidsrc.sbs/embed/tv/${movie.id}/$season/$episode'
                 : 'https://vidsrc.sbs/embed/movie/${movie.id}');
 
-      // Loading-page path: parse CFG.servers and sniff each nested mirror
-      // top-level (PRO Multi → Cinesrc → Vlux → Star). Avoids the outer
-      // dropdown UI that was stranding resolve with repeated PRO Multi clicks.
+      // Parse CFG.servers and sniff every nested mirror (bounded parallel).
+      // Show all responsive streams — no first-hit early return.
       final discovered = await VidsrcsbsExtractor(onLog: debugPrint)
           .discoverServers(embedUrl: outerEmbed, isCancelled: cancelled);
-      for (final server in discovered) {
-        if (cancelled()) return null;
-        final nested = server.resolveUrl(
-          isMovie: !isTv,
-          tmdbId: movie.id.toString(),
-          season: isTv ? season : null,
-          episode: isTv ? episode : null,
-        );
-        if (nested.isEmpty || !nested.startsWith('http')) continue;
-        debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
-        final sniffed = await _extractor.extract(
-          nested,
-          profile: vidsrcsbsNestedExtractProfile,
-          referer: outerEmbed,
+      if (discovered.isNotEmpty) {
+        final batches = await mapBoundedParallel<VidsrcsbsServer, List<StreamSource>>(
+          items: discovered,
+          concurrency: _webviewSniffConcurrency,
           isCancelled: cancelled,
-          providerId: 'vidsrcsbs',
+          work: (server, _) async {
+            if (cancelled()) return null;
+            final nested = server.resolveUrl(
+              isMovie: !isTv,
+              tmdbId: movie.id.toString(),
+              season: isTv ? season : null,
+              episode: isTv ? episode : null,
+            );
+            if (nested.isEmpty || !nested.startsWith('http')) return null;
+            debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
+            final extractor = StreamExtractor();
+            _parallelExtractors.add(extractor);
+            try {
+              final sniffed = await extractor.extract(
+                nested,
+                profile: vidsrcsbsNestedExtractProfile,
+                referer: outerEmbed,
+                isCancelled: cancelled,
+                providerId: 'vidsrcsbs',
+              );
+              if (sniffed == null || sniffed.url.isEmpty) return null;
+              final titled = sniffed.sources
+                      ?.map(
+                        (s) => StreamSource(
+                          url: s.url,
+                          title: s.title == 'Stream' || s.title.isEmpty
+                              ? server.name
+                              : '${server.name} · ${s.title}',
+                          type: s.type,
+                          headers: s.headers,
+                        ),
+                      )
+                      .toList() ??
+                  [
+                    StreamSource(
+                      url: sniffed.url,
+                      title: server.name,
+                      type: _typeFromUrl(sniffed.url),
+                      headers: sniffed.headers,
+                    ),
+                  ];
+              return titled;
+            } finally {
+              _parallelExtractors.remove(extractor);
+              unawaited(extractor.dispose());
+            }
+          },
         );
-        if (sniffed != null && sniffed.url.isNotEmpty) {
-          final titled = sniffed.sources
-              ?.map(
-                (s) => StreamSource(
-                  url: s.url,
-                  title: s.title == 'Stream' || s.title.isEmpty
-                      ? server.name
-                      : '${server.name} · ${s.title}',
-                  type: s.type,
-                  headers: s.headers,
-                ),
-              )
-              .toList();
+        final allSources = <StreamSource>[
+          for (final batch in batches) ...batch,
+        ];
+        if (allSources.isNotEmpty) {
+          debugPrint(
+            '[vidsrcsbs] ${batches.length}/${discovered.length} mirror(s) → '
+            '${allSources.length} stream(s)',
+          );
           return _encodeResolveResult(
-            url: sniffed.url,
-            sources: titled ??
-                [
-                  StreamSource(
-                    url: sniffed.url,
-                    title: server.name,
-                    type: _typeFromUrl(sniffed.url),
-                    headers: sniffed.headers,
-                  ),
-                ],
-            headers: sniffed.headers,
+            url: allSources.first.url,
+            sources: allSources,
+            headers: allSources.first.headers,
           );
         }
       }
@@ -319,6 +348,9 @@ abstract final class HostProviderAdapter {
       Engine.cancelPendingResolve();
     }
     unawaited(_extractor.cancel());
+    for (final extra in List<StreamExtractor>.of(_parallelExtractors)) {
+      unawaited(extra.cancel());
+    }
     unawaited(KissKhExtractor.cancelAllPending());
   }
 

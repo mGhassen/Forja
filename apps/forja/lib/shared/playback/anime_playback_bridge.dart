@@ -49,7 +49,9 @@ abstract final class AnimePlaybackBridge {
       isCancelled: isCancelled,
       onProgress: onProgress,
       maxInFlight: maxInFlight,
-      fillBackgroundHits: true,
+      // First playable wins — do not keep scanning siblings in the background
+      // once a stream is ready to open.
+      fillBackgroundHits: false,
       onHitsUpdated: (batch) {
         latestHits = batch;
         unawaited(() async {

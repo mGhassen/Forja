@@ -64,27 +64,21 @@ class SubtitleApi {
       ));
     }
 
-    // Stremio addon subtitles
+    // Stremio addon subtitles (skip addons with missing/invalid manifests)
     if (imdbId != null) {
-      final subAddons = await SettingsService().getStremioAddons();
-      final relevantAddons = subAddons.where((a) {
-        final resources = a['manifest']['resources'] as List;
-        return resources.any((r) => 
-          (r is String && r == 'subtitles') || 
-          (r is Map && r['name'] == 'subtitles')
-        );
-      }).toList();
-
+      final String type =
+          (season != null && episode != null) ? 'series' : 'movie';
+      final relevantAddons =
+          await stremio.getAddonsForResource('subtitles', type: type);
       if (relevantAddons.isNotEmpty) {
-        final String resourceId = (season != null && episode != null) 
-            ? '$imdbId:$season:$episode' 
+        final String resourceId = (season != null && episode != null)
+            ? '$imdbId:$season:$episode'
             : imdbId;
-        final String type = (season != null && episode != null) ? 'series' : 'movie';
 
         for (var addon in relevantAddons) {
           tasks.add(stremio.getSubtitles(
-            baseUrl: addon['baseUrl'], 
-            type: type, 
+            baseUrl: addon['baseUrl'],
+            type: type,
             id: resourceId,
             addonName: addon['name'],
           ));
