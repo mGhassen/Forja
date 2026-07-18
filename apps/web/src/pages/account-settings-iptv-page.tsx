@@ -435,7 +435,7 @@ export function AccountSettingsIptvPage() {
                   </h3>
                 </div>
                 <p className="mt-1 text-xs leading-5 text-forja-muted">
-                  Reddit portal scrape is unlocked in the Forja IPTV tab.
+                  Portal scraping is unlocked in the Forja IPTV.
                 </p>
               </div>
             </div>
@@ -447,7 +447,7 @@ export function AccountSettingsIptvPage() {
       ) : null}
 
       <SettingsSection
-        label="Xtream portals"
+        label="Portals"
         description="Favorites stay on top. Search filters name, URL, and username."
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">

@@ -67,7 +67,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   // Body layout: card grid or vertical timeline.
   static const _viewPreferenceKey = 'live_matches_timeline_view';
-  _LiveMatchesView _view = _LiveMatchesView.grid;
+  _LiveMatchesView _view = _LiveMatchesView.timeline;
   bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
   final ScrollController _timelineScrollController = ScrollController();
@@ -110,6 +110,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       _tabId,
       restoreFocus: _restoreLiveMatchesTvFocus,
     );
+    _syncTimelineLiveTick();
     unawaited(_restoreViewPreference());
     _load();
   }

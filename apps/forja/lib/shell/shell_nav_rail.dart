@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -138,16 +137,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
         (SyncService.instance.isSignedIn ? 'Profile' : 'Guest');
     if (!mounted || label == _profileLabel) return;
     setState(() => _profileLabel = label);
-  }
-
-  Future<void> _openProfileChooser(BuildContext context) async {
-    final switched = await presentProfileChooser(
-      context,
-      prepareCurrentOnSwitch: true,
-      closeIfAlreadyActive: true,
-    );
-    if (!mounted || !switched) return;
-    ForjaToast.success('Profile ready');
   }
 
   @override
@@ -297,11 +286,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           desaturateCustomIconWhenIdle: showDesktopProfile,
                           selected: settingsIndex == widget.selectedIndex,
                           onTap: () {
-                            if (showDesktopProfile &&
-                                SyncService.instance.isSignedIn) {
-                              unawaited(_openProfileChooser(context));
-                              return;
-                            }
                             widget.onDestinationSelected(settingsIndex);
                           },
                           itemSpacing: metrics.navRailItemSpacing,

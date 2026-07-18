@@ -76,13 +76,20 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     _enterPostUpdateDestination();
   }
 
-  void _enterPostUpdateDestination() {
+  Future<void> _enterPostUpdateDestination() async {
     final isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    final hasSession = SyncService.instance.isSignedIn;
+    // Restored sessions skip profile chooser, which is otherwise the only
+    // place that pulls accounts.features — without this, iptvScrape stays off.
+    if (hasSession) {
+      await SyncService.instance.pullAccountFeatures();
+    }
+    if (!mounted) return;
     final destination = resolveDesktopStartupDestination(
       isDesktop: isDesktop,
       supabaseConfigured: ForjaSupabase.isConfigured,
-      hasSession: SyncService.instance.isSignedIn,
+      hasSession: hasSession,
     );
     setState(() {
       _stage = destination == DesktopStartupDestination.account

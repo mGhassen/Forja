@@ -19,7 +19,7 @@ another screen.
   account**. New accounts are created only on the web (**Create an account on the
   web**). Linux, phones, and TV keep password and/or web login only.
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
-  **Who’s watching?** when signed in), or open **Settings → Profile & account** —
+  **Settings → Profile & account**), or open that page from Settings —
   the page shows the active profile (**Watching now** — tap to switch), cloud
   sync status, passkeys (macOS / Windows), and **Sign out**. From Who’s watching,
   **Account settings** opens Settings and dismisses any open media details so the
@@ -79,18 +79,18 @@ Not synced — device-specific or sensitive:
   captcha is configured. Web login also offers passkeys. Forgot password is
   web-only: `/forgot-password` emails a reset link that opens `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
-- Select the active profile from the desktop rail avatar, or tap **Watching now**
-  under **Settings → Profile & account** to open **Who’s watching?** / **Manage
-  profiles** (same Netflix-style grid as the web). Choosing a profile shows a
-  ~5s splash where that avatar scales from its tile into the center while settings
-  sync — not the boot intro splash, and not an in-settings dropdown. After it
-  finishes, the app opens that profile’s **default menu** tab (the starred tab
-  under **Settings → Navigation**), not the screen you were on before switching.
+- Tap **Watching now** under **Settings → Profile & account** (desktop rail
+  avatar opens that page) to open **Who’s watching?** / **Manage profiles**
+  (same Netflix-style grid as the web). Choosing a profile shows a ~5s splash
+  where that avatar scales from its tile into the center while settings sync —
+  not the boot intro splash, and not an in-settings dropdown. After it finishes,
+  the app opens that profile’s **default menu** tab (the starred tab under
+  **Settings → Navigation**), not the screen you were on before switching.
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
   If the account has no profiles yet, you create one before continuing. Tapping a
   profile loads it and continues to the boot intro splash — the avatar switch
-  splash is only for changing profiles mid-session (rail / Profile & account).
+  splash is only for changing profiles mid-session from Profile & account.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for
