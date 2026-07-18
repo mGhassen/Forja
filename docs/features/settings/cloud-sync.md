@@ -89,7 +89,8 @@ Not synced — device-specific or sensitive:
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
   If the account has no profiles yet, you create one before continuing. Tapping a
-  profile shows the quick avatar switch splash, then the boot intro splash.
+  profile loads it and continues to the boot intro splash — the avatar switch
+  splash is only for changing profiles mid-session (rail / Profile & account).
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for

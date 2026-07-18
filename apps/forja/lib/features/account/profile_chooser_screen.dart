@@ -58,7 +58,8 @@ class ProfileChooserScreen extends StatefulWidget {
   final bool showBack;
   final ProfileChooserMode initialMode;
 
-  /// Mid-session switches should push the outgoing profile first.
+  /// Mid-session switches: push outgoing profile + show [ProfileSwitchSplash].
+  /// Fresh sign-in / cold-start: false → silent select+pull, then caller splash.
   final bool prepareCurrentOnSwitch;
 
   /// When re-opening Who's watching, tapping the current profile just closes.
@@ -125,6 +126,34 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       return;
     }
 
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    // Fresh sign-in / cold-start: activate + pull, then continue to intro splash.
+    // Profile-switch animation is mid-session only (prepareCurrentOnSwitch).
+    if (!widget.prepareCurrentOnSwitch) {
+      try {
+        final selected =
+            await SyncService.instance.selectProfile(profile.id);
+        if (!selected) {
+          throw StateError('Profile unavailable');
+        }
+        await SyncDomainBridge.instance.pullAndMergeAll();
+        if (!mounted) return;
+        widget.onProfileSelected();
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _error =
+              'Could not open this profile. Check your connection and retry.';
+        });
+      }
+      return;
+    }
+
     // Map avatar globals into the overlay space the fullscreen splash uses.
     Rect? splashOrigin = originRect;
     final overlayBox =
@@ -137,10 +166,6 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       splashOrigin = localTopLeft & originRect.size;
     }
 
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
     final ok = await Navigator.of(context).push<bool>(
       PageRouteBuilder<bool>(
         opaque: true,
@@ -150,7 +175,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
             ProfileSwitchSplash(
           profile: profile,
           originRect: splashOrigin,
-          prepareCurrent: widget.prepareCurrentOnSwitch,
+          prepareCurrent: true,
         ),
       ),
     );
