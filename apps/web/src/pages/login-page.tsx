@@ -21,9 +21,12 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
+  clearDesktopAuthParams,
+  closeDesktopHandoffWindow,
   handoffSessionToDesktop,
   isSafeDesktopCallback,
-  readDesktopAuthSearchParams,
+  rememberDesktopAuthParams,
+  resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
 import { supabase } from '@/lib/supabase'
 
@@ -46,10 +49,18 @@ function LoginForm() {
   const [submitting, setSubmitting] = useState(false)
   const [passkeySubmitting, setPasskeySubmitting] = useState(false)
   const [desktopHandoff, setDesktopHandoff] = useState(false)
-  const handoffStarted = useRef(false)
+  const [handoffBusy, setHandoffBusy] = useState(false)
+  const autoHandoffTried = useRef(false)
 
-  const desktopParams = readDesktopAuthSearchParams()
+  const [desktopParams, setDesktopParams] = useState(() =>
+    resolveDesktopAuthParams(),
+  )
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
+
+  useEffect(() => {
+    rememberDesktopAuthParams()
+    setDesktopParams(resolveDesktopAuthParams())
+  }, [])
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
@@ -62,34 +73,35 @@ function LoginForm() {
 
   const handoffToDesktop = useCallback(
     async (accessToken: string, refreshToken: string) => {
-      if (!desktopParams.callback) return false
-      if (!isSafeDesktopCallback(desktopParams.callback)) {
+      const params = resolveDesktopAuthParams()
+      setDesktopParams(params)
+      if (!params.callback || !isSafeDesktopCallback(params.callback)) {
         setError(
           'This desktop login link is invalid. Open Web login from Forja again.',
         )
         return false
       }
-      if (handoffStarted.current) return true
-      handoffStarted.current = true
-      setDesktopHandoff(true)
+      setHandoffBusy(true)
       setError(null)
       const ok = await handoffSessionToDesktop({
-        callback: desktopParams.callback,
-        state: desktopParams.state,
+        callback: params.callback,
+        state: params.state,
         accessToken,
         refreshToken,
       })
+      setHandoffBusy(false)
       if (!ok) {
-        handoffStarted.current = false
-        setDesktopHandoff(false)
         setError(
-          'Signed in, but the desktop handoff failed. Try Web login again from Forja.',
+          'Could not reach the Forja app. Keep this tab open, make sure Forja is still waiting on Web login, then tap Return to Forja. If Chrome asks to allow local network access, allow it.',
         )
         return false
       }
+      clearDesktopAuthParams()
+      setDesktopHandoff(true)
+      closeDesktopHandoffWindow()
       return true
     },
-    [desktopParams.callback, desktopParams.state],
+    [],
   )
 
   useEffect(() => {
@@ -99,6 +111,8 @@ function LoginForm() {
       return
     }
     if (isDesktopLogin && session?.access_token && session.refresh_token) {
+      if (desktopHandoff || autoHandoffTried.current) return
+      autoHandoffTried.current = true
       void handoffToDesktop(session.access_token, session.refresh_token)
       return
     }
@@ -111,6 +125,7 @@ function LoginForm() {
     session,
     isPasswordRecovery,
     isDesktopLogin,
+    desktopHandoff,
     handoffToDesktop,
     navigate,
   ])
@@ -139,17 +154,14 @@ function LoginForm() {
       const { data } = await supabase.auth.getSession()
       const next = data.session
       if (next?.access_token && next.refresh_token) {
-        const ok = await handoffToDesktop(
-          next.access_token,
-          next.refresh_token,
-        )
+        autoHandoffTried.current = true
+        await handoffToDesktop(next.access_token, next.refresh_token)
         setSubmitting(false)
-        if (!ok) resetCaptcha()
         return
       }
       setSubmitting(false)
       setError(
-        'Signed in, but the desktop handoff failed. Try Web login again from Forja.',
+        'Signed in, but the desktop handoff failed. Tap Return to Forja, or try Web login again from the app.',
       )
       return
     }
@@ -181,17 +193,14 @@ function LoginForm() {
       const { data } = await supabase.auth.getSession()
       const next = data.session
       if (next?.access_token && next.refresh_token) {
-        const ok = await handoffToDesktop(
-          next.access_token,
-          next.refresh_token,
-        )
+        autoHandoffTried.current = true
+        await handoffToDesktop(next.access_token, next.refresh_token)
         setPasskeySubmitting(false)
-        if (!ok) resetCaptcha()
         return
       }
       setPasskeySubmitting(false)
       setError(
-        'Signed in, but the desktop handoff failed. Try Web login again from Forja.',
+        'Signed in, but the desktop handoff failed. Tap Return to Forja, or try Web login again from the app.',
       )
       return
     }
@@ -200,7 +209,20 @@ function LoginForm() {
     void navigate({ to: '/account/profiles' })
   }
 
-  const authBusy = submitting || passkeySubmitting
+  async function onReturnToForja() {
+    setError(null)
+    const { data } = await supabase.auth.getSession()
+    const next = data.session
+    if (!next?.access_token || !next.refresh_token) {
+      setError('No active session. Sign in again, then tap Return to Forja.')
+      return
+    }
+    await handoffToDesktop(next.access_token, next.refresh_token)
+  }
+
+  const authBusy = submitting || passkeySubmitting || handoffBusy
+  const showReturnButton =
+    isDesktopLogin && !!user && !desktopHandoff && !loading
 
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
@@ -224,7 +246,8 @@ function LoginForm() {
           <CardContent>
             {desktopHandoff ? (
               <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.7)]">
-                Signed in — you can close this tab and return to Forja.
+                Signed in — returning to Forja. You can close this tab if it
+                stays open.
               </p>
             ) : (
               <form onSubmit={onSubmit} className="space-y-5">
@@ -242,7 +265,7 @@ function LoginForm() {
                     type="email"
                     autoComplete="email"
                     required={configured}
-                    disabled={!configured}
+                    disabled={!configured || showReturnButton}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -265,14 +288,14 @@ function LoginForm() {
                     id="password"
                     autoComplete="current-password"
                     required={configured}
-                    disabled={!configured}
+                    disabled={!configured || showReturnButton}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg disabled:opacity-40"
                   />
                 </div>
 
-                {configured && captchaConfigured ? (
+                {configured && captchaConfigured && !showReturnButton ? (
                   <div className="space-y-2">
                     <Label>Verification</Label>
                     <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
@@ -290,7 +313,16 @@ function LoginForm() {
                   </p>
                 ) : null}
 
-                {configured ? (
+                {showReturnButton ? (
+                  <Button
+                    type="button"
+                    disabled={handoffBusy}
+                    onClick={() => void onReturnToForja()}
+                    className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                  >
+                    {handoffBusy ? 'Connecting to Forja…' : 'Return to Forja'}
+                  </Button>
+                ) : configured ? (
                   <>
                     <Button
                       type="submit"
@@ -379,4 +411,3 @@ function LoginForm() {
 export function LoginPage() {
   return <LoginForm />
 }
-

@@ -70,6 +70,44 @@ void main() {
     expect(result.error, 'Web login cancelled.');
   });
 
+  test('signIn keeps waiting after incomplete callback', () async {
+    final future = DesktopBrowserAuth.signIn(
+      timeout: const Duration(seconds: 8),
+      launchBrowser: (loginUrl) async {
+        final callback = Uri.parse(
+          loginUrl.queryParameters['desktop_callback']!,
+        );
+        final state = loginUrl.queryParameters['desktop_state']!;
+        final client = HttpClient();
+        try {
+          final bad = await client.getUrl(callback);
+          final badResponse = await bad.close();
+          expect(badResponse.statusCode, HttpStatus.ok);
+          await badResponse.drain<void>();
+
+          final handoff = callback.replace(
+            queryParameters: {
+              'access_token': 'access-token',
+              'refresh_token': 'refresh-token',
+              'state': state,
+            },
+          );
+          final request = await client.getUrl(handoff);
+          request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+          final response = await request.close();
+          expect(response.statusCode, HttpStatus.ok);
+          await response.drain<void>();
+        } finally {
+          client.close(force: true);
+        }
+      },
+    );
+
+    final result = await future;
+    expect(result.isSuccess, isTrue);
+    expect(result.accessToken, 'access-token');
+  });
+
   test('signIn accepts CORS preflight then token fetch', () async {
     final future = DesktopBrowserAuth.signIn(
       timeout: const Duration(seconds: 8),

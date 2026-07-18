@@ -6,11 +6,10 @@ import 'package:passkeys/exceptions.dart';
 
 /// Native WebAuthn passkeys for Forja cloud account (Supabase).
 ///
-/// **Windows:** native passkeys via Windows Hello.
-/// **macOS:** native passkeys need Associated Domains (`webcredentials:`), which
-/// Apple only allows on a paid Developer Program team — not Personal Team.
-/// Until that entitlement is restored under a paid team, macOS uses password /
-/// Web login (passkeys still work on the website).
+/// macOS + Windows show the UI. Native macOS needs Associated Domains
+/// (`webcredentials:www.forjahq.xyz`), which requires a paid Apple Developer
+/// team to sign — Personal Team builds omit that entitlement, so the button
+/// may fail with a domain-association error until a paid team is used.
 /// Linux / mobile / TV: no native passkeys.
 class ForjaPasskeys {
   ForjaPasskeys._();
@@ -24,8 +23,7 @@ class ForjaPasskeys {
   static bool get supported {
     if (kIsWeb) return false;
     try {
-      // macOS omitted: Personal Team cannot sign Associated Domains.
-      return Platform.isWindows;
+      return Platform.isMacOS || Platform.isWindows;
     } catch (_) {
       return false;
     }

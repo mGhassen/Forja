@@ -504,96 +504,59 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 const SizedBox(height: 28),
                 SizedBox(
                   height: 52,
-                  child: FilledButton(
-                    onPressed: _canSubmitPassword ? _submit : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: ForjaShellColors.brandGreen,
-                      foregroundColor: Colors.black,
-                      disabledBackgroundColor: ForjaShellColors.brandGreen
-                          .withValues(alpha: 0.35),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.zero,
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      _busy ? 'Connecting…' : 'Sign in',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                ),
-                if (ForjaPasskeys.supported) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 52,
-                    child: OutlinedButton.icon(
-                      onPressed: _canSubmitPasskey ? _passkeyLogin : null,
-                      icon: Icon(
-                        _passkeyBusy
-                            ? Icons.hourglass_top_rounded
-                            : Icons.fingerprint_rounded,
-                        size: 18,
-                      ),
-                      label: Text(
-                        _passkeyBusy
-                            ? 'Waiting for passkey…'
-                            : 'Sign in with passkey',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          letterSpacing: 0.15,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: ForjaShellColors.textPrimary,
-                        side: BorderSide(
-                          color: ForjaShellColors.textPrimary.withValues(
-                            alpha: 0.35,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _canSubmitPassword ? _submit : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: ForjaShellColors.brandGreen,
+                            foregroundColor: Colors.black,
+                            disabledBackgroundColor: ForjaShellColors
+                                .brandGreen
+                                .withValues(alpha: 0.35),
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero,
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            _busy ? 'Connecting…' : 'Sign in',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              letterSpacing: 0.2,
+                            ),
                           ),
                         ),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
+                      ),
+                      if (ForjaPasskeys.supported) ...[
+                        const SizedBox(width: 8),
+                        _AuthIconButton(
+                          tooltip: _passkeyBusy
+                              ? 'Waiting for passkey…'
+                              : 'Sign in with passkey',
+                          icon: _passkeyBusy
+                              ? Icons.hourglass_top_rounded
+                              : Icons.fingerprint_rounded,
+                          onPressed:
+                              _canSubmitPasskey ? _passkeyLogin : null,
                         ),
+                      ],
+                      const SizedBox(width: 8),
+                      _AuthIconButton(
+                        tooltip: _webBusy
+                            ? 'Cancel web login'
+                            : 'Web login',
+                        icon: _webBusy
+                            ? Icons.close_rounded
+                            : Icons.open_in_browser_rounded,
+                        onPressed: _passwordLocked
+                            ? null
+                            : (_webBusy ? _cancelWebLogin : _webLogin),
                       ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: _passwordLocked
-                        ? null
-                        : (_webBusy ? _cancelWebLogin : _webLogin),
-                    icon: Icon(
-                      _webBusy
-                          ? Icons.close_rounded
-                          : Icons.open_in_browser_rounded,
-                      size: 18,
-                    ),
-                    label: Text(
-                      _webBusy ? 'Cancel web login' : 'Web login',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        letterSpacing: 0.15,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: ForjaShellColors.textPrimary,
-                      side: BorderSide(
-                        color: ForjaShellColors.textPrimary.withValues(
-                          alpha: 0.35,
-                        ),
-                      ),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.zero,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -622,9 +585,16 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
                 ),
                 const SizedBox(height: 18),
-                TextButton(
+                TextButton.icon(
                   onPressed: _busy ? null : _continueAsGuest,
-                  child: Text(
+                  icon: Icon(
+                    Icons.person_outline_rounded,
+                    size: 20,
+                    color: ForjaShellColors.textSecondary.withValues(
+                      alpha: _busy ? 0.4 : 1,
+                    ),
+                  ),
+                  label: Text(
                     'Continue without an account',
                     style: GoogleFonts.plusJakartaSans(
                       color: ForjaShellColors.textSecondary,
@@ -647,6 +617,42 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthIconButton extends StatelessWidget {
+  const _AuthIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 52,
+      child: Tooltip(
+        message: tooltip,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ForjaShellColors.textPrimary,
+            padding: EdgeInsets.zero,
+            side: BorderSide(
+              color: ForjaShellColors.textPrimary.withValues(alpha: 0.35),
+            ),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+            ),
+          ),
+          child: Icon(icon, size: 22),
         ),
       ),
     );

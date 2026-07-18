@@ -5,8 +5,9 @@ import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:passkeys/exceptions.dart';
 
 void main() {
-  test('ForjaPasskeys.supported is Windows only (macOS needs paid team)', () {
-    expect(ForjaPasskeys.supported, Platform.isWindows);
+  test('ForjaPasskeys.supported matches macOS/Windows only', () {
+    final expected = Platform.isMacOS || Platform.isWindows;
+    expect(ForjaPasskeys.supported, expected);
   });
 
   test('userMessage maps domain association failures', () {

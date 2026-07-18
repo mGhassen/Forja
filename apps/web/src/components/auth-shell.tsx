@@ -4,7 +4,7 @@ import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
 import {
   isSafeDesktopCallback,
-  readDesktopAuthSearchParams,
+  resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
 
 function emphasisForPath(pathname: string): string | undefined {
@@ -18,7 +18,7 @@ function emphasisForPath(pathname: string): string | undefined {
     return 'Almost there — set a new password and you’re back in.'
   }
   if (pathname.startsWith('/login')) {
-    return isSafeDesktopCallback(readDesktopAuthSearchParams().callback)
+    return isSafeDesktopCallback(resolveDesktopAuthParams().callback)
       ? 'Sign in here to unlock sync on your desktop Forja app.'
       : undefined
   }

@@ -20,6 +20,15 @@ import {
   CAPTCHA_REQUIRED_MESSAGE,
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
+import {
+  clearDesktopAuthParams,
+  closeDesktopHandoffWindow,
+  handoffSessionToDesktop,
+  isSafeDesktopCallback,
+  rememberDesktopAuthParams,
+  resolveDesktopAuthParams,
+} from '@/lib/desktop-auth-callback'
+import { supabase } from '@/lib/supabase'
 
 const MIN_PASSWORD_LENGTH = 6
 
@@ -35,6 +44,12 @@ function SignupForm() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
+  const [desktopHandoffDone, setDesktopHandoffDone] = useState(false)
+  const [desktopParams] = useState(() => {
+    rememberDesktopAuthParams()
+    return resolveDesktopAuthParams()
+  })
+  const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
@@ -45,11 +60,37 @@ function SignupForm() {
     setCaptchaKey((k) => k + 1)
   }
 
+  async function finishAfterAuth() {
+    if (isDesktopLogin && desktopParams.callback) {
+      const { data } = await supabase.auth.getSession()
+      const next = data.session
+      if (next?.access_token && next.refresh_token) {
+        const ok = await handoffSessionToDesktop({
+          callback: desktopParams.callback,
+          state: desktopParams.state,
+          accessToken: next.access_token,
+          refreshToken: next.refresh_token,
+        })
+        if (ok) {
+          clearDesktopAuthParams()
+          setDesktopHandoffDone(true)
+          closeDesktopHandoffWindow()
+          return
+        }
+        setError(
+          'Account ready, but Forja did not receive the session. Open Web login from the app again, or tap Return to Forja on the login page.',
+        )
+        return
+      }
+    }
+    void navigate({ to: '/account/profiles' })
+  }
+
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !isDesktopLogin) {
       void navigate({ to: '/account/profiles' })
     }
-  }, [loading, user, navigate])
+  }, [loading, user, isDesktopLogin, navigate])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -86,7 +127,7 @@ function SignupForm() {
       return
     }
 
-    void navigate({ to: '/account/profiles' })
+    await finishAfterAuth()
   }
 
   async function onConfirmOtp(e: FormEvent) {
@@ -107,7 +148,28 @@ function SignupForm() {
       return
     }
 
-    void navigate({ to: '/account/profiles' })
+    await finishAfterAuth()
+  }
+
+  if (desktopHandoffDone) {
+    return (
+      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+        <Reveal variant="right" className="reveal-slow w-full max-w-md">
+          <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
+            <Card className="border-0 bg-transparent shadow-none">
+              <CardHeader className="space-y-2 pb-2">
+                <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
+                  Signed in
+                </CardTitle>
+                <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
+                  Returning to Forja. You can close this tab if it stays open.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </LiquidGlass>
+        </Reveal>
+      </section>
+    )
   }
 
   if (needsEmailConfirmation) {

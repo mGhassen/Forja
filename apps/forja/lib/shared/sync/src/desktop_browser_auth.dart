@@ -80,6 +80,9 @@ class DesktopBrowserAuth {
 
       sub = server.listen((request) async {
         try {
+          debugPrint(
+            '[DesktopBrowserAuth] ${request.method} ${request.uri.path}',
+          );
           // Portal hands off via fetch() from https://… so Chrome sends a
           // Private Network Access preflight. Never navigate the browser here —
           // that used to open a second 127.0.0.1 tab.
@@ -108,22 +111,26 @@ class DesktopBrowserAuth {
               return;
             }
 
+            // Incomplete / wrong-state hits must not abort the wait — browsers,
+            // extensions, or probes can GET the callback URL without tokens.
             if (returnedState != state ||
                 access == null ||
                 access.isEmpty ||
                 refresh == null ||
                 refresh.isEmpty) {
+              debugPrint(
+                '[DesktopBrowserAuth] ignoring incomplete callback '
+                '(stateOk=${returnedState == state}, '
+                'hasAccess=${access != null && access.isNotEmpty}, '
+                'hasRefresh=${refresh != null && refresh.isNotEmpty})',
+              );
               await _writeCallbackResponse(
                 request,
-                title: 'Sign-in failed',
+                title: 'Sign-in incomplete',
                 body:
-                    'Invalid or incomplete response. Close this tab and retry in Forja.',
+                    'Forja is still waiting. Finish sign-in in this tab, then '
+                    'tap Return to Forja if needed.',
                 ok: false,
-              );
-              finish(
-                const DesktopBrowserAuthResult.failure(
-                  'Web login failed. Close the browser tab and try again.',
-                ),
               );
               return;
             }
