@@ -106,8 +106,8 @@ export function AccountSettingsNavigationPage() {
 
   return (
     <AccountSettingsShell
-      title="Navigation"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Matches Settings → Navigation in the app."
+      title="Features"
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Matches Settings → Features in the app."
       footer={
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/features/settings/settings_visibility.dart';
 
 /// Stable category IDs for the Settings hub (RFC-033).
 abstract final class SettingsCategoryId {
@@ -46,9 +46,14 @@ class SettingsCategoryMeta {
   final bool fillViewport;
 }
 
-/// Ordered catalog of Settings categories.
-List<SettingsCategoryMeta> settingsCategories() {
-  final torrent = PlatformPlayback.capabilities.builtinTorrentSearch;
+/// Ordered catalog of Settings categories for the active [visibility].
+List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
+  final sourcesSubtitle = visibility.showTorrentEngine
+      ? (visibility.showStremioAddons
+          ? 'Torrents, extractors, addons'
+          : 'Torrents and scrapers')
+      : 'Extractors and addons';
+
   return [
     const SettingsCategoryMeta(
       id: SettingsCategoryId.profile,
@@ -62,39 +67,42 @@ List<SettingsCategoryMeta> settingsCategories() {
       subtitle: 'Sources, quality, audio, auto-play',
       icon: Icons.play_circle_outline_rounded,
     ),
-    SettingsCategoryMeta(
-      id: SettingsCategoryId.sources,
-      title: 'Sources',
-      subtitle: torrent
-          ? 'Torrents, extractors, addons'
-          : 'Extractors and addons',
-      icon: Icons.extension_rounded,
-    ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.webstreamr,
-      title: 'WebStreamr',
-      subtitle: 'Countries, extractors, MFP, TMDB',
-      icon: Icons.language_rounded,
-    ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.debrid,
-      title: 'Debrid',
-      subtitle: 'Real-Debrid, TorBox, and more',
-      icon: Icons.cloud_download_rounded,
-    ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.accounts,
-      title: 'Connected services',
-      subtitle: 'Trakt, Simkl, MDBlist',
-      icon: Icons.sync_rounded,
-    ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.lists,
-      title: 'Lists',
-      subtitle: 'Trakt & MDBlist custom lists',
-      icon: Icons.list_alt_rounded,
-      fillViewport: true,
-    ),
+    if (visibility.showSourcesCategory)
+      SettingsCategoryMeta(
+        id: SettingsCategoryId.sources,
+        title: 'Sources',
+        subtitle: sourcesSubtitle,
+        icon: Icons.extension_rounded,
+      ),
+    if (visibility.showWebstreamr)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.webstreamr,
+        title: 'WebStreamr',
+        subtitle: 'Countries, extractors, MFP, TMDB',
+        icon: Icons.language_rounded,
+      ),
+    if (visibility.showDebrid)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.debrid,
+        title: 'Debrid',
+        subtitle: 'Real-Debrid, TorBox, and more',
+        icon: Icons.cloud_download_rounded,
+      ),
+    if (visibility.showAccounts)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.accounts,
+        title: 'Connected services',
+        subtitle: 'Trakt, Simkl, MDBlist',
+        icon: Icons.sync_rounded,
+      ),
+    if (visibility.showLists)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.lists,
+        title: 'Lists',
+        subtitle: 'Trakt & MDBlist custom lists',
+        icon: Icons.list_alt_rounded,
+        fillViewport: true,
+      ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.data,
       title: 'Data & backup',
@@ -103,7 +111,7 @@ List<SettingsCategoryMeta> settingsCategories() {
     ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.navigation,
-      title: 'Navigation',
+      title: 'Features',
       subtitle: 'Tabs, order, default menu',
       icon: Icons.tab_rounded,
     ),
@@ -116,8 +124,11 @@ List<SettingsCategoryMeta> settingsCategories() {
   ];
 }
 
-SettingsCategoryMeta? settingsCategoryById(String id) {
-  for (final c in settingsCategories()) {
+SettingsCategoryMeta? settingsCategoryById(
+  String id,
+  SettingsVisibility visibility,
+) {
+  for (final c in settingsCategories(visibility)) {
     if (c.id == id) return c;
   }
   return null;

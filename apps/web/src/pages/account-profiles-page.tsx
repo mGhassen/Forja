@@ -24,6 +24,7 @@ export function AccountProfilesPage() {
     profiles,
     activeProfile,
     loading,
+    canAddProfile,
     selectProfile,
     createProfile,
     renameProfile,
@@ -60,6 +61,10 @@ export function AccountProfilesPage() {
   }
 
   const beginCreate = () => {
+    if (!canAddProfile) {
+      setError('Maximum of 5 profiles per account')
+      return
+    }
     setName('')
     setAvatarKey(
       PROFILE_AVATARS[profiles.length % PROFILE_AVATARS.length].key,
@@ -208,7 +213,8 @@ export function AccountProfilesPage() {
                     )
                   })}
 
-                  {screen === 'manage' || profiles.length === 0 ? (
+                  {(screen === 'manage' || profiles.length === 0) &&
+                  canAddProfile ? (
                     <button
                       type="button"
                       className="group w-28 text-center sm:w-36"

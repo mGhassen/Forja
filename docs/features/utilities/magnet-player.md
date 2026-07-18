@@ -8,7 +8,7 @@ The Magnet tab is a quick path from magnet URI to playback. Paste a link, see th
 
 ## How to open it
 
-The **Magnet** tab is temporarily hidden from the navigation bar and Settings → Navigation.
+The **Magnet** tab is temporarily hidden from the navigation bar and Settings → Features.
 
 ## What you can do
 

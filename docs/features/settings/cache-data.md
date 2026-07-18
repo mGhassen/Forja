@@ -16,7 +16,7 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 - **Stream cache** — saved webstreaming and anime stream URLs, torrent temp files, and seek buffers. Next Play re-resolves. Settings and continue watching stay.
 - **Images & WebView** — poster thumbnails and extractor WebView caches. Images re-download when needed.
-- **IPTV portal cache** — saved live-channel health checks and channel scan results. Saved portals, favorites, and M3U playlists stay; next IPTV open re-checks.
+- **IPTV portal cache** (when the IPTV tab is visible) — saved live-channel health checks and channel scan results. Saved portals, favorites, and M3U playlists stay; next IPTV open re-checks.
 - **Downloaded updates** (desktop) — installer files saved by in-app update (`.dmg`, `.exe`, AppImage). Safe to remove after you install.
 
 ### Learned

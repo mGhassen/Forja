@@ -198,7 +198,7 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   },
   {
     key: 'navigation',
-    title: 'Navigation',
+    title: 'Features',
     description: 'Which shell tabs are visible and which opens by default.',
     href: '/account/settings/navigation',
   },

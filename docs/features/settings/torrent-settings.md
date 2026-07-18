@@ -8,7 +8,7 @@ Controls how the torrent engine behaves: result sort order on details screens, R
 
 ## How to open it
 
-**Settings → Sources** (torrent engine / sort — only when built-in torrent search is available)
+**Settings → Sources** (torrent engine / sort — only when **Direct torrent** is on and built-in torrent search is available on this platform)
 
 ## What you can do
 

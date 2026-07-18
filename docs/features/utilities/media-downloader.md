@@ -8,7 +8,7 @@ Media Downloader searches TMDB for a show, lets you pick season and episode, the
 
 ## How to open it
 
-The **Media Downloader** tab is temporarily hidden from the navigation bar and Settings → Navigation.
+The **Media Downloader** tab is temporarily hidden from the navigation bar and Settings → Features.
 
 ## What you can do
 

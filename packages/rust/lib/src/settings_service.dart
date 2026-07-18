@@ -272,25 +272,35 @@ class SettingsService {
   Future<void> setStreamingMode(bool enabled) async =>
       kvSetBool(_streamingModeKey, enabled);
 
+  /// Bumped when Direct torrent / Stremio / Webstreaming toggles change.
+  static final ValueNotifier<int> playSourceChangeNotifier =
+      ValueNotifier<int>(0);
+
   Future<bool> isPlaySourceTorrentEnabled() async =>
       kvGetBool(_playSourceTorrentKey, fallback: _defaults.playSourceTorrent);
 
-  Future<void> setPlaySourceTorrentEnabled(bool enabled) async =>
-      kvSetBool(_playSourceTorrentKey, enabled);
+  Future<void> setPlaySourceTorrentEnabled(bool enabled) async {
+    await kvSetBool(_playSourceTorrentKey, enabled);
+    playSourceChangeNotifier.value++;
+  }
 
   Future<bool> isPlaySourceStremioEnabled() async =>
       kvGetBool(_playSourceStremioKey, fallback: _defaults.playSourceStremio);
 
-  Future<void> setPlaySourceStremioEnabled(bool enabled) async =>
-      kvSetBool(_playSourceStremioKey, enabled);
+  Future<void> setPlaySourceStremioEnabled(bool enabled) async {
+    await kvSetBool(_playSourceStremioKey, enabled);
+    playSourceChangeNotifier.value++;
+  }
 
   Future<bool> isPlaySourceWebstreamingEnabled() async => kvGetBool(
     _playSourceWebstreamingKey,
     fallback: _defaults.playSourceWebstreaming,
   );
 
-  Future<void> setPlaySourceWebstreamingEnabled(bool enabled) async =>
-      kvSetBool(_playSourceWebstreamingKey, enabled);
+  Future<void> setPlaySourceWebstreamingEnabled(bool enabled) async {
+    await kvSetBool(_playSourceWebstreamingKey, enabled);
+    playSourceChangeNotifier.value++;
+  }
 
   static const String _streamProviderOrderKey = 'stream_provider_order';
   static const List<String> defaultStreamProviderOrder = <String>[
@@ -1134,5 +1144,6 @@ class SettingsService {
 
     addonChangeNotifier.value++;
     navbarChangeNotifier.value++;
+    playSourceChangeNotifier.value++;
   }
 }

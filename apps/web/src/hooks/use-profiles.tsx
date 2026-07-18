@@ -24,11 +24,15 @@ const PROFILE_COLORS = [
   '#fb7185',
 ] as const
 
+/** Matches `profiles_enforce_max` in Supabase. */
+export const MAX_PROFILES_PER_ACCOUNT = 5
+
 type ProfilesContextValue = {
   profiles: Profile[]
   activeProfile: Profile | null
   loading: boolean
   error: Error | null
+  canAddProfile: boolean
   selectProfile: (profileId: string) => void
   createProfile: (name: string, avatarKey?: ProfileAvatarKey) => Promise<Profile>
   renameProfile: (profileId: string, name: string) => Promise<void>
@@ -98,6 +102,9 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
     }): Promise<Profile> => {
       const cleanName = name.trim()
       if (!user || !cleanName) throw new Error('Enter a profile name')
+      if (profiles.length >= MAX_PROFILES_PER_ACCOUNT) {
+        throw new Error(`Maximum of ${MAX_PROFILES_PER_ACCOUNT} profiles per account`)
+      }
       const color = PROFILE_COLORS[profiles.length % PROFILE_COLORS.length]
       const avatar_key =
         avatarKey ?? PROFILE_AVATARS[profiles.length % PROFILE_AVATARS.length].key
@@ -185,6 +192,8 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   const activeProfile =
     profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0] ?? null
 
+  const canAddProfile = profiles.length < MAX_PROFILES_PER_ACCOUNT
+
   const value = useMemo<ProfilesContextValue>(
     () => ({
       profiles,
@@ -196,6 +205,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
           : profilesQuery.error
             ? new Error('Failed to load profiles')
             : null,
+      canAddProfile,
       selectProfile,
       createProfile: async (name, avatarKey) => {
         return createMutation.mutateAsync({ name, avatarKey })
@@ -212,6 +222,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
     [
       profiles,
       activeProfile,
+      canAddProfile,
       profilesQuery.isLoading,
       profilesQuery.error,
       createMutation.mutateAsync,

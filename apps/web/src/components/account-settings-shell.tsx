@@ -41,7 +41,7 @@ const profileCategories = [
   },
   {
     href: '/account/settings/navigation',
-    title: 'Navigation',
+    title: 'Features',
     subtitle: 'Tabs and default menu',
     icon: LayoutList,
   },

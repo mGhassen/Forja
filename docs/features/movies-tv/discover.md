@@ -8,7 +8,7 @@ Discover is a filterable catalog browser. Pick movies, TV shows, or both, then n
 
 ## How to open it
 
-The **Discover** tab is temporarily hidden from the navigation bar and Settings → Navigation.
+The **Discover** tab is temporarily hidden from the navigation bar and Settings → Features.
 
 ## What you can do
 

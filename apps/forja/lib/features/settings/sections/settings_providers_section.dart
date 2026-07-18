@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -7,7 +8,9 @@ import 'package:forja/shared/sync/sync.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
 class SettingsProvidersSection extends StatefulWidget {
-  const SettingsProvidersSection({super.key});
+  const SettingsProvidersSection({super.key, required this.visibility});
+
+  final SettingsVisibility visibility;
 
   @override
   State<SettingsProvidersSection> createState() =>
@@ -91,18 +94,21 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
 
   @override
   Widget build(BuildContext context) {
+    final v = widget.visibility;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(
-          label: 'Stremio addons',
-          children: [_buildAddonInput()],
-        ),
-        SettingsGroup(
-          label: 'Nuvio addons',
-          children: [_buildNuvioAddonSection()],
-        ),
-        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
+        if (v.showStremioAddons)
+          SettingsGroup(
+            label: 'Stremio addons',
+            children: [_buildAddonInput()],
+          ),
+        if (v.showNuvio)
+          SettingsGroup(
+            label: 'Nuvio addons',
+            children: [_buildNuvioAddonSection()],
+          ),
+        if (v.showTorrentEngine) ...[
           SettingsGroup(
             label: 'Jackett',
             children: [_buildJackettConfig()],

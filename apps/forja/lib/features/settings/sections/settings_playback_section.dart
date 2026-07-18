@@ -6,6 +6,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -14,7 +15,9 @@ import 'package:forja/shared/sync/sync.dart';
 
 /// Playback sources, scoring, and audio prefs.
 class SettingsPlaybackSection extends StatefulWidget {
-  const SettingsPlaybackSection({super.key});
+  const SettingsPlaybackSection({super.key, required this.visibility});
+
+  final SettingsVisibility visibility;
 
   @override
   State<SettingsPlaybackSection> createState() =>
@@ -84,60 +87,61 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(
-          label: 'Play sources',
-          children: [
-            settingsFocusableToggle(
-              context,
-              'Direct torrent',
-              'Search Forja indexers and Nuvio scrapers in Sources.',
-              _playSourceTorrent,
-              (val) async {
-                await _settings.setPlaySourceTorrentEnabled(val);
-                setState(() => _playSourceTorrent = val);
-                schedulePreferencesSyncPush();
-                // Explicit toggle: start now even if no VOD tab is visible.
-                if (val) {
-                  debugPrint('[Init] Nuvio refresh (settings toggle)');
-                  unawaited(NuvioService.instance.refreshAllInstalled());
-                  if (PlatformPlayback.capabilities.localTorrentEngine) {
-                    debugPrint('[Init] TorrentStream start (settings toggle)');
-                    await TorrentStreamService().start();
+        if (widget.visibility.showPlaySources)
+          SettingsGroup(
+            label: 'Play sources',
+            children: [
+              settingsFocusableToggle(
+                context,
+                'Direct torrent',
+                'Search Forja indexers and Nuvio scrapers in Sources.',
+                _playSourceTorrent,
+                (val) async {
+                  await _settings.setPlaySourceTorrentEnabled(val);
+                  setState(() => _playSourceTorrent = val);
+                  schedulePreferencesSyncPush();
+                  // Explicit toggle: start now even if no VOD tab is visible.
+                  if (val) {
+                    debugPrint('[Init] Nuvio refresh (settings toggle)');
+                    unawaited(NuvioService.instance.refreshAllInstalled());
+                    if (PlatformPlayback.capabilities.localTorrentEngine) {
+                      debugPrint('[Init] TorrentStream start (settings toggle)');
+                      await TorrentStreamService().start();
+                    }
                   }
-                }
-              },
-            ),
-            settingsFocusableToggle(
-              context,
-              'Stremio',
-              'Play from installed Stremio addon streams.',
-              _playSourceStremio,
-              (val) async {
-                await _settings.setPlaySourceStremioEnabled(val);
-                setState(() => _playSourceStremio = val);
-                schedulePreferencesSyncPush();
-              },
-            ),
-            settingsFocusableToggle(
-              context,
-              'Webstreaming',
-              'Play from web stream extractors (Videasy, WebStreamr, …).',
-              _playSourceWebstreaming,
-              (val) async {
-                await _settings.setPlaySourceWebstreamingEnabled(val);
-                setState(() => _playSourceWebstreaming = val);
-                schedulePreferencesSyncPush();
-                if (val) {
-                  debugPrint('[Init] LocalServer start (settings toggle)');
-                  await LocalServerService().start();
-                  debugPrint('[Init] WebStreamr start (settings toggle)');
-                  await WebStreamrService.init();
-                }
-              },
-            ),
-          ],
-        ),
-        _buildProviderScoringSection(),
+                },
+              ),
+              settingsFocusableToggle(
+                context,
+                'Stremio',
+                'Play from installed Stremio addon streams.',
+                _playSourceStremio,
+                (val) async {
+                  await _settings.setPlaySourceStremioEnabled(val);
+                  setState(() => _playSourceStremio = val);
+                  schedulePreferencesSyncPush();
+                },
+              ),
+              settingsFocusableToggle(
+                context,
+                'Webstreaming',
+                'Play from web stream extractors (Videasy, WebStreamr, …).',
+                _playSourceWebstreaming,
+                (val) async {
+                  await _settings.setPlaySourceWebstreamingEnabled(val);
+                  setState(() => _playSourceWebstreaming = val);
+                  schedulePreferencesSyncPush();
+                  if (val) {
+                    debugPrint('[Init] LocalServer start (settings toggle)');
+                    await LocalServerService().start();
+                    debugPrint('[Init] WebStreamr start (settings toggle)');
+                    await WebStreamrService.init();
+                  }
+                },
+              ),
+            ],
+          ),
+        if (widget.visibility.showProviderScoring) _buildProviderScoringSection(),
         SettingsGroup(
           label: 'Player',
           children: [
@@ -183,54 +187,58 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                 schedulePreferencesSyncPush();
               },
             ),
-            settingsFocusableToggle(
-              context,
-              'Auto next episode',
-              'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
-              _autoNextEpisode,
-              (val) async {
-                await _settings.setAutoNextEpisode(val);
-                setState(() => _autoNextEpisode = val);
-                schedulePreferencesSyncPush();
-              },
-            ),
-            settingsFocusableToggle(
-              context,
-              'Auto skip intro',
-              'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
-              _autoSkipIntro,
-              (val) async {
-                await _settings.setAutoSkipIntro(val);
-                setState(() => _autoSkipIntro = val);
-                schedulePreferencesSyncPush();
-              },
-            ),
-            settingsFocusableToggle(
-              context,
-              'IPTV programme guide (EPG)',
-              'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
-              _iptvEpgEnabled,
-              (val) async {
-                await _settings.setIptvEpgEnabled(val);
-                setState(() => _iptvEpgEnabled = val);
-                schedulePreferencesSyncPush();
-              },
-            ),
-            settingsFocusableDropdown(
-              context,
-              'Max stream quality',
-              'Cap automatic stream selection. Auto uses the best your device supports.',
-              _maxPlaybackHeightLabel,
-              SettingsService.maxPlaybackHeightOptions.keys.toList(),
-              (val) async {
-                if (val == null) return;
-                final height =
-                    SettingsService.maxPlaybackHeightOptions[val] ?? 0;
-                await _settings.setMaxPlaybackHeight(height);
-                setState(() => _maxPlaybackHeightLabel = val);
-                schedulePreferencesSyncPush();
-              },
-            ),
+            if (widget.visibility.showVodPlayerExtras) ...[
+              settingsFocusableToggle(
+                context,
+                'Auto next episode',
+                'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
+                _autoNextEpisode,
+                (val) async {
+                  await _settings.setAutoNextEpisode(val);
+                  setState(() => _autoNextEpisode = val);
+                  schedulePreferencesSyncPush();
+                },
+              ),
+              settingsFocusableToggle(
+                context,
+                'Auto skip intro',
+                'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
+                _autoSkipIntro,
+                (val) async {
+                  await _settings.setAutoSkipIntro(val);
+                  setState(() => _autoSkipIntro = val);
+                  schedulePreferencesSyncPush();
+                },
+              ),
+            ],
+            if (widget.visibility.showIptvSettings)
+              settingsFocusableToggle(
+                context,
+                'IPTV programme guide (EPG)',
+                'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
+                _iptvEpgEnabled,
+                (val) async {
+                  await _settings.setIptvEpgEnabled(val);
+                  setState(() => _iptvEpgEnabled = val);
+                  schedulePreferencesSyncPush();
+                },
+              ),
+            if (widget.visibility.showPlaySources)
+              settingsFocusableDropdown(
+                context,
+                'Max stream quality',
+                'Cap automatic stream selection. Auto uses the best your device supports.',
+                _maxPlaybackHeightLabel,
+                SettingsService.maxPlaybackHeightOptions.keys.toList(),
+                (val) async {
+                  if (val == null) return;
+                  final height =
+                      SettingsService.maxPlaybackHeightOptions[val] ?? 0;
+                  await _settings.setMaxPlaybackHeight(height);
+                  setState(() => _maxPlaybackHeightLabel = val);
+                  schedulePreferencesSyncPush();
+                },
+              ),
           ],
         ),
       ],

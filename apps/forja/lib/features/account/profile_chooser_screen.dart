@@ -210,6 +210,12 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
   }
 
   void _beginCreate() {
+    if (_profiles.length >= SyncService.maxProfilesPerAccount) {
+      setState(() {
+        _error = 'Maximum of 5 profiles per account.';
+      });
+      return;
+    }
     final keys = forjaProfileAvatarKeys;
     setState(() {
       _screen = _Screen.create;
@@ -433,7 +439,8 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                               }
                             },
                           ),
-                        if (managing || _profiles.isEmpty)
+                        if ((managing || _profiles.isEmpty) &&
+                            _profiles.length < SyncService.maxProfilesPerAccount)
                           _AddProfileTile(
                             enabled: !_busy,
                             onTap: _beginCreate,

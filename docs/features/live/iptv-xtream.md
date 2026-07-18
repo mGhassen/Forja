@@ -59,7 +59,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk
 - Portal quality varies — timeouts usually mean provider or network issues
 - Clear stale alive checks / channel scan hits from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay)
-- Export or import Xtream portals as CSV from **Settings → Data & backup → IPTV portals** (same format as the web remote settings page; import adds only portals that are not already saved)
+- Export or import Xtream portals as CSV from **Settings → Data & backup → IPTV portals** when the IPTV tab is visible (same format as the web remote settings page; import adds only portals that are not already saved)
 - Series VOD uses the same player as live with seek support when the stream allows — the VOD seek bar uses Forja brand green for the played fill and thumb
 
 ## Related

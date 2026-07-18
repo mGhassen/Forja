@@ -8,7 +8,7 @@ Jellyfin integration lets you log into a self-hosted Jellyfin server, browse lib
 
 ## How to open it
 
-The **Jellyfin** tab is temporarily hidden from the navigation bar and Settings → Navigation.
+The **Jellyfin** tab is temporarily hidden from the navigation bar and Settings → Features.
 
 ## What you can do
 

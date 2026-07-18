@@ -8,7 +8,7 @@ The Arabic tab offers category browsing, search, liked titles, and a dedicated p
 
 ## How to open it
 
-The **Arabic** tab is temporarily hidden from the navigation bar and Settings → Navigation.
+The **Arabic** tab is temporarily hidden from the navigation bar and Settings → Features.
 
 ## What you can do
 

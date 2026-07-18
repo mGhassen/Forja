@@ -20,6 +20,7 @@ import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
 import 'package:forja/features/settings/sections/settings_trakt_panel.dart';
 import 'package:forja/features/settings/sections/settings_webstreamr_section.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
+import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/splash_preview_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -27,17 +28,17 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shell/nav_config.dart';
 
 /// Builds the body for a Settings category (lazy — only when selected / pushed).
-Widget buildSettingsCategoryBody(String categoryId) {
+Widget buildSettingsCategoryBody(
+  String categoryId,
+  SettingsVisibility visibility,
+) {
   switch (categoryId) {
     case SettingsCategoryId.profile:
       return const SettingsProfileAccountPageBody();
     case SettingsCategoryId.playback:
-      return const SettingsPlaybackSection();
+      return SettingsPlaybackSection(visibility: visibility);
     case SettingsCategoryId.sources:
-      return const Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [SettingsSearchTorrentsSection(), SettingsProvidersSection()],
-      );
+      return SettingsSourcesPageBody(visibility: visibility);
     case SettingsCategoryId.webstreamr:
       return const SettingsWebstreamrSection();
     case SettingsCategoryId.debrid:
@@ -47,7 +48,7 @@ Widget buildSettingsCategoryBody(String categoryId) {
     case SettingsCategoryId.lists:
       return const ListsScreen(embedded: true);
     case SettingsCategoryId.data:
-      return const SettingsDataPageBody();
+      return SettingsDataPageBody(visibility: visibility);
     case SettingsCategoryId.navigation:
       return const SettingsNavigationPageBody();
     case SettingsCategoryId.about:
@@ -58,22 +59,75 @@ Widget buildSettingsCategoryBody(String categoryId) {
 }
 
 /// Pushed detail route for mobile / TV.
-class SettingsCategoryPage extends StatelessWidget {
+class SettingsCategoryPage extends StatefulWidget {
   const SettingsCategoryPage({super.key, required this.categoryId});
 
   final String categoryId;
 
   @override
+  State<SettingsCategoryPage> createState() => _SettingsCategoryPageState();
+}
+
+class _SettingsCategoryPageState extends State<SettingsCategoryPage> {
+  SettingsVisibility? _visibility;
+
+  @override
+  void initState() {
+    super.initState();
+    SettingsService.playSourceChangeNotifier.addListener(_reload);
+    SettingsService.navbarChangeNotifier.addListener(_reload);
+    _reload();
+  }
+
+  @override
+  void dispose() {
+    SettingsService.playSourceChangeNotifier.removeListener(_reload);
+    SettingsService.navbarChangeNotifier.removeListener(_reload);
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    final next = await SettingsVisibility.resolve();
+    if (!mounted) return;
+    setState(() => _visibility = next);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final meta = settingsCategoryById(categoryId);
+    final visibility = _visibility;
+    if (visibility == null) {
+      return const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SizedBox.expand(),
+      );
+    }
+    final meta = settingsCategoryById(widget.categoryId, visibility);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SettingsPageScaffold(
         title: meta?.title ?? 'Settings',
         showBack: true,
         scrollable: !(meta?.fillViewport ?? false),
-        child: buildSettingsCategoryBody(categoryId),
+        child: buildSettingsCategoryBody(widget.categoryId, visibility),
       ),
+    );
+  }
+}
+
+class SettingsSourcesPageBody extends StatelessWidget {
+  const SettingsSourcesPageBody({super.key, required this.visibility});
+
+  final SettingsVisibility visibility;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (visibility.showTorrentEngine)
+          const SettingsSearchTorrentsSection(),
+        SettingsProvidersSection(visibility: visibility),
+      ],
     );
   }
 }
@@ -107,7 +161,12 @@ class SettingsAccountsPageBody extends StatelessWidget {
 }
 
 class SettingsDataPageBody extends StatefulWidget {
-  const SettingsDataPageBody({super.key});
+  const SettingsDataPageBody({
+    super.key,
+    required this.visibility,
+  });
+
+  final SettingsVisibility visibility;
 
   @override
   State<SettingsDataPageBody> createState() => _SettingsDataPageBodyState();
@@ -251,8 +310,11 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
             ),
           ],
         ),
-        const SettingsIptvPortalsSection(),
-        const SettingsCacheDataSection(),
+        if (widget.visibility.showIptvSettings)
+          const SettingsIptvPortalsSection(),
+        SettingsCacheDataSection(
+          showIptvPortalCache: widget.visibility.showIptvSettings,
+        ),
       ],
     );
   }

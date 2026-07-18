@@ -7,7 +7,12 @@ import 'package:forja/shared/playback/settings_data_cleaner.dart';
 
 /// Clear stream caches, images, provider scores, and local watch data.
 class SettingsCacheDataSection extends StatefulWidget {
-  const SettingsCacheDataSection({super.key});
+  const SettingsCacheDataSection({
+    super.key,
+    this.showIptvPortalCache = true,
+  });
+
+  final bool showIptvPortalCache;
 
   @override
   State<SettingsCacheDataSection> createState() =>
@@ -64,26 +69,27 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 action: SettingsDataCleaner.clearImageAndWebViewCaches,
               ),
             ),
-            _ClearTile(
-              busy: _busy == _ClearBusy.iptvPortals,
-              icon: Icons.live_tv_outlined,
-              iconColor: const Color(0xFF34D399),
-              title: 'IPTV portal cache',
-              subtitle:
-                  'Saved live-channel health checks and channel scan results. '
-                  'Portals and favorites stay; next open re-checks.',
-              onTap: () => _run(
-                kind: _ClearBusy.iptvPortals,
-                title: 'Clear IPTV portal cache?',
-                body:
-                    'Clears cached alive-channel checks and channel scan hits '
-                    'for all IPTV portals on this device.\n\n'
-                    'Saved portals, favorites, and M3U playlists are not affected.',
-                confirmLabel: 'Clear',
-                success: 'IPTV portal cache cleared',
-                action: SettingsDataCleaner.clearIptvPortalCaches,
+            if (widget.showIptvPortalCache)
+              _ClearTile(
+                busy: _busy == _ClearBusy.iptvPortals,
+                icon: Icons.live_tv_outlined,
+                iconColor: const Color(0xFF34D399),
+                title: 'IPTV portal cache',
+                subtitle:
+                    'Saved live-channel health checks and channel scan results. '
+                    'Portals and favorites stay; next open re-checks.',
+                onTap: () => _run(
+                  kind: _ClearBusy.iptvPortals,
+                  title: 'Clear IPTV portal cache?',
+                  body:
+                      'Clears cached alive-channel checks and channel scan hits '
+                      'for all IPTV portals on this device.\n\n'
+                      'Saved portals, favorites, and M3U playlists are not affected.',
+                  confirmLabel: 'Clear',
+                  success: 'IPTV portal cache cleared',
+                  action: SettingsDataCleaner.clearIptvPortalCaches,
+                ),
               ),
-            ),
             if (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
               _ClearTile(
                 busy: _busy == _ClearBusy.updates,

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **10 / 10** acceptance |
-| **Current slice** | Category hub + WebStreamr + Lists categories |
+| **Progress** | **8 / 8** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) |
+| **Current slice** | Profile-gated hub tiles + rows (VOD tabs + play sources + IPTV nav) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 5 | R33-C05 | TV / D-pad focus on category tiles and rows | ✅ |
 | 6 | R33-C06 | WebStreamr as hub category (`SettingsWebstreamrSection`) | ✅ |
 | 7 | R33-C07 | Lists as hub category (`ListsScreen(embedded: true)`) | ✅ |
+| 8 | R33-C08 | `SettingsVisibility` gates hub tiles + category rows from play sources / IPTV nav | ✅ |
 
 ---
 
@@ -43,6 +44,19 @@
 | 8 | R33-A08 | `flutter analyze` clean on touched settings/design files | ✅ |
 | 9 | R33-A09 | WebStreamr openable as **Settings → WebStreamr** (not nested push only) | ✅ |
 | 10 | R33-A10 | Lists openable as **Settings → Lists** (not nested push only) | ✅ |
+
+---
+
+## Acceptance (profile visibility)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R33-A11 | Hide **Sources** + **Debrid** when Direct torrent and Stremio are both off | ✅ |
+| 2 | R33-A12 | Hide **WebStreamr** (and Playback server reliability) when Webstreaming is off | ✅ |
+| 3 | R33-A13 | Sources body shows only torrent / Stremio / Nuvio / Jackett blocks that match enabled play sources (+ platform torrent cap) | ✅ |
+| 4 | R33-A14 | Hide IPTV EPG, portals CSV, and IPTV portal cache clear when IPTV tab is hidden | ✅ |
+| 5 | R33-A15 | Hub list refreshes live when play-source or Navigation toggles change; selection falls back if tile disappears | ✅ |
+| 6 | R33-A16 | No VOD tab (Home/Search/Anime/Asian Drama/My List) → hide Sources, WebStreamr, Debrid, Connected services, Lists, and Playback play-source / scoring / episode extras | ✅ |
 
 ---
 

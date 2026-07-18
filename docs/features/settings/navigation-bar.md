@@ -1,4 +1,4 @@
-# Navigation bar
+# Features
 
 > Show, hide, and reorder tabs in the main shell.
 
@@ -10,12 +10,12 @@ On a fresh install, all available tabs are enabled in this order: Search, Home, 
 
 ## How to open it
 
-**Settings → Navigation**
+**Settings → Features**
 
 ## What you can do
 
 - Toggle visibility for each available tab (Home, Search, Asian Drama, Anime, IPTV, Live Matches, My List)
-- Drag to reorder visible tabs (in the app); on the web portal use up/down controls under **Profile settings → Navigation**
+- Drag to reorder visible tabs (in the app); on the web portal use up/down controls under **Profile settings → Features**
 - Select the star beside a visible tab to make it the menu that opens when you launch the app (and after you switch to this profile mid-session)
 - Restore a cleaner bar by hiding unused hubs
 - Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab)

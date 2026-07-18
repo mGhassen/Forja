@@ -20,7 +20,7 @@ Older SharedPreferences copies of those settings are imported once into that fil
 
 ## How to open it
 
-**Settings → Data & backup** (Backup / IPTV portals)
+**Settings → Data & backup** (Backup / IPTV portals — portals CSV only when the IPTV tab is visible)
 
 ## What you can do
 
@@ -45,4 +45,4 @@ Older SharedPreferences copies of those settings are imported once into that fil
 - [IPTV — Xtream](../live/iptv-xtream.md)
 - [Trakt](../accounts/trakt.md)
 - [Stremio addons](../sources/stremio-addons.md)
-- [Navigation bar](navigation-bar.md)
+- [Features](navigation-bar.md)

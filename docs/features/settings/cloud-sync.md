@@ -6,10 +6,10 @@
 
 Cloud sync stores settings domain blobs in Supabase under your Forja account. The same account works on the web portal and in the desktop/mobile app. The app stays offline-first — you do not need an account to use Forja.
 
-Each account can have multiple profiles with their own avatar. Every profile
-has an independent set of synced settings. The active profile is selected
-separately on each browser or app device, so changing profiles does not switch
-another screen.
+Each account can have up to **5 profiles**, each with their own avatar. Every
+profile has an independent set of synced settings. The active profile is
+selected separately on each browser or app device, so changing profiles does
+not switch another screen.
 
 ## How to open it
 
@@ -32,7 +32,7 @@ another screen.
   create your
   first one (name + avatar); default synced settings are attached then. After
   that, choose a profile on **Who's watching?**, then open **Remote settings**.
-  The sidebar splits **Profile** (synced IPTV / playback / navigation / Stremio)
+  The sidebar splits **Profile** (synced IPTV / playback / Features / Stremio)
   from **Account** (email, passkeys, log out, delete). Back returns to Who's
   watching. Switch profiles from the header menu. **Log out** is under Account in
   the left nav.
@@ -46,7 +46,7 @@ Per profile:
 | **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled keys only — e.g. `iptvScrape` for Reddit portal discovery in the app. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
-| **`profile_settings` → Navigation** | Visible shell tabs and default tab — editable on web under **Profile → Navigation** |
+| **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features** |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
 
 ## What stays local
@@ -85,7 +85,7 @@ Not synced — device-specific or sensitive:
   where that avatar scales from its tile into the center while settings sync —
   not the boot intro splash, and not an in-settings dropdown. After it finishes,
   the app opens that profile’s **default menu** tab (the starred tab under
-  **Settings → Navigation**), not the screen you were on before switching.
+  **Settings → Features**), not the screen you were on before switching.
 - On desktop, a restored session goes straight to the splash. A new interactive
   sign-in opens **Who’s watching?** so you can choose the device profile first.
   If the account has no profiles yet, you create one before continuing. Tapping a
@@ -100,10 +100,11 @@ Not synced — device-specific or sensitive:
   sidebar item for passkeys, log out, or permanent account delete (confirm by
   typing your email). On macOS / Windows, **Settings → Profile & account** also
   lists Add / remove passkey.
-- Create, rename, and delete profiles on desktop or the web, with 30 avatars
-  organized into Characters, Creatures, Space, and Retro categories. Signup does
-  not invent a default profile — the first one is yours, with default settings
-  applied when you create it
+- Create, rename, and delete profiles on desktop or the web (max **5** per
+  account), with 30 avatars organized into Characters, Creatures, Space, and
+  Retro categories. Signup does not invent a default profile — the first one is
+  yours, with default settings applied when you create it. Add profile is hidden
+  once you hit the limit.
 - The desktop chooser, rail, and Profile & account page use the same avatar
   artwork selected on the web
 - Add, edit, search, favorite, share, or remove IPTV portals from

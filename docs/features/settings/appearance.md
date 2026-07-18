@@ -8,5 +8,5 @@ Forja uses a single **flat cinematic dark theme** — muted shell chrome and bra
 
 ## Related
 
-- [Navigation bar](navigation-bar.md)
+- [Features](navigation-bar.md)
 - [Backup & restore](backup-restore.md)

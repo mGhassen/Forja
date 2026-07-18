@@ -298,6 +298,9 @@ class SyncService {
     return true;
   }
 
+  /// Matches `profiles_enforce_max` in Supabase.
+  static const maxProfilesPerAccount = 5;
+
   static const _profileColors = [
     '#1ce783',
     '#ff4d1c',
@@ -321,6 +324,9 @@ class SyncService {
       throw const AuthException('Enter a profile name.');
     }
     final existing = await listProfiles();
+    if (existing.length >= maxProfilesPerAccount) {
+      throw const AuthException('Maximum of 5 profiles per account.');
+    }
     final color = _profileColors[existing.length % _profileColors.length];
     try {
       final row = await client

@@ -8,7 +8,7 @@ Anime Arabic is a hub for Arabic-dubbed anime powered by AnimeSlayer. Hero secti
 
 ## How to open it
 
-The **Anime Arabic** tab is temporarily hidden from the navigation bar and Settings → Navigation.
+The **Anime Arabic** tab is temporarily hidden from the navigation bar and Settings → Features.
 
 ## What you can do
 
