@@ -527,9 +527,19 @@ jobs:
           generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           files: release-flat/*
 
+      # publish_release checks out the version tag (changelog accuracy). That tree
+      # may predate the R2 uploader when using "Existing tag" — pull tooling from
+      # the workflow commit (github.sha) in that case.
       - name: Upload installers to Cloudflare R2
         run: |
-          chmod +x scripts/upload_release_to_r2.sh
+          if [[ ! -f scripts/upload_release_to_r2.py ]]; then
+            echo "R2 uploader missing on tag; fetching from workflow ref ${{ github.sha }}"
+            git fetch --depth=1 origin "${{ github.sha }}"
+            git checkout "${{ github.sha }}" -- \
+              scripts/upload_release_to_r2.py \
+              scripts/upload_release_to_r2.sh
+          fi
+          chmod +x scripts/upload_release_to_r2.sh scripts/upload_release_to_r2.py
           ./scripts/upload_release_to_r2.sh \
             "${{ needs.resolve_version.outputs.version }}" \
             release-flat
