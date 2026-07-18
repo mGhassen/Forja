@@ -114,6 +114,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _obscurePassword = true;
   bool _importingShareCode = false;
   bool _showManualForm = false;
+  bool _addSucceeded = false;
+  String? _successName;
   _PortalImportPhase _importPhase = _PortalImportPhase.shareCode;
   String? _shareCodeError;
   String? _lastImportedCode;
@@ -456,27 +458,88 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         password: _passCtrl.text,
         label: label,
       );
-    } else {
-      await ctrl.addManual(
-        url: _urlCtrl.text,
-        username: _userCtrl.text,
-        password: _passCtrl.text,
-        label: label,
-        closePanel: closePanel,
-      );
+      if (ctrl.addError == null && mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
     }
-    if (ctrl.addError == null && mounted) {
+    await ctrl.addManual(
+      url: _urlCtrl.text,
+      username: _userCtrl.text,
+      password: _passCtrl.text,
+      label: label,
+      closePanel: closePanel,
+    );
+    if (ctrl.addError != null || !mounted) return;
+    final name = label.trim().isNotEmpty
+        ? label.trim()
+        : (ctrl.activePortal?.displayLabel ?? 'Portal');
+    setState(() {
+      _addSucceeded = true;
+      _successName = name;
+    });
+    Future<void>.delayed(const Duration(milliseconds: 1600), () {
+      if (!mounted) return;
       Navigator.of(context).pop();
-    }
+    });
+  }
+
+  void _closeAfterSuccess() {
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   void _cancel() {
+    if (_addSucceeded) {
+      _closeAfterSuccess();
+      return;
+    }
     if (_namingImported) {
       _cancelNamePortal();
       return;
     }
     widget.ctrl.dismissAddDialog();
     Navigator.of(context).pop();
+  }
+
+  Widget _successBody() {
+    final name = _successName ?? 'Portal';
+    return Column(
+      key: const ValueKey<String>('success'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.check_circle_rounded,
+          color: ForjaShellColors.brandGreen,
+          size: _tv ? 42 : 48,
+        ),
+        SizedBox(height: _tv ? 10 : 14),
+        Text(
+          'Portal added',
+          style: IptvShellStyle.overlayTitle.copyWith(
+            fontSize: _tv ? 17 : 19,
+          ),
+        ),
+        SizedBox(height: _tv ? 6 : 8),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            color: IptvShellStyle.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+        SizedBox(height: _tv ? 14 : 18),
+        _portalDialogActionIcon(
+          icon: Icons.check_rounded,
+          color: ForjaShellColors.brandGreen,
+          tooltip: 'Done',
+          focusNode: _submitFocus,
+          tvItemIndex: _dialogOkIndex,
+          onTap: _closeAfterSuccess,
+        ),
+      ],
+    );
   }
 
   Widget _portalDialogCloseButton({required VoidCallback? onTap}) {
@@ -578,7 +641,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         : (_editing ? 'Edit Portal' : 'Add Portal');
     final expandBtnSize = _tv ? 34.0 : 38.0;
     final expandOverlap = expandBtnSize / 2;
-    final showExpandToggle = !_editing && !_namingImported;
+    final showExpandToggle =
+        !_editing && !_namingImported && !_addSucceeded;
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, _) => Dialog(
@@ -605,7 +669,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                       duration: const Duration(milliseconds: 280),
                       switchInCurve: Curves.easeOutCubic,
                       switchOutCurve: Curves.easeInCubic,
-                      child: Column(
+                      child: _addSucceeded
+                          ? _successBody()
+                          : Column(
                         key: ValueKey<String>(
                           _namingImported
                               ? 'name'

@@ -217,6 +217,45 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     }
   }
 
+  Future<void> _confirmDelete() async {
+    final name = widget.portal.displayLabel;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        AlertDialog(
+          backgroundColor: IptvShellStyle.surface,
+          title: Text(
+            'Delete portal?',
+            style: IptvShellStyle.pageTitle.copyWith(fontSize: 24),
+          ),
+          content: Text(
+            'Are you sure you want to delete "$name"? This cannot be undone.',
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white70,
+              fontSize: 13,
+            ),
+          ),
+          actions: [
+            IptvTextAction(
+              icon: Icons.close_rounded,
+              label: 'Cancel',
+              color: Colors.white70,
+              onPressed: () => Navigator.of(ctx).pop(false),
+            ),
+            IptvPrimaryButton(
+              icon: Icons.delete_rounded,
+              label: 'Delete',
+              onPressed: () => Navigator.of(ctx).pop(true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await widget.ctrl.deletePortal(widget.portal.key);
+  }
+
   void _onRowTap() {
     if (_showShareCode) {
       setState(() => _showShareCode = false);
@@ -550,7 +589,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 tooltip: 'Delete',
                                 icon: Icons.delete_rounded,
                                 color: const Color(0xFFEF4444),
-                                onTap: () => ctrl.deletePortal(v.key),
+                                onTap: _confirmDelete,
                                 focusNode: _deleteFocus,
                                 tvRowId: _actionsRowId,
                                 tvItemIndex: 3,
