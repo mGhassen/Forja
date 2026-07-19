@@ -19,6 +19,7 @@ import { Route as OpsProvidersRouteImport } from './routes/_ops/providers'
 import { Route as OpsScrapeRouteImport } from './routes/_ops/scrape'
 import { Route as ApiInngestRouteImport } from './routes/api.inngest'
 import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-catalog-scrape'
+import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-catalog-verify'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
@@ -71,6 +72,11 @@ const ApiIptvCatalogScrapeRoute = ApiIptvCatalogScrapeRouteImport.update({
   path: '/api/iptv-catalog-scrape',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIptvCatalogVerifyRoute = ApiIptvCatalogVerifyRouteImport.update({
+  id: '/api/iptv-catalog-verify',
+  path: '/api/iptv-catalog-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
   id: '/api/iptv-share',
   path: '/api/iptv-share',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
+  '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
+  '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/_ops/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
+  '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
+    | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
     | '/auth/callback'
     | '/login/mfa'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
+    | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
     | '/auth/callback'
     | '/login/mfa'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/_ops/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
+    | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
     | '/auth/callback'
     | '/_ops/'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   OpsRoute: typeof OpsRouteWithChildren
   ApiInngestRoute: typeof ApiInngestRoute
   ApiIptvCatalogScrapeRoute: typeof ApiIptvCatalogScrapeRoute
+  ApiIptvCatalogVerifyRoute: typeof ApiIptvCatalogVerifyRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvCatalogScrapeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/iptv-catalog-verify': {
+      id: '/api/iptv-catalog-verify'
+      path: '/api/iptv-catalog-verify'
+      fullPath: '/api/iptv-catalog-verify'
+      preLoaderRoute: typeof ApiIptvCatalogVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/iptv-share': {
       id: '/api/iptv-share'
       path: '/api/iptv-share'
@@ -323,18 +343,10 @@ const rootRouteChildren: RootRouteChildren = {
   OpsRoute: OpsRouteWithChildren,
   ApiInngestRoute: ApiInngestRoute,
   ApiIptvCatalogScrapeRoute: ApiIptvCatalogScrapeRoute,
+  ApiIptvCatalogVerifyRoute: ApiIptvCatalogVerifyRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

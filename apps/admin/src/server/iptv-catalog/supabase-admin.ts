@@ -37,6 +37,29 @@ export async function patchScrapeRun(
   if (error) throw error
 }
 
+/** Persist Reddit post_id only — never title / body_excerpt. */
+export async function upsertScrapePostId(
+  sb: SupabaseClient,
+  postId: string,
+  scrapeRunId: string,
+  subreddit = '',
+): Promise<void> {
+  const id = postId.trim()
+  if (!id) return
+  const { error } = await sb.from('iptv_scrape_posts').upsert(
+    {
+      post_id: id,
+      subreddit,
+      title: '',
+      body_excerpt: '',
+      scrape_run_id: scrapeRunId,
+      shape_flags: {},
+    },
+    { onConflict: 'post_id' },
+  )
+  if (error) throw error
+}
+
 export async function upsertCatalogCandidate(
   sb: SupabaseClient,
   portal: CatalogPortal,
@@ -54,7 +77,7 @@ export async function upsertCatalogCandidate(
     p_max_connections: status.maxConnections,
     p_timezone: status.timezone,
     p_region_primary: region.primary,
-    p_post_id: null,
+    p_post_id: portal.postId?.trim() || null,
     p_region_tags: region.tags,
     p_region_confidence: region.confidence,
   })

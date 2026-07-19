@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **14 / 16** acceptance (Inngest TS scrape + L2 paste; AI + Stalker deferred) |
-| **Current slice** | Inngest catalog scrape on admin — L2 paste.sh decrypt shipped; AI/Stalker deferred |
+| **Progress** | **5 / 5** components · **16 / 18** acceptance (Inngest scrape + manual verify; AI + Stalker deferred) |
+| **Current slice** | Inngest catalog scrape + Pool manual status check; AI/Stalker deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,6 +47,8 @@
 | 14 | R40-A14 | Separate `apps/admin` TanStack Start app (same stack/auth/design as web; not portal routes) | ✅ |
 | 15 | R40-A15 | Inngest TS scrape on `apps/admin` (cron + per-portal `verify-portal-status` step; Rust worker on hold) | ✅ |
 | 16 | R40-A16 | Admin Inngest scrape: L2 base64 → paste.sh decrypt + extract (parity with `crates/iptv` deep links); drop banned Reddit subs | ✅ |
+| 17 | R40-A17 | Persist Reddit `post_id` only on scrape posts / candidates — never title or body_excerpt | ✅ |
+| 18 | R40-A18 | Admin Pool: manual Check status on portal or host (player_api → update alive) | ✅ |
 
 ---
 
@@ -69,7 +71,7 @@ Per-user Find Portals hits the same `/new` posts, cannot filter catalog region, 
 ## Contracts
 
 - **Pool ≠ user assignment** — candidates stage credentials; deal promotes via `upsert_iptv_portal` + `user_iptv_portals`.
-- **L1 / L2** — post body vs resolved paste/base64 payload tracked separately.
+- **L1 / L2** — post body vs resolved paste/base64 payload tracked separately at extract time; **DB stores `post_id` only** (no title/body_excerpt).
 - **Worker** uses service role; admin UI uses authenticated `is_admin` RPCs/RLS.
 - **No AI in foundation** — optional later on L2 miss samples only.
 

@@ -17,7 +17,7 @@ Operators scrape Reddit IPTV posts with a Rust worker, store verified portals in
 
 - **Dashboard** — pool size, alive count, scrape runs, account count
 - **Accounts** — search by email; toggle `iptvScrape`; grant/revoke credits (+5 / −1)
-- **Pool** — table of hosts (one line: host / accounts / alive / scraped); expand to a 2-column portal grid (Account→IPTV row content, actions on hover). Start/stop scrape from the bar
+- **Pool** — table of hosts (one line: host / accounts / alive / scraped); expand to a 2-column portal grid (Account→IPTV row content, actions on hover). Filter by **status** (alive / dead / unchecked) and **region**. **Check status** (radio icon) on a portal or on the host row runs Xtream `player_api` and updates alive/expiry/region. Start/stop scrape from the bar
 - **Scrape** — view worker run history (pages, L1 extract, upserted, alive)
 
 ## Scrape (Inngest on admin)
@@ -28,9 +28,10 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Daily cron `0 6 * * *` UTC runs `iptv-catalog-scrape`
 4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
-5. Each portal is a step `verify-portal-status-*` that hits Xtream `player_api` then upserts into the pool
+5. **Post storage is id-only** — `iptv_scrape_posts` keeps `post_id` (+ counters/flags), never Reddit title or body text. Candidates link `post_id` the same way.
+6. Candidates are upserted after extract. **Xtream `player_api` verify is currently off** (`VERIFY_PORTAL_STATUS = false` in `iptv-catalog-scrape.ts`) — pool rows land as `alive: null` / unverified so Deal will not pick them until verify is re-enabled. Flip the flag to restore per-portal `verify-portal-status-*` steps.
 
-If a run shows **posts > 0** but **L1 = 0** and no `verify-portal-status-*` steps, paste decrypt / deep extract failed (not Inngest itself).
+If a run shows **posts > 0** but **L1 = 0**, paste decrypt / deep extract failed (not Inngest itself).
 
 Local:
 

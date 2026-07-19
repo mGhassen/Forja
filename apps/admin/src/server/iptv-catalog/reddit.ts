@@ -177,10 +177,15 @@ function addExtracted(
   text: string,
   source: string,
   maxResults: number,
+  postId?: string,
 ) {
   for (const p of extractPortals(text, source)) {
     if (acc.size >= maxResults) break
-    acc.set(portalKey(p), p)
+    const withPost: CatalogPortal = postId ? { ...p, postId } : p
+    const key = portalKey(withPost)
+    const prev = acc.get(key)
+    if (!prev) acc.set(key, withPost)
+    else if (!prev.postId && postId) acc.set(key, { ...prev, postId })
   }
 }
 
@@ -189,6 +194,7 @@ async function extractDeepPortals(
   body: string,
   acc: Map<string, CatalogPortal>,
   maxResults: number,
+  postId?: string,
 ) {
   const deepLinks: string[] = []
 
@@ -203,7 +209,7 @@ async function extractDeepPortals(
     if (decoded.startsWith('http') && isPasteSite(decoded)) {
       deepLinks.push(decoded)
     } else if (!decoded.startsWith('http') && decoded.includes(':')) {
-      addExtracted(acc, decoded, 'catalog-decoded', maxResults)
+      addExtracted(acc, decoded, 'catalog-decoded', maxResults, postId)
     }
   }
 
@@ -221,12 +227,14 @@ async function extractDeepPortals(
   for (const dl of unique) {
     if (acc.size >= maxResults) break
     const text = await fetchPasteBody(dl)
-    if (text) addExtracted(acc, text, 'catalog-deep', maxResults)
+    if (text) addExtracted(acc, text, 'catalog-deep', maxResults, postId)
   }
 }
 
 export type ScrapePageResult = {
   portals: CatalogPortal[]
+  /** Reddit t3_ ids seen this page — for DB id-only rows (no title/body). */
+  postIds: string[]
   nextAfter: string | null
   subreddit: string
   postsSeen: number
@@ -266,20 +274,30 @@ export async function scrapeCatalogPage(
       : null
 
   const acc = new Map<string, CatalogPortal>()
+  const postIds: string[] = []
   for (const child of posts) {
     if (acc.size >= maxResults) break
     const d = child.data
     if (!d) continue
+    const rawId = String(d.name ?? d.id ?? '').trim()
+    const postId = !rawId
+      ? undefined
+      : rawId.startsWith('t3_')
+        ? rawId
+        : `t3_${rawId}`
+    if (postId) postIds.push(postId)
     const title = String(d.title ?? '')
     const selftext = String(d.selftext ?? '')
+    // Extract in-memory only — never persist title/selftext.
     const body = `${title}\n${selftext}`
-    addExtracted(acc, body, 'catalog', maxResults)
+    addExtracted(acc, body, 'catalog', maxResults, postId)
     if (acc.size >= maxResults) break
-    await extractDeepPortals(body, acc, maxResults)
+    await extractDeepPortals(body, acc, maxResults, postId)
   }
 
   return {
     portals: [...acc.values()],
+    postIds,
     nextAfter,
     subreddit: sub,
     postsSeen: posts.length,

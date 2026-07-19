@@ -221,17 +221,27 @@ async fn scrape(
         .await?;
 
     for post in &post_rows {
-        let mut row = post.clone();
-        if let Some(obj) = row.as_object_mut() {
-            obj.insert("scrape_run_id".into(), json!(run_id));
-            obj.remove("deep_refs");
-            obj.remove("l1_portals");
+        // Persist post_id (+ metrics) only — never Reddit title/body text.
+        let post_id = post.get("post_id").and_then(|v| v.as_str()).unwrap_or("");
+        if post_id.is_empty() {
+            continue;
         }
+        let row = json!({
+            "post_id": post_id,
+            "subreddit": post.get("subreddit").and_then(|v| v.as_str()).unwrap_or(""),
+            "title": "",
+            "body_excerpt": "",
+            "scrape_run_id": run_id,
+            "shape_flags": post.get("shape_flags").cloned().unwrap_or(json!({})),
+            "l1_extract_count": post.get("l1_extract_count").and_then(|v| v.as_u64()).unwrap_or(0),
+            "deep_ref_count": post.get("deep_ref_count").and_then(|v| v.as_u64()).unwrap_or(0),
+            "l2_extract_count": post.get("l2_extract_count").and_then(|v| v.as_u64()).unwrap_or(0),
+            "miss": post.get("miss").and_then(|v| v.as_bool()).unwrap_or(false),
+        });
         if let Err(e) = sb.upsert_post(&row).await {
             eprintln!("upsert post: {e}");
             continue;
         }
-        let post_id = post.get("post_id").and_then(|v| v.as_str()).unwrap_or("");
         if let Some(refs) = post.get("deep_refs").and_then(|v| v.as_array()) {
             for r in refs {
                 if let Err(e) = sb.upsert_deep_ref(post_id, r).await {

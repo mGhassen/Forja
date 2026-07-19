@@ -11,6 +11,7 @@ import {
   Check,
   Copy,
   Pencil,
+  Radio,
   Share2,
   Trash2,
   Users,
@@ -21,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
 import { adminDb } from '@/lib/admin-db'
+import { catalogVerify } from '@/lib/catalog-verify'
 import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
 import {
   createPortalShare,
@@ -311,7 +313,31 @@ function EditDialog({
   )
 }
 
-const ACTION_RAIL_W = 108
+const ACTION_RAIL_W = 144
+
+function aliveTone(alive: boolean | null): {
+  label: string
+  className: string
+  dotClass: string
+} {
+  if (alive === true)
+    return {
+      label: 'Alive',
+      className: 'text-forja-green',
+      dotClass: 'bg-forja-green shadow-[0_0_8px_rgba(28,231,131,0.55)]',
+    }
+  if (alive === false)
+    return {
+      label: 'Dead',
+      className: 'text-red-400',
+      dotClass: 'bg-red-500',
+    }
+  return {
+    label: 'Unchecked',
+    className: 'text-forja-muted',
+    dotClass: 'bg-white/25',
+  }
+}
 
 /** Table-style portal row — Account→IPTV content, actions on hover. */
 function CandidateRow({
@@ -319,22 +345,27 @@ function CandidateRow({
   sharing,
   shareCode,
   deleting,
+  checking,
   onShare,
   onEdit,
   onDelete,
+  onCheck,
 }: {
   c: Cand
   sharing: boolean
   shareCode: string | null
   deleting: boolean
+  checking: boolean
   onShare: () => void
   onEdit: () => void
   onDelete: () => void
+  onCheck: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const expiry = portalExpiryTone(c.expiry)
   const seats = seatsTone(c.max_connections)
-  const pinRail = confirmDelete || sharing || !!shareCode
+  const status = aliveTone(c.alive)
+  const pinRail = confirmDelete || sharing || !!shareCode || checking
 
   return (
     <li
@@ -375,8 +406,18 @@ function CandidateRow({
               <CalendarDays className="size-3 shrink-0" />
               <span className="truncate">{expiry.label}</span>
             </p>
-            <p className="truncate text-[13px] font-semibold text-forja-text">
-              {c.username}
+            <p className="flex min-w-0 items-center gap-2">
+              <span
+                className={cn(
+                  'size-2 shrink-0 rounded-full',
+                  checking ? 'animate-pulse bg-amber-400' : status.dotClass,
+                )}
+                title={checking ? 'Checking…' : status.label}
+                aria-label={checking ? 'Checking status' : status.label}
+              />
+              <span className="truncate text-[13px] font-semibold text-forja-text">
+                {c.username}
+              </span>
             </p>
             <p className="truncate text-sm text-white/55">{c.url}</p>
             <p
@@ -396,8 +437,8 @@ function CandidateRow({
         className={cn(
           'flex shrink-0 items-center justify-end overflow-hidden transition-[width] duration-180 ease-out',
           pinRail
-            ? 'w-[108px]'
-            : 'w-0 group-hover:w-[108px] group-focus-within:w-[108px]',
+            ? 'w-[144px]'
+            : 'w-0 group-hover:w-[144px] group-focus-within:w-[144px]',
         )}
       >
         <div
@@ -438,7 +479,24 @@ function CandidateRow({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
-                disabled={sharing}
+                disabled={checking || sharing}
+                aria-label="Check portal status"
+                title="Check portal status"
+                onClick={onCheck}
+              >
+                <Radio
+                  className={cn(
+                    'size-4',
+                    checking && 'animate-pulse text-amber-400',
+                  )}
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={sharing || checking}
                 aria-label="Copy share code"
                 title="Copy share code"
                 onClick={onShare}
@@ -456,6 +514,7 @@ function CandidateRow({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
+                disabled={checking}
                 aria-label="Edit portal"
                 onClick={onEdit}
               >
@@ -466,6 +525,7 @@ function CandidateRow({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                disabled={checking}
                 aria-label="Delete portal"
                 onClick={() => setConfirmDelete(true)}
               >
@@ -492,7 +552,14 @@ export function AdminPoolPage() {
   const [editError, setEditError] = useState<string | null>(null)
   const [shareFlash, setShareFlash] = useState<Record<string, string>>({})
   const [sharingId, setSharingId] = useState<string | null>(null)
+  const [checkingId, setCheckingId] = useState<string | null>(null)
+  const [checkingHost, setCheckingHost] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [actionInfo, setActionInfo] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'alive' | 'dead' | 'unchecked'
+  >('all')
+  const [regionFilter, setRegionFilter] = useState<string>('all')
 
   const runs = useQuery({
     queryKey: ['admin', 'scrape_runs', 'latest'],
@@ -530,7 +597,32 @@ export function AdminPoolPage() {
     refetchInterval: running ? 8_000 : false,
   })
 
-  const groups = useMemo(() => groupByHost(list.data ?? []), [list.data])
+  const regionOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of list.data ?? []) {
+      const r = (c.region_primary || 'UNKNOWN').trim() || 'UNKNOWN'
+      set.add(r)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b))
+  }, [list.data])
+
+  const filteredRows = useMemo(() => {
+    const rows = list.data ?? []
+    return rows.filter((c) => {
+      if (statusFilter === 'alive' && c.alive !== true) return false
+      if (statusFilter === 'dead' && c.alive !== false) return false
+      if (statusFilter === 'unchecked' && c.alive != null) return false
+      if (
+        regionFilter !== 'all' &&
+        (c.region_primary || 'UNKNOWN') !== regionFilter
+      ) {
+        return false
+      }
+      return true
+    })
+  }, [list.data, statusFilter, regionFilter])
+
+  const groups = useMemo(() => groupByHost(filteredRows), [filteredRows])
 
   const startScrape = useMutation({
     mutationFn: () => scrapeControl('start'),
@@ -644,6 +736,7 @@ export function AdminPoolPage() {
   async function copyShare(c: Cand) {
     setSharingId(c.id)
     setActionError(null)
+    setActionInfo(null)
     try {
       const password = await decryptPassword(c.id)
       const code = await createPortalShare({
@@ -672,6 +765,45 @@ export function AdminPoolPage() {
     }
   }
 
+  async function checkPortal(c: Cand) {
+    setCheckingId(c.id)
+    setActionError(null)
+    setActionInfo(null)
+    try {
+      const res = await catalogVerify({ candidateId: c.id })
+      const r = res.results[0]
+      setActionInfo(
+        r
+          ? `${c.username}: ${r.alive ? 'alive' : 'dead'} (${r.status})${
+              r.error ? ` — ${r.error}` : ''
+            }`
+          : `Checked ${res.checked}`,
+      )
+      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+    } catch (e) {
+      setActionError(errMessage(e, 'Status check failed'))
+    } finally {
+      setCheckingId(null)
+    }
+  }
+
+  async function checkHost(host: string) {
+    setCheckingHost(host)
+    setActionError(null)
+    setActionInfo(null)
+    try {
+      const res = await catalogVerify({ host })
+      setActionInfo(
+        `${host}: ${res.alive} alive · ${res.dead} dead · ${res.checked} checked`,
+      )
+      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+    } catch (e) {
+      setActionError(errMessage(e, 'Host status check failed'))
+    } finally {
+      setCheckingHost(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -679,7 +811,7 @@ export function AdminPoolPage() {
           Catalog pool
         </h1>
         <p className="mt-1 text-sm text-forja-muted">
-          Grouped by host. Copy, edit, or delete like Account → IPTV.
+          Grouped by host. Check status, copy, edit, or delete.
         </p>
       </div>
 
@@ -773,6 +905,9 @@ export function AdminPoolPage() {
       {actionError ? (
         <p className="text-sm text-red-400">{actionError}</p>
       ) : null}
+      {actionInfo ? (
+        <p className="text-sm text-forja-muted">{actionInfo}</p>
+      ) : null}
 
       {editingId ? (
         <EditDialog
@@ -788,33 +923,93 @@ export function AdminPoolPage() {
         />
       ) : null}
 
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="pool-status-filter"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
+          >
+            Status
+          </label>
+          <select
+            id="pool-status-filter"
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(
+                e.target.value as 'all' | 'alive' | 'dead' | 'unchecked',
+              )
+            }
+            className="h-9 rounded-md border border-forja-border bg-forja-elevated px-2.5 text-sm text-forja-text outline-none focus:border-forja-green/50"
+          >
+            <option value="all">All</option>
+            <option value="alive">Alive</option>
+            <option value="dead">Dead</option>
+            <option value="unchecked">Unchecked</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="pool-region-filter"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
+          >
+            Region
+          </label>
+          <select
+            id="pool-region-filter"
+            value={regionFilter}
+            onChange={(e) => setRegionFilter(e.target.value)}
+            className="h-9 min-w-[8rem] rounded-md border border-forja-border bg-forja-elevated px-2.5 text-sm text-forja-text outline-none focus:border-forja-green/50"
+          >
+            <option value="all">All</option>
+            {regionOptions.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="pb-2 text-xs text-forja-muted">
+          {filteredRows.length}
+          {(list.data?.length ?? 0) !== filteredRows.length
+            ? ` / ${list.data?.length ?? 0}`
+            : ''}{' '}
+          portals
+        </p>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-forja-border">
         {list.isLoading ? (
           <p className="px-4 py-4 text-sm text-forja-muted">Loading…</p>
-        ) : groups.length === 0 ? (
+        ) : (list.data?.length ?? 0) === 0 ? (
           <p className="px-4 py-4 text-sm text-forja-muted">Pool is empty.</p>
+        ) : groups.length === 0 ? (
+          <p className="px-4 py-4 text-sm text-forja-muted">
+            No portals match these filters.
+          </p>
         ) : (
           <>
-            <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem] gap-3 border-b border-forja-border bg-forja-elevated/50 px-3 py-2 text-xs font-medium text-forja-muted sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem]">
+            <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] gap-3 border-b border-forja-border bg-forja-elevated/50 px-3 py-2 text-xs font-medium text-forja-muted sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
               <span>Host</span>
               <span className="text-right tabular-nums">Accounts</span>
               <span className="text-right tabular-nums">Alive</span>
               <span className="text-right">Scraped</span>
+              <span className="sr-only">Check</span>
             </div>
             {groups.map((g) => {
               const expanded = open.has(g.host)
+              const hostBusy = checkingHost === g.host
               return (
                 <div
                   key={g.host}
                   className="border-t border-forja-border first:border-t-0"
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggle(g.host)}
-                    aria-expanded={expanded}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem] items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.03] sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem]"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
+                  <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
+                    <button
+                      type="button"
+                      onClick={() => toggle(g.host)}
+                      aria-expanded={expanded}
+                      className="flex min-w-0 items-center gap-2 text-left"
+                    >
                       <span
                         className="w-3 shrink-0 text-forja-muted"
                         aria-hidden
@@ -824,7 +1019,7 @@ export function AdminPoolPage() {
                       <span className="truncate text-sm font-semibold text-forja-text">
                         {g.host}
                       </span>
-                    </span>
+                    </button>
                     <span className="text-right text-sm tabular-nums text-forja-muted">
                       {g.rows.length}
                     </span>
@@ -834,7 +1029,24 @@ export function AdminPoolPage() {
                     <span className="text-right text-sm text-forja-muted">
                       {relativeTime(g.lastScrapedAt)}
                     </span>
-                  </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 justify-self-end p-0"
+                      disabled={hostBusy || checkingId != null}
+                      aria-label={`Check all portals on ${g.host}`}
+                      title="Check server status"
+                      onClick={() => void checkHost(g.host)}
+                    >
+                      <Radio
+                        className={cn(
+                          'size-4',
+                          hostBusy && 'animate-pulse text-amber-400',
+                        )}
+                      />
+                    </Button>
+                  </div>
                   {expanded ? (
                     <ul className="grid grid-cols-1 border-t border-forja-border bg-forja-surface/20 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
                       {g.rows.map((c) => (
@@ -844,9 +1056,13 @@ export function AdminPoolPage() {
                           sharing={sharingId === c.id}
                           shareCode={shareFlash[c.id] ?? null}
                           deleting={remove.isPending}
+                          checking={
+                            checkingId === c.id || checkingHost === g.host
+                          }
                           onShare={() => void copyShare(c)}
                           onEdit={() => void beginEdit(c)}
                           onDelete={() => remove.mutate(c.id)}
+                          onCheck={() => void checkPortal(c)}
                         />
                       ))}
                     </ul>

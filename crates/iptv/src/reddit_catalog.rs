@@ -407,7 +407,7 @@ fn collect_oauth_ops_posts(
             .unwrap_or("")
             .to_string();
         let body = format!("{title} {selftext}").trim().to_string();
-        let excerpt: String = body.chars().take(500).collect();
+        // Never persist title/body — extract in-memory; DB keeps post_id only.
 
         let mut l1: BTreeMap<String, Portal> = BTreeMap::new();
         add_extracted(&mut l1, &body, "Catalog", max_results);
@@ -522,8 +522,8 @@ fn collect_oauth_ops_posts(
         rows.push(json!({
             "post_id": post_id,
             "subreddit": subreddit,
-            "title": title,
-            "body_excerpt": excerpt,
+            "title": "",
+            "body_excerpt": "",
             "shape_flags": shape,
             "l1_extract_count": l1.len(),
             "deep_ref_count": deep_refs.len(),

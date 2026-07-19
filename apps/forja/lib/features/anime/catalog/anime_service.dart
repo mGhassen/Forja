@@ -365,8 +365,8 @@ class AnimeService {
     } catch (_) {}
     final thumbMap = _buildEpisodeThumbnailMap(fresh.streamingEpisodes);
 
-    // 1. Try Anikoto (has real episode count + IDs)
-    final series = await resolveAnikoto(anime);
+    // 1. Try Anikoto (playable IDs). Use fresh so expectedEpisodes is accurate.
+    final series = await resolveAnikoto(fresh);
     if (series != null && series.episodes.isNotEmpty) {
       return series.episodes
           .map((e) => AnimeEpisode(
@@ -377,7 +377,7 @@ class AnimeService {
               ))
           .toList();
     }
-    // 2. Fallback: synthesize from AniList total (legacy behaviour)
+    // 2. Fallback: synthesize from AniList total when Anikoto misses / rejects stubs
     final count = fresh.episodes ??
         anime.episodes ??
         fresh.nextAiringEpisode?['episode'] ??

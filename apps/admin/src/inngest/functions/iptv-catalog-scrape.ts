@@ -6,10 +6,27 @@ import {
   insertScrapeRun,
   patchScrapeRun,
   upsertCatalogCandidate,
+  upsertScrapePostId,
 } from '@/server/iptv-catalog/supabase-admin'
-import type { CatalogPortal } from '@/server/iptv-catalog/types'
+import type { CatalogPortal, PortalStatus } from '@/server/iptv-catalog/types'
 import { portalKey } from '@/server/iptv-catalog/types'
 import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
+
+/**
+ * player_api probes are slow (N Inngest steps). Off for now — still upserts
+ * candidates with alive=null. Flip to true to restore verify-portal-status-*.
+ * Code path kept intentionally.
+ */
+const VERIFY_PORTAL_STATUS = false
+
+const UNVERIFIED_STATUS: PortalStatus = {
+  alive: null,
+  status: 'unverified',
+  expiry: null,
+  maxConnections: null,
+  timezone: null,
+  categoryNames: [],
+}
 
 type ScrapeData = {
   jobId?: string
@@ -31,7 +48,8 @@ async function markRun(runId: string, error?: string) {
 /**
  * Daily + on-demand catalog scrape.
  * Cancel with event `iptv/catalog.scrape.cancel` (same jobId).
- * Each portal: step `verify-portal-status-*` → player_api.
+ * When VERIFY_PORTAL_STATUS: each portal step verify-portal-status-* → player_api.
+ * Otherwise: bulk upsert unverified (no portal HTTP).
  */
 export const iptvCatalogScrape = inngest.createFunction(
   {
@@ -73,6 +91,7 @@ export const iptvCatalogScrape = inngest.createFunction(
     })
 
     const portals = new Map<string, CatalogPortal>()
+    const seenPostIds = new Set<string>()
     let after: string | null = null
     let postsSeen = 0
 
@@ -81,6 +100,7 @@ export const iptvCatalogScrape = inngest.createFunction(
         scrapeCatalogPage(after, maxResultsPerPage),
       )
       postsSeen += result.postsSeen
+      for (const id of result.postIds) seenPostIds.add(id)
       for (const p of result.portals) {
         portals.set(portalKey(p), p)
       }
@@ -90,6 +110,10 @@ export const iptvCatalogScrape = inngest.createFunction(
 
     await step.run('checkpoint-after-reddit', async () => {
       const sb = createCatalogAdminClient()
+      // Id-only post rows (no title/body) + run counters.
+      for (const postId of seenPostIds) {
+        await upsertScrapePostId(sb, postId, runId)
+      }
       await patchScrapeRun(sb, runId, {
         posts_seen: postsSeen,
         l1_extract_count: portals.size,
@@ -100,39 +124,55 @@ export const iptvCatalogScrape = inngest.createFunction(
     let aliveCount = 0
     let upserted = 0
     let deadCount = 0
+    let verified = 0
 
-    for (let i = 0; i < list.length; i++) {
-      const portal = list[i]!
-      const outcome = await step.run(
-        `verify-portal-status-${i}`,
-        async () => {
-          const status = await verifyPortalStatus(portal)
-          const region = classifyRegion(status.timezone, status.categoryNames)
-          const sb = createCatalogAdminClient()
-          await upsertCatalogCandidate(sb, portal, status, region)
-          return {
-            alive: status.alive,
-            status: status.status,
-            region: region.primary,
-            error: status.error ?? null,
-          }
-        },
-      )
-      upserted++
-      if (outcome.alive) aliveCount++
-      else deadCount++
+    if (VERIFY_PORTAL_STATUS) {
+      for (let i = 0; i < list.length; i++) {
+        const portal = list[i]!
+        const outcome = await step.run(
+          `verify-portal-status-${i}`,
+          async () => {
+            const status = await verifyPortalStatus(portal)
+            const region = classifyRegion(status.timezone, status.categoryNames)
+            const sb = createCatalogAdminClient()
+            await upsertCatalogCandidate(sb, portal, status, region)
+            return {
+              alive: status.alive,
+              status: status.status,
+              region: region.primary,
+              error: status.error ?? null,
+            }
+          },
+        )
+        upserted++
+        verified++
+        if (outcome.alive) aliveCount++
+        else deadCount++
 
-      if (i % 5 === 0 || i === list.length - 1) {
-        await step.run(`progress-${i}`, async () => {
-          const sb = createCatalogAdminClient()
-          await patchScrapeRun(sb, runId, {
-            candidates_upserted: upserted,
-            alive_count: aliveCount,
-            posts_seen: postsSeen,
-            l1_extract_count: portals.size,
+        if (i % 5 === 0 || i === list.length - 1) {
+          await step.run(`progress-${i}`, async () => {
+            const sb = createCatalogAdminClient()
+            await patchScrapeRun(sb, runId, {
+              candidates_upserted: upserted,
+              alive_count: aliveCount,
+              posts_seen: postsSeen,
+              l1_extract_count: portals.size,
+            })
           })
-        })
+        }
       }
+    } else if (list.length > 0) {
+      // No player_api — one bulk step (verifyPortalStatus kept above for re-enable).
+      upserted = await step.run('upsert-candidates-unverified', async () => {
+        const sb = createCatalogAdminClient()
+        const region = classifyRegion(null, [])
+        let n = 0
+        for (const portal of list) {
+          await upsertCatalogCandidate(sb, portal, UNVERIFIED_STATUS, region)
+          n++
+        }
+        return n
+      })
     }
 
     await step.run('finalize-scrape-run', async () => {
@@ -152,7 +192,8 @@ export const iptvCatalogScrape = inngest.createFunction(
       jobId,
       runId,
       scrapedUnique: portals.size,
-      verified: list.length,
+      verified,
+      verifyEnabled: VERIFY_PORTAL_STATUS,
       upserted,
       aliveCount,
       deadCount,

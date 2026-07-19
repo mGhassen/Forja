@@ -3,10 +3,13 @@ export type CatalogPortal = {
   username: string
   password: string
   source: string
+  /** Reddit thing id (t3_…) — stored alone; never title/body. */
+  postId?: string
 }
 
 export type PortalStatus = {
-  alive: boolean
+  /** null = not probed (verify step disabled / skipped). */
+  alive: boolean | null
   status: string
   expiry: string | null
   maxConnections: string | null

@@ -167,7 +167,8 @@ export function AdminScrapePage() {
           </a>
           <p className="mt-2 font-mono-ui text-xs text-forja-muted">
             Function: iptv-catalog-scrape · steps: scrape-reddit-page-* ·
-            verify-portal-status-*
+            upsert-candidates-unverified (player_api verify off — flip
+            VERIFY_PORTAL_STATUS to re-enable verify-portal-status-*)
           </p>
         </div>
 

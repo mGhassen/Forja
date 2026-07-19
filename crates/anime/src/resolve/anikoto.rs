@@ -162,6 +162,18 @@ fn slug_tokens(slug: &str) -> HashSet<String> {
         .collect()
 }
 
+/// Reject movie/OVA/special catalog hits when AniList expects a long series.
+/// Half-of-expected allows airing / incomplete Anikoto catalogs.
+fn episode_count_plausible(got: i32, expected: i32) -> bool {
+    if got <= 0 {
+        return false;
+    }
+    if expected <= 0 {
+        return true;
+    }
+    got >= (expected as f64 / 2.0).ceil() as i32
+}
+
 fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<i64> {
     if cands.is_empty() {
         return None;
@@ -173,13 +185,13 @@ fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<i64>
             da.cmp(&db).then_with(|| b.episodes.cmp(&a.episodes))
         });
         let best = &cands[0];
-        if best.episodes < (expected as f64 / 2.0).ceil() as i32 {
+        if !episode_count_plausible(best.episodes, expected) {
             return None;
         }
         Some(best.id)
     } else {
         cands.sort_by(|a, b| b.episodes.cmp(&a.episodes));
-        Some(cands[0].id)
+        episode_count_plausible(cands[0].episodes, expected).then_some(cands[0].id)
     }
 }
 
@@ -208,7 +220,15 @@ pub fn anikoto_resolve(
                         let Some(id) = m.get("id").and_then(|v| v.as_i64()) else {
                             continue;
                         };
-                        return Ok(Some(load_series(id)?));
+                        let series = load_series(id)?;
+                        if episode_count_plausible(
+                            series.episodes.len() as i32,
+                            expected_episodes,
+                        ) {
+                            return Ok(Some(series));
+                        }
+                        // Wrong / stub entry for this ani_id — try search.
+                        break;
                     }
                 }
                 if data.len() < PER_PAGE as usize {
@@ -272,17 +292,10 @@ pub fn anikoto_resolve(
         }
     }
 
-    if !ani_id_matches.is_empty() {
-        if let Some(id) = pick_best_ani_id_match(&mut ani_id_matches, expected_episodes) {
-            return Ok(Some(load_series(id)?));
-        }
-        if !resolved.is_empty() {
-            resolved.extend(ani_id_matches);
-        } else if !ani_id_matches.is_empty() {
-            ani_id_matches.sort_by(|a, b| b.episodes.cmp(&a.episodes));
-            return Ok(Some(load_series(ani_id_matches[0].id)?));
-        }
+    if let Some(id) = pick_best_ani_id_match(&mut ani_id_matches, expected_episodes) {
+        return Ok(Some(load_series(id)?));
     }
+    // Rejected ani_id stubs stay out of fuzzy — don't promote a 1-ep movie.
 
     // Strategy C: fuzzy slug match
     if !resolved.is_empty() {
@@ -294,6 +307,9 @@ pub fn anikoto_resolve(
             let mut best: Option<&Candidate> = None;
             let mut best_score = 0.0_f64;
             for c in &resolved {
+                if !episode_count_plausible(c.episodes, expected_episodes) {
+                    continue;
+                }
                 let slug_tokens = slug_tokens(&c.slug);
                 if slug_tokens.is_empty() {
                     continue;
@@ -342,5 +358,32 @@ mod tests {
             },
         ];
         assert_eq!(pick_best_ani_id_match(&mut cands, 26), Some(2));
+    }
+
+    #[test]
+    fn episode_count_rejects_stub_vs_long_series() {
+        assert!(!episode_count_plausible(1, 220));
+        assert!(!episode_count_plausible(1, 26));
+        assert!(episode_count_plausible(13, 26));
+        assert!(episode_count_plausible(220, 220));
+        assert!(episode_count_plausible(1, 0));
+        assert!(!episode_count_plausible(0, 26));
+    }
+
+    #[test]
+    fn pick_best_ani_id_rejects_all_stubs() {
+        let mut cands = vec![
+            Candidate {
+                slug: "movie".into(),
+                id: 1,
+                episodes: 1,
+            },
+            Candidate {
+                slug: "ova".into(),
+                id: 2,
+                episodes: 3,
+            },
+        ];
+        assert_eq!(pick_best_ani_id_match(&mut cands, 220), None);
     }
 }
