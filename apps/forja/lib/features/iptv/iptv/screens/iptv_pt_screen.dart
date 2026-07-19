@@ -8,7 +8,9 @@ import 'package:forja/shared/design/design.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_epg_guide_view.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';

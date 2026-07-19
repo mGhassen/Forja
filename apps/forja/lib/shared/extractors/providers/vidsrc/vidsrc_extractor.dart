@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
 
 /// VSEmbed / vsembed.su — resolved via Rust (3 HTTP fetches + HTML chain).
@@ -14,6 +15,11 @@ class VidsrcExtractor {
     _resolveGeneration++;
   }
 
+  static String get _embedHost =>
+      ProviderRuntimeConfig.instance.webstreamrBase('vidsrc') ??
+      ProviderRuntimeConfig.instance.api('vidsrcEmbed') ??
+      'https://vsembed.su';
+
   static String buildEmbedUrl({
     required String tmdbId,
     required bool isMovie,
@@ -22,8 +28,8 @@ class VidsrcExtractor {
   }) {
     final id = int.tryParse(tmdbId);
     if (id == null) return '';
-    if (isMovie) return 'https://vsembed.su/embed/movie?tmdb=$id';
-    return 'https://vsembed.su/embed/tv?tmdb=$id&season=${season ?? 1}&episode=${episode ?? 1}';
+    if (isMovie) return '$_embedHost/embed/movie?tmdb=$id';
+    return '$_embedHost/embed/tv?tmdb=$id&season=${season ?? 1}&episode=${episode ?? 1}';
   }
 
   Future<ExtractedMedia?> extract({

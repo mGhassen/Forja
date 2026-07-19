@@ -35,6 +35,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c._healthQueue.clear();
         cancelAllLazyChecks();
         _c._epgCache.clear();
+        _c._guideEpgCache.clear();
         _c.liveOnly = false;
         _c.aliveStreamIds = const {};
         _c.aliveCheckedAt = null;
@@ -66,6 +67,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c._healthQueue.clear();
     cancelAllLazyChecks();
     _c._epgCache.clear();
+    _c._guideEpgCache.clear();
     notifyListeners();
     try {
       final cats = await IptvClient.categories(p.portal, section);
@@ -74,7 +76,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       if (loadId != _c._catalogLoadId) return;
       if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
 
-      _c.categories = [const IptvCategory(id: '', name: 'All'), ...cats];
+      _c.categories = section == IptvSection.live
+          ? IptvLiveCatalog.withPins(cats)
+          : [const IptvCategory(id: '', name: 'All'), ...cats];
       _c.browserAllStreams = streams;
       _c.browserSelectedCategoryId = '';
 
@@ -99,8 +103,15 @@ mixin _IptvControllerBrowser on ChangeNotifier {
           _c.aliveCheckedAt = snap.checkedAt;
           _seedHealthFromCache();
         }
+        await _loadLiveChannelLists(key);
+        if (loadId != _c._catalogLoadId) return;
+        if (_c.activePortal?.key != p.key || _c.activeSection != section) {
+          return;
+        }
       } else {
         _c.liveOnly = false;
+        _c.liveFavoriteIds = const {};
+        _c.liveWatchedIds = const [];
       }
 
       _c._catalogCache[cacheKey] = _CatalogSnap(
@@ -127,6 +138,13 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   String _catalogCacheKey(String portalKey, IptvSection section) =>
       '$portalKey|${section.name}';
 
+  Future<void> _loadLiveChannelLists(String portalKey) async {
+    final favs = await IptvLiveChannelListsStore.loadFavorites(portalKey);
+    final watched = await IptvLiveChannelListsStore.loadWatched(portalKey);
+    _c.liveFavoriteIds = favs;
+    _c.liveWatchedIds = watched;
+  }
+
   Future<void> _hydrateLiveSectionPrefs({
     required VerifiedPortal portal,
     required IptvSection section,
@@ -136,6 +154,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       final key = IptvAliveStore.portalKey(portal.portal);
       final liveOnlyPref = await IptvAliveStore.loadLiveOnly(key);
       final alive = await IptvAliveStore.load(key);
+      await _loadLiveChannelLists(key);
       if (_c.activePortal?.key != portal.key || _c.activeSection != section) {
         return;
       }
@@ -148,6 +167,18 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.aliveStreamIds = const {};
         _c.aliveCheckedAt = null;
       }
+      // Cache snap may predate synthetic Live pins — ensure they exist.
+      if (!_c.categories.any((c) => c.id == IptvLiveCatalog.favoritesId)) {
+        final api = _c.categories
+            .where((c) => !IptvLiveCatalog.isPinnedId(c.id))
+            .toList();
+        _c.categories = IptvLiveCatalog.withPins(api);
+        final cacheKey = _catalogCacheKey(portal.key, section);
+        _c._catalogCache[cacheKey] = _CatalogSnap(
+          categories: _c.categories,
+          streams: _c.browserAllStreams,
+        );
+      }
     } else {
       if (_c.activePortal?.key != portal.key || _c.activeSection != section) {
         return;
@@ -155,6 +186,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       _c.liveOnly = false;
       _c.aliveStreamIds = const {};
       _c.aliveCheckedAt = null;
+      _c.liveFavoriteIds = const {};
+      _c.liveWatchedIds = const [];
     }
     if (persistSection) {
       await IptvStore.saveLastSection(section);

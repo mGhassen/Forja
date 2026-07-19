@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { adminDb } from '@/lib/admin-db'
 
 type AccountRow = {
   id: string
@@ -10,14 +12,14 @@ type AccountRow = {
   features: { iptvScrape?: boolean } | null
 }
 
-export function AccountsPage() {
+export function AdminAccountsPage() {
   const qc = useQueryClient()
   const [q, setQ] = useState('')
 
   const list = useQuery({
     queryKey: ['admin', 'accounts', q],
     queryFn: async () => {
-      let req = supabase
+      let req = adminDb
         .from('accounts')
         .select('id, email, is_admin, iptv_credits, features')
         .order('created_at', { ascending: false })
@@ -32,14 +34,8 @@ export function AccountsPage() {
   })
 
   const setScrape = useMutation({
-    mutationFn: async ({
-      id,
-      enabled,
-    }: {
-      id: string
-      enabled: boolean
-    }) => {
-      const { error } = await supabase.rpc('admin_set_iptv_scrape', {
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+      const { error } = await adminDb.rpc('admin_set_iptv_scrape', {
         p_account_id: id,
         p_enabled: enabled,
       })
@@ -49,14 +45,8 @@ export function AccountsPage() {
   })
 
   const adjustCredits = useMutation({
-    mutationFn: async ({
-      id,
-      delta,
-    }: {
-      id: string
-      delta: number
-    }) => {
-      const { error } = await supabase.rpc('admin_adjust_iptv_credits', {
+    mutationFn: async ({ id, delta }: { id: string; delta: number }) => {
+      const { error } = await adminDb.rpc('admin_adjust_iptv_credits', {
         p_account_id: id,
         p_delta: delta,
         p_reason: delta > 0 ? 'admin grant' : 'admin revoke',
@@ -68,9 +58,9 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">Accounts</h1>
-      <input
-        className="w-full max-w-md rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+      <h1 className="font-disp text-xl font-bold tracking-tight">Accounts</h1>
+      <Input
+        className="max-w-md"
         placeholder="Filter email…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -78,9 +68,9 @@ export function AccountsPage() {
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
       ) : null}
-      <div className="overflow-x-auto rounded border border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-forja-border">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-500">
+          <thead className="bg-forja-elevated text-forja-muted">
             <tr>
               <th className="px-3 py-2 font-medium">Email</th>
               <th className="px-3 py-2 font-medium">Credits</th>
@@ -92,7 +82,7 @@ export function AccountsPage() {
             {(list.data ?? []).map((a) => {
               const scrape = a.features?.iptvScrape === true
               return (
-                <tr key={a.id} className="border-t border-zinc-800">
+                <tr key={a.id} className="border-t border-forja-border">
                   <td className="px-3 py-2">
                     {a.email ?? a.id.slice(0, 8)}
                     {a.is_admin ? (
@@ -102,33 +92,39 @@ export function AccountsPage() {
                   <td className="px-3 py-2 tabular-nums">{a.iptv_credits ?? 0}</td>
                   <td className="px-3 py-2">{scrape ? 'on' : 'off'}</td>
                   <td className="space-x-2 px-3 py-2">
-                    <button
+                    <Button
                       type="button"
-                      className="text-xs text-emerald-400 hover:underline"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-0 text-forja-green"
                       onClick={() =>
                         setScrape.mutate({ id: a.id, enabled: !scrape })
                       }
                     >
                       {scrape ? 'Disable scrape' : 'Enable scrape'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="text-xs text-sky-400 hover:underline"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-0 text-sky-400"
                       onClick={() =>
                         adjustCredits.mutate({ id: a.id, delta: 5 })
                       }
                     >
                       +5 credits
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="text-xs text-zinc-400 hover:underline"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-0 text-forja-muted"
                       onClick={() =>
                         adjustCredits.mutate({ id: a.id, delta: -1 })
                       }
                     >
                       −1
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               )

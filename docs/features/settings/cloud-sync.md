@@ -91,8 +91,9 @@ Not synced — device-specific or sensitive:
 - On desktop, a restored session goes straight to the boot splash. A new
   interactive sign-in opens **Who’s watching?** so you can choose the device
   profile first. If the account has no profiles yet, you create one before
-  continuing. Tapping a profile always shows the avatar profile splash (sync +
-  services for that profile), then opens the app — not the logo boot splash.
+  continuing. Tapping a profile there selects it and continues into the logo
+  boot splash (engines + catalog). Mid-session switches from Profile & account
+  still use the avatar profile splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for

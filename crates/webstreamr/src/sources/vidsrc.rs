@@ -4,7 +4,8 @@ use crate::types::MediaType;
 const BASE_URL: &str = "https://vsembed.su";
 
 fn base_url() -> String {
-    utils::provider_runtime::api_base("vidsrcEmbed")
+    utils::provider_runtime::webstreamr_base("vidsrc")
+        .or_else(|| utils::provider_runtime::api_base("vidsrcEmbed"))
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| BASE_URL.to_string())
 }

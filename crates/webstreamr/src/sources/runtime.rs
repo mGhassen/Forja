@@ -225,6 +225,16 @@ pub fn source_by_id(id: &str) -> Option<&'static SourceDef> {
     ALL_SOURCES.iter().find(|s| s.id == id)
 }
 
+/// Builtin `SourceDef.base_url`, overridable via RFC-039 `webstreamr.{id}`.
+pub fn resolved_base(source_id: &str) -> String {
+    if let Some(u) = utils::provider_runtime::webstreamr_base(source_id) {
+        return u;
+    }
+    source_by_id(source_id)
+        .map(|d| d.base_url.to_string())
+        .unwrap_or_default()
+}
+
 pub fn filter_embeds(embeds: Vec<SourceEmbed>, config: &Config, has_multi: bool) -> Vec<SourceEmbed> {
     if has_multi {
         return embeds;
@@ -319,13 +329,14 @@ pub fn run_source(
     };
     let sr = source_request_from(req, &ids);
 
+    let base = resolved_base(source_id);
     let embeds = match source_id {
         "vidsrc" | "vixsrc" | "rgshows" => resolve_source(source_id, &sr),
         "meinecloud" => run_meinecloud(&ids, config),
         "verhdlink" | "frenchcloud" | "mostraguarda" => {
-            run_imdb_movie_page(source_id, &ids, def.base_url).unwrap_or_default()
+            run_imdb_movie_page(source_id, &ids, &base).unwrap_or_default()
         }
-        "megakino" => run_megakino(&ids, def.base_url).unwrap_or_default(),
+        "megakino" => run_megakino(&ids, &base).unwrap_or_default(),
         "homecine" => run_homecine(&sr, &ids, tmdb_token).unwrap_or_default(),
         "eurostreaming" => run_eurostreaming(&sr, &ids, tmdb_token).unwrap_or_default(),
         "cinehdplus" => run_cinehdplus(&ids).unwrap_or_default(),
@@ -347,7 +358,7 @@ pub fn run_source(
 }
 
 fn run_meinecloud(ids: &MediaIds, _config: &Config) -> Vec<SourceEmbed> {
-    run_imdb_movie_page("meinecloud", ids, "https://meinecloud.click").unwrap_or_default()
+    run_imdb_movie_page("meinecloud", ids, &resolved_base("meinecloud")).unwrap_or_default()
 }
 
 fn run_imdb_movie_page(source_id: &str, ids: &MediaIds, base_url: &str) -> Option<Vec<SourceEmbed>> {
@@ -459,7 +470,7 @@ fn run_homecine(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Opt
 }
 
 fn find_homecine_page(name: &str, is_series: bool) -> Option<String> {
-    let base = "https://www3.homecine.to";
+    let base = resolved_base("homecine");
     let search_url = format!("{base}/?s={}", urlencoding_encode(name));
     let html = fetch_text(&search_url, &FetchConfig::default()).ok()?;
     let doc = Html::parse_document(&html);
@@ -471,7 +482,7 @@ fn find_homecine_page(name: &str, is_series: bool) -> Option<String> {
             let u = href.to_string();
             let series = u.contains("/series/");
             if is_series == series {
-                return Some(resolve_href(base, &u));
+                return Some(resolve_href(&base, &u));
             }
         }
     }
@@ -484,7 +495,7 @@ fn find_homecine_page(name: &str, is_series: bool) -> Option<String> {
         let u = href.to_string();
         let series = u.contains("/series/");
         if is_series == series {
-            return Some(resolve_href(base, &u));
+            return Some(resolve_href(&base, &u));
         }
     }
     None
@@ -504,7 +515,7 @@ fn run_eurostreaming(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) 
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, Some("it"), token).ok()?;
     let keyword = ny.name.replace([':', '-'], "");
-    let base = "https://eurostreaming.luxe";
+    let base = resolved_base("eurostreaming");
     let post_url = format!("{base}/index.php?do=search");
     let origin = url_origin(&post_url);
     let body = format!("subaction=search&story={}", urlencoding_encode(&keyword));
@@ -564,7 +575,8 @@ fn find_eurostreaming_series(html: &str, keyword: &str) -> Option<String> {
 fn run_cinehdplus(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let url = format!(
-        "https://cinehdplus.gratis/series/?story={tmdb_id}&do=search&subaction=search"
+        "{}/series/?story={tmdb_id}&do=search&subaction=search",
+        resolved_base("cinehdplus")
     );
     let html = fetch_text(&url, &FetchConfig::default()).ok()?;
     let doc = Html::parse_document(&html);
@@ -588,7 +600,8 @@ fn run_cinehdplus(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
 fn run_streamkiste(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let url = format!(
-        "https://streamkiste.taxi/?story={tmdb_id}&do=search&subaction=search"
+        "{}/?story={tmdb_id}&do=search&subaction=search",
+        resolved_base("streamkiste")
     );
     let html = fetch_text(&url, &FetchConfig::default()).ok()?;
     let doc = Html::parse_document(&html);
@@ -611,13 +624,16 @@ fn run_streamkiste(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
 
 fn run_einschalten(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
-    let api_url = format!("https://einschalten.in/api/movies/{tmdb_id}/watch");
+    let api_url = format!(
+        "{}/api/movies/{tmdb_id}/watch",
+        resolved_base("einschalten")
+    );
     let json = fetch_json(&api_url, &FetchConfig::default()).ok()?;
     Some(parse_source_html(
         "einschalten",
         &json.to_string(),
         &parse_opts_json(serde_json::json!({
-            "referer": format!("https://einschalten.in/movies/{tmdb_id}"),
+            "referer": format!("{}/movies/{tmdb_id}", resolved_base("einschalten")),
         })),
     ))
 }
@@ -627,12 +643,13 @@ fn run_movix(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Optio
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
     let api_url = if ids.season.is_some() {
         format!(
-            "https://api.movix.site/api/tmdb/tv/{tmdb_id}?season={}&episode={}",
+            "{}/api/tmdb/tv/{tmdb_id}?season={}&episode={}",
+            resolved_base("movix"),
             ids.season.unwrap_or(1),
             ids.episode.unwrap_or(1)
         )
     } else {
-        format!("https://api.movix.site/api/tmdb/movie/{tmdb_id}")
+        format!("{}/api/tmdb/movie/{tmdb_id}", resolved_base("movix"))
     };
     let json = fetch_json(
         &api_url,
@@ -642,6 +659,7 @@ fn run_movix(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Optio
         },
     )
     .ok()?;
+    let movix_base = resolved_base("movix");
     let referer = json
         .get(if ids.season.is_some() {
             "current_episode"
@@ -655,7 +673,7 @@ fn run_movix(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Optio
                 v.as_str()
             }
         })
-        .unwrap_or("https://api.movix.site");
+        .unwrap_or(movix_base.as_str());
     Some(parse_source_html(
         "movix",
         &json.to_string(),
@@ -672,8 +690,8 @@ fn run_movix(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Optio
 fn run_frembed(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
-    let base = final_redirect_url("https://frembed.work", &FetchConfig::default())
-        .unwrap_or_else(|_| "https://frembed.work".into());
+    let base = final_redirect_url(&resolved_base("frembed"), &FetchConfig::default())
+        .unwrap_or_else(|_| resolved_base("frembed"));
     let origin = url_origin(&base);
     let api_url = if ids.season.is_some() {
         format!(
@@ -743,7 +761,7 @@ fn run_kinoger(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Opt
 }
 
 fn find_kinoger_page(keyword: &str, year: i32) -> Option<String> {
-    let base = "https://kinoger.com";
+    let base = resolved_base("kinoger");
     let search_url = format!(
         "{base}/?do=search&subaction=search&titleonly=3&story={}&x=0&y=0&submit=submit",
         urlencoding_encode(keyword)
@@ -758,7 +776,7 @@ fn find_kinoger_page(keyword: &str, year: i32) -> Option<String> {
                 return None;
             }
             let href = a.value().attr("href")?;
-            Some(resolve_href(base, href))
+            Some(resolve_href(&base, href))
         })
 }
 
@@ -770,7 +788,7 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     );
     let resp = fetch_json(
         &search_url,
-        &fetch_cfg(Some("https://new5.hdhub4u.fo")),
+        &fetch_cfg(Some(&resolved_base("hdhub4u"))),
     )
     .ok()?;
     let hits = resp.get("hits").and_then(|v| v.as_array())?;
@@ -792,8 +810,8 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
             }
         }
         let permalink = doc.get("permalink").and_then(|v| v.as_str())?;
-        let page_url = resolve_href("https://new5.hdhub4u.fo", permalink);
-        let html = fetch_text(&page_url, &fetch_cfg(Some("https://new5.hdhub4u.fo"))).ok()?;
+        let page_url = resolve_href(&resolved_base("hdhub4u"), permalink);
+        let html = fetch_text(&page_url, &fetch_cfg(Some(&resolved_base("hdhub4u")))).ok()?;
         let doc_html = Html::parse_document(&html);
         let mut lang_text = String::new();
         for div in doc_html.select(&Selector::parse("div").unwrap()) {
@@ -839,10 +857,11 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
 fn run_vegamovies(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     let imdb = ids.imdb_id.as_deref()?;
     let search_url = format!(
-        "https://vegamovies.market/search.php?q={}&page=1",
+        "{}/search.php?q={}&page=1",
+        resolved_base("vegamovies"),
         urlencoding_encode(imdb)
     );
-    let resp = fetch_json(&search_url, &fetch_cfg(Some("https://vegamovies.market"))).ok()?;
+    let resp = fetch_json(&search_url, &fetch_cfg(Some(&resolved_base("vegamovies")))).ok()?;
     let hits = resp.get("hits").and_then(|v| v.as_array()).cloned().unwrap_or_default();
     let mut out = Vec::new();
     for hit in hits {
@@ -866,8 +885,8 @@ fn run_vegamovies(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
             continue;
         }
         let permalink = doc.get("permalink").and_then(|v| v.as_str())?;
-        let page_url = resolve_href("https://vegamovies.market", permalink);
-        let html = fetch_text(&page_url, &fetch_cfg(Some("https://vegamovies.market"))).ok()?;
+        let page_url = resolve_href(&resolved_base("vegamovies"), permalink);
+        let html = fetch_text(&page_url, &fetch_cfg(Some(&resolved_base("vegamovies")))).ok()?;
         out.extend(parse_source_html(
             "vegamovies",
             &html,
@@ -900,8 +919,8 @@ fn season_matches(text: &str, season: i32) -> bool {
 fn run_fourkhdhub(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
-    let base = final_redirect_url("https://4khdhub.dad", &FetchConfig::default())
-        .unwrap_or_else(|_| "https://4khdhub.dad".into());
+    let base = final_redirect_url(&resolved_base("4khdhub"), &FetchConfig::default())
+        .unwrap_or_else(|_| resolved_base("4khdhub"));
     let search_url = format!("{base}/?s={}", urlencoding_encode(&ny.name));
     let html = fetch_text(&search_url, &FetchConfig::default()).ok()?;
     let doc = Html::parse_document(&html);
@@ -949,7 +968,7 @@ fn run_kokoshka(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Op
         &page_html,
         &parse_opts_json(serde_json::json!({
             "referer": current,
-            "base_url": "https://kokoshka.digital",
+            "base_url": resolved_base("kokoshka"),
         })),
     );
     let mut out = Vec::new();
@@ -978,7 +997,7 @@ fn find_kokoshka_page(
 ) -> Option<String> {
     let ny = get_tmdb_name_and_year(tmdb_id, season, Some(language), token).ok()?;
     let query = format!("{} {}", ny.name.replace(':', ""), ny.year);
-    let base = "https://kokoshka.digital";
+    let base = resolved_base("kokoshka");
     let search_url = format!("{base}/?s={}", urlencoding_encode(&query));
     let html = fetch_text(&search_url, &FetchConfig::default()).ok()?;
     let doc = Html::parse_document(&html);
@@ -1013,7 +1032,7 @@ fn find_kokoshka_page(
             .select(&Selector::parse("a").unwrap())
             .next()
             .and_then(|a| a.value().attr("href"))?;
-        return Some(resolve_href(base, href));
+        return Some(resolve_href(&base, href));
     }
     None
 }
@@ -1023,7 +1042,7 @@ fn find_kokoshka_episode(html: &str, season: i32, episode: i32) -> Option<String
     let marker = format!("{season}x{episode}");
     let sel = Selector::parse(&format!(r#".episodiotitle a[href*="{marker}"]"#)).ok()?;
     let href = doc.select(&sel).next()?.value().attr("href")?;
-    Some(resolve_href("https://kokoshka.digital", href))
+    Some(resolve_href(&resolved_base("kokoshka"), href))
 }
 
 fn run_cuevana(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
@@ -1067,7 +1086,7 @@ fn run_cuevana(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Opt
 }
 
 fn find_cuevana_page(keyword: &str) -> Option<String> {
-    let base = "https://ww1.cuevana3.is";
+    let base = resolved_base("cuevana");
     let search_url = format!("{base}/search/{}/", urlencoding_encode(keyword));
     let origin = url_origin(&search_url);
     let html = fetch_text(&search_url, &fetch_cfg(Some(&origin))).ok()?;

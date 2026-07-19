@@ -2,14 +2,14 @@
 
 **Status:** open  
 **Depends on:** [RFC-036](036-[open]-accounts-iptv-profile-settings.md)  
-**Area:** `apps/admin/`, `crates/iptv-worker/`, `apps/web/supabase/`, `crates/iptv/`
+**Area:** `apps/admin/` (UI + Inngest catalog scrape), `apps/web/supabase/`, `crates/iptv/` (Rust worker on hold)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **10 / 12** acceptance (Deal UX shipped; AI + Stalker deferred) |
-| **Current slice** | Forja Deal UX shipped — apply migrations + smoke; AI/Stalker deferred |
+| **Progress** | **5 / 5** components · **13 / 15** acceptance (Inngest TS scrape on admin; AI + Stalker deferred) |
+| **Current slice** | Inngest catalog scrape on admin — migrations smoke; AI/Stalker deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -43,6 +43,9 @@
 | 10 | R40-A10 | Forja Deal UX (credit burn + region picker) | ✅ |
 | 11 | R40-A11 | AI extract fallback on L2 misses | ⏭️ |
 | 12 | R40-A12 | Stalker/Ministra portal type in Forja | ⏭️ |
+| 13 | R40-A13 | Ops console under web `/admin` (shared AuthProvider + Forja UI; no separate `apps/admin`) | ✅ |
+| 14 | R40-A14 | Separate `apps/admin` TanStack Start app (same stack/auth/design as web; not portal routes) | ✅ |
+| 15 | R40-A15 | Inngest TS scrape on `apps/admin` (cron + per-portal `verify-portal-status` step; Rust worker on hold) | ✅ |
 
 ---
 
@@ -55,7 +58,7 @@ Move IPTV discovery off per-user Reddit scrape into a **central ops pipeline**: 
 1. Admin-only scrape inventory (L1 post + L2 base64/paste).
 2. Verify alive before pool eligibility.
 3. Credits + deal RPC for fair distribution.
-4. Thin admin app (same web stack family) — not a Forja user-portal clone.
+4. Separate TanStack Start admin app (`apps/admin`) — same auth + design system as `apps/web`, not embedded in the user portal.
 5. Reuse `crates/iptv` extract/scrape — no Dart engine scrape growth.
 
 ## Problem

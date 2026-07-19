@@ -7,6 +7,7 @@ class _CategorySidebarRow extends StatefulWidget {
     required this.compact,
     required this.listIndex,
     required this.onTap,
+    this.icon,
     this.onUpEdge,
     this.onRightEdge,
   });
@@ -16,6 +17,7 @@ class _CategorySidebarRow extends StatefulWidget {
   final bool compact;
   final int listIndex;
   final VoidCallback onTap;
+  final IconData? icon;
   final VoidCallback? onUpEdge;
   final VoidCallback? onRightEdge;
 
@@ -35,9 +37,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
-    final fg = _tvFocused
+    final highlight = selected || _tvFocused;
+    final iconColor = _tvFocused || selected
         ? ForjaShellColors.brandGreen
-        : (selected ? Colors.white : Colors.white70);
+        : _active
+            ? ForjaShellColors.iconHover
+            : ForjaShellColors.iconMuted;
+    final titleColor = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : selected
+            ? ForjaShellColors.textPrimary
+            : _active
+                ? ForjaShellColors.textSecondary
+                : ForjaShellColors.iconMuted;
 
     return iptvTap(
       context: context,
@@ -51,47 +63,60 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
+        duration: const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
         width: double.infinity,
         padding: EdgeInsets.symmetric(
-          horizontal: widget.compact ? 12 : 16,
+          horizontal: widget.compact ? 10 : 12,
           vertical: widget.compact ? 10 : 12,
         ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
           color: _tvFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
               : selected
-                  ? IptvShellStyle.accent.withValues(alpha: 0.12)
+                  ? ForjaShellColors.inkHover
                   : _active
-                      ? Colors.white.withValues(alpha: 0.06)
+                      ? ForjaShellColors.inkHover
                       : Colors.transparent,
           border: Border(
             left: BorderSide(
-              color: _tvFocused
+              color: highlight
                   ? ForjaShellColors.brandGreen
-                  : selected
-                      ? IptvShellStyle.accent
-                      : Colors.transparent,
-              width: 3,
+                  : Colors.transparent,
+              width: 2.5,
             ),
           ),
         ),
-        child: Text(
-          widget.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.plusJakartaSans(
-            color: fg,
-            fontSize: widget.compact ? 13 : 14,
-            fontWeight: selected || _tvFocused
-                ? FontWeight.w600
-                : FontWeight.w400,
-          ),
+        child: Row(
+          children: [
+            if (widget.icon != null) ...[
+              Icon(widget.icon, size: widget.compact ? 18 : 20, color: iconColor),
+              SizedBox(width: widget.compact ? 10 : 12),
+            ],
+            Expanded(
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: titleColor,
+                  fontSize: widget.compact ? 13 : 14,
+                  fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+IconData? _iptvCategoryIcon(String categoryId) {
+  if (categoryId.isEmpty) return Icons.apps_rounded;
+  if (categoryId == IptvLiveCatalog.favoritesId) return Icons.star_rounded;
+  if (categoryId == IptvLiveCatalog.watchedId) {
+    return Icons.history_rounded;
+  }
+  return null;
+}

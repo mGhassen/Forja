@@ -40,6 +40,7 @@ function bridgeWebEnv(mode: string) {
   if (releaseCdn && !process.env.VITE_RELEASE_CDN_URL) {
     process.env.VITE_RELEASE_CDN_URL = releaseCdn
   }
+
 }
 
 export default defineConfig(({ mode }) => {

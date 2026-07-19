@@ -109,6 +109,17 @@ pub fn kisskh_mirrors() -> Option<Vec<String>> {
     .flatten()
 }
 
+/// WebStreamr source base URL overlay (`/webstreamr/{source_id}`).
+pub fn webstreamr_base(source_id: &str) -> Option<String> {
+    with_overlay(|v| {
+        v.pointer(&format!("/webstreamr/{source_id}"))
+            .and_then(|x| x.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| s.starts_with("http"))
+    })
+    .flatten()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,6 +138,23 @@ mod tests {
         .unwrap();
         let tpl = movie_template("vidlink").unwrap();
         assert_eq!(expand_template(&tpl, 550, 0, 0), "https://example.test/movie/550");
+        clear_overlay();
+    }
+
+    #[test]
+    fn overlay_webstreamr_base() {
+        clear_overlay();
+        set_overlay_json(
+            r#"{
+              "schema": 1,
+              "webstreamr": { "kinoger": "https://ops.kinoger.test" }
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            webstreamr_base("kinoger").as_deref(),
+            Some("https://ops.kinoger.test")
+        );
         clear_overlay();
     }
 }

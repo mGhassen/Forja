@@ -13,6 +13,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/core/bounded_parallel.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 
@@ -21,8 +22,12 @@ class VidnestExtractor {
 
   final void Function(String)? onLog;
 
-  static const _apiBase = 'https://new.vidnest.fun';
-  static const _embedOrigin = 'https://vidnest.fun';
+  static String get _apiBase =>
+      ProviderRuntimeConfig.instance.api('vidnestApi') ??
+      'https://new.vidnest.fun';
+  static String get _embedOrigin =>
+      ProviderRuntimeConfig.instance.api('vidnestEmbed') ??
+      'https://vidnest.fun';
   static const _fetchTimeout = Duration(seconds: 15);
   static const _defaultTimeout = Duration(seconds: 45);
   static const _maxInFlight = 3;

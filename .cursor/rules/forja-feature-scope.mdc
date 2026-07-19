@@ -1,0 +1,37 @@
+---
+description: In-scope product features — do not expand work into out-of-scope tabs/providers
+alwaysApply: true
+---
+
+# Feature scope — only these product areas
+
+Unless the user **explicitly** expands scope, only work on these features:
+
+| Feature | Nav / area |
+|---------|------------|
+| Search | `search` |
+| Home | `home` |
+| Anime | `anime` |
+| Asian Drama | `asian_drama` (KissKh) |
+| IPTV | `iptv` |
+| Live Matches | `live_matches` |
+| Lists | `mylist` / lists |
+| Settings | `settings` |
+
+Plus shared playback/shell that those tabs use (player, sources used by Home/Search/Anime/Asian Drama, stream providers, WebStreamr when it feeds those surfaces).
+
+## Out of scope — do not touch unless asked
+
+- Arabic / Anime Arabic tabs and extractors (`arabic`, `anime_arabic`, Larozaa, DimaToon, Brstej, …)
+- Amri
+- Books, music, comics, manga, audiobooks
+- Jellyfin, downloader, magnet (unless user asks)
+- Any other nav tab not listed above
+
+## Remote provider config (RFC-039)
+
+Do **not** seed or wire out-of-scope hosts (Arabic, Amri, …) into `provider_runtime_config`. Stick to in-scope stream/anime/Asian Drama/WebStreamr bases.
+
+## TV
+
+TV polish still follows [forja-tv-scope.mdc](./forja-tv-scope.mdc) (same in-scope tab set).

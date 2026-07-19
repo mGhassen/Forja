@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
-import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
@@ -26,13 +25,14 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
-enum _StartupStage { update, account, profiles, splash, app }
+enum _StartupStage { update, account, profiles, splash }
 
 /// Cold-start gate: update check first, then optional account entry, then splash.
 ///
 /// Guest and unconfigured builds skip account but still run the update gate
 /// before splash. Restored sessions skip account and go update → splash.
-/// Fresh sign-in → profile splash → [MainScreen] (no logo intro splash).
+/// Fresh sign-in → Who's watching → logo intro [SplashScreen] → app.
+/// Mid-session profile switches use the avatar profile splash instead.
 /// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends StatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
@@ -122,10 +122,10 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     setState(() => _stage = _StartupStage.account);
   }
 
-  void _enterAppAfterProfileSplash() {
-    // Profile splash already warmed engines / catalog — skip logo intro.
-    ShellBus.splashDismissed.value = true;
-    setState(() => _stage = _StartupStage.app);
+  void _enterIntroSplashAfterProfilePick() {
+    // Profile is selected + merged; logo splash warms engines / catalog.
+    ShellBus.splashDismissed.value = false;
+    setState(() => _stage = _StartupStage.splash);
   }
 
   @override
@@ -141,11 +141,11 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
       ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
-        onProfileSelected: _enterAppAfterProfileSplash,
+        useLogoIntroSplash: true,
+        onProfileSelected: _enterIntroSplashAfterProfilePick,
         onSignOut: () => setState(() => _stage = _StartupStage.account),
       ),
       _StartupStage.splash => widget.splash,
-      _StartupStage.app => const MainScreen(),
     };
   }
 }

@@ -137,6 +137,15 @@ class IptvController extends ChangeNotifier
   IptvCatalogSort liveCategorySort = IptvCatalogSort.playlist;
   IptvCatalogSort liveContentSort = IptvCatalogSort.playlist;
 
+  /// Live channel pane: cards grid or EPG timeline (desktop).
+  IptvLiveBrowseLayout liveBrowseLayout = IptvLiveBrowseLayout.cards;
+
+  /// Device-local Live channel favorites (stream ids) for the active portal.
+  Set<String> liveFavoriteIds = const {};
+
+  /// Device-local recently opened Live channels (stream ids, most-recent first).
+  List<String> liveWatchedIds = const [];
+
   /// Categories shown in the catalog sidebar (respects active search filter).
   List<IptvCategory> get browserSidebarCategories {
     final q = browserSearch.trim().toLowerCase();
@@ -145,7 +154,7 @@ class IptvController extends ChangeNotifier
         ? categories
         : categories.where((c) {
             if (c.id == selected) return true;
-            if (c.id.isEmpty) return true;
+            if (IptvLiveCatalog.isPinnedId(c.id)) return true;
             return c.name.toLowerCase().contains(q);
           }).toList();
     if (activeSection != IptvSection.live) return filtered;
@@ -153,9 +162,13 @@ class IptvController extends ChangeNotifier
   }
 
   /// Categories with Live sort applied (no search filter) — channel guide.
+  /// Synthetic Favorites / Already watched rows are omitted (guide uses groups).
   List<IptvCategory> get liveSortedCategories {
-    if (activeSection != IptvSection.live) return categories;
-    return sortCategories(categories, liveCategorySort);
+    final cats = categories
+        .where((c) => !IptvLiveCatalog.isSyntheticId(c.id))
+        .toList();
+    if (activeSection != IptvSection.live) return cats;
+    return sortCategories(cats, liveCategorySort);
   }
 
   /// Streams with Live content sort applied — channel guide / catalog.
@@ -164,16 +177,43 @@ class IptvController extends ChangeNotifier
     return sortStreams(streams, liveContentSort);
   }
 
+  bool isLiveFavorite(String streamId) => liveFavoriteIds.contains(streamId);
+
+  Future<void> toggleLiveFavorite(String streamId) async {
+    if (streamId.isEmpty || activeSection != IptvSection.live) return;
+    final p = activePortal;
+    if (p == null) return;
+    final next = Set<String>.from(liveFavoriteIds);
+    if (!next.remove(streamId)) next.add(streamId);
+    liveFavoriteIds = next;
+    notifyListeners();
+    await IptvLiveChannelListsStore.saveFavorites(
+      IptvAliveStore.portalKey(p.portal),
+      next,
+    );
+  }
+
+  Future<void> recordLiveWatched(String streamId) async {
+    if (streamId.isEmpty || activeSection != IptvSection.live) return;
+    final p = activePortal;
+    if (p == null) return;
+    liveWatchedIds = await IptvLiveChannelListsStore.recordWatched(
+      IptvAliveStore.portalKey(p.portal),
+      streamId,
+    );
+    notifyListeners();
+  }
+
   static List<IptvCategory> sortCategories(
     List<IptvCategory> input,
     IptvCatalogSort sort,
   ) {
     if (sort == IptvCatalogSort.playlist || input.length < 2) return input;
-    final all = <IptvCategory>[];
+    final pinned = <IptvCategory>[];
     final rest = <IptvCategory>[];
     for (final c in input) {
-      if (c.id.isEmpty) {
-        all.add(c);
+      if (IptvLiveCatalog.isPinnedId(c.id)) {
+        pinned.add(c);
       } else {
         rest.add(c);
       }
@@ -182,7 +222,7 @@ class IptvController extends ChangeNotifier
       final cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
       return sort == IptvCatalogSort.nameAsc ? cmp : -cmp;
     });
-    return [...all, ...rest];
+    return [...pinned, ...rest];
   }
 
   static List<IptvStream> sortStreams(
@@ -266,6 +306,13 @@ class IptvController extends ChangeNotifier
   /// change. Wrapped in a Future so concurrent card builds dedupe to one call.
   final Map<String, Future<List<EpgEntry>>> _epgCache = {};
 
+  /// Session cache for Live guide raw listings (`get_simple_data_table`,
+  /// clipped to the 6h/24h guide window). Keyed by streamId. One fetch per
+  /// channel; UI slices visible hours client-side.
+  final Map<String, Future<List<EpgEntry>>> _guideEpgCache = {};
+  static const guideHoursBehind = 6.0;
+  static const guideHoursAhead = 24.0;
+
   bool _epgEnabled = true;
 
   IptvController() {
@@ -274,6 +321,7 @@ class IptvController extends ChangeNotifier
     IptvStore.listRevision.addListener(_onStoreListRevision);
     unawaited(_syncEpgPref());
     unawaited(_loadLiveSortPrefs());
+    unawaited(_loadLiveBrowseLayoutPref());
   }
 
   Future<void> _loadLiveSortPrefs() async {
@@ -283,6 +331,20 @@ class IptvController extends ChangeNotifier
     liveCategorySort = category;
     liveContentSort = content;
     notifyListeners();
+  }
+
+  Future<void> _loadLiveBrowseLayoutPref() async {
+    final layout = await IptvStore.loadLiveBrowseLayout();
+    if (liveBrowseLayout == layout) return;
+    liveBrowseLayout = layout;
+    notifyListeners();
+  }
+
+  Future<void> setLiveBrowseLayout(IptvLiveBrowseLayout layout) async {
+    if (liveBrowseLayout == layout) return;
+    liveBrowseLayout = layout;
+    notifyListeners();
+    await IptvStore.saveLiveBrowseLayout(layout);
   }
 
   bool get epgEnabled => _epgEnabled;
@@ -300,8 +362,54 @@ class IptvController extends ChangeNotifier
     if (!enabled) {
       _epgCache.clear();
       _hitEpgCache.clear();
+      _guideEpgCache.clear();
     }
     notifyListeners();
+  }
+
+  /// Guide window anchored around [now] (floored to half-hour).
+  static ({DateTime start, DateTime end}) guideWindow({DateTime? now}) {
+    final n = now ?? DateTime.now();
+    final flooredMinute = n.minute >= 30 ? 30 : 0;
+    final anchor = DateTime(n.year, n.month, n.day, n.hour, flooredMinute);
+    final start = anchor.subtract(Duration(minutes: (guideHoursBehind * 60).round()));
+    final end = start.add(
+      Duration(minutes: ((guideHoursBehind + guideHoursAhead) * 60).round()),
+    );
+    return (start: start, end: end);
+  }
+
+  /// Ensures guide listings for [s] are fetched (once). Stable Future for
+  /// [FutureBuilder] — UI slices visible hours from the result.
+  Future<List<EpgEntry>> guideEpgFor(IptvStream s) {
+    if (!_epgEnabled) return Future.value(const []);
+    final p = activePortal;
+    if (p == null || s.kind != 'live') return Future.value(const []);
+    if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
+      return Future.value(const []);
+    }
+    final cacheKey = s.streamId.isEmpty ? s.epgChannelId : s.streamId;
+    return _guideEpgCache.putIfAbsent(cacheKey, () async {
+      final window = guideWindow();
+      if (s.streamId.isNotEmpty) {
+        final rows = await IptvClient.simpleDataTable(
+          p.portal,
+          s.streamId,
+          windowStart: window.start,
+          windowEnd: window.end,
+        );
+        if (rows.isNotEmpty) return rows;
+      }
+      if (s.epgChannelId.isNotEmpty && s.epgChannelId != s.streamId) {
+        return IptvClient.simpleDataTable(
+          p.portal,
+          s.epgChannelId,
+          windowStart: window.start,
+          windowEnd: window.end,
+        );
+      }
+      return const [];
+    });
   }
 
   void _onStoreListRevision() {

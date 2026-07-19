@@ -1,12 +1,543 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-body {
-  margin: 0;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    sans-serif;
+@theme {
+  --color-forja-bg: #141414;
+  --color-forja-surface: #141212;
+  --color-forja-elevated: #1c1917;
+  --color-forja-border: rgba(237, 230, 218, 0.14);
+  --color-forja-text: #ede6da;
+  --color-forja-muted: rgba(237, 230, 218, 0.42);
+  /* Brand green (logo) + cinema flame - used together */
+  --color-forja-green: #1ce783;
+  --color-forja-green-dim: #15b86a;
+  --color-forja-flame: #ff4d1c;
+  --color-forja-flame-dim: #ff8a3d;
+  --color-brand: #1ce783;
+  --color-flame: #ff4d1c;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--color-forja-bg);
+    color: var(--color-forja-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, #1ce783 55%, #ff4d1c);
+    color: #0b0a0a;
+  }
+
+  :focus-visible {
+    outline: 2px solid #1ce783;
+    outline-offset: 4px;
+  }
+
+  /* Clickable affordance - always show pointer + clear press */
+  a,
+  button,
+  summary,
+  [role='button'],
+  [data-hover],
+  label[for],
+  input[type='submit'],
+  input[type='button'],
+  input[type='checkbox'],
+  input[type='radio'],
+  select {
+    cursor: pointer;
+  }
+
+  a,
+  button,
+  summary,
+  [role='button'],
+  [data-hover] {
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      opacity 0.15s ease,
+      transform 0.15s ease,
+      box-shadow 0.18s ease,
+      filter 0.18s ease;
+  }
+
+  a:active:not(:disabled),
+  button:active:not(:disabled),
+  summary:active,
+  [role='button']:active,
+  [data-hover]:active {
+    transform: scale(0.97);
+    filter: brightness(1.08);
+  }
+
+  button:disabled,
+  a[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+/* --- landing film grain --- */
+.film-grain::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: -50%;
+  z-index: 9000;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: forja-grain 0.4s steps(2) infinite;
+}
+
+@keyframes forja-grain {
+  50% {
+    transform: translate(-3%, 2%);
+  }
+}
+
+/* Custom cursor removed - it hid the system pointer and killed click affordance. */
+
+/* ---  type helpers ---  */
+.font-disp {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.86;
+}
+
+.font-serif-i {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.font-mono-ui {
+  font-family: var(--font-mono);
+}
+
+.text-flame {
+  color: #ff4d1c;
+}
+
+.text-brand {
+  color: #1ce783;
+}
+
+.bg-flame {
+  background: #ff4d1c;
+}
+
+.bg-brand {
+  background: #1ce783;
+}
+
+/* Primary CTA: brand green → flame on hover */
+.btn-magnet {
+  background: #1ce783;
+  color: #0b0a0a;
+  transition:
+    background 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.btn-magnet:hover {
+  background: #ff4d1c;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 16px 40px -12px rgba(255, 77, 28, 0.55);
+}
+
+.btn-magnet:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.text-stroke {
+  -webkit-text-stroke: 1.4px #ede6da;
+  color: transparent;
+}
+
+/* ---  marquee ---  */
+@keyframes forja-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: forja-marquee 30s linear infinite;
+}
+
+@keyframes forja-scroll-grow {
+  0%,
+  100% {
+    transform: scaleX(0.3);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.animate-scroll-line {
+  transform-origin: left;
+  animation: forja-scroll-grow 2.2s ease-in-out infinite;
+}
+
+/* ---  now playing (CTA) ---  */
+@keyframes forja-stream-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-stream-progress {
+  width: 100%;
+  transform-origin: left;
+  animation: forja-stream-progress 4.2s linear;
+}
+
+@keyframes forja-play-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 28px rgba(28, 231, 131, 0.45);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 40px rgba(28, 231, 131, 0.7);
+  }
+}
+
+.animate-play-pulse {
+  animation: forja-play-pulse 2s ease-in-out infinite;
+}
+
+@keyframes forja-live-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.animate-live-dot {
+  animation: forja-live-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes forja-now-title {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-now-title {
+  animation: forja-now-title 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ---  reveal (section-by-section) ---  */
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-up {
+  transform: translateY(56px);
+}
+
+.reveal-left {
+  transform: translateX(-48px);
+}
+
+.reveal-right {
+  transform: translateX(48px);
+}
+
+.reveal-scale {
+  transform: scale(0.92);
+}
+
+.reveal-fade {
+  transform: none;
+  filter: blur(6px);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  /* Drop will-change so fixed descendants (e.g. Turnstile Troubleshoot)
+     use the viewport as containing block, not this element. */
+  will-change: auto;
+}
+
+/*
+ * Turnstile rim clip — CF paints the plate inside a cross-origin iframe;
+ * we can only crop the 1–2px edge, not restyle the fill.
+ */
+.forja-turnstile {
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.forja-turnstile__clip {
+  margin: -2px;
+  line-height: 0;
+}
+
+.forja-turnstile iframe {
+  border: 0 !important;
+  outline: none !important;
+}
+
+/* Same slide; fade uses an even curve so it doesn’t pop opaque mid-move. */
+.reveal-slow {
+  transition:
+    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 1.35s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 1.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hero load-in (first viewport) */
+.hero-enter > * {
+  opacity: 0;
+  transform: translateY(28px);
+  animation: forja-hero-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-enter > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.hero-enter > *:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.hero-enter > *:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.hero-enter > *:nth-child(4) {
+  animation-delay: 0.42s;
+}
+
+@keyframes forja-hero-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Cards / tiles - hover lift */
+.hover-lift {
+  transition:
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.35s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 28px 60px -28px rgba(0, 0, 0, 0.85);
+  }
+
+  .hover-zoom {
+    overflow: hidden;
+  }
+
+  .hover-zoom img {
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .hover-zoom:hover img {
+    transform: scale(1.06);
+  }
+
+  .link-draw {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0 1.5px;
+    transition: background-size 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .link-draw:hover {
+    background-size: 100% 1.5px;
+  }
+}
+
+/* Soft float for product mocks */
+@keyframes forja-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: forja-float 5.5s ease-in-out infinite;
+}
+
+/* Login - cycling headline word */
+@keyframes forja-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.animate-word-in {
+  animation: forja-word-in 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes forja-login-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.06);
+  }
+}
+
+.animate-login-glow {
+  animation: forja-login-glow 6s ease-in-out infinite;
+}
+
+@keyframes forja-scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.login-scanline::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(28, 231, 131, 0.06) 48%,
+    transparent 100%
+  );
+  animation: forja-scanline 4.5s linear infinite;
+}
+
+/* ---  index hover ---  */
+.index-list.hovering .irow {
+  opacity: 0.32;
+}
+
+.index-list.hovering .irow.hot {
+  opacity: 1;
+}
+
+.irow.hot .irow-name {
+  transform: translateX(2vw);
+  color: #fff;
+}
+
+.preview-card {
+  position: fixed;
+  z-index: 150;
+  width: 230px;
+  height: 320px;
+  border-radius: 10px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9) rotate(-4deg);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+}
+
+.preview-card.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(-4deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film-grain::after,
+  .animate-marquee,
+  .animate-scroll-line,
+  .animate-stream-progress,
+  .animate-play-pulse,
+  .animate-live-dot,
+  .animate-now-title,
+  .animate-float,
+  .hero-enter > * {
+    animation: none !important;
+  }
+
+  .animate-stream-progress {
+    transform: scaleX(0.66);
+  }
+
+  .reveal,
+  .hero-enter > * {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .btn-magnet:hover,
+  .hover-lift:hover {
+    transform: none;
+  }
 }

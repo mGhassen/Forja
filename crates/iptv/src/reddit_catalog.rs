@@ -668,24 +668,35 @@ fn decode_xml_entities(s: &str) -> String {
         .replace("&#32;", " ")
 }
 
+/// Run async HTTP from sync catalog code.
+/// Safe under Flutter (no runtime) and `iptv-worker` (`#[tokio::main]`).
+fn block_on_http<F, T>(fut: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
+        Err(_) => RUNTIME.block_on(fut),
+    }
+}
+
 fn http_get(url: &str, headers: &HashMap<String, String>, timeout_secs: u64) -> Option<String> {
-    RUNTIME
-        .block_on(async {
-            utils::engine_cancel::with_cancel(async {
-                let timeout = Duration::from_secs(timeout_secs.max(1));
-                let mut req = CLIENT.get(url).timeout(timeout);
-                for (k, v) in headers {
-                    req = req.header(k.as_str(), v.as_str());
-                }
-                let resp = req.send().await.map_err(|e| e.to_string())?;
-                if !resp.status().is_success() {
-                    return Err(format!("http {}", resp.status()));
-                }
-                resp.text().await.map_err(|e| e.to_string())
-            })
-            .await
+    block_on_http(async {
+        utils::engine_cancel::with_cancel(async {
+            let timeout = Duration::from_secs(timeout_secs.max(1));
+            let mut req = CLIENT.get(url).timeout(timeout);
+            for (k, v) in headers {
+                req = req.header(k.as_str(), v.as_str());
+            }
+            let resp = req.send().await.map_err(|e| e.to_string())?;
+            if !resp.status().is_success() {
+                return Err(format!("http {}", resp.status()));
+            }
+            resp.text().await.map_err(|e| e.to_string())
         })
-        .ok()
+        .await
+    })
+    .ok()
 }
 
 fn http_post(
@@ -694,23 +705,22 @@ fn http_post(
     body: &str,
     timeout_secs: u64,
 ) -> Option<String> {
-    RUNTIME
-        .block_on(async {
-            utils::engine_cancel::with_cancel(async {
-                let timeout = Duration::from_secs(timeout_secs.max(1));
-                let mut req = CLIENT.post(url).timeout(timeout).body(body.to_string());
-                for (k, v) in headers {
-                    req = req.header(k.as_str(), v.as_str());
-                }
-                let resp = req.send().await.map_err(|e| e.to_string())?;
-                if !resp.status().is_success() {
-                    return Err(format!("http {}", resp.status()));
-                }
-                resp.text().await.map_err(|e| e.to_string())
-            })
-            .await
+    block_on_http(async {
+        utils::engine_cancel::with_cancel(async {
+            let timeout = Duration::from_secs(timeout_secs.max(1));
+            let mut req = CLIENT.post(url).timeout(timeout).body(body.to_string());
+            for (k, v) in headers {
+                req = req.header(k.as_str(), v.as_str());
+            }
+            let resp = req.send().await.map_err(|e| e.to_string())?;
+            if !resp.status().is_success() {
+                return Err(format!("http {}", resp.status()));
+            }
+            resp.text().await.map_err(|e| e.to_string())
         })
-        .ok()
+        .await
+    })
+    .ok()
 }
 
 fn get_oauth_token() -> Option<String> {

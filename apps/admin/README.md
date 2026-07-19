@@ -1,29 +1,41 @@
 # Forja Admin — IPTV catalog ops (RFC-040)
 
-Thin ops console for the shared Forja Supabase project. Not a clone of the user portal.
+Second TanStack Start app. Same auth + Forja design tokens/UI primitives as web — **ops pages only** (no portal/marketing/account screens).
 
 ## Setup
 
 ```bash
 cp .env.example .env
-# same VITE_SUPABASE_* as apps/web
-npm install
-npm run dev   # http://localhost:5174
+# same VITE_SUPABASE_* + Turnstile as apps/web (or use repo-root .env bridge)
+pnpm install
+pnpm dev   # http://127.0.0.1:4000
 ```
 
 Sign in with an account where `accounts.is_admin = true`.
 
-## Apply schema
-
-From `apps/web` (after linking / local supabase):
+## Inngest catalog scrape
 
 ```bash
-# local
-supabase db reset   # only if you intend to wipe local — ask before prod
-# or push the new migration only on a linked project (ops)
+# terminal 1
+cd apps/admin && pnpm dev
+
+# terminal 2
+npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
 ```
 
-Migration: `supabase/migrations/20260718224617_iptv_catalog_ops.sql`
+Needs `SUPABASE_SERVICE_ROLE_KEY` + Inngest keys (see `.env.example`). Daily cron + event `iptv/catalog.scrape`.
+
+## Routes
+
+| Path | Page |
+|------|------|
+| `/login` | Same auth + captcha as web |
+| `/` | Dashboard |
+| `/accounts` | Credits + `iptvScrape` |
+| `/pool` | Catalog candidates |
+| `/scrape` | Scrape run history |
+| `/api/inngest` | Inngest serve (server) |
+| `/providers` | Provider runtime JSON (RFC-039) |
 
 ## Worker
 
@@ -31,6 +43,5 @@ Migration: `supabase/migrations/20260718224617_iptv_catalog_ops.sql`
 cd crates
 export SUPABASE_URL=…
 export SUPABASE_SERVICE_ROLE_KEY=…
-cargo run -p iptv-worker -- scrape --dry-run --max-pages 2
 cargo run -p iptv-worker -- scrape --max-pages 10 --verify
 ```

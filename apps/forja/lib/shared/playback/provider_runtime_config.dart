@@ -32,9 +32,16 @@ class ProviderRuntimeConfig {
   List<CdnRefererRule> get cdnRefererRules => _snap.cdnRefererRules;
   Map<String, ProviderUrlTemplates> get templates => _snap.templates;
   Map<String, String> get apis => _snap.apis;
+  Map<String, String> get webstreamr => _snap.webstreamr;
 
   String? api(String key) {
     final v = _snap.apis[key]?.trim();
+    if (v == null || v.isEmpty) return null;
+    return v;
+  }
+
+  String? webstreamrBase(String sourceId) {
+    final v = _snap.webstreamr[sourceId]?.trim();
     if (v == null || v.isEmpty) return null;
     return v;
   }
@@ -311,6 +318,7 @@ class ProviderRuntimeSnapshot {
   final int schema;
   final Map<String, ProviderUrlTemplates> templates;
   final Map<String, String> apis;
+  final Map<String, String> webstreamr;
   final AnimeEmbedHostConfig megaplay;
   final AnimeEmbedHostConfig vidwish;
   final List<String> miruroOrigins;
@@ -321,6 +329,7 @@ class ProviderRuntimeSnapshot {
     required this.schema,
     required this.templates,
     required this.apis,
+    required this.webstreamr,
     required this.megaplay,
     required this.vidwish,
     required this.miruroOrigins,
@@ -401,6 +410,30 @@ class ProviderRuntimeSnapshot {
           'vidsrcEmbed': 'https://vsembed.su',
           'vixsrcBase': 'https://vixsrc.to',
           'index111477': 'https://a.111477.xyz',
+          'rgshowsApi': 'https://api.rgshows.ru',
+        },
+        webstreamr: const {
+          'vidsrc': 'https://vsembed.su',
+          'vixsrc': 'https://vixsrc.to',
+          'rgshows': 'https://rgshows.ru',
+          'meinecloud': 'https://meinecloud.click',
+          'verhdlink': 'https://verhdlink.cam',
+          'megakino': 'https://megakino1.to',
+          'homecine': 'https://www3.homecine.to',
+          'mostraguarda': 'https://mostraguarda.stream',
+          'eurostreaming': 'https://eurostreaming.luxe',
+          'cinehdplus': 'https://cinehdplus.gratis',
+          'streamkiste': 'https://streamkiste.taxi',
+          'frenchcloud': 'https://frenchcloud.cam',
+          'cuevana': 'https://ww1.cuevana3.is',
+          'hdhub4u': 'https://new5.hdhub4u.fo',
+          'einschalten': 'https://einschalten.in',
+          'movix': 'https://api.movix.site',
+          'frembed': 'https://frembed.work',
+          'kokoshka': 'https://kokoshka.digital',
+          '4khdhub': 'https://4khdhub.dad',
+          'vegamovies': 'https://vegamovies.market',
+          'kinoger': 'https://kinoger.com',
         },
         megaplay: const AnimeEmbedHostConfig(
           host: 'megaplay.buzz',
@@ -511,10 +544,20 @@ class ProviderRuntimeSnapshot {
         apis[e.key.toString()] = v;
       }
     }
+    final webstreamr = <String, String>{};
+    final rawWs = j['webstreamr'] as Map?;
+    if (rawWs != null) {
+      for (final e in rawWs.entries) {
+        final v = e.value?.toString().trim() ?? '';
+        if (!v.startsWith('http')) continue;
+        webstreamr[e.key.toString()] = v;
+      }
+    }
     return ProviderRuntimeSnapshot(
       schema: schema,
       templates: templates,
       apis: apis,
+      webstreamr: webstreamr,
       megaplay: megaplay,
       vidwish: vidwish,
       miruroOrigins: origins,
@@ -529,10 +572,12 @@ class ProviderRuntimeSnapshot {
       tpl[e.key] = (tpl[e.key] ?? e.value).merged(e.value);
     }
     final api = Map<String, String>.from(apis)..addAll(overlay.apis);
+    final ws = Map<String, String>.from(webstreamr)..addAll(overlay.webstreamr);
     return ProviderRuntimeSnapshot(
       schema: overlay.schema,
       templates: tpl,
       apis: api,
+      webstreamr: ws,
       megaplay: megaplay.merged(overlay.megaplay),
       vidwish: vidwish.merged(overlay.vidwish),
       miruroOrigins: overlay.miruroOrigins.isNotEmpty
@@ -553,6 +598,7 @@ class ProviderRuntimeSnapshot {
           for (final e in templates.entries) e.key: e.value.toJson(),
         },
         'apis': apis,
+        'webstreamr': webstreamr,
         'anime': {
           'megaplay': megaplay.toJson(),
           'vidwish': vidwish.toJson(),

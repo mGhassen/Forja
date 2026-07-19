@@ -242,6 +242,65 @@ class IptvClient {
     return RustLib.instance.decodeXtreamText(s);
   }
 
+  static DateTime? _parseEpgTs(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString();
+    // Xtream sends both unix-seconds ("start_timestamp") and ISO-ish
+    // strings ("start": "2026-04-25 19:00:00"). Try seconds first.
+    final secs = int.tryParse(s);
+    if (secs != null && secs > 1000000000) {
+      final ms = secs > 1000000000000 ? secs : secs * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+    }
+    try {
+      return DateTime.parse(s.replaceFirst(' ', 'T')).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<EpgEntry> _parseEpgListings(String text) {
+    final root = json.decode(text);
+    final List arr = root is Map<String, dynamic>
+        ? (root['epg_listings'] as List? ?? const [])
+        : (root is List ? root : const []);
+    final out = <EpgEntry>[];
+    for (final e in arr) {
+      if (e is! Map<String, dynamic>) continue;
+      final start = _parseEpgTs(e['start_timestamp']) ?? _parseEpgTs(e['start']);
+      final stop = _parseEpgTs(e['stop_timestamp']) ??
+          _parseEpgTs(e['end']) ??
+          _parseEpgTs(e['stop']);
+      if (start == null || stop == null) continue;
+      out.add(EpgEntry(
+        title: _decodeXtreamField(e['title']?.toString() ?? ''),
+        description: _decodeXtreamField(e['description']?.toString() ?? ''),
+        start: start,
+        stop: stop,
+      ));
+    }
+    out.sort((a, b) {
+      final byStart = a.start.compareTo(b.start);
+      if (byStart != 0) return byStart;
+      return b.stop.compareTo(a.stop);
+    });
+    // Panels often repeat the same programme (or near-identical rows).
+    final deduped = <EpgEntry>[];
+    for (final e in out) {
+      if (!e.stop.isAfter(e.start)) continue;
+      if (deduped.isNotEmpty) {
+        final prev = deduped.last;
+        if (prev.start == e.start &&
+            prev.stop == e.stop &&
+            prev.title == e.title) {
+          continue;
+        }
+      }
+      deduped.add(e);
+    }
+    return deduped;
+  }
+
   static Future<List<EpgEntry>> shortEpg(
     IptvPortal p,
     String streamId, {
@@ -255,49 +314,33 @@ class IptvClient {
     final text = await _httpGet(url, timeout: timeout);
     if (text == null) return const [];
     try {
-      final root = json.decode(text);
-      final List arr = root is Map<String, dynamic>
-          ? (root['epg_listings'] as List? ?? const [])
-          : (root is List ? root : const []);
-      DateTime? parseTs(dynamic v) {
-        if (v == null) return null;
-        final s = v.toString();
-        // Xtream sends both unix-seconds ("start_timestamp") and ISO-ish
-        // strings ("start": "2026-04-25 19:00:00"). Try seconds first.
-        final secs = int.tryParse(s);
-        if (secs != null && secs > 1000000000) {
-          final ms = secs > 1000000000000 ? secs : secs * 1000;
-          return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
-        }
-        try {
-          return DateTime.parse(s.replaceFirst(' ', 'T')).toLocal();
-        } catch (_) {
-          return null;
-        }
-      }
+      return _parseEpgListings(text);
+    } catch (_) {
+      return const [];
+    }
+  }
 
-      String decode64(dynamic v) {
-        if (v == null) return '';
-        return _decodeXtreamField(v.toString());
-      }
-
-      final out = <EpgEntry>[];
-      for (final e in arr) {
-        if (e is! Map<String, dynamic>) continue;
-        final start = parseTs(e['start_timestamp']) ?? parseTs(e['start']);
-        final stop = parseTs(e['stop_timestamp']) ??
-            parseTs(e['end']) ??
-            parseTs(e['stop']);
-        if (start == null || stop == null) continue;
-        out.add(EpgEntry(
-          title: decode64(e['title']),
-          description: decode64(e['description']),
-          start: start,
-          stop: stop,
-        ));
-      }
-      out.sort((a, b) => a.start.compareTo(b.start));
-      return out;
+  /// Full EPG table for one live stream (`get_simple_data_table`).
+  /// Optionally keep only programmes overlapping `[windowStart, windowEnd]`.
+  static Future<List<EpgEntry>> simpleDataTable(
+    IptvPortal p,
+    String streamId, {
+    DateTime? windowStart,
+    DateTime? windowEnd,
+    Duration timeout = const Duration(seconds: 18),
+  }) async {
+    if (streamId.isEmpty) return const [];
+    final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
+        '&password=${_enc(p.password)}'
+        '&action=get_simple_data_table&stream_id=${_enc(streamId)}';
+    final text = await _httpGet(url, timeout: timeout);
+    if (text == null) return const [];
+    try {
+      final all = _parseEpgListings(text);
+      if (windowStart == null || windowEnd == null) return all;
+      return all
+          .where((e) => e.stop.isAfter(windowStart) && e.start.isBefore(windowEnd))
+          .toList(growable: false);
     } catch (_) {
       return const [];
     }

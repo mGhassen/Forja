@@ -74,6 +74,18 @@ void main() {
       expect(merged.apis['vidnestApi'], 'https://ops-vidnest.test');
       expect(merged.apis['anikotoApi'], contains('anikotoapi'));
     });
+
+    test('merge overlays webstreamr hosts', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'webstreamr': {'kinoger': 'https://ops-kinoger.test'},
+      });
+      expect(remote, isNotNull);
+      final merged =
+          ProviderRuntimeSnapshot.builtins().merged(remote!);
+      expect(merged.webstreamr['kinoger'], 'https://ops-kinoger.test');
+      expect(merged.webstreamr['cuevana'], contains('cuevana'));
+    });
   });
 
   group('resolvePlaybackHttpHeaders + runtime CDN rules', () {

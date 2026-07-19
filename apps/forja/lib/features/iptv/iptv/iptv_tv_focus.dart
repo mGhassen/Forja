@@ -151,10 +151,15 @@ int iptvBrowserCategoryIndexFor(IptvController ctrl, String categoryId) {
 }
 
 /// Left from a channel tile → that channel's group row in the sidebar.
+/// When browsing Favorites / Already watched, return to that synthetic row.
 VoidCallback iptvStreamLeftEdge(IptvController ctrl, IptvStream stream) {
+  final selected = ctrl.browserSelectedCategoryId;
+  final groupId = selected != null && IptvLiveCatalog.isSyntheticId(selected)
+      ? selected
+      : stream.categoryId;
   return () => iptvFocusRowItem(
         'browser-categories',
-        iptvBrowserCategoryIndexFor(ctrl, stream.categoryId),
+        iptvBrowserCategoryIndexFor(ctrl, groupId),
       );
 }
 

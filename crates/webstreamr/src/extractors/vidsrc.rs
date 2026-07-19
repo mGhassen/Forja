@@ -25,7 +25,8 @@ const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
 fn embed_host() -> String {
-    utils::provider_runtime::api_base("vidsrcEmbed")
+    utils::provider_runtime::webstreamr_base("vidsrc")
+        .or_else(|| utils::provider_runtime::api_base("vidsrcEmbed"))
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| EMBED_HOST.to_string())
 }

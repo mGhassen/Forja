@@ -33,6 +33,7 @@ class IptvStore {
   static const _lastSectionKey = 'pt_iptv_last_section';
   static const _liveCategorySortKey = 'pt_iptv_live_category_sort';
   static const _liveContentSortKey = 'pt_iptv_live_content_sort';
+  static const _liveBrowseLayoutKey = 'pt_iptv_live_browse_layout';
 
   /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
   static final ValueNotifier<int> listRevision = ValueNotifier(0);
@@ -234,6 +235,16 @@ class IptvStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_liveContentSortKey, sort.prefsValue);
   }
+
+  static Future<IptvLiveBrowseLayout> loadLiveBrowseLayout() async {
+    final prefs = await SharedPreferences.getInstance();
+    return IptvLiveBrowseLayout.fromPrefs(prefs.getString(_liveBrowseLayoutKey));
+  }
+
+  static Future<void> saveLiveBrowseLayout(IptvLiveBrowseLayout layout) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveBrowseLayoutKey, layout.prefsValue);
+  }
 }
 
 /// Per-portal cache of "alive" live channel IDs + per-portal Live-only pref.
@@ -410,5 +421,52 @@ class IptvChannelFavoritesStore {
   static Future<void> save(String channelId, Set<String> urls) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_key(channelId), urls.toList());
+  }
+}
+
+/// Device-local Live catalog favorites + recently opened channels (last 30).
+/// Keyed by portal `url|username|password` (same as [IptvAliveStore]).
+class IptvLiveChannelListsStore {
+  static String _favKey(String portalKey) => 'pt_iptv_live_fav_$portalKey';
+  static String _watchedKey(String portalKey) =>
+      'pt_iptv_live_watched_$portalKey';
+
+  static Future<Set<String>> loadFavorites(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_favKey(portalKey)) ?? const <String>[])
+        .toSet();
+  }
+
+  static Future<void> saveFavorites(
+    String portalKey,
+    Set<String> streamIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favKey(portalKey), streamIds.toList());
+  }
+
+  /// Most-recently opened first.
+  static Future<List<String>> loadWatched(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_watchedKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  /// Moves [streamId] to front; keeps at most [IptvLiveCatalog.watchedLimit].
+  static Future<List<String>> recordWatched(
+    String portalKey,
+    String streamId,
+  ) async {
+    if (streamId.isEmpty) return loadWatched(portalKey);
+    final prefs = await SharedPreferences.getInstance();
+    final next = <String>[streamId];
+    for (final id in prefs.getStringList(_watchedKey(portalKey)) ??
+        const <String>[]) {
+      if (id != streamId) next.add(id);
+      if (next.length >= IptvLiveCatalog.watchedLimit) break;
+    }
+    await prefs.setStringList(_watchedKey(portalKey), next);
+    return next;
   }
 }

@@ -84,6 +84,30 @@ class IptvCategory {
   const IptvCategory({required this.id, required this.name});
 }
 
+/// Synthetic Live sidebar rows (not from the portal API).
+abstract final class IptvLiveCatalog {
+  static const favoritesId = '__favorites__';
+  static const watchedId = '__watched__';
+  static const watchedLimit = 30;
+
+  static const favorites = IptvCategory(id: favoritesId, name: 'Favorites');
+  static const watched =
+      IptvCategory(id: watchedId, name: 'Already watched');
+
+  static bool isSyntheticId(String id) =>
+      id == favoritesId || id == watchedId;
+
+  /// All + Favorites + Already watched stay pinned above portal groups.
+  static bool isPinnedId(String id) => id.isEmpty || isSyntheticId(id);
+
+  static List<IptvCategory> withPins(List<IptvCategory> apiCategories) => [
+        const IptvCategory(id: '', name: 'All'),
+        favorites,
+        watched,
+        ...apiCategories,
+      ];
+}
+
 enum IptvSection { live, vod, series }
 
 /// Live catalog sort — playlist = API order; nameAsc/nameDesc by display name.
@@ -97,6 +121,17 @@ enum IptvCatalogSort {
         'nameDesc' => nameDesc,
         _ => playlist,
       };
+
+  String get prefsValue => name;
+}
+
+/// Live catalog channel pane layout — cards (default) or EPG timeline guide.
+enum IptvLiveBrowseLayout {
+  cards,
+  guide;
+
+  static IptvLiveBrowseLayout fromPrefs(String? raw) =>
+      raw == 'guide' ? guide : cards;
 
   String get prefsValue => name;
 }

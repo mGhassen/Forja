@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/app/boot_cache.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
@@ -51,6 +52,7 @@ class ProfileChooserScreen extends StatefulWidget {
     this.initialMode = ProfileChooserMode.choose,
     this.prepareCurrentOnSwitch = false,
     this.closeIfAlreadyActive = false,
+    this.useLogoIntroSplash = false,
   });
 
   final VoidCallback onProfileSelected;
@@ -59,11 +61,14 @@ class ProfileChooserScreen extends StatefulWidget {
   final ProfileChooserMode initialMode;
 
   /// Mid-session: push outgoing profile before loading the next.
-  /// Cold sign-in / first pick: false — still shows [ProfileSwitchSplash].
   final bool prepareCurrentOnSwitch;
 
   /// When re-opening Who's watching, tapping the current profile just closes.
   final bool closeIfAlreadyActive;
+
+  /// Cold sign-in pick: select + merge, then let the gate show the logo
+  /// [SplashScreen]. Mid-session switches keep [ProfileSwitchSplash].
+  final bool useLogoIntroSplash;
 
   @override
   State<ProfileChooserScreen> createState() => _ProfileChooserScreenState();
@@ -131,7 +136,21 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       _error = null;
     });
 
-    // Always profile splash — never the logo intro splash.
+    if (widget.useLogoIntroSplash) {
+      final ok = await _activateProfileForIntroSplash(profile);
+      if (!mounted) return;
+      if (ok) {
+        widget.onProfileSelected();
+        return;
+      }
+      setState(() {
+        _busy = false;
+        _error =
+            'Could not open this profile. Check your connection and retry.';
+      });
+      return;
+    }
+
     Rect? splashOrigin = originRect;
     final overlayBox =
         Overlay.of(context).context.findRenderObject() as RenderBox?;
@@ -166,6 +185,20 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       _error =
           'Could not open this profile. Check your connection and retry.';
     });
+  }
+
+  /// Cold sign-in: bind the profile + merge settings only. Engine/catalog
+  /// warm happens on the logo intro splash that follows.
+  Future<bool> _activateProfileForIntroSplash(SyncProfile profile) async {
+    try {
+      final selected = await SyncService.instance.selectProfile(profile.id);
+      if (!selected) return false;
+      await SyncDomainBridge.instance.pullAndMergeAll();
+      BootCache.clear();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _signOut() async {

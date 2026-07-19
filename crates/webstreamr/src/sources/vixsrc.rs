@@ -4,7 +4,8 @@ use crate::types::MediaType;
 const BASE_URL: &str = "https://vixsrc.to";
 
 fn base_url() -> String {
-    utils::provider_runtime::api_base("vixsrcBase")
+    utils::provider_runtime::webstreamr_base("vixsrc")
+        .or_else(|| utils::provider_runtime::api_base("vixsrcBase"))
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| BASE_URL.to_string())
 }

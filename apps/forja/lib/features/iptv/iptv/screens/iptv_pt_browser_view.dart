@@ -173,7 +173,8 @@ class _BrowserViewState extends State<_BrowserView> {
     }
   }
 
-  List<IptvCategory> get _filteredCategories => widget.ctrl.browserSidebarCategories;
+  List<IptvCategory> get _filteredCategories =>
+      widget.ctrl.browserSidebarCategories;
 
   List<IptvStream> get _filteredStreams {
     final ctrl = widget.ctrl;
@@ -185,13 +186,22 @@ class _BrowserViewState extends State<_BrowserView> {
       // Search is global across categories AND matches by stream name OR by
       // the stream's category name. Lookup table built once per filter pass.
       final catNameById = <String, String>{
-        for (final c in ctrl.categories) c.id: c.name.toLowerCase(),
+        for (final c in ctrl.categories)
+          if (!IptvLiveCatalog.isSyntheticId(c.id)) c.id: c.name.toLowerCase(),
       };
       s = s.where((x) {
         if (x.name.toLowerCase().contains(q)) return true;
         final cn = catNameById[x.categoryId];
         return cn != null && cn.contains(q);
       }).toList();
+    } else if (cat == IptvLiveCatalog.favoritesId) {
+      s = s.where((x) => ctrl.isLiveFavorite(x.streamId)).toList();
+    } else if (cat == IptvLiveCatalog.watchedId) {
+      final byId = {for (final x in s) x.streamId: x};
+      s = [
+        for (final id in ctrl.liveWatchedIds)
+          if (byId.containsKey(id)) byId[id]!,
+      ];
     } else if (cat != null && cat.isNotEmpty) {
       s = s.where((x) => x.categoryId == cat).toList();
     }
@@ -201,6 +211,7 @@ class _BrowserViewState extends State<_BrowserView> {
         ctrl.aliveStreamIds.isNotEmpty) {
       s = s.where((x) => ctrl.aliveStreamIds.contains(x.streamId)).toList();
     }
+    // Watched already uses MRU order; name sort still applies via liveSorted.
     return ctrl.liveSortedStreams(s);
   }
 
@@ -263,7 +274,9 @@ class _BrowserViewState extends State<_BrowserView> {
             padding: const EdgeInsets.all(16),
             child: Text(
               ctrl.error!,
-              style: GoogleFonts.plusJakartaSans(color: const Color(0xFFEF4444)),
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFFEF4444),
+              ),
             ),
           ),
         Expanded(
@@ -305,7 +318,10 @@ class _BrowserViewState extends State<_BrowserView> {
             Text(
               'Select a provider to browse Live TV, Movies, and Series.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 14),
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white60,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 28),
             IptvPrimaryButton(
@@ -343,8 +359,8 @@ class _BrowserViewState extends State<_BrowserView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final categoryWidth = widget.compact
-            ? (constraints.maxWidth * 0.38).clamp(168.0, 220.0)
-            : (widget.wide ? 300.0 : 260.0);
+            ? (constraints.maxWidth * 0.30).clamp(132.0, 168.0)
+            : (widget.wide ? 200.0 : 176.0);
 
         return Row(
           children: [
@@ -353,7 +369,7 @@ class _BrowserViewState extends State<_BrowserView> {
               child: _buildCategorySidebar(compact: widget.compact),
             ),
             Expanded(
-              child: widget.compact ? _buildStreamRows() : _buildStreamGrid(),
+              child: _buildChannelPane(),
             ),
           ],
         );
@@ -361,12 +377,33 @@ class _BrowserViewState extends State<_BrowserView> {
     );
   }
 
+  Widget _buildChannelPane() {
+    final ctrl = widget.ctrl;
+    final useGuide = !widget.compact &&
+        !ShellScope.metricsOf(context).usesTvDensity &&
+        ctrl.activeSection == IptvSection.live &&
+        ctrl.liveBrowseLayout == IptvLiveBrowseLayout.guide;
+    if (useGuide) {
+      final list = _filteredStreams;
+      if (list.isEmpty) return _buildStreamsEmpty();
+      return IptvEpgGuideView(
+        key: ValueKey(
+          'epg-${ctrl.activePortal?.key}-${ctrl.browserSelectedCategoryId}',
+        ),
+        ctrl: ctrl,
+        streams: list,
+        onPlay: _onStreamTap,
+      );
+    }
+    return widget.compact ? _buildStreamRows() : _buildStreamGrid();
+  }
+
   Widget _buildCategorySidebar({bool compact = false}) {
     final ctrl = widget.ctrl;
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          right: BorderSide(color: ForjaShellColors.borderSubtle),
         ),
       ),
       child: Builder(
@@ -383,13 +420,14 @@ class _BrowserViewState extends State<_BrowserView> {
             ),
           );
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             itemCount: cats.length,
             itemBuilder: (_, i) {
               final c = cats[i];
               final selected = c.id == ctrl.browserSelectedCategoryId;
               return _CategorySidebarRow(
                 label: c.name.isEmpty ? 'Uncategorized' : c.name,
+                icon: _iptvCategoryIcon(c.id),
                 selected: selected,
                 compact: compact,
                 listIndex: i,
@@ -457,16 +495,12 @@ class _BrowserViewState extends State<_BrowserView> {
               gridIndex: i,
               gridColumns: cross,
               onUpEdge: i < cross
-                  ? iptvStreamUpEdge(
-                      widget.ctrl,
-                      index: i,
-                      columns: cross,
-                    )
+                  ? iptvStreamUpEdge(widget.ctrl, index: i, columns: cross)
                   : null,
               onRightEdge:
                   widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
-                      ? () => iptvFocusRowItem('portals', 0)
-                      : null,
+                  ? () => iptvFocusRowItem('portals', 0)
+                  : null,
               onLeftEdge: i % cross == 0
                   ? iptvStreamLeftEdge(widget.ctrl, stream)
                   : null,
@@ -495,10 +529,8 @@ class _BrowserViewState extends State<_BrowserView> {
       sortOrder: 3,
       itemCount: list.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () => iptvFocusRowItem(
-        'iptv-sections',
-        iptvActiveSectionShelfIndex(ctrl),
-      ),
+      onFocusUp: () =>
+          iptvFocusRowItem('iptv-sections', iptvActiveSectionShelfIndex(ctrl)),
     );
 
     final rows = ListView.builder(
@@ -558,12 +590,22 @@ class _BrowserViewState extends State<_BrowserView> {
           ? 'Checking streams…'
           : 'No alive streams found';
       return Center(
-        child: Text(msg, style: GoogleFonts.plusJakartaSans(color: Colors.white60)),
+        child: Text(
+          msg,
+          style: GoogleFonts.plusJakartaSans(color: Colors.white60),
+        ),
       );
     }
+    final cat = ctrl.browserSelectedCategoryId;
+    final emptyMsg = cat == IptvLiveCatalog.favoritesId
+        ? 'No favorite channels yet — tap the star on a channel'
+        : cat == IptvLiveCatalog.watchedId
+            ? 'No recently watched channels'
+            : 'No streams in this view';
     return Center(
       child: Text(
-        'No streams in this view',
+        emptyMsg,
+        textAlign: TextAlign.center,
         style: GoogleFonts.plusJakartaSans(color: Colors.white60),
       ),
     );
@@ -576,6 +618,9 @@ class _BrowserViewState extends State<_BrowserView> {
     if (s.kind == 'series') {
       ctrl.openSeries(s);
       return;
+    }
+    if (s.kind == 'live') {
+      unawaited(ctrl.recordLiveWatched(s.streamId));
     }
     final url = IptvClient.streamUrl(p.portal, s);
     final channelGuide = s.kind == 'live'

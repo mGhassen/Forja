@@ -36,6 +36,18 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 
   bool get _showLiveSort => ctrl.activeSection == IptvSection.live;
 
+  /// Cards / EPG toggle — Live + wide desktop only (not TV / compact bar).
+  bool _showLiveLayoutToggle(BuildContext context, {required bool compact}) {
+    if (!_showLiveSort || compact) return false;
+    return !ShellScope.metricsOf(context).usesTvDensity;
+  }
+
+  /// Live: Search · Sort · Portals. Else: Search · Portals.
+  /// (Cards/EPG toggle sits next to the shelf — not in this focus row.)
+  int get _searchToolIndex => 0;
+
+  int get _sortToolIndex => 1;
+
   int get _topToolsCount => _showLiveSort ? 3 : 2;
 
   int get _portalToolIndex => _showLiveSort ? 2 : 1;
@@ -199,15 +211,15 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       sortOrder: 0,
       itemCount: _kSectionShelf.length,
     );
-    iptvSyncRow(
-      rowId: 'iptv-top-tools',
-      sortOrder: 1,
-      itemCount: _topToolsCount,
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
+        final showLayout = _showLiveLayoutToggle(context, compact: compact);
+        iptvSyncRow(
+          rowId: 'iptv-top-tools',
+          sortOrder: 1,
+          itemCount: _topToolsCount,
+        );
         final leftPadding = ShellTokens.compactChromeLeadingInset(
           context,
         ).clamp(ShellTokens.bodyHorizontalPadding, constraints.maxWidth * 0.28);
@@ -221,7 +233,16 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                   alignment: Alignment.centerLeft,
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: _buildShelf(context),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildShelf(context),
+                        if (showLayout) ...[
+                          const SizedBox(width: 8),
+                          _buildLiveLayoutToggle(context),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -239,6 +260,47 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLiveLayoutToggle(BuildContext context) {
+    final guide = ctrl.liveBrowseLayout == IptvLiveBrowseLayout.guide;
+    return Container(
+      height: _kShelfTabHeight,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(_kShelfTabHeight / 2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _LiveLayoutToggleSlot(
+            icon: Icons.grid_view_rounded,
+            selected: !guide,
+            isFirst: true,
+            isLast: false,
+            onTap: () {
+              unawaited(ctrl.setLiveBrowseLayout(IptvLiveBrowseLayout.cards));
+            },
+          ),
+          Container(
+            width: 1,
+            height: 16,
+            color: Colors.white.withValues(alpha: 0.14),
+          ),
+          _LiveLayoutToggleSlot(
+            icon: Icons.table_chart_outlined,
+            selected: guide,
+            isFirst: false,
+            isLast: true,
+            onTap: () {
+              unawaited(ctrl.setLiveBrowseLayout(IptvLiveBrowseLayout.guide));
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -335,11 +397,14 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       borderRadius: _kSearchCollapsed / 2,
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
-      tvItemIndex: 0,
+      tvItemIndex: _searchToolIndex,
       onDownEdge: _focusDownFromTopTools,
       onLeftEdge: () =>
           iptvFocusRowItem('iptv-sections', _kSectionShelf.length - 1),
-      onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+      onRightEdge: () => iptvFocusRowItem(
+        'iptv-top-tools',
+        _showLiveSort ? _sortToolIndex : _portalToolIndex,
+      ),
       onFocusChange: (focused) => setState(() => _searchToolFocused = focused),
       onHoverChange: (hovered) => setState(() => _searchToolHovered = hovered),
       child: Container(
@@ -392,10 +457,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         borderRadius: _kSearchCollapsed / 2,
         tvZone: ShellTvZone.topBar,
         tvRowId: 'iptv-top-tools',
-        tvItemIndex: 1,
+        tvItemIndex: _sortToolIndex,
         onDownEdge: _focusDownFromTopTools,
-        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
-        onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 2),
+        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', _searchToolIndex),
+        onRightEdge: () =>
+            iptvFocusRowItem('iptv-top-tools', _portalToolIndex),
         onFocusChange: (focused) => setState(() => _sortToolFocused = focused),
         onHoverChange: (hovered) => setState(() => _sortToolHovered = hovered),
         child: Tooltip(
@@ -445,6 +511,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       margin: const EdgeInsets.only(right: 12, top: 56),
       width: 280,
       maxHeight: 420,
+      shellBg: ForjaShellColors.surfaceElevated,
       child: _IptvLiveSortMenu(
         categorySort: ctrl.liveCategorySort,
         contentSort: ctrl.liveContentSort,
@@ -1204,3 +1271,51 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   }
 }
 
+class _LiveLayoutToggleSlot extends StatelessWidget {
+  const _LiveLayoutToggleSlot({
+    required this.icon,
+    required this.selected,
+    required this.isFirst,
+    required this.isLast,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final bool isFirst;
+  final bool isLast;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Radius.circular(_kShelfTabHeight / 2);
+    return ForjaInteractive(
+      onTap: onTap,
+      hoverScale: 1.0,
+      pressScale: 0.96,
+      builder: (hover, pressed) {
+        final active = selected || hover || pressed;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: _kShelfTabHeight,
+          height: _kShelfTabHeight,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active
+                ? Colors.white.withValues(alpha: pressed ? 0.16 : 0.10)
+                : Colors.transparent,
+            borderRadius: BorderRadius.horizontal(
+              left: isFirst ? r : Radius.zero,
+              right: isLast ? r : Radius.zero,
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: selected ? Colors.white : Colors.white60,
+          ),
+        );
+      },
+    );
+  }
+}

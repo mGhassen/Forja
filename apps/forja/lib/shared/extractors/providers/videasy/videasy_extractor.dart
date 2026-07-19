@@ -61,7 +61,7 @@ class VideasyExtractor {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
 
-  static const _baseHeaders = <String, String>{
+  static Map<String, String> get _baseHeaders => {
     'User-Agent': userAgent,
     'Referer': '$_playerOrigin/',
     'Origin': _playerOrigin,
@@ -70,7 +70,7 @@ class VideasyExtractor {
     'Accept-Language': 'en-US,en;q=0.9',
   };
 
-  static const _playbackHeaders = <String, String>{
+  static Map<String, String> get _playbackHeaders => {
     'User-Agent': userAgent,
     'Referer': '$_playerOrigin/',
     'Origin': _playerOrigin,

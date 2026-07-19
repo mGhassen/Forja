@@ -1,15 +1,15 @@
 # RFC-039: Remote provider runtime config
 
-**Status:** open  
-**Depends on:** [RFC-004](004-[partial]-provider-registry.md), [RFC-006](006-[partial]-supabase-sync.md)  
+**Status:** fixed  
+**Depends on:** [RFC-004](../004-[partial]-provider-registry.md), [RFC-006](../006-[partial]-supabase-sync.md)  
 **Area:** playback / sources — hosts, path templates, CDN Referer rules (not extract logic)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **4 / 5** components · **8 / 8** acceptance (registry slice) · **1** deferred (web admin) |
-| **Current slice** | Full movie/TV templates + anime/API bases + CDN rules via Supabase → Dart + Rust overlay |
+| **Progress** | **Complete · 6/6** components · **10/10** acceptance |
+| **Current slice** | Shipped — admin Providers editor + full registry overlay |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,8 +22,9 @@
 | 1 | R39-C01 | Supabase `provider_runtime_config` (public read, single-row JSON) | ✅ |
 | 2 | R39-C02 | Host `ProviderRuntimeConfig`: fetch, disk cache, merge over builtins | ✅ |
 | 3 | R39-C03 | Wire anime Megaplay/Vidwish embeds + Miruro origins + CDN Referer rewrite | ✅ |
-| 4 | R39-C04 | Web admin editor for the JSON row | ⏭️ |
+| 4 | R39-C04 | Admin JSON editor for the config row (`apps/admin` Providers) | ✅ |
 | 5 | R39-C05 | Full registry: `templates.*` + `apis.*` + KissKh mirrors; push overlay to Rust FFI | ✅ |
+| 6 | R39-C06 | WebStreamr `webstreamr.*` bases in overlay (in-scope playback) | ✅ |
 
 ---
 
@@ -46,6 +47,8 @@
 | 1 | R39-A06 | Remote `templates.{provider}.movie/tv` used by `stream::build_*_url` | ✅ |
 | 2 | R39-A07 | Remote `apis.*` used by VidNest/Anikoto/AllAnime/VidSrc/Videasy/111477 | ✅ |
 | 3 | R39-A08 | Dart pushes merged JSON to Rust after boot / refresh | ✅ |
+| 4 | R39-A09 | Remote `webstreamr.{id}` used by WebStreamr `resolved_base` | ✅ |
+| 5 | R39-A10 | Admin can load/edit/save `provider_runtime_config` (schema 1) | ✅ |
 
 ---
 
@@ -66,7 +69,12 @@ Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without s
   },
   "apis": {
     "vidnestApi": "https://new.vidnest.fun",
-    "vidsrcEmbed": "https://vsembed.su"
+    "vidsrcEmbed": "https://vsembed.su",
+    "rgshowsApi": "https://api.rgshows.ru"
+  },
+  "webstreamr": {
+    "kinoger": "https://kinoger.com",
+    "cuevana": "https://ww1.cuevana3.is"
   },
   "anime": {
     "megaplay": {
@@ -95,15 +103,16 @@ Unknown schema → ignore remote, keep builtins. Partial remote objects deep-mer
 
 - Shipping extract JS from the DB
 - Signed / E2E encrypted payloads
+- Out-of-scope tabs (Arabic / Amri / …) — see feature-scope rule
 
 ## Goals
 
-- Fix CDN host / embed path churn in minutes via Supabase
+- Fix CDN host / embed path churn in minutes via Supabase / admin
 - Never brick playback when remote is down
 
 ## Related
 
-- [RFC-004](004-[partial]-provider-registry.md)
-- [issue 084](../issues/084-[open]-megaplay-nekostream-cdn-referer.md)
-- [anime hub](../features/hubs/anime.md)
-- [stream providers](../features/sources/stream-providers.md)
+- [RFC-004](../004-[partial]-provider-registry.md)
+- [issue 084](../../issues/084-[open]-megaplay-nekostream-cdn-referer.md)
+- [anime hub](../../features/hubs/anime.md)
+- [stream providers](../../features/sources/stream-providers.md)

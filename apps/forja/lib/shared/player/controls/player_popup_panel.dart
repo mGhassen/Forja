@@ -94,6 +94,8 @@ class PlayerPopupPanel {
     EdgeInsets screenPadding = const EdgeInsets.all(8),
     VoidCallback? onBack,
     bool centered = false,
+    /// Override panel fill (default [PlayerPopupTokens.shellBg]).
+    Color? shellBg,
   }) {
     if (!context.mounted) return Future.value();
 
@@ -183,6 +185,7 @@ class PlayerPopupPanel {
                     title: title,
                     leadingIcon: leadingIcon,
                     trailing: trailing,
+                    shellBg: shellBg,
                     onBack: onBack == null
                         ? null
                         : () {
@@ -395,6 +398,7 @@ class _PanelShell extends StatelessWidget {
     this.trailing,
     this.onBack,
     this.onClose,
+    this.shellBg,
   });
 
   final String title;
@@ -403,13 +407,14 @@ class _PanelShell extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onBack;
   final VoidCallback? onClose;
+  final Color? shellBg;
 
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final shell = DecoratedBox(
       decoration: BoxDecoration(
-        color: PlayerPopupTokens.shellBg,
+        color: shellBg ?? PlayerPopupTokens.shellBg,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.shellRadius),
         border: Border.all(color: PlayerPopupTokens.border),
       ),

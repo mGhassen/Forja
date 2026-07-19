@@ -206,6 +206,16 @@ class _StreamCardState extends State<_StreamCard> {
                 ),
               ),
               ShellCardPlayOverlay(active: true, visible: active),
+              if (widget.stream.kind == 'live')
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: IptvLiveFavoriteButton(
+                    streamId: widget.stream.streamId,
+                    ctrl: widget.ctrl,
+                    reveal: active,
+                  ),
+                ),
               if (health != null)
                 Positioned(
                   top: 6,
@@ -277,6 +287,17 @@ class _StreamCardState extends State<_StreamCard> {
             ),
           ),
           ShellCardPlayOverlay(active: true, visible: active),
+          if (widget.stream.kind == 'live')
+            Positioned(
+              top: inset,
+              left: inset,
+              child: IptvLiveFavoriteButton(
+                streamId: widget.stream.streamId,
+                ctrl: widget.ctrl,
+                reveal: active,
+                iconSize: 13,
+              ),
+            ),
           if (health != null)
             Positioned(
               top: inset,
@@ -492,11 +513,20 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                             ],
                           ),
                         ),
+                        if (widget.stream.kind == 'live') ...[
+                          IptvLiveFavoriteButton(
+                            streamId: widget.stream.streamId,
+                            ctrl: widget.ctrl,
+                            reveal: active,
+                            iconSize: 13,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         if (health != null)
                           Container(
                             width: 9,
                             height: 9,
-                            margin: const EdgeInsets.only(left: 8),
+                            margin: const EdgeInsets.only(left: 2),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: health
@@ -509,7 +539,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                             opacity: active ? 0.0 : 1.0,
                             duration: const Duration(milliseconds: 150),
                             child: const Padding(
-                              padding: EdgeInsets.only(left: 8),
+                              padding: EdgeInsets.only(left: 2),
                               child: Icon(
                                 Icons.play_circle_outline_rounded,
                                 color: Colors.white38,
@@ -575,61 +605,69 @@ class _LiveHealthProbe extends StatelessWidget {
   }
 }
 
-/// Tiny "NOW · Title  •  HH:mm–HH:mm" strip rendered at the bottom of a live
-/// `_StreamCard`. Quietly renders nothing while loading or when the panel has
-/// no EPG for this channel — we never want a visible spinner per tile.
+/// Tiny "NOW · Title" strip at the bottom of a live `_StreamCard`.
+///
+/// Always reserves [_slotHeight] so EPG arriving later does not shrink the
+/// logo [Expanded] and make channel marks look like they rescale.
 class _EpgNowFooter extends StatelessWidget {
   final IptvStream stream;
   final IptvController ctrl;
   const _EpgNowFooter({required this.stream, required this.ctrl});
 
+  static const _slotHeight = 22.0;
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<EpgEntry>>(
-      future: ctrl.epgFor(stream),
-      builder: (_, snap) {
-        final data = snap.data;
-        if (data == null || data.isEmpty) return const SizedBox.shrink();
-        final now = data.firstWhere((e) => e.isNow, orElse: () => data.first);
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: now.isNow
-                      ? const Color(0xFFEF4444)
-                      : IptvShellStyle.accent.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text(
-                  now.isNow ? 'NOW' : 'NEXT',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
+    return SizedBox(
+      height: _slotHeight,
+      child: FutureBuilder<List<EpgEntry>>(
+        future: ctrl.epgFor(stream),
+        builder: (_, snap) {
+          final data = snap.data;
+          if (data == null || data.isEmpty) return const SizedBox.shrink();
+          final now =
+              data.firstWhere((e) => e.isNow, orElse: () => data.first);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: now.isNow
+                        ? const Color(0xFFEF4444)
+                        : IptvShellStyle.accent.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    now.isNow ? 'NOW' : 'NEXT',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  now.title.isEmpty ? '—' : now.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white70,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    now.title.isEmpty ? '—' : now.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white70,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -770,25 +808,33 @@ class _EpgSheet extends StatelessWidget {
 
 /// Live channel logos use [BoxFit.contain] + inset so the mark sits inside the
 /// card; VOD posters stay [BoxFit.cover] to fill the frame.
+///
+/// Always [SizedBox.expand] so decoded bitmaps never briefly take intrinsic
+/// size and look oversized before layout clamps them.
 Widget _streamIconThumb({
   required String icon,
   required bool contain,
   double padding = 0,
 }) {
-  if (icon.isEmpty) return const _StreamPlaceholder();
+  if (icon.isEmpty) {
+    return const SizedBox.expand(child: _StreamPlaceholder());
+  }
   final image = Image.network(
     icon,
     fit: contain ? BoxFit.contain : BoxFit.cover,
+    alignment: Alignment.center,
+    gaplessPlayback: true,
+    filterQuality: FilterQuality.medium,
     errorBuilder: (_, _, _) => const _StreamPlaceholder(),
     loadingBuilder: (_, child, p) =>
         p == null ? child : const _StreamPlaceholder(),
   );
-  if (!contain) return image;
+  if (!contain) return SizedBox.expand(child: image);
   return ColoredBox(
     color: Colors.white.withValues(alpha: 0.03),
     child: Padding(
       padding: EdgeInsets.all(padding),
-      child: image,
+      child: SizedBox.expand(child: image),
     ),
   );
 }
