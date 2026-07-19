@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import {
+  isPasswordRecoveryLockActive,
   setPasswordRecoveryLock,
   supabase,
   supabaseConfigured,
