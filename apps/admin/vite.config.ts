@@ -71,17 +71,14 @@ function bridgeEnv(mode: string) {
 export default defineConfig(({ mode }) => {
   bridgeEnv(mode)
 
-  // Bake server env into SSR bundle (Nitro/Vite otherwise drop non-VITE_ reads).
-  // Do NOT bake INNGEST_DEV — runtime Vercel env / local shell must win, or a
-  // stale "1" from .env ships to prod and sendInngestEvent hits localhost.
+  // Only bake VITE_* for the client. Server secrets (INNGEST_*, SERVICE_ROLE)
+  // must stay runtime process.env on Vercel — baking local .env broke prod
+  // (INNGEST_DEV=1 → fetch 127.0.0.1:8288 → 502).
   const defineEnv: Record<string, string> = {}
   for (const k of [
-    'INNGEST_EVENT_KEY',
-    'INNGEST_SIGNING_KEY',
-    'SUPABASE_URL',
-    'SUPABASE_SERVICE_ROLE_KEY',
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_PUBLISHABLE_KEY',
+    'VITE_TURNSTILE_SITE_KEY',
   ] as const) {
     const v = process.env[k]
     if (v) defineEnv[`process.env.${k}`] = JSON.stringify(v)

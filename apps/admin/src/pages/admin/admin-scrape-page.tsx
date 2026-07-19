@@ -168,13 +168,24 @@ export function AdminScrapePage() {
             Automation
           </p>
           <p className="mt-2 text-sm text-forja-muted">
-            Cron is hard-coded on the Inngest function:{' '}
-            <code className="font-mono-ui text-xs">0 6 * * *</code> (06:00 UTC
-            daily). No toggle in admin yet — change the cron string in code or
-            pause the function in Inngest Cloud.
+            Cron:{' '}
+            <code className="font-mono-ui text-xs">0 6 * * *</code> UTC daily
+            (Inngest Cloud after sync). Pause in Inngest dashboard if needed.
           </p>
           <p className="mt-2 text-sm text-forja-muted">
-            Local: CLI must be pointed at admin{' '}
+            Prod (<code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
+            ): set <code className="font-mono-ui text-xs">INNGEST_EVENT_KEY</code>{' '}
+            + <code className="font-mono-ui text-xs">INNGEST_SIGNING_KEY</code> on
+            Vercel — never <code className="font-mono-ui text-xs">INNGEST_DEV</code>.
+            Sync app URL to{' '}
+            <code className="font-mono-ui text-xs">
+              /api/inngest
+            </code>
+            .
+          </p>
+          <p className="mt-2 text-sm text-forja-muted">
+            Local only: <code className="font-mono-ui text-xs">INNGEST_DEV=1</code>{' '}
+            + CLI →{' '}
             <code className="font-mono-ui text-xs">
               http://127.0.0.1:4000/api/inngest
             </code>

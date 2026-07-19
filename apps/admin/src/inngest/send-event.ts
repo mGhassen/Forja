@@ -5,15 +5,18 @@ type EventPayload = {
   data?: Record<string, unknown>
 }
 
-function isLocalDev(): boolean {
-  // Never treat Vercel as local — even if INNGEST_DEV leaked into the build.
-  if (process.env.VERCEL === '1' || process.env.VERCEL_ENV) return false
+function onVercel(): boolean {
+  return process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
+}
+
+function useLocalDevServer(): boolean {
+  if (onVercel()) return false
   const v = process.env.INNGEST_DEV?.trim()
   return (
     v === '1' ||
     v === 'true' ||
-    !!v?.startsWith('http://') ||
-    !!v?.startsWith('https://')
+    !!v?.startsWith('http://127.') ||
+    !!v?.startsWith('http://localhost')
   )
 }
 
@@ -26,25 +29,33 @@ function localDevBase(): string {
 }
 
 /**
- * Send to local Dev Server when INNGEST_DEV is set — avoids cloud event-key 502s.
- * Falls back to SDK send (cloud / keyed).
+ * Local (INNGEST_DEV): POST Dev Server /e/local.
+ * Vercel/prod: Inngest Cloud via SDK (needs INNGEST_EVENT_KEY).
  */
 export async function sendInngestEvent(
   event: EventPayload,
 ): Promise<{ ids: string[] }> {
-  if (isLocalDev()) {
+  if (useLocalDevServer()) {
     const url = `${localDevBase()}/e/local`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify([
-        { name: event.name, data: event.data ?? {} },
-      ]),
-    })
+    let res: Response
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([
+          { name: event.name, data: event.data ?? {} },
+        ]),
+      })
+    } catch (e) {
+      const why = e instanceof Error ? e.message : String(e)
+      throw new Error(
+        `Inngest Dev Server unreachable (${url}): ${why}. Run: npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest`,
+      )
+    }
     const text = await res.text()
     if (!res.ok) {
       throw new Error(
-        `Inngest Dev Server ${res.status} at ${url}. Is \`npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest\` running? ${text.slice(0, 200)}`,
+        `Inngest Dev Server ${res.status} at ${url}. ${text.slice(0, 200)}`,
       )
     }
     try {
@@ -55,15 +66,23 @@ export async function sendInngestEvent(
     }
   }
 
-  if (!process.env.INNGEST_EVENT_KEY?.trim()) {
+  const eventKey = process.env.INNGEST_EVENT_KEY?.trim()
+  if (!eventKey) {
     throw new Error(
-      'INNGEST_EVENT_KEY missing. For local: set INNGEST_DEV=1 and run Inngest CLI. For prod: set the event key.',
+      'INNGEST_EVENT_KEY missing on this host. Set it in Vercel → forja-admin → Environment Variables (Inngest dashboard → Event keys). Do not set INNGEST_DEV on Vercel.',
     )
   }
 
-  const ids = await inngest.send({
-    name: event.name,
-    data: event.data ?? {},
-  })
-  return { ids: Array.isArray(ids) ? ids.map(String) : [String(ids)] }
+  try {
+    const ids = await inngest.send({
+      name: event.name,
+      data: event.data ?? {},
+    })
+    return { ids: Array.isArray(ids) ? ids.map(String) : [String(ids)] }
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `Inngest Cloud send failed: ${why}. Check INNGEST_EVENT_KEY / app sync to https://admin.forjahq.xyz/api/inngest`,
+    )
+  }
 }

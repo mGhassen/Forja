@@ -1,18 +1,28 @@
 import { Inngest } from 'inngest'
 
-const isDev =
-  process.env.INNGEST_DEV === '1' ||
-  process.env.INNGEST_DEV === 'true' ||
-  process.env.INNGEST_DEV === 'http://127.0.0.1:8288' ||
-  process.env.INNGEST_DEV === 'http://localhost:8288'
+function onVercel(): boolean {
+  return process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
+}
+
+function localDevMode(): boolean {
+  // Production must never talk to 127.0.0.1:8288
+  if (onVercel()) return false
+  const v = process.env.INNGEST_DEV?.trim()
+  return (
+    v === '1' ||
+    v === 'true' ||
+    !!v?.startsWith('http://127.') ||
+    !!v?.startsWith('http://localhost')
+  )
+}
 
 /**
- * Explicit keys — Vite/Nitro often strip bare process.env reads unless bridged
- * in vite.config. Prefer INNGEST_DEV=1 locally (Dev Server :8288).
+ * On Vercel: always cloud (needs INNGEST_EVENT_KEY + INNGEST_SIGNING_KEY).
+ * Local: INNGEST_DEV=1 → Dev Server.
  */
 export const inngest = new Inngest({
   id: 'forja-admin',
-  isDev,
+  isDev: localDevMode(),
   eventKey: process.env.INNGEST_EVENT_KEY,
   signingKey: process.env.INNGEST_SIGNING_KEY,
 })
