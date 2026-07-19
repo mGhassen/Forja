@@ -1003,7 +1003,7 @@ export function AdminPoolPage() {
                   key={g.host}
                   className="border-t border-forja-border first:border-t-0"
                 >
-                  <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
+                  <div className="group/host grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] focus-within:bg-white/[0.03] sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
                     <button
                       type="button"
                       onClick={() => toggle(g.host)}
@@ -1033,7 +1033,12 @@ export function AdminPoolPage() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 justify-self-end p-0"
+                      className={cn(
+                        'h-8 w-8 justify-self-end p-0 transition-opacity',
+                        hostBusy
+                          ? 'opacity-100'
+                          : 'opacity-0 group-hover/host:opacity-100 group-focus-within/host:opacity-100',
+                      )}
                       disabled={hostBusy || checkingId != null}
                       aria-label={`Check all portals on ${g.host}`}
                       title="Check server status"
