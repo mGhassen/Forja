@@ -8,6 +8,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 const webRoot = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(webRoot, '../..')
+const forjaAuthRoot = path.resolve(repoRoot, 'packages/forja-auth')
 
 /**
  * Prefer apps/web/.env VITE_* keys; fall back to repo-root SUPABASE_* /
@@ -40,7 +41,13 @@ function bridgeWebEnv(mode: string) {
   if (releaseCdn && !process.env.VITE_RELEASE_CDN_URL) {
     process.env.VITE_RELEASE_CDN_URL = releaseCdn
   }
-
+  const oauth =
+    webEnv.VITE_AUTH_OAUTH_PROVIDERS ||
+    rootEnv.VITE_AUTH_OAUTH_PROVIDERS ||
+    ''
+  if (oauth && !process.env.VITE_AUTH_OAUTH_PROVIDERS) {
+    process.env.VITE_AUTH_OAUTH_PROVIDERS = oauth
+  }
 }
 
 export default defineConfig(({ mode }) => {
@@ -55,11 +62,14 @@ export default defineConfig(({ mode }) => {
       host: '127.0.0.1',
       fs: {
         // Changelog page bundles docs/changelog/done from the repo root.
-        allow: [webRoot, repoRoot],
+        allow: [webRoot, repoRoot, forjaAuthRoot],
       },
     },
     resolve: {
       tsconfigPaths: true,
+      alias: {
+        '@forja/auth': path.resolve(forjaAuthRoot, 'src/index.ts'),
+      },
     },
     plugins: [
       // Start plugin must come before react()

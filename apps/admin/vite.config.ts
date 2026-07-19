@@ -9,6 +9,7 @@ import tailwindcss from '@tailwindcss/vite'
 const adminRoot = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(adminRoot, '../..')
 const webRoot = path.resolve(adminRoot, '../web')
+const forjaAuthRoot = path.resolve(repoRoot, 'packages/forja-auth')
 
 /** Same env bridge as apps/web — root `.env` SUPABASE_* unlocks local admin. */
 function bridgeEnv(mode: string) {
@@ -37,6 +38,13 @@ function bridgeEnv(mode: string) {
   }
   if (turnstile && !process.env.VITE_TURNSTILE_SITE_KEY) {
     process.env.VITE_TURNSTILE_SITE_KEY = turnstile
+  }
+  const oauth =
+    localEnv.VITE_AUTH_OAUTH_PROVIDERS ||
+    rootEnv.VITE_AUTH_OAUTH_PROVIDERS ||
+    ''
+  if (oauth && !process.env.VITE_AUTH_OAUTH_PROVIDERS) {
+    process.env.VITE_AUTH_OAUTH_PROVIDERS = oauth
   }
 
   // Server-only Inngest catalog scrape — never VITE_*
@@ -79,6 +87,7 @@ export default defineConfig(({ mode }) => {
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_PUBLISHABLE_KEY',
     'VITE_TURNSTILE_SITE_KEY',
+    'VITE_AUTH_OAUTH_PROVIDERS',
   ] as const) {
     const v = process.env[k]
     if (v) defineEnv[`process.env.${k}`] = JSON.stringify(v)
@@ -90,11 +99,14 @@ export default defineConfig(({ mode }) => {
       port: 4000,
       host: '127.0.0.1',
       fs: {
-        allow: [adminRoot, webRoot, repoRoot],
+        allow: [adminRoot, webRoot, repoRoot, forjaAuthRoot],
       },
     },
     resolve: {
       tsconfigPaths: true,
+      alias: {
+        '@forja/auth': path.resolve(forjaAuthRoot, 'src/index.ts'),
+      },
     },
     plugins: [tanstackStart(), nitro(), viteReact(), tailwindcss()],
   }

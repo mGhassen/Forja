@@ -52,7 +52,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => void signOut()}
+            onClick={() => void signOut({ scope: 'local' })}
           >
             Sign out
           </Button>

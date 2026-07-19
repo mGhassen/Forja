@@ -1,9 +1,10 @@
 import { Navigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { authConfig } from '@forja/auth'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading, isPasswordRecovery } = useAuth()
+  const { user, loading, requiresMfa } = useAuth()
 
   if (loading) {
     return (
@@ -13,13 +14,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     )
   }
 
-  // Recovery session is not a normal login — finish password reset first.
-  if (isPasswordRecovery) {
-    return <Navigate to="/reset-password" />
-  }
-
   if (!user) {
     return <Navigate to="/login" />
+  }
+
+  if (authConfig.mfaTotp && requiresMfa) {
+    return <Navigate to="/login/mfa" />
   }
 
   return children

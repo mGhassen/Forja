@@ -22,8 +22,8 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R42-C01 | Web `lib/auth` — config, errors, MFA check, OAuth, callback exchange | ✅ |
-| 2 | R42-C02 | Web AuthProvider — OAuth, MFA challenge/enroll, local vs global signOut | ✅ |
+| 1 | R42-C01 | Shared `@forja/auth` package — config, errors, MFA, OAuth, callback (web + admin) | ✅ |
+| 2 | R42-C02 | Web + admin AuthProviders — OAuth, MFA challenge, local vs global signOut | ✅ |
 | 3 | R42-C03 | Session ownership — handoff lock + portal releases RT to desktop | ✅ |
 | 4 | R42-C04 | Flutter — secure session storage, in-flight refresh, MFA challenge, OAuth via Web login | ✅ |
 

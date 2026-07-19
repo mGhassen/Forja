@@ -563,69 +563,79 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       // Anime: race embeds via providers without cancelAllPending first —
       // cancel kills the Miruro WebView pipe and cold reload often returns empty.
       if (animeHost && providers != null && providers.isNotEmpty) {
-        final hit = await PlayerSourceResolve.resolveAutoForMovie(
-          movie: movie,
-          providers: providers,
-          season: season,
-          episode: episode,
-          isCancelled: () => _fallbackAborted(chainGen),
-          onProgress: (providerId, status) {
-            if (_fallbackAborted(chainGen)) return;
-            final label = PlayerProviderMenu.snackbarLabel(
-              providerId,
-              providers[providerId],
-            );
-            final kind = switch (status) {
-              'success' => StatusRouletteKind.success,
-              'failed' || 'skipped' => StatusRouletteKind.failed,
-              _ => StatusRouletteKind.loading,
-            };
-            _s._statusController.upsert(
-              'provider-$providerId',
-              label,
-              kind: kind,
-            );
-            _s._syncProbeStatus(providerId, switch (status) {
-              'success' => StreamProviderProbeStatus.success,
-              'failed' => StreamProviderProbeStatus.failed,
-              'skipped' => StreamProviderProbeStatus.skippedOnTv,
-              'trying' => StreamProviderProbeStatus.trying,
-              _ => StreamProviderProbeStatus.pending,
-            });
-          },
-          onHitsUpdated: (hits) {
-            if (_fallbackAborted(chainGen)) return;
-            _s._liveProviderSourcesCache.value = {
-              ..._s._liveProviderSourcesCache.value,
-              ...PlaybackEngine.hitsToProviderCache(hits),
-            };
-          },
-        );
-        if (_fallbackAborted(chainGen)) return false;
-        if (hit != null && hit.streamSources.isNotEmpty) {
+        // Walk servers: first extract can be a valid master with PNG-ad media
+        // (nekostream). Keep excluding dead providers until one plays.
+        final remaining = Map<String, dynamic>.from(providers);
+        while (remaining.isNotEmpty && !_fallbackAborted(chainGen)) {
+          final hit = await PlayerSourceResolve.resolveAutoForMovie(
+            movie: movie,
+            providers: remaining,
+            season: season,
+            episode: episode,
+            isCancelled: () => _fallbackAborted(chainGen),
+            onProgress: (providerId, status) {
+              if (_fallbackAborted(chainGen)) return;
+              final label = PlayerProviderMenu.snackbarLabel(
+                providerId,
+                providers[providerId],
+              );
+              final kind = switch (status) {
+                'success' => StatusRouletteKind.success,
+                'failed' || 'skipped' => StatusRouletteKind.failed,
+                _ => StatusRouletteKind.loading,
+              };
+              _s._statusController.upsert(
+                'provider-$providerId',
+                label,
+                kind: kind,
+              );
+              _s._syncProbeStatus(providerId, switch (status) {
+                'success' => StreamProviderProbeStatus.success,
+                'failed' => StreamProviderProbeStatus.failed,
+                'skipped' => StreamProviderProbeStatus.skippedOnTv,
+                'trying' => StreamProviderProbeStatus.trying,
+                _ => StreamProviderProbeStatus.pending,
+              });
+            },
+            onHitsUpdated: (hits) {
+              if (_fallbackAborted(chainGen)) return;
+              _s._liveProviderSourcesCache.value = {
+                ..._s._liveProviderSourcesCache.value,
+                ...PlaybackEngine.hitsToProviderCache(hits),
+              };
+            },
+          );
+          if (_fallbackAborted(chainGen)) return false;
+          if (hit == null || hit.streamSources.isEmpty) break;
+
+          remaining.remove(hit.providerId);
           final fresh = dedupeStreamSources(
             hit.streamSources,
           ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
-          if (fresh.isNotEmpty) {
-            _s._cacheProviderSources(hit.providerId, fresh);
-            _s._markProviderLoadSucceeded(hit.providerId);
-            setState(() {
-              _s._currentProvider = hit.providerId;
-              _s._currentSources = fresh;
-              _s._currentUrl = hit.streamUrl;
-              _s._currentPlayingCatalogUrl = fresh.first.url;
-              _s._currentFallbackSourceIndex = 0;
-              _s._failedSourceIndices.clear();
-              _s._checkingSourceIndices.clear();
-              _s._hasError = false;
-              _s._errorMessage = '';
-            });
-            return _trySourcesFromIndex(
-              0,
-              chainGen: chainGen,
-              seekAfterOpen: seekAfterOpen,
-            );
+          if (fresh.isEmpty) {
+            _s._markProviderLoadFailed(hit.providerId);
+            continue;
           }
+          _s._cacheProviderSources(hit.providerId, fresh);
+          _s._markProviderLoadSucceeded(hit.providerId);
+          setState(() {
+            _s._currentProvider = hit.providerId;
+            _s._currentSources = fresh;
+            _s._currentUrl = hit.streamUrl;
+            _s._currentPlayingCatalogUrl = fresh.first.url;
+            _s._currentFallbackSourceIndex = 0;
+            _s._failedSourceIndices.clear();
+            _s._checkingSourceIndices.clear();
+            _s._hasError = false;
+            _s._errorMessage = '';
+          });
+          final played = await _trySourcesFromIndex(
+            0,
+            chainGen: chainGen,
+            seekAfterOpen: seekAfterOpen,
+          );
+          if (played) return true;
+          _s._markProviderLoadFailed(hit.providerId);
         }
       }
 

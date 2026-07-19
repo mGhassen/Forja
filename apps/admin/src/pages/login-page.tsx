@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import {
+  authConfig,
+  oauthEnabled,
+  oauthProviderLabel,
+  type OAuthProviderId,
+} from '@forja/auth'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,26 +18,43 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 
-/** Ops login only — no desktop handoff / portal chrome. */
+/** Ops login — shared @forja/auth (MFA + optional OAuth). */
 export function LoginPage() {
   const navigate = useNavigate()
-  const { signIn, session, user, loading, configured } = useAuth()
+  const {
+    signIn,
+    signInWithOAuth,
+    session,
+    user,
+    loading,
+    configured,
+    requiresMfa,
+  } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [oauthBusy, setOauthBusy] = useState(false)
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
   }, [])
 
   useEffect(() => {
-    if (!loading && user) {
-      void navigate({ to: '/', replace: true })
+    const err = new URLSearchParams(window.location.search).get('error')
+    if (err) setError(err)
+  }, [])
+
+  useEffect(() => {
+    if (loading || !user) return
+    if (authConfig.mfaTotp && requiresMfa) {
+      void navigate({ to: '/login/mfa', replace: true })
+      return
     }
-  }, [loading, user, navigate])
+    void navigate({ to: '/', replace: true })
+  }, [loading, user, requiresMfa, navigate])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -55,10 +78,26 @@ export function LoginPage() {
       setCaptchaKey((k) => k + 1)
       return
     }
+    if (result.needsMfa) {
+      void navigate({ to: '/login/mfa', replace: true })
+      return
+    }
     void navigate({ to: '/', replace: true })
   }
 
-  if (loading || session) {
+  async function onOAuth(provider: OAuthProviderId) {
+    setError(null)
+    setOauthBusy(true)
+    const { error: oauthError } = await signInWithOAuth(provider)
+    if (oauthError) {
+      setOauthBusy(false)
+      setError(oauthError)
+    }
+  }
+
+  const busy = submitting || oauthBusy
+
+  if (loading || (session && !requiresMfa)) {
     return (
       <div className="py-16 text-center text-sm text-forja-muted">Loading…</div>
     )
@@ -82,9 +121,10 @@ export function LoginPage() {
             id="email"
             type="email"
             autoComplete="email"
+            required
+            disabled={!configured || busy}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
           />
         </div>
         <div className="space-y-2">
@@ -92,25 +132,50 @@ export function LoginPage() {
           <PasswordInput
             id="password"
             autoComplete="current-password"
+            required
+            disabled={!configured || busy}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
           />
         </div>
         {configured && captchaConfigured ? (
           <TurnstileCaptcha key={captchaKey} onToken={onCaptchaToken} />
         ) : null}
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-sm text-red-300">
+            {error}
+          </p>
+        ) : null}
         <Button
           type="submit"
           className="w-full"
           disabled={
-            submitting || (captchaConfigured && !captchaToken && configured)
+            busy || !configured || (captchaConfigured && !captchaToken)
           }
         >
           {submitting ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
+
+      {configured && oauthEnabled() ? (
+        <div className="space-y-2 border-t border-forja-border pt-4">
+          <p className="text-center font-mono-ui text-[10px] uppercase tracking-[0.16em] text-forja-muted">
+            Or continue with
+          </p>
+          {authConfig.oauthProviders.map((provider) => (
+            <Button
+              key={provider}
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={busy}
+              onClick={() => void onOAuth(provider)}
+            >
+              {oauthBusy ? 'Redirecting…' : oauthProviderLabel(provider)}
+            </Button>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }

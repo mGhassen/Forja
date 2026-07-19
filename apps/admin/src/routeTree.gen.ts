@@ -20,6 +20,8 @@ import { Route as OpsScrapeRouteImport } from './routes/_ops/scrape'
 import { Route as ApiInngestRouteImport } from './routes/api.inngest'
 import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-catalog-scrape'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -74,10 +76,20 @@ const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
   path: '/api/iptv-share',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginMfaRoute = AuthLoginMfaRouteImport.update({
+  id: '/mfa',
+  path: '/mfa',
+  getParentRoute: () => AuthLoginRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof OpsIndexRoute
-  '/login': typeof AuthLoginRoute
+  '/login': typeof AuthLoginRouteWithChildren
   '/accounts': typeof OpsAccountsRoute
   '/pool': typeof OpsPoolRoute
   '/providers': typeof OpsProvidersRoute
@@ -85,10 +97,12 @@ export interface FileRoutesByFullPath {
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/login/mfa': typeof AuthLoginMfaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof OpsIndexRoute
-  '/login': typeof AuthLoginRoute
+  '/login': typeof AuthLoginRouteWithChildren
   '/accounts': typeof OpsAccountsRoute
   '/pool': typeof OpsPoolRoute
   '/providers': typeof OpsProvidersRoute
@@ -96,12 +110,14 @@ export interface FileRoutesByTo {
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/login/mfa': typeof AuthLoginMfaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/_ops': typeof OpsRouteWithChildren
-  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/login': typeof AuthLoginRouteWithChildren
   '/_ops/accounts': typeof OpsAccountsRoute
   '/_ops/pool': typeof OpsPoolRoute
   '/_ops/providers': typeof OpsProvidersRoute
@@ -109,7 +125,9 @@ export interface FileRoutesById {
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
+  '/_auth/login/mfa': typeof AuthLoginMfaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,6 +141,8 @@ export interface FileRouteTypes {
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-share'
+    | '/auth/callback'
+    | '/login/mfa'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -134,6 +154,8 @@ export interface FileRouteTypes {
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-share'
+    | '/auth/callback'
+    | '/login/mfa'
   id:
     | '__root__'
     | '/_auth'
@@ -146,7 +168,9 @@ export interface FileRouteTypes {
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-share'
+    | '/auth/callback'
     | '/_ops/'
+    | '/_auth/login/mfa'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -155,6 +179,7 @@ export interface RootRouteChildren {
   ApiInngestRoute: typeof ApiInngestRoute
   ApiIptvCatalogScrapeRoute: typeof ApiIptvCatalogScrapeRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -236,15 +261,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvShareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth/login/mfa': {
+      id: '/_auth/login/mfa'
+      path: '/mfa'
+      fullPath: '/login/mfa'
+      preLoaderRoute: typeof AuthLoginMfaRouteImport
+      parentRoute: typeof AuthLoginRoute
+    }
   }
 }
 
+interface AuthLoginRouteChildren {
+  AuthLoginMfaRoute: typeof AuthLoginMfaRoute
+}
+
+const AuthLoginRouteChildren: AuthLoginRouteChildren = {
+  AuthLoginMfaRoute: AuthLoginMfaRoute,
+}
+
+const AuthLoginRouteWithChildren = AuthLoginRoute._addFileChildren(
+  AuthLoginRouteChildren,
+)
+
 interface AuthRouteChildren {
-  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLoginRoute: typeof AuthLoginRouteWithChildren
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
-  AuthLoginRoute: AuthLoginRoute,
+  AuthLoginRoute: AuthLoginRouteWithChildren,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
@@ -273,6 +324,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInngestRoute: ApiInngestRoute,
   ApiIptvCatalogScrapeRoute: ApiIptvCatalogScrapeRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

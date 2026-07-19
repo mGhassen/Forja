@@ -899,16 +899,11 @@ Future<bool> probeStreamSourceUrl(
   if (normalized.isEmpty) return false;
   final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: normalized);
   try {
+    // HLS: Rust probe samples media segments — masters can be valid while
+    // every segment is a PNG ad (nekostream / vivibebe / ibyteimg).
     if (normalized.contains('.m3u8') ||
         normalized.toLowerCase().contains('/api/proxy')) {
-      final res = await animeHttp(
-        'GET',
-        normalized,
-        headers: hdrs,
-        maxRetries: 0,
-        timeoutSecs: 8,
-      );
-      return res.status == 200 && res.body.contains('#EXTM3U');
+      return await probeStreamUrlRust(normalized, hdrs);
     }
     var res = await animeHttp(
       'HEAD',

@@ -1,0 +1,12 @@
+{
+  "name": "@forja/auth",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.110.0"
+  }
+}
