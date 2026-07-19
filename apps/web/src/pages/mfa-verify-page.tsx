@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { MfaChallengePanel, useAuth } from '@forja/auth/react'
 import { LiquidGlass } from '@/components/liquid-glass'
 import { Reveal } from '@/components/reveal'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,6 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAuth } from '@/hooks/use-auth'
 import {
   isSafeDesktopCallback,
   resolveDesktopAuthParams,
@@ -20,68 +20,16 @@ import {
 
 export function MfaVerifyPage() {
   const navigate = useNavigate()
-  const {
-    user,
-    loading,
-    requiresMfa,
-    listMfaFactors,
-    challengeAndVerifyMfa,
-    signOut,
-  } = useAuth()
-  const [factorId, setFactorId] = useState<string | null>(null)
-  const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const { signOut } = useAuth()
 
-  useEffect(() => {
-    if (loading) return
-    if (!user) {
-      void navigate({ to: '/login', replace: true })
-      return
-    }
-    if (!requiresMfa) {
-      const desktop = resolveDesktopAuthParams()
-      if (isSafeDesktopCallback(desktop.callback)) {
-        void navigate({ to: '/login', replace: true })
-        return
-      }
-      void navigate({ to: '/account/profiles', replace: true })
-    }
-  }, [loading, user, requiresMfa, navigate])
-
-  useEffect(() => {
-    if (!user || !requiresMfa) return
-    void listMfaFactors().then(({ error: listError, factors }) => {
-      if (listError) {
-        setError(listError)
-        return
-      }
-      const verified = factors.find((f) => f.status === 'verified')
-      setFactorId(verified?.id ?? factors[0]?.id ?? null)
-    })
-  }, [user, requiresMfa, listMfaFactors])
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (!factorId) {
-      setError('No authenticator found on this account.')
-      return
-    }
-    setSubmitting(true)
-    setError(null)
-    const { error: verifyError } = await challengeAndVerifyMfa(factorId, code)
-    setSubmitting(false)
-    if (verifyError) {
-      setError(verifyError)
-      return
-    }
+  const onVerified = useCallback(() => {
     const desktop = resolveDesktopAuthParams()
     if (isSafeDesktopCallback(desktop.callback)) {
       void navigate({ to: '/login', replace: true })
       return
     }
     void navigate({ to: '/account/profiles', replace: true })
-  }
+  }, [navigate])
 
   return (
     <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
@@ -101,53 +49,64 @@ export function MfaVerifyPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="mfa-code">Authentication code</Label>
-                  <Input
-                    id="mfa-code"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    required
-                    value={code}
-                    onChange={(e) =>
-                      setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                    }
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg tracking-[0.3em]"
-                    placeholder="000000"
-                  />
-                </div>
-                {error ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
-                  >
-                    {error}
+              <MfaChallengePanel
+                onVerified={onVerified}
+                footer={
+                  <p className="mt-6 text-center text-sm text-[rgba(237,230,218,0.45)]">
+                    <button
+                      type="button"
+                      className="text-forja-green hover:underline"
+                      onClick={() => void signOut({ scope: 'local' })}
+                    >
+                      Sign out
+                    </button>
+                    {' · '}
+                    <Link to="/login" className="hover:text-forja-green">
+                      Back to login
+                    </Link>
                   </p>
-                ) : null}
-                <Button
-                  type="submit"
-                  disabled={submitting || code.length < 6 || !factorId}
-                  className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                >
-                  {submitting ? 'Verifying…' : 'Verify'}
-                </Button>
-              </form>
-              <p className="mt-6 text-center text-sm text-[rgba(237,230,218,0.45)]">
-                <button
-                  type="button"
-                  className="text-forja-green hover:underline"
-                  onClick={() => void signOut({ scope: 'local' })}
-                >
-                  Sign out
-                </button>
-                {' · '}
-                <Link to="/login" className="hover:text-forja-green">
-                  Back to login
-                </Link>
-              </p>
+                }
+                render={({
+                  code,
+                  setCode,
+                  error,
+                  submitting,
+                  factorReady,
+                  onSubmit,
+                }) => (
+                  <form onSubmit={onSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="mfa-code">Authentication code</Label>
+                      <Input
+                        id="mfa-code"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        required
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg tracking-[0.3em]"
+                        placeholder="000000"
+                      />
+                    </div>
+                    {error ? (
+                      <p
+                        role="alert"
+                        className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                      >
+                        {error}
+                      </p>
+                    ) : null}
+                    <Button
+                      type="submit"
+                      disabled={submitting || code.length < 6 || !factorReady}
+                      className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    >
+                      {submitting ? 'Verifying…' : 'Verify'}
+                    </Button>
+                  </form>
+                )}
+              />
             </CardContent>
           </Card>
         </LiquidGlass>

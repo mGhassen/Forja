@@ -4,9 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts"
   },
   "peerDependencies": {
-    "@supabase/supabase-js": "^2.110.0"
+    "@supabase/supabase-js": "^2.110.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

@@ -17,6 +17,8 @@ struct HealthState {
     server: HashMap<String, i32>,
     stream: HashMap<String, i32>,
     last_delta: HashMap<String, i32>,
+    /// Running provider Σ — count up/down with floor 0 (not a re-sum of title nets).
+    provider_totals: HashMap<String, i32>,
     loaded: bool,
 }
 
@@ -49,14 +51,26 @@ impl ProviderHealthStore {
         if g.loaded {
             return;
         }
+        let mut needs_persist = false;
         if let Some(raw) = storage::get(STORAGE_KEY) {
             if let Some(obj) = raw.as_object() {
                 read_verdict_map(obj.get("srv"), &mut g.server);
                 read_verdict_map(obj.get("str"), &mut g.stream);
                 read_delta_map(obj.get("d"), &mut g.last_delta);
+                if obj.get("tot").is_some() {
+                    read_delta_map(obj.get("tot"), &mut g.provider_totals);
+                    g.provider_totals.retain(|_, score| *score > 0);
+                } else {
+                    rebuild_provider_totals_from_titles(&mut g);
+                    needs_persist = true;
+                }
             }
         }
         g.loaded = true;
+        drop(g);
+        if needs_persist {
+            self.persist();
+        }
     }
 
     fn persist(&self) {
@@ -65,6 +79,7 @@ impl ProviderHealthStore {
             "srv": g.server,
             "str": g.stream,
             "d": g.last_delta,
+            "tot": g.provider_totals,
         });
         let _ = storage::set(STORAGE_KEY, value);
     }
@@ -74,6 +89,7 @@ impl ProviderHealthStore {
         g.server.clear();
         g.stream.clear();
         g.last_delta.clear();
+        g.provider_totals.clear();
         g.loaded = true;
     }
 
@@ -84,6 +100,7 @@ impl ProviderHealthStore {
             g.server.clear();
             g.stream.clear();
             g.last_delta.clear();
+            g.provider_totals.clear();
             g.loaded = true;
         }
         self.persist();
@@ -142,7 +159,7 @@ impl ProviderHealthStore {
         g.last_delta.get(memory_key).copied()
     }
 
-    /// Sum of per-title totals for one provider across all films / episodes.
+    /// Running provider Σ across titles (count up/down, never below 0).
     pub fn global_score_for(&self, provider_id: &str) -> i32 {
         let norm = Self::normalize_provider_id(provider_id);
         if norm.is_empty() {
@@ -151,11 +168,15 @@ impl ProviderHealthStore {
         *self.all_provider_totals().get(&norm).unwrap_or(&0)
     }
 
-    /// Provider id → sum of that provider's title scores (negatives reduce Σ; floor 0).
+    /// Provider id → running Σ (ups/downs applied in order, floor 0).
     pub fn all_provider_totals(&self) -> HashMap<String, i32> {
         self.ensure_loaded();
         let g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        aggregate_provider_totals(&g)
+        g.provider_totals
+            .iter()
+            .filter(|(_, score)| **score > 0)
+            .map(|(k, v)| (k.clone(), *v))
+            .collect()
     }
 
     pub fn record_server_up(&self, memory_key: &str) -> i32 {
@@ -224,6 +245,9 @@ impl ProviderHealthStore {
                 stream.or(server).unwrap_or(fallback)
             },
         );
+        if delta != 0 {
+            apply_provider_delta(&mut g, memory_key, delta);
+        }
         drop(g);
         self.persist();
         after
@@ -247,11 +271,26 @@ pub fn provider_from_memory_key(key: &str) -> Option<String> {
     .filter(|s| !s.is_empty())
 }
 
-fn aggregate_provider_totals(g: &HealthState) -> HashMap<String, i32> {
+fn apply_provider_delta(g: &mut HealthState, memory_key: &str, delta: i32) {
+    let Some(provider) = provider_from_memory_key(memory_key) else {
+        return;
+    };
+    let next = (g.provider_totals.get(&provider).copied().unwrap_or(0) + delta).max(0);
+    if next == 0 {
+        g.provider_totals.remove(&provider);
+    } else {
+        g.provider_totals.insert(provider, next);
+    }
+}
+
+/// One-shot migrate for stores that predate the running `tot` map.
+/// Uses Σ of title nets floored at 0 (same as the old query path).
+fn rebuild_provider_totals_from_titles(g: &mut HealthState) {
+    g.provider_totals.clear();
     let mut keys = std::collections::HashSet::new();
     keys.extend(g.server.keys().cloned());
     keys.extend(g.stream.keys().cloned());
-    let mut out: HashMap<String, i32> = HashMap::new();
+    let mut summed: HashMap<String, i32> = HashMap::new();
     for key in keys {
         let Some(provider) = provider_from_memory_key(&key) else {
             continue;
@@ -260,13 +299,14 @@ fn aggregate_provider_totals(g: &HealthState) -> HashMap<String, i32> {
         if t == 0 {
             continue;
         }
-        *out.entry(provider).or_default() += t;
+        *summed.entry(provider).or_default() += t;
     }
-    for score in out.values_mut() {
-        *score = (*score).max(0);
+    for (provider, score) in summed {
+        let floored = score.max(0);
+        if floored > 0 {
+            g.provider_totals.insert(provider, floored);
+        }
     }
-    out.retain(|_, score| *score != 0);
-    out
 }
 
 fn read_verdict_map(raw: Option<&serde_json::Value>, into: &mut HashMap<String, i32>) {
@@ -477,6 +517,23 @@ mod tests {
         assert_eq!(store.score_for("movie:1:cold"), -4);
         assert_eq!(store.global_score_for("cold"), 0);
         assert!(!store.all_provider_totals().contains_key("cold"));
+    }
+
+    #[test]
+    fn fails_at_zero_do_not_erase_later_ups() {
+        let store = ProviderHealthStore::new();
+        store.reset_for_test();
+        // Anime Auto spam: many extract fails while Σ is already 0.
+        store.record_server_failure("anime:1:e1:miruro:bee");
+        store.record_server_failure("anime:2:e1:miruro:bee");
+        store.record_server_failure("anime:3:e1:miruro:bee");
+        assert_eq!(store.global_score_for("miruro:bee"), 0);
+        // A later success must count up — not stay buried under re-summed fails.
+        store.record_server_up("anime:4:e1:miruro:bee");
+        store.record_stream_up("anime:4:e1:miruro:bee");
+        assert_eq!(store.global_score_for("miruro:bee"), 4);
+        store.record_server_failure("anime:5:e1:miruro:bee");
+        assert_eq!(store.global_score_for("miruro:bee"), 2);
     }
 
     #[test]

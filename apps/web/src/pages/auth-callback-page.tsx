@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { exchangeAuthCode, checkRequiresMfa } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { runAuthCallback } from '@forja/auth/react'
+import { AUTH_UNAVAILABLE_MESSAGE } from '@/hooks/use-auth'
 import {
   isSafeDesktopCallback,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
+import { supabase, supabaseConfigured } from '@/lib/supabase'
 
 export function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -14,15 +15,19 @@ export function AuthCallbackPage() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const result = await exchangeAuthCode()
+      const result = await runAuthCallback({
+        client: supabase,
+        configured: supabaseConfigured,
+        unavailableMessage: AUTH_UNAVAILABLE_MESSAGE,
+        defaultNext: '/account/profiles',
+        errorPath: '/login',
+      })
       if (cancelled) return
       if (result.status === 'error') {
         setError(result.message)
         return
       }
-      const needsMfa = await checkRequiresMfa(supabase)
-      if (cancelled) return
-      if (needsMfa) {
+      if (result.needsMfa) {
         void navigate({ to: '/login/mfa', replace: true })
         return
       }

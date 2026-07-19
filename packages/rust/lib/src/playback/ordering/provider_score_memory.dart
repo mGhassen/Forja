@@ -25,6 +25,8 @@ abstract final class ProviderScoreMemory {
   static final Map<String, int> _server = {};
   static final Map<String, int> _stream = {};
   static final Map<String, int> _lastDelta = {};
+  /// Running provider Σ (count up/down, floor 0) — mirrors Rust `tot`.
+  static final Map<String, int> _providerTotals = {};
 
   static Future<void> ensureLoaded() async {
     if (_loaded) return Future.value();
@@ -62,7 +64,7 @@ abstract final class ProviderScoreMemory {
     return _totalFor(key);
   }
 
-  /// Sum of per-title totals for [providerId] across all films / episodes.
+  /// Running provider Σ across titles (count up/down, never below 0).
   static int globalScoreFor(String providerId) {
     final norm = normalizeProviderId(providerId);
     if (norm.isEmpty) return 0;
@@ -80,10 +82,10 @@ abstract final class ProviderScoreMemory {
       }
       return 0;
     }
-    return _localGlobalTotals()[norm] ?? 0;
+    return _providerTotals[norm] ?? 0;
   }
 
-  /// Provider id → sum of title scores.
+  /// Provider id → running Σ.
   static Map<String, int> allGlobalScores() {
     if (_rustReady) {
       try {
@@ -105,22 +107,22 @@ abstract final class ProviderScoreMemory {
       }
       return const {};
     }
-    return _localGlobalTotals();
+    return {
+      for (final e in _providerTotals.entries)
+        if (e.value > 0) e.key: e.value,
+    };
   }
 
-  static Map<String, int> _localGlobalTotals() {
-    final keys = {..._server.keys, ..._stream.keys};
-    final out = <String, int>{};
-    for (final key in keys) {
-      final provider = _providerFromMemoryKey(key);
-      if (provider == null || provider.isEmpty) continue;
-      final t = _totalFor(key);
-      if (t == 0) continue;
-      out[provider] = (out[provider] ?? 0) + t;
+  static void _applyProviderDelta(String memoryKey, int delta) {
+    if (delta == 0) return;
+    final provider = _providerFromMemoryKey(memoryKey);
+    if (provider == null || provider.isEmpty) return;
+    final next = ((_providerTotals[provider] ?? 0) + delta).clamp(0, 1 << 30);
+    if (next == 0) {
+      _providerTotals.remove(provider);
+    } else {
+      _providerTotals[provider] = next;
     }
-    out.updateAll((_, score) => score < 0 ? 0 : score);
-    out.removeWhere((_, score) => score == 0);
-    return out;
   }
 
   static String? _providerFromMemoryKey(String key) {
@@ -235,6 +237,7 @@ abstract final class ProviderScoreMemory {
     _server.clear();
     _stream.clear();
     _lastDelta.clear();
+    _providerTotals.clear();
     revision.value++;
   }
 
@@ -244,6 +247,7 @@ abstract final class ProviderScoreMemory {
     _server.clear();
     _stream.clear();
     _lastDelta.clear();
+    _providerTotals.clear();
     _loaded = true;
     _loadFuture = null;
     revision.value++;
@@ -302,6 +306,7 @@ abstract final class ProviderScoreMemory {
     _lastDelta[key] = delta != 0
         ? delta
         : (stream ?? server ?? _lastDelta[key] ?? 0);
+    _applyProviderDelta(key, delta);
     revision.value++;
   }
 

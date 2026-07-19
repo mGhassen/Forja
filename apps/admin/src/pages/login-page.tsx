@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import {
-  authConfig,
-  oauthEnabled,
-  oauthProviderLabel,
-  type OAuthProviderId,
-} from '@forja/auth'
+import { authConfig } from '@forja/auth'
+import { OAuthProviders } from '@forja/auth/react'
 import { TurnstileCaptcha } from '@/components/turnstile-captcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +19,6 @@ export function LoginPage() {
   const navigate = useNavigate()
   const {
     signIn,
-    signInWithOAuth,
     session,
     user,
     loading,
@@ -83,16 +78,6 @@ export function LoginPage() {
       return
     }
     void navigate({ to: '/', replace: true })
-  }
-
-  async function onOAuth(provider: OAuthProviderId) {
-    setError(null)
-    setOauthBusy(true)
-    const { error: oauthError } = await signInWithOAuth(provider)
-    if (oauthError) {
-      setOauthBusy(false)
-      setError(oauthError)
-    }
   }
 
   const busy = submitting || oauthBusy
@@ -157,24 +142,37 @@ export function LoginPage() {
         </Button>
       </form>
 
-      {configured && oauthEnabled() ? (
-        <div className="space-y-2 border-t border-forja-border pt-4">
-          <p className="text-center font-mono-ui text-[10px] uppercase tracking-[0.16em] text-forja-muted">
-            Or continue with
-          </p>
-          {authConfig.oauthProviders.map((provider) => (
-            <Button
-              key={provider}
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled={busy}
-              onClick={() => void onOAuth(provider)}
-            >
-              {oauthBusy ? 'Redirecting…' : oauthProviderLabel(provider)}
-            </Button>
-          ))}
-        </div>
+      {configured ? (
+        <OAuthProviders>
+          {({ providers, label, signIn: oauthSignIn }) => (
+            <div className="space-y-2 border-t border-forja-border pt-4">
+              <p className="text-center font-mono-ui text-[10px] uppercase tracking-[0.16em] text-forja-muted">
+                Or continue with
+              </p>
+              {providers.map((provider) => (
+                <Button
+                  key={provider}
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={() => {
+                    setError(null)
+                    setOauthBusy(true)
+                    void oauthSignIn(provider).then(({ error: oauthError }) => {
+                      if (oauthError) {
+                        setOauthBusy(false)
+                        setError(oauthError)
+                      }
+                    })
+                  }}
+                >
+                  {oauthBusy ? 'Redirecting…' : label(provider)}
+                </Button>
+              ))}
+            </div>
+          )}
+        </OAuthProviders>
       ) : null}
     </div>
   )

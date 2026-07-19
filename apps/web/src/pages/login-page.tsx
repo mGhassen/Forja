@@ -16,17 +16,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
+import { OAuthProviders } from '@forja/auth/react'
 import {
   useAuth,
   AUTH_UNAVAILABLE_MESSAGE,
   CAPTCHA_REQUIRED_MESSAGE,
 } from '@/hooks/use-auth'
-import {
-  authConfig,
-  oauthEnabled,
-  oauthProviderLabel,
-  type OAuthProviderId,
-} from '@/lib/auth'
+import { authConfig } from '@forja/auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
   consumeDesktopHandoffDone,
@@ -44,7 +40,6 @@ function LoginForm() {
   const {
     signIn,
     signInWithPasskey,
-    signInWithOAuth,
     session,
     user,
     loading,
@@ -257,17 +252,6 @@ function LoginForm() {
     void navigate({ to: '/account/profiles' })
   }
 
-  async function onOAuth(provider: OAuthProviderId) {
-    setError(null)
-    rememberDesktopAuthParams()
-    setOauthBusy(true)
-    const { error: oauthError } = await signInWithOAuth(provider)
-    if (oauthError) {
-      setOauthBusy(false)
-      setError(oauthError)
-    }
-  }
-
   async function onReturnToForja() {
     setError(null)
     const { data } = await supabase.auth.getSession()
@@ -431,28 +415,40 @@ function LoginForm() {
               )}
             </form>
 
-            {configured && oauthEnabled() && !showReturnButton ? (
-              <div className="mt-6 space-y-3 border-t border-[rgba(237,230,218,0.1)] pt-6">
-                <p className="text-center font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
-                  Or continue with
-                </p>
-                <div className="flex flex-col gap-2">
-                  {authConfig.oauthProviders.map((provider) => (
-                    <Button
-                      key={provider}
-                      type="button"
-                      variant="outline"
-                      disabled={authBusy || loading}
-                      onClick={() => void onOAuth(provider)}
-                      className="h-11 w-full rounded-full border-[rgba(237,230,218,0.22)] font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                    >
-                      {oauthBusy
-                        ? 'Redirecting…'
-                        : oauthProviderLabel(provider)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+            {configured && !showReturnButton ? (
+              <OAuthProviders>
+                {({ providers, label, signIn: oauthSignIn }) => (
+                  <div className="mt-6 space-y-3 border-t border-[rgba(237,230,218,0.1)] pt-6">
+                    <p className="text-center font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
+                      Or continue with
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {providers.map((provider) => (
+                        <Button
+                          key={provider}
+                          type="button"
+                          variant="outline"
+                          disabled={authBusy || loading}
+                          onClick={() => {
+                            setError(null)
+                            rememberDesktopAuthParams()
+                            setOauthBusy(true)
+                            void oauthSignIn(provider).then(({ error: oauthError }) => {
+                              if (oauthError) {
+                                setOauthBusy(false)
+                                setError(oauthError)
+                              }
+                            })
+                          }}
+                          className="h-11 w-full rounded-full border-[rgba(237,230,218,0.22)] font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                        >
+                          {oauthBusy ? 'Redirecting…' : label(provider)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </OAuthProviders>
             ) : null}
 
             <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">

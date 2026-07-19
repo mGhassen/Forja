@@ -1,26 +1,22 @@
 import { Navigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { useAuth } from '@/hooks/use-auth'
-import { authConfig } from '@forja/auth'
+import { RequireAuth as SharedRequireAuth } from '@forja/auth/react'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading, requiresMfa } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-forja-muted">
-        Loading…
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <Navigate to="/login" />
-  }
-
-  if (authConfig.mfaTotp && requiresMfa) {
-    return <Navigate to="/login/mfa" />
-  }
-
-  return children
+  return (
+    <SharedRequireAuth
+      navigate={{
+        toLogin: <Navigate to="/login" />,
+        toResetPassword: <Navigate to="/login" />,
+        toMfa: <Navigate to="/login/mfa" />,
+        loading: (
+          <div className="flex min-h-screen items-center justify-center text-forja-muted">
+            Loading…
+          </div>
+        ),
+      }}
+    >
+      {children}
+    </SharedRequireAuth>
+  )
 }

@@ -76,6 +76,27 @@ void main() {
       expect(ProviderScoreMemory.allGlobalScores().containsKey('cold'), isFalse);
     });
 
+    test('fails at zero do not erase later ups', () async {
+      await ProviderScoreMemory.recordServerFailure(
+        ProviderScoreScope.anime(anilistId: 1, episode: 1),
+        'miruro:bee',
+      );
+      await ProviderScoreMemory.recordServerFailure(
+        ProviderScoreScope.anime(anilistId: 2, episode: 1),
+        'miruro:bee',
+      );
+      expect(ProviderScoreMemory.globalScoreFor('miruro:bee'), 0);
+      final win = ProviderScoreScope.anime(anilistId: 3, episode: 1);
+      await ProviderScoreMemory.recordServerUp(win, 'miruro:bee');
+      await ProviderScoreMemory.recordStreamUp(win, 'miruro:bee');
+      expect(ProviderScoreMemory.globalScoreFor('miruro:bee'), 4);
+      await ProviderScoreMemory.recordServerFailure(
+        ProviderScoreScope.anime(anilistId: 4, episode: 1),
+        'miruro:bee',
+      );
+      expect(ProviderScoreMemory.globalScoreFor('miruro:bee'), 2);
+    });
+
     test('tv scores are per season and episode', () async {
       final otherEp = ProviderScoreScope.tv(
         tmdbId: 1399,

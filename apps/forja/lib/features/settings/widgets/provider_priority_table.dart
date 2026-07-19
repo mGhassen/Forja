@@ -147,7 +147,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Score rises when a server works across the titles you play. '
+            'Score counts up or down across the titles you play (never below 0). '
             'Auto tries servers in the Tries order — drag to prefer one.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: ForjaShellColors.textSecondary,

@@ -460,7 +460,7 @@ class PlayerStreamMenu {
     if (scoreScope == null) {
       return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
     }
-    // Badge = live sum across all titles; ± prefixes = this title only.
+    // Badge = running provider Σ (up/down, min 0); ± prefixes = this title only.
     final score = ProviderScoreMemory.globalScoreFor(providerId);
     final serverDelta =
         ProviderScoreMemory.serverVerdictFor(scoreScope, providerId);

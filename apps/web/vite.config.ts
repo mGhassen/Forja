@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       tsconfigPaths: true,
       alias: {
+        '@forja/auth/react': path.resolve(forjaAuthRoot, 'src/react/index.ts'),
         '@forja/auth': path.resolve(forjaAuthRoot, 'src/index.ts'),
       },
     },

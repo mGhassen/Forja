@@ -13,7 +13,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@forja/auth": ["../../packages/forja-auth/src/index.ts"],
-      "@forja/auth/*": ["../../packages/forja-auth/src/*"]
+      "@forja/auth/react": ["../../packages/forja-auth/src/react/index.ts"]
     },
     "types": ["vite/client"],
     "allowImportingTsExtensions": true,

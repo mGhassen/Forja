@@ -11,7 +11,7 @@ import {
   type ForjaMfaFactor,
   type ForjaPasskey,
 } from '@/hooks/use-auth'
-import { authConfig } from '@/lib/auth'
+import { authConfig } from '@forja/auth'
 
 export function AccountSettingsAccountPage() {
   const navigate = useNavigate()
