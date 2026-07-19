@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Release, ReleaseAsset } from '@/lib/database.types'
-import { compareSemverDesc, DOC_CHANGELOGS } from '@/lib/changelog-docs'
+import { compareSemverDesc } from '@/lib/changelog-docs'
+import type { R2ChangelogArchive } from '@/lib/r2-changelog'
 import { preferReleaseStorageUrl } from '@/lib/release-storage'
 
 export type ReleaseWithAssets = Release & { assets: ReleaseAsset[] }
@@ -53,7 +54,7 @@ const GITHUB_LATEST = `https://api.github.com/repos/${GITHUB_REPO}/releases/late
 /** Changelog menu shows at most this many stable releases. */
 export const CHANGELOG_MENU_LIMIT = 20
 
-/** Fetch enough GitHub releases to merge with docs/changelog/done. */
+/** Optional: enrich R2 notes with GitHub published_at / assets. */
 const GITHUB_RELEASES = `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=100`
 
 type GhAsset = {
@@ -201,27 +202,38 @@ async function fetchGitHubReleases(): Promise<ReleaseWithAssets[]> {
   return list.filter((r) => !r.draft && !r.prerelease).map(fromGitHub)
 }
 
-function fromDocChangelog(version: string, markdown: string): ReleaseWithAssets {
+function fromR2Changelog(version: string, markdown: string): ReleaseWithAssets {
   return {
-    id: `docs-${version}`,
+    id: `r2-${version}`,
     tag: `v${version}`,
     version,
     body: markdown,
     published_at: '',
     html_url: null,
-    source: 'docs',
+    source: 'r2',
     synced_at: new Date().toISOString(),
     assets: [],
   }
 }
 
+async function fetchR2ChangelogNotes(): Promise<Record<string, string>> {
+  const res = await fetch('/api/changelog', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) {
+    throw new Error(`changelog API ${res.status}`)
+  }
+  const archive = (await res.json()) as R2ChangelogArchive
+  return archive.notes ?? {}
+}
+
 /**
- * Prefer frozen docs/changelog/done notes when they have bullets; otherwise keep
- * the GitHub release body (after clean). Union both sources by version.
+ * Prefer R2 `changelog/` notes when they have bullets; otherwise keep the
+ * GitHub release body (after clean). Union both sources by version.
  */
 export function mergeChangelogReleases(
   github: ReleaseWithAssets[],
-  docs: Record<string, string> = DOC_CHANGELOGS,
+  r2Notes: Record<string, string>,
 ): ReleaseWithAssets[] {
   const byVersion = new Map<string, ReleaseWithAssets>()
 
@@ -229,20 +241,20 @@ export function mergeChangelogReleases(
     byVersion.set(release.version, { ...release, assets: [...release.assets] })
   }
 
-  for (const [version, markdown] of Object.entries(docs)) {
+  for (const [version, markdown] of Object.entries(r2Notes)) {
     const existing = byVersion.get(version)
-    const docsHasNotes = hasChangelogBullets(markdown)
+    const r2HasNotes = hasChangelogBullets(markdown)
     if (existing) {
       const ghHasNotes = hasChangelogBullets(existing.body)
-      if (docsHasNotes || !ghHasNotes) {
+      if (r2HasNotes || !ghHasNotes) {
         existing.body = markdown
         if (existing.source === 'github') {
-          existing.source = 'github+docs'
+          existing.source = 'github+r2'
         }
       }
       continue
     }
-    byVersion.set(version, fromDocChangelog(version, markdown))
+    byVersion.set(version, fromR2Changelog(version, markdown))
   }
 
   return [...byVersion.values()]
@@ -263,14 +275,16 @@ export function useLatestRelease() {
 }
 
 /**
- * Changelog entries: GitHub Releases merged with docs/changelog/done notes.
- * Docs are bundled and shown immediately; GitHub only enriches dates/order.
+ * Changelog entries from R2 `changelog/` (via /api/changelog).
+ * GitHub optionally fills published_at / assets when reachable.
  */
 export function useAllReleases() {
-  const docsOnly = mergeChangelogReleases([])
   return useQuery({
     queryKey: ['releases', 'changelog'],
     queryFn: async (): Promise<ReleaseWithAssets[]> => {
+      const r2Notes = await fetchR2ChangelogNotes()
+      const r2Only = mergeChangelogReleases([], r2Notes)
+
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 8_000)
       try {
@@ -278,21 +292,17 @@ export function useAllReleases() {
           headers: GH_HEADERS,
           signal: controller.signal,
         })
-        if (!res.ok) {
-          throw new Error(`GitHub releases ${res.status}`)
-        }
+        if (!res.ok) return r2Only
         const list = (await res.json()) as GhRelease[]
-        if (!Array.isArray(list)) return docsOnly
+        if (!Array.isArray(list)) return r2Only
         const github = list.filter((r) => !r.draft && !r.prerelease).map(fromGitHub)
-        return mergeChangelogReleases(github)
+        return mergeChangelogReleases(github, r2Notes)
       } catch {
-        return docsOnly
+        return r2Only
       } finally {
         clearTimeout(timer)
       }
     },
-    initialData: docsOnly,
-    initialDataUpdatedAt: 0,
     staleTime: 60_000,
   })
 }

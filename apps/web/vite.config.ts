@@ -61,7 +61,6 @@ export default defineConfig(({ mode }) => {
       // "down" from the desktop app.
       host: '127.0.0.1',
       fs: {
-        // Changelog page bundles docs/changelog/done from the repo root.
         allow: [webRoot, repoRoot, forjaAuthRoot],
       },
     },

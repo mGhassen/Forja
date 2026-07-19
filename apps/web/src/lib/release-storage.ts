@@ -1,8 +1,12 @@
 /**
- * Public CDN URLs for Forja release installers (Cloudflare R2).
+ * Public CDN URLs for Forja release installers + changelog (Cloudflare R2).
  *
- * Versioned: {RELEASE_CDN_URL}/v{version}/{filename}
- * Latest:    {RELEASE_CDN_URL}/latest/{filename}
+ * Versioned:  {RELEASE_CDN_URL}/v{version}/{filename}
+ * Latest:     {RELEASE_CDN_URL}/latest/{filename}
+ * Changelog:  {RELEASE_CDN_URL}/changelog/index.json + changelog/{version}.md
+ *
+ * The portal loads notes via same-origin `/api/changelog` (server fetches R2)
+ * because the CDN custom domain does not send CORS for browser origins.
  */
 
 export function releaseCdnPublicUrl(

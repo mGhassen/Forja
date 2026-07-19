@@ -129,10 +129,11 @@ export function ChangelogPage() {
           Changelog
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-          What changed in each Forja release — notes stay on this site.
+          What changed in each Forja release — same notes the app update dialog
+          reads from the release CDN.
           {isFetching ? (
             <span className="ml-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.28)]">
-              Updating…
+              Loading…
             </span>
           ) : null}
         </p>
