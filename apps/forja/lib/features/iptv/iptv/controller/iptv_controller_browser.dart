@@ -112,6 +112,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.liveOnly = false;
         _c.liveFavoriteIds = const {};
         _c.liveWatchedIds = const [];
+        _c.livePinnedCategoryIds = const [];
       }
 
       _c._catalogCache[cacheKey] = _CatalogSnap(
@@ -158,8 +159,11 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   Future<void> _loadLiveChannelLists(String portalKey) async {
     final favs = await IptvLiveChannelListsStore.loadFavorites(portalKey);
     final watched = await IptvLiveChannelListsStore.loadWatched(portalKey);
+    final pinned =
+        await IptvLiveChannelListsStore.loadPinnedCategories(portalKey);
     _c.liveFavoriteIds = favs;
     _c.liveWatchedIds = watched;
+    _c.livePinnedCategoryIds = pinned;
   }
 
   Future<void> _hydrateLiveSectionPrefs({
@@ -205,6 +209,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       _c.aliveCheckedAt = null;
       _c.liveFavoriteIds = const {};
       _c.liveWatchedIds = const [];
+      _c.livePinnedCategoryIds = const [];
     }
     if (persistSection) {
       await IptvStore.saveLastSection(section);

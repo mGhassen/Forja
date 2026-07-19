@@ -153,6 +153,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   bool _hasNuvioAddons = false;
   Set<String> _nuvioFetchedScraperIds = {};
   int _nuvioFetchGen = 0;
+  String? _nuvioInFlightScraperId;
 
   /// Cached list of installed Nuvio addons (refreshed when the Nuvio tab
   /// is opened). Used to render the scraper filter chips.
@@ -617,6 +618,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     if (keepKind != 'nuvio' && _isNuvioFetching) {
       _nuvioFetchGen++;
       _isNuvioFetching = false;
+      _nuvioInFlightScraperId = null;
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioStreams = [];
       _nuvioFetchedScraperIds = {};

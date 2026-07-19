@@ -41,6 +41,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
+    _s._nuvioInFlightScraperId = null;
     if (changed && mounted) setState(() {});
   }
 
@@ -181,6 +182,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     final gen = ++_s._nuvioFetchGen;
     setState(() {
       _s._isNuvioFetching = true;
+      _s._nuvioInFlightScraperId = scraperId;
       if (reset) {
         _s._nuvioStreams = [];
         _s._nuvioFetchedScraperIds = {};
@@ -196,13 +198,10 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
     );
     if (!mounted || gen != _s._nuvioFetchGen) return;
-    if (batch == null) {
-      setState(() => _s._isNuvioFetching = false);
-      return;
-    }
     setState(() {
       _s._nuvioFetchedScraperIds.add(scraperId);
-      if (batch.streams.isNotEmpty) {
+      _s._nuvioInFlightScraperId = null;
+      if (batch != null && batch.streams.isNotEmpty) {
         _s._nuvioStreams.addAll(
           batch.streams.map(
             (s) => <String, dynamic>{
@@ -227,6 +226,9 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
       fetchedScraperIds: _s._nuvioFetchedScraperIds,
     );
     _s._maybeAutoPlay();
+    if (_pendingNuvioScraperIds.isNotEmpty) {
+      unawaited(_fetchNextNuvioScraper());
+    }
   }
 
   /// Fetches streams using the custom Stremio ID from the originating addon.

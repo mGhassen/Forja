@@ -65,57 +65,6 @@ class SourcesPanelProviderOption {
   final String label;
 }
 
-/// Fetches the next selected Nuvio scraper.
-class SourcesLoadNextProviderButton extends StatelessWidget {
-  const SourcesLoadNextProviderButton({
-    super.key,
-    required this.remainingProviders,
-    required this.onPressed,
-    this.isLoading = false,
-  });
-
-  final int remainingProviders;
-  final VoidCallback onPressed;
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context) {
-    final cinematic = ForjaShellColors.cinematic;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: FocusableControl(
-        onTap: isLoading ? null : onPressed,
-        borderRadius: 10,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: _torrentPanelControlDecoration(active: false, radius: 10),
-          alignment: Alignment.center,
-          child: isLoading
-              ? SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: cinematic.textPrimary,
-                  ),
-                )
-              : Text(
-                  remainingProviders == 1
-                      ? 'Load next provider (1 left)'
-                      : 'Load next provider ($remainingProviders left)',
-                  style: TextStyle(
-                    color: cinematic.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
 const kTorrentAudioTags = [
   'Atmos',
   'TrueHD',

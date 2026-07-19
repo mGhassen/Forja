@@ -8,6 +8,9 @@ class _CategorySidebarRow extends StatefulWidget {
     required this.listIndex,
     required this.onTap,
     this.icon,
+    this.pinnable = false,
+    this.pinned = false,
+    this.onTogglePin,
     this.onUpEdge,
     this.onRightEdge,
   });
@@ -18,6 +21,9 @@ class _CategorySidebarRow extends StatefulWidget {
   final int listIndex;
   final VoidCallback onTap;
   final IconData? icon;
+  final bool pinnable;
+  final bool pinned;
+  final VoidCallback? onTogglePin;
   final VoidCallback? onUpEdge;
   final VoidCallback? onRightEdge;
 
@@ -34,6 +40,11 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   bool get _active =>
       iptvFocusActive(context, hovered: _hovered, focused: _focused);
 
+  bool get _showPin =>
+      widget.pinnable &&
+      widget.onTogglePin != null &&
+      (widget.pinned || _hovered || _tvFocused);
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
@@ -47,6 +58,11 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     final titleColor = _tvFocused
         ? ForjaShellColors.brandGreen
         : emphatic
+            ? Colors.white
+            : ForjaShellColors.textSecondary;
+    final pinColor = widget.pinned
+        ? ForjaShellColors.brandGreen
+        : _active
             ? Colors.white
             : ForjaShellColors.textSecondary;
 
@@ -65,9 +81,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
         width: double.infinity,
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.compact ? 10 : 12,
-          vertical: widget.compact ? 10 : 12,
+        height: widget.compact ? 42 : 46,
+        padding: EdgeInsets.only(
+          left: widget.compact ? 10 : 12,
+          right: widget.compact ? 6 : 8,
         ),
         decoration: BoxDecoration(
           color: _tvFocused
@@ -79,7 +96,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
                       : Colors.transparent,
           border: Border(
             left: BorderSide(
-              // Selected / TV focus / hover — keep rail so hover isn't "flat".
               color: highlight
                   ? ForjaShellColors.brandGreen
                   : _active
@@ -107,6 +123,28 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
                 ),
               ),
             ),
+            if (_showPin)
+              Tooltip(
+                message: widget.pinned ? 'Unpin category' : 'Pin category',
+                waitDuration: const Duration(milliseconds: 400),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: widget.onTogglePin,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        widget.pinned
+                            ? Icons.push_pin_rounded
+                            : Icons.push_pin_outlined,
+                        size: widget.compact ? 16 : 17,
+                        color: pinColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

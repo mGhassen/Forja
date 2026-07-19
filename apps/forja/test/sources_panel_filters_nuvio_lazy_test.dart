@@ -142,25 +142,7 @@ void main() {
     });
   });
 
-  group('Nuvio load-next button', () {
-    testWidgets('labels the next network provider count', (tester) async {
-      var pressed = false;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SourcesLoadNextProviderButton(
-              remainingProviders: 3,
-              onPressed: () => pressed = true,
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Load next provider (3 left)'), findsOneWidget);
-      await tester.tap(find.byType(SourcesLoadNextProviderButton));
-      expect(pressed, isTrue);
-    });
-
+  group('Nuvio scraper cache', () {
     test('cache preserves attempted scrapers, including empty responses', () {
       const key = 'nuvio-lazy-test';
       CatalogSourcesSessionCache.writeNuvio(

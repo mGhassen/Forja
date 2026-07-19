@@ -46,7 +46,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 - For TV: pick a season from the horizontal poster row (multi-season shows) — the hero backdrop crossfades to that season's poster; then tap an episode card to **select** it (does not start playback or open Sources). Click the card's **play** button to play or resume that episode (webstreaming when enabled, otherwise opens **Sources**). Hero green **Play** / **Resume** and white **Play** / **Resume** (link icon) / **Download** still apply to the **selected** episode. Without Continue Watching, the page opens season 1 unless you have an in-progress episode (2–90%), then that season is selected.
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)
-- Pick a provider from the chip row under the Torrents / Stremio / Nuvio tabs; filter by quality, size (`<1 GB` · `1–3 GB` · `3–8 GB` · `8–20 GB` · `20 GB+`, multi-select OR), language, tech, and audio; under Nuvio, provider chips start with none selected — pick scrapers, then **Load next provider** runs them one at a time
+- Pick a provider from the chip row under the Torrents / Stremio / Nuvio tabs; filter by quality, size (`<1 GB` · `1–3 GB` · `3–8 GB` · `8–20 GB` · `20 GB+`, multi-select OR), language, tech, and audio; under Nuvio, tap a scraper chip to load it (tap again to deselect and clear its rows); more chips load lazily one at a time
 - Resolve torrents through debrid when configured
 - Mark watched / unwatched per episode
 - Use [Webstreaming](direct-streaming-mode.md) via the hero green **Play** / **Resume** (play icon) button

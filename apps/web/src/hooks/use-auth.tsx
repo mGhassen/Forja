@@ -7,7 +7,13 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import type { Factor, Session, User } from '@supabase/supabase-js'
+import {
+  checkRequiresMfa,
+  mapAuthError,
+  startOAuthSignIn,
+  type OAuthProviderId,
+} from '@/lib/auth'
 import {
   isDesktopHandoffPending,
   lockDesktopHandoff,
@@ -18,6 +24,9 @@ import {
   supabase,
   supabaseConfigured,
 } from '@/lib/supabase'
+
+export type { OAuthProviderId }
+export type SignOutScope = 'local' | 'global'
 
 /** Never expose env keys, paths, or backend names to end users. */
 export const AUTH_UNAVAILABLE_MESSAGE =
@@ -76,6 +85,14 @@ type AuthResult = {
   error: string | null
   /** True when the user was created but must confirm email before a session exists. */
   needsEmailConfirmation?: boolean
+  /** Password/OAuth/passkey succeeded but TOTP challenge is still required. */
+  needsMfa?: boolean
+}
+
+export type ForjaMfaFactor = {
+  id: string
+  friendlyName: string | null
+  status: Factor['status']
 }
 
 type AuthContextValue = {
@@ -83,6 +100,8 @@ type AuthContextValue = {
   user: User | null
   loading: boolean
   configured: boolean
+  /** True when session is AAL1 but MFA is enrolled (must verify TOTP). */
+  requiresMfa: boolean
   signIn: (
     email: string,
     password: string,
@@ -91,6 +110,7 @@ type AuthContextValue = {
   signInWithPasskey: (options?: {
     captchaToken?: string
   }) => Promise<AuthResult>
+  signInWithOAuth: (provider: OAuthProviderId) => Promise<AuthResult>
   signUp: (
     email: string,
     password: string,
@@ -120,7 +140,28 @@ type AuthContextValue = {
     passkeys: ForjaPasskey[]
   }>
   deletePasskey: (passkeyId: string) => Promise<{ error: string | null }>
-  signOut: () => Promise<void>
+  /** Refresh whether the current session still needs an MFA challenge. */
+  refreshMfaStatus: () => Promise<boolean>
+  listMfaFactors: () => Promise<{
+    error: string | null
+    factors: ForjaMfaFactor[]
+  }>
+  enrollMfaTotp: () => Promise<{
+    error: string | null
+    factorId: string | null
+    qrCode: string | null
+    secret: string | null
+  }>
+  challengeAndVerifyMfa: (
+    factorId: string,
+    code: string,
+  ) => Promise<AuthResult>
+  unenrollMfa: (factorId: string) => Promise<{ error: string | null }>
+  /**
+   * `local` — this browser only (default; keeps desktop session).
+   * `global` — revoke refresh tokens on all devices.
+   */
+  signOut: (options?: { scope?: SignOutScope }) => Promise<void>
   deleteAccount: (confirmEmail: string) => Promise<{ error: string | null }>
 }
 
@@ -152,6 +193,7 @@ function markPasswordRecovery(
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [requiresMfa, setRequiresMfa] = useState(false)
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
     if (urlIndicatesPasswordRecovery()) {
       persistPasswordRecovery(true)
@@ -162,6 +204,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stored) setPasswordRecoveryLock(true)
     return stored
   })
+
+  const refreshMfaStatus = useCallback(async (): Promise<boolean> => {
+    if (!supabaseConfigured) {
+      setRequiresMfa(false)
+      return false
+    }
+    const needed = await checkRequiresMfa(supabase)
+    setRequiresMfa(needed)
+    return needed
+  }, [])
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -184,15 +236,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (event === 'SIGNED_OUT') {
         markPasswordRecovery(setIsPasswordRecovery, false)
+        setRequiresMfa(false)
       }
       setSession(next)
       setLoading(false)
+      if (next && event !== 'PASSWORD_RECOVERY') {
+        void checkRequiresMfa(supabase).then((needed) => {
+          if (mounted) setRequiresMfa(needed)
+        })
+      } else if (!next) {
+        setRequiresMfa(false)
+      }
     })
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (mounted) {
-        setSession(data.session)
-        setLoading(false)
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (!mounted) return
+      setSession(data.session)
+      setLoading(false)
+      if (data.session) {
+        setRequiresMfa(await checkRequiresMfa(supabase))
       }
     })
 
@@ -249,9 +311,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? { captchaToken: options.captchaToken }
           : undefined,
       })
-      return { error: error?.message ?? null }
+      if (error) {
+        return {
+          error: mapAuthError({ message: error.message, code: error.code }),
+        }
+      }
+      const needsMfa = await refreshMfaStatus()
+      return { error: null, needsMfa }
     },
-    [],
+    [refreshMfaStatus],
   )
 
   const signInWithPasskey = useCallback(
@@ -264,7 +332,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? { captchaToken: options.captchaToken }
           : undefined,
       })
-      return { error: error?.message ?? null }
+      if (error) {
+        return {
+          error: mapAuthError({ message: error.message, code: error.code }),
+        }
+      }
+      const needsMfa = await refreshMfaStatus()
+      return { error: null, needsMfa }
+    },
+    [refreshMfaStatus],
+  )
+
+  const signInWithOAuth = useCallback(
+    async (provider: OAuthProviderId): Promise<AuthResult> => {
+      const { error } = await startOAuthSignIn(provider)
+      return { error }
     },
     [],
   )

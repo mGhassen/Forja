@@ -416,28 +416,54 @@ class _BrowserViewState extends State<_BrowserView> {
               iptvActiveSectionShelfIndex(ctrl),
             ),
           );
-          return ListView.builder(
+          final rowH = compact ? 42.0 : 46.0;
+          final live = ctrl.activeSection == IptvSection.live;
+          return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: 6),
-            itemCount: cats.length,
-            itemBuilder: (_, i) {
-              final c = cats[i];
-              final selected = c.id == ctrl.browserSelectedCategoryId;
-              return _CategorySidebarRow(
-                label: c.name.isEmpty ? 'Uncategorized' : c.name,
-                icon: _iptvCategoryIcon(c.id),
-                selected: selected,
-                compact: compact,
-                listIndex: i,
-                onTap: () => ctrl.selectBrowserCategory(c.id),
-                onUpEdge: i == 0
-                    ? () => iptvFocusRowItem(
-                        'iptv-sections',
-                        iptvActiveSectionShelfIndex(ctrl),
-                      )
-                    : null,
-                onRightEdge: () => iptvFocusRowItem('browser-streams'),
-              );
-            },
+            child: SizedBox(
+              height: cats.isEmpty ? 0 : cats.length * rowH,
+              child: Stack(
+                children: [
+                  for (var i = 0; i < cats.length; i++)
+                    AnimatedPositioned(
+                      key: ValueKey(cats[i].id),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      top: i * rowH,
+                      left: 0,
+                      right: 0,
+                      height: rowH,
+                      child: _CategorySidebarRow(
+                        label: cats[i].name.isEmpty
+                            ? 'Uncategorized'
+                            : cats[i].name,
+                        icon: _iptvCategoryIcon(cats[i].id),
+                        selected:
+                            cats[i].id == ctrl.browserSelectedCategoryId,
+                        compact: compact,
+                        listIndex: i,
+                        pinnable: live &&
+                            !IptvLiveCatalog.isSyntheticId(cats[i].id),
+                        pinned: ctrl.isLiveCategoryPinned(cats[i].id),
+                        onTogglePin: live &&
+                                !IptvLiveCatalog.isSyntheticId(cats[i].id)
+                            ? () => ctrl.toggleLiveCategoryPin(cats[i].id)
+                            : null,
+                        onTap: () =>
+                            ctrl.selectBrowserCategory(cats[i].id),
+                        onUpEdge: i == 0
+                            ? () => iptvFocusRowItem(
+                                  'iptv-sections',
+                                  iptvActiveSectionShelfIndex(ctrl),
+                                )
+                            : null,
+                        onRightEdge: () =>
+                            iptvFocusRowItem('browser-streams'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           );
         },
       ),

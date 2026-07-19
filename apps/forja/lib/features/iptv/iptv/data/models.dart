@@ -113,7 +113,7 @@ abstract final class IptvLiveCatalog {
   static bool isSyntheticId(String id) =>
       id == favoritesId || id == watchedId;
 
-  /// Favorites + Already watched stay pinned above portal groups.
+  /// Synthetic Favorites / Already watched (not user-pinned API groups).
   static bool isPinnedId(String id) => isSyntheticId(id);
 
   static List<IptvCategory> withPins(List<IptvCategory> apiCategories) => [

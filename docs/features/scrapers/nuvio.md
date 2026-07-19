@@ -4,7 +4,7 @@
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab start with no scrapers selected — pick the ones you want. Opening **Nuvio** waits until you select providers; use **Load next provider** to run them one at a time.
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab start with no scrapers selected — tap a scraper to select it and load its sources immediately; tap again to deselect and clear that scraper’s rows. Selecting more scrapers loads each newly selected one lazily (one at a time).
 
 Forja ships a **built-in** All-in-One Nuvio catalog. It appears in **Settings → Nuvio addons** (same scrapers as **Sources → Nuvio**). You can toggle scrapers on or off; the built-in addon cannot be removed.
 
@@ -22,7 +22,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Paste a Nuvio `manifest.json` URL and install more
 - Toggle each scraper on/off without removing the addon
 - Remove a user-installed addon (not the built-in one)
-- In **Sources → Nuvio**, choose scrapers from the provider chips under the tab, fetch them one at a time with **Load next provider**, and play a result (magnets use the local torrent engine; HTTP links play directly)
+- In **Sources → Nuvio**, tap scraper chips to load them (tap again to remove their sources), and play a result (magnets use the local torrent engine; HTTP links play directly)
 
 ## Setup
 

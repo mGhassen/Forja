@@ -195,6 +195,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   Set<String> _nuvioFetchedScraperIds = {};
   bool _nuvioFetching = false;
   int _nuvioFetchGen = 0;
+  String? _nuvioInFlightScraperId;
 
   bool _searching = false;
   bool _stremioFetching = false;
@@ -634,6 +635,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (keepKind != 'nuvio' && _nuvioFetching) {
       _nuvioFetchGen++;
       _nuvioFetching = false;
+      _nuvioInFlightScraperId = null;
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioStreams = [];
       _nuvioFetchedScraperIds = {};
@@ -1096,6 +1098,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final gen = ++_nuvioFetchGen;
     setState(() {
       _nuvioFetching = true;
+      _nuvioInFlightScraperId = scraperId;
       if (reset) {
         _nuvioStreams = [];
         _nuvioFetchedScraperIds = {};
@@ -1111,13 +1114,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
     );
     if (!mounted || gen != _nuvioFetchGen) return;
-    if (batch == null) {
-      setState(() => _nuvioFetching = false);
-      return;
-    }
     setState(() {
       _nuvioFetchedScraperIds.add(scraperId);
-      if (batch.streams.isNotEmpty) {
+      _nuvioInFlightScraperId = null;
+      if (batch != null && batch.streams.isNotEmpty) {
         _nuvioStreams.addAll(
           batch.streams.map(
             (s) => <String, dynamic>{
@@ -1141,6 +1141,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     );
     _focusPlayingSourceIfNeeded();
     _requestScrollToCurrent();
+    if (_pendingNuvioScraperIds.isNotEmpty) {
+      unawaited(_fetchNextNuvioScraper());
+    }
   }
 
   void _onKindChanged(String kind) {
@@ -1346,19 +1349,52 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     )).map(TorrentResult.fromJson).toList();
   }
 
+  bool _nuvioStreamFromScraper(Map<String, dynamic> s, String scraperId) {
+    final id = s['_nuvioScraperId'] as String?;
+    if (id != null) return id == scraperId;
+    final base = s['_addonBaseUrl'] as String?;
+    return base == 'nuvio:$scraperId';
+  }
+
   void _onChipTap(String id) {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
+      final wasSelected = _nuvioSelectedScraperIds.contains(scraperId);
+      final cancelInFlight = wasSelected &&
+          _nuvioFetching &&
+          _nuvioInFlightScraperId == scraperId;
       setState(() {
         _selectedSourceId = 'all_nuvio';
-        if (_nuvioSelectedScraperIds.contains(scraperId)) {
+        _error = null;
+        if (wasSelected) {
           _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
             ..remove(scraperId);
+          _nuvioStreams = _nuvioStreams
+              .whereType<Map<String, dynamic>>()
+              .where((s) => !_nuvioStreamFromScraper(s, scraperId))
+              .toList();
+          _nuvioFetchedScraperIds = Set<String>.from(_nuvioFetchedScraperIds)
+            ..remove(scraperId);
+          if (cancelInFlight) {
+            _nuvioFetchGen++;
+            _nuvioFetching = false;
+            _nuvioInFlightScraperId = null;
+            DomainStreamProviderResolver.cancelAllPending(
+              cancelEngineJobs: false,
+            );
+          }
         } else {
           _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
         }
-        _error = null;
       });
+      CatalogSourcesSessionCache.writeNuvio(
+        _catalogCacheKey,
+        _nuvioStreams,
+        fetchedScraperIds: _nuvioFetchedScraperIds,
+      );
+      if (!wasSelected || cancelInFlight) {
+        unawaited(_fetchNextNuvioScraper());
+      }
       return;
     }
     if (id == _selectedSourceId) return;
@@ -1437,6 +1473,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
               _searching = false;
               _stremioFetching = false;
               _nuvioFetching = false;
+              _nuvioInFlightScraperId = null;
             });
           },
           providerOptions: _providerOptions,
@@ -1542,11 +1579,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         ),
       );
     }
-    final remainingNuvioProviders = _showsNuvio
-        ? _pendingNuvioScraperIds.length
-        : 0;
-    final showNuvioLoadNext = remainingNuvioProviders > 0;
-    if (totalCount == 0 && !showNuvioLoadNext) {
+    if (totalCount == 0) {
       final emptyMsg = _showsNuvio && _nuvioSelectedScraperIds.isEmpty
           ? 'Select at least one provider'
           : 'No matching sources';
@@ -1572,16 +1605,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return ListView.separated(
       controller: _listScrollController,
       padding: const EdgeInsets.only(top: 2, bottom: 8),
-      itemCount: totalCount + (showNuvioLoadNext ? 1 : 0),
+      itemCount: totalCount,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
-        if (showNuvioLoadNext && i == totalCount) {
-          return SourcesLoadNextProviderButton(
-            remainingProviders: remainingNuvioProviders,
-            isLoading: _nuvioFetching,
-            onPressed: _fetchNextNuvioScraper,
-          );
-        }
         if (i < torrents.length) {
           final r = torrents[i];
           final isCurrent = i == currentIndex;

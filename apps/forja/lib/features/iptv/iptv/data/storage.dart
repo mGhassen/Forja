@@ -424,12 +424,14 @@ class IptvChannelFavoritesStore {
   }
 }
 
-/// Device-local Live catalog favorites + recently opened channels (last 30).
+/// Device-local Live catalog favorites, watched channels, and pinned groups.
 /// Keyed by portal `url|username|password` (same as [IptvAliveStore]).
 class IptvLiveChannelListsStore {
   static String _favKey(String portalKey) => 'pt_iptv_live_fav_$portalKey';
   static String _watchedKey(String portalKey) =>
       'pt_iptv_live_watched_$portalKey';
+  static String _pinnedCatsKey(String portalKey) =>
+      'pt_iptv_live_pinned_cats_$portalKey';
 
   static Future<Set<String>> loadFavorites(String portalKey) async {
     final prefs = await SharedPreferences.getInstance();
@@ -468,5 +470,21 @@ class IptvLiveChannelListsStore {
     }
     await prefs.setStringList(_watchedKey(portalKey), next);
     return next;
+  }
+
+  /// User-pinned Live category ids — first = top under Already watched.
+  static Future<List<String>> loadPinnedCategories(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_pinnedCatsKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  static Future<void> savePinnedCategories(
+    String portalKey,
+    List<String> categoryIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_pinnedCatsKey(portalKey), categoryIds);
   }
 }
