@@ -125,12 +125,30 @@ function seatsTone(max?: string | null) {
   }
 }
 
+function errMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error && e.message) return e.message
+  if (typeof e === 'object' && e && 'message' in e) {
+    const m = (e as { message: unknown }).message
+    if (typeof m === 'string' && m.trim()) return m
+  }
+  if (typeof e === 'string' && e.trim()) return e
+  return fallback
+}
+
 async function decryptPassword(id: string): Promise<string> {
   const { data, error } = await adminDb.rpc(
     'admin_iptv_catalog_candidate_password',
     { p_id: id },
   )
-  if (error) throw error
+  if (error) {
+    const msg = errMessage(error, 'decrypt failed')
+    if (/does not exist|could not find.*function/i.test(msg)) {
+      throw new Error(
+        'Missing RPC admin_iptv_catalog_candidate_password — apply migration 20260719002838_admin_catalog_candidate_ops',
+      )
+    }
+    throw new Error(msg)
+  }
   return typeof data === 'string' ? data : ''
 }
 
@@ -542,11 +560,7 @@ export function AdminPoolPage() {
         return cur
       })
     } catch (e) {
-      setEditError(
-        e instanceof Error
-          ? e.message
-          : 'Could not decrypt password (apply admin_catalog_candidate_ops migration)',
-      )
+      setEditError(errMessage(e, 'Could not decrypt password'))
     }
   }
 
@@ -575,11 +589,7 @@ export function AdminPoolPage() {
         })
       }, 8000)
     } catch (e) {
-      setActionError(
-        e instanceof Error
-          ? e.message
-          : 'Could not create share code (decrypt RPC + /api/iptv-share)',
-      )
+      setActionError(errMessage(e, 'Could not create share code'))
     } finally {
       setSharingId(null)
     }
