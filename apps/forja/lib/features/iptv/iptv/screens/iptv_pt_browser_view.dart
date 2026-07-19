@@ -359,8 +359,8 @@ class _BrowserViewState extends State<_BrowserView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final categoryWidth = widget.compact
-            ? (constraints.maxWidth * 0.30).clamp(132.0, 168.0)
-            : (widget.wide ? 200.0 : 176.0);
+            ? (constraints.maxWidth * 0.32).clamp(148.0, 188.0)
+            : (widget.wide ? 228.0 : 200.0);
 
         return Row(
           children: [
@@ -455,13 +455,14 @@ class _BrowserViewState extends State<_BrowserView> {
     return LayoutBuilder(
       builder: (ctx, c) {
         final tv = ShellScope.metricsOf(ctx).usesTvDensity;
-        final cardW = shellMovieCardWidth(ctx);
+        // Desktop: ~210px target → fewer columns, wider live tiles.
+        final cardW = tv ? shellMovieCardWidth(ctx) : 210.0;
         final cardH = shellMovieCardHeight(ctx);
         final gap = tv ? shellMovieCardRowGap(ctx) : 10.0;
         final hPad = 24.0;
         final cross = tv
             ? ((c.maxWidth - hPad + gap) / (cardW + gap)).floor().clamp(1, 24)
-            : (c.maxWidth ~/ 180).clamp(2, 8);
+            : (c.maxWidth ~/ cardW).clamp(2, 7);
         iptvSyncRow(
           rowId: 'browser-streams',
           sortOrder: 3,

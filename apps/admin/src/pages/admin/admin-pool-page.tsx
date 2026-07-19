@@ -26,6 +26,7 @@ import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 type Cand = {
@@ -38,12 +39,30 @@ type Cand = {
   region_primary: string
   region_confidence: number | null
   dealt_count: number
+  created_at: string
+  updated_at: string
+  last_checked_at: string | null
+}
+
+type ScrapeRun = {
+  id: string
+  started_at: string
+  finished_at: string | null
+  status: string
+  posts_seen: number
+  l1_extract_count: number
+  candidates_upserted: number
+  alive_count: number
+  source?: string | null
+  error?: string | null
 }
 
 type HostGroup = {
   host: string
   rows: Cand[]
   alive: number
+  newCount: number
+  lastScrapedAt: string | null
 }
 
 type EditForm = {
@@ -64,7 +83,15 @@ function candidateHost(url: string): string {
   }
 }
 
-function groupByHost(rows: Cand[]): HostGroup[] {
+function isNewCandidate(c: Cand, sinceIso: string | null): boolean {
+  if (!sinceIso) {
+    const age = Date.now() - new Date(c.created_at).getTime()
+    return age >= 0 && age < 48 * 60 * 60 * 1000
+  }
+  return new Date(c.created_at).getTime() >= new Date(sinceIso).getTime()
+}
+
+function groupByHost(rows: Cand[], sinceIso: string | null): HostGroup[] {
   const map = new Map<string, Cand[]>()
   for (const row of rows) {
     const host = candidateHost(row.url)
@@ -73,12 +100,47 @@ function groupByHost(rows: Cand[]): HostGroup[] {
     else map.set(host, [row])
   }
   return [...map.entries()]
-    .map(([host, groupRows]) => ({
-      host,
-      rows: groupRows,
-      alive: groupRows.filter((r) => r.alive === true).length,
-    }))
+    .map(([host, groupRows]) => {
+      let lastScrapedAt: string | null = null
+      let newCount = 0
+      for (const r of groupRows) {
+        if (isNewCandidate(r, sinceIso)) newCount++
+        const t = r.last_checked_at || r.updated_at
+        if (
+          t &&
+          (!lastScrapedAt ||
+            new Date(t).getTime() > new Date(lastScrapedAt).getTime())
+        ) {
+          lastScrapedAt = t
+        }
+      }
+      return {
+        host,
+        rows: groupRows,
+        alive: groupRows.filter((r) => r.alive === true).length,
+        newCount,
+        lastScrapedAt,
+      }
+    })
     .sort((a, b) => b.rows.length - a.rows.length || a.host.localeCompare(b.host))
+}
+
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return '—'
+  const sec = Math.round((Date.now() - t) / 1000)
+  if (sec < 60) return 'just now'
+  const min = Math.round(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.round(min / 60)
+  if (hr < 48) return `${hr}h ago`
+  const day = Math.round(hr / 24)
+  return `${day}d ago`
+}
+
+function shortRunId(id: string): string {
+  return id.replace(/-/g, '').slice(0, 8)
 }
 
 function portalExpiryTone(expiry?: string | null): {
@@ -144,7 +206,7 @@ async function decryptPassword(id: string): Promise<string> {
     const msg = errMessage(error, 'decrypt failed')
     if (/does not exist|could not find.*function/i.test(msg)) {
       throw new Error(
-        'Missing RPC admin_iptv_catalog_candidate_password — apply migration 20260719002838_admin_catalog_candidate_ops',
+        'Missing RPC admin_iptv_catalog_candidate_password — apply migration 20260719015100_admin_catalog_candidate_ops',
       )
     }
     throw new Error(msg)
@@ -303,6 +365,7 @@ function EditDialog({
 
 function CandidateCard({
   c,
+  isNew,
   sharing,
   shareCode,
   deleting,
@@ -311,6 +374,7 @@ function CandidateCard({
   onDelete,
 }: {
   c: Cand
+  isNew: boolean
   sharing: boolean
   shareCode: string | null
   deleting: boolean
@@ -329,6 +393,7 @@ function CandidateCard({
         'group flex min-h-[88px] items-stretch border border-forja-border/80 bg-forja-surface/40 transition-colors duration-180',
         'hover:bg-white/[0.04] focus-within:bg-white/[0.04]',
         pinRail && 'bg-white/[0.04]',
+        isNew && !pinRail && 'border-l-[3px] border-l-forja-green bg-forja-green/[0.06]',
       )}
     >
       <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
@@ -368,8 +433,20 @@ function CandidateCard({
                   <span className="text-forja-muted">· ?</span>
                 )}
               </p>
-              <p className="truncate text-[13px] font-semibold text-forja-text">
-                {c.username}
+              <p className="flex min-w-0 items-center gap-1.5">
+                {isNew ? (
+                  <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-bold tracking-wider text-forja-green ring-1 ring-forja-green/50">
+                    NEW
+                  </span>
+                ) : null}
+                <span
+                  className={cn(
+                    'truncate text-[13px] font-semibold',
+                    isNew ? 'text-forja-green' : 'text-forja-text',
+                  )}
+                >
+                  {c.username}
+                </span>
               </p>
               <p className="truncate text-[11px] text-white/40">{c.url}</p>
               <p
@@ -385,6 +462,9 @@ function CandidateCard({
                 <span className="font-normal text-forja-muted">
                   {c.region_primary}
                   {c.dealt_count > 0 ? ` · dealt ${c.dealt_count}` : ''}
+                  {c.last_checked_at
+                    ? ` · checked ${relativeTime(c.last_checked_at)}`
+                    : ''}
                 </span>
               </p>
             </>
@@ -472,22 +552,78 @@ export function AdminPoolPage() {
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const runs = useQuery({
+    queryKey: ['admin', 'scrape_runs', 'latest'],
+    queryFn: async () => {
+      const { data, error } = await adminDb
+        .from('iptv_scrape_runs')
+        .select(
+          'id, started_at, finished_at, status, posts_seen, l1_extract_count, candidates_upserted, alive_count, source, error',
+        )
+        .order('started_at', { ascending: false })
+        .limit(5)
+      if (error) throw error
+      return (data ?? []) as ScrapeRun[]
+    },
+    refetchInterval: (q) =>
+      q.state.data?.some((r) => r.status === 'running') ? 4_000 : 20_000,
+  })
+
+  const latestRun = runs.data?.[0] ?? null
+  const running = latestRun?.status === 'running'
+  const newSince = latestRun?.started_at ?? null
+
   const list = useQuery({
     queryKey: ['admin', 'pool'],
     queryFn: async () => {
       const { data, error } = await adminDb
         .from('iptv_catalog_candidates')
         .select(
-          'id, url, username, alive, expiry, max_connections, region_primary, region_confidence, dealt_count',
+          'id, url, username, alive, expiry, max_connections, region_primary, region_confidence, dealt_count, created_at, updated_at, last_checked_at',
         )
         .order('updated_at', { ascending: false })
-        .limit(200)
+        .limit(300)
       if (error) throw error
       return (data ?? []) as Cand[]
     },
+    refetchInterval: running ? 8_000 : false,
   })
 
-  const groups = useMemo(() => groupByHost(list.data ?? []), [list.data])
+  const groups = useMemo(
+    () => groupByHost(list.data ?? [], newSince),
+    [list.data, newSince],
+  )
+
+  const startScrape = useMutation({
+    mutationFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not signed in')
+      const res = await fetch('/api/iptv-catalog-scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}),
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        ok?: boolean
+      }
+      if (!res.ok) {
+        throw new Error(json.error || 'Could not start scrape')
+      }
+    },
+    onSuccess: async () => {
+      setActionError(null)
+      await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
+    },
+    onError: (e) => {
+      setActionError(errMessage(e, 'Could not start scrape'))
+    },
+  })
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -601,9 +737,60 @@ export function AdminPoolPage() {
         Catalog pool
       </h1>
       <p className="text-sm text-forja-muted">
-        Grouped by host · hover for copy / edit / delete. Copy creates a share
-        code (same as Account → IPTV).
+        Grouped by host · NEW = created since latest scrape run · hover for
+        copy / edit / delete.
       </p>
+
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-forja-border bg-forja-elevated/40 px-4 py-3">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-forja-muted">
+            Scrape
+          </p>
+          {latestRun ? (
+            <p className="text-sm text-forja-text">
+              <span
+                className={cn(
+                  'font-semibold',
+                  latestRun.status === 'running' && 'text-amber-400',
+                  latestRun.status === 'ok' && 'text-forja-green',
+                  latestRun.status === 'error' && 'text-red-400',
+                )}
+              >
+                {latestRun.status}
+              </span>
+              <span className="text-forja-muted">
+                {' '}
+                · run{' '}
+                <code className="font-mono-ui text-xs">
+                  {shortRunId(latestRun.id)}
+                </code>{' '}
+                · started {relativeTime(latestRun.started_at)}
+                {latestRun.status !== 'running'
+                  ? ` · upserted ${latestRun.candidates_upserted} · alive ${latestRun.alive_count}`
+                  : ` · posts ${latestRun.posts_seen} · L1 ${latestRun.l1_extract_count}`}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm text-forja-muted">No scrape runs yet.</p>
+          )}
+          {latestRun?.error ? (
+            <p className="text-xs text-red-400">{latestRun.error}</p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={running || startScrape.isPending}
+          onClick={() => startScrape.mutate()}
+        >
+          {running
+            ? 'Scraping…'
+            : startScrape.isPending
+              ? 'Starting…'
+              : 'Start scrape'}
+        </Button>
+      </div>
+
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
       ) : null}
@@ -642,19 +829,30 @@ export function AdminPoolPage() {
                   type="button"
                   onClick={() => toggle(g.host)}
                   aria-expanded={expanded}
-                  className="flex w-full items-center gap-2 bg-forja-elevated/60 px-3 py-2.5 text-left font-mono-ui text-xs font-semibold text-forja-text hover:bg-white/5"
+                  className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 bg-forja-elevated/60 px-3 py-2.5 text-left hover:bg-white/5"
                 >
                   <span
-                    className="inline-block w-3 shrink-0 text-forja-muted"
+                    className="inline-block w-3 shrink-0 font-mono-ui text-xs text-forja-muted"
                     aria-hidden
                   >
                     {expanded ? '▾' : '▸'}
                   </span>
-                  {g.host}
-                  <span className="font-sans font-normal text-forja-muted">
+                  <span className="font-mono-ui text-xs font-semibold text-forja-text">
+                    {g.host}
+                  </span>
+                  <span className="font-sans text-xs text-forja-muted">
                     {g.rows.length} acct
                     {g.rows.length === 1 ? '' : 's'}
                     {g.alive > 0 ? ` · ${g.alive} alive` : ''}
+                    {g.newCount > 0 ? (
+                      <span className="text-forja-green">
+                        {` · ${g.newCount} new`}
+                      </span>
+                    ) : null}
+                    {` · scraped ${relativeTime(g.lastScrapedAt)}`}
+                    {latestRun
+                      ? ` · run ${shortRunId(latestRun.id)} ${relativeTime(latestRun.started_at)}`
+                      : ''}
                   </span>
                 </button>
                 {expanded ? (
@@ -663,6 +861,7 @@ export function AdminPoolPage() {
                       <CandidateCard
                         key={c.id}
                         c={c}
+                        isNew={isNewCandidate(c, newSince)}
                         sharing={sharingId === c.id}
                         shareCode={shareFlash[c.id] ?? null}
                         deleting={remove.isPending}

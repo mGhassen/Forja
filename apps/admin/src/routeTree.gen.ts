@@ -18,6 +18,7 @@ import { Route as OpsPoolRouteImport } from './routes/_ops/pool'
 import { Route as OpsProvidersRouteImport } from './routes/_ops/providers'
 import { Route as OpsScrapeRouteImport } from './routes/_ops/scrape'
 import { Route as ApiInngestRouteImport } from './routes/api.inngest'
+import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-catalog-scrape'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 
 const AuthRoute = AuthRouteImport.update({
@@ -63,6 +64,11 @@ const ApiInngestRoute = ApiInngestRouteImport.update({
   path: '/api/inngest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIptvCatalogScrapeRoute = ApiIptvCatalogScrapeRouteImport.update({
+  id: '/api/iptv-catalog-scrape',
+  path: '/api/iptv-catalog-scrape',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
   id: '/api/iptv-share',
   path: '/api/iptv-share',
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
+  '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
 }
 export interface FileRoutesByTo {
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
+  '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
 }
 export interface FileRoutesById {
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/_ops/providers': typeof OpsProvidersRoute
   '/_ops/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
+  '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/_ops/': typeof OpsIndexRoute
 }
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scrape'
     | '/api/inngest'
+    | '/api/iptv-catalog-scrape'
     | '/api/iptv-share'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scrape'
     | '/api/inngest'
+    | '/api/iptv-catalog-scrape'
     | '/api/iptv-share'
   id:
     | '__root__'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/_ops/providers'
     | '/_ops/scrape'
     | '/api/inngest'
+    | '/api/iptv-catalog-scrape'
     | '/api/iptv-share'
     | '/_ops/'
   fileRoutesById: FileRoutesById
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   OpsRoute: typeof OpsRouteWithChildren
   ApiInngestRoute: typeof ApiInngestRoute
+  ApiIptvCatalogScrapeRoute: typeof ApiIptvCatalogScrapeRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
 }
 
@@ -209,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/iptv-catalog-scrape': {
+      id: '/api/iptv-catalog-scrape'
+      path: '/api/iptv-catalog-scrape'
+      fullPath: '/api/iptv-catalog-scrape'
+      preLoaderRoute: typeof ApiIptvCatalogScrapeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/iptv-share': {
       id: '/api/iptv-share'
       path: '/api/iptv-share'
@@ -251,6 +271,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   OpsRoute: OpsRouteWithChildren,
   ApiInngestRoute: ApiInngestRoute,
+  ApiIptvCatalogScrapeRoute: ApiIptvCatalogScrapeRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
 }
 export const routeTree = rootRouteImport
