@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) |
-| **Current slice** | R2 CDN live; update prompt before auth/splash (R15-A39); hosted smoke A37 |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **2 / 2** acceptance (R2-only discovery) |
+| **Current slice** | R2-only updater (`latest/manifest.json` + versioned installers); hosted smoke A37 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -124,9 +124,18 @@
 
 ---
 
+## Acceptance (R2-only discovery)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A40 | Release CI writes `latest/manifest.json` (+ `v{version}/manifest.json`) with version + asset filenames only (changelog stays on GitHub Releases) | ✅ |
+| 2 | R15-A41 | `AppUpdaterService` discovers updates only via `{RELEASE_CDN_URL}/latest/manifest.json` and downloads `{RELEASE_CDN_URL}/v{version}/{filename}` — no GitHub API | ✅ |
+
+---
+
 ## Summary
 
-Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. Version discovery stays on the GitHub Releases API; installer bytes are served from Cloudflare R2 after each **Release Forja** run (Supabase Storage abandoned — Free plan 50 MiB object cap).
+Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — version + installer filenames only), then downloads the platform installer from the versioned R2 path. Changelog / release notes stay on GitHub Releases; the app updater does not call GitHub.
 
 ## Goals
 

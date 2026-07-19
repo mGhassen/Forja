@@ -10,16 +10,20 @@ Optional env:
   R2_ENDPOINT=https://{account}.r2.cloudflarestorage.com
   RELEASE_STORAGE_KEEP=3
 
-Objects: v{version}/{filename} and latest/{filename}
-Public URL (site + app updater): {RELEASE_CDN_URL}/latest/{filename}
+Objects:
+  v{version}/{filename}
+  latest/{filename}
+  latest/manifest.json   — app updater discovery (version + asset filenames only)
 """
 
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -336,7 +340,43 @@ def main() -> None:
         latest_names.append(path.name)
         uploaded += 1
 
-    print(f"Uploaded {uploaded} release asset(s) to R2 ({bucket}/{prefix}/ + latest/).")
+    # Changelog/notes stay on GitHub Releases — manifest is version + files only.
+    published_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    manifest = {
+        "version": version,
+        "published_at": published_at,
+        "assets": latest_names,
+    }
+    manifest_bytes = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp.write(manifest_bytes)
+        tmp_path = Path(tmp.name)
+    try:
+        print(f"Uploading latest/manifest.json → s3://{bucket}/latest/manifest.json")
+        put_object(
+            endpoint=endpoint,
+            bucket=bucket,
+            key="latest/manifest.json",
+            path=tmp_path,
+            access_key=access_key,
+            secret_key=secret_key,
+        )
+        print(f"  mirror → s3://{bucket}/{prefix}/manifest.json")
+        put_object(
+            endpoint=endpoint,
+            bucket=bucket,
+            key=f"{prefix}/manifest.json",
+            path=tmp_path,
+            access_key=access_key,
+            secret_key=secret_key,
+        )
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    print(
+        f"Uploaded {uploaded} release asset(s) + manifest to R2 "
+        f"({bucket}/{prefix}/ + latest/)."
+    )
 
     # Drop stale objects under latest/ that are not part of this release.
     all_keys = list_keys(
@@ -345,7 +385,7 @@ def main() -> None:
         access_key=access_key,
         secret_key=secret_key,
     )
-    latest_keep = {f"latest/{n}" for n in latest_names}
+    latest_keep = {f"latest/{n}" for n in latest_names} | {"latest/manifest.json"}
     stale_latest = [
         k
         for k in all_keys

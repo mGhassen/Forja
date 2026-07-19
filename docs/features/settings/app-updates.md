@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja can check for newer builds when the app starts and lets you check manually from Settings. Version discovery uses GitHub Releases; installer files download from Forja’s release CDN (`latest/` on Cloudflare R2). Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
+Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/manifest.json` — version and installer filenames). Installer files download from the versioned path (`v{version}/{filename}`). Release notes stay on GitHub Releases. Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
 
 ## How to open it
 
@@ -14,7 +14,6 @@ Forja can check for newer builds when the app starts and lets you check manually
 
 - Tap **Check for updates** in Settings
 - Accept update prompt when a newer version exists
-- Read **What’s new** for every release since your installed version (not only the latest tag) — empty or auto-generated GitHub stubs are skipped
 - Install updates on Android through the update dialog when supported
 - On macOS, download the `.dmg`, then choose **Install and close Forja** to open it and quit the app, or **Skip for now** to keep using Forja; if Downloads is unavailable, the app falls back to its own updates folder
 - On Windows, download the `.exe`, then choose **Install and close Forja** to launch it and quit the app, or **Skip for now**
@@ -22,7 +21,6 @@ Forja can check for newer builds when the app starts and lets you check manually
 - During a desktop download, choose **Continue in background** to return to Forja; a sticky progress toast stays visible (you can close it) and an **Install** toast appears when it finishes. Progress is hidden while a video player is open.
 - Checking for the same update again reuses a completed installer already on disk instead of downloading it again
 - If a Windows or macOS download fails, use **Open download URL** in the error message to retry in your browser
-- Builds from before the CDN cutover may still open a Supabase Storage link in the browser; download once from [forjahq.xyz/download](https://forjahq.xyz/download) or GitHub, then later updates use in-app CDN downloads
 - **Settings → Data & backup → Downloaded updates** removes saved installer files from in-app update
 - See the app version at the bottom of About
 
@@ -32,7 +30,7 @@ Forja can check for newer builds when the app starts and lets you check manually
 - Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Workflows write on this repo)
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI
-- macOS releases publish `Forja-{version}-macos-arm64.dmg`; the updater prefers the host arch and falls back to any macOS `.dmg`
+- macOS releases publish `Forja-{version}-macos-arm64.dmg`; the updater prefers the host arch
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
 - Download latest builds from the [web download page](https://forjahq.xyz/download) if in-app update fails or no platform asset is attached
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats

@@ -9,13 +9,13 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// In-app updates — Cloudflare R2 only.
+///
+/// Discovery: `GET {RELEASE_CDN_URL}/latest/manifest.json`
+/// Download:  `{RELEASE_CDN_URL}/v{version}/{filename}`
 class AppUpdaterService {
-  static const String githubRepo = 'mGhassen/Forja';
-  static const String githubReleasesUrl =
-      'https://api.github.com/repos/$githubRepo/releases?per_page=100';
-
-  static const Map<String, String> _githubHeaders = {
-    'Accept': 'application/vnd.github+json',
+  static const Map<String, String> _headers = {
+    'Accept': 'application/json',
     'User-Agent': 'Forja-AppUpdater',
   };
 
@@ -23,169 +23,144 @@ class AppUpdaterService {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
-      return _checkGitHub(currentVersion);
+      return _checkR2(currentVersion);
     } catch (e) {
       debugPrint('Error checking for updates: $e');
       return null;
     }
   }
 
-  Future<UpdateInfo?> _checkGitHub(String currentVersion) async {
-    final response = await http.get(
-      Uri.parse(githubReleasesUrl),
-      headers: _githubHeaders,
-    );
+  Future<UpdateInfo?> _checkR2(String currentVersion) async {
+    // iOS updates go through the App Store — no sideload installer.
+    if (Platform.isIOS) return null;
 
-    if (response.statusCode != 200) return null;
-
-    final decoded = json.decode(response.body);
-    if (decoded is! List) return null;
-
-    final releases = <_GitHubRelease>[];
-    for (final item in decoded) {
-      if (item is! Map<String, dynamic>) continue;
-      final parsed = _GitHubRelease.tryParse(item);
-      if (parsed != null) releases.add(parsed);
-    }
-
-    final stable = releases
-        .where((r) => !r.draft && !r.prerelease)
-        .toList()
-      ..sort(
-        (a, b) => AppUpdaterReleaseNotes.compareVersions(b.version, a.version),
-      );
-
-    if (stable.isEmpty) return null;
-
-    final latest = stable.first;
-    if (!AppUpdaterReleaseNotes.isNewerVersion(
-      currentVersion,
-      latest.version,
-    )) {
+    final manifestUrl = ReleaseStorageUrls.manifestUrl();
+    if (manifestUrl == null) {
+      debugPrint('AppUpdater: RELEASE_CDN_URL is not set');
       return null;
     }
 
-    final releaseNotes = AppUpdaterReleaseNotes.aggregate(
-      currentVersion: currentVersion,
-      releases: [
-        for (final r in stable)
-          ReleaseNotesEntry(
-            version: r.version,
-            body: r.body,
-            prerelease: r.prerelease,
-            draft: r.draft,
-          ),
-      ],
-    );
-
-    final notes = releaseNotes.isEmpty
-        ? 'No release notes were published for this update.'
-        : releaseNotes;
-
-    String? downloadUrl;
-    final assets = latest.assets;
-    final version = latest.version;
-
-    if (Platform.isWindows) {
-      final asset = assets.cast<dynamic>().firstWhere(
-            (a) =>
-                (a['name'] as String).toLowerCase().contains('windows') &&
-                (a['name'] as String).endsWith('.exe'),
-            orElse: () => null,
-          );
-      downloadUrl = _assetDownloadUrl(version, asset);
-    } else if (Platform.isLinux) {
-      final asset = assets.cast<dynamic>().firstWhere(
-            (a) =>
-                (a['name'] as String).toLowerCase().contains('linux') &&
-                ((a['name'] as String).endsWith('.AppImage') ||
-                    (a['name'] as String).endsWith('.deb')),
-            orElse: () => null,
-          );
-      downloadUrl = _assetDownloadUrl(version, asset);
-    } else if (Platform.isMacOS) {
-      downloadUrl = _pickMacosDmgUrl(version, assets);
-    } else if (Platform.isAndroid) {
-      downloadUrl = _pickAndroidApkUrl(version, assets);
-    } else if (Platform.isIOS) {
-      downloadUrl = latest.htmlUrl;
+    final response = await http.get(Uri.parse(manifestUrl), headers: _headers);
+    if (response.statusCode != 200) {
+      debugPrint('AppUpdater: manifest HTTP ${response.statusCode}');
+      return null;
     }
+
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) return null;
+
+    final version = (decoded['version'] as String?)?.trim();
+    if (version == null || version.isEmpty) return null;
+
+    if (!AppUpdaterReleaseNotes.isNewerVersion(currentVersion, version)) {
+      return null;
+    }
+
+    final assetsRaw = decoded['assets'];
+    if (assetsRaw is! List) return null;
+    final assets = <String>[
+      for (final a in assetsRaw)
+        if (a is String && a.isNotEmpty) a,
+    ];
+    if (assets.isEmpty) return null;
+
+    final downloadUrl = _pickInstallerUrl(version, assets);
+    if (downloadUrl == null || downloadUrl.isEmpty) return null;
+
+    final publishedRaw = decoded['published_at'] as String?;
+    final publishedAt = publishedRaw != null
+        ? DateTime.tryParse(publishedRaw) ?? DateTime.now()
+        : DateTime.now();
 
     return UpdateInfo(
       currentVersion: currentVersion,
-      latestVersion: latest.version,
-      downloadUrl: downloadUrl ?? latest.htmlUrl,
-      releaseNotes: notes,
-      publishedAt: latest.publishedAt,
+      latestVersion: version,
+      downloadUrl: downloadUrl,
+      // Changelog stays on GitHub Releases — R2 manifest is files only.
+      releaseNotes: 'Forja $version is ready to install.',
+      publishedAt: publishedAt,
       isMacOS: Platform.isMacOS,
-      isIOS: Platform.isIOS,
+      isIOS: false,
     );
   }
 
-  /// Prefer R2 CDN `latest/` URL; fall back to GitHub asset URL.
-  String? _assetDownloadUrl(String version, dynamic asset) {
-    if (asset == null) return null;
-    final name = asset['name'] as String?;
-    if (name == null || name.isEmpty) return null;
-    final github = asset['browser_download_url'] as String?;
+  String? _pickInstallerUrl(String version, List<String> assets) {
+    final String? filename;
+    if (Platform.isWindows) {
+      filename = _firstMatching(
+        assets,
+        (n) => n.contains('windows') && n.endsWith('.exe'),
+      );
+    } else if (Platform.isLinux) {
+      filename = _firstMatching(
+        assets,
+        (n) =>
+            n.contains('linux') &&
+            (n.endsWith('.appimage') || n.endsWith('.deb')),
+      );
+    } else if (Platform.isMacOS) {
+      filename = _pickMacosFilename(assets);
+    } else if (Platform.isAndroid) {
+      filename = _pickAndroidFilename(assets);
+    } else {
+      filename = null;
+    }
+    if (filename == null || filename.isEmpty) return null;
     final url = ReleaseStorageUrls.preferStorage(
       version: version,
-      filename: name,
-      githubDownloadUrl: github,
+      filename: filename,
     );
     return url.isEmpty ? null : url;
   }
 
-  String? _pickAndroidApkUrl(String version, List<dynamic> assets) {
-    final apks = assets
-        .where((a) => (a['name'] as String).toLowerCase().endsWith('.apk'))
+  String? _firstMatching(List<String> assets, bool Function(String lower) test) {
+    for (final name in assets) {
+      if (test(name.toLowerCase())) return name;
+    }
+    return null;
+  }
+
+  String? _pickMacosFilename(List<String> assets) {
+    final macos = assets
+        .where((n) {
+          final lower = n.toLowerCase();
+          return lower.contains('macos') &&
+              (lower.endsWith('.dmg') || lower.endsWith('.zip'));
+        })
         .toList();
+    if (macos.isEmpty) return null;
+
+    final arch = _macosArchNeedle();
+    for (final name in macos) {
+      final lower = name.toLowerCase();
+      if (lower.contains(arch) && lower.endsWith('.dmg')) return name;
+    }
+    for (final name in macos) {
+      if (name.toLowerCase().endsWith('.dmg')) return name;
+    }
+    return macos.first;
+  }
+
+  String? _pickAndroidFilename(List<String> assets) {
+    final apks =
+        assets.where((n) => n.toLowerCase().endsWith('.apk')).toList();
     if (apks.isEmpty) return null;
 
-    final tvApks = apks
-        .where((a) => (a['name'] as String).toLowerCase().contains('android-tv'))
+    final tv = apks
+        .where((n) => n.toLowerCase().contains('android-tv'))
         .toList();
-    final candidates = tvApks.isNotEmpty ? tvApks : apks;
+    final candidates = tv.isNotEmpty ? tv : apks;
 
     final is64Bit = sizeOf<IntPtr>() == 8;
     final abiNeedle = is64Bit ? 'arm64' : 'armeabi-v7a';
     final abiFallback = is64Bit ? 'v7a' : 'arm64';
 
     for (final needle in [abiNeedle, abiFallback]) {
-      for (final asset in candidates) {
-        final name = (asset['name'] as String).toLowerCase();
-        if (name.contains(needle)) {
-          return _assetDownloadUrl(version, asset);
-        }
+      for (final name in candidates) {
+        if (name.toLowerCase().contains(needle)) return name;
       }
     }
-
-    return _assetDownloadUrl(version, candidates.first);
-  }
-
-  /// Prefer `Forja-*-macos-arm64.dmg` (CI), then any macOS `.dmg` / `.zip`.
-  String? _pickMacosDmgUrl(String version, List<dynamic> assets) {
-    final macosAssets = assets.where((a) {
-      final name = (a['name'] as String).toLowerCase();
-      return name.contains('macos') &&
-          (name.endsWith('.dmg') || name.endsWith('.zip'));
-    }).toList();
-    if (macosAssets.isEmpty) return null;
-
-    final archNeedle = _macosArchNeedle();
-    for (final asset in macosAssets) {
-      final name = (asset['name'] as String).toLowerCase();
-      if (name.contains(archNeedle) && name.endsWith('.dmg')) {
-        return _assetDownloadUrl(version, asset);
-      }
-    }
-    for (final asset in macosAssets) {
-      final name = (asset['name'] as String).toLowerCase();
-      if (name.endsWith('.dmg')) {
-        return _assetDownloadUrl(version, asset);
-      }
-    }
-    return _assetDownloadUrl(version, macosAssets.first);
+    return candidates.first;
   }
 
   String _macosArchNeedle() {
@@ -203,44 +178,6 @@ class AppUpdaterService {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-}
-
-class _GitHubRelease {
-  const _GitHubRelease({
-    required this.version,
-    required this.body,
-    required this.publishedAt,
-    required this.prerelease,
-    required this.draft,
-    required this.assets,
-    required this.htmlUrl,
-  });
-
-  final String version;
-  final String? body;
-  final DateTime publishedAt;
-  final bool prerelease;
-  final bool draft;
-  final List<dynamic> assets;
-  final String htmlUrl;
-
-  static _GitHubRelease? tryParse(Map<String, dynamic> data) {
-    final tag = data['tag_name'] as String?;
-    if (tag == null || tag.isEmpty) return null;
-    final publishedRaw = data['published_at'] as String?;
-    if (publishedRaw == null) return null;
-
-    return _GitHubRelease(
-      version: tag.replaceFirst(RegExp(r'^v'), ''),
-      body: data['body'] as String?,
-      publishedAt: DateTime.parse(publishedRaw),
-      prerelease: data['prerelease'] as bool? ?? false,
-      draft: data['draft'] as bool? ?? false,
-      assets: data['assets'] as List? ?? const [],
-      htmlUrl: data['html_url'] as String? ??
-          'https://github.com/${AppUpdaterService.githubRepo}/releases',
-    );
   }
 }
 
