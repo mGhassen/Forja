@@ -54,14 +54,33 @@ function bridgeEnv(mode: string) {
     'INNGEST_DEV',
   ] as const) {
     const v = localEnv[k] || rootEnv[k] || ''
-    if (v && !process.env[k]) process.env[k] = v
+    // Always prefer apps/admin/.env over a stale shell export
+    if (v) process.env[k] = v
   }
+  // Local default: Dev Server unless explicitly disabled
+  if (!process.env.INNGEST_DEV) process.env.INNGEST_DEV = '1'
 }
 
 export default defineConfig(({ mode }) => {
   bridgeEnv(mode)
 
+  // Bake server env into SSR bundle (Nitro/Vite otherwise drop non-VITE_ reads)
+  const defineEnv: Record<string, string> = {}
+  for (const k of [
+    'INNGEST_DEV',
+    'INNGEST_EVENT_KEY',
+    'INNGEST_SIGNING_KEY',
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'VITE_SUPABASE_URL',
+    'VITE_SUPABASE_PUBLISHABLE_KEY',
+  ] as const) {
+    const v = process.env[k]
+    if (v) defineEnv[`process.env.${k}`] = JSON.stringify(v)
+  }
+
   return {
+    define: defineEnv,
     server: {
       port: 4000,
       host: '127.0.0.1',

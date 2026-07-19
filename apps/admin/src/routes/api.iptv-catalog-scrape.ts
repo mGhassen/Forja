@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createClient } from '@supabase/supabase-js'
-import { inngest } from '@/inngest/client'
+import { sendInngestEvent } from '@/inngest/send-event'
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status })
@@ -89,7 +89,7 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
             }
             let cancelledInngest = false
             try {
-              await inngest.send({
+              await sendInngestEvent({
                 name: 'iptv/catalog.scrape.cancel',
                 data: { jobId: body.jobId ?? null },
               })
@@ -127,7 +127,7 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
 
           // start
           const jobId = crypto.randomUUID()
-          const ids = await inngest.send({
+          const { ids } = await sendInngestEvent({
             name: 'iptv/catalog.scrape',
             data: {
               jobId,
@@ -140,6 +140,7 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
         } catch (error) {
           const message =
             error instanceof Error ? error.message : 'Scrape control failed'
+          console.error('[iptv-catalog-scrape]', message)
           return json({ error: message }, 502)
         }
       },
