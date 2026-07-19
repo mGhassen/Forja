@@ -38,6 +38,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/catalog/tmdb_user_region.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
 
@@ -122,6 +123,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaSupabase.ensureInitialized();
+  // Reset Auth inactivity clock for restored sessions (7d timeout).
+  unawaited(SyncService.instance.refreshSession(force: true));
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
@@ -287,6 +290,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(SyncService.instance.refreshSession());
+      return;
+    }
     if (state == AppLifecycleState.detached) {
       if (_appShutdownStarted) return;
       _appShutdownStarted = true;

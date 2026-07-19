@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **4 / 4** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **2 / 5** acceptance (accounts hub slice) |
-| **Current slice** | Desktop Turnstile captcha for email/password when Auth captcha is configured — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
+| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **4 / 4** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **2 / 2** acceptance (session inactivity) · **2 / 5** acceptance (accounts hub slice) |
+| **Current slice** | 7-day Auth inactivity + client refreshSession — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -99,6 +99,15 @@
 
 ---
 
+## Acceptance (session inactivity)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-A38 | GoTrue `inactivity_timeout` = 7 days (`168h`); JWT expiry stays 1h | ✅ |
+| 2 | R06-A39 | App + web call `refreshSession` on boot/resume/focus (debounced) to keep sessions alive while in use | ✅ |
+
+---
+
 ## Acceptance (accounts hub slice — RFC-036)
 
 | # | ID | Description | Status |
@@ -127,6 +136,8 @@ Optional account to backup and restore settings across devices. Offline-first �
 - Sign-up is web-only (`/signup`); desktop links out for account creation
 - Sign-in from desktop startup / Settings → Profile & account
 - Sign-out clears remote session only; local data retained
+- Sessions end after **7 days without refresh** (`[auth.sessions] inactivity_timeout`); clients refresh on resume/focus
+- Hosted projects must set the same inactivity timeout in Dashboard → Authentication → Sessions
 
 ## Schema
 

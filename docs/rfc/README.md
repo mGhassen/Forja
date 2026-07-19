@@ -26,7 +26,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [003-[partial]-…](003-[partial]-player-overlay.md) | Player overlay + server grid | v1.1 | partial | 4/6 · 0/4 | [0.0.1](../backlog/done/0.0.1-[done].md) slice → [1.0.2](../backlog/1.0.2-[draft].md) |
 | [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 5/8 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.1](../backlog/1.0.1-[open].md) / [1.0.2](../backlog/1.0.2-[draft].md) |
 | [005-[partial]-…](005-[partial]-casting.md) | AirPlay + Chromecast | v1.1 | stub | 0/1 · 0/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | partial | 2/3 · 3/4 · 4/5 · 8/8 · 7/8 · 4/4 · 3/3 · 2/5 | [1.0.4](../backlog/1.0.4-[draft].md) · [1.0.2](../backlog/1.0.2-[draft].md) RFC-036 |
+| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | partial | 2/3 · 3/4 · 4/5 · 8/8 · 7/8 · 4/4 · 3/3 · 2/2 · 2/5 | [1.0.4](../backlog/1.0.4-[draft].md) · [1.0.2](../backlog/1.0.2-[draft].md) RFC-036 |
 | [007-[draft]-…](007-[draft]-lan-companion.md) | LAN remote API | v1.2 | draft | 0/4 | v2 |
 | [008-[partial]-…](008-[partial]-watch-party.md) | Watch party sync | v1.2+ | stub | 0/4 | v2 |
 | [009-[fixed]-…](fixed/009-[fixed]-rust-ffi.md) | Rust core FFI | v1.0 engine | fixed | Complete · 20/21 · 1 ⏭️ | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md) |

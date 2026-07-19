@@ -34,6 +34,8 @@ class SyncService {
   String? get userEmail => session?.user.email;
   Session? get session => ForjaSupabase.clientOrNull?.auth.currentSession;
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
+  static const _refreshDebounce = Duration(seconds: 30);
+  DateTime? _lastRefreshAttempt;
 
   Stream<AuthState> get authChanges {
     final client = ForjaSupabase.clientOrNull;
@@ -43,6 +45,32 @@ class SyncService {
 
   void _notifyIdentityChanged() {
     identityRevision.value++;
+  }
+
+  /// Renews tokens so Auth's inactivity timeout (7d) stays reset while in use.
+  ///
+  /// Debounced unless [force] is true. Returns false when unsigned or refresh
+  /// fails (GoTrue may then emit involuntary `signedOut`).
+  Future<bool> refreshSession({bool force = false}) async {
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null || client.auth.currentSession == null) return false;
+    final now = DateTime.now();
+    if (!force &&
+        _lastRefreshAttempt != null &&
+        now.difference(_lastRefreshAttempt!) < _refreshDebounce) {
+      return true;
+    }
+    _lastRefreshAttempt = now;
+    try {
+      final response = await client.auth.refreshSession();
+      return response.session != null;
+    } on AuthException catch (e) {
+      debugPrint('[Sync] refreshSession failed: ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('[Sync] refreshSession failed: $e');
+      return false;
+    }
   }
 
   Future<AuthResponse> signInWithPassword({

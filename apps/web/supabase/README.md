@@ -82,6 +82,19 @@ Signup confirmation emails are **OTP codes** typed in the web UI. Password reset
 uses a **clickable recovery link** (`{{ .ConfirmationURL }}`) that opens
 `/reset-password` so the user sets a new password, then signs in.
 
+### Session inactivity (7 days)
+
+Local GoTrue: `[auth.sessions] inactivity_timeout = "168h"` in `config.toml`
+(restart `supabase stop && supabase start` after changing). Access JWTs stay
+at 1h (`jwt_expiry`); clients refresh on resume/focus so the inactivity clock
+resets while the app/web is used. After **7 days with no refresh**, the next
+refresh fails and the session ends.
+
+**Hosted (required separately):** Dashboard → **Authentication** → **Sessions**
+→ set **Inactivity timeout** to **168 hours** (7 days). `config.toml` does not
+apply this to a linked remote project unless you run `supabase config push`
+(ask before pushing).
+
 ### Passkeys (WebAuthn)
 
 Enable in Dashboard → **Authentication** → **Passkeys**. Production RP:

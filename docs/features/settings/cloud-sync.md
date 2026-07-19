@@ -98,12 +98,15 @@ Not synced — device-specific or sensitive:
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for
   guest / offline use; cloud sync stops until you sign in again
-- If the cloud session expires while you are already using the app (for example
-  after a failed token refresh), Forja stays on the screen you were on — it does
-  **not** dump you back to the desktop sign-in screen. Sign in again from
-  **Settings → Profile & account** (or **Web login**) to restore sync. Avoid
-  staying signed in on the web portal and the desktop app at the same time if
-  you see repeated session loss — refresh-token rotation can invalidate one side
+- Cloud sessions expire after **7 days without a refresh** (Auth inactivity
+  timeout). Opening the app or the web portal refreshes the session so normal
+  daily use stays signed in. If the session expires while you are already using
+  the app (for example after a failed token refresh), Forja stays on the screen
+  you were on — it does **not** dump you back to the desktop sign-in screen.
+  Sign in again from **Settings → Profile & account** (or **Web login**) to
+  restore sync. Avoid staying signed in on the web portal and the desktop app at
+  the same time if you see repeated session loss — refresh-token rotation can
+  invalidate one side
 - Open **Account** after sign-in on the web: create a profile if needed, pick one
   on **Who’s watching?**, then land in **Remote settings**. Use the **Account**
   sidebar item for passkeys, log out, or permanent account delete (confirm by

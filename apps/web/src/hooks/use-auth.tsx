@@ -191,9 +191,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
+    // Reset Auth inactivity clock (7d) when the tab becomes visible again.
+    let lastRefresh = 0
+    const refreshIfVisible = () => {
+      if (!mounted || isPasswordRecoveryLockActive()) return
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastRefresh < 30_000) return
+      lastRefresh = now
+      void supabase.auth.refreshSession().then(({ data }) => {
+        if (mounted && data.session) setSession(data.session)
+      })
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
+    refreshIfVisible()
+
     return () => {
       mounted = false
       sub.subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
     }
   }, [])
 

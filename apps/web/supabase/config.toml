@@ -62,6 +62,11 @@ jwt_expiry = 3600
 # Allow/disallow new user signups to your project.
 enable_signup = true
 
+# Drop sessions that have not been refreshed within this duration (checked on
+# refresh). Hosted: Dashboard → Authentication → Sessions → Inactivity timeout.
+[auth.sessions]
+inactivity_timeout = "168h"
+
 [auth.email]
 # Allow/disallow new user signups via email to your project.
 enable_signup = true
