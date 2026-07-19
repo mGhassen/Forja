@@ -58,12 +58,49 @@ export function AdminScrapePage() {
       qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] }),
   })
 
+  const settings = useQuery({
+    queryKey: ['admin', 'iptv_ops_settings'],
+    queryFn: async () => {
+      const { data, error } = await adminDb
+        .from('iptv_ops_settings')
+        .select('scrape_cron_enabled, updated_at')
+        .eq('id', 1)
+        .maybeSingle()
+      if (error) throw error
+      return (
+        data ?? {
+          scrape_cron_enabled: true,
+          updated_at: null as string | null,
+        }
+      )
+    },
+  })
+
+  const setCron = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await adminDb
+        .from('iptv_ops_settings')
+        .update({ scrape_cron_enabled: enabled })
+        .eq('id', 1)
+      if (error) throw error
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['admin', 'iptv_ops_settings'] }),
+  })
+
+  const cronEnabled = settings.data?.scrape_cron_enabled !== false
+
   const busy =
-    start.isPending || stop.isPending || markStuck.isPending
+    start.isPending ||
+    stop.isPending ||
+    markStuck.isPending ||
+    setCron.isPending
   const err =
     (start.error as Error | null)?.message ||
     (stop.error as Error | null)?.message ||
-    (markStuck.error as Error | null)?.message
+    (markStuck.error as Error | null)?.message ||
+    (setCron.error as Error | null)?.message ||
+    (settings.error as Error | null)?.message
 
   return (
     <div className="space-y-6">
@@ -173,13 +210,55 @@ export function AdminScrapePage() {
         </div>
 
         <div className="rounded-xl border border-forja-border px-5 py-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
-            Automation
-          </p>
-          <p className="mt-2 text-sm text-forja-muted">
-            Cron:{' '}
-            <code className="font-mono-ui text-xs">0 6 * * *</code> UTC daily
-            (Inngest Cloud after sync). Pause in Inngest dashboard if needed.
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
+                Automation
+              </p>
+              <p className="mt-2 text-sm text-forja-muted">
+                Cron:{' '}
+                <code className="font-mono-ui text-xs">0 6 * * *</code> UTC
+                daily. When off, scheduled runs no-op;{' '}
+                <span className="text-forja-text">Run manual scrape</span>{' '}
+                still works.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={cronEnabled}
+              disabled={setCron.isPending || settings.isLoading}
+              onClick={() => setCron.mutate(!cronEnabled)}
+              className={cn(
+                'relative h-7 w-12 shrink-0 rounded-full transition-colors',
+                cronEnabled ? 'bg-forja-green' : 'bg-white/15',
+                (setCron.isPending || settings.isLoading) && 'opacity-60',
+              )}
+              title={
+                cronEnabled
+                  ? 'Daily cron enabled — click to disable'
+                  : 'Daily cron disabled — click to enable'
+              }
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 size-6 rounded-full bg-[#0B0A0A] shadow transition-transform',
+                  cronEnabled ? 'left-5' : 'left-0.5',
+                )}
+              />
+            </button>
+          </div>
+          <p
+            className={cn(
+              'mt-2 text-sm font-semibold',
+              cronEnabled ? 'text-forja-green' : 'text-amber-400',
+            )}
+          >
+            {settings.isLoading
+              ? 'Loading…'
+              : cronEnabled
+                ? 'Daily scrape on'
+                : 'Daily scrape off'}
           </p>
           {isInngestLocalUi ? (
             <p className="mt-2 text-sm text-forja-muted">
@@ -192,13 +271,9 @@ export function AdminScrapePage() {
             </p>
           ) : (
             <p className="mt-2 text-sm text-forja-muted">
-              Prod (<code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
-              ):{' '}
-              <code className="font-mono-ui text-xs">INNGEST_EVENT_KEY</code> +{' '}
-              <code className="font-mono-ui text-xs">INNGEST_SIGNING_KEY</code> on
-              Vercel — never{' '}
-              <code className="font-mono-ui text-xs">INNGEST_DEV</code>. Sync app
-              URL to{' '}
+              Prod (
+              <code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
+              ): sync Inngest to{' '}
               <code className="font-mono-ui text-xs">/api/inngest</code>.
             </p>
           )}

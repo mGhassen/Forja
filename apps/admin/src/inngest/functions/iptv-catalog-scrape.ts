@@ -4,6 +4,7 @@ import { scrapeCatalogPage } from '@/server/iptv-catalog/reddit'
 import {
   createCatalogAdminClient,
   insertScrapeRun,
+  isScrapeCronEnabled,
   patchScrapeRun,
   upsertCatalogCandidate,
   upsertScrapePostId,
@@ -78,6 +79,21 @@ export const iptvCatalogScrape = inngest.createFunction(
   async ({ event, step }) => {
     const data = (event?.data ?? {}) as ScrapeData
     const jobId = data.jobId ?? event.id
+    const eventName = String(event?.name ?? '')
+    const isCron =
+      eventName === 'inngest/scheduled.timer' ||
+      eventName.startsWith('inngest/scheduled')
+
+    if (isCron) {
+      const cronOn = await step.run('check-cron-enabled', async () => {
+        const sb = createCatalogAdminClient()
+        return isScrapeCronEnabled(sb)
+      })
+      if (!cronOn) {
+        return { skipped: true, reason: 'scrape_cron_enabled=false', jobId }
+      }
+    }
+
     const maxPages = Math.min(Math.max(data.maxPages ?? 5, 1), 20)
     const maxResultsPerPage = Math.min(
       Math.max(data.maxResultsPerPage ?? 50, 1),
