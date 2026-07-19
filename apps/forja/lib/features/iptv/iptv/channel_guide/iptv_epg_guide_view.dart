@@ -63,6 +63,11 @@ class _EpgCell {
   final bool isGap;
 }
 
+/// Sticky channel rail + row metrics (shared with [_ChannelCell]).
+const _kEpgChannelColW = 280.0;
+const _kEpgRowH = 68.0;
+const _kEpgHeaderH = 36.0;
+
 /// Desktop Live catalog EPG: sticky channels + sticky ruler + duration blocks.
 class IptvEpgGuideView extends StatefulWidget {
   const IptvEpgGuideView({
@@ -81,10 +86,9 @@ class IptvEpgGuideView extends StatefulWidget {
 }
 
 class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
-  /// Sticky channel rail — wide enough for logo + 2-line name + favorite.
-  static const _channelColW = 240.0;
-  static const _rowH = 56.0;
-  static const _headerH = 36.0;
+  static const _channelColW = _kEpgChannelColW;
+  static const _rowH = _kEpgRowH;
+  static const _headerH = _kEpgHeaderH;
 
   late IptvEpgTimeline _timeline;
   final _hRuler = ScrollController();
@@ -469,13 +473,19 @@ class _ChannelCellState extends State<_ChannelCell> {
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            height: _kEpgRowH,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: _hovered
-                  ? Colors.white.withValues(alpha: 0.04)
+                  ? ForjaShellColors.inkHover
                   : Colors.transparent,
               border: Border(
+                left: BorderSide(
+                  color: _hovered
+                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+                      : Colors.transparent,
+                  width: 2.5,
+                ),
                 right: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
                 bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
               ),
@@ -484,18 +494,18 @@ class _ChannelCellState extends State<_ChannelCell> {
               children: [
                 if (stream.icon.isNotEmpty)
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(5),
                     child: Image.network(
                       stream.icon,
-                      width: 28,
-                      height: 28,
+                      width: 34,
+                      height: 34,
                       fit: BoxFit.contain,
                       errorBuilder: (_, error, stackTrace) => const SizedBox(
-                        width: 28,
-                        height: 28,
+                        width: 34,
+                        height: 34,
                         child: Icon(
                           Icons.tv_rounded,
-                          size: 16,
+                          size: 18,
                           color: Colors.white38,
                         ),
                       ),
@@ -503,15 +513,15 @@ class _ChannelCellState extends State<_ChannelCell> {
                   )
                 else
                   const SizedBox(
-                    width: 28,
-                    height: 28,
+                    width: 34,
+                    height: 34,
                     child: Icon(
                       Icons.tv_rounded,
-                      size: 16,
+                      size: 18,
                       color: Colors.white38,
                     ),
                   ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     stream.name,
@@ -519,7 +529,7 @@ class _ChannelCellState extends State<_ChannelCell> {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       color: ForjaShellColors.textPrimary,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.2,
                     ),
@@ -529,7 +539,7 @@ class _ChannelCellState extends State<_ChannelCell> {
                   streamId: stream.streamId,
                   ctrl: widget.ctrl,
                   reveal: _hovered,
-                  iconSize: 13,
+                  iconSize: 14,
                 ),
               ],
             ),
