@@ -221,7 +221,6 @@ async fn scrape(
         .await?;
 
     for post in &post_rows {
-        // Persist post_id (+ metrics) only — never Reddit title/body text.
         let post_id = post.get("post_id").and_then(|v| v.as_str()).unwrap_or("");
         if post_id.is_empty() {
             continue;
@@ -229,25 +228,10 @@ async fn scrape(
         let row = json!({
             "post_id": post_id,
             "subreddit": post.get("subreddit").and_then(|v| v.as_str()).unwrap_or(""),
-            "title": "",
-            "body_excerpt": "",
             "scrape_run_id": run_id,
-            "shape_flags": post.get("shape_flags").cloned().unwrap_or(json!({})),
-            "l1_extract_count": post.get("l1_extract_count").and_then(|v| v.as_u64()).unwrap_or(0),
-            "deep_ref_count": post.get("deep_ref_count").and_then(|v| v.as_u64()).unwrap_or(0),
-            "l2_extract_count": post.get("l2_extract_count").and_then(|v| v.as_u64()).unwrap_or(0),
-            "miss": post.get("miss").and_then(|v| v.as_bool()).unwrap_or(false),
         });
         if let Err(e) = sb.upsert_post(&row).await {
             eprintln!("upsert post: {e}");
-            continue;
-        }
-        if let Some(refs) = post.get("deep_refs").and_then(|v| v.as_array()) {
-            for r in refs {
-                if let Err(e) = sb.upsert_deep_ref(post_id, r).await {
-                    eprintln!("upsert deep_ref: {e}");
-                }
-            }
         }
     }
 
@@ -548,45 +532,6 @@ impl Supabase {
         Ok(())
     }
 
-    async fn upsert_deep_ref(
-        &self,
-        post_id: &str,
-        r: &Value,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let body = json!({
-            "post_id": post_id,
-            "ref_type": r.get("ref_type"),
-            "ref_host": r.get("ref_host").and_then(|v| v.as_str()).unwrap_or(""),
-            "payload_hash": r.get("payload_hash").and_then(|v| v.as_str()).unwrap_or(""),
-            "fetch_ok": r.get("fetch_ok"),
-            "extract_count": r.get("extract_count").and_then(|v| v.as_u64()).unwrap_or(0),
-        });
-        let mut h = self.headers();
-        h.insert(
-            "Prefer",
-            "resolution=merge-duplicates,return=minimal".parse().unwrap(),
-        );
-        let res = self
-            .http
-            .post(format!(
-                "{}/rest/v1/iptv_scrape_deep_refs?on_conflict=post_id,ref_type,payload_hash,ref_host",
-                self.url
-            ))
-            .headers(h)
-            .json(&vec![body])
-            .send()
-            .await?;
-        if !res.status().is_success() {
-            return Err(format!(
-                "upsert_deep_ref {}: {}",
-                res.status(),
-                res.text().await?
-            )
-            .into());
-        }
-        Ok(())
-    }
-
     async fn rpc_upsert_candidate(
         &self,
         url: &str,
@@ -634,7 +579,7 @@ impl Supabase {
         let res = self
             .http
             .get(format!(
-                "{}/rest/v1/iptv_catalog_candidates?select=id,url,username,password&order=updated_at.desc&limit={}",
+                "{}/rest/v1/iptv_portals?select=id,url,username,password&catalog_pool=eq.true&order=updated_at.desc&limit={}",
                 self.url, limit
             ))
             .headers(self.headers())
@@ -656,7 +601,7 @@ impl Supabase {
         let res = self
             .http
             .patch(format!(
-                "{}/rest/v1/iptv_catalog_candidates?id=eq.{}",
+                "{}/rest/v1/iptv_portals?id=eq.{}&catalog_pool=eq.true",
                 self.url, id
             ))
             .headers(self.headers())

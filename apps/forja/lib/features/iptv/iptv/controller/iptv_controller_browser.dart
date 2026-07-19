@@ -30,6 +30,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
         _c.browserSearch = '';
         _c.browserSearchOpen = false;
+        _c._browserSearchFilterActive = false;
+        _c._browserCategoryBeforeSearch = null;
+        _c._browserSearchCommittedCategoryId = null;
         _c.streamHealth.clear();
         _c._healthInFlight.clear();
         _c._healthQueue.clear();
@@ -60,6 +63,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c.browserSelectedCategoryId = null;
     _c.browserSearch = '';
     _c.browserSearchOpen = false;
+    _c._browserSearchFilterActive = false;
+    _c._browserCategoryBeforeSearch = null;
+    _c._browserSearchCommittedCategoryId = null;
     _c.aliveStreamIds = const {};
     _c.aliveCheckedAt = null;
     _c.streamHealth.clear();
@@ -113,6 +119,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.liveFavoriteIds = const {};
         _c.liveWatchedIds = const [];
         _c.livePinnedCategoryIds = const [];
+        _c.liveCategoryOrderIds = const [];
       }
 
       _c._catalogCache[cacheKey] = _CatalogSnap(
@@ -161,9 +168,17 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     final watched = await IptvLiveChannelListsStore.loadWatched(portalKey);
     final pinned =
         await IptvLiveChannelListsStore.loadPinnedCategories(portalKey);
+    var order =
+        await IptvLiveChannelListsStore.loadCategoryOrder(portalKey);
+    // Migrate legacy pins → custom order once (pins stay as pin markers).
+    if (order.isEmpty && pinned.isNotEmpty) {
+      order = List<String>.from(pinned);
+      await IptvLiveChannelListsStore.saveCategoryOrder(portalKey, order);
+    }
     _c.liveFavoriteIds = favs;
     _c.liveWatchedIds = watched;
     _c.livePinnedCategoryIds = pinned;
+    _c.liveCategoryOrderIds = order;
   }
 
   Future<void> _hydrateLiveSectionPrefs({
@@ -210,6 +225,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       _c.liveFavoriteIds = const {};
       _c.liveWatchedIds = const [];
       _c.livePinnedCategoryIds = const [];
+      _c.liveCategoryOrderIds = const [];
     }
     if (persistSection) {
       await IptvStore.saveLastSection(section);
@@ -454,10 +470,24 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   void selectBrowserCategory(String id) {
     _c.browserSelectedCategoryId = id;
+    _c._commitBrowserSearchCategory(id);
     notifyListeners();
   }
 
+  /// While searching, playing a channel commits its real category for clear.
+  void noteBrowserSearchPlayedStream(IptvStream stream) {
+    if (!_c._browserSearchFilterActive) return;
+    _c._commitBrowserSearchCategory(stream.categoryId);
+  }
+
   void setBrowserSearch(String q) {
+    final prev = _c.browserSearch.trim();
+    final next = q.trim();
+    if (prev.isEmpty && next.isNotEmpty) {
+      _c._enterBrowserSearchFilter();
+    } else if (prev.isNotEmpty && next.isEmpty) {
+      _c._exitBrowserSearchFilter();
+    }
     _c.browserSearch = q;
     notifyListeners();
   }

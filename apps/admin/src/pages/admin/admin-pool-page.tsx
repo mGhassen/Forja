@@ -585,10 +585,11 @@ export function AdminPoolPage() {
     queryKey: ['admin', 'pool'],
     queryFn: async () => {
       const { data, error } = await adminDb
-        .from('iptv_catalog_candidates')
+        .from('iptv_portals')
         .select(
           'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, updated_at, last_checked_at',
         )
+        .eq('catalog_pool', true)
         .order('updated_at', { ascending: false })
         .limit(300)
       if (error) throw error
@@ -668,9 +669,10 @@ export function AdminPoolPage() {
       }
       if (form.password.trim()) patch.password = form.password
       const { error } = await adminDb
-        .from('iptv_catalog_candidates')
+        .from('iptv_portals')
         .update(patch)
         .eq('id', editingId)
+        .eq('catalog_pool', true)
       if (error) throw error
     },
     onSuccess: async () => {
@@ -686,10 +688,12 @@ export function AdminPoolPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // Leave the portal row (may be assigned to users) — drop from pool only.
       const { error } = await adminDb
-        .from('iptv_catalog_candidates')
-        .delete()
+        .from('iptv_portals')
+        .update({ catalog_pool: false })
         .eq('id', id)
+        .eq('catalog_pool', true)
       if (error) throw error
     },
     onSuccess: async (_void, id) => {

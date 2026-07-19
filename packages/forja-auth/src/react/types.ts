@@ -28,7 +28,7 @@ export type ForjaAuthFeatures = {
   signup?: boolean
   deleteAccount?: boolean
   passwordRecovery?: boolean
-  /** Focus/visibility refreshSession (7d inactivity). Default true. */
+  /** Focus/visibility refreshSession (30d inactivity). Default true. */
   visibilityRefresh?: boolean
 }
 

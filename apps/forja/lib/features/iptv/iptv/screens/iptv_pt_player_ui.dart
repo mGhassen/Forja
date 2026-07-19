@@ -187,12 +187,10 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           _scheduleHideControls();
         },
         onVolumeUp: () {
-          _s._engineSetVolume((_s._volume + 5).clamp(0, 100));
-          setState(() => _s._volume = (_s._volume + 5).clamp(0, 100));
+          setState(() => _s._setCachedVolume((_s._volume + 5).clamp(0, 100)));
         },
         onVolumeDown: () {
-          _s._engineSetVolume((_s._volume - 5).clamp(0, 100));
-          setState(() => _s._volume = (_s._volume - 5).clamp(0, 100));
+          setState(() => _s._setCachedVolume((_s._volume - 5).clamp(0, 100)));
         },
         onToggleControls: _toggleControls,
         child: MouseRegion(
@@ -901,11 +899,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                               _scheduleHideControls();
                             },
                             onChanged: (v) {
-                              setState(() {
-                                _s._volume = v;
-                                _s._muted = v == 0;
-                              });
-                              _s._engineSetVolume(v);
+                              setState(() => _s._setCachedVolume(v));
                               _scheduleHideVolumeSlider();
                               _scheduleHideControls();
                             },
@@ -960,16 +954,15 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   void _toggleMute() {
     setState(() {
       if (_s._muted || _s._volume == 0) {
-        _s._muted = false;
-        _s._volume = _s._volumeBeforeMute > 0 ? _s._volumeBeforeMute : 100.0;
+        _s._setCachedVolume(
+          _s._volumeBeforeMute > 0 ? _s._volumeBeforeMute : 100.0,
+        );
       } else {
         _s._volumeBeforeMute = _s._volume;
-        _s._muted = true;
-        _s._volume = 0;
+        _s._setCachedVolume(0);
       }
       _s._showVolumeSlider = true;
     });
-    _s._engineSetVolume(_s._volume);
     _scheduleHideVolumeSlider();
     _scheduleHideControls();
   }

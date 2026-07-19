@@ -82,16 +82,16 @@ Signup confirmation emails are **OTP codes** typed in the web UI. Password reset
 uses a **clickable recovery link** (`{{ .ConfirmationURL }}`) that opens
 `/reset-password` so the user sets a new password, then signs in.
 
-### Session inactivity (7 days)
+### Session inactivity (30 days)
 
-Local GoTrue: `[auth.sessions] inactivity_timeout = "168h"` in `config.toml`
+Local GoTrue: `[auth.sessions] inactivity_timeout = "720h"` in `config.toml`
 (restart `supabase stop && supabase start` after changing). Access JWTs stay
 at 1h (`jwt_expiry`); clients refresh on resume/focus so the inactivity clock
-resets while the app/web is used. After **7 days with no refresh**, the next
+resets while the app/web is used. After **30 days with no refresh**, the next
 refresh fails and the session ends.
 
 **Hosted (required separately):** Dashboard → **Authentication** → **Sessions**
-→ set **Inactivity timeout** to **168 hours** (7 days). `config.toml` does not
+→ set **Inactivity timeout** to **720 hours** (30 days). `config.toml` does not
 apply this to a linked remote project unless you run `supabase config push`
 (ask before pushing).
 
@@ -191,6 +191,7 @@ supabase link --project-ref <ref>
 supabase db push
 supabase functions deploy sync-github-releases
 supabase functions deploy delete-account
+supabase functions deploy mint-desktop-session
 ```
 
 Secrets for the Edge Function (optional):
@@ -200,9 +201,10 @@ supabase secrets set GITHUB_TOKEN=ghp_...
 # GITHUB_REPO defaults to mGhassen/Forja
 ```
 
-`delete-account` uses the project’s built-in `SUPABASE_SERVICE_ROLE_KEY` (set
-automatically for Edge Functions). Call it only with a signed-in user JWT from
-the web Account settings page.
+`delete-account` and `mint-desktop-session` use the project’s built-in
+`SUPABASE_SERVICE_ROLE_KEY` (set automatically for Edge Functions). Call them
+only with a signed-in user JWT (`delete-account` from Account settings;
+`mint-desktop-session` from desktop Web login handoff).
 Invoke after a release:
 
 ```bash

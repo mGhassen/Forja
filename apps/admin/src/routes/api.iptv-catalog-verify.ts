@@ -98,17 +98,19 @@ export const Route = createFileRoute('/api/iptv-catalog-verify')({
           let rows: CandRow[] = []
           if (candidateId) {
             const { data, error } = await sb
-              .from('iptv_catalog_candidates')
+              .from('iptv_portals')
               .select('id, url, username')
               .eq('id', candidateId)
+              .eq('catalog_pool', true)
               .maybeSingle()
             if (error) return json({ error: error.message }, 500)
             if (!data) return json({ error: 'candidate not found' }, 404)
             rows = [data as CandRow]
           } else if (host) {
             const { data, error } = await sb
-              .from('iptv_catalog_candidates')
+              .from('iptv_portals')
               .select('id, url, username')
+              .eq('catalog_pool', true)
               .order('updated_at', { ascending: false })
               .limit(500)
             if (error) return json({ error: error.message }, 500)

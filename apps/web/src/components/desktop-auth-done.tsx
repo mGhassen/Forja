@@ -11,7 +11,7 @@ const CLOSE_AFTER_SECONDS = 10
  */
 export function DesktopAuthDone({
   title = 'Signed in to Forja',
-  body = 'The desktop app has your session. You can return to Forja now.',
+  body = 'The desktop app has its own session. This browser stays signed in — you can return to Forja now.',
 }: {
   title?: string
   body?: string

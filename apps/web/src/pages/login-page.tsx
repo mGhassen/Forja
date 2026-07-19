@@ -25,11 +25,11 @@ import {
 import { authConfig } from '@forja/auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
+  completeDesktopHandoffKeepingPortal,
   consumeDesktopHandoffDone,
-  handoffSessionToDesktop,
   isSafeDesktopCallback,
   lockDesktopHandoff,
-  releasePortalSessionToDesktop,
+  mintAndHandoffToDesktop,
   rememberDesktopAuthParams,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
@@ -89,45 +89,47 @@ function LoginForm() {
     setCaptchaKey((k) => k + 1)
   }
 
-  const handoffToDesktop = useCallback(
-    async (accessToken: string, refreshToken: string) => {
-      const params = resolveDesktopAuthParams()
-      setDesktopParams(params)
-      if (!params.callback || !isSafeDesktopCallback(params.callback)) {
-        setError(
-          'This desktop login link is invalid. Open Web login from Forja again.',
-        )
-        return false
-      }
-      setHandoffBusy(true)
-      setError(null)
-      lockDesktopHandoff()
-      const result = await handoffSessionToDesktop({
-        callback: params.callback,
-        state: params.state,
-        accessToken,
-        refreshToken,
-      })
-      setHandoffBusy(false)
-      if (result.status === 'unreachable') {
-        setError(
-          'Could not reach the Forja app. Keep this tab open, make sure Forja is still waiting on Web login, then tap Return to Forja. If Chrome asks to allow local network access, allow it.',
-        )
-        return false
-      }
-      if (result.status === 'rejected') {
-        setError(
-          result.body?.trim() ||
-            'Forja received the sign-in but could not apply the session. Keep this tab open and tap Return to Forja, or start Web login again from the app.',
-        )
-        return false
-      }
-      // App owns the RT now — drop portal copy without server revoke.
-      releasePortalSessionToDesktop()
-      return true
-    },
-    [],
-  )
+  const handoffToDesktop = useCallback(async () => {
+    const params = resolveDesktopAuthParams()
+    setDesktopParams(params)
+    if (!params.callback || !isSafeDesktopCallback(params.callback)) {
+      setError(
+        'This desktop login link is invalid. Open Web login from Forja again.',
+      )
+      return false
+    }
+    setHandoffBusy(true)
+    setError(null)
+    const result = await mintAndHandoffToDesktop({
+      callback: params.callback,
+      state: params.state,
+    })
+    setHandoffBusy(false)
+    if (result.status === 'mint_failed') {
+      setError(
+        result.body?.trim() ||
+          'Could not create a desktop session. Try Return to Forja again.',
+      )
+      return false
+    }
+    if (result.status === 'unreachable') {
+      setError(
+        'Could not reach the Forja app. Keep this tab open, make sure Forja is still waiting on Web login, then tap Return to Forja. If Chrome asks to allow local network access, allow it.',
+      )
+      return false
+    }
+    if (result.status === 'rejected') {
+      setError(
+        result.body?.trim() ||
+          'Forja received the sign-in but could not apply the session. Keep this tab open and tap Return to Forja, or start Web login again from the app.',
+      )
+      return false
+    }
+    // Session B is on the app; portal keeps session A.
+    completeDesktopHandoffKeepingPortal()
+    setDesktopHandoff(true)
+    return true
+  }, [])
 
   useEffect(() => {
     if (desktopHandoff) return
@@ -143,7 +145,7 @@ function LoginForm() {
     if (isDesktopLogin && session?.access_token && session.refresh_token) {
       if (autoHandoffTried.current) return
       autoHandoffTried.current = true
-      void handoffToDesktop(session.access_token, session.refresh_token)
+      void handoffToDesktop()
       return
     }
     if (!isDesktopLogin) {
@@ -190,10 +192,9 @@ function LoginForm() {
 
     if (isDesktopLogin) {
       const { data } = await supabase.auth.getSession()
-      const next = data.session
-      if (next?.access_token && next.refresh_token) {
+      if (data.session?.access_token && data.session.refresh_token) {
         autoHandoffTried.current = true
-        await handoffToDesktop(next.access_token, next.refresh_token)
+        await handoffToDesktop()
         setSubmitting(false)
         return
       }
@@ -234,10 +235,9 @@ function LoginForm() {
 
     if (isDesktopLogin) {
       const { data } = await supabase.auth.getSession()
-      const next = data.session
-      if (next?.access_token && next.refresh_token) {
+      if (data.session?.access_token && data.session.refresh_token) {
         autoHandoffTried.current = true
-        await handoffToDesktop(next.access_token, next.refresh_token)
+        await handoffToDesktop()
         setPasskeySubmitting(false)
         return
       }
@@ -255,12 +255,11 @@ function LoginForm() {
   async function onReturnToForja() {
     setError(null)
     const { data } = await supabase.auth.getSession()
-    const next = data.session
-    if (!next?.access_token || !next.refresh_token) {
+    if (!data.session?.access_token || !data.session.refresh_token) {
       setError('No active session. Sign in again, then tap Return to Forja.')
       return
     }
-    await handoffToDesktop(next.access_token, next.refresh_token)
+    await handoffToDesktop()
   }
 
   const authBusy =

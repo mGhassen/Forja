@@ -557,6 +557,44 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     );
   }
 
+  Widget _loadingBody() {
+    final label = _editing ? 'Saving…' : 'Adding portal…';
+    return Column(
+      key: const ValueKey<String>('loading'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _editing ? 'Edit Portal' : 'Add Portal',
+          style: IptvShellStyle.overlayTitle.copyWith(
+            fontSize: _tv ? 17 : 19,
+          ),
+        ),
+        SizedBox(height: _tv ? 28 : 36),
+        Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: IptvShellStyle.textPrimary,
+            ),
+          ),
+        ),
+        SizedBox(height: _tv ? 12 : 14),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            color: IptvShellStyle.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+        SizedBox(height: _tv ? 16 : 20),
+      ],
+    );
+  }
+
   Widget _portalDialogCloseButton({required VoidCallback? onTap}) {
     final icon = ForjaPlainIcon(
       icon: Icons.close_rounded,
@@ -656,12 +694,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         : (_editing ? 'Edit Portal' : 'Add Portal');
     final expandBtnSize = _tv ? 34.0 : 38.0;
     final expandOverlap = expandBtnSize / 2;
-    final showExpandToggle =
-        !_editing && !_namingImported && !_addSucceeded;
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, _) {
         final adding = ctrl.isAdding || _submitInFlight;
+        final showExpandToggle =
+            !_editing && !_namingImported && !_addSucceeded && !adding;
         return CallbackShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.enter):
@@ -697,6 +735,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                       switchOutCurve: Curves.easeInCubic,
                       child: _addSucceeded
                           ? _successBody()
+                          : adding
+                          ? _loadingBody()
                           : Column(
                         key: ValueKey<String>(
                           _namingImported
@@ -718,7 +758,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                   ),
                                 ),
                                 _portalDialogCloseButton(
-                                  onTap: adding ? null : _cancel,
+                                  onTap: _cancel,
                                 ),
                               ],
                             ),
@@ -742,55 +782,29 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                 ),
                               ),
                             ],
-                            if (!adding) ...[
-                              SizedBox(height: gapBeforeActions),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  _portalDialogActionIcon(
-                                    icon: Icons.check_rounded,
-                                    color: ForjaShellColors.brandGreen,
-                                    tooltip: 'Add',
-                                    focusNode: _submitFocus,
-                                    tvItemIndex: _dialogOkIndex,
-                                    onTap: _submit,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  _portalDialogActionIcon(
-                                    icon: Icons.close_rounded,
-                                    color: IptvShellStyle.textSecondary,
-                                    tooltip: 'Cancel',
-                                    focusNode: _cancelFocus,
-                                    tvItemIndex: _dialogCancelIndex,
-                                    onTap: _cancel,
-                                  ),
-                                ],
-                              ),
-                            ],
-                            if (adding) ...[
-                              SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: IptvShellStyle.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Adding portal…',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: IptvShellStyle.textSecondary,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            SizedBox(height: gapBeforeActions),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                _portalDialogActionIcon(
+                                  icon: Icons.check_rounded,
+                                  color: ForjaShellColors.brandGreen,
+                                  tooltip: 'Add',
+                                  focusNode: _submitFocus,
+                                  tvItemIndex: _dialogOkIndex,
+                                  onTap: _submit,
+                                ),
+                                const SizedBox(width: 4),
+                                _portalDialogActionIcon(
+                                  icon: Icons.close_rounded,
+                                  color: IptvShellStyle.textSecondary,
+                                  tooltip: 'Cancel',
+                                  focusNode: _cancelFocus,
+                                  tvItemIndex: _dialogCancelIndex,
+                                  onTap: _cancel,
+                                ),
+                              ],
+                            ),
                           ] else if (shareOnlyCollapsed) ...[
                             SizedBox(
                               height: collapsedBodyHeight,
@@ -820,7 +834,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                     top: 0,
                                     right: 0,
                                     child: _portalDialogCloseButton(
-                                      onTap: adding ? null : _cancel,
+                                      onTap: _cancel,
                                     ),
                                   ),
                                 ],
@@ -838,7 +852,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                   ),
                                 ),
                                 _portalDialogCloseButton(
-                                  onTap: adding ? null : _cancel,
+                                  onTap: _cancel,
                                 ),
                               ],
                             ),
@@ -931,8 +945,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               ),
                             ),
                           ],
-                          if (!adding &&
-                              !_namingImported &&
+                          if (!_namingImported &&
                               (_editing || _showManualForm)) ...[
                             SizedBox(height: gapBeforeActions),
                             Row(
@@ -954,30 +967,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                   focusNode: _cancelFocus,
                                   tvItemIndex: _dialogCancelIndex,
                                   onTap: _cancel,
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (adding && !_namingImported) ...[
-                            SizedBox(height: _tv ? 10 : (_compact ? 12 : 16)),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: IptvShellStyle.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _editing ? 'Saving…' : 'Adding portal…',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: IptvShellStyle.textSecondary,
-                                    fontSize: 12,
-                                  ),
                                 ),
                               ],
                             ),

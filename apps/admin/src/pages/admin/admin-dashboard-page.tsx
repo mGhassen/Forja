@@ -7,11 +7,13 @@ export function AdminDashboardPage() {
     queryFn: async () => {
       const [pool, alive, runs, accounts] = await Promise.all([
         adminDb
-          .from('iptv_catalog_candidates')
-          .select('id', { count: 'exact', head: true }),
-        adminDb
-          .from('iptv_catalog_candidates')
+          .from('iptv_portals')
           .select('id', { count: 'exact', head: true })
+          .eq('catalog_pool', true),
+        adminDb
+          .from('iptv_portals')
+          .select('id', { count: 'exact', head: true })
+          .eq('catalog_pool', true)
           .eq('alive', true),
         adminDb
           .from('iptv_scrape_runs')

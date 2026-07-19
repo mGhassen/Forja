@@ -133,6 +133,15 @@ class IptvController extends ChangeNotifier
   String browserSearch = '';
   bool browserSearchOpen = false;
 
+  /// True while a non-empty search filter is active (enter/exit category logic).
+  bool _browserSearchFilterActive = false;
+
+  /// Category selected before the active search filter (fallback on clear).
+  String? _browserCategoryBeforeSearch;
+
+  /// Category chosen during search (sidebar tap or played channel); wins on clear.
+  String? _browserSearchCommittedCategoryId;
+
   /// Live catalog only — Movies/Series keep API order.
   IptvCatalogSort liveCategorySort = IptvCatalogSort.playlist;
   IptvCatalogSort liveContentSort = IptvCatalogSort.playlist;
@@ -147,26 +156,61 @@ class IptvController extends ChangeNotifier
   List<String> liveWatchedIds = const [];
 
   /// Device-local pinned Live category ids (order: first = under Already watched).
+  /// Used when [liveCategoryOrderIds] is empty; pin also updates custom order.
   List<String> livePinnedCategoryIds = const [];
+
+  /// Full manual Live category order (non-synthetic ids). Empty = playlist/pins.
+  List<String> liveCategoryOrderIds = const [];
 
   /// Categories shown in the catalog sidebar (respects active search filter).
   List<IptvCategory> get browserSidebarCategories {
     final q = browserSearch.trim().toLowerCase();
-    final selected = browserSelectedCategoryId;
-    final filtered = q.isEmpty
-        ? categories
-        : categories.where((c) {
-            if (c.id == selected) return true;
-            if (IptvLiveCatalog.isPinnedId(c.id)) return true;
-            if (livePinnedCategoryIds.contains(c.id)) return true;
-            return c.name.toLowerCase().contains(q);
-          }).toList();
+    final filtered =
+        q.isEmpty ? categories : _categoriesWithMatchingStreams(q);
     if (activeSection != IptvSection.live) return filtered;
     return sortCategories(
       filtered,
       liveCategorySort,
       userPinnedIds: livePinnedCategoryIds,
+      customOrderIds: liveCategoryOrderIds,
     );
+  }
+
+  /// Sidebar rows for a global channel search: only groups that contain hits.
+  List<IptvCategory> _categoriesWithMatchingStreams(String q) {
+    final catNameById = <String, String>{
+      for (final c in categories)
+        if (!IptvLiveCatalog.isSyntheticId(c.id)) c.id: c.name.toLowerCase(),
+    };
+    bool streamMatches(IptvStream x) {
+      if (x.name.toLowerCase().contains(q)) return true;
+      final cn = catNameById[x.categoryId];
+      return cn != null && cn.contains(q);
+    }
+
+    var streams = browserAllStreams;
+    if (activeSection == IptvSection.live &&
+        liveOnly &&
+        aliveStreamIds.isNotEmpty) {
+      streams =
+          streams.where((x) => aliveStreamIds.contains(x.streamId)).toList();
+    }
+
+    final matchingCatIds = <String>{};
+    var favHit = false;
+    var watchedHit = false;
+    for (final x in streams) {
+      if (!streamMatches(x)) continue;
+      matchingCatIds.add(x.categoryId);
+      if (liveFavoriteIds.contains(x.streamId)) favHit = true;
+      if (liveWatchedIds.contains(x.streamId)) watchedHit = true;
+    }
+
+    return categories.where((c) {
+      if (c.id == IptvLiveCatalog.favoritesId) return favHit;
+      if (c.id == IptvLiveCatalog.watchedId) return watchedHit;
+      return matchingCatIds.contains(c.id);
+    }).toList();
   }
 
   /// Categories with Live sort applied (no search filter) — channel guide.
@@ -180,11 +224,17 @@ class IptvController extends ChangeNotifier
       cats,
       liveCategorySort,
       userPinnedIds: livePinnedCategoryIds,
+      customOrderIds: liveCategoryOrderIds,
     );
   }
 
   bool isLiveCategoryPinned(String categoryId) =>
       livePinnedCategoryIds.contains(categoryId);
+
+  bool get canReorderLiveCategories =>
+      activeSection == IptvSection.live &&
+      liveCategorySort == IptvCatalogSort.playlist &&
+      browserSearch.trim().isEmpty;
 
   Future<void> toggleLiveCategoryPin(String categoryId) async {
     if (categoryId.isEmpty ||
@@ -195,15 +245,66 @@ class IptvController extends ChangeNotifier
     final p = activePortal;
     if (p == null) return;
     final next = List<String>.from(livePinnedCategoryIds);
-    if (!next.remove(categoryId)) {
-      next.insert(0, categoryId);
-    }
+    final pinning = !next.remove(categoryId);
+    if (pinning) next.insert(0, categoryId);
     livePinnedCategoryIds = next;
+    List<String>? order;
+    if (pinning) {
+      // Pin → front of the movable list (and seed custom order if needed).
+      order = _seedCategoryOrder();
+      order.remove(categoryId);
+      order.insert(0, categoryId);
+      liveCategoryOrderIds = order;
+    }
     notifyListeners();
+    final key = IptvAliveStore.portalKey(p.portal);
+    await IptvLiveChannelListsStore.savePinnedCategories(key, next);
+    if (order != null) {
+      await IptvLiveChannelListsStore.saveCategoryOrder(key, order);
+    }
+  }
+
+  /// Drag-reorder among non-synthetic sidebar rows.
+  /// [oldIndex]/[newIndex] are indices into the movable slice
+  /// (Favorites / Already watched excluded). Uses [onReorderItem] semantics
+  /// (newIndex already accounts for the removed item).
+  Future<void> reorderLiveCategories(int oldIndex, int newIndex) async {
+    if (!canReorderLiveCategories) return;
+    final p = activePortal;
+    if (p == null) return;
+    final order = _seedCategoryOrder();
+    if (oldIndex < 0 ||
+        oldIndex >= order.length ||
+        newIndex < 0 ||
+        newIndex >= order.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+    final id = order.removeAt(oldIndex);
+    order.insert(newIndex, id);
+    liveCategoryOrderIds = order;
+    livePinnedCategoryIds = [
+      for (final pin in livePinnedCategoryIds)
+        if (order.contains(pin)) pin,
+    ];
+    notifyListeners();
+    final key = IptvAliveStore.portalKey(p.portal);
+    await IptvLiveChannelListsStore.saveCategoryOrder(key, order);
     await IptvLiveChannelListsStore.savePinnedCategories(
-      IptvAliveStore.portalKey(p.portal),
-      next,
+      key,
+      livePinnedCategoryIds,
     );
+  }
+
+  /// Current non-synthetic sidebar order (matches movable drag indices).
+  List<String> _seedCategoryOrder() {
+    final current = sortCategories(
+      categories.where((c) => !IptvLiveCatalog.isSyntheticId(c.id)).toList(),
+      liveCategorySort,
+      userPinnedIds: livePinnedCategoryIds,
+      customOrderIds: liveCategoryOrderIds,
+    );
+    return [for (final c in current) c.id];
   }
 
   /// Streams with Live content sort applied — channel guide / catalog.
@@ -239,21 +340,48 @@ class IptvController extends ChangeNotifier
     notifyListeners();
   }
 
-  /// Order: Favorites · Already watched · user pins · remaining (playlist/name).
+  /// Order: Favorites · Already watched · custom order / pins · remaining.
   static List<IptvCategory> sortCategories(
     List<IptvCategory> input,
     IptvCatalogSort sort, {
     List<String> userPinnedIds = const [],
+    List<String> customOrderIds = const [],
   }) {
-    if (input.length < 2 && userPinnedIds.isEmpty) return input;
-    final userPinSet = userPinnedIds.toSet();
+    if (input.length < 2 &&
+        userPinnedIds.isEmpty &&
+        customOrderIds.isEmpty) {
+      return input;
+    }
     final synthetic = <IptvCategory>[];
-    final userPinnedById = <String, IptvCategory>{};
-    final rest = <IptvCategory>[];
+    final byId = <String, IptvCategory>{};
     for (final c in input) {
       if (IptvLiveCatalog.isSyntheticId(c.id)) {
         synthetic.add(c);
-      } else if (userPinSet.contains(c.id)) {
+      } else {
+        byId[c.id] = c;
+      }
+    }
+
+    // Full manual order wins in playlist mode.
+    if (sort == IptvCatalogSort.playlist && customOrderIds.isNotEmpty) {
+      final ordered = <IptvCategory>[];
+      final seen = <String>{};
+      for (final id in customOrderIds) {
+        final c = byId[id];
+        if (c == null || !seen.add(id)) continue;
+        ordered.add(c);
+      }
+      for (final c in byId.values) {
+        if (seen.add(c.id)) ordered.add(c);
+      }
+      return [...synthetic, ...ordered];
+    }
+
+    final userPinSet = userPinnedIds.toSet();
+    final userPinnedById = <String, IptvCategory>{};
+    final rest = <IptvCategory>[];
+    for (final c in byId.values) {
+      if (userPinSet.contains(c.id)) {
         userPinnedById[c.id] = c;
       } else {
         rest.add(c);
@@ -324,8 +452,41 @@ class IptvController extends ChangeNotifier
   void closeBrowserSearch() {
     if (!browserSearchOpen && browserSearch.isEmpty) return;
     browserSearchOpen = false;
+    if (browserSearch.trim().isNotEmpty) {
+      _exitBrowserSearchFilter();
+    }
     browserSearch = '';
     notifyListeners();
+  }
+
+  void _enterBrowserSearchFilter() {
+    if (_browserSearchFilterActive) return;
+    _browserSearchFilterActive = true;
+    _browserCategoryBeforeSearch = browserSelectedCategoryId;
+    _browserSearchCommittedCategoryId = null;
+    browserSelectedCategoryId = null;
+  }
+
+  void _exitBrowserSearchFilter() {
+    if (!_browserSearchFilterActive) return;
+    final committed = _browserSearchCommittedCategoryId;
+    final before = _browserCategoryBeforeSearch;
+    _browserSearchFilterActive = false;
+    _browserSearchCommittedCategoryId = null;
+    _browserCategoryBeforeSearch = null;
+    if (committed != null && committed.isNotEmpty) {
+      browserSelectedCategoryId = committed;
+    } else if (before != null) {
+      browserSelectedCategoryId = before;
+    } else {
+      browserSelectedCategoryId = _defaultCategoryId(categories);
+    }
+  }
+
+  /// Remember a category chosen during search (sidebar or played channel).
+  void _commitBrowserSearchCategory(String categoryId) {
+    if (!_browserSearchFilterActive || categoryId.isEmpty) return;
+    _browserSearchCommittedCategoryId = categoryId;
   }
 
   // ── Live alive checking ──

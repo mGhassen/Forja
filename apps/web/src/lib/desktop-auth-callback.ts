@@ -1,5 +1,5 @@
 /**
- * Hands a Supabase session back to the Forja desktop app via a localhost
+ * Hands a *new* Supabase session to the Forja desktop app via a localhost
  * callback started by DesktopBrowserAuth.
  *
  * Uses fetch() so the portal tab stays put — never navigate to 127.0.0.1
@@ -10,16 +10,15 @@
  * Query params are also mirrored to sessionStorage so a header click or
  * client navigation that drops `?desktop_callback=` still completes handoff.
  *
- * After a successful handoff the portal drops its local copy of the session
- * (storage + reload) so only the app keeps the refresh token. Do not call
- * signOut() — that revokes the RT on the server and kills the app session.
+ * Flow: edge `mint-desktop-session` creates session B from the portal JWT;
+ * only B goes to the app. The portal keeps session A (no storage wipe).
  */
 
 import { supabase } from '@/lib/supabase'
 
 const STORAGE_KEY = 'forja.desktop_auth'
 const HANDOFF_DONE_KEY = 'forja.desktop_auth_done'
-/** Blocks portal refreshSession while we hand the RT to the app / reload. */
+/** Brief pause while minting B / posting to loopback (portal keeps session A). */
 const HANDOFF_LOCK_KEY = 'forja.desktop_auth_lock'
 
 export type DesktopAuthParams = {
@@ -110,7 +109,7 @@ function hasHandoffLock(): boolean {
   }
 }
 
-/** Stop portal token rotation for the rest of this handoff / reload. */
+/** Pause portal auto-refresh for the mint + loopback window. */
 export function lockDesktopHandoff(): void {
   if (typeof window === 'undefined') return
   try {
@@ -120,6 +119,20 @@ export function lockDesktopHandoff(): void {
   }
   try {
     supabase.auth.stopAutoRefresh()
+  } catch {
+    // ignore
+  }
+}
+
+export function unlockDesktopHandoff(): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.removeItem(HANDOFF_LOCK_KEY)
+  } catch {
+    // ignore
+  }
+  try {
+    void supabase.auth.startAutoRefresh()
   } catch {
     // ignore
   }
@@ -171,6 +184,51 @@ export type DesktopHandoffResult =
   | { status: 'unreachable' }
   /** Loopback answered but refused or failed to apply the session. */
   | { status: 'rejected'; title?: string; body?: string }
+  /** Edge mint failed before loopback. */
+  | { status: 'mint_failed'; body?: string }
+
+type MintDesktopSessionResponse = {
+  access_token?: string
+  refresh_token?: string
+  error?: string
+}
+
+/**
+ * Ask the edge function for a fresh session B (portal JWT = session A).
+ */
+export async function mintDesktopSession(): Promise<
+  | { ok: true; accessToken: string; refreshToken: string }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await supabase.functions.invoke<MintDesktopSessionResponse>(
+    'mint-desktop-session',
+    { method: 'POST', body: {} },
+  )
+
+  if (error) {
+    let message = error.message || 'Could not create a desktop session.'
+    try {
+      const ctx = (error as { context?: Response }).context
+      if (ctx) {
+        const body = (await ctx.json()) as { error?: string }
+        if (body.error?.trim()) message = body.error.trim()
+      }
+    } catch {
+      // keep message
+    }
+    return { ok: false, error: message }
+  }
+
+  const accessToken = data?.access_token?.trim()
+  const refreshToken = data?.refresh_token?.trim()
+  if (!accessToken || !refreshToken) {
+    return {
+      ok: false,
+      error: data?.error?.trim() || 'Could not create a desktop session.',
+    }
+  }
+  return { ok: true, accessToken, refreshToken }
+}
 
 /** Notify the desktop loopback listener without leaving the portal tab. */
 export async function handoffSessionToDesktop(options: {
@@ -214,42 +272,54 @@ export async function handoffSessionToDesktop(options: {
 }
 
 /**
- * After the app has the tokens: drop the portal's local copy without revoking
- * the server session, then reload so in-memory auth is gone too.
- *
- * Keep the handoff lock until after reload so refreshSession cannot race.
+ * Mint session B, post it to the desktop loopback, keep portal session A.
  */
-export function releasePortalSessionToDesktop(): void {
-  if (typeof window === 'undefined') return
+export async function mintAndHandoffToDesktop(options: {
+  callback: string
+  state: string | null
+}): Promise<DesktopHandoffResult> {
   lockDesktopHandoff()
   try {
-    sessionStorage.setItem(HANDOFF_DONE_KEY, '1')
-  } catch {
-    // ignore
-  }
-  try {
-    const remove: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && /^sb-.*-auth-token$/.test(key)) remove.push(key)
+    const minted = await mintDesktopSession()
+    if (!minted.ok) {
+      return { status: 'mint_failed', body: minted.error }
     }
-    for (const key of remove) localStorage.removeItem(key)
+    return await handoffSessionToDesktop({
+      callback: options.callback,
+      state: options.state,
+      accessToken: minted.accessToken,
+      refreshToken: minted.refreshToken,
+    })
+  } finally {
+    unlockDesktopHandoff()
+  }
+}
+
+/**
+ * After the app has session B: clear handoff params, keep portal Auth storage,
+ * show the done UI (no reload / no localStorage wipe).
+ */
+export function completeDesktopHandoffKeepingPortal(): void {
+  if (typeof window === 'undefined') return
+  unlockDesktopHandoff()
+  clearDesktopAuthParams()
+  try {
+    sessionStorage.removeItem(HANDOFF_DONE_KEY)
   } catch {
     // ignore
   }
-  // Keep STORAGE_KEY / lock until the done page mounts — clearing them here
-  // re-enables refreshIfVisible against a burned RT.
   const url = new URL(window.location.href)
   url.searchParams.delete('desktop_callback')
   url.searchParams.delete('desktop_state')
   url.searchParams.delete('access_token')
   url.searchParams.delete('refresh_token')
-  window.location.replace(url.pathname + url.search + url.hash)
+  const next = url.pathname + url.search + url.hash
+  window.history.replaceState(null, '', next)
 }
 
 /**
  * Call from useEffect only (not during render) — avoids SSR hydration mismatch.
- * Clears the done + lock flags after reading.
+ * Legacy reload path after the old “move RT” handoff.
  */
 export function consumeDesktopHandoffDone(): boolean {
   if (typeof window === 'undefined') return false

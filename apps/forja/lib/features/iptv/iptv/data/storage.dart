@@ -34,6 +34,7 @@ class IptvStore {
   static const _liveCategorySortKey = 'pt_iptv_live_category_sort';
   static const _liveContentSortKey = 'pt_iptv_live_content_sort';
   static const _liveBrowseLayoutKey = 'pt_iptv_live_browse_layout';
+  static const _playerVolumeKey = 'pt_iptv_player_volume';
 
   /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
   static final ValueNotifier<int> listRevision = ValueNotifier(0);
@@ -245,6 +246,19 @@ class IptvStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_liveBrowseLayoutKey, layout.prefsValue);
   }
+
+  /// IPTV player volume 0–100 (mpv scale). Default 100 when unset.
+  static Future<double> loadPlayerVolume() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getDouble(_playerVolumeKey);
+    if (v == null) return 100.0;
+    return v.clamp(0.0, 100.0);
+  }
+
+  static Future<void> savePlayerVolume(double volume) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_playerVolumeKey, volume.clamp(0.0, 100.0));
+  }
 }
 
 /// Per-portal cache of "alive" live channel IDs + per-portal Live-only pref.
@@ -424,7 +438,8 @@ class IptvChannelFavoritesStore {
   }
 }
 
-/// Device-local Live catalog favorites, watched channels, and pinned groups.
+/// Device-local Live catalog favorites, watched channels, pinned groups,
+/// and full category order.
 /// Keyed by portal `url|username|password` (same as [IptvAliveStore]).
 class IptvLiveChannelListsStore {
   static String _favKey(String portalKey) => 'pt_iptv_live_fav_$portalKey';
@@ -432,6 +447,8 @@ class IptvLiveChannelListsStore {
       'pt_iptv_live_watched_$portalKey';
   static String _pinnedCatsKey(String portalKey) =>
       'pt_iptv_live_pinned_cats_$portalKey';
+  static String _categoryOrderKey(String portalKey) =>
+      'pt_iptv_live_cat_order_$portalKey';
 
   static Future<Set<String>> loadFavorites(String portalKey) async {
     final prefs = await SharedPreferences.getInstance();
@@ -486,5 +503,21 @@ class IptvLiveChannelListsStore {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_pinnedCatsKey(portalKey), categoryIds);
+  }
+
+  /// Full manual Live category order (non-synthetic ids, top → bottom).
+  static Future<List<String>> loadCategoryOrder(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_categoryOrderKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  static Future<void> saveCategoryOrder(
+    String portalKey,
+    List<String> categoryIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_categoryOrderKey(portalKey), categoryIds);
   }
 }

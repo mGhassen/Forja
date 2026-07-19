@@ -63,10 +63,7 @@ export async function upsertScrapePostId(
     {
       post_id: id,
       subreddit,
-      title: '',
-      body_excerpt: '',
       scrape_run_id: scrapeRunId,
-      shape_flags: {},
     },
     { onConflict: 'post_id' },
   )

@@ -2,6 +2,7 @@ part of 'iptv_pt_screen.dart';
 
 class _CategorySidebarRow extends StatefulWidget {
   const _CategorySidebarRow({
+    super.key,
     required this.label,
     required this.selected,
     required this.compact,
@@ -11,6 +12,7 @@ class _CategorySidebarRow extends StatefulWidget {
     this.pinnable = false,
     this.pinned = false,
     this.onTogglePin,
+    this.reorderIndex,
     this.onUpEdge,
     this.onRightEdge,
   });
@@ -24,6 +26,8 @@ class _CategorySidebarRow extends StatefulWidget {
   final bool pinnable;
   final bool pinned;
   final VoidCallback? onTogglePin;
+  /// Non-null → whole row is a reorder drag target.
+  final int? reorderIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onRightEdge;
 
@@ -60,13 +64,8 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         : emphatic
             ? Colors.white
             : ForjaShellColors.textSecondary;
-    final pinColor = widget.pinned
-        ? ForjaShellColors.brandGreen
-        : _active
-            ? Colors.white
-            : ForjaShellColors.textSecondary;
 
-    return iptvTap(
+    Widget row = iptvTap(
       context: context,
       onTap: widget.onTap,
       borderRadius: 0,
@@ -139,7 +138,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
                             ? Icons.push_pin_rounded
                             : Icons.push_pin_outlined,
                         size: widget.compact ? 16 : 17,
-                        color: pinColor,
+                        color: ForjaShellColors.iconMuted,
                       ),
                     ),
                   ),
@@ -149,6 +148,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         ),
       ),
     );
+
+    final reorderIndex = widget.reorderIndex;
+    if (reorderIndex == null) return row;
+    return ReorderableDragStartListener(index: reorderIndex, child: row);
   }
 }
 

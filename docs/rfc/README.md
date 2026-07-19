@@ -26,7 +26,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [003-[partial]-…](003-[partial]-player-overlay.md) | Player overlay + server grid | v1.1 | partial | 4/6 · 0/4 | [0.0.1](../backlog/done/0.0.1-[done].md) slice → [1.0.2](../backlog/1.0.2-[draft].md) |
 | [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 5/8 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.1](../backlog/1.0.1-[open].md) / [1.0.2](../backlog/1.0.2-[draft].md) |
 | [005-[partial]-…](005-[partial]-casting.md) | AirPlay + Chromecast | v1.1 | stub | 0/1 · 0/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | partial | 2/3 · 3/4 · 4/5 · 8/8 · 7/8 · 6/6 · 3/3 · 2/2 · 2/5 | [1.0.4](../backlog/1.0.4-[draft].md) · [1.0.2](../backlog/1.0.2-[draft].md) RFC-036 |
+| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | partial | 2/3 · 3/4 · 4/5 · 8/8 · 7/8 · 8/8 · 3/3 · 3/3 · 2/5 | [1.0.4](../backlog/1.0.4-[draft].md) · [1.0.2](../backlog/1.0.2-[draft].md) RFC-036 |
 | [007-[draft]-…](007-[draft]-lan-companion.md) | LAN remote API | v1.2 | draft | 0/4 | v2 |
 | [008-[partial]-…](008-[partial]-watch-party.md) | Watch party sync | v1.2+ | stub | 0/4 | v2 |
 | [009-[fixed]-…](fixed/009-[fixed]-rust-ffi.md) | Rust core FFI | v1.0 engine | fixed | Complete · 20/21 · 1 ⏭️ | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md) |
@@ -60,9 +60,9 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [038-[open]-…](038-[open]-simple-streaming-resolve.md) | Simple streaming resolve (experimental) | v1.0.1 | open | 3/3 · 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [039-[fixed]-…](fixed/039-[fixed]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | fixed | Complete · 6/6 · 10/10 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 16/18 | [1.0.5](../backlog/1.0.5-[draft].md) |
+| [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 17/19 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [041-[open]-…](041-[open]-iptv-live-epg-guide.md) | IPTV Live EPG guide view (catalog) | v1.0.6 | open | 4/4 · 0/6 | [1.0.6](../backlog/1.0.6-[draft].md) |
-| [042-[open]-…](042-[open]-unified-auth-system.md) | Unified auth (web + Flutter) | v1.0.7 | open | 4/4 · 1/12 | [1.0.7](../backlog/1.0.7-[draft].md) |
+| [042-[open]-…](042-[open]-unified-auth-system.md) | Unified auth (web + Flutter) | v1.0.7 | open | 5/5 · 3/13 | [1.0.7](../backlog/1.0.7-[draft].md) |
 
 ## Related
 

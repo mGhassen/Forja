@@ -194,6 +194,15 @@ class _BrowserViewState extends State<_BrowserView> {
         final cn = catNameById[x.categoryId];
         return cn != null && cn.contains(q);
       }).toList();
+      // Optional narrow: tapping a hit-category while searching scopes results.
+      if (cat == IptvLiveCatalog.favoritesId) {
+        s = s.where((x) => ctrl.isLiveFavorite(x.streamId)).toList();
+      } else if (cat == IptvLiveCatalog.watchedId) {
+        final watched = ctrl.liveWatchedIds.toSet();
+        s = s.where((x) => watched.contains(x.streamId)).toList();
+      } else if (cat != null && cat.isNotEmpty) {
+        s = s.where((x) => x.categoryId == cat).toList();
+      }
     } else if (cat == IptvLiveCatalog.favoritesId) {
       s = s.where((x) => ctrl.isLiveFavorite(x.streamId)).toList();
     } else if (cat == IptvLiveCatalog.watchedId) {
@@ -416,54 +425,95 @@ class _BrowserViewState extends State<_BrowserView> {
               iptvActiveSectionShelfIndex(ctrl),
             ),
           );
-          final rowH = compact ? 42.0 : 46.0;
           final live = ctrl.activeSection == IptvSection.live;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: SizedBox(
-              height: cats.isEmpty ? 0 : cats.length * rowH,
-              child: Stack(
-                children: [
-                  for (var i = 0; i < cats.length; i++)
-                    AnimatedPositioned(
-                      key: ValueKey(cats[i].id),
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      top: i * rowH,
-                      left: 0,
-                      right: 0,
-                      height: rowH,
-                      child: _CategorySidebarRow(
-                        label: cats[i].name.isEmpty
-                            ? 'Uncategorized'
-                            : cats[i].name,
-                        icon: _iptvCategoryIcon(cats[i].id),
-                        selected:
-                            cats[i].id == ctrl.browserSelectedCategoryId,
-                        compact: compact,
-                        listIndex: i,
-                        pinnable: live &&
-                            !IptvLiveCatalog.isSyntheticId(cats[i].id),
-                        pinned: ctrl.isLiveCategoryPinned(cats[i].id),
-                        onTogglePin: live &&
-                                !IptvLiveCatalog.isSyntheticId(cats[i].id)
-                            ? () => ctrl.toggleLiveCategoryPin(cats[i].id)
-                            : null,
-                        onTap: () =>
-                            ctrl.selectBrowserCategory(cats[i].id),
-                        onUpEdge: i == 0
-                            ? () => iptvFocusRowItem(
-                                  'iptv-sections',
-                                  iptvActiveSectionShelfIndex(ctrl),
-                                )
-                            : null,
-                        onRightEdge: () =>
-                            iptvFocusRowItem('browser-streams'),
+          final canReorder = ctrl.canReorderLiveCategories;
+          final fixed = <IptvCategory>[];
+          final movable = <IptvCategory>[];
+          for (final c in cats) {
+            if (IptvLiveCatalog.isSyntheticId(c.id)) {
+              fixed.add(c);
+            } else {
+              movable.add(c);
+            }
+          }
+
+          Widget rowFor(IptvCategory cat, int listIndex, {int? reorderIndex}) {
+            final synthetic = IptvLiveCatalog.isSyntheticId(cat.id);
+            return _CategorySidebarRow(
+              key: ValueKey(cat.id),
+              label: cat.name.isEmpty ? 'Uncategorized' : cat.name,
+              icon: _iptvCategoryIcon(cat.id),
+              selected: cat.id == ctrl.browserSelectedCategoryId,
+              compact: compact,
+              listIndex: listIndex,
+              pinnable: live && !synthetic,
+              pinned: ctrl.isLiveCategoryPinned(cat.id),
+              onTogglePin: live && !synthetic
+                  ? () => ctrl.toggleLiveCategoryPin(cat.id)
+                  : null,
+              reorderIndex: canReorder ? reorderIndex : null,
+              onTap: () => ctrl.selectBrowserCategory(cat.id),
+              onUpEdge: listIndex == 0
+                  ? () => iptvFocusRowItem(
+                        'iptv-sections',
+                        iptvActiveSectionShelfIndex(ctrl),
+                      )
+                  : null,
+              onRightEdge: () => iptvFocusRowItem('browser-streams'),
+            );
+          }
+
+          Widget movableSliver() {
+            Widget item(int i) {
+              final listIndex = fixed.length + i;
+              return rowFor(
+                movable[i],
+                listIndex,
+                reorderIndex: canReorder ? i : null,
+              );
+            }
+
+            if (!canReorder) {
+              return SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => item(i),
+                  childCount: movable.length,
+                ),
+              );
+            }
+            return SliverReorderableList(
+              itemCount: movable.length,
+              proxyDecorator: (child, index, animation) {
+                return Material(color: Colors.transparent, child: child);
+              },
+              onReorderItem: (oldIndex, newIndex) {
+                unawaited(ctrl.reorderLiveCategories(oldIndex, newIndex));
+              },
+              itemBuilder: (context, i) => item(i),
+            );
+          }
+
+          // Remount when search changes so a prior scroll offset doesn't leave
+          // the short filtered list floating mid-viewport.
+          return CustomScrollView(
+            key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    if (fixed.isNotEmpty)
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => rowFor(fixed[i], i),
+                          childCount: fixed.length,
+                        ),
                       ),
-                    ),
-                ],
+                    if (movable.isNotEmpty) movableSliver(),
+                  ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
@@ -646,6 +696,7 @@ class _BrowserViewState extends State<_BrowserView> {
     if (s.kind == 'live') {
       unawaited(ctrl.recordLiveWatched(s.streamId));
     }
+    ctrl.noteBrowserSearchPlayedStream(s);
     final url = IptvClient.streamUrl(p.portal, s);
     final channelGuide = s.kind == 'live'
         ? IptvChannelGuide.fromXtreamLive(

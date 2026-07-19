@@ -22,11 +22,11 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
+  completeDesktopHandoffKeepingPortal,
   consumeDesktopHandoffDone,
-  handoffSessionToDesktop,
   isSafeDesktopCallback,
   lockDesktopHandoff,
-  releasePortalSessionToDesktop,
+  mintAndHandoffToDesktop,
   rememberDesktopAuthParams,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
@@ -78,17 +78,21 @@ function SignupForm() {
   async function finishAfterAuth() {
     if (isDesktopLogin && desktopParams.callback) {
       const { data } = await supabase.auth.getSession()
-      const next = data.session
-      if (next?.access_token && next.refresh_token) {
-        lockDesktopHandoff()
-        const result = await handoffSessionToDesktop({
+      if (data.session?.access_token && data.session.refresh_token) {
+        const result = await mintAndHandoffToDesktop({
           callback: desktopParams.callback,
           state: desktopParams.state,
-          accessToken: next.access_token,
-          refreshToken: next.refresh_token,
         })
         if (result.status === 'ok') {
-          releasePortalSessionToDesktop()
+          completeDesktopHandoffKeepingPortal()
+          setDesktopHandoffDone(true)
+          return
+        }
+        if (result.status === 'mint_failed') {
+          setError(
+            result.body?.trim() ||
+              'Account ready, but could not create a desktop session. Open Web login from the app again, or tap Return to Forja on the login page.',
+          )
           return
         }
         if (result.status === 'rejected') {

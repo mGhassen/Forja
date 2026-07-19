@@ -123,7 +123,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaSupabase.ensureInitialized();
-  // Reset Auth inactivity clock for restored sessions (7d timeout).
+  // Reset Auth inactivity clock for restored sessions (30d timeout).
   unawaited(SyncService.instance.refreshSession(force: true));
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   if (Platform.isAndroid) {

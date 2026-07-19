@@ -20,6 +20,7 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_search_overlay.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
@@ -286,11 +287,30 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
       _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
     }
+    unawaited(_bootWithCachedVolume());
+  }
+
+  Future<void> _bootWithCachedVolume() async {
+    final v = await IptvStore.loadPlayerVolume();
+    if (_disposed || !mounted) return;
+    _volume = v;
+    _volumeBeforeMute = v > 0 ? v : 100.0;
+    _muted = v == 0;
     if (_exoBackend) {
-      unawaited(_bootExoPlayer());
+      await _bootExoPlayer();
     } else {
-      unawaited(_bootPlayer());
+      await _bootPlayer();
     }
+  }
+
+  /// Apply volume to the engine and persist for the next IPTV player open.
+  void _setCachedVolume(double volume) {
+    final v = volume.clamp(0.0, 100.0);
+    _volume = v;
+    _muted = v == 0;
+    if (v > 0) _volumeBeforeMute = v;
+    _engineSetVolume(v);
+    unawaited(IptvStore.savePlayerVolume(v));
   }
 
   @override

@@ -11,8 +11,8 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **1 / 12** acceptance (R42-A11) |
-| **Current slice** | Code landed — manual acceptance smoke remaining |
+| **Progress** | **5 / 5** components · **3 / 13** acceptance |
+| **Current slice** | Dual-session Web login mint landed — manual acceptance smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 | 2 | R42-C02 | Web + admin are thin hosts (inject Supabase + feature flags only) | ✅ |
 | 3 | R42-C03 | Session ownership — handoff lock + portal releases RT to desktop | ✅ |
 | 4 | R42-C04 | Flutter — secure session storage, in-flight refresh, MFA challenge, OAuth via Web login | ✅ |
+| 5 | R42-C05 | Edge `mint-desktop-session` — second GoTrue session for desktop; portal keeps its own | ✅ |
 
 ---
 
@@ -38,7 +39,7 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 | 3 | R42-A03 | Optional TOTP MFA enroll in Account settings | ⬜ |
 | 4 | R42-A04 | After password/OAuth, AAL1→AAL2 challenge on `/login/mfa` before app access | ⬜ |
 | 5 | R42-A05 | Sign out this browser (local) vs all devices (global) | ⬜ |
-| 6 | R42-A06 | Desktop handoff still works; portal does not rotate RT during handoff | ⬜ |
+| 6 | R42-A06 | Desktop handoff mints session B; portal stays signed in (no Auth wipe) | ⬜ |
 
 ---
 
@@ -49,19 +50,20 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 | 1 | R42-A07 | Session persisted via secure storage on desktop | ⬜ |
 | 2 | R42-A08 | Single in-flight `refreshSession` (boot/resume/focus) | ⬜ |
 | 3 | R42-A09 | Password sign-in shows TOTP challenge when MFA enrolled | ⬜ |
-| 4 | R42-A10 | Web login / OAuth completes MFA on portal then hands AAL2 session | ⬜ |
+| 4 | R42-A10 | Web login / OAuth completes MFA on portal then hands desktop its own session | ⬜ |
 | 5 | R42-A11 | Browser token apply prefers access+refresh (no RT race) | ✅ |
-| 6 | R42-A12 | Feature + changelog docs match shipped UX | ⬜ |
+| 6 | R42-A12 | Feature + changelog docs match shipped UX | ✅ |
+| 7 | R42-A13 | After Web login, portal and desktop remain signed in on separate refresh tokens | ✅ |
 
 ---
 
 ## Summary
 
-Unify Forja auth around one Supabase project with Guepard-grade structure: thin facades, human error map, optional MFA/OAuth, and clear session ownership between portal and desktop (one refresh token owner after handoff).
+Unify Forja auth around one Supabase project with Guepard-grade structure: thin facades, human error map, optional MFA/OAuth, and separate sessions for portal vs desktop (edge mint; no shared refresh token).
 
 ### Goals
 
-- Portal and app never race the same refresh token during handoff
+- Portal and app each own a distinct refresh token after Web login
 - Optional TOTP + Google OAuth without blocking password/passkey
 - Flutter follows the same session apply / refresh / MFA rules
 

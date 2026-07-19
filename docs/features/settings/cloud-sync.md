@@ -69,18 +69,17 @@ Not synced — device-specific or sensitive:
   when Auth captcha is configured), **Sign in with passkey** on macOS and Windows
   (Touch ID / Windows Hello), or use **Web login** to authenticate in the
   browser (one portal tab; the app finishes when you sign in there — no second
-  localhost page). After handoff the portal gives the session to the app and
-  signs out of that browser tab (so both sides do not fight over the same
-  refresh token). Optional **Google OAuth** appears on web login when configured.
-  Optional **authenticator (TOTP)** is under web **Account** — after you enable
-  it, sign-in asks for a 6-digit code (Web login completes MFA in the browser
-  before handing the session to the app; in-app password sign-in shows the same
-  challenge). Portal **Sign out** clears this browser only; **Account → Sessions
-  → Sign out all devices** revokes every session including the desktop app.
-  Already signed in on the portal? The handoff still completes (or use **Return
-  to Forja**). During handoff the portal does not refresh the session. Create
-  accounts only on the web (`/signup`). Forgot password is web-only:
-  `/forgot-password` → `/reset-password`.
+  localhost page). After handoff the portal mints a **separate** session for the
+  desktop app and **stays signed in** in the browser. Optional **Google OAuth**
+  appears on web login when configured. Optional **authenticator (TOTP)** is
+  under web **Account** — after you enable it, sign-in asks for a 6-digit code
+  (Web login completes MFA in the browser before minting the desktop session;
+  in-app password sign-in shows the same challenge). Portal **Sign out** clears
+  this browser only; **Account → Sessions → Sign out all devices** revokes every
+  session including the desktop app. Already signed in on the portal? The
+  handoff still completes (or use **Return to Forja**). Create accounts only on
+  the web (`/signup`). Forgot password is web-only: `/forgot-password` →
+  `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail
   avatar opens that page) to open **Who’s watching?** / **Manage profiles**
@@ -99,15 +98,14 @@ Not synced — device-specific or sensitive:
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Device-local settings stay on disk for
   guest / offline use; cloud sync stops until you sign in again
-- Cloud sessions expire after **7 days without a refresh** (Auth inactivity
+- Cloud sessions expire after **30 days without a refresh** (Auth inactivity
   timeout). Opening the app or the web portal refreshes the session so normal
   daily use stays signed in. If the session expires while you are already using
   the app (for example after a failed token refresh), Forja stays on the screen
   you were on — it does **not** dump you back to the desktop sign-in screen.
   Sign in again from **Settings → Profile & account** (or **Web login**) to
-  restore sync. Avoid staying signed in on the web portal and the desktop app at
-  the same time if you see repeated session loss — refresh-token rotation can
-  invalidate one side
+  restore sync. Web portal and desktop can stay signed in together — each has
+  its own Auth session after Web login.
 - Open **Account** after sign-in on the web: create a profile if needed, pick one
   on **Who’s watching?**, then land in **Remote settings**. Use the **Account**
   sidebar item for passkeys, log out, or permanent account delete (confirm by
@@ -183,8 +181,10 @@ flutter run -d macos --dart-define-from-file=../../.env
 When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
 `http://127.0.0.1:3000`) and keep `FORJA_WEB_URL` at that default. Restart the
 web dev server after pulling Vite host changes so it binds IPv4 (not only
-`[::1]`). After a successful handoff the portal shows a confirmation page with
-a short countdown (or **Close tab**); you can close the tab yourself anytime.
+`[::1]`). After a successful handoff the portal stays signed in and shows a
+confirmation page with a short countdown (or **Close tab**); you can close the
+tab yourself anytime. Deploy `mint-desktop-session` on the linked Supabase
+project for Web login to mint the desktop session.
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY` (or legacy `SUPABASE_ANON_KEY`), and **`FORJA_WEB_URL`**.

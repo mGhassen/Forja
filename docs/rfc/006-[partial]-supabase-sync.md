@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **6 / 6** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **2 / 2** acceptance (session inactivity) · **2 / 5** acceptance (accounts hub slice) |
-| **Current slice** | Web login handoff: portal drops local session so app alone keeps the RT — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
+| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **8 / 8** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **3 / 3** acceptance (session inactivity) · **2 / 5** acceptance (accounts hub slice) |
+| **Current slice** | Web login mints a second desktop session (edge); portal keeps its own — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -88,6 +88,8 @@
 | 4 | R06-A34 | Web login wait is cancellable — Cancel / guest unlock the desktop sign-in screen if the browser never returns | ✅ |
 | 5 | R06-A40 | After successful loopback handoff, portal drops its local Auth storage (no `signOut` revoke) so only the app keeps the refresh token | ✅ |
 | 6 | R06-A41 | Portal no longer races the app on the same refresh token after Web login handoff | ✅ |
+| 7 | R06-A42 | Edge `mint-desktop-session` creates session B from the portal JWT; only B is posted to the desktop loopback | ✅ |
+| 8 | R06-A43 | After handoff the portal keeps session A (no Auth localStorage wipe); web and desktop stay signed in together | ✅ |
 
 ---
 
@@ -107,6 +109,7 @@
 |--:|----|-------------|--------|
 | 1 | R06-A38 | GoTrue `inactivity_timeout` = 7 days (`168h`); JWT expiry stays 1h | ✅ |
 | 2 | R06-A39 | App + web call `refreshSession` on boot/resume/focus (debounced) to keep sessions alive while in use | ✅ |
+| 3 | R06-A44 | GoTrue `inactivity_timeout` = 30 days (`720h`) for desktop + web; JWT expiry stays 1h | ✅ |
 
 ---
 
@@ -138,7 +141,7 @@ Optional account to backup and restore settings across devices. Offline-first �
 - Sign-up is web-only (`/signup`); desktop links out for account creation
 - Sign-in from desktop startup / Settings → Profile & account
 - Sign-out clears remote session only; local data retained
-- Sessions end after **7 days without refresh** (`[auth.sessions] inactivity_timeout`); clients refresh on resume/focus
+- Sessions end after **30 days without refresh** (`[auth.sessions] inactivity_timeout = 720h`); clients refresh on resume/focus
 - Hosted projects must set the same inactivity timeout in Dashboard → Authentication → Sessions
 
 ## Schema

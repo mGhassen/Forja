@@ -51,7 +51,7 @@ class SyncService {
   /// focus never rotate the same RT twice in parallel.
   Future<bool>? _refreshInFlight;
 
-  /// Renews tokens so Auth's inactivity timeout (7d) stays reset while in use.
+  /// Renews tokens so Auth's inactivity timeout (30d) stays reset while in use.
   ///
   /// Debounced unless [force] is true. Returns false when unsigned or refresh
   /// fails (GoTrue may then emit involuntary `signedOut`).
@@ -287,10 +287,10 @@ class SyncService {
 
   /// Applies tokens from [DesktopBrowserAuth] (web portal → localhost callback).
   ///
-  /// Portal hands its session then drops the browser copy so only the app
-  /// keeps the refresh token. Prefer access+refresh so gotrue skips `/token`
-  /// when the JWT is still valid. Fall back to refresh when access is expired
-  /// or `getUser` rejects the JWT (`session_not_found`).
+  /// Portal mints a *new* session for the app (edge) and keeps its own browser
+  /// session. Prefer access+refresh so gotrue skips `/token` when the JWT is
+  /// still valid. Fall back to refresh when access is expired or `getUser`
+  /// rejects the JWT (`session_not_found`).
   Future<AuthResponse> signInWithBrowserTokens({
     required String accessToken,
     required String refreshToken,

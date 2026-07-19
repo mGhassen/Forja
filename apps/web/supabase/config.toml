@@ -65,7 +65,7 @@ enable_signup = true
 # Drop sessions that have not been refreshed within this duration (checked on
 # refresh). Hosted: Dashboard → Authentication → Sessions → Inactivity timeout.
 [auth.sessions]
-inactivity_timeout = "168h"
+inactivity_timeout = "720h"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -121,4 +121,8 @@ verify_jwt = false
 
 # Self-service account deletion — requires a valid user JWT.
 [functions.delete-account]
+verify_jwt = true
+
+# Desktop Web login — mint a second session; portal keeps its own.
+[functions.mint-desktop-session]
 verify_jwt = true

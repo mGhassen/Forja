@@ -4,7 +4,7 @@
 
 ## What it is
 
-Operators scrape Reddit IPTV posts with a Rust worker, store verified portals in a shared **catalog pool**, grant **credits**, and let users **deal** packs of portals. End users do not use this console — they use the Forja app / Account portal.
+Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with `catalog_pool = true`, grant **credits**, and let users **deal** packs of portals. End users do not use this console — they use the Forja app / Account portal. There is no separate candidates table.
 
 ## How to open it
 
@@ -28,8 +28,8 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Daily cron `0 6 * * *` UTC runs `iptv-catalog-scrape` — toggle **Daily scrape** on/off in Scrape → Automation (`iptv_ops_settings.scrape_cron_enabled`). Off = cron no-ops; manual run still works
 4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
-5. **Post storage is id-only** — `iptv_scrape_posts` keeps `post_id` (+ counters/flags), never Reddit title or body text. Candidates link `post_id` the same way.
-6. Candidates are upserted after extract. **Xtream `player_api` verify is currently off** (`VERIFY_PORTAL_STATUS = false` in `iptv-catalog-scrape.ts`) — pool rows land as `alive: null` / unverified so Deal will not pick them until verify is re-enabled. Flip the flag to restore per-portal `verify-portal-status-*` steps.
+5. **Post storage is id-only** — `iptv_scrape_posts` is just `post_id` (+ subreddit / run). No title/body; deep_refs table removed.
+6. Extract upserts into **`iptv_portals`** with `catalog_pool = true`. **Xtream `player_api` verify is off** in the scrape job (`VERIFY_PORTAL_STATUS = false`); use Pool → Check status for manual probes. Deal only assigns `catalog_pool` rows with `alive = true`.
 
 If a run shows **posts > 0** but **L1 = 0**, paste decrypt / deep extract failed (not Inngest itself).
 
