@@ -419,7 +419,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       : (canScrape ? scrapeIndex : searchIndex),
                 ),
               ),
-              iptvCloseButton(context, onTap: widget.onClose),
             ],
           ),
         );
