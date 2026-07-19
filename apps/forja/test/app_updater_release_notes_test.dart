@@ -34,6 +34,26 @@ void main() {
     });
   });
 
+  group('AppUpdaterReleaseNotes.collect', () {
+    test('caps at maxChangelogVersions', () {
+      final releases = <ReleaseNotesEntry>[
+        for (var i = 1; i <= 20; i++)
+          ReleaseNotesEntry(
+            version: '1.2.$i',
+            body: '### Features\n- **Add:** Note $i.',
+          ),
+      ];
+      final collected = AppUpdaterReleaseNotes.collect(
+        currentVersion: '1.2.0',
+        latestVersion: '1.2.20',
+        releases: releases,
+      );
+      expect(collected, hasLength(AppUpdaterReleaseNotes.maxChangelogVersions));
+      expect(collected.first.version, '1.2.20');
+      expect(collected.last.version, '1.2.5');
+    });
+  });
+
   group('AppUpdaterReleaseNotes.aggregate', () {
     test('joins every release newer than installed, newest first', () {
       final notes = AppUpdaterReleaseNotes.aggregate(

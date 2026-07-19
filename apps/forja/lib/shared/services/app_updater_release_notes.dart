@@ -1,8 +1,10 @@
-/// Pure helpers for aggregating GitHub Release bodies between the installed
-/// version and the latest. Used by [AppUpdaterService] and unit-tested without
-/// HTTP.
+/// Pure helpers for release-note bodies between the installed version and the
+/// latest. Used by [AppUpdaterService] and unit-tested without HTTP.
 class AppUpdaterReleaseNotes {
   AppUpdaterReleaseNotes._();
+
+  /// Max version tabs shown in the update dialog.
+  static const int maxChangelogVersions = 16;
 
   static final _fullChangelogOnly = RegExp(
     r'^\s*Full Changelog:\s*\S+\s*$',
@@ -63,6 +65,31 @@ class AppUpdaterReleaseNotes {
     return text;
   }
 
+  /// Stable releases newer than [currentVersion] and ≤ [latestVersion], newest
+  /// first, capped at [max]. Skips drafts, prereleases, empty bodies.
+  static List<VersionChangelog> collect({
+    required String currentVersion,
+    required String latestVersion,
+    required List<ReleaseNotesEntry> releases,
+    int max = maxChangelogVersions,
+  }) {
+    final newer = releases
+        .where((r) => !r.draft && !r.prerelease)
+        .where((r) => isNewerVersion(currentVersion, r.version))
+        .where((r) => compareVersions(r.version, latestVersion) <= 0)
+        .toList()
+      ..sort((a, b) => compareVersions(b.version, a.version));
+
+    final out = <VersionChangelog>[];
+    for (final release in newer) {
+      if (out.length >= max) break;
+      final cleaned = cleanBody(release.body);
+      if (cleaned.isEmpty) continue;
+      out.add(VersionChangelog(version: release.version, body: cleaned));
+    }
+    return out;
+  }
+
   /// Build dialog markdown for every stable release newer than [currentVersion].
   ///
   /// Newest first. Skips drafts, prereleases, and empty/auto-only bodies.
@@ -72,19 +99,15 @@ class AppUpdaterReleaseNotes {
   static String aggregate({
     required String currentVersion,
     required List<ReleaseNotesEntry> releases,
+    String? latestVersion,
+    int max = maxChangelogVersions,
   }) {
-    final newer = releases
-        .where((r) => !r.draft && !r.prerelease)
-        .where((r) => isNewerVersion(currentVersion, r.version))
-        .toList()
-      ..sort((a, b) => compareVersions(b.version, a.version));
-
-    final blocks = <({String version, String body})>[];
-    for (final release in newer) {
-      final cleaned = cleanBody(release.body);
-      if (cleaned.isEmpty) continue;
-      blocks.add((version: release.version, body: cleaned));
-    }
+    final blocks = collect(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion ?? _maxVersion(releases) ?? currentVersion,
+      releases: releases,
+      max: max,
+    );
 
     if (blocks.isEmpty) return '';
 
@@ -92,17 +115,23 @@ class AppUpdaterReleaseNotes {
       return blocks.first.body;
     }
 
-    return blocks
-        .map((b) => '# ${b.version}\n\n${b.body}')
-        .join('\n\n');
+    return blocks.map((b) => '# ${b.version}\n\n${b.body}').join('\n\n');
+  }
+
+  static String? _maxVersion(List<ReleaseNotesEntry> releases) {
+    String? best;
+    for (final r in releases) {
+      if (r.draft || r.prerelease) continue;
+      if (best == null || compareVersions(r.version, best) > 0) {
+        best = r.version;
+      }
+    }
+    return best;
   }
 
   static List<int> _semverParts(String version) {
     final core = version.split('+').first.split('-').first;
-    return core
-        .split('.')
-        .map((p) => int.tryParse(p) ?? 0)
-        .toList();
+    return core.split('.').map((p) => int.tryParse(p) ?? 0).toList();
   }
 }
 
@@ -118,4 +147,11 @@ class ReleaseNotesEntry {
   final String? body;
   final bool prerelease;
   final bool draft;
+}
+
+class VersionChangelog {
+  const VersionChangelog({required this.version, required this.body});
+
+  final String version;
+  final String body;
 }

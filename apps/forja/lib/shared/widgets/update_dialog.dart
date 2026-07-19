@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
+import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
@@ -128,7 +129,8 @@ class _UpdateLayout {
     }
 
     final isWide = width > 720;
-    final contentWidth = isWide ? 640.0 : (width - 48).clamp(280.0, width);
+    // Wider so the version rail + notes sit side by side.
+    final contentWidth = isWide ? 780.0 : (width - 48).clamp(280.0, width);
     // Logo tracks viewport height (~10%), capped so it never eats the page.
     final logoHeight = (height * 0.10).clamp(40.0, 88.0);
     final logoWidth = (logoHeight * forjaLogoAspectRatio).clamp(
@@ -229,6 +231,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   bool _showingDownloadComplete = false;
+  int _selectedChangelog = 0;
 
   @override
   void initState() {
@@ -350,12 +353,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildOfferHeader(layout),
-                      Expanded(
-                        child: _ReleaseNotesScroller(
-                          layout: layout,
-                          child: _buildReleaseNotes(layout),
-                        ),
-                      ),
+                      Expanded(child: _buildReleaseNotes(layout)),
                       SizedBox(height: layout.footerGap),
                       _UpdateFooter(
                         layout: layout,
@@ -462,13 +460,71 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildReleaseNotes(_UpdateLayout layout) {
-    final sections = _ReleaseNotesParser.parseSections(
-      widget.updateInfo.releaseNotes,
+    final changelogs = widget.updateInfo.changelogs;
+    final showRail = changelogs.length > 1;
+    final railWidth = layout.isTv ? 96.0 : 118.0;
+
+    final notesBody = _buildSelectedChangelogBody(layout, changelogs);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: showRail
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: railWidth,
+                      child: _ChangelogVersionRail(
+                        layout: layout,
+                        changelogs: changelogs,
+                        selected: _selectedChangelog,
+                        onSelect: (i) => setState(() => _selectedChangelog = i),
+                      ),
+                    ),
+                    SizedBox(width: layout.isTv ? 12 : 18),
+                    Expanded(
+                      child: _ReleaseNotesScroller(
+                        layout: layout,
+                        child: notesBody,
+                      ),
+                    ),
+                  ],
+                )
+              : _ReleaseNotesScroller(layout: layout, child: notesBody),
+        ),
+        SizedBox(height: layout.isTv ? 8 : 12),
+        _FullChangelogLink(
+          layout: layout,
+          url: widget.updateInfo.fullChangelogUrl,
+        ),
+      ],
     );
+  }
+
+  Widget _buildSelectedChangelogBody(
+    _UpdateLayout layout,
+    List<VersionChangelog> changelogs,
+  ) {
+    if (changelogs.isEmpty) {
+      return Text(
+        'No release notes were published for this update.',
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: layout.bodySize,
+          height: 1.6,
+          color: ForjaShellColors.textSecondary,
+        ),
+      );
+    }
+
+    final index = _selectedChangelog.clamp(0, changelogs.length - 1);
+    final selected = changelogs[index];
+    final sections = _ReleaseNotesParser.parseSections(selected.body);
 
     if (sections.isEmpty) {
       return Text(
-        'No release notes were published for this version.',
+        'No release notes were published for v${selected.version}.',
         style: GoogleFonts.plusJakartaSans(
           fontSize: layout.bodySize,
           height: 1.6,
@@ -480,19 +536,25 @@ class _UpdateDialogState extends State<UpdateDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (changelogs.length == 1)
+          _ReleaseNoteVersionHeader(
+            title: selected.version,
+            layout: layout,
+            isFirst: true,
+          ),
         for (var i = 0; i < sections.length; i++) ...[
-          if (sections[i].title != null)
-            sections[i].isVersion
-                ? _ReleaseNoteVersionHeader(
-                    title: sections[i].title!,
-                    layout: layout,
-                    isFirst: i == 0,
-                  )
-                : _ReleaseNoteGroupHeader(
-                    title: sections[i].title!,
-                    layout: layout,
-                    isFirst: i == 0,
-                  ),
+          if (sections[i].title != null && !sections[i].isVersion)
+            _ReleaseNoteGroupHeader(
+              title: sections[i].title!,
+              layout: layout,
+              isFirst: i == 0 && changelogs.length > 1,
+            ),
+          if (sections[i].title != null && sections[i].isVersion)
+            _ReleaseNoteVersionHeader(
+              title: sections[i].title!,
+              layout: layout,
+              isFirst: i == 0,
+            ),
           ...sections[i].items.map(
             (item) => _ReleaseNoteRow(item: item, layout: layout),
           ),
@@ -702,6 +764,131 @@ class _UpdateFooter extends StatelessWidget {
 
 /// Scroll region for the release notes with a scrollbar + top fade so the
 /// pinned footer reads as a separate layer.
+class _ChangelogVersionRail extends StatelessWidget {
+  const _ChangelogVersionRail({
+    required this.layout,
+    required this.changelogs,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final _UpdateLayout layout;
+  final List<VersionChangelog> changelogs;
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(color: ForjaShellColors.borderSubtle),
+        ),
+      ),
+      child: ListView.builder(
+        padding: EdgeInsets.only(right: layout.isTv ? 8 : 12),
+        itemCount: changelogs.length,
+        itemBuilder: (context, index) {
+          final version = changelogs[index].version;
+          final active = index == selected;
+          return Padding(
+            padding: EdgeInsets.only(bottom: layout.isTv ? 4 : 6),
+            child: ForjaInteractive(
+              onTap: () => onSelect(index),
+              builder: (hover, pressed) {
+                final lit = active || hover || pressed;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: layout.isTv ? 8 : 10,
+                    vertical: layout.isTv ? 8 : 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+                        : lit
+                        ? ForjaShellColors.surfaceElevated
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: active
+                          ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Text(
+                    'v$version',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: layout.isTv ? 12 : 13,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      color: active
+                          ? ForjaShellColors.brandGreen
+                          : ForjaShellColors.textSecondary,
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FullChangelogLink extends StatelessWidget {
+  const _FullChangelogLink({required this.layout, required this.url});
+
+  final _UpdateLayout layout;
+  final String url;
+
+  Future<void> _open() async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ForjaInteractive(
+        onTap: _open,
+        builder: (hover, pressed) {
+          final active = hover || pressed;
+          final color = active
+              ? ForjaShellColors.brandGreen
+              : ForjaShellColors.textSecondary;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'See full changelog on the web',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: layout.metaSize,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                  decoration: TextDecoration.underline,
+                  decorationColor: color,
+                ),
+              ),
+              SizedBox(height: layout.isTv ? 2 : 4),
+              Text(
+                url,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: (layout.metaSize - 1).clamp(11, 13).toDouble(),
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _ReleaseNotesScroller extends StatefulWidget {
   const _ReleaseNotesScroller({required this.layout, required this.child});
 

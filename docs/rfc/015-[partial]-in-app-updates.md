@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **2 / 2** acceptance (R2-only discovery) |
-| **Current slice** | R2-only updater (`latest/manifest.json` + versioned installers); hosted smoke A37 |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs) |
+| **Current slice** | R2 installers + GitHub notes in dialog (max 16); hosted smoke A37 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -129,13 +129,14 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R15-A40 | Release CI writes `latest/manifest.json` (+ `v{version}/manifest.json`) with version + asset filenames only (changelog stays on GitHub Releases) | ✅ |
-| 2 | R15-A41 | `AppUpdaterService` discovers updates only via `{RELEASE_CDN_URL}/latest/manifest.json` and downloads `{RELEASE_CDN_URL}/v{version}/{filename}` — no GitHub API | ✅ |
+| 2 | R15-A41 | `AppUpdaterService` discovers updates via `{RELEASE_CDN_URL}/latest/manifest.json` and downloads `{RELEASE_CDN_URL}/v{version}/{filename}` | ✅ |
+| 3 | R15-A42 | Update dialog loads GitHub Release notes for versions since installed (max 16), left version rail, “See full changelog” → `{FORJA_WEB_URL}/changelog` | ✅ |
 
 ---
 
 ## Summary
 
-Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — version + installer filenames only), then downloads the platform installer from the versioned R2 path. Changelog / release notes stay on GitHub Releases; the app updater does not call GitHub.
+Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — version + installer filenames only), then downloads the platform installer from the versioned R2 path. Changelog bodies for the dialog come from GitHub Releases (not stored on R2); the UI lists up to 16 versions since the installed build and links to the portal `/changelog`.
 
 ## Goals
 

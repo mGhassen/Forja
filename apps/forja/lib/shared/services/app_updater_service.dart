@@ -5,19 +5,35 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:forja/shared/services/release_storage_urls.dart';
+import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// In-app updates — Cloudflare R2 only.
+/// In-app updates.
 ///
-/// Discovery: `GET {RELEASE_CDN_URL}/latest/manifest.json`
-/// Download:  `{RELEASE_CDN_URL}/v{version}/{filename}`
+/// Discovery + download: Cloudflare R2 (`latest/manifest.json`, `v{ver}/{file}`).
+/// Changelog bodies: GitHub Releases (not stored on R2).
 class AppUpdaterService {
-  static const Map<String, String> _headers = {
+  static const String githubRepo = 'mGhassen/Forja';
+  static const String githubReleasesUrl =
+      'https://api.github.com/repos/$githubRepo/releases?per_page=100';
+
+  static const Map<String, String> _jsonHeaders = {
     'Accept': 'application/json',
     'User-Agent': 'Forja-AppUpdater',
   };
+
+  static const Map<String, String> _githubHeaders = {
+    'Accept': 'application/vnd.github+json',
+    'User-Agent': 'Forja-AppUpdater',
+  };
+
+  /// Portal changelog page (FORJA_WEB_URL /changelog).
+  static String fullChangelogUrl() {
+    final base = DesktopBrowserAuth.webUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$base/changelog';
+  }
 
   Future<UpdateInfo?> checkForUpdates() async {
     try {
@@ -40,7 +56,10 @@ class AppUpdaterService {
       return null;
     }
 
-    final response = await http.get(Uri.parse(manifestUrl), headers: _headers);
+    final response = await http.get(
+      Uri.parse(manifestUrl),
+      headers: _jsonHeaders,
+    );
     if (response.statusCode != 200) {
       debugPrint('AppUpdater: manifest HTTP ${response.statusCode}');
       return null;
@@ -72,16 +91,62 @@ class AppUpdaterService {
         ? DateTime.tryParse(publishedRaw) ?? DateTime.now()
         : DateTime.now();
 
+    final changelogs = await _fetchChangelogs(
+      currentVersion: currentVersion,
+      latestVersion: version,
+    );
+
     return UpdateInfo(
       currentVersion: currentVersion,
       latestVersion: version,
       downloadUrl: downloadUrl,
-      // Changelog stays on GitHub Releases — R2 manifest is files only.
-      releaseNotes: 'Forja $version is ready to install.',
+      changelogs: changelogs,
+      fullChangelogUrl: fullChangelogUrl(),
       publishedAt: publishedAt,
       isMacOS: Platform.isMacOS,
       isIOS: false,
     );
+  }
+
+  /// Changelog text from GitHub Releases (max 16 versions since installed).
+  Future<List<VersionChangelog>> _fetchChangelogs({
+    required String currentVersion,
+    required String latestVersion,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(githubReleasesUrl),
+        headers: _githubHeaders,
+      );
+      if (response.statusCode != 200) return const [];
+
+      final decoded = json.decode(response.body);
+      if (decoded is! List) return const [];
+
+      final entries = <ReleaseNotesEntry>[];
+      for (final item in decoded) {
+        if (item is! Map<String, dynamic>) continue;
+        final tag = item['tag_name'] as String?;
+        if (tag == null || tag.isEmpty) continue;
+        entries.add(
+          ReleaseNotesEntry(
+            version: tag.replaceFirst(RegExp(r'^v'), ''),
+            body: item['body'] as String?,
+            prerelease: item['prerelease'] as bool? ?? false,
+            draft: item['draft'] as bool? ?? false,
+          ),
+        );
+      }
+
+      return AppUpdaterReleaseNotes.collect(
+        currentVersion: currentVersion,
+        latestVersion: latestVersion,
+        releases: entries,
+      );
+    } catch (e) {
+      debugPrint('AppUpdater: changelog fetch failed: $e');
+      return const [];
+    }
   }
 
   String? _pickInstallerUrl(String version, List<String> assets) {
@@ -185,7 +250,8 @@ class UpdateInfo {
   final String currentVersion;
   final String latestVersion;
   final String downloadUrl;
-  final String releaseNotes;
+  final List<VersionChangelog> changelogs;
+  final String fullChangelogUrl;
   final DateTime publishedAt;
   final bool isMacOS;
   final bool isIOS;
@@ -194,7 +260,8 @@ class UpdateInfo {
     required this.currentVersion,
     required this.latestVersion,
     required this.downloadUrl,
-    required this.releaseNotes,
+    required this.changelogs,
+    required this.fullChangelogUrl,
     required this.publishedAt,
     required this.isMacOS,
     this.isIOS = false,
