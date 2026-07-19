@@ -6,10 +6,25 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   Future<void> _checkAndFetchNuvio() async {
     try {
       final addons = await NuvioService.instance.listSourcesPanelAddons();
+      final enabledIds = enabledNuvioScraperIds(addons);
+      final saved = _s._nuvioSelectionHydrated
+          ? null
+          : await NuvioService.instance.loadSourcesSelectedScraperIds(
+              enabledIds: enabledIds,
+            );
       if (!mounted) return;
       setState(() {
         _s._hasNuvioAddons = addons.isNotEmpty;
         _s._nuvioAddons = addons;
+        if (!_s._nuvioSelectionHydrated) {
+          _s._nuvioSelectedScraperIds = saved ?? {};
+          _s._nuvioSelectionHydrated = true;
+        } else {
+          _s._nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
+            savedIds: _s._nuvioSelectedScraperIds,
+            enabledIds: enabledIds,
+          );
+        }
       });
     } catch (_) {}
   }

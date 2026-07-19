@@ -374,7 +374,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : {}),
         },
       })
-      if (error) return { error: error.message }
+      if (error) {
+        return {
+          error: mapAuthError({ message: error.message, code: error.code }),
+        }
+      }
       const needsEmailConfirmation = Boolean(data.user) && !data.session
       return { error: null, needsEmailConfirmation }
     },
@@ -391,9 +395,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: token.trim(),
         type: 'signup',
       })
-      return { error: error?.message ?? null }
+      if (error) {
+        return {
+          error: mapAuthError({ message: error.message, code: error.code }),
+        }
+      }
+      const needsMfa = await refreshMfaStatus()
+      return { error: null, needsMfa }
     },
-    [],
+    [refreshMfaStatus],
   )
 
   const requestPasswordReset = useCallback(
@@ -416,7 +426,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? { captchaToken: options.captchaToken }
           : {}),
       })
-      return { error: error?.message ?? null }
+      return {
+        error: error
+          ? mapAuthError({ message: error.message, code: error.code })
+          : null,
+      }
     },
     [],
   )
@@ -435,10 +449,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       })
-      if (updateError) return { error: updateError.message }
+      if (updateError) {
+        return {
+          error: mapAuthError({
+            message: updateError.message,
+            code: updateError.code,
+          }),
+        }
+      }
 
       markPasswordRecovery(setIsPasswordRecovery, false)
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       return { error: null }
     },
     [isPasswordRecovery],
@@ -500,11 +521,125 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [isPasswordRecovery],
   )
 
-  const signOut = useCallback(async () => {
-    if (!supabaseConfigured) return
-    markPasswordRecovery(setIsPasswordRecovery, false)
-    await supabase.auth.signOut()
+  const listMfaFactors = useCallback(async (): Promise<{
+    error: string | null
+    factors: ForjaMfaFactor[]
+  }> => {
+    if (!supabaseConfigured) {
+      return { error: AUTH_UNAVAILABLE_MESSAGE, factors: [] }
+    }
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) {
+      return {
+        error: mapAuthError({ message: error.message, code: error.code }),
+        factors: [],
+      }
+    }
+    const factors = (data?.totp ?? []).map((f) => ({
+      id: f.id,
+      friendlyName: f.friendly_name ?? null,
+      status: f.status,
+    }))
+    return { error: null, factors }
   }, [])
+
+  const enrollMfaTotp = useCallback(async (): Promise<{
+    error: string | null
+    factorId: string | null
+    qrCode: string | null
+    secret: string | null
+  }> => {
+    if (!supabaseConfigured) {
+      return {
+        error: AUTH_UNAVAILABLE_MESSAGE,
+        factorId: null,
+        qrCode: null,
+        secret: null,
+      }
+    }
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: 'Forja authenticator',
+    })
+    if (error || !data) {
+      return {
+        error: mapAuthError({
+          message: error?.message,
+          code: error?.code,
+          fallback: 'Could not start authenticator setup.',
+        }),
+        factorId: null,
+        qrCode: null,
+        secret: null,
+      }
+    }
+    return {
+      error: null,
+      factorId: data.id,
+      qrCode: data.totp.qr_code,
+      secret: data.totp.secret,
+    }
+  }, [])
+
+  const challengeAndVerifyMfa = useCallback(
+    async (factorId: string, code: string): Promise<AuthResult> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { data: challenge, error: challengeError } =
+        await supabase.auth.mfa.challenge({ factorId })
+      if (challengeError || !challenge) {
+        return {
+          error: mapAuthError({
+            message: challengeError?.message,
+            code: challengeError?.code,
+            fallback: 'Could not start verification.',
+          }),
+        }
+      }
+      const { error } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code: code.trim(),
+      })
+      if (error) {
+        return {
+          error: mapAuthError({ message: error.message, code: error.code }),
+        }
+      }
+      await refreshMfaStatus()
+      return { error: null, needsMfa: false }
+    },
+    [refreshMfaStatus],
+  )
+
+  const unenrollMfa = useCallback(
+    async (factorId: string): Promise<{ error: string | null }> => {
+      if (!supabaseConfigured) {
+        return { error: AUTH_UNAVAILABLE_MESSAGE }
+      }
+      const { error } = await supabase.auth.mfa.unenroll({ factorId })
+      if (error) {
+        return {
+          error: mapAuthError({ message: error.message, code: error.code }),
+        }
+      }
+      await refreshMfaStatus()
+      return { error: null }
+    },
+    [refreshMfaStatus],
+  )
+
+  const signOut = useCallback(
+    async (options?: { scope?: SignOutScope }) => {
+      if (!supabaseConfigured) return
+      markPasswordRecovery(setIsPasswordRecovery, false)
+      setRequiresMfa(false)
+      // Default local so signing out of the portal does not kill the desktop app.
+      await supabase.auth.signOut({ scope: options?.scope ?? 'local' })
+    },
+    [],
+  )
 
   const deleteAccount = useCallback(
     async (confirmEmail: string): Promise<{ error: string | null }> => {
@@ -547,7 +682,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: (data as { error: string }).error }
       }
 
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'global' })
       return { error: null }
     },
     [isPasswordRecovery],
@@ -560,8 +695,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: isPasswordRecovery ? null : (session?.user ?? null),
       loading,
       configured: supabaseConfigured,
+      requiresMfa: isPasswordRecovery ? false : requiresMfa,
       signIn,
       signInWithPasskey,
+      signInWithOAuth,
       signUp,
       verifySignupOtp,
       requestPasswordReset,
@@ -570,15 +707,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerPasskey,
       listPasskeys,
       deletePasskey,
+      refreshMfaStatus,
+      listMfaFactors,
+      enrollMfaTotp,
+      challengeAndVerifyMfa,
+      unenrollMfa,
       signOut,
       deleteAccount,
     }),
     [
       session,
       loading,
+      requiresMfa,
       isPasswordRecovery,
       signIn,
       signInWithPasskey,
+      signInWithOAuth,
       signUp,
       verifySignupOtp,
       requestPasswordReset,
@@ -586,6 +730,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerPasskey,
       listPasskeys,
       deletePasskey,
+      refreshMfaStatus,
+      listMfaFactors,
+      enrollMfaTotp,
+      challengeAndVerifyMfa,
+      unenrollMfa,
       signOut,
       deleteAccount,
     ],

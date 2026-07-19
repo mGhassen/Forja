@@ -78,6 +78,7 @@ dependencies:
   rust:
     path: ../../packages/rust
   supabase_flutter: ^2.16.0
+  flutter_secure_storage: ^9.2.4
   passkeys: ^2.22.0
 
 dev_dependencies:

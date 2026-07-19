@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Shared Supabase project with [apps/web].
@@ -17,6 +18,11 @@ class ForjaSupabase {
   static bool _initialized = false;
   static bool get isInitialized => _initialized;
 
+  static String get _persistSessionKey {
+    final host = Uri.tryParse(url)?.host ?? 'forja';
+    return 'sb-$host-auth-token';
+  }
+
   static Future<void> ensureInitialized() async {
     if (_initialized) return;
     if (!isConfigured) {
@@ -29,6 +35,13 @@ class ForjaSupabase {
       url: url,
       // Same project key as apps/web VITE_SUPABASE_PUBLISHABLE_KEY.
       publishableKey: publishableKey,
+      authOptions: FlutterAuthClientOptions(
+        // Desktop/mobile: OS secure store (Guepard keychain pattern).
+        // Web builds keep SharedPreferences / localStorage defaults.
+        localStorage: kIsWeb
+            ? null
+            : ForjaSecureLocalStorage(persistSessionKey: _persistSessionKey),
+      ),
     );
     _initialized = true;
     debugPrint('[Supabase] Initialized');

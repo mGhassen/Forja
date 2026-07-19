@@ -149,7 +149,8 @@ export function AccountSettingsShell({
     useProfiles()
 
   async function onSignOut() {
-    await signOut()
+    // Local only — keep the desktop app session alive.
+    await signOut({ scope: 'local' })
     void navigate({ to: '/' })
   }
 

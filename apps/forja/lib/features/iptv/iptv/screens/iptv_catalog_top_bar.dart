@@ -505,7 +505,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     PlayerPopupPanel.show(
       context: context,
       title: 'Sort',
-      leadingIcon: Icons.sort_rounded,
+      showHeader: false,
       anchorContext: _sortAnchorKey.currentContext,
       alignment: Alignment.topRight,
       margin: const EdgeInsets.only(right: 12, top: 56),
@@ -805,7 +805,7 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -825,7 +825,7 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Divider(height: 1, color: PlayerPopupTokens.border),
           ),
-          _sectionLabel('Content'),
+          _sectionLabel('Channels'),
           for (final (sort, label, icon) in _options)
             _sortRow(
               icon: icon,

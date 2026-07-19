@@ -261,6 +261,11 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
         List<Map<String, dynamic>>.from(_s._nuvioStreams),
         fetchedScraperIds: _s._nuvioFetchedScraperIds,
       );
+      unawaited(
+        NuvioService.instance.saveSourcesSelectedScraperIds(
+          _s._nuvioSelectedScraperIds,
+        ),
+      );
       if (!wasSelected || cancelInFlight) {
         unawaited(_s._fetchNextNuvioScraper());
       }

@@ -62,6 +62,16 @@ void main() {
         2,
       );
     });
+
+    test('filterNuvioSelectedScraperIds drops disabled / unknown ids', () {
+      expect(
+        filterNuvioSelectedScraperIds(
+          savedIds: const ['a', 'gone', 'b'],
+          enabledIds: const {'a', 'b', 'c'},
+        ),
+        {'a', 'b'},
+      );
+    });
   });
 
   group('promoteStremioProviderId', () {

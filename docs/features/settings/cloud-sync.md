@@ -71,18 +71,16 @@ Not synced — device-specific or sensitive:
   browser (one portal tab; the app finishes when you sign in there — no second
   localhost page). After handoff the portal gives the session to the app and
   signs out of that browser tab (so both sides do not fight over the same
-  refresh token). Already signed in on the portal? The handoff still completes
-  (or use **Return to Forja**). After a successful handoff the portal shows a
-  short confirmation and tries to close the tab; if the browser keeps it open,
-  close it yourself. If Chrome asks to allow local network access to reach the
-  app, allow it. If applying the session fails, tap **Return to Forja** again
-  or restart **Web login** from the app. During handoff the portal does not
-  refresh the session. If the browser does not open or you change your mind,
-  tap **Cancel web login** (or **Continue without an account**) to unlock the
-  screen. Create accounts only on the web (`/signup`); the app does not offer
-  in-app signup. Web signup and sign-in show a Cloudflare Turnstile check when
-  captcha is configured. Web login also offers passkeys. Forgot password is
-  web-only: `/forgot-password` emails a reset link that opens `/reset-password`.
+  refresh token). Optional **Google OAuth** appears on web login when configured.
+  Optional **authenticator (TOTP)** is under web **Account** — after you enable
+  it, sign-in asks for a 6-digit code (Web login completes MFA in the browser
+  before handing the session to the app; in-app password sign-in shows the same
+  challenge). Portal **Sign out** clears this browser only; **Account → Sessions
+  → Sign out all devices** revokes every session including the desktop app.
+  Already signed in on the portal? The handoff still completes (or use **Return
+  to Forja**). During handoff the portal does not refresh the session. Create
+  accounts only on the web (`/signup`). Forgot password is web-only:
+  `/forgot-password` → `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail
   avatar opens that page) to open **Who’s watching?** / **Manage profiles**

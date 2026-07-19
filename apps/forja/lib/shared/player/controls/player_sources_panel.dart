@@ -470,10 +470,14 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       } catch (_) {}
     }
     List<NuvioAddon> nuvioAddons = const [];
+    Set<String> nuvioSelected = {};
     // Nuvio is gated on Direct torrent (same as media-details Sources).
     if (torrentOn) {
       try {
         nuvioAddons = await NuvioService.instance.listSourcesPanelAddons();
+        nuvioSelected = await NuvioService.instance.loadSourcesSelectedScraperIds(
+          enabledIds: enabledNuvioScraperIds(nuvioAddons),
+        );
       } catch (_) {}
     }
     if (!mounted) return;
@@ -496,15 +500,17 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _showStremio = hasStremio;
       _showNuvio = hasNuvio;
       _nuvioAddons = nuvioAddons;
-      // Provider chips start empty; user picks scrapers.
-      _nuvioSelectedScraperIds = {};
+      _nuvioSelectedScraperIds = nuvioSelected;
       _streamAddons = addons;
       _kindFilter = kind;
       _selectedSourceId = _sourceIdForKind(kind, addons);
       if (kind == 'nuvio') {
         final base = widget.currentAddonBaseUrl;
         if (base != null && base.startsWith('nuvio:')) {
-          _nuvioSelectedScraperIds = {base.substring('nuvio:'.length)};
+          _nuvioSelectedScraperIds = {
+            ..._nuvioSelectedScraperIds,
+            base.substring('nuvio:'.length),
+          };
         }
       }
     });
@@ -585,6 +591,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   Future<void> _ensureNuvioLoaded({bool force = false}) async {
     if (!_showsNuvio) return;
+    if (_nuvioSelectedScraperIds.isEmpty) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
       await _fetchNextNuvioScraper(reset: true);
@@ -1391,6 +1398,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         _catalogCacheKey,
         _nuvioStreams,
         fetchedScraperIds: _nuvioFetchedScraperIds,
+      );
+      unawaited(
+        NuvioService.instance.saveSourcesSelectedScraperIds(
+          _nuvioSelectedScraperIds,
+        ),
       );
       if (!wasSelected || cancelInFlight) {
         unawaited(_fetchNextNuvioScraper());

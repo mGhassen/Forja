@@ -17,6 +17,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
 import { Route as AccountProfilesRouteImport } from './routes/account.profiles'
@@ -30,6 +31,7 @@ import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.se
 import { Route as AccountSettingsNavigationRouteImport } from './routes/account.settings.navigation'
 import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
 import { Route as AccountSettingsAccountRouteImport } from './routes/account.settings.account'
+import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -68,6 +70,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
@@ -137,6 +144,11 @@ const AccountSettingsAccountRoute = AccountSettingsAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AccountSettingsRoute,
 } as any)
+const AuthLoginMfaRoute = AuthLoginMfaRouteImport.update({
+  id: '/mfa',
+  path: '/mfa',
+  getParentRoute: () => AuthLoginRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -147,12 +159,14 @@ export interface FileRoutesByFullPath {
   '/iptv': typeof IptvRoute
   '/terms': typeof TermsRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
-  '/login': typeof AuthLoginRoute
+  '/login': typeof AuthLoginRouteWithChildren
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/login/mfa': typeof AuthLoginMfaRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/navigation': typeof AccountSettingsNavigationRoute
@@ -169,12 +183,14 @@ export interface FileRoutesByTo {
   '/iptv': typeof IptvRoute
   '/terms': typeof TermsRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
-  '/login': typeof AuthLoginRoute
+  '/login': typeof AuthLoginRouteWithChildren
   '/reset-password': typeof AuthResetPasswordRoute
   '/signup': typeof AuthSignupRoute
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/login/mfa': typeof AuthLoginMfaRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/navigation': typeof AccountSettingsNavigationRoute
@@ -193,12 +209,14 @@ export interface FileRoutesById {
   '/iptv': typeof IptvRoute
   '/terms': typeof TermsRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
-  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/login': typeof AuthLoginRouteWithChildren
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_auth/signup': typeof AuthSignupRoute
   '/account/profiles': typeof AccountProfilesRoute
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/_auth/login/mfa': typeof AuthLoginMfaRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
   '/account/settings/navigation': typeof AccountSettingsNavigationRoute
@@ -223,6 +241,8 @@ export interface FileRouteTypes {
     | '/account/profiles'
     | '/account/settings'
     | '/api/iptv-share'
+    | '/auth/callback'
+    | '/login/mfa'
     | '/account/settings/account'
     | '/account/settings/iptv'
     | '/account/settings/navigation'
@@ -245,6 +265,8 @@ export interface FileRouteTypes {
     | '/account/profiles'
     | '/account/settings'
     | '/api/iptv-share'
+    | '/auth/callback'
+    | '/login/mfa'
     | '/account/settings/account'
     | '/account/settings/iptv'
     | '/account/settings/navigation'
@@ -268,6 +290,8 @@ export interface FileRouteTypes {
     | '/account/profiles'
     | '/account/settings'
     | '/api/iptv-share'
+    | '/auth/callback'
+    | '/_auth/login/mfa'
     | '/account/settings/account'
     | '/account/settings/iptv'
     | '/account/settings/navigation'
@@ -286,6 +310,7 @@ export interface RootRouteChildren {
   IptvRoute: typeof IptvRoute
   TermsRoute: typeof TermsRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -344,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/iptv-share': {
@@ -437,19 +469,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsAccountRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
+    '/_auth/login/mfa': {
+      id: '/_auth/login/mfa'
+      path: '/mfa'
+      fullPath: '/login/mfa'
+      preLoaderRoute: typeof AuthLoginMfaRouteImport
+      parentRoute: typeof AuthLoginRoute
+    }
   }
 }
 
+interface AuthLoginRouteChildren {
+  AuthLoginMfaRoute: typeof AuthLoginMfaRoute
+}
+
+const AuthLoginRouteChildren: AuthLoginRouteChildren = {
+  AuthLoginMfaRoute: AuthLoginMfaRoute,
+}
+
+const AuthLoginRouteWithChildren = AuthLoginRoute._addFileChildren(
+  AuthLoginRouteChildren,
+)
+
 interface AuthRouteChildren {
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
-  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLoginRoute: typeof AuthLoginRouteWithChildren
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
-  AuthLoginRoute: AuthLoginRoute,
+  AuthLoginRoute: AuthLoginRouteWithChildren,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
 }
@@ -501,6 +552,7 @@ const rootRouteChildren: RootRouteChildren = {
   IptvRoute: IptvRoute,
   TermsRoute: TermsRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,9 +1,10 @@
 import { Navigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { authConfig } from '@/lib/auth'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading, isPasswordRecovery } = useAuth()
+  const { user, loading, isPasswordRecovery, requiresMfa } = useAuth()
 
   if (loading) {
     return (
@@ -20,6 +21,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" />
+  }
+
+  if (authConfig.mfaTotp && requiresMfa) {
+    return <Navigate to="/login/mfa" />
   }
 
   return children

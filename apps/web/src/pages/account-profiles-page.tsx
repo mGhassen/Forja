@@ -252,7 +252,7 @@ export function AccountProfilesPage() {
                   className="min-w-40 uppercase tracking-[0.12em]"
                   onClick={() => {
                     void (async () => {
-                      await signOut()
+                      await signOut({ scope: 'local' })
                       void navigate({ to: '/' })
                     })()
                   }}

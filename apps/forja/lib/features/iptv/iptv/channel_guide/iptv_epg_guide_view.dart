@@ -530,9 +530,10 @@ class _ChannelCellState extends State<_ChannelCell> {
                     style: GoogleFonts.plusJakartaSans(
                       color: _hovered
                           ? Colors.white
-                          : Colors.white.withValues(alpha: 0.82),
+                          : ForjaShellColors.textSecondary,
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight:
+                          _hovered ? FontWeight.w700 : FontWeight.w500,
                       height: 1.2,
                     ),
                   ),

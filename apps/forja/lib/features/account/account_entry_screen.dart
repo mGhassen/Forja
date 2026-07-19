@@ -30,10 +30,13 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _mfaController = TextEditingController();
   bool _obscurePassword = true;
   bool _busy = false;
   bool _webBusy = false;
   bool _passkeyBusy = false;
+  bool _mfaBusy = false;
+  String? _mfaFactorId;
   String? _message;
   bool _messageIsError = false;
   int _wordIndex = 0;
@@ -72,7 +75,70 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     _enter.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _mfaController.dispose();
     super.dispose();
+  }
+
+  bool get _awaitingMfa => _mfaFactorId != null;
+
+  Future<void> _finishAuthenticated() async {
+    if (SyncService.instance.requiresMfaChallenge()) {
+      final factors = SyncService.instance.listTotpFactors();
+      if (factors.isEmpty) {
+        setState(() {
+          _message =
+              'Authenticator required. Finish MFA on the web portal, then use Web login.';
+          _messageIsError = true;
+        });
+        return;
+      }
+      setState(() {
+        _mfaFactorId = factors.first.id;
+        _message = 'Enter the 6-digit code from your authenticator app.';
+        _messageIsError = false;
+      });
+      return;
+    }
+    widget.onAuthenticated();
+  }
+
+  Future<void> _submitMfa() async {
+    final factorId = _mfaFactorId;
+    final code = _mfaController.text.trim();
+    if (factorId == null || code.length < 6) {
+      setState(() {
+        _message = 'Enter the 6-digit authenticator code.';
+        _messageIsError = true;
+      });
+      return;
+    }
+    setState(() {
+      _mfaBusy = true;
+      _message = null;
+    });
+    try {
+      await SyncService.instance.verifyMfaTotp(factorId: factorId, code: code);
+      if (!mounted) return;
+      setState(() {
+        _mfaFactorId = null;
+        _mfaController.clear();
+      });
+      widget.onAuthenticated();
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _message = error.message;
+        _messageIsError = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _message = 'Could not verify the code. Try again.';
+        _messageIsError = true;
+      });
+    } finally {
+      if (mounted) setState(() => _mfaBusy = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -113,7 +179,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         });
         return;
       }
-      widget.onAuthenticated();
+      await _finishAuthenticated();
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -163,7 +229,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         });
         return;
       }
-      widget.onAuthenticated();
+      await _finishAuthenticated();
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -208,7 +274,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         });
         return;
       }
-      widget.onAuthenticated();
+      await _finishAuthenticated();
     } on AuthException catch (error) {
       if (!mounted) return;
       final cancelled = error.message == 'Web login cancelled.';
@@ -255,8 +321,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   /// Password auth locks the form. Web login only locks email/password submit
   /// so Cancel / guest stay available if the browser never returns.
-  bool get _formLocked => _busy || _webBusy || _passkeyBusy;
-  bool get _passwordLocked => _busy || _passkeyBusy;
+  bool get _formLocked => _busy || _webBusy || _passkeyBusy || _mfaBusy;
+  bool get _passwordLocked => _busy || _passkeyBusy || _mfaBusy;
   bool get _captchaReady =>
       !ForjaCaptcha.isConfigured ||
       (_captchaToken != null && _captchaToken!.isNotEmpty);
@@ -430,7 +496,9 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Use your Forja account, or open the browser to sign in on the web.',
+                  _awaitingMfa
+                      ? 'Enter the code from your authenticator app to finish sign-in.'
+                      : 'Use your Forja account, or open the browser to sign in on the web.',
                   style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textSecondary,
                     fontSize: 14,
@@ -438,56 +506,69 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   ),
                 ),
                 const SizedBox(height: 32),
-                _HairlineField(
-                  controller: _emailController,
-                  enabled: !_formLocked,
-                  label: 'Email',
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.email],
-                  prefix: Icons.alternate_email_rounded,
-                ),
-                const SizedBox(height: 18),
-                _HairlineField(
-                  controller: _passwordController,
-                  enabled: !_formLocked,
-                  label: 'Password',
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  prefix: Icons.lock_outline_rounded,
-                  onSubmitted: (_) => _submit(),
-                  suffix: IconButton(
-                    tooltip: _obscurePassword
-                        ? 'Show password'
-                        : 'Hide password',
-                    onPressed: _formLocked
-                        ? null
-                        : () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: ForjaShellColors.textSecondary,
-                    ),
+                if (_awaitingMfa) ...[
+                  _HairlineField(
+                    controller: _mfaController,
+                    enabled: !_mfaBusy,
+                    label: 'Authenticator code',
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.oneTimeCode],
+                    prefix: Icons.phonelink_lock_rounded,
+                    onSubmitted: (_) => _submitMfa(),
                   ),
-                ),
-                if (ForjaCaptcha.isConfigured)
-                  IgnorePointer(
-                    ignoring: _formLocked,
-                    child: Opacity(
-                      opacity: _formLocked ? 0.55 : 1,
-                      child: TurnstileCaptcha(
-                        key: ValueKey(_captchaKey),
-                        onToken: (token) {
-                          if (!mounted) return;
-                          setState(() => _captchaToken = token);
-                        },
+                ] else ...[
+                  _HairlineField(
+                    controller: _emailController,
+                    enabled: !_formLocked,
+                    label: 'Email',
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.email],
+                    prefix: Icons.alternate_email_rounded,
+                  ),
+                  const SizedBox(height: 18),
+                  _HairlineField(
+                    controller: _passwordController,
+                    enabled: !_formLocked,
+                    label: 'Password',
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    prefix: Icons.lock_outline_rounded,
+                    onSubmitted: (_) => _submit(),
+                    suffix: IconButton(
+                      tooltip: _obscurePassword
+                          ? 'Show password'
+                          : 'Hide password',
+                      onPressed: _formLocked
+                          ? null
+                          : () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: ForjaShellColors.textSecondary,
                       ),
                     ),
                   ),
+                  if (ForjaCaptcha.isConfigured)
+                    IgnorePointer(
+                      ignoring: _formLocked,
+                      child: Opacity(
+                        opacity: _formLocked ? 0.55 : 1,
+                        child: TurnstileCaptcha(
+                          key: ValueKey(_captchaKey),
+                          onToken: (token) {
+                            if (!mounted) return;
+                            setState(() => _captchaToken = token);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
                 if (_message != null) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -502,63 +583,89 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   ),
                 ],
                 const SizedBox(height: 28),
-                SizedBox(
-                  height: 52,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _canSubmitPassword ? _submit : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: ForjaShellColors.brandGreen,
-                            foregroundColor: Colors.black,
-                            disabledBackgroundColor: ForjaShellColors
-                                .brandGreen
-                                .withValues(alpha: 0.35),
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.zero,
+                if (_awaitingMfa)
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: _mfaBusy ? null : _submitMfa,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: ForjaShellColors.brandGreen,
+                        foregroundColor: Colors.black,
+                        disabledBackgroundColor: ForjaShellColors.brandGreen
+                            .withValues(alpha: 0.35),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _mfaBusy ? 'Verifying…' : 'Verify code',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 52,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _canSubmitPassword ? _submit : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: ForjaShellColors.brandGreen,
+                              foregroundColor: Colors.black,
+                              disabledBackgroundColor: ForjaShellColors
+                                  .brandGreen
+                                  .withValues(alpha: 0.35),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero,
+                              ),
+                              elevation: 0,
                             ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            _busy ? 'Connecting…' : 'Sign in',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              letterSpacing: 0.2,
+                            child: Text(
+                              _busy ? 'Connecting…' : 'Sign in',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      if (ForjaPasskeys.supported) ...[
+                        if (ForjaPasskeys.supported) ...[
+                          const SizedBox(width: 8),
+                          _AuthIconButton(
+                            tooltip: _passkeyBusy
+                                ? 'Waiting for passkey…'
+                                : 'Sign in with passkey',
+                            icon: _passkeyBusy
+                                ? Icons.hourglass_top_rounded
+                                : Icons.fingerprint_rounded,
+                            onPressed:
+                                _canSubmitPasskey ? _passkeyLogin : null,
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         _AuthIconButton(
-                          tooltip: _passkeyBusy
-                              ? 'Waiting for passkey…'
-                              : 'Sign in with passkey',
-                          icon: _passkeyBusy
-                              ? Icons.hourglass_top_rounded
-                              : Icons.fingerprint_rounded,
-                          onPressed:
-                              _canSubmitPasskey ? _passkeyLogin : null,
+                          tooltip: _webBusy
+                              ? 'Cancel web login'
+                              : 'Web login',
+                          icon: _webBusy
+                              ? Icons.close_rounded
+                              : Icons.language_rounded,
+                          onPressed: _passwordLocked
+                              ? null
+                              : (_webBusy ? _cancelWebLogin : _webLogin),
                         ),
                       ],
-                      const SizedBox(width: 8),
-                      _AuthIconButton(
-                        tooltip: _webBusy
-                            ? 'Cancel web login'
-                            : 'Web login',
-                        icon: _webBusy
-                            ? Icons.close_rounded
-                            : Icons.language_rounded,
-                        onPressed: _passwordLocked
-                            ? null
-                            : (_webBusy ? _cancelWebLogin : _webLogin),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 22),
                 Align(
                   alignment: Alignment.centerLeft,

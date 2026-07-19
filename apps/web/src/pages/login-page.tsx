@@ -21,6 +21,12 @@ import {
   AUTH_UNAVAILABLE_MESSAGE,
   CAPTCHA_REQUIRED_MESSAGE,
 } from '@/hooks/use-auth'
+import {
+  authConfig,
+  oauthEnabled,
+  oauthProviderLabel,
+  type OAuthProviderId,
+} from '@/lib/auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
   consumeDesktopHandoffDone,
@@ -38,11 +44,13 @@ function LoginForm() {
   const {
     signIn,
     signInWithPasskey,
+    signInWithOAuth,
     session,
     user,
     loading,
     configured,
     isPasswordRecovery,
+    requiresMfa,
   } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -51,6 +59,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [passkeySubmitting, setPasskeySubmitting] = useState(false)
+  const [oauthBusy, setOauthBusy] = useState(false)
   // First paint must match SSR — no window/sessionStorage in useState.
   const [desktopHandoff, setDesktopHandoff] = useState(false)
   const [handoffBusy, setHandoffBusy] = useState(false)
@@ -72,6 +81,8 @@ function LoginForm() {
     if (isSafeDesktopCallback(params.callback)) {
       lockDesktopHandoff()
     }
+    const err = new URLSearchParams(window.location.search).get('error')
+    if (err) setError(err)
   }, [])
 
   const onCaptchaToken = useCallback((token: string | null) => {
@@ -130,6 +141,10 @@ function LoginForm() {
       void navigate({ to: '/reset-password', replace: true })
       return
     }
+    if (authConfig.mfaTotp && requiresMfa) {
+      void navigate({ to: '/login/mfa', replace: true })
+      return
+    }
     if (isDesktopLogin && session?.access_token && session.refresh_token) {
       if (autoHandoffTried.current) return
       autoHandoffTried.current = true
@@ -145,6 +160,7 @@ function LoginForm() {
     user,
     session,
     isPasswordRecovery,
+    requiresMfa,
     isDesktopLogin,
     handoffToDesktop,
     navigate,
@@ -160,13 +176,20 @@ function LoginForm() {
     }
 
     setSubmitting(true)
-    const { error: signInError } = await signIn(email.trim(), password, {
-      captchaToken: captchaToken ?? undefined,
-    })
+    const { error: signInError, needsMfa } = await signIn(
+      email.trim(),
+      password,
+      { captchaToken: captchaToken ?? undefined },
+    )
     if (signInError) {
       setSubmitting(false)
       setError(signInError)
       resetCaptcha()
+      return
+    }
+    if (needsMfa) {
+      setSubmitting(false)
+      void navigate({ to: '/login/mfa', replace: true })
       return
     }
 
@@ -199,13 +222,18 @@ function LoginForm() {
     }
 
     setPasskeySubmitting(true)
-    const { error: passkeyError } = await signInWithPasskey({
+    const { error: passkeyError, needsMfa } = await signInWithPasskey({
       captchaToken: captchaToken ?? undefined,
     })
     if (passkeyError) {
       setPasskeySubmitting(false)
       setError(passkeyError)
       resetCaptcha()
+      return
+    }
+    if (needsMfa) {
+      setPasskeySubmitting(false)
+      void navigate({ to: '/login/mfa', replace: true })
       return
     }
 
@@ -229,6 +257,17 @@ function LoginForm() {
     void navigate({ to: '/account/profiles' })
   }
 
+  async function onOAuth(provider: OAuthProviderId) {
+    setError(null)
+    rememberDesktopAuthParams()
+    setOauthBusy(true)
+    const { error: oauthError } = await signInWithOAuth(provider)
+    if (oauthError) {
+      setOauthBusy(false)
+      setError(oauthError)
+    }
+  }
+
   async function onReturnToForja() {
     setError(null)
     const { data } = await supabase.auth.getSession()
@@ -240,9 +279,10 @@ function LoginForm() {
     await handoffToDesktop(next.access_token, next.refresh_token)
   }
 
-  const authBusy = submitting || passkeySubmitting || handoffBusy
+  const authBusy =
+    submitting || passkeySubmitting || handoffBusy || oauthBusy
   const showReturnButton =
-    isDesktopLogin && !!user && !desktopHandoff && !loading
+    isDesktopLogin && !!user && !desktopHandoff && !loading && !requiresMfa
 
   if (desktopHandoff) {
     return <DesktopAuthDone />
@@ -390,6 +430,30 @@ function LoginForm() {
                 </Link>
               )}
             </form>
+
+            {configured && oauthEnabled() && !showReturnButton ? (
+              <div className="mt-6 space-y-3 border-t border-[rgba(237,230,218,0.1)] pt-6">
+                <p className="text-center font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
+                  Or continue with
+                </p>
+                <div className="flex flex-col gap-2">
+                  {authConfig.oauthProviders.map((provider) => (
+                    <Button
+                      key={provider}
+                      type="button"
+                      variant="outline"
+                      disabled={authBusy || loading}
+                      onClick={() => void onOAuth(provider)}
+                      className="h-11 w-full rounded-full border-[rgba(237,230,218,0.22)] font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    >
+                      {oauthBusy
+                        ? 'Redirecting…'
+                        : oauthProviderLabel(provider)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
               <p className="text-center text-sm text-[rgba(237,230,218,0.45)]">

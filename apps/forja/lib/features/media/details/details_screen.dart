@@ -160,8 +160,9 @@ class _DetailsScreenState extends State<DetailsScreen>
   List<NuvioAddon> _nuvioAddons = [];
 
   /// Enabled Nuvio scraper ids currently included in the results filter.
-  /// Starts empty — user picks scrapers from the provider chips under Nuvio.
+  /// Hydrated once from device KV (`nuvio_sources_selected_scrapers_v1`).
   Set<String> _nuvioSelectedScraperIds = {};
+  bool _nuvioSelectionHydrated = false;
 
   // Direct webstreaming providers (videasy, webstreamr, …) — no global mode toggle.
   final Map<String, dynamic> _webstreamingProviders = {
@@ -484,7 +485,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _userPickedStremioProvider = false;
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
-    _nuvioSelectedScraperIds = {};
+    // Keep scraper chip selection — persisted preference, not per-title.
     _errorMessage = null;
   }
 

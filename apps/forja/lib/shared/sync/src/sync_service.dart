@@ -47,6 +47,10 @@ class SyncService {
     identityRevision.value++;
   }
 
+  /// Single in-flight refresh (Guepard desktop-boot pattern) so boot/resume/
+  /// focus never rotate the same RT twice in parallel.
+  Future<bool>? _refreshInFlight;
+
   /// Renews tokens so Auth's inactivity timeout (7d) stays reset while in use.
   ///
   /// Debounced unless [force] is true. Returns false when unsigned or refresh
@@ -60,17 +64,70 @@ class SyncService {
         now.difference(_lastRefreshAttempt!) < _refreshDebounce) {
       return true;
     }
-    _lastRefreshAttempt = now;
-    try {
-      final response = await client.auth.refreshSession();
-      return response.session != null;
-    } on AuthException catch (e) {
-      debugPrint('[Sync] refreshSession failed: ${e.message}');
-      return false;
-    } catch (e) {
-      debugPrint('[Sync] refreshSession failed: $e');
-      return false;
+    final inflight = _refreshInFlight;
+    if (inflight != null) return inflight;
+
+    late final Future<bool> run;
+    run = () async {
+      _lastRefreshAttempt = DateTime.now();
+      try {
+        final response = await client.auth.refreshSession();
+        return response.session != null;
+      } on AuthException catch (e) {
+        debugPrint('[Sync] refreshSession failed: ${e.message}');
+        return false;
+      } catch (e) {
+        debugPrint('[Sync] refreshSession failed: $e');
+        return false;
+      } finally {
+        if (identical(_refreshInFlight, run)) {
+          _refreshInFlight = null;
+        }
+      }
+    }();
+    _refreshInFlight = run;
+    return run;
+  }
+
+  /// True when MFA is enrolled but this session is still AAL1.
+  bool requiresMfaChallenge() {
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null || client.auth.currentSession == null) return false;
+    final level = client.auth.mfa.getAuthenticatorAssuranceLevel();
+    return level.nextLevel == AuthenticatorAssuranceLevels.aal2 &&
+        level.currentLevel != AuthenticatorAssuranceLevels.aal2;
+  }
+
+  /// Verified TOTP factors from the current user JWT (no refresh — avoids RT race).
+  List<Factor> listTotpFactors() {
+    final client = ForjaSupabase.clientOrNull;
+    final factors = client?.auth.currentUser?.factors ?? const <Factor>[];
+    return factors
+        .where(
+          (f) =>
+              f.factorType == FactorType.totp &&
+              f.status == FactorStatus.verified,
+        )
+        .toList();
+  }
+
+  Future<AuthResponse> verifyMfaTotp({
+    required String factorId,
+    required String code,
+  }) async {
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) {
+      throw const AuthException('Supabase is not configured for this build.');
     }
+    await client.auth.mfa.challengeAndVerify(
+      factorId: factorId,
+      code: code.trim(),
+    );
+    _notifyIdentityChanged();
+    return AuthResponse(
+      session: client.auth.currentSession,
+      user: client.auth.currentUser,
+    );
   }
 
   Future<AuthResponse> signInWithPassword({

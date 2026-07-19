@@ -119,6 +119,20 @@ String? nextNuvioScraperId({
   return null;
 }
 
+/// Enabled scraper ids from Sources-panel addons (order not significant).
+Set<String> enabledNuvioScraperIds(Iterable<NuvioAddon> addons) => {
+  for (final addon in addons)
+    for (final scraper in addon.scrapers)
+      if (scraper.enabled) scraper.id,
+};
+
+/// Drop stale saved ids that are no longer enabled / installed.
+Set<String> filterNuvioSelectedScraperIds({
+  required Iterable<String> savedIds,
+  required Set<String> enabledIds,
+}) =>
+    {for (final id in savedIds) if (enabledIds.contains(id)) id};
+
 class NuvioStreamResult {
   final String name; // provider display name (e.g. "SFlix (Global)")
   final String title; // verbose title (e.g. "SFlix - 1080p")
@@ -162,6 +176,8 @@ class NuvioService {
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
   static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
+  /// Sources → Nuvio chip selection (device KV, same store as addons).
+  static const String _sourcesSelectedKey = 'nuvio_sources_selected_scrapers_v1';
 
   /// Manifest URLs that ship with the app. Persisted like any other addon so
   /// Settings and Sources share one list (scrapers toggleable / not ghosted).
@@ -251,6 +267,27 @@ class NuvioService {
   Future<List<NuvioAddon>> listSourcesPanelAddons() async {
     final addons = await listScrapingAddons();
     return addons.where((a) => a.scrapers.any((s) => s.enabled)).toList();
+  }
+
+  /// Persisted Sources → Nuvio scraper chip selection (device profile KV).
+  Future<Set<String>> loadSourcesSelectedScraperIds({
+    required Set<String> enabledIds,
+  }) async {
+    await _ensureAddonsInKv();
+    final saved = await kvGetStringList(
+      _sourcesSelectedKey,
+      fallback: const [],
+    );
+    return filterNuvioSelectedScraperIds(
+      savedIds: saved,
+      enabledIds: enabledIds,
+    );
+  }
+
+  Future<void> saveSourcesSelectedScraperIds(Set<String> ids) async {
+    await _ensureAddonsInKv();
+    final sorted = ids.toList()..sort();
+    await kvSetStringList(_sourcesSelectedKey, sorted);
   }
 
   /// Offline fallback when [ensureBundledInstalled] cannot reach the network.

@@ -94,6 +94,8 @@ class PlayerPopupPanel {
     EdgeInsets screenPadding = const EdgeInsets.all(8),
     VoidCallback? onBack,
     bool centered = false,
+    /// When false, omit title / close chrome (barrier tap still dismisses).
+    bool showHeader = true,
     /// Override panel fill (default [PlayerPopupTokens.shellBg]).
     Color? shellBg,
   }) {
@@ -186,6 +188,7 @@ class PlayerPopupPanel {
                     leadingIcon: leadingIcon,
                     trailing: trailing,
                     shellBg: shellBg,
+                    showHeader: showHeader,
                     onBack: onBack == null
                         ? null
                         : () {
@@ -398,6 +401,7 @@ class _PanelShell extends StatelessWidget {
     this.trailing,
     this.onBack,
     this.onClose,
+    this.showHeader = true,
     this.shellBg,
   });
 
@@ -407,6 +411,7 @@ class _PanelShell extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onBack;
   final VoidCallback? onClose;
+  final bool showHeader;
   final Color? shellBg;
 
   @override
@@ -421,56 +426,61 @@ class _PanelShell extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
-            child: Row(
-              children: [
-                if (onBack != null)
-                  ShellBackIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    size: 18,
-                    tooltip: 'Back',
-                    onTap: onBack,
-                  )
-                else if (leadingIcon != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, right: 6),
-                    child: Icon(
-                      leadingIcon,
-                      color: PlayerPopupTokens.muted,
-                      size: 16,
-                    ),
-                  )
-                else
-                  const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.15,
+          if (showHeader) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
+              child: Row(
+                children: [
+                  if (onBack != null)
+                    ShellBackIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      size: 18,
+                      tooltip: 'Back',
+                      onTap: onBack,
+                    )
+                  else if (leadingIcon != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 6),
+                      child: Icon(
+                        leadingIcon,
+                        color: PlayerPopupTokens.muted,
+                        size: 16,
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.15,
+                      ),
                     ),
                   ),
-                ),
-                if (trailing != null) ...[trailing!, const SizedBox(width: 4)],
-                _PopupChromeButton(
-                  icon: Icons.close_rounded,
-                  tooltip: 'Close',
-                  onTap: onClose,
-                ),
-              ],
+                  if (trailing != null) ...[
+                    trailing!,
+                    const SizedBox(width: 4),
+                  ],
+                  _PopupChromeButton(
+                    icon: Icons.close_rounded,
+                    tooltip: 'Close',
+                    onTap: onClose,
+                  ),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Divider(
-              height: 1,
-              thickness: 0.5,
-              color: PlayerPopupTokens.border,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Divider(
+                height: 1,
+                thickness: 0.5,
+                color: PlayerPopupTokens.border,
+              ),
             ),
-          ),
+          ],
           Flexible(child: _TvPopupListFocusScope(child: child)),
         ],
       ),
