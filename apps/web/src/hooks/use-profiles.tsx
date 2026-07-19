@@ -50,6 +50,22 @@ function storageKey(userId: string) {
   return `forja.active-profile.${userId}`
 }
 
+/** Prefer in-memory selection, then localStorage — never invent profiles[0] first. */
+function resolveActiveProfileId(
+  userId: string | undefined,
+  profiles: Profile[],
+  stateId: string | null,
+): string | null {
+  if (!userId || profiles.length === 0) return null
+  if (stateId && profiles.some((profile) => profile.id === stateId)) {
+    return stateId
+  }
+  if (typeof window === 'undefined') return null
+  const saved = window.localStorage.getItem(storageKey(userId))
+  if (saved && profiles.some((profile) => profile.id === saved)) return saved
+  return profiles[0]?.id ?? null
+}
+
 export function ProfilesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -70,21 +86,21 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   })
 
   const profiles = profilesQuery.data ?? []
+  const resolvedActiveProfileId = resolveActiveProfileId(
+    user?.id,
+    profiles,
+    activeProfileId,
+  )
 
   useEffect(() => {
     if (!user) {
       setActiveProfileId(null)
       return
     }
-    if (profiles.length === 0) return
-
-    const saved = window.localStorage.getItem(storageKey(user.id))
-    const next =
-      (saved && profiles.some((profile) => profile.id === saved) && saved) ||
-      profiles[0]!.id
-    setActiveProfileId(next)
-    window.localStorage.setItem(storageKey(user.id), next)
-  }, [profiles, user])
+    if (!resolvedActiveProfileId) return
+    setActiveProfileId(resolvedActiveProfileId)
+    window.localStorage.setItem(storageKey(user.id), resolvedActiveProfileId)
+  }, [resolvedActiveProfileId, user])
 
   const selectProfile = (profileId: string) => {
     if (!user || !profiles.some((profile) => profile.id === profileId)) return
@@ -190,15 +206,19 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   })
 
   const activeProfile =
-    profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0] ?? null
+    profiles.find((profile) => profile.id === resolvedActiveProfileId) ?? null
 
   const canAddProfile = profiles.length < MAX_PROFILES_PER_ACCOUNT
+  // Profiles list ready but active id not resolved yet → still loading (no leak).
+  const loading =
+    profilesQuery.isLoading ||
+    (Boolean(user?.id) && profiles.length > 0 && activeProfile == null)
 
   const value = useMemo<ProfilesContextValue>(
     () => ({
       profiles,
       activeProfile,
-      loading: profilesQuery.isLoading,
+      loading,
       error:
         profilesQuery.error instanceof Error
           ? profilesQuery.error
@@ -223,7 +243,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
       profiles,
       activeProfile,
       canAddProfile,
-      profilesQuery.isLoading,
+      loading,
       profilesQuery.error,
       createMutation.mutateAsync,
       createMutation.isPending,

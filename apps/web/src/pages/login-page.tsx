@@ -23,9 +23,11 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
-  clearDesktopAuthParams,
+  consumeDesktopHandoffDone,
   handoffSessionToDesktop,
   isSafeDesktopCallback,
+  lockDesktopHandoff,
+  releasePortalSessionToDesktop,
   rememberDesktopAuthParams,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
@@ -49,18 +51,27 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [passkeySubmitting, setPasskeySubmitting] = useState(false)
+  // First paint must match SSR — no window/sessionStorage in useState.
   const [desktopHandoff, setDesktopHandoff] = useState(false)
   const [handoffBusy, setHandoffBusy] = useState(false)
   const autoHandoffTried = useRef(false)
-
-  const [desktopParams, setDesktopParams] = useState(() =>
-    resolveDesktopAuthParams(),
-  )
+  const [desktopParams, setDesktopParams] = useState<{
+    callback: string | null
+    state: string | null
+  }>({ callback: null, state: null })
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   useEffect(() => {
+    if (consumeDesktopHandoffDone()) {
+      setDesktopHandoff(true)
+      return
+    }
     rememberDesktopAuthParams()
-    setDesktopParams(resolveDesktopAuthParams())
+    const params = resolveDesktopAuthParams()
+    setDesktopParams(params)
+    if (isSafeDesktopCallback(params.callback)) {
+      lockDesktopHandoff()
+    }
   }, [])
 
   const onCaptchaToken = useCallback((token: string | null) => {
@@ -84,6 +95,7 @@ function LoginForm() {
       }
       setHandoffBusy(true)
       setError(null)
+      lockDesktopHandoff()
       const result = await handoffSessionToDesktop({
         callback: params.callback,
         state: params.state,
@@ -104,21 +116,22 @@ function LoginForm() {
         )
         return false
       }
-      clearDesktopAuthParams()
-      setDesktopHandoff(true)
+      // App owns the RT now — drop portal copy without server revoke.
+      releasePortalSessionToDesktop()
       return true
     },
     [],
   )
 
   useEffect(() => {
+    if (desktopHandoff) return
     if (loading || !user) return
     if (isPasswordRecovery) {
       void navigate({ to: '/reset-password', replace: true })
       return
     }
     if (isDesktopLogin && session?.access_token && session.refresh_token) {
-      if (desktopHandoff || autoHandoffTried.current) return
+      if (autoHandoffTried.current) return
       autoHandoffTried.current = true
       void handoffToDesktop(session.access_token, session.refresh_token)
       return
@@ -127,12 +140,12 @@ function LoginForm() {
       void navigate({ to: '/account/profiles' })
     }
   }, [
+    desktopHandoff,
     loading,
     user,
     session,
     isPasswordRecovery,
     isDesktopLogin,
-    desktopHandoff,
     handoffToDesktop,
     navigate,
   ])

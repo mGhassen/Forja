@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
@@ -34,24 +33,16 @@ class SeekBarWithPreview extends StatefulWidget {
 }
 
 class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
-  bool _isDragging = false;
   bool _hovering = false;
-  double _dragFrac = 0;
   double _hoverFrac = 0;
   double _trackWidth = 0;
   Uint8List? _previewBytes;
   Timer? _previewDebounce;
   int _previewToken = 0;
-  int? _activePointer;
-  Offset? _downGlobal;
-  bool _movedEnoughToScrub = false;
-  bool _globalRouteAttached = false;
-  bool _overlayClearScheduled = false;
 
   double get _playFrac {
     final total = widget.duration.inMilliseconds.toDouble();
     if (total <= 0) return 0;
-    if (_isDragging) return _dragFrac;
     return (widget.position.inMilliseconds / total).clamp(0.0, 1.0);
   }
 
@@ -66,13 +57,10 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     return Duration(milliseconds: (_hoverFrac * total).round());
   }
 
-  bool get _scrubLive =>
-      _isDragging || _hovering || _activePointer != null;
-
   @override
   void initState() {
     super.initState();
-    playerChromeRegisterSeekScrubCancel(_cancelScrubFromOverlay);
+    playerChromeRegisterSeekScrubCancel(_clearHover);
   }
 
   @override
@@ -80,31 +68,19 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     _previewToken++;
     _previewDebounce?.cancel();
     _previewDebounce = null;
-    playerChromeUnregisterSeekScrubCancel(_cancelScrubFromOverlay);
-    _detachGlobalPointerRoute();
+    playerChromeUnregisterSeekScrubCancel(_clearHover);
     super.dispose();
   }
 
-  /// Menus open above the bar and would keep the thumb magnetized — drop scrub.
-  void _cancelScrubFromOverlay() {
+  void _clearHover() {
+    _previewDebounce?.cancel();
+    _previewDebounce = null;
+    _previewToken++;
     if (!mounted) return;
-    if (!_scrubLive) return;
-    _endScrub(commit: false, clearHover: true);
-  }
-
-  void _scheduleOverlayClearIfNeeded() {
-    if (!playerChromeOverlayBlocksSeek() || !_scrubLive) {
-      _overlayClearScheduled = false;
-      return;
-    }
-    if (_overlayClearScheduled) return;
-    _overlayClearScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _overlayClearScheduled = false;
-      if (!mounted) return;
-      if (playerChromeOverlayBlocksSeek() && _scrubLive) {
-        _endScrub(commit: false, clearHover: true);
-      }
+    if (!_hovering && _previewBytes == null) return;
+    setState(() {
+      _hovering = false;
+      _previewBytes = null;
     });
   }
 
@@ -113,9 +89,9 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     if (widget.captureFrame == null) return;
     final token = ++_previewToken;
     _previewDebounce = Timer(const Duration(milliseconds: 200), () async {
-      if (!mounted || token != _previewToken) return;
+      if (!mounted || token != _previewToken || !_hovering) return;
       final bytes = await widget.captureFrame!(_hoverTime);
-      if (!mounted || token != _previewToken) return;
+      if (!mounted || token != _previewToken || !_hovering) return;
       setState(() => _previewBytes = bytes);
     });
   }
@@ -125,174 +101,18 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
     return (dx / _trackWidth).clamp(0.0, 1.0);
   }
 
-  double _fracFromGlobal(Offset global) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return _dragFrac;
-    return _fracFromLocal(box.globalToLocal(global).dx);
-  }
-
-  /// Global scrub follows cursor X anywhere; keep a tight vertical leash so
-  /// moving onto Quality / Settings (under the bar) does not magnetize the thumb.
-  bool _pointerWithinScrubLeash(Offset global) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return false;
-    final local = box.globalToLocal(global);
-    const xPad = 24.0;
-    const yPad = 12.0;
-    return local.dx >= -xPad &&
-        local.dx <= box.size.width + xPad &&
-        local.dy >= -yPad &&
-        local.dy <= box.size.height + yPad;
-  }
-
-  void _attachGlobalPointerRoute() {
-    if (_globalRouteAttached) return;
-    GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
-    _globalRouteAttached = true;
-  }
-
-  void _detachGlobalPointerRoute() {
-    if (!_globalRouteAttached) return;
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
-    _globalRouteAttached = false;
-  }
-
-  /// Keep a global route while hover or press is live so a missed MouseRegion
-  /// exit (center transport / top chrome above the bar) cannot leave the thumb
-  /// magnetized to the cursor.
-  void _syncGlobalPointerRoute() {
-    if (_hovering || _activePointer != null || _isDragging) {
-      _attachGlobalPointerRoute();
-    } else {
-      _detachGlobalPointerRoute();
-    }
-  }
-
-  void _onGlobalPointer(PointerEvent event) {
-    if (!mounted) {
-      _detachGlobalPointerRoute();
-      return;
-    }
-
-    // Hover-only: enforce the same leash so the thumb cannot follow the cursor
-    // over center play / ±10 or the top bar after onExit is skipped.
-    final pointer = _activePointer;
-    if (pointer == null) {
-      if (!_hovering) return;
-      if (event is! PointerHoverEvent && event is! PointerMoveEvent) return;
-      if (playerChromeOverlayBlocksSeek() ||
-          !_pointerWithinScrubLeash(event.position)) {
-        _endScrub(commit: false, clearHover: true);
-      }
-      return;
-    }
-    if (event.pointer != pointer) return;
-
-    // Source / Audio / etc. overlays steal the cursor — release scrub so the
-    // thumb does not stay magnetized to the pointer over the menu.
-    if (playerChromeOverlayBlocksSeek()) {
-      _endScrub(commit: false, clearHover: true);
-      return;
-    }
-
-    if (event is PointerMoveEvent) {
-      // Quality / Settings sit under the right end of the bar — leave the track
-      // (or press-and-slide onto those icons) must drop capture immediately.
-      if (!_pointerWithinScrubLeash(event.position)) {
-        _endScrub(commit: false, clearHover: true);
-        return;
-      }
-      final down = _downGlobal;
-      if (!_movedEnoughToScrub && down != null) {
-        final dist = (event.position - down).distance;
-        if (dist < kTouchSlop) return;
-        _movedEnoughToScrub = true;
-        if (!_isDragging) {
-          widget.onDragStart?.call();
-          if (!mounted) return;
-          setState(() {
-            _isDragging = true;
-            _dragFrac = _fracFromGlobal(event.position);
-            _hoverFrac = _dragFrac;
-          });
-          _schedulePreview();
-        }
-      }
-      if (!_isDragging) return;
-      if (!mounted) return;
-      setState(() {
-        _dragFrac = _fracFromGlobal(event.position);
-        _hoverFrac = _dragFrac;
-      });
-      _schedulePreview();
-      return;
-    }
-
-    if (event is PointerUpEvent || event is PointerCancelEvent) {
-      final commit = event is PointerUpEvent &&
-          (_isDragging || !_movedEnoughToScrub);
-      // Tap (no drag): seek to press position. Drag: seek to final frac.
-      if (commit && !playerChromeOverlayBlocksSeek()) {
-        final total = widget.duration.inMilliseconds.toDouble();
-        final frac = _isDragging
-            ? _dragFrac
-            : _fracFromGlobal(event.position);
-        widget.onSeek(Duration(milliseconds: (frac * total).round()));
-      }
-      // If the release is outside the track, drop hover — otherwise a drag that
-      // ended over center/top chrome leaves the thumb stuck to the cursor.
-      final clearHover = event is PointerCancelEvent ||
-          !_pointerWithinScrubLeash(event.position);
-      _endScrub(commit: false, clearHover: clearHover);
-    }
-  }
-
-  void _endScrub({required bool commit, required bool clearHover}) {
-    final wasDragging = _isDragging;
-    _activePointer = null;
-    _downGlobal = null;
-    _movedEnoughToScrub = false;
-    if (wasDragging) {
-      if (commit && !playerChromeOverlayBlocksSeek()) {
-        final total = widget.duration.inMilliseconds.toDouble();
-        widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
-      }
-      try {
-        widget.onDragEnd?.call();
-      } catch (_) {}
-    }
-    if (!mounted) {
-      _detachGlobalPointerRoute();
-      return;
-    }
-    setState(() {
-      _isDragging = false;
-      if (clearHover) {
-        _hovering = false;
-        _previewBytes = null;
-      }
-    });
-    _syncGlobalPointerRoute();
-  }
-
-  void _onPointerDown(PointerDownEvent event) {
+  void _seekAtLocalDx(double dx) {
     if (playerChromeOverlayBlocksSeek()) return;
-    if (event.buttons != kPrimaryButton && event.buttons != 0) return;
-    _activePointer = event.pointer;
-    _downGlobal = event.position;
-    _movedEnoughToScrub = false;
-    setState(() {
-      _hoverFrac = _fracFromLocal(event.localPosition.dx);
-      _dragFrac = _hoverFrac;
-    });
-    _syncGlobalPointerRoute();
+    final total = widget.duration.inMilliseconds.toDouble();
+    if (total <= 0) return;
+    final frac = _fracFromLocal(dx);
+    widget.onDragStart?.call();
+    widget.onSeek(Duration(milliseconds: (frac * total).round()));
+    widget.onDragEnd?.call();
   }
 
   @override
   Widget build(BuildContext context) {
-    _scheduleOverlayClearIfNeeded();
-    final active = _hovering || _isDragging;
-
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (e) {
@@ -301,41 +121,28 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
           _hovering = true;
           _hoverFrac = _fracFromLocal(e.localPosition.dx);
         });
-        _syncGlobalPointerRoute();
         _schedulePreview();
       },
       onHover: (e) {
-        if (playerChromeOverlayBlocksSeek() || _isDragging) return;
+        if (playerChromeOverlayBlocksSeek()) return;
         setState(() => _hoverFrac = _fracFromLocal(e.localPosition.dx));
         _schedulePreview();
       },
-      onExit: (_) {
-        // Always clear hover on leave. Drag updates use the global route; skipping
-        // this left the thumb magnetized after release over center/top chrome.
-        if (_hovering || _previewBytes != null) {
-          setState(() {
-            _hovering = false;
-            _previewBytes = null;
-          });
-        }
-        _syncGlobalPointerRoute();
-      },
-      child: Listener(
+      onExit: (_) => _clearHover(),
+      child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onPointerDown: _onPointerDown,
-        // Fixed hit height — preview paints above via [clipBehavior: Clip.none]
-        // and must not grow this box into the transport / Source button row.
+        onTapDown: (details) => _seekAtLocalDx(details.localPosition.dx),
         child: SizedBox(
           height: 28,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.bottomCenter,
             children: [
-              if (active)
+              if (_hovering)
                 Positioned(
                   bottom: 24,
                   left: (_hoverFrac * _trackWidth - 64)
-                      .clamp(0.0, _trackWidth - 128),
+                      .clamp(0.0, (_trackWidth - 128).clamp(0.0, double.infinity)),
                   child: IgnorePointer(
                     child: _PreviewBubble(
                       time: _hoverTime,
@@ -350,8 +157,8 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       _trackWidth = constraints.maxWidth;
-                      final trackH = active ? 6.0 : 3.0;
-                      final thumbR = active ? 7.0 : 0.0;
+                      final trackH = _hovering ? 6.0 : 3.0;
+                      final thumbR = 6.0;
                       final playPx =
                           (_playFrac * _trackWidth).clamp(0.0, _trackWidth);
                       final hoverPx =
@@ -387,7 +194,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                               ),
                             ),
                           ),
-                          if (active)
+                          if (_hovering)
                             Positioned(
                               left: hoverPx - 1,
                               child: Container(
@@ -397,18 +204,17 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                                     .withValues(alpha: 0.7),
                               ),
                             ),
-                          if (thumbR > 0)
-                            Positioned(
-                              left: playPx - thumbR,
-                              child: Container(
-                                width: thumbR * 2,
-                                height: thumbR * 2,
-                                decoration: const BoxDecoration(
-                                  color: ForjaShellColors.brandGreen,
-                                  shape: BoxShape.circle,
-                                ),
+                          Positioned(
+                            left: playPx - thumbR,
+                            child: Container(
+                              width: thumbR * 2,
+                              height: thumbR * 2,
+                              decoration: const BoxDecoration(
+                                color: ForjaShellColors.brandGreen,
+                                shape: BoxShape.circle,
                               ),
                             ),
+                          ),
                         ],
                       );
                     },

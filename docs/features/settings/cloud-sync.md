@@ -9,7 +9,8 @@ Cloud sync stores settings domain blobs in Supabase under your Forja account. Th
 Each account can have up to **5 profiles**, each with their own avatar. Every
 profile has an independent set of synced settings. The active profile is
 selected separately on each browser or app device, so changing profiles does
-not switch another screen.
+not switch another screen. Opening Profile settings waits until the active
+profile is known — another profile’s settings are never shown first.
 
 ## How to open it
 
@@ -68,14 +69,16 @@ Not synced — device-specific or sensitive:
   when Auth captcha is configured), **Sign in with passkey** on macOS and Windows
   (Touch ID / Windows Hello), or use **Web login** to authenticate in the
   browser (one portal tab; the app finishes when you sign in there — no second
-  localhost page). Already signed in on the portal? The handoff still completes
+  localhost page). After handoff the portal gives the session to the app and
+  signs out of that browser tab (so both sides do not fight over the same
+  refresh token). Already signed in on the portal? The handoff still completes
   (or use **Return to Forja**). After a successful handoff the portal shows a
   short confirmation and tries to close the tab; if the browser keeps it open,
   close it yourself. If Chrome asks to allow local network access to reach the
-  app, allow it. If the portal says Forja received sign-in but could not apply
-  the session, tap **Return to Forja** again or restart **Web login** from the
-  app. If the browser does not open or you change your mind, tap
-  **Cancel web login** (or **Continue without an account**) to unlock the
+  app, allow it. If applying the session fails, tap **Return to Forja** again
+  or restart **Web login** from the app. During handoff the portal does not
+  refresh the session. If the browser does not open or you change your mind,
+  tap **Cancel web login** (or **Continue without an account**) to unlock the
   screen. Create accounts only on the web (`/signup`); the app does not offer
   in-app signup. Web signup and sign-in show a Cloudflare Turnstile check when
   captcha is configured. Web login also offers passkeys. Forgot password is

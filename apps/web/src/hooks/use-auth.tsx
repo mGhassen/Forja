@@ -9,6 +9,10 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import {
+  isDesktopHandoffPending,
+  lockDesktopHandoff,
+} from '@/lib/desktop-auth-callback'
+import {
   isPasswordRecoveryLockActive,
   setPasswordRecoveryLock,
   supabase,
@@ -193,9 +197,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     // Reset Auth inactivity clock (7d) when the tab becomes visible again.
+    // Skip during desktop handoff — rotating the refresh token here races the
+    // app's setSession and yields refresh_token_already_used on both sides.
+    if (isDesktopHandoffPending()) {
+      lockDesktopHandoff()
+    }
     let lastRefresh = 0
     const refreshIfVisible = () => {
       if (!mounted || isPasswordRecoveryLockActive()) return
+      if (isDesktopHandoffPending()) return
       if (document.visibilityState !== 'visible') return
       const now = Date.now()
       if (now - lastRefresh < 30_000) return
@@ -206,7 +216,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     document.addEventListener('visibilitychange', refreshIfVisible)
     window.addEventListener('focus', refreshIfVisible)
-    refreshIfVisible()
+    if (!isDesktopHandoffPending()) {
+      refreshIfVisible()
+    }
 
     return () => {
       mounted = false

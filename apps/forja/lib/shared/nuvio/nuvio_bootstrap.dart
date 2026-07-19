@@ -3,14 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'nuvio_service.dart';
 
-/// Keeps the bundled Nuvio manifest fresh so scrapers are available in the
-/// **Sources** panel (Direct torrent play source).
+/// Ensures the built-in Nuvio manifest is persisted and kept fresh so
+/// Settings and Sources share the same scraper list.
 ///
-/// Call [ensureInstalled] from `main()` (unawaited). Behaviour:
-///   * If the manifest isn't installed yet, install it (lightweight refresh —
-///     scripts are pulled lazily on first use, not pre-downloaded).
-///   * If it IS installed but the last refresh was >24h ago, re-fetch the
-///     manifest so any upstream fixes/new providers flow through.
+/// Call [ensureInstalled] from profile engine warm (unawaited). Behaviour:
+///   * Persist the bundled All-in-One manifest when missing.
+///   * If installed but last refresh was >24h ago, re-fetch the manifest
+///     so upstream fixes/new providers flow through (enabled flags kept).
 ///   * Failures are non-fatal and logged.
 class NuvioBootstrap {
   NuvioBootstrap._();
@@ -27,12 +26,14 @@ class NuvioBootstrap {
     try {
       final prefs = await SharedPreferences.getInstance();
       final svc = NuvioService.instance;
+      await svc.ensureBundledInstalled();
       final addons = await svc.listAddons();
       final installed = addons.any((a) => a.manifestUrl == url);
+      if (!installed) return;
       final lastTs = prefs.getInt(_lastRefreshKey) ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
       final stale = (now - lastTs) > _refreshInterval.inMilliseconds;
-      if (installed && !stale) {
+      if (!stale) {
         debugPrint('[NuvioBootstrap] up-to-date — skipping');
         return;
       }

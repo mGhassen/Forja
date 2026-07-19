@@ -230,80 +230,89 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
           ),
           if (_nuvioAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const _MiniLabel('Installed Nuvio addons'),
+            const _MiniLabel('Nuvio addons'),
             const SizedBox(height: 4),
             ..._nuvioAddons.map(
-              (addon) => Theme(
-                data: Theme.of(
-                  context,
-                ).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                  leading: const Icon(
-                    Icons.code_rounded,
-                    color: ForjaShellColors.iconActive,
-                  ),
-                  title: Text(
-                    addon.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: ForjaShellColors.textPrimary,
+              (addon) {
+                final builtIn = NuvioService.isBundled(addon.manifestUrl);
+                return Theme(
+                  data: Theme.of(
+                    context,
+                  ).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+                    childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                    leading: const Icon(
+                      Icons.code_rounded,
+                      color: ForjaShellColors.iconActive,
                     ),
-                  ),
-                  subtitle: Text(
-                    '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: ForjaShellColors.textSecondary,
-                    ),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Color(0xFFF87171),
-                      size: 20,
-                    ),
-                    onPressed: () => _removeNuvioAddon(addon.manifestUrl),
-                    tooltip: 'Remove addon',
-                  ),
-                  children: addon.scrapers.map((s) {
-                    return SwitchListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      dense: true,
-                      value: s.enabled,
-                      onChanged: (val) async {
-                        await NuvioService.instance.setScraperEnabled(
-                          manifestUrl: addon.manifestUrl,
-                          scraperId: s.id,
-                          enabled: val,
-                        );
-                      },
-                      title: Text(
-                        s.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: ForjaShellColors.textPrimary,
-                        ),
+                    title: Text(
+                      builtIn ? '${addon.name} (Built-in)' : addon.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: ForjaShellColors.textPrimary,
                       ),
-                      subtitle: Text(
-                        [
-                          if (s.description != null && s.description!.isNotEmpty)
-                            s.description!,
-                          if (s.supportedTypes.isNotEmpty)
-                            s.supportedTypes.join(', '),
-                        ].join(' \u00b7 '),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: ForjaShellColors.textSecondary,
-                        ),
+                    ),
+                    subtitle: Text(
+                      '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: ForjaShellColors.textSecondary,
                       ),
-                    );
-                  }).toList(),
-                ),
-              ),
+                    ),
+                    trailing: builtIn
+                        ? null
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Color(0xFFF87171),
+                              size: 20,
+                            ),
+                            onPressed: () =>
+                                _removeNuvioAddon(addon.manifestUrl),
+                            tooltip: 'Remove addon',
+                          ),
+                    children: addon.scrapers.map((s) {
+                      return SwitchListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 8),
+                        dense: true,
+                        value: s.enabled,
+                        onChanged: (val) async {
+                          await NuvioService.instance.setScraperEnabled(
+                            manifestUrl: addon.manifestUrl,
+                            scraperId: s.id,
+                            enabled: val,
+                          );
+                          await _loadNuvioAddons();
+                        },
+                        title: Text(
+                          s.name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: ForjaShellColors.textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (s.description != null &&
+                                s.description!.isNotEmpty)
+                              s.description!,
+                            if (s.supportedTypes.isNotEmpty)
+                              s.supportedTypes.join(', '),
+                          ].join(' \u00b7 '),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: ForjaShellColors.textSecondary,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
             ),
           ],
         ],
@@ -332,10 +341,20 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
   }
 
   Future<void> _removeNuvioAddon(String manifestUrl) async {
-    await NuvioService.instance.remove(manifestUrl);
-    await _loadNuvioAddons();
-    if (!mounted) return;
-    ForjaToast.success('Nuvio addon removed');
+    if (NuvioService.isBundled(manifestUrl)) {
+      if (!mounted) return;
+      ForjaToast.error('Built-in Nuvio addon cannot be removed');
+      return;
+    }
+    try {
+      await NuvioService.instance.remove(manifestUrl);
+      await _loadNuvioAddons();
+      if (!mounted) return;
+      ForjaToast.success('Nuvio addon removed');
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('$e');
+    }
   }
   Widget _buildJackettConfig() {
     return Padding(

@@ -151,7 +151,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
     }
   }
 
-  /// Probes Nuvio addons (installed + bundled virtual) for the Sources panel.
+  /// Probes Nuvio addons (built-in + user installs) for the Sources panel.
   /// Does NOT kick off scraping — that happens when the user picks a scraper.
 
 

@@ -9,9 +9,18 @@
  *
  * Query params are also mirrored to sessionStorage so a header click or
  * client navigation that drops `?desktop_callback=` still completes handoff.
+ *
+ * After a successful handoff the portal drops its local copy of the session
+ * (storage + reload) so only the app keeps the refresh token. Do not call
+ * signOut() — that revokes the RT on the server and kills the app session.
  */
 
+import { supabase } from '@/lib/supabase'
+
 const STORAGE_KEY = 'forja.desktop_auth'
+const HANDOFF_DONE_KEY = 'forja.desktop_auth_done'
+/** Blocks portal refreshSession while we hand the RT to the app / reload. */
+const HANDOFF_LOCK_KEY = 'forja.desktop_auth_lock'
 
 export type DesktopAuthParams = {
   callback: string | null
@@ -87,6 +96,42 @@ export function clearDesktopAuthParams(): void {
   } catch {
     // ignore
   }
+}
+
+function hasHandoffLock(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return (
+      sessionStorage.getItem(HANDOFF_LOCK_KEY) === '1' ||
+      sessionStorage.getItem(HANDOFF_DONE_KEY) === '1'
+    )
+  } catch {
+    return false
+  }
+}
+
+/** Stop portal token rotation for the rest of this handoff / reload. */
+export function lockDesktopHandoff(): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(HANDOFF_LOCK_KEY, '1')
+  } catch {
+    // ignore
+  }
+  try {
+    supabase.auth.stopAutoRefresh()
+  } catch {
+    // ignore
+  }
+}
+
+/** True while a desktop Web-login loopback handoff is in progress. */
+export function isDesktopHandoffPending(
+  search?: string | URLSearchParams,
+): boolean {
+  if (hasHandoffLock()) return true
+  const params = resolveDesktopAuthParams(search)
+  return !!params.callback && isSafeDesktopCallback(params.callback)
 }
 
 /**
@@ -165,6 +210,57 @@ export async function handoffSessionToDesktop(options: {
     return { status: 'rejected' }
   } catch {
     return { status: 'unreachable' }
+  }
+}
+
+/**
+ * After the app has the tokens: drop the portal's local copy without revoking
+ * the server session, then reload so in-memory auth is gone too.
+ *
+ * Keep the handoff lock until after reload so refreshSession cannot race.
+ */
+export function releasePortalSessionToDesktop(): void {
+  if (typeof window === 'undefined') return
+  lockDesktopHandoff()
+  try {
+    sessionStorage.setItem(HANDOFF_DONE_KEY, '1')
+  } catch {
+    // ignore
+  }
+  try {
+    const remove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && /^sb-.*-auth-token$/.test(key)) remove.push(key)
+    }
+    for (const key of remove) localStorage.removeItem(key)
+  } catch {
+    // ignore
+  }
+  // Keep STORAGE_KEY / lock until the done page mounts — clearing them here
+  // re-enables refreshIfVisible against a burned RT.
+  const url = new URL(window.location.href)
+  url.searchParams.delete('desktop_callback')
+  url.searchParams.delete('desktop_state')
+  url.searchParams.delete('access_token')
+  url.searchParams.delete('refresh_token')
+  window.location.replace(url.pathname + url.search + url.hash)
+}
+
+/**
+ * Call from useEffect only (not during render) — avoids SSR hydration mismatch.
+ * Clears the done + lock flags after reading.
+ */
+export function consumeDesktopHandoffDone(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const done = sessionStorage.getItem(HANDOFF_DONE_KEY) === '1'
+    sessionStorage.removeItem(HANDOFF_DONE_KEY)
+    sessionStorage.removeItem(HANDOFF_LOCK_KEY)
+    clearDesktopAuthParams()
+    return done
+  } catch {
+    return false
   }
 }
 

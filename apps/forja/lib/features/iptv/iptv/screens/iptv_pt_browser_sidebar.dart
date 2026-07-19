@@ -116,7 +116,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 }
 
 IconData? _iptvCategoryIcon(String categoryId) {
-  if (categoryId.isEmpty) return Icons.apps_rounded;
   if (categoryId == IptvLiveCatalog.favoritesId) return Icons.star_rounded;
   if (categoryId == IptvLiveCatalog.watchedId) {
     return Icons.history_rounded;

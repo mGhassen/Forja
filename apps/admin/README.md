@@ -25,6 +25,8 @@ npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
 
 Needs `SUPABASE_SERVICE_ROLE_KEY` + Inngest keys (see `.env.example`). Daily cron + event `iptv/catalog.scrape`.
 
+**Production (Vercel):** set `INNGEST_SERVE_ORIGIN=https://admin.forjahq.xyz` so Inngest syncs the custom domain. `*.vercel.app` is Deployment-Protected and returns 401 to Inngest. Or sync manually in Inngest → Apps → `https://admin.forjahq.xyz/api/inngest`.
+
 ## Routes
 
 | Path | Page |

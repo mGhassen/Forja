@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **4 / 4** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **2 / 2** acceptance (session inactivity) · **2 / 5** acceptance (accounts hub slice) |
-| **Current slice** | 7-day Auth inactivity + client refreshSession — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
+| **Progress** | **2 / 3** components · **3 / 4** acceptance (v1.2 slice) · **4 / 5** acceptance (web portal slice) · **8 / 8** acceptance (profiles slice) · **7 / 8** acceptance (desktop account slice) · **6 / 6** acceptance (desktop browser auth) · **3 / 3** acceptance (desktop captcha) · **2 / 2** acceptance (session inactivity) · **2 / 5** acceptance (accounts hub slice) |
+| **Current slice** | Web login handoff: portal drops local session so app alone keeps the RT — accounts hub / global IPTV remains [RFC-036](036-[open]-accounts-iptv-profile-settings.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -86,6 +86,8 @@
 | 2 | R06-A31 | In-app signup removed; create-account CTA opens web `/signup` only | ✅ |
 | 3 | R06-A32 | Web `/login?desktop_callback=…` hands access/refresh tokens back to the desktop app after sign-in | ✅ |
 | 4 | R06-A34 | Web login wait is cancellable — Cancel / guest unlock the desktop sign-in screen if the browser never returns | ✅ |
+| 5 | R06-A40 | After successful loopback handoff, portal drops its local Auth storage (no `signOut` revoke) so only the app keeps the refresh token | ✅ |
+| 6 | R06-A41 | Portal no longer races the app on the same refresh token after Web login handoff | ✅ |
 
 ---
 

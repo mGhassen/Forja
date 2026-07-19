@@ -107,9 +107,14 @@ export function useUserIptvPortals() {
     },
   })
 
+  const profileId = activeProfile?.id ?? null
+  const data = !profileId || query.isPending ? undefined : query.data
+
   return {
     ...query,
-    profileId: activeProfile?.id ?? null,
+    data,
+    isLoading: !profileId || query.isPending || query.isLoading,
+    profileId,
     replaceAll: replaceAll.mutateAsync,
     isSaving: replaceAll.isPending,
     saveError: replaceAll.error,

@@ -24,9 +24,12 @@ export function AccountSettingsStremioPage() {
   }, [profileId])
 
   useEffect(() => {
-    if (!data) return
+    if (!profileId || isLoading || !data) {
+      setDraft(emptyStremioPayload())
+      return
+    }
     setDraft({ addons: data.payload.addons ?? [] })
-  }, [data])
+  }, [profileId, isLoading, data])
 
   const addAddon = () => {
     const baseUrl = url.trim()

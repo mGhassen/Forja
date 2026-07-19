@@ -230,10 +230,10 @@ class SyncService {
 
   /// Applies tokens from [DesktopBrowserAuth] (web portal → localhost callback).
   ///
-  /// Refresh-only on purpose: a non-expired [accessToken] makes gotrue call
-  /// `getUser`, which fails with `session_not_found` when the JWT's session
-  /// row is gone (common for an already-open web tab) even though refresh
-  /// still works.
+  /// Portal hands its session then drops the browser copy so only the app
+  /// keeps the refresh token. Prefer access+refresh so gotrue skips `/token`
+  /// when the JWT is still valid. Fall back to refresh when access is expired
+  /// or `getUser` rejects the JWT (`session_not_found`).
   Future<AuthResponse> signInWithBrowserTokens({
     required String accessToken,
     required String refreshToken,
@@ -246,12 +246,36 @@ class SyncService {
     if (accessToken.isEmpty || refreshToken.isEmpty) {
       throw const AuthException('Web login did not return usable tokens.');
     }
-    final response = await client.auth.setSession(refreshToken);
+
+    AuthResponse response;
+    try {
+      response = await client.auth.setSession(
+        refreshToken,
+        accessToken: accessToken,
+      );
+    } on AuthException catch (e) {
+      if (!_canFallbackBrowserTokenRefresh(e)) rethrow;
+      debugPrint(
+        '[Sync] setSession(access) failed (${e.code ?? e.message}); '
+        'falling back to refresh-only',
+      );
+      response = await client.auth.setSession(refreshToken);
+    }
+
     if (response.session == null) {
       throw const AuthException('Web login did not return a usable session.');
     }
     _notifyIdentityChanged();
     return response;
+  }
+
+  static bool _canFallbackBrowserTokenRefresh(AuthException e) {
+    final code = e.code?.toLowerCase() ?? '';
+    if (code == 'session_not_found' || code == 'session_missing') return true;
+    final msg = e.message.toLowerCase();
+    return msg.contains('session_not_found') ||
+        msg.contains('session from session_id') ||
+        msg.contains('session is missing');
   }
 
   /// Opens the web portal login in the system browser and waits for a session.

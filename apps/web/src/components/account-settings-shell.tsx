@@ -336,9 +336,13 @@ export function AccountSettingsShell({
                   wide ? 'max-w-4xl' : 'max-w-2xl',
                 )}
               >
-                {children}
+                {profilesLoading || !activeProfile ? (
+                  <p className="text-sm text-forja-muted">Loading profile…</p>
+                ) : (
+                  children
+                )}
               </div>
-              {footer ? (
+              {footer && activeProfile && !profilesLoading ? (
                 <div
                   className={cn(
                     'sticky bottom-0 mt-8 bg-forja-bg/95 py-4 backdrop-blur',

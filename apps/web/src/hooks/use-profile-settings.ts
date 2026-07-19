@@ -78,9 +78,15 @@ export function useProfileSettings() {
     },
   })
 
+  const profileId = activeProfile?.id ?? null
+  // Never surface another profile's cached row while this profile is pending.
+  const data = !profileId || query.isPending ? undefined : query.data
+
   return {
     ...query,
-    profileId: activeProfile?.id ?? null,
+    data,
+    isLoading: !profileId || query.isPending || query.isLoading,
+    profileId,
     save: saveMutation.mutateAsync,
     patch: patchMutation.mutateAsync,
     isSaving: saveMutation.isPending || patchMutation.isPending,

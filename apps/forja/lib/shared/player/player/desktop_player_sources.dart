@@ -755,12 +755,10 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     }
   }
 
-  Future<Uint8List?> _captureSeekPreview(Duration position) async {
+  /// Preview must never seek — seeking while paused was moving the real
+  /// playhead/thumb to the hover X ("magnetized" progress).
+  Future<Uint8List?> _captureSeekPreview(Duration _) async {
     try {
-      if (!_s._isPlayingNotifier.value) {
-        await _s._player.seek(position);
-        await Future.delayed(const Duration(milliseconds: 150));
-      }
       return await _s._player.screenshot(format: 'image/jpeg');
     } catch (_) {
       return null;

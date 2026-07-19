@@ -467,6 +467,8 @@ class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
   }
 
   Future<void> _reload() async {
+    // Clear first so a prior profile never paints while the next loads.
+    if (mounted) setState(() => _profile = null);
     final profile = await SyncService.instance.activeProfile();
     if (!mounted) return;
     setState(() => _profile = profile);

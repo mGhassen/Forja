@@ -161,12 +161,10 @@ class NuvioService {
 
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
-  static const String _bundledCleanupKey =
-      'nuvio_bundled_autoinstall_cleanup_v1';
   static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
 
-  /// Manifest URLs that ship with the app. Scrapers are exposed in the
-  /// **Sources** panel (Direct torrent play source), not webstreaming.
+  /// Manifest URLs that ship with the app. Persisted like any other addon so
+  /// Settings and Sources share one list (scrapers toggleable / not ghosted).
   static const Set<String> bundledManifestUrls = {
     'https://raw.githubusercontent.com/D3adlyRocket/All-in-One-Nuvio/'
         'refs/heads/main/manifest.json',
@@ -178,6 +176,7 @@ class NuvioService {
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
   int _scraperGeneration = 0;
+  Future<void>? _bundledEnsureFuture;
 
   /// Abort in-flight scrapers (details panel, player Source checks, etc.).
   /// Bumps generation so Dart callers discard results, and tears down the
@@ -200,29 +199,6 @@ class NuvioService {
 
   Future<List<NuvioAddon>> listAddons() async {
     await _ensureAddonsInKv();
-    final prefs = await SharedPreferences.getInstance();
-    // One-time migration: prior app versions auto-installed the bundled
-    // manifest at startup, so it lingers in storage as a phantom "installed"
-    // addon even after we stopped doing that. Remove it once. Users who
-    // genuinely want it can install it manually afterwards.
-    if (!(prefs.getBool(_bundledCleanupKey) ?? false)) {
-      final raw0 = await kvGetString(_prefsKey);
-      if (raw0 != null && raw0.isNotEmpty) {
-        try {
-          final list = (jsonDecode(raw0) as List)
-              .map((e) => NuvioAddon.fromJson(e as Map<String, dynamic>))
-              .where((a) => !isBundled(a.manifestUrl))
-              .toList();
-          await kvSetString(
-            _prefsKey,
-            jsonEncode(list.map((e) => e.toJson()).toList()),
-          );
-        } catch (_) {
-          /* leave storage alone if parse fails */
-        }
-      }
-      await prefs.setBool(_bundledCleanupKey, true);
-    }
     final raw = await kvGetString(_prefsKey);
     if (raw == null || raw.isEmpty) return [];
     try {
@@ -236,15 +212,34 @@ class NuvioService {
     }
   }
 
-  /// User-facing addon list — currently identical to [listAddons]. The
-  /// bundled URL only appears here if the user explicitly installed it.
+  /// Persists the built-in All-in-One manifest when missing so Settings and
+  /// Sources see the same scrapers. Network failures are non-fatal.
+  Future<void> ensureBundledInstalled() async {
+    final existing = await listAddons();
+    if (existing.any((a) => isBundled(a.manifestUrl))) return;
+    _bundledEnsureFuture ??= () async {
+      try {
+        await refreshFromUrl(bundledManifestUrls.first);
+        _bundledVirtual = null;
+      } catch (e) {
+        debugPrint('[NuvioService] bundled ensure failed (non-fatal): $e');
+      } finally {
+        _bundledEnsureFuture = null;
+      }
+    }();
+    await _bundledEnsureFuture;
+  }
+
+  /// Settings + Sources — same store, including the built-in addon.
   Future<List<NuvioAddon>> listUserAddons() async {
+    await ensureBundledInstalled();
     return listAddons();
   }
 
-  /// Installed addons plus the bundled manifest when it is not installed.
-  /// Used by the **Sources** panel (Direct torrent) and batch scraper runs.
+  /// Scraping list for Sources / batch runs. Prefers the persisted store;
+  /// falls back to an in-memory bundled fetch only if ensure failed offline.
   Future<List<NuvioAddon>> listScrapingAddons() async {
+    await ensureBundledInstalled();
     final user = await listAddons();
     if (user.any((a) => isBundled(a.manifestUrl))) return user;
     final virt = await _getBundledVirtual();
@@ -258,10 +253,7 @@ class NuvioService {
     return addons.where((a) => a.scrapers.any((s) => s.enabled)).toList();
   }
 
-  /// In-memory virtual copy of the bundled manifest, lazily fetched. Used
-  /// in streaming mode when the user hasn't explicitly installed the
-  /// bundled URL — lets us still expose those scrapers without polluting
-  /// the persistent addon store.
+  /// Offline fallback when [ensureBundledInstalled] cannot reach the network.
   NuvioAddon? _bundledVirtual;
 
   Future<NuvioAddon?> _getBundledVirtual() async {
@@ -418,6 +410,9 @@ class NuvioService {
   }
 
   Future<void> remove(String manifestUrl) async {
+    if (isBundled(manifestUrl)) {
+      throw Exception('Built-in Nuvio addon cannot be removed');
+    }
     final all = await listAddons();
     final removed = all.where((a) => a.manifestUrl == manifestUrl).toList();
     all.removeWhere((a) => a.manifestUrl == manifestUrl);
@@ -435,6 +430,9 @@ class NuvioService {
     required String scraperId,
     required bool enabled,
   }) async {
+    if (isBundled(manifestUrl)) {
+      await ensureBundledInstalled();
+    }
     final all = await listAddons();
     final idx = all.indexWhere((a) => a.manifestUrl == manifestUrl);
     if (idx == -1) return;
@@ -458,6 +456,7 @@ class NuvioService {
   /// ones get their cached scripts evicted. Failures are non-fatal so an
   /// offline launch doesn't break anything.
   Future<void> refreshAllInstalled() async {
+    await ensureBundledInstalled();
     final addons = await listAddons();
     if (addons.isEmpty) return;
     await Future.wait(
@@ -470,8 +469,6 @@ class NuvioService {
         }
       }),
     );
-    // Also drop the in-memory virtual bundled copy so the next streaming
-    // request re-fetches the latest version.
     _bundledVirtual = null;
   }
 

@@ -210,7 +210,10 @@ export function AccountSettingsIptvPage() {
       setHydrateError(null)
     }
 
-    if (portalsHook.data === undefined) return
+    if (!profileId || isLoading || portalsHook.data === undefined) {
+      setDraft({ portals: [] })
+      return
+    }
 
     const portals: IptvPortalRow[] = portalsHook.data.map((a) => ({
       portalId: a.portal_id,
@@ -225,7 +228,13 @@ export function AccountSettingsIptvPage() {
     }))
 
     setDraft({ portals })
-  }, [portalsHook.data, portalsHook.isError, portalsHook.error])
+  }, [
+    profileId,
+    isLoading,
+    portalsHook.data,
+    portalsHook.isError,
+    portalsHook.error,
+  ])
 
   const sortedPortals = useMemo(() => {
     const list = [...draft.portals]

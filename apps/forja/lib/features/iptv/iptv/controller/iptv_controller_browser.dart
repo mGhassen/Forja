@@ -25,9 +25,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.view = IptvView.browser;
         _c.isLoading = false;
         _c.error = null;
-        _c.categories = snap.categories;
+        _c.categories = _withoutAllCategory(snap.categories);
         _c.browserAllStreams = snap.streams;
-        _c.browserSelectedCategoryId = '';
+        _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
         _c.browserSearch = '';
         _c.browserSearchOpen = false;
         _c.streamHealth.clear();
@@ -78,9 +78,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
       _c.categories = section == IptvSection.live
           ? IptvLiveCatalog.withPins(cats)
-          : [const IptvCategory(id: '', name: 'All'), ...cats];
+          : cats;
       _c.browserAllStreams = streams;
-      _c.browserSelectedCategoryId = '';
+      _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
 
       if (streams.isEmpty && cats.isEmpty) {
         _c.error = 'Could not load channels from portal';
@@ -137,6 +137,23 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   String _catalogCacheKey(String portalKey, IptvSection section) =>
       '$portalKey|${section.name}';
+
+  /// Drop legacy synthetic "All" (empty id) from cached category lists.
+  List<IptvCategory> _withoutAllCategory(List<IptvCategory> cats) =>
+      cats.where((c) => c.id.isNotEmpty).toList();
+
+  /// First portal group, else first pinned row (Favorites / Already watched).
+  String? _defaultCategoryId(List<IptvCategory> cats) {
+    for (final c in cats) {
+      if (c.id.isNotEmpty && !IptvLiveCatalog.isSyntheticId(c.id)) {
+        return c.id;
+      }
+    }
+    for (final c in cats) {
+      if (c.id.isNotEmpty) return c.id;
+    }
+    return null;
+  }
 
   Future<void> _loadLiveChannelLists(String portalKey) async {
     final favs = await IptvLiveChannelListsStore.loadFavorites(portalKey);

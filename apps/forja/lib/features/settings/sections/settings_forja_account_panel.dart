@@ -40,6 +40,9 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   int _captchaKey = 0;
   List<Passkey> _passkeys = const [];
   bool _passkeysLoading = false;
+  /// False until the active profile row is loaded — never paint a stale profile.
+  bool _profileReady = false;
+  int _refreshGen = 0;
 
   @override
   void initState() {
@@ -58,21 +61,27 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     super.dispose();
   }
 
+  void _clearProfileUi() {
+    _domains = 0;
+    _profiles = const [];
+    _activeProfileId = null;
+    _passkeys = const [];
+    _profileReady = false;
+  }
+
   void _onIdentity() {
-    if (mounted) _refreshRemote();
+    if (!mounted) return;
+    // Drop previous profile immediately — async refresh must not flash it.
+    setState(_clearProfileUi);
+    _refreshRemote();
   }
 
   Future<void> _refreshRemote() async {
+    final gen = ++_refreshGen;
     await ForjaSupabase.ensureInitialized();
+    if (!mounted || gen != _refreshGen) return;
     if (!SyncService.instance.isSignedIn) {
-      if (mounted) {
-        setState(() {
-          _domains = 0;
-          _profiles = const [];
-          _activeProfileId = null;
-          _passkeys = const [];
-        });
-      }
+      setState(_clearProfileUi);
       return;
     }
     final profiles = await SyncService.instance.listProfiles();
@@ -86,12 +95,13 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         passkeys = const [];
       }
     }
-    if (!mounted) return;
+    if (!mounted || gen != _refreshGen) return;
     setState(() {
       _profiles = profiles;
       _activeProfileId = activeProfile?.id;
       _domains = remote == null ? 0 : remote.keys.length;
       _passkeys = passkeys;
+      _profileReady = activeProfile != null;
     });
   }
 
@@ -296,11 +306,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     SyncDomainBridge.instance.cancelPendingPushes();
     await SyncService.instance.signOut();
     if (!mounted) return;
-    setState(() {
-      _domains = 0;
-      _profiles = const [];
-      _activeProfileId = null;
-    });
+    setState(_clearProfileUi);
   }
 
   bool get _formLocked => _busy || _webBusy || _passkeyBusy;
@@ -328,14 +334,28 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     final signedIn = SyncService.instance.isSignedIn;
     final email = SyncService.instance.userEmail;
     SyncProfile? activeProfile;
-    for (final profile in _profiles) {
-      if (profile.id == _activeProfileId) {
-        activeProfile = profile;
-        break;
+    if (_profileReady && _activeProfileId != null) {
+      for (final profile in _profiles) {
+        if (profile.id == _activeProfileId) {
+          activeProfile = profile;
+          break;
+        }
       }
     }
 
     if (signedIn) {
+      if (!_profileReady || activeProfile == null) {
+        return const Padding(
+          padding: EdgeInsets.fromLTRB(2, 24, 2, 24),
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      }
       return _SignedInAccountBody(
         activeProfile: activeProfile,
         email: email,
@@ -390,7 +410,7 @@ class _SignedInAccountBody extends StatelessWidget {
     this.error,
   });
 
-  final SyncProfile? activeProfile;
+  final SyncProfile activeProfile;
   final String? email;
   final int domains;
   final bool busy;
@@ -404,8 +424,6 @@ class _SignedInAccountBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = activeProfile?.name ?? 'Profile';
-    final avatarKey = activeProfile?.avatarKey ?? 'forge';
     final syncSubtitle = domains == 0
         ? 'No cloud settings synced yet — changes will upload as you use Forja'
         : '$domains setting section${domains == 1 ? '' : 's'} synced to this profile';
@@ -414,8 +432,8 @@ class _SignedInAccountBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _ActiveProfileStage(
-          name: name,
-          avatarKey: avatarKey,
+          name: activeProfile.name,
+          avatarKey: activeProfile.avatarKey,
           onTap: busy ? null : onOpenChooser,
         ),
         const SizedBox(height: 8),

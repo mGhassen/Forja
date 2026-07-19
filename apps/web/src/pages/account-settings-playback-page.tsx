@@ -19,13 +19,17 @@ export function AccountSettingsPlaybackPage() {
   const [savedFlash, setSavedFlash] = useState(false)
 
   useEffect(() => {
+    // Wipe immediately on profile change — never keep the previous profile's draft.
     setDraft(emptyPreferencesPayload())
   }, [profileId])
 
   useEffect(() => {
-    if (!data) return
+    if (!profileId || isLoading || !data) {
+      setDraft(emptyPreferencesPayload())
+      return
+    }
     setDraft({ ...emptyPreferencesPayload(), ...data.payload })
-  }, [data])
+  }, [profileId, isLoading, data])
 
   const setBool = (key: keyof PreferencesPayload, value: boolean) => {
     setDraft((prev) => ({ ...prev, [key]: value }))

@@ -97,11 +97,10 @@ abstract final class IptvLiveCatalog {
   static bool isSyntheticId(String id) =>
       id == favoritesId || id == watchedId;
 
-  /// All + Favorites + Already watched stay pinned above portal groups.
-  static bool isPinnedId(String id) => id.isEmpty || isSyntheticId(id);
+  /// Favorites + Already watched stay pinned above portal groups.
+  static bool isPinnedId(String id) => isSyntheticId(id);
 
   static List<IptvCategory> withPins(List<IptvCategory> apiCategories) => [
-        const IptvCategory(id: '', name: 'All'),
         favorites,
         watched,
         ...apiCategories,

@@ -58,9 +58,12 @@ export function AccountSettingsNavigationPage() {
   }, [profileId])
 
   useEffect(() => {
-    if (!data) return
+    if (!profileId || isLoading || !data) {
+      setDraft(draftFromPayload(emptyNavigationPayload()))
+      return
+    }
     setDraft(draftFromPayload(data.payload))
-  }, [data])
+  }, [profileId, isLoading, data])
 
   const startupOptions = useMemo(() => {
     const opts = draft.order.filter((id) => draft.visible.has(id))

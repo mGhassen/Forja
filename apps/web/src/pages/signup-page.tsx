@@ -22,9 +22,11 @@ import {
 } from '@/hooks/use-auth'
 import { captchaConfigured } from '@/lib/captcha'
 import {
-  clearDesktopAuthParams,
+  consumeDesktopHandoffDone,
   handoffSessionToDesktop,
   isSafeDesktopCallback,
+  lockDesktopHandoff,
+  releasePortalSessionToDesktop,
   rememberDesktopAuthParams,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
@@ -45,11 +47,24 @@ function SignupForm() {
   const [submitting, setSubmitting] = useState(false)
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
   const [desktopHandoffDone, setDesktopHandoffDone] = useState(false)
-  const [desktopParams] = useState(() => {
-    rememberDesktopAuthParams()
-    return resolveDesktopAuthParams()
-  })
+  const [desktopParams, setDesktopParams] = useState<{
+    callback: string | null
+    state: string | null
+  }>({ callback: null, state: null })
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
+
+  useEffect(() => {
+    if (consumeDesktopHandoffDone()) {
+      setDesktopHandoffDone(true)
+      return
+    }
+    rememberDesktopAuthParams()
+    const params = resolveDesktopAuthParams()
+    setDesktopParams(params)
+    if (isSafeDesktopCallback(params.callback)) {
+      lockDesktopHandoff()
+    }
+  }, [])
 
   const onCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
@@ -65,6 +80,7 @@ function SignupForm() {
       const { data } = await supabase.auth.getSession()
       const next = data.session
       if (next?.access_token && next.refresh_token) {
+        lockDesktopHandoff()
         const result = await handoffSessionToDesktop({
           callback: desktopParams.callback,
           state: desktopParams.state,
@@ -72,8 +88,7 @@ function SignupForm() {
           refreshToken: next.refresh_token,
         })
         if (result.status === 'ok') {
-          clearDesktopAuthParams()
-          setDesktopHandoffDone(true)
+          releasePortalSessionToDesktop()
           return
         }
         if (result.status === 'rejected') {
