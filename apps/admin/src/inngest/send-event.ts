@@ -6,8 +6,15 @@ type EventPayload = {
 }
 
 function isLocalDev(): boolean {
+  // Never treat Vercel as local — even if INNGEST_DEV leaked into the build.
+  if (process.env.VERCEL === '1' || process.env.VERCEL_ENV) return false
   const v = process.env.INNGEST_DEV?.trim()
-  return v === '1' || v === 'true' || !!v?.startsWith('http://') || !!v?.startsWith('https://')
+  return (
+    v === '1' ||
+    v === 'true' ||
+    !!v?.startsWith('http://') ||
+    !!v?.startsWith('https://')
+  )
 }
 
 function localDevBase(): string {

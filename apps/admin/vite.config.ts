@@ -57,17 +57,25 @@ function bridgeEnv(mode: string) {
     // Always prefer apps/admin/.env over a stale shell export
     if (v) process.env[k] = v
   }
-  // Local default: Dev Server unless explicitly disabled
-  if (!process.env.INNGEST_DEV) process.env.INNGEST_DEV = '1'
+  // Local vite serve only — never bake INNGEST_DEV=1 into a Vercel/prod build
+  // (that made production POST /api/iptv-catalog-scrape hit 127.0.0.1:8288 → 502).
+  if (
+    mode === 'development' &&
+    !process.env.INNGEST_DEV &&
+    !process.env.VERCEL
+  ) {
+    process.env.INNGEST_DEV = '1'
+  }
 }
 
 export default defineConfig(({ mode }) => {
   bridgeEnv(mode)
 
-  // Bake server env into SSR bundle (Nitro/Vite otherwise drop non-VITE_ reads)
+  // Bake server env into SSR bundle (Nitro/Vite otherwise drop non-VITE_ reads).
+  // Do NOT bake INNGEST_DEV — runtime Vercel env / local shell must win, or a
+  // stale "1" from .env ships to prod and sendInngestEvent hits localhost.
   const defineEnv: Record<string, string> = {}
   for (const k of [
-    'INNGEST_DEV',
     'INNGEST_EVENT_KEY',
     'INNGEST_SIGNING_KEY',
     'SUPABASE_URL',

@@ -24,7 +24,7 @@ Operators scrape Reddit IPTV posts with a Rust worker, store verified portals in
 
 Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv-worker` is optional/local only).
 
-1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`
+1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Daily cron `0 6 * * *` UTC runs `iptv-catalog-scrape`
 4. Each portal is a step `verify-portal-status-*` that hits Xtream `player_api` then upserts into the pool
