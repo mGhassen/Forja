@@ -202,9 +202,11 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       }
     } else if (_s._panelKindFilter == 'stremio') {
       for (final a in _s._streamAddons) {
+        final id = a['baseUrl']?.toString().trim() ?? '';
+        if (id.isEmpty) continue;
         options.add(
           SourcesPanelProviderOption(
-            id: a['baseUrl'] as String,
+            id: id,
             label: (a['name'] ?? 'Addon').toString(),
           ),
         );

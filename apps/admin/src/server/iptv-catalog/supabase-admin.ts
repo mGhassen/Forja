@@ -15,17 +15,29 @@ export function createCatalogAdminClient(): SupabaseClient {
   })
 }
 
-/** Daily cron gate — false skips scheduled runs; manual scrape still runs. */
-export async function isScrapeCronEnabled(
+export type ScrapeCronSettings = {
+  enabled: boolean
+  /** 5-field UTC cron; default daily 06:00. */
+  cron: string
+}
+
+/** Cron gate + expression — false skips scheduled ticks; manual scrape still runs. */
+export async function getScrapeCronSettings(
   sb: SupabaseClient,
-): Promise<boolean> {
+): Promise<ScrapeCronSettings> {
   const { data, error } = await sb
     .from('iptv_ops_settings')
-    .select('scrape_cron_enabled')
+    .select('scrape_cron_enabled, scrape_cron')
     .eq('id', 1)
     .maybeSingle()
   if (error) throw error
-  return data?.scrape_cron_enabled !== false
+  return {
+    enabled: data?.scrape_cron_enabled !== false,
+    cron:
+      typeof data?.scrape_cron === 'string' && data.scrape_cron.trim()
+        ? data.scrape_cron.trim()
+        : '0 6 * * *',
+  }
 }
 
 export async function insertScrapeRun(

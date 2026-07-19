@@ -50,7 +50,9 @@ export function compactAccountFeatures(
 export type PreferencesPayload = {
   play_source_torrent_enabled?: boolean
   play_source_stremio_enabled?: boolean
+  play_source_nuvio_enabled?: boolean
   play_source_webstreaming_enabled?: boolean
+  simple_streaming_resolve_enabled?: boolean
   preferred_audio_lang?: string
   avoid_unsupported_audio?: boolean
   auto_next_episode?: boolean
@@ -75,10 +77,20 @@ export type StremioPayload = {
   addons: StremioAddonRow[]
 }
 
+export type NuvioAddonRow = {
+  manifestUrl: string
+  name?: string
+}
+
+export type NuvioPayload = {
+  addons: NuvioAddonRow[]
+}
+
 export type ConnectedServicesPayload = {
   /** @deprecated Provider order is device-local — never write to cloud. */
   providers?: ProvidersPayload
   stremio?: StremioPayload
+  nuvio?: NuvioPayload
 }
 
 export type NavigationPayload = {
@@ -189,7 +201,7 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 ] as const
 
 export type RemoteSettingSection = {
-  key: keyof ProfileSettingsPayload | 'stremio' | 'iptv'
+  key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'iptv'
   title: string
   description: string
   href: string
@@ -207,7 +219,7 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     key: 'playback',
     title: 'Playback',
     description:
-      'Play sources (torrent / Stremio / web), auto next, audio language, and quality cap.',
+      'Play sources (torrent / Stremio / Nuvio / web), auto next, audio language, and quality cap.',
     href: '/account/settings/playback',
   },
   {
@@ -222,6 +234,12 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     description: 'Addon manifest URLs installed on your account.',
     href: '/account/settings/stremio',
   },
+  {
+    key: 'nuvio',
+    title: 'Nuvio addons',
+    description: 'Nuvio scraper manifest URLs installed on your account.',
+    href: '/account/settings/nuvio',
+  },
 ]
 
 export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
@@ -229,6 +247,7 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
     playback: emptyPreferencesPayload(),
     connectedServices: {
       stremio: emptyStremioPayload(),
+      nuvio: emptyNuvioPayload(),
     },
     navigation: emptyNavigationPayload(),
   }
@@ -267,7 +286,9 @@ export function emptyPreferencesPayload(): Required<PreferencesPayload> {
   return {
     play_source_torrent_enabled: true,
     play_source_stremio_enabled: true,
+    play_source_nuvio_enabled: true,
     play_source_webstreaming_enabled: true,
+    simple_streaming_resolve_enabled: true,
     preferred_audio_lang: 'None',
     avoid_unsupported_audio: true,
     auto_next_episode: true,
@@ -278,6 +299,10 @@ export function emptyPreferencesPayload(): Required<PreferencesPayload> {
 }
 
 export function emptyStremioPayload(): StremioPayload {
+  return { addons: [] }
+}
+
+export function emptyNuvioPayload(): NuvioPayload {
   return { addons: [] }
 }
 
@@ -305,6 +330,21 @@ function compactStremio(s: StremioPayload | undefined): StremioPayload | undefin
   return addons.length ? { addons } : undefined
 }
 
+function compactNuvio(s: NuvioPayload | undefined): NuvioPayload | undefined {
+  if (!s?.addons?.length) return undefined
+  const addons = s.addons
+    .map((a) => {
+      const manifestUrl = a.manifestUrl?.trim()
+      if (!manifestUrl) return null
+      const row: NuvioAddonRow = { manifestUrl }
+      const name = a.name?.trim()
+      if (name) row.name = name
+      return row
+    })
+    .filter((a): a is NuvioAddonRow => a != null)
+  return addons.length ? { addons } : undefined
+}
+
 function compactNavigation(n: NavigationPayload | undefined): NavigationPayload | undefined {
   if (!n) return undefined
   const normalized = normalizeNavigationPayload(n)
@@ -315,17 +355,19 @@ function compactNavigation(n: NavigationPayload | undefined): NavigationPayload 
   return out
 }
 
-/** Compact before DB write: full playback; stremio only under connectedServices.
+/** Compact before DB write: full playback; stremio/nuvio under connectedServices.
  * Provider order is device-local — never persist. Never write iptv (portals/M3U). */
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
 ): ProfileSettingsPayload {
   const playback = compactPlayback(full.playback)
   const stremio = compactStremio(full.connectedServices?.stremio)
+  const nuvio = compactNuvio(full.connectedServices?.nuvio)
   const navigation = compactNavigation(full.navigation)
 
   const connectedServices: ConnectedServicesPayload = {}
   if (stremio) connectedServices.stremio = stremio
+  if (nuvio) connectedServices.nuvio = nuvio
 
   const out: ProfileSettingsPayload = {}
   if (playback) out.playback = playback
@@ -348,12 +390,15 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
   const stremio = {
     addons: p.connectedServices?.stremio?.addons ?? [],
   }
+  const nuvio = {
+    addons: p.connectedServices?.nuvio?.addons ?? [],
+  }
 
   void p.films
 
   return {
     playback: { ...base.playback, ...p.playback },
-    connectedServices: { stremio },
+    connectedServices: { stremio, nuvio },
     navigation: normalizeNavigationPayload(p.navigation),
   }
 }

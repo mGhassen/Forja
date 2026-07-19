@@ -12,8 +12,9 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## What you can do
 
-- Enable **Play sources**: **Direct torrent** (Forja search + **Nuvio** scrapers in **Sources**), **Stremio**, and **Webstreaming** (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on Direct torrent or Stremio in this screen if you want **Sources**)
-- When **Webstreaming** is on: toggle **Simple resolve (experimental)** — tries one provider at a time, filters/probes streams, then opens the player once (old multi-provider race stays when this is off)
+- Enable **Play sources**: **Direct torrent** (Forja / Jackett / Prowlarr in **Sources**), **Stremio**, **Nuvio**, and **Webstreaming** (torrent / Stremio / Nuvio / webstreaming on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on the others here if you want **Sources**)
+- When **Nuvio** is off: **Settings → Nuvio addons** and the **Sources → Nuvio** tab stay hidden
+- When **Webstreaming** is on and the signed-in account is an **admin**: toggle **Simple resolve (experimental)** (on by default) — tries one provider at a time, filters/probes streams, then opens the player once (old multi-provider race stays when this is off). Non-admin accounts do not see this row
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
@@ -27,8 +28,8 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 
 ## Tips
 
-- Play sources appear only when a **VOD tab** (Home, Search, Anime, Asian Drama, or My List) is visible. Turning a play source **on** starts its engine for this session (Direct torrent → torrent engine + Nuvio; Webstreaming → local stream proxy). Sources left **off** are not loaded at splash, and related Settings tiles (Sources, Debrid, WebStreamr) hide until you turn the source back on here
-- Play source toggles: green **Play** (play icon) uses **Webstreaming** extractors only; white link **Play** / **Sources** use **Direct torrent** (Forja + **Nuvio** tab) and **Stremio** (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel uses **Torrents / Stremio / Nuvio** when those play sources are available (providers under **Filters**).
+- Play sources appear only when a **VOD tab** (Home, Search, Anime, Asian Drama, or My List) is visible. Turning a play source **on** starts its engine for this session (Direct torrent → torrent engine; Nuvio → scraper refresh; Webstreaming → local stream proxy). Sources left **off** are not loaded at splash, and related Settings tiles (Sources, Debrid, WebStreamr, Nuvio addons) hide until you turn the source back on here
+- Play source toggles: green **Play** (play icon) uses **Webstreaming** extractors only; white link **Play** / **Sources** use **Direct torrent**, **Stremio**, and **Nuvio** when each is enabled (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel uses **Torrents / Stremio / Nuvio** for the play sources you turned on.
 - **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag to prefer a server where ordering is enabled. **Score** rises when that server works across titles you play (never below **0**). **Tries** (1st, 2nd, …) is the order Auto tries them. Asian Drama enables only `kisskh.nl`; `.co`, `.ovh`, `.la`, and `.do` remain visible as **On hold** and cannot be reordered, preventing automatic mirror checks from triggering KissKH's shared-IP rate limit. In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
 - **Max stream quality** caps what the playback engine picks automatically (device probe still applies under Auto)
 - Anime uses the same resolve + Rust scoring pipeline as movies; saved source pin still wins when set. Default Anime **Tries** order starts with Megaplay / Vidwish (direct embed) before Miruro Cloudflare pipes — Reset in Server reliability restores that if you customized the list

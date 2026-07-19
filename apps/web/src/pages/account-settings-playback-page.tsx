@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
 import { SettingsToggle } from '@/components/settings-toggle'
+import { useIsAdmin } from '@/hooks/use-is-admin'
 import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import {
   AUDIO_LANGUAGE_OPTIONS,
@@ -15,6 +16,7 @@ import {
 export function AccountSettingsPlaybackPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
     usePlaybackSetting()
+  const { data: isAdmin = false } = useIsAdmin()
   const [draft, setDraft] = useState(emptyPreferencesPayload())
   const [savedFlash, setSavedFlash] = useState(false)
 
@@ -67,7 +69,7 @@ export function AccountSettingsPlaybackPage() {
       >
           <SettingsToggle
             label="Direct torrent"
-            description="Indexers and Nuvio scrapers from Sources."
+            description="Forja / Jackett / Prowlarr indexers in Sources."
             checked={draft.play_source_torrent_enabled ?? true}
             onChange={(v) => setBool('play_source_torrent_enabled', v)}
             disabled={isLoading}
@@ -80,12 +82,28 @@ export function AccountSettingsPlaybackPage() {
             disabled={isLoading}
           />
           <SettingsToggle
+            label="Nuvio"
+            description="Installed Nuvio scraper addons in Sources."
+            checked={draft.play_source_nuvio_enabled ?? true}
+            onChange={(v) => setBool('play_source_nuvio_enabled', v)}
+            disabled={isLoading}
+          />
+          <SettingsToggle
             label="Web streaming"
             description="Embed and extractor providers."
             checked={draft.play_source_webstreaming_enabled ?? true}
             onChange={(v) => setBool('play_source_webstreaming_enabled', v)}
             disabled={isLoading}
           />
+          {isAdmin && (draft.play_source_webstreaming_enabled ?? true) ? (
+            <SettingsToggle
+              label="Simple resolve (experimental)"
+              description="One provider at a time: filter, probe, then open the player once. Admin only."
+              checked={draft.simple_streaming_resolve_enabled ?? true}
+              onChange={(v) => setBool('simple_streaming_resolve_enabled', v)}
+              disabled={isLoading}
+            />
+          ) : null}
       </SettingsSection>
 
       <SettingsSection label="Player">

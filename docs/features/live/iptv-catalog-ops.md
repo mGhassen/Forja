@@ -26,7 +26,7 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 
 1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
-3. Daily cron `0 6 * * *` UTC runs `iptv-catalog-scrape` — toggle **Daily scrape** on/off in Scrape → Automation (`iptv_ops_settings.scrape_cron_enabled`). Off = cron no-ops; manual run still works
+3. Scheduled scrape: Inngest ticks every minute; the real schedule is **`iptv_ops_settings.scrape_cron`** (UTC 5-field cron, default `0 6 * * *`). Edit it in Scrape → Automation (presets / hour-minute / cron + human label). Toggle **Scheduled scrape** via `scrape_cron_enabled` — off = ticks no-op; manual run still works
 4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
 5. **Post storage is id-only** — `iptv_scrape_posts` is just `post_id` (+ subreddit / run). No title/body; deep_refs table removed.
 6. Extract upserts into **`iptv_portals`** with `catalog_pool = true`. **Xtream `player_api` verify is off** in the scrape job (`VERIFY_PORTAL_STATUS = false`); use Pool → Check status for manual probes. Deal only assigns `catalog_pool` rows with `alive = true`.

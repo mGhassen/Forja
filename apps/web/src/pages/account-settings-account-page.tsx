@@ -25,7 +25,6 @@ export function AccountSettingsAccountPage() {
     enrollMfaTotp,
     challengeAndVerifyMfa,
     unenrollMfa,
-    signOut,
   } = useAuth()
   const [confirmEmail, setConfirmEmail] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -48,8 +47,6 @@ export function AccountSettingsAccountPage() {
   const [enrollSecret, setEnrollSecret] = useState<string | null>(null)
   const [enrollCode, setEnrollCode] = useState('')
   const [mfaBusy, setMfaBusy] = useState(false)
-  const [signingOutAll, setSigningOutAll] = useState(false)
-
   const refreshPasskeys = useCallback(async () => {
     setPasskeysLoading(true)
     setPasskeysError(null)
@@ -130,13 +127,6 @@ export function AccountSettingsAccountPage() {
       return
     }
     await refreshMfa()
-  }
-
-  async function onSignOutEverywhere() {
-    setSigningOutAll(true)
-    await signOut({ scope: 'global' })
-    setSigningOutAll(false)
-    void navigate({ to: '/' })
   }
 
   async function onDelete() {
@@ -369,17 +359,16 @@ export function AccountSettingsAccountPage() {
       ) : null}
 
       <SettingsSection
-        label="Sessions"
-        description="Sign out in the header only clears this browser. Use this to revoke every device (including the desktop app)."
+        label="Connections"
+        description="See every signed-in browser and Forja app session — where it is, since when, and revoke one or all."
       >
         <Button
           type="button"
           variant="outline"
           className="border-[rgba(237,230,218,0.22)]"
-          disabled={signingOutAll}
-          onClick={() => void onSignOutEverywhere()}
+          onClick={() => void navigate({ to: '/account/settings/connections' })}
         >
-          {signingOutAll ? 'Signing out…' : 'Sign out all devices'}
+          Open connections
         </Button>
       </SettingsSection>
 

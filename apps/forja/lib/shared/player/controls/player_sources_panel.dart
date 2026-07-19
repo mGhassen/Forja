@@ -462,6 +462,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final prowlarr = await _settings.isProwlarrConfigured();
     final torrentOn = await _settings.isPlaySourceTorrentEnabled();
     final stremioOn = await _settings.isPlaySourceStremioEnabled();
+    final nuvioOn = await _settings.isPlaySourceNuvioEnabled();
     final local = _profile.localTorrentEngine;
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn) {
@@ -471,8 +472,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
     List<NuvioAddon> nuvioAddons = const [];
     Set<String> nuvioSelected = {};
-    // Nuvio is gated on Direct torrent (same as media-details Sources).
-    if (torrentOn) {
+    if (nuvioOn) {
       try {
         nuvioAddons = await NuvioService.instance.listSourcesPanelAddons();
         nuvioSelected = await NuvioService.instance.loadSourcesSelectedScraperIds(
@@ -484,7 +484,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
     final hasStremio = stremioOn && addons.isNotEmpty;
     final hasTorrent = torrentOn;
-    final hasNuvio = torrentOn && nuvioAddons.isNotEmpty;
+    final hasNuvio = nuvioOn && nuvioAddons.isNotEmpty;
     final kind = _resolveInitialKind(
       hasTorrent: hasTorrent,
       hasStremio: hasStremio,
@@ -517,6 +517,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
     // Load only the selected kind(s) — no prefetch of other categories.
     _ensureVisibleKindsLoaded();
+    // Bootstrap can miss installs (race / empty catch). Re-probe so the
+    // Stremio tab + chips appear without remounting the player panel.
+    if (stremioOn) unawaited(_refreshStreamAddons());
   }
 
   String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
@@ -554,39 +557,61 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     unawaited(_runTorrentSearch());
   }
 
-  void _ensureStremioLoaded({bool force = false}) {
-    if (!_showsStremio) return;
-    if (force) {
-      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-      unawaited(_fetchStremioStreams());
-      return;
-    }
-    if (_stremioStreams.isNotEmpty || _stremioFetching) return;
-    final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-    if (cached != null && cached.isNotEmpty) {
+  Future<void> _refreshStreamAddons() async {
+    try {
+      final stremioOn = await _settings.isPlaySourceStremioEnabled();
+      if (!stremioOn) return;
+      final addons = await _stremio.getAddonsForResource('stream');
+      if (!mounted) return;
       setState(() {
-        _stremioStreams = cached;
-        _loadedAddonBaseUrls
-          ..clear()
-          ..addAll({
-            for (final s in cached)
-              if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
-          });
-        _completedAddonBaseUrls
-          ..clear()
-          ..addAll(_loadedAddonBaseUrls);
-        _error = null;
-        _userPickedStremioProvider = false;
-        _syncStremioProviderSelection();
+        _streamAddons = addons;
+        _showStremio = addons.isNotEmpty;
+        if (_kindFilter == 'stremio' &&
+            !_streamAddons.any(
+              (a) => a['baseUrl']?.toString() == _selectedSourceId,
+            )) {
+          _userPickedStremioProvider = false;
+          _selectedSourceId = _sourceIdForKind('stremio', addons);
+        }
       });
-      _focusPlayingSourceIfNeeded();
-      _requestScrollToCurrent();
-      return;
-    }
-    if (cached != null && cached.isEmpty) {
-      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-    }
-    unawaited(_fetchStremioStreams());
+    } catch (_) {}
+  }
+
+  void _ensureStremioLoaded({bool force = false}) {
+    unawaited(_refreshStreamAddons().then((_) {
+      if (!mounted || !_showsStremio) return;
+      if (force) {
+        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
+        unawaited(_fetchStremioStreams());
+        return;
+      }
+      if (_stremioStreams.isNotEmpty || _stremioFetching) return;
+      final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        setState(() {
+          _stremioStreams = cached;
+          _loadedAddonBaseUrls
+            ..clear()
+            ..addAll({
+              for (final s in cached)
+                if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
+            });
+          _completedAddonBaseUrls
+            ..clear()
+            ..addAll(_loadedAddonBaseUrls);
+          _error = null;
+          _userPickedStremioProvider = false;
+          _syncStremioProviderSelection();
+        });
+        _focusPlayingSourceIfNeeded();
+        _requestScrollToCurrent();
+        return;
+      }
+      if (cached != null && cached.isEmpty) {
+        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
+      }
+      unawaited(_fetchStremioStreams());
+    }));
   }
 
   Future<void> _ensureNuvioLoaded({bool force = false}) async {
@@ -895,10 +920,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (_kindFilter == 'stremio') {
       return [
         for (final a in _streamAddons)
-          SourcesPanelProviderOption(
-            id: a['baseUrl'] as String,
-            label: (a['name'] ?? 'Addon').toString(),
-          ),
+          if ((a['baseUrl']?.toString().trim() ?? '').isNotEmpty)
+            SourcesPanelProviderOption(
+              id: a['baseUrl'].toString().trim(),
+              label: (a['name'] ?? 'Addon').toString(),
+            ),
       ];
     }
     if (_kindFilter == 'nuvio') {

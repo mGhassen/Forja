@@ -10,6 +10,7 @@ class PlatformDefaults {
     required this.iptvEpgEnabled,
     required this.playSourceTorrent,
     required this.playSourceStremio,
+    required this.playSourceNuvio,
     required this.playSourceWebstreaming,
     required this.torrentRamCacheMb,
     required this.showTorrentStatsOverlay,
@@ -22,6 +23,7 @@ class PlatformDefaults {
   final bool iptvEpgEnabled;
   final bool playSourceTorrent;
   final bool playSourceStremio;
+  final bool playSourceNuvio;
   final bool playSourceWebstreaming;
   final int torrentRamCacheMb;
   final bool showTorrentStatsOverlay;
@@ -48,6 +50,7 @@ class PlatformDefaults {
         iptvEpgEnabled: true,
         playSourceTorrent: false,
         playSourceStremio: false,
+        playSourceNuvio: false,
         playSourceWebstreaming: true,
         torrentRamCacheMb: 128,
         showTorrentStatsOverlay: false,
@@ -60,6 +63,7 @@ class PlatformDefaults {
         iptvEpgEnabled: true,
         playSourceTorrent: true,
         playSourceStremio: true,
+        playSourceNuvio: true,
         playSourceWebstreaming: true,
         torrentRamCacheMb: 200,
         showTorrentStatsOverlay: false,
@@ -72,6 +76,7 @@ class PlatformDefaults {
         iptvEpgEnabled: true,
         playSourceTorrent: true,
         playSourceStremio: true,
+        playSourceNuvio: true,
         playSourceWebstreaming: true,
         torrentRamCacheMb: 200,
         showTorrentStatsOverlay: false,

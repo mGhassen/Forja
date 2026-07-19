@@ -402,6 +402,26 @@ export type Database = {
         }
       }
       is_admin: { Args: never; Returns: boolean }
+      list_my_auth_sessions: {
+        Args: never
+        Returns: {
+          aal: string | null
+          created_at: string
+          id: string
+          ip: string | null
+          refreshed_at: string | null
+          updated_at: string | null
+          user_agent: string | null
+        }[]
+      }
+      revoke_my_auth_session: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
+      service_label_auth_session: {
+        Args: { p_session_id: string; p_user_agent: string }
+        Returns: undefined
+      }
       upsert_iptv_portal: {
         Args: {
           p_expiry?: string

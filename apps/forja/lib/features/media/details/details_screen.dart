@@ -125,6 +125,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   bool _autoPlayConsumed = false;
   bool _episodePlayPending = false;
   bool _playSourceTorrent = true;
+  bool _playSourceNuvio = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
 
@@ -386,7 +387,7 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   bool get _panelShowStremio => _playSourceStremio;
 
-  bool get _panelShowNuvio => _playSourceTorrent && _hasNuvioAddons;
+  bool get _panelShowNuvio => _playSourceNuvio && _hasNuvioAddons;
 
   bool get _hasPanelPlaySources =>
       _panelShowTorrent || _panelShowStremio || _panelShowNuvio;
@@ -528,39 +529,69 @@ class _DetailsScreenState extends State<DetailsScreen>
     _autoSearch();
   }
 
+  Future<void> _refreshStreamAddons() async {
+    try {
+      final addons = await _stremio.getAddonsForResource('stream');
+      if (!mounted) return;
+      if (addons.length == _streamAddons.length &&
+          addons.every((a) {
+            final id = a['baseUrl']?.toString();
+            return id != null &&
+                _streamAddons.any((b) => b['baseUrl']?.toString() == id);
+          })) {
+        return;
+      }
+      setState(() {
+        _streamAddons = addons;
+        if (_panelKindFilter == 'stremio' &&
+            !_streamAddons.any(
+              (a) => a['baseUrl']?.toString() == _selectedSourceId,
+            )) {
+          _userPickedStremioProvider = false;
+          _selectedSourceId = _defaultStremioSourceId();
+        }
+      });
+    } catch (_) {}
+  }
+
   void _ensureStremioPanelLoaded({bool force = false}) {
     if (_panelKindFilter != 'stremio') return;
-    if (force) {
-      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
+    // Re-read installs when opening/reloading — Settings installs after details
+    // open used to leave the chip strip empty until remount.
+    unawaited(_refreshStreamAddons().then((_) {
+      if (!mounted || _panelKindFilter != 'stremio') return;
+      if (force) {
+        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
+        _fetchAllStremioStreams();
+        return;
+      }
+      if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
+      final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+      // Empty cache is a miss — a prior all-failed fetch must not block YTS.
+      if (cached != null && cached.isNotEmpty) {
+        setState(() {
+          _allCombinedStremioStreams = cached;
+          _loadedAddonBaseUrls
+            ..clear()
+            ..addAll({
+              for (final s in cached)
+                if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
+            });
+          _completedAddonBaseUrls
+            ..clear()
+            ..addAll(_loadedAddonBaseUrls);
+          _errorMessage = null;
+          _userPickedStremioProvider = false;
+          _syncStremioProviderSelection();
+          _applyStremioFilter();
+        });
+        return;
+      }
+      if (cached != null && cached.isEmpty) {
+        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
+      }
       _fetchAllStremioStreams();
-      return;
-    }
-    if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
-    final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-    // Empty cache is a miss — a prior all-failed fetch must not block YTS.
-    if (cached != null && cached.isNotEmpty) {
-      setState(() {
-        _allCombinedStremioStreams = cached;
-        _loadedAddonBaseUrls
-          ..clear()
-          ..addAll({
-            for (final s in cached)
-              if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
-          });
-        _completedAddonBaseUrls
-          ..clear()
-          ..addAll(_loadedAddonBaseUrls);
-        _errorMessage = null;
-        _userPickedStremioProvider = false;
-        _syncStremioProviderSelection();
-        _applyStremioFilter();
-      });
-      return;
-    }
-    if (cached != null && cached.isEmpty) {
-      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-    }
-    _fetchAllStremioStreams();
+    }));
   }
 
   /// Loads addon metadata, then fetches one selected scraper at a time.

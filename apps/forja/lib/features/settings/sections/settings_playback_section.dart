@@ -29,8 +29,9 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
 
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
+  bool _playSourceNuvio = true;
   bool _playSourceWebstreaming = true;
-  bool _simpleStreamingResolve = false;
+  bool _simpleStreamingResolve = true;
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _preferredAudioLang = 'None';
   bool _avoidUnsupportedAudio = true;
@@ -44,12 +45,24 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   @override
   void initState() {
     super.initState();
+    AccountFeatures.instance.revision.addListener(_onAccountFeatures);
     _load();
+  }
+
+  @override
+  void dispose() {
+    AccountFeatures.instance.revision.removeListener(_onAccountFeatures);
+    super.dispose();
+  }
+
+  void _onAccountFeatures() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
     final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
+    final playSourceNuvio = await _settings.isPlaySourceNuvioEnabled();
     final playSourceWebstreaming = await _settings
         .isPlaySourceWebstreamingEnabled();
     final simpleStreamingResolve =
@@ -68,6 +81,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     setState(() {
       _playSourceTorrent = playSourceTorrent;
       _playSourceStremio = playSourceStremio;
+      _playSourceNuvio = playSourceNuvio;
       _playSourceWebstreaming = playSourceWebstreaming;
       _simpleStreamingResolve = simpleStreamingResolve;
       _builtInEngine = builtInEngine;
@@ -98,20 +112,17 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
               settingsFocusableToggle(
                 context,
                 'Direct torrent',
-                'Search Forja indexers and Nuvio scrapers in Sources.',
+                'Search Forja indexers (Jackett / Prowlarr) in Sources.',
                 _playSourceTorrent,
                 (val) async {
                   await _settings.setPlaySourceTorrentEnabled(val);
                   setState(() => _playSourceTorrent = val);
                   schedulePreferencesSyncPush();
                   // Explicit toggle: start now even if no VOD tab is visible.
-                  if (val) {
-                    debugPrint('[Init] Nuvio refresh (settings toggle)');
-                    unawaited(NuvioService.instance.refreshAllInstalled());
-                    if (PlatformPlayback.capabilities.localTorrentEngine) {
-                      debugPrint('[Init] TorrentStream start (settings toggle)');
-                      await TorrentStreamService().start();
-                    }
+                  if (val &&
+                      PlatformPlayback.capabilities.localTorrentEngine) {
+                    debugPrint('[Init] TorrentStream start (settings toggle)');
+                    await TorrentStreamService().start();
                   }
                 },
               ),
@@ -124,6 +135,21 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                   await _settings.setPlaySourceStremioEnabled(val);
                   setState(() => _playSourceStremio = val);
                   schedulePreferencesSyncPush();
+                },
+              ),
+              settingsFocusableToggle(
+                context,
+                'Nuvio',
+                'Play from installed Nuvio scraper addons in Sources.',
+                _playSourceNuvio,
+                (val) async {
+                  await _settings.setPlaySourceNuvioEnabled(val);
+                  setState(() => _playSourceNuvio = val);
+                  schedulePreferencesSyncPush();
+                  if (val) {
+                    debugPrint('[Init] Nuvio refresh (settings toggle)');
+                    unawaited(NuvioService.instance.refreshAllInstalled());
+                  }
                 },
               ),
               settingsFocusableToggle(
@@ -143,7 +169,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                   }
                 },
               ),
-              if (_playSourceWebstreaming)
+              if (_playSourceWebstreaming && AccountFeatures.instance.isAdmin)
                 settingsFocusableToggle(
                   context,
                   'Simple resolve (experimental)',
@@ -152,6 +178,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                   (val) async {
                     await _settings.setSimpleStreamingResolveEnabled(val);
                     setState(() => _simpleStreamingResolve = val);
+                    schedulePreferencesSyncPush();
                   },
                 ),
             ],

@@ -1,6 +1,7 @@
 export {
   usePlaybackSetting,
   useStremioSetting,
+  useNuvioSetting,
   useNavigationSetting,
 } from '@/hooks/use-profile-settings-sections'
 

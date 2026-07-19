@@ -11,6 +11,7 @@ class SettingsVisibility {
   const SettingsVisibility({
     required this.playSourceTorrent,
     required this.playSourceStremio,
+    required this.playSourceNuvio,
     required this.playSourceWebstreaming,
     required this.vodTab,
     required this.iptvNav,
@@ -18,6 +19,7 @@ class SettingsVisibility {
 
   final bool playSourceTorrent;
   final bool playSourceStremio;
+  final bool playSourceNuvio;
   final bool playSourceWebstreaming;
 
   /// Any tab that can open VOD details / Sources (same set as [BootNeeds]).
@@ -33,17 +35,18 @@ class SettingsVisibility {
       playSourceTorrent &&
       PlatformPlayback.capabilities.builtinTorrentSearch;
 
-  /// Nuvio scrapers (Direct torrent play source).
-  bool get showNuvio => vodTab && playSourceTorrent;
+  /// Nuvio scrapers (own play source).
+  bool get showNuvio => vodTab && playSourceNuvio;
 
   bool get showStremioAddons => vodTab && playSourceStremio;
 
   /// Settings → Sources hub tile.
   bool get showSourcesCategory =>
-      vodTab && (playSourceTorrent || playSourceStremio);
+      vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio);
 
-  /// Debrid serves torrent + Stremio hashes.
-  bool get showDebrid => vodTab && (playSourceTorrent || playSourceStremio);
+  /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
+  bool get showDebrid =>
+      vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio);
 
   bool get showWebstreamr => vodTab && playSourceWebstreaming;
 
@@ -70,6 +73,7 @@ class SettingsVisibility {
     return SettingsVisibility(
       playSourceTorrent: await s.isPlaySourceTorrentEnabled(),
       playSourceStremio: await s.isPlaySourceStremioEnabled(),
+      playSourceNuvio: await s.isPlaySourceNuvioEnabled(),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       vodTab: nav.any(BootNeeds.vodNavIds.contains),
       iptvNav: nav.contains('iptv'),

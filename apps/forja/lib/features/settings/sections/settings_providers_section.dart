@@ -332,6 +332,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
         'Installed ${addon.name} (${addon.scrapers.length} scrapers)',
       );
       await _loadNuvioAddons();
+      scheduleNuvioSyncPush();
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('Install failed: $e');
@@ -349,6 +350,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
     try {
       await NuvioService.instance.remove(manifestUrl);
       await _loadNuvioAddons();
+      scheduleNuvioSyncPush();
       if (!mounted) return;
       ForjaToast.success('Nuvio addon removed');
     } catch (e) {

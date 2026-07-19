@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
@@ -18,6 +20,7 @@ class SyncDomainBridge {
   static const _domainIptv = 'iptv';
   static const _domainPreferences = 'preferences';
   static const _domainStremio = 'stremio';
+  static const _domainNuvio = 'nuvio';
   static const _domainNavigation = 'navigation';
 
   final _settings = SettingsService();
@@ -48,6 +51,7 @@ class SyncDomainBridge {
     await importPreferences({
       'play_source_torrent_enabled': defaults.playSourceTorrent,
       'play_source_stremio_enabled': defaults.playSourceStremio,
+      'play_source_nuvio_enabled': defaults.playSourceNuvio,
       'play_source_webstreaming_enabled': defaults.playSourceWebstreaming,
       'preferred_audio_lang': 'None',
       'avoid_unsupported_audio': true,
@@ -67,6 +71,14 @@ class SyncDomainBridge {
       if (baseUrl.isNotEmpty) {
         await _settings.removeStremioAddon(baseUrl);
       }
+    }
+
+    final nuvioAddons = await NuvioService.instance.listAddons();
+    for (final addon in nuvioAddons) {
+      if (NuvioService.isBundled(addon.manifestUrl)) continue;
+      try {
+        await NuvioService.instance.remove(addon.manifestUrl);
+      } catch (_) {}
     }
 
     if (clearIptv) {
@@ -130,8 +142,10 @@ class SyncDomainBridge {
     out['playback'] = await exportPreferences();
 
     final stremio = await _exportStremioCompact();
+    final nuvio = await _exportNuvioCompact();
     final connected = <String, dynamic>{};
     if (stremio.isNotEmpty) connected['stremio'] = stremio;
+    if (nuvio.isNotEmpty) connected['nuvio'] = nuvio;
     if (connected.isNotEmpty) out['connectedServices'] = connected;
 
     final navigation = await _exportNavigationCompact();
@@ -158,6 +172,10 @@ class SyncDomainBridge {
       if (stremio is Map) {
         await importStremio(Map<String, dynamic>.from(stremio));
       }
+      final nuvio = connected['nuvio'];
+      if (nuvio is Map) {
+        await importNuvio(Map<String, dynamic>.from(nuvio));
+      }
     }
 
     final navigation = payload['navigation'];
@@ -182,6 +200,21 @@ class SyncDomainBridge {
       if (description != null && description.isNotEmpty) {
         row['description'] = description;
       }
+      lean.add(row);
+    }
+    return lean.isEmpty ? {} : {'addons': lean};
+  }
+
+  Future<Map<String, dynamic>> _exportNuvioCompact() async {
+    final addons = await NuvioService.instance.listAddons();
+    if (addons.isEmpty) return {};
+    final lean = <Map<String, dynamic>>[];
+    for (final addon in addons) {
+      final manifestUrl = addon.manifestUrl.trim();
+      if (manifestUrl.isEmpty) continue;
+      final row = <String, dynamic>{'manifestUrl': manifestUrl};
+      final name = addon.name.trim();
+      if (name.isNotEmpty) row['name'] = name;
       lean.add(row);
     }
     return lean.isEmpty ? {} : {'addons': lean};
@@ -278,8 +311,11 @@ class SyncDomainBridge {
       'play_source_torrent_enabled':
           await _settings.isPlaySourceTorrentEnabled(),
       'play_source_stremio_enabled': await _settings.isPlaySourceStremioEnabled(),
+      'play_source_nuvio_enabled': await _settings.isPlaySourceNuvioEnabled(),
       'play_source_webstreaming_enabled':
           await _settings.isPlaySourceWebstreamingEnabled(),
+      'simple_streaming_resolve_enabled':
+          await _settings.isSimpleStreamingResolveEnabled(),
       'preferred_audio_lang': await _settings.getPreferredAudioLanguage(),
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
       'auto_next_episode': await _settings.getAutoNextEpisode(),
@@ -300,9 +336,19 @@ class SyncDomainBridge {
         payload['play_source_stremio_enabled'] as bool,
       );
     }
+    if (payload.containsKey('play_source_nuvio_enabled')) {
+      await _settings.setPlaySourceNuvioEnabled(
+        payload['play_source_nuvio_enabled'] as bool,
+      );
+    }
     if (payload.containsKey('play_source_webstreaming_enabled')) {
       await _settings.setPlaySourceWebstreamingEnabled(
         payload['play_source_webstreaming_enabled'] as bool,
+      );
+    }
+    if (payload.containsKey('simple_streaming_resolve_enabled')) {
+      await _settings.setSimpleStreamingResolveEnabled(
+        payload['simple_streaming_resolve_enabled'] as bool,
       );
     }
     if (payload.containsKey('preferred_audio_lang')) {
@@ -382,6 +428,43 @@ class SyncDomainBridge {
       await _settings.saveStremioAddon(addon);
     }
   }
+
+  Future<Map<String, dynamic>> exportNuvio() async {
+    return _exportNuvioCompact();
+  }
+
+  /// Install / refresh manifests from cloud; drop user addons not in remote.
+  /// Built-in All-in-One is never removed even if omitted from the payload.
+  Future<void> importNuvio(Map<String, dynamic> payload) async {
+    final addons = payload['addons'] as List? ?? const [];
+    final remoteUrls = <String>{
+      for (final raw in addons)
+        if ((raw as Map)['manifestUrl'] is String)
+          ((raw)['manifestUrl'] as String).trim(),
+    }..removeWhere((u) => u.isEmpty);
+
+    final current = await NuvioService.instance.listAddons();
+    for (final addon in current) {
+      if (NuvioService.isBundled(addon.manifestUrl)) continue;
+      if (!remoteUrls.contains(addon.manifestUrl)) {
+        try {
+          await NuvioService.instance.remove(addon.manifestUrl);
+        } catch (_) {}
+      }
+    }
+    for (final url in remoteUrls) {
+      try {
+        await NuvioService.instance.refreshFromUrl(url);
+      } catch (_) {
+        try {
+          await NuvioService.instance.install(url);
+        } catch (e) {
+          debugPrint('[Sync] Nuvio import failed ($url): $e');
+        }
+      }
+    }
+    await NuvioService.instance.ensureBundledInstalled();
+  }
 }
 
 void scheduleIptvSyncPush() =>
@@ -396,6 +479,9 @@ void scheduleProvidersSyncPush() {
 
 void scheduleStremioSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainStremio);
+
+void scheduleNuvioSyncPush() =>
+    SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNuvio);
 
 void scheduleNavigationSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNavigation);

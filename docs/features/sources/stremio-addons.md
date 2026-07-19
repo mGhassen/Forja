@@ -16,7 +16,7 @@ Stremio addons are manifest-based extensions. Forja supports installing the same
 - View installed addons and remove them
 - Browse catalogs ([Stremio catalog](../movies-tv/stremio-catalog.md))
 - Search addon content ([Search](../movies-tv/search.md))
-- Play addon streams from [Media details](../movies-tv/media-details.md)
+- Play addon streams from [Media details](../movies-tv/media-details.md) — Sources → **Stremio** shows one chip per installed addon that declares a `stream` resource (catalog-only addons stay in Settings but do not appear there)
 - Use subtitle-capable addons in the [player](../playback/subtitles.md)
 
 ## Setup

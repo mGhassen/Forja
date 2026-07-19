@@ -28,6 +28,7 @@ void main() {
       expect(tv.playSourceWebstreaming, isTrue);
       expect(tv.playSourceTorrent, isFalse);
       expect(tv.playSourceStremio, isFalse);
+      expect(tv.playSourceNuvio, isFalse);
     });
 
     test('phone defaults unchanged', () {

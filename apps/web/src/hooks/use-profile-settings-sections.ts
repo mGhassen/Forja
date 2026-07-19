@@ -2,6 +2,7 @@ import { useProfileSettings } from '@/hooks/use-profile-settings'
 import type {
   PreferencesPayload,
   StremioPayload,
+  NuvioPayload,
   NavigationPayload,
 } from '@/lib/sync-domains'
 
@@ -36,6 +37,27 @@ export function useStremioSetting() {
         connectedServices: {
           ...settings.data?.payload.connectedServices,
           stremio: payload,
+        },
+      })
+    },
+  }
+}
+
+export function useNuvioSetting() {
+  const settings = useProfileSettings()
+  return {
+    ...settings,
+    data: settings.data
+      ? {
+          payload: settings.data.payload.connectedServices?.nuvio ?? { addons: [] },
+          updated_at: settings.data.updated_at,
+        }
+      : undefined,
+    save: async (payload: NuvioPayload) => {
+      await settings.patch({
+        connectedServices: {
+          ...settings.data?.payload.connectedServices,
+          nuvio: payload,
         },
       })
     },

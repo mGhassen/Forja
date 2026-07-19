@@ -54,6 +54,8 @@ class DesktopBrowserAuth {
         queryParameters: {
           'desktop_callback': callback.toString(),
           'desktop_state': state,
+          // Helps the portal pick the handoff UI before auth hydrates.
+          'desktop_client': 'forja',
         },
       );
 

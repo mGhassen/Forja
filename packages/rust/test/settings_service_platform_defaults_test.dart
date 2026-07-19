@@ -48,6 +48,7 @@ void main() {
     expect(await service.isPlaySourceWebstreamingEnabled(), isTrue);
     expect(await service.isPlaySourceTorrentEnabled(), isFalse);
     expect(await service.isPlaySourceStremioEnabled(), isFalse);
+    expect(await service.isPlaySourceNuvioEnabled(), isFalse);
   });
 
   test('fresh phone install seeds phone nav defaults', () async {

@@ -37,6 +37,7 @@ class SettingsService {
   static const String _streamingModeKey = 'streaming_mode';
   static const String _playSourceTorrentKey = 'play_source_torrent_enabled';
   static const String _playSourceStremioKey = 'play_source_stremio_enabled';
+  static const String _playSourceNuvioKey = 'play_source_nuvio_enabled';
   static const String _playSourceWebstreamingKey =
       'play_source_webstreaming_enabled';
   static const String _simpleStreamingResolveKey =
@@ -274,7 +275,7 @@ class SettingsService {
   Future<void> setStreamingMode(bool enabled) async =>
       kvSetBool(_streamingModeKey, enabled);
 
-  /// Bumped when Direct torrent / Stremio / Webstreaming toggles change.
+  /// Bumped when Direct torrent / Stremio / Nuvio / Webstreaming toggles change.
   static final ValueNotifier<int> playSourceChangeNotifier =
       ValueNotifier<int>(0);
 
@@ -294,6 +295,22 @@ class SettingsService {
     playSourceChangeNotifier.value++;
   }
 
+  /// Nuvio scrapers in Sources. Legacy installs (no key) follow Direct torrent.
+  Future<bool> isPlaySourceNuvioEnabled() async {
+    if (await kvHasKey(_playSourceNuvioKey)) {
+      return kvGetBool(
+        _playSourceNuvioKey,
+        fallback: _defaults.playSourceNuvio,
+      );
+    }
+    return isPlaySourceTorrentEnabled();
+  }
+
+  Future<void> setPlaySourceNuvioEnabled(bool enabled) async {
+    await kvSetBool(_playSourceNuvioKey, enabled);
+    playSourceChangeNotifier.value++;
+  }
+
   Future<bool> isPlaySourceWebstreamingEnabled() async => kvGetBool(
     _playSourceWebstreamingKey,
     fallback: _defaults.playSourceWebstreaming,
@@ -305,9 +322,9 @@ class SettingsService {
   }
 
   /// Experimental: provider → filter → probe → open once (RFC-038).
-  /// Off = production race / player failover path.
+  /// On by default; Off = production race / player failover path.
   Future<bool> isSimpleStreamingResolveEnabled() async =>
-      kvGetBool(_simpleStreamingResolveKey, fallback: false);
+      kvGetBool(_simpleStreamingResolveKey, fallback: true);
 
   Future<void> setSimpleStreamingResolveEnabled(bool enabled) async =>
       kvSetBool(_simpleStreamingResolveKey, enabled);
@@ -794,6 +811,7 @@ class SettingsService {
       await kvSetBool(_iptvEpgEnabledKey, defaults.iptvEpgEnabled);
       await kvSetBool(_playSourceTorrentKey, defaults.playSourceTorrent);
       await kvSetBool(_playSourceStremioKey, defaults.playSourceStremio);
+      await kvSetBool(_playSourceNuvioKey, defaults.playSourceNuvio);
       await kvSetBool(
         _playSourceWebstreamingKey,
         defaults.playSourceWebstreaming,
@@ -989,6 +1007,7 @@ class SettingsService {
     prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
     prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentEnabled();
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioEnabled();
+    prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioEnabled();
     prefsMap[_playSourceWebstreamingKey] =
         await isPlaySourceWebstreamingEnabled();
     for (final key in [
@@ -1093,6 +1112,7 @@ class SettingsService {
       _useDebridKey,
       _playSourceTorrentKey,
       _playSourceStremioKey,
+      _playSourceNuvioKey,
       _playSourceWebstreamingKey,
     ]) {
       if (prefsMap.containsKey(key)) {

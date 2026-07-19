@@ -464,42 +464,47 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     if (widget.options.isEmpty) return const SizedBox.shrink();
     final showArrows = widget.options.length > 3;
 
-    return Row(
-      children: [
-        if (showArrows)
-          _ScrollArrow(
-            icon: Icons.arrow_back_ios_rounded,
-            onTap: () => _scrollBy(-120),
-          ),
-        Expanded(
-          child: SingleChildScrollView(
-            controller: _scroll,
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final option in widget.options)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: _ProviderChip(
-                      label: option.label,
-                      selected: option.id.startsWith('nuvio:')
-                          ? widget.nuvioSelectedScraperIds.contains(
-                              option.id.substring('nuvio:'.length),
-                            )
-                          : widget.selectedSourceId == option.id,
-                      onTap: () => widget.onChipTap(option.id),
+    // Vertical pad + Clip.none so dense chip rows don't clip on hover/focus.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          if (showArrows)
+            _ScrollArrow(
+              icon: Icons.arrow_back_ios_rounded,
+              onTap: () => _scrollBy(-120),
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scroll,
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                children: [
+                  for (final option in widget.options)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _ProviderChip(
+                        label: option.label,
+                        selected: option.id.startsWith('nuvio:')
+                            ? widget.nuvioSelectedScraperIds.contains(
+                                option.id.substring('nuvio:'.length),
+                              )
+                            : widget.selectedSourceId == option.id,
+                        onTap: () => widget.onChipTap(option.id),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-        if (showArrows)
-          _ScrollArrow(
-            icon: Icons.arrow_forward_ios_rounded,
-            onTap: () => _scrollBy(120),
-          ),
-      ],
+          if (showArrows)
+            _ScrollArrow(
+              icon: Icons.arrow_forward_ios_rounded,
+              onTap: () => _scrollBy(120),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -520,6 +525,8 @@ class _ProviderChip extends StatelessWidget {
     return FocusableControl(
       onTap: onTap,
       borderRadius: 999,
+      // Dense strip — scale clips into chrome gaps above/below.
+      scaleOnFocus: 1.0,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -988,14 +995,9 @@ class _TorrentSourceSearchToolbarState
   OverlayEntry? _filtersEntry;
   bool _wasPanelOpen = false;
 
-  bool get _canFilter =>
-      widget.showFilters &&
-      (widget.availableQualities.isNotEmpty ||
-          widget.availableLanguages.isNotEmpty ||
-          widget.availableTech.isNotEmpty ||
-          widget.availableSizeRanges.isNotEmpty ||
-          widget.showAudioFilters ||
-          widget.sortPreference != null);
+  // Always show the tune control when the chrome asks for filters — empty
+  // Stremio/Nuvio lists used to hide it entirely (no facets yet).
+  bool get _canFilter => widget.showFilters;
 
   int get _activeCount =>
       widget.activeQualityFilters.length +

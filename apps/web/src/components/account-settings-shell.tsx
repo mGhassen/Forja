@@ -4,8 +4,10 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  Code2,
   LayoutList,
   LogOut,
+  MonitorSmartphone,
   PlayCircle,
   Puzzle,
   Radio,
@@ -15,6 +17,7 @@ import { SiteHeader } from '@/components/site-header'
 import { RequireAuth } from '@/components/require-auth'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
+import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import {
   DropdownMenu,
@@ -26,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-const profileCategories = [
+const profileCategoriesBase = [
   {
     href: '/account/settings/iptv',
     title: 'IPTV',
@@ -50,6 +53,14 @@ const profileCategories = [
     title: 'Stremio addons',
     subtitle: 'Synced manifest URLs',
     icon: Puzzle,
+    requiresStremio: true as const,
+  },
+  {
+    href: '/account/settings/nuvio',
+    title: 'Nuvio addons',
+    subtitle: 'Synced scraper manifests',
+    icon: Code2,
+    requiresNuvio: true as const,
   },
 ] as const
 
@@ -59,6 +70,12 @@ const accountCategories = [
     title: 'Account',
     subtitle: 'Email, passkeys, and delete',
     icon: UserRound,
+  },
+  {
+    href: '/account/settings/connections',
+    title: 'Connections',
+    subtitle: 'Devices, where, and since',
+    icon: MonitorSmartphone,
   },
 ] as const
 
@@ -147,6 +164,18 @@ export function AccountSettingsShell({
   const { user, signOut } = useAuth()
   const { profiles, activeProfile, selectProfile, loading: profilesLoading } =
     useProfiles()
+  const { data: playbackData } = usePlaybackSetting()
+  const stremioOn = playbackData?.payload.play_source_stremio_enabled ?? true
+  const nuvioOn = playbackData?.payload.play_source_nuvio_enabled ?? true
+  const profileCategories = profileCategoriesBase.filter((category) => {
+    if ('requiresStremio' in category && category.requiresStremio) {
+      return stremioOn
+    }
+    if ('requiresNuvio' in category && category.requiresNuvio) {
+      return nuvioOn
+    }
+    return true
+  })
 
   async function onSignOut() {
     // Local only — keep the desktop app session alive.

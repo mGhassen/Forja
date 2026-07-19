@@ -39,14 +39,21 @@ class ProfileEngineWarm {
       debugPrint('[Init] WebStreamr skip (no VOD tab)');
     }
 
-    if (needs.torrent) {
-      onStatus?.call('Refreshing torrent addons…');
-      debugPrint('[Init] Nuvio refresh (direct torrent)');
+    if (needs.nuvio) {
+      onStatus?.call('Refreshing Nuvio addons…');
+      debugPrint('[Init] Nuvio refresh');
       unawaited(
         NuvioService.instance.refreshAllInstalled().catchError((e) {
           debugPrint('[Init] Nuvio refresh error (non-fatal): $e');
         }),
       );
+    } else if (!needs.playSourceNuvio) {
+      debugPrint('[Init] Nuvio skip (play source off)');
+    } else {
+      debugPrint('[Init] Nuvio skip (no VOD tab)');
+    }
+
+    if (needs.torrent) {
       if (startTorrent && PlatformPlayback.capabilities.localTorrentEngine) {
         onStatus?.call('Starting torrent engine…');
         debugPrint('[Init] TorrentStream start (direct torrent)');
@@ -73,10 +80,8 @@ class ProfileEngineWarm {
         debugPrint('[Init] TorrentStream skip (platform has no local engine)');
       }
     } else if (!needs.playSourceTorrent) {
-      debugPrint('[Init] Nuvio skip (direct torrent off)');
       debugPrint('[Init] TorrentStream skip (direct torrent off)');
     } else {
-      debugPrint('[Init] Nuvio skip (no VOD tab)');
       debugPrint('[Init] TorrentStream skip (no VOD tab)');
     }
   }

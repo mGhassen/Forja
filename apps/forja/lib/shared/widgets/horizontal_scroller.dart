@@ -107,9 +107,11 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
     final pos = _ctrl.position;
     if (pos.maxScrollExtent <= 0) return;
 
+    // pixels += dy: positive dy → right, negative dy → left.
+    // At an edge in that direction, do not claim — let the parent page scroll.
     final atMin = pos.pixels <= pos.minScrollExtent + 0.5;
     final atMax = pos.pixels >= pos.maxScrollExtent - 0.5;
-    final canScrollRow = (dy > 0 && !atMin) || (dy < 0 && !atMax);
+    final canScrollRow = (dy > 0 && !atMax) || (dy < 0 && !atMin);
     if (!canScrollRow) return;
 
     GestureBinding.instance.pointerSignalResolver.register(event, (resolved) {
@@ -121,7 +123,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
       final position = _ctrl.position;
       final atStart = position.pixels <= position.minScrollExtent + 0.5;
       final atEnd = position.pixels >= position.maxScrollExtent - 0.5;
-      if ((atStart && delta > 0) || (atEnd && delta < 0)) return;
+      if ((atStart && delta < 0) || (atEnd && delta > 0)) return;
 
       final target = (position.pixels + delta)
           .clamp(position.minScrollExtent, position.maxScrollExtent);

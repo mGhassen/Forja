@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **1 / 5** acceptance |
-| **Current slice** | Toggle + SimpleStreamingResolve + streamsPrevalidated wired — device smoke pending |
+| **Progress** | **3 / 3** components · **3 / 7** acceptance |
+| **Current slice** | Toggle + SimpleStreamingResolve + streamsPrevalidated wired; default-on; admin-only Settings UI — device smoke pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -34,6 +34,8 @@
 | 3 | R38-A03 | Toggle on + pinned provider: only that provider; stream-by-stream after filter+probe | ⬜ |
 | 4 | R38-A04 | HOTD `94997` S1E1 with toggle on reaches video without player reload thrash | ⬜ |
 | 5 | R38-A05 | Feature doc + changelog mention the experimental toggle | ✅ |
+| 6 | R38-A06 | Simple resolve defaults **on** when the setting key is unset | ✅ |
+| 7 | R38-A07 | Settings toggle visible only for `accounts.is_admin` (app + web) | ✅ |
 
 ---
 

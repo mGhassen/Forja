@@ -67,7 +67,11 @@ export function useProfileSettings() {
         connectedServices: {
           ...current.connectedServices,
           ...patch.connectedServices,
-          stremio: patch.connectedServices?.stremio ?? current.connectedServices?.stremio,
+          stremio:
+            patch.connectedServices?.stremio ??
+            current.connectedServices?.stremio,
+          nuvio:
+            patch.connectedServices?.nuvio ?? current.connectedServices?.nuvio,
         },
         navigation: patch.navigation
           ? { ...current.navigation, ...patch.navigation }

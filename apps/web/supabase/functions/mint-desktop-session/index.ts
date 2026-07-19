@@ -82,6 +82,16 @@ Deno.serve(async (req) => {
     )
   }
 
+  // Label so Account → Connections shows "Forja desktop app" (mint runs
+  // server-side, so GoTrue would otherwise store an empty / Deno UA).
+  const sessionId = sessionIdFromJwt(session.access_token)
+  if (sessionId) {
+    await admin.rpc('service_label_auth_session', {
+      p_session_id: sessionId,
+      p_user_agent: 'Forja Desktop (Web login)',
+    })
+  }
+
   return json(
     {
       access_token: session.access_token,
@@ -94,6 +104,18 @@ Deno.serve(async (req) => {
     req,
   )
 })
+
+function sessionIdFromJwt(accessToken: string): string | null {
+  try {
+    const parts = accessToken.split('.')
+    if (parts.length < 2 || !parts[1]) return null
+    const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(json) as { session_id?: unknown }
+    return typeof payload.session_id === 'string' ? payload.session_id : null
+  } catch {
+    return null
+  }
+}
 
 function corsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get('Origin') ?? '*'

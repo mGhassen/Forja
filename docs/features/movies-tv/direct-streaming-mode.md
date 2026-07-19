@@ -28,11 +28,11 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 
 - [Stream providers](../sources/stream-providers.md) — reorder webstreaming extractors in Settings → Playback
 - [WebStreamr settings](../scrapers/webstreamr-settings.md) — country sources and extractors
-- [Nuvio scrapers](../scrapers/nuvio.md) — extra scrapers in **Sources** (Direct torrent), not webstreaming
+- [Nuvio scrapers](../scrapers/nuvio.md) — extra scrapers in **Sources** (Nuvio play source), not webstreaming
 
 ## Tips
 
-- Keep **Direct torrent** / Stremio enabled for magnet **Sources**; use green **Play** when you want a direct HTTP/HLS link only
+- Keep **Direct torrent** / **Stremio** / **Nuvio** enabled for magnet **Sources**; use green **Play** when you want a direct HTTP/HLS link only
 - Provider order matters — put your most reliable extractor first
 
 ## Related

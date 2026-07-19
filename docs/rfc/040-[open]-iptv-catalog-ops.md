@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **17 / 19** acceptance (unified portals pool; AI + Stalker deferred) |
-| **Current slice** | Unified `iptv_portals.catalog_pool`; AI/Stalker deferred |
+| **Progress** | **5 / 5** components · **18 / 20** acceptance (editable scrape cron; AI + Stalker deferred) |
+| **Current slice** | Editable `scrape_cron` in admin Automation; AI/Stalker deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -50,6 +50,7 @@
 | 17 | R40-A17 | Persist Reddit `post_id` only on scrape posts / candidates — never title or body_excerpt | ✅ |
 | 18 | R40-A18 | Admin Pool: manual Check status on portal or host (player_api → update alive) | ✅ |
 | 19 | R40-A19 | Single `iptv_portals` table + `catalog_pool`; drop `iptv_catalog_candidates` + scrape deep_refs / post body cols | ✅ |
+| 20 | R40-A20 | Admin Scrape Automation: edit UTC schedule (presets / time / cron) via `iptv_ops_settings.scrape_cron`; Inngest minute tick matches expression | ✅ |
 
 ---
 

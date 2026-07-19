@@ -33,10 +33,11 @@ profile is known — another profile’s settings are never shown first.
   create your
   first one (name + avatar); default synced settings are attached then. After
   that, choose a profile on **Who's watching?**, then open **Remote settings**.
-  The sidebar splits **Profile** (synced IPTV / playback / Features / Stremio)
-  from **Account** (email, passkeys, log out, delete). Back returns to Who's
-  watching. Switch profiles from the header menu. **Log out** is under Account in
-  the left nav.
+  The sidebar splits **Profile** (synced IPTV / playback / Features / Stremio /
+  Nuvio) from **Account** (email, passkeys, delete) and **Connections** (every
+  active session — where, since, last active — revoke one or sign out all). Back
+  returns to Who's watching. Switch profiles from the header menu. **Log out**
+  is under Account in the left nav.
 
 ## What syncs (remote settings)
 
@@ -46,9 +47,10 @@ Per profile:
 |---------|------------------|
 | **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled keys only — e.g. `iptvScrape` for Reddit portal discovery in the app. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
-| **`profile_settings` → Playback** | Full prefs: torrent / Stremio / webstreaming play sources, auto next/skip intro, IPTV EPG, preferred audio, max quality |
+| **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio, max quality |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features** |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
+| **`profile_settings` → Nuvio** | Installed Nuvio scraper manifest URLs |
 
 ## What stays local
 
@@ -75,10 +77,11 @@ Not synced — device-specific or sensitive:
   under web **Account** — after you enable it, sign-in asks for a 6-digit code
   (Web login completes MFA in the browser before minting the desktop session;
   in-app password sign-in shows the same challenge). Portal **Sign out** clears
-  this browser only; **Account → Sessions → Sign out all devices** revokes every
-  session including the desktop app. Already signed in on the portal? The
-  handoff still completes (or use **Return to Forja**). Create accounts only on
-  the web (`/signup`). Forgot password is web-only: `/forgot-password` →
+  this browser only; **Account → Connections** lists every active session and can
+  revoke one or **Sign out all devices** (including the desktop app). Already
+  signed in on the portal? Web login skips the credentials form and finishes the
+  handoff (or use **Return to Forja**). Create accounts only on the web
+  (`/signup`). Forgot password is web-only: `/forgot-password` →
   `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail

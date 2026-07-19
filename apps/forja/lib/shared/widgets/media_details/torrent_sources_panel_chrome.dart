@@ -358,6 +358,7 @@ class _KindTab extends StatefulWidget {
 
 class _KindTabState extends State<_KindTab> {
   bool _hovered = false;
+  bool _reloadHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +378,10 @@ class _KindTabState extends State<_KindTab> {
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _reloadHovered = false;
+      }),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
@@ -429,16 +433,23 @@ class _KindTabState extends State<_KindTab> {
                     const SizedBox(width: 8),
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
+                      onEnter: (_) => setState(() => _reloadHovered = true),
+                      onExit: (_) => setState(() => _reloadHovered = false),
                       child: GestureDetector(
                         onTap: widget.onReload,
                         behavior: HitTestBehavior.opaque,
                         child: AnimatedOpacity(
                           opacity: _hovered || selected ? 1 : 0.7,
                           duration: const Duration(milliseconds: 160),
-                          child: Icon(
-                            Icons.refresh_rounded,
-                            size: 14,
-                            color: color,
+                          child: AnimatedRotation(
+                            turns: _reloadHovered ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 320),
+                            curve: Curves.easeOutCubic,
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              size: 14,
+                              color: color,
+                            ),
                           ),
                         ),
                       ),

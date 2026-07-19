@@ -1,6 +1,6 @@
 # Nuvio scrapers
 
-> Install community scraper manifests for extra stream links in the **Sources** panel (Direct torrent).
+> Install community scraper manifests for extra stream links in the **Sources** panel (**Nuvio** play source).
 
 ## What it is
 
@@ -12,9 +12,9 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 
 ## How to open it
 
-1. Enable **Direct torrent** under **Play sources** in **Settings → Playback**
+1. Enable **Nuvio** under **Play sources** in **Settings → Playback**
 2. Open a title → white **Play** / **Sources** → **Nuvio** tab
-3. Or manage addons under **Settings → Providers & Addons → Nuvio Addons**
+3. Or manage addons under **Settings → Providers & Addons → Nuvio Addons** (hidden when Nuvio play source is off), or on the web portal under **Profile → Nuvio addons** (also hidden when Nuvio play source is off)
 
 ## What you can do
 
@@ -26,7 +26,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 
 ## Setup
 
-1. Enable **Direct torrent** in **Settings → Playback**
+1. Enable **Nuvio** in **Settings → Playback**
 2. Open **Settings → Providers & Addons → Nuvio Addons** — the built-in catalog is already listed
 3. Optionally paste another Nuvio manifest URL and tap Install
 4. Enable scrapers you want; disable noisy or slow ones

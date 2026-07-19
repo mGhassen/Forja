@@ -553,6 +553,8 @@ class SyncService {
           connected['providers'] = e.value;
         case 'stremio':
           connected['stremio'] = e.value;
+        case 'nuvio':
+          connected['nuvio'] = e.value;
         case 'navigation':
           merged['navigation'] = e.value;
         case 'iptv':
@@ -624,20 +626,39 @@ class SyncService {
       return const {};
     }
     try {
+      var isAdmin = false;
+      try {
+        final rpc = await client.rpc('is_admin');
+        isAdmin = rpc == true;
+      } catch (_) {
+        // Fall through to accounts.is_admin column.
+      }
+
       Map<String, dynamic>? row;
       try {
         row = await client
             .from('accounts')
-            .select('features, iptv_credits')
+            .select('features, iptv_credits, is_admin')
             .eq('id', userId)
             .maybeSingle();
       } catch (_) {
-        // Column missing until RFC-040 migration is applied.
-        row = await client
-            .from('accounts')
-            .select('features')
-            .eq('id', userId)
-            .maybeSingle();
+        try {
+          row = await client
+              .from('accounts')
+              .select('features, iptv_credits')
+              .eq('id', userId)
+              .maybeSingle();
+        } catch (_) {
+          // Column missing until RFC-040 migration is applied.
+          row = await client
+              .from('accounts')
+              .select('features')
+              .eq('id', userId)
+              .maybeSingle();
+        }
+      }
+      if (!isAdmin) {
+        isAdmin = row?['is_admin'] == true;
       }
       final raw = row?['features'];
       final map = raw is Map
@@ -649,7 +670,11 @@ class SyncService {
         String s => int.tryParse(s) ?? 0,
         _ => 0,
       };
-      AccountFeatures.instance.applyRemote(map, iptvCredits: credits);
+      AccountFeatures.instance.applyRemote(
+        map,
+        iptvCredits: credits,
+        isAdmin: isAdmin,
+      );
       return map;
     } catch (e) {
       debugPrint('[Sync] pullAccountFeatures error: $e');
@@ -681,6 +706,12 @@ class SyncService {
       if (connected['stremio'] is Map) {
         out['stremio'] = {
           'payload': connected['stremio'],
+          'updated_at': null,
+        };
+      }
+      if (connected['nuvio'] is Map) {
+        out['nuvio'] = {
+          'payload': connected['nuvio'],
           'updated_at': null,
         };
       }

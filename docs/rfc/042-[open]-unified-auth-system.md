@@ -11,8 +11,8 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **3 / 13** acceptance |
-| **Current slice** | Dual-session Web login mint landed — manual acceptance smoke remaining |
+| **Progress** | **5 / 5** components · **8 / 16** acceptance |
+| **Current slice** | Handoff UX + Connections audit shipped — remaining web/Flutter smoke ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -38,8 +38,11 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 | 2 | R42-A02 | OAuth/PKCE `/auth/callback` maps errors (otp_expired, verifier mismatch) | ⬜ |
 | 3 | R42-A03 | Optional TOTP MFA enroll in Account settings | ⬜ |
 | 4 | R42-A04 | After password/OAuth, AAL1→AAL2 challenge on `/login/mfa` before app access | ⬜ |
-| 5 | R42-A05 | Sign out this browser (local) vs all devices (global) | ⬜ |
-| 6 | R42-A06 | Desktop handoff mints session B; portal stays signed in (no Auth wipe) | ⬜ |
+| 5 | R42-A05 | Sign out this browser (local) vs all devices (global) | ✅ |
+| 6 | R42-A06 | Desktop handoff mints session B; portal stays signed in (no Auth wipe) | ✅ |
+| 7 | R42-A14 | Desktop `/login?desktop_*` never shows credentials while session hydrates or when already signed in | ✅ |
+| 8 | R42-A15 | Account → Connections lists active sessions (where / since / last active / IP) | ✅ |
+| 9 | R42-A16 | Connections can revoke one session or sign out all devices | ✅ |
 
 ---
 

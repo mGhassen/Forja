@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Account-level remote feature flags (`accounts.features`).
+/// Account-level remote feature flags (`accounts.features` + `accounts.is_admin`).
 ///
 /// Empty / missing cloud payload means all features off. Guests and signed-out
 /// sessions stay disabled until a signed-in pull applies enabled keys.
@@ -13,6 +13,7 @@ class AccountFeatures {
 
   bool _iptvScrape = false;
   int _iptvCredits = 0;
+  bool _isAdmin = false;
 
   /// Reddit / Find Portals scrape in the IPTV tab.
   bool get isIptvScrapeEnabled => _iptvScrape;
@@ -20,13 +21,26 @@ class AccountFeatures {
   /// Credits for dealing portals from the catalog pool (RFC-040).
   int get iptvCredits => _iptvCredits;
 
+  /// `accounts.is_admin` — experimental / ops toggles in Settings.
+  bool get isAdmin => _isAdmin;
+
   /// Apply lean cloud JSON (`{}` or `{ "iptvScrape": true }`).
-  void applyRemote(Map<String, dynamic>? raw, {int? iptvCredits}) {
+  void applyRemote(
+    Map<String, dynamic>? raw, {
+    int? iptvCredits,
+    bool? isAdmin,
+  }) {
     final nextScrape = raw != null && raw['iptvScrape'] == true;
     final nextCredits = (iptvCredits ?? _iptvCredits).clamp(0, 1 << 30);
-    if (nextScrape == _iptvScrape && nextCredits == _iptvCredits) return;
+    final nextAdmin = isAdmin ?? _isAdmin;
+    if (nextScrape == _iptvScrape &&
+        nextCredits == _iptvCredits &&
+        nextAdmin == _isAdmin) {
+      return;
+    }
     _iptvScrape = nextScrape;
     _iptvCredits = nextCredits;
+    _isAdmin = nextAdmin;
     revision.value++;
   }
 
@@ -40,9 +54,10 @@ class AccountFeatures {
 
   /// Reset to all-off (sign-out / guest).
   void clear() {
-    if (!_iptvScrape && _iptvCredits == 0) return;
+    if (!_iptvScrape && _iptvCredits == 0 && !_isAdmin) return;
     _iptvScrape = false;
     _iptvCredits = 0;
+    _isAdmin = false;
     revision.value++;
   }
 }

@@ -30,6 +30,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
     final stremioItem = widget.stremioItem;
     _s._playSourceTorrent = await _s._settings.isPlaySourceTorrentEnabled();
     _s._playSourceStremio = await _s._settings.isPlaySourceStremioEnabled();
+    _s._playSourceNuvio = await _s._settings.isPlaySourceNuvioEnabled();
     _s._playSourceWebstreaming = await _s._settings.isPlaySourceWebstreamingEnabled();
     _s._syncPanelKindFilterToPlaySources();
     if (!mounted) return;
@@ -40,6 +41,11 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
 
     try {
       final streamAddons = await _s._stremio.getAddonsForResource('stream');
+      // Publish addons immediately — TMDB/rich fetch must not leave chips empty
+      // if it throws after this point.
+      if (mounted) {
+        setState(() => _s._streamAddons = streamAddons);
+      }
 
       // If this is a custom-ID Stremio item, skip TMDB fetch — we already
       // have all the info we need from the search result.
@@ -142,7 +148,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
         // Torrent search + Stremio streams load only when Sources opens
         // ([_openSourcesPanel] → [_ensurePanelSourceLoaded]). Nuvio addon
         // listing is cheap and needed for the Nuvio chip.
-        if (_s._playSourceTorrent) {
+        if (_s._playSourceNuvio) {
           _s._checkAndFetchNuvio();
         }
       }

@@ -1,10 +1,11 @@
 import { inngest } from '@/inngest/client'
 import { classifyRegion } from '@/server/iptv-catalog/region'
 import { scrapeCatalogPage } from '@/server/iptv-catalog/reddit'
+import { cronMatchesUtc, isValidScrapeCron } from '@/lib/scrape-cron'
 import {
   createCatalogAdminClient,
+  getScrapeCronSettings,
   insertScrapeRun,
-  isScrapeCronEnabled,
   patchScrapeRun,
   upsertCatalogCandidate,
   upsertScrapePostId,
@@ -47,7 +48,8 @@ async function markRun(runId: string, error?: string) {
 }
 
 /**
- * Daily + on-demand catalog scrape.
+ * Scheduled + on-demand catalog scrape.
+ * Inngest ticks every minute; schedule lives in iptv_ops_settings.scrape_cron (UTC).
  * Cancel with event `iptv/catalog.scrape.cancel` (same jobId).
  * When VERIFY_PORTAL_STATUS: each portal step verify-portal-status-* → player_api.
  * Otherwise: bulk upsert unverified (no portal HTTP).
@@ -57,7 +59,7 @@ export const iptvCatalogScrape = inngest.createFunction(
     id: 'iptv-catalog-scrape',
     concurrency: { limit: 1 },
     retries: 1,
-    triggers: [{ cron: '0 6 * * *' }, { event: 'iptv/catalog.scrape' }],
+    triggers: [{ cron: '* * * * *' }, { event: 'iptv/catalog.scrape' }],
     // concurrency 1 → any cancel event stops the active scrape
     cancelOn: [{ event: 'iptv/catalog.scrape.cancel' }],
     onFailure: async ({ error }) => {
@@ -85,12 +87,28 @@ export const iptvCatalogScrape = inngest.createFunction(
       eventName.startsWith('inngest/scheduled')
 
     if (isCron) {
-      const cronOn = await step.run('check-cron-enabled', async () => {
+      const gate = await step.run('check-cron-schedule', async () => {
         const sb = createCatalogAdminClient()
-        return isScrapeCronEnabled(sb)
+        const settings = await getScrapeCronSettings(sb)
+        if (!settings.enabled) {
+          return { run: false as const, reason: 'scrape_cron_enabled=false' }
+        }
+        if (!isValidScrapeCron(settings.cron)) {
+          return {
+            run: false as const,
+            reason: `invalid scrape_cron=${settings.cron}`,
+          }
+        }
+        if (!cronMatchesUtc(settings.cron)) {
+          return {
+            run: false as const,
+            reason: `cron_mismatch=${settings.cron}`,
+          }
+        }
+        return { run: true as const, cron: settings.cron }
       })
-      if (!cronOn) {
-        return { skipped: true, reason: 'scrape_cron_enabled=false', jobId }
+      if (!gate.run) {
+        return { skipped: true, reason: gate.reason, jobId }
       }
     }
 

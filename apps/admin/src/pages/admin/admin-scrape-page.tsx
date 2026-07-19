@@ -1,8 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { adminDb } from '@/lib/admin-db'
 import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
+import {
+  DEFAULT_SCRAPE_CRON,
+  SCRAPE_CRON_PRESETS,
+  dailyCronFromUtc,
+  humanizeScrapeCron,
+  isValidScrapeCron,
+  parseDailyUtc,
+} from '@/lib/scrape-cron'
 import { scrapeControl } from '@/lib/scrape-control'
 import { cn } from '@/lib/utils'
 
@@ -63,24 +74,71 @@ export function AdminScrapePage() {
     queryFn: async () => {
       const { data, error } = await adminDb
         .from('iptv_ops_settings')
-        .select('scrape_cron_enabled, updated_at')
+        .select('scrape_cron_enabled, scrape_cron, updated_at')
         .eq('id', 1)
         .maybeSingle()
       if (error) throw error
       return (
         data ?? {
           scrape_cron_enabled: true,
+          scrape_cron: DEFAULT_SCRAPE_CRON,
           updated_at: null as string | null,
         }
       )
     },
   })
 
-  const setCron = useMutation({
+  const savedCron =
+    typeof settings.data?.scrape_cron === 'string' &&
+    settings.data.scrape_cron.trim()
+      ? settings.data.scrape_cron.trim()
+      : DEFAULT_SCRAPE_CRON
+
+  const [draftCron, setDraftCron] = useState(DEFAULT_SCRAPE_CRON)
+  useEffect(() => {
+    if (settings.isSuccess) setDraftCron(savedCron)
+  }, [settings.isSuccess, savedCron])
+
+  const daily = parseDailyUtc(draftCron)
+  const [hour, setHour] = useState(6)
+  const [minute, setMinute] = useState(0)
+  useEffect(() => {
+    if (daily) {
+      setHour(daily.hour)
+      setMinute(daily.minute)
+    }
+  }, [daily?.hour, daily?.minute])
+
+  const presetId = useMemo(() => {
+    const hit = SCRAPE_CRON_PRESETS.find((p) => p.cron === draftCron)
+    return hit?.id ?? (daily ? 'daily-custom' : 'custom')
+  }, [draftCron, daily])
+
+  const cronValid = isValidScrapeCron(draftCron)
+  const humanCron = humanizeScrapeCron(draftCron)
+  const scheduleDirty = draftCron.trim() !== savedCron
+
+  const setCronEnabled = useMutation({
     mutationFn: async (enabled: boolean) => {
       const { error } = await adminDb
         .from('iptv_ops_settings')
         .update({ scrape_cron_enabled: enabled })
+        .eq('id', 1)
+      if (error) throw error
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['admin', 'iptv_ops_settings'] }),
+  })
+
+  const saveSchedule = useMutation({
+    mutationFn: async (cron: string) => {
+      const next = cron.trim()
+      if (!isValidScrapeCron(next)) {
+        throw new Error('Invalid cron (need 5 UTC fields: min hour dom month dow)')
+      }
+      const { error } = await adminDb
+        .from('iptv_ops_settings')
+        .update({ scrape_cron: next })
         .eq('id', 1)
       if (error) throw error
     },
@@ -94,12 +152,14 @@ export function AdminScrapePage() {
     start.isPending ||
     stop.isPending ||
     markStuck.isPending ||
-    setCron.isPending
+    setCronEnabled.isPending ||
+    saveSchedule.isPending
   const err =
     (start.error as Error | null)?.message ||
     (stop.error as Error | null)?.message ||
     (markStuck.error as Error | null)?.message ||
-    (setCron.error as Error | null)?.message ||
+    (setCronEnabled.error as Error | null)?.message ||
+    (saveSchedule.error as Error | null)?.message ||
     (settings.error as Error | null)?.message
 
   return (
@@ -216,9 +276,7 @@ export function AdminScrapePage() {
                 Automation
               </p>
               <p className="mt-2 text-sm text-forja-muted">
-                Cron:{' '}
-                <code className="font-mono-ui text-xs">0 6 * * *</code> UTC
-                daily. When off, scheduled runs no-op;{' '}
+                Change the schedule below (UTC). When off, ticks no-op;{' '}
                 <span className="text-forja-text">Run manual scrape</span>{' '}
                 still works.
               </p>
@@ -227,17 +285,18 @@ export function AdminScrapePage() {
               type="button"
               role="switch"
               aria-checked={cronEnabled}
-              disabled={setCron.isPending || settings.isLoading}
-              onClick={() => setCron.mutate(!cronEnabled)}
+              disabled={setCronEnabled.isPending || settings.isLoading}
+              onClick={() => setCronEnabled.mutate(!cronEnabled)}
               className={cn(
                 'relative h-7 w-12 shrink-0 rounded-full transition-colors',
                 cronEnabled ? 'bg-forja-green' : 'bg-white/15',
-                (setCron.isPending || settings.isLoading) && 'opacity-60',
+                (setCronEnabled.isPending || settings.isLoading) &&
+                  'opacity-60',
               )}
               title={
                 cronEnabled
-                  ? 'Daily cron enabled — click to disable'
-                  : 'Daily cron disabled — click to enable'
+                  ? 'Schedule enabled — click to disable'
+                  : 'Schedule disabled — click to enable'
               }
             >
               <span
@@ -257,11 +316,132 @@ export function AdminScrapePage() {
             {settings.isLoading
               ? 'Loading…'
               : cronEnabled
-                ? 'Daily scrape on'
-                : 'Daily scrape off'}
+                ? 'Scheduled scrape on'
+                : 'Scheduled scrape off'}
           </p>
+
+          <div className="mt-4 space-y-3 border-t border-forja-border pt-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="scrape-preset">Preset</Label>
+              <select
+                id="scrape-preset"
+                className="flex h-9 w-full rounded-md border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text"
+                value={presetId}
+                disabled={settings.isLoading || saveSchedule.isPending}
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (id === 'custom' || id === 'daily-custom') return
+                  const preset = SCRAPE_CRON_PRESETS.find((p) => p.id === id)
+                  if (preset) setDraftCron(preset.cron)
+                }}
+              >
+                {SCRAPE_CRON_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+                {daily &&
+                !SCRAPE_CRON_PRESETS.some((p) => p.cron === draftCron) ? (
+                  <option value="daily-custom">
+                    Every day at{' '}
+                    {String(daily.hour).padStart(2, '0')}:
+                    {String(daily.minute).padStart(2, '0')} UTC
+                  </option>
+                ) : null}
+                {!daily ? (
+                  <option value="custom">Custom cron</option>
+                ) : null}
+              </select>
+            </div>
+
+            {daily || presetId === 'daily-custom' ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="scrape-hour">Hour (UTC)</Label>
+                  <select
+                    id="scrape-hour"
+                    className="flex h-9 w-full rounded-md border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text"
+                    value={hour}
+                    disabled={settings.isLoading || saveSchedule.isPending}
+                    onChange={(e) => {
+                      const h = Number(e.target.value)
+                      setHour(h)
+                      setDraftCron(dailyCronFromUtc(h, minute))
+                    }}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="scrape-minute">Minute</Label>
+                  <select
+                    id="scrape-minute"
+                    className="flex h-9 w-full rounded-md border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text"
+                    value={minute}
+                    disabled={settings.isLoading || saveSchedule.isPending}
+                    onChange={(e) => {
+                      const m = Number(e.target.value)
+                      setMinute(m)
+                      setDraftCron(dailyCronFromUtc(hour, m))
+                    }}
+                  >
+                    {Array.from({ length: 60 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-forja-muted">
+                Pick a daily preset (or edit cron) to set hour/minute.
+              </p>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="scrape-cron">Cron (UTC)</Label>
+              <Input
+                id="scrape-cron"
+                className="font-mono-ui text-xs"
+                value={draftCron}
+                spellCheck={false}
+                disabled={settings.isLoading || saveSchedule.isPending}
+                onChange={(e) => setDraftCron(e.target.value)}
+                placeholder="0 6 * * *"
+              />
+              <p
+                className={cn(
+                  'text-sm',
+                  cronValid ? 'text-forja-muted' : 'text-amber-400',
+                )}
+              >
+                {humanCron}
+                {scheduleDirty && cronValid ? ' · unsaved' : null}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                !scheduleDirty ||
+                !cronValid ||
+                saveSchedule.isPending ||
+                settings.isLoading
+              }
+              onClick={() => saveSchedule.mutate(draftCron)}
+            >
+              {saveSchedule.isPending ? 'Saving…' : 'Save schedule'}
+            </Button>
+          </div>
+
           {isInngestLocalUi ? (
-            <p className="mt-2 text-sm text-forja-muted">
+            <p className="mt-3 text-sm text-forja-muted">
               Local: <code className="font-mono-ui text-xs">INNGEST_DEV=1</code>{' '}
               + CLI →{' '}
               <code className="font-mono-ui text-xs">
@@ -270,7 +450,7 @@ export function AdminScrapePage() {
               .
             </p>
           ) : (
-            <p className="mt-2 text-sm text-forja-muted">
+            <p className="mt-3 text-sm text-forja-muted">
               Prod (
               <code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
               ): sync Inngest to{' '}

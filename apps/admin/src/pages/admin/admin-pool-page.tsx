@@ -7,6 +7,8 @@ import {
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowDown,
+  ArrowUp,
   CalendarDays,
   Check,
   Copy,
@@ -63,6 +65,9 @@ type HostGroup = {
   lastScrapedAt: string | null
 }
 
+type SortKey = 'host' | 'accounts' | 'alive' | 'scraped'
+type SortDir = 'asc' | 'desc'
+
 type EditForm = {
   url: string
   username: string
@@ -87,27 +92,59 @@ function groupByHost(rows: Cand[]): HostGroup[] {
     if (list) list.push(row)
     else map.set(host, [row])
   }
-  return [...map.entries()]
-    .map(([host, groupRows]) => {
-      let lastScrapedAt: string | null = null
-      for (const r of groupRows) {
-        const t = r.last_checked_at || r.updated_at
-        if (
-          t &&
-          (!lastScrapedAt ||
-            new Date(t).getTime() > new Date(lastScrapedAt).getTime())
-        ) {
-          lastScrapedAt = t
-        }
+  return [...map.entries()].map(([host, groupRows]) => {
+    let lastScrapedAt: string | null = null
+    for (const r of groupRows) {
+      const t = r.last_checked_at || r.updated_at
+      if (
+        t &&
+        (!lastScrapedAt ||
+          new Date(t).getTime() > new Date(lastScrapedAt).getTime())
+      ) {
+        lastScrapedAt = t
       }
-      return {
-        host,
-        rows: groupRows,
-        alive: groupRows.filter((r) => r.alive === true).length,
-        lastScrapedAt,
+    }
+    return {
+      host,
+      rows: groupRows,
+      alive: groupRows.filter((r) => r.alive === true).length,
+      lastScrapedAt,
+    }
+  })
+}
+
+function sortHostGroups(
+  groups: HostGroup[],
+  key: SortKey,
+  dir: SortDir,
+): HostGroup[] {
+  const mul = dir === 'asc' ? 1 : -1
+  return [...groups].sort((a, b) => {
+    let cmp = 0
+    switch (key) {
+      case 'host':
+        cmp = a.host.localeCompare(b.host)
+        break
+      case 'accounts':
+        cmp = a.rows.length - b.rows.length
+        break
+      case 'alive':
+        cmp = a.alive - b.alive
+        break
+      case 'scraped': {
+        const at = a.lastScrapedAt
+          ? new Date(a.lastScrapedAt).getTime()
+          : 0
+        const bt = b.lastScrapedAt
+          ? new Date(b.lastScrapedAt).getTime()
+          : 0
+        cmp = at - bt
+        break
       }
-    })
-    .sort((a, b) => b.rows.length - a.rows.length || a.host.localeCompare(b.host))
+    }
+    if (cmp !== 0) return cmp * mul
+    return a.host.localeCompare(b.host)
+  })
 }
 
 function relativeTime(iso: string | null | undefined): string {
@@ -560,6 +597,8 @@ export function AdminPoolPage() {
     'all' | 'alive' | 'dead' | 'unchecked'
   >('all')
   const [regionFilter, setRegionFilter] = useState<string>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('accounts')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const runs = useQuery({
     queryKey: ['admin', 'scrape_runs', 'latest'],
@@ -623,7 +662,19 @@ export function AdminPoolPage() {
     })
   }, [list.data, statusFilter, regionFilter])
 
-  const groups = useMemo(() => groupByHost(filteredRows), [filteredRows])
+  const groups = useMemo(
+    () => sortHostGroups(groupByHost(filteredRows), sortKey, sortDir),
+    [filteredRows, sortKey, sortDir],
+  )
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortKey(key)
+    setSortDir(key === 'host' ? 'asc' : 'desc')
+  }
 
   const startScrape = useMutation({
     mutationFn: () => scrapeControl('start'),
@@ -993,10 +1044,42 @@ export function AdminPoolPage() {
         ) : (
           <>
             <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] gap-3 border-b border-forja-border bg-forja-elevated/50 px-3 py-2 text-xs font-medium text-forja-muted sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
-              <span>Host</span>
-              <span className="text-right tabular-nums">Accounts</span>
-              <span className="text-right tabular-nums">Alive</span>
-              <span className="text-right">Scraped</span>
+              {(
+                [
+                  { key: 'host', label: 'Host', align: 'left' },
+                  { key: 'accounts', label: 'Accounts', align: 'right' },
+                  { key: 'alive', label: 'Alive', align: 'right' },
+                  { key: 'scraped', label: 'Scraped', align: 'right' },
+                ] as const
+              ).map((col) => {
+                const active = sortKey === col.key
+                const Icon = sortDir === 'asc' ? ArrowUp : ArrowDown
+                return (
+                  <button
+                    key={col.key}
+                    type="button"
+                    onClick={() => toggleSort(col.key)}
+                    aria-sort={
+                      active
+                        ? sortDir === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                    className={cn(
+                      'inline-flex items-center gap-1 hover:text-forja-text',
+                      col.align === 'right' && 'justify-self-end',
+                      active && 'text-forja-text',
+                      col.key !== 'host' && 'tabular-nums',
+                    )}
+                  >
+                    {col.label}
+                    {active ? (
+                      <Icon className="size-3 shrink-0" aria-hidden />
+                    ) : null}
+                  </button>
+                )
+              })}
               <span className="sr-only">Check</span>
             </div>
             {groups.map((g) => {
