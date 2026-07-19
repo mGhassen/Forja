@@ -17,7 +17,7 @@ Operators scrape Reddit IPTV posts with a Rust worker, store verified portals in
 
 - **Dashboard** — pool size, alive count, scrape runs, account count
 - **Accounts** — search by email; toggle `iptvScrape`; grant/revoke credits (+5 / −1)
-- **Pool** — browse candidates grouped by host (collapsed); expand to a 2-column portal grid. Start/monitor scrape from the pool bar; NEW badge for portals created since the latest run; group headers show last scraped time + run id. Hover for share-code copy, edit dialog, delete confirm
+- **Pool** — browse candidates grouped by host (collapsed); expand to Account→IPTV-style portal rows. Start/monitor scrape from the pool bar; group headers show account count and last scraped time. Copy share code, edit dialog, delete confirm
 - **Scrape** — view worker run history (pages, L1 extract, upserted, alive)
 
 ## Scrape (Inngest on admin)

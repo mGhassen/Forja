@@ -81,7 +81,8 @@ class IptvEpgGuideView extends StatefulWidget {
 }
 
 class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
-  static const _channelColW = 168.0;
+  /// Sticky channel rail — wide enough for logo + 2-line name + favorite.
+  static const _channelColW = 240.0;
   static const _rowH = 56.0;
   static const _headerH = 36.0;
 

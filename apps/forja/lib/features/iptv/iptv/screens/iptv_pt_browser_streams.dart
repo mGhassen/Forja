@@ -100,6 +100,36 @@ class _StreamCardState extends State<_StreamCard> {
     return const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
   }
 
+  /// Uniform border only — Flutter forbids `borderRadius` with mixed side colors.
+  /// Active left accent is painted separately (see build).
+  Border _cardBorder(bool active, bool? health) {
+    final edge = _borderColor(active, health);
+    return Border.all(color: edge);
+  }
+
+  Widget _withActiveLeftAccent({
+    required bool active,
+    required double radius,
+    required Widget child,
+  }) {
+    if (!active) return child;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Stack(
+        children: [
+          child,
+          const Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 2.5,
+            child: ColoredBox(color: ForjaShellColors.brandGreen),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEpgSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
@@ -125,31 +155,35 @@ class _StreamCardState extends State<_StreamCard> {
             ? _buildTvPosterBody(context, health: health, active: active)
             : _buildDefaultBody(context, health: health, active: active);
         final radius = tv ? shellCardBorderRadius(context) : 12.0;
-        Widget card = AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            color: tv ? Colors.transparent : _surfaceColor(active, health),
-            borderRadius: BorderRadius.circular(radius),
-            border: tv && !active
-                ? Border.all(color: Colors.transparent)
-                : Border.all(color: _borderColor(active, health)),
-          ),
-          child: iptvTap(
-            context: context,
-            onTap: widget.onTap,
-            borderRadius: radius,
-            scaleOnFocus: 1.0,
-            gridIndex: widget.gridIndex,
-            gridColumns: widget.gridColumns,
-            tvRowId: 'browser-streams',
-            tvZone: ShellTvZone.grid,
-            onLeftEdge: widget.onLeftEdge,
-            onUpEdge: widget.onUpEdge,
-            onRightEdge: widget.onRightEdge,
-            onFocusChange: _onFocus,
-            onHoverChange: _onHover,
-            child: column,
+        Widget card = _withActiveLeftAccent(
+          active: active,
+          radius: radius,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: tv ? Colors.transparent : _surfaceColor(active, health),
+              borderRadius: BorderRadius.circular(radius),
+              border: tv && !active
+                  ? Border.all(color: Colors.transparent)
+                  : _cardBorder(active, health),
+            ),
+            child: iptvTap(
+              context: context,
+              onTap: widget.onTap,
+              borderRadius: radius,
+              scaleOnFocus: 1.0,
+              gridIndex: widget.gridIndex,
+              gridColumns: widget.gridColumns,
+              tvRowId: 'browser-streams',
+              tvZone: ShellTvZone.grid,
+              onLeftEdge: widget.onLeftEdge,
+              onUpEdge: widget.onUpEdge,
+              onRightEdge: widget.onRightEdge,
+              onFocusChange: _onFocus,
+              onHoverChange: _onHover,
+              child: column,
+            ),
           ),
         );
 
@@ -417,6 +451,10 @@ class _StreamRowTileState extends State<_StreamRowTile> {
         : const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
   }
 
+  Border _tileBorder(bool? health, bool active) {
+    return Border.all(color: _borderColor(active, health));
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -428,31 +466,35 @@ class _StreamRowTileState extends State<_StreamRowTile> {
         final active = _active(context);
         final tile = Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              color: _surfaceColor(active, health),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _borderColor(active, health)),
-            ),
-            child: iptvTap(
-              context: context,
-              onTap: widget.onTap,
-              borderRadius: 12,
-              scaleOnFocus: 1.0,
-              listIndex: widget.listIndex,
-              tvItemIndex: widget.listIndex,
-              tvRowId: 'browser-streams',
-              tvZone: ShellTvZone.row,
-              onLeftEdge: widget.onLeftEdge,
-              onRightEdge: widget.onRightEdge,
-              onUpEdge: widget.onUpEdge,
-              onFocusChange: _onFocus,
-              onHoverChange: _onHover,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  curve: Curves.easeOutCubic,
+                  decoration: BoxDecoration(
+                    color: _surfaceColor(active, health),
+                    borderRadius: BorderRadius.circular(12),
+                    border: _tileBorder(health, active),
+                  ),
+                  child: iptvTap(
+                    context: context,
+                    onTap: widget.onTap,
+                    borderRadius: 12,
+                    scaleOnFocus: 1.0,
+                    listIndex: widget.listIndex,
+                    tvItemIndex: widget.listIndex,
+                    tvRowId: 'browser-streams',
+                    tvZone: ShellTvZone.row,
+                    onLeftEdge: widget.onLeftEdge,
+                    onRightEdge: widget.onRightEdge,
+                    onUpEdge: widget.onUpEdge,
+                    onFocusChange: _onFocus,
+                    onHoverChange: _onHover,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(9),
@@ -534,7 +576,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                                   : const Color(0xFFEF4444),
                             ),
                           )
-                        else
+                          else
                           AnimatedOpacity(
                             opacity: active ? 0.0 : 1.0,
                             duration: const Duration(milliseconds: 150),
@@ -547,9 +589,20 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                               ),
                             ),
                           ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
+                if (active)
+                  const Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 2.5,
+                    child: ColoredBox(color: ForjaShellColors.brandGreen),
+                  ),
+              ],
             ),
           ),
         );

@@ -368,9 +368,7 @@ class _BrowserViewState extends State<_BrowserView> {
               width: categoryWidth,
               child: _buildCategorySidebar(compact: widget.compact),
             ),
-            Expanded(
-              child: _buildChannelPane(),
-            ),
+            Expanded(child: _buildChannelPane()),
           ],
         );
       },
@@ -379,7 +377,8 @@ class _BrowserViewState extends State<_BrowserView> {
 
   Widget _buildChannelPane() {
     final ctrl = widget.ctrl;
-    final useGuide = !widget.compact &&
+    final useGuide =
+        !widget.compact &&
         !ShellScope.metricsOf(context).usesTvDensity &&
         ctrl.activeSection == IptvSection.live &&
         ctrl.liveBrowseLayout == IptvLiveBrowseLayout.guide;
@@ -402,9 +401,7 @@ class _BrowserViewState extends State<_BrowserView> {
     final ctrl = widget.ctrl;
     return Container(
       decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: ForjaShellColors.borderSubtle),
-        ),
+        border: Border(right: BorderSide(color: ForjaShellColors.borderSubtle)),
       ),
       child: Builder(
         builder: (_) {
@@ -601,8 +598,8 @@ class _BrowserViewState extends State<_BrowserView> {
     final emptyMsg = cat == IptvLiveCatalog.favoritesId
         ? 'No favorite channels yet — tap the star on a channel'
         : cat == IptvLiveCatalog.watchedId
-            ? 'No recently watched channels'
-            : 'No streams in this view';
+        ? 'No recently watched channels'
+        : 'No streams in this view';
     return Center(
       child: Text(
         emptyMsg,

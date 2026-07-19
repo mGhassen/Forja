@@ -80,9 +80,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
                       : Colors.transparent,
           border: Border(
             left: BorderSide(
+              // Selected / TV focus / hover — keep rail so hover isn't "flat".
               color: highlight
                   ? ForjaShellColors.brandGreen
-                  : Colors.transparent,
+                  : _active
+                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+                      : Colors.transparent,
               width: 2.5,
             ),
           ),
