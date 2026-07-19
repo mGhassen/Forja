@@ -15,58 +15,84 @@ import {
   parseDailyUtc,
 } from '@/lib/scrape-cron'
 import { scrapeControl } from '@/lib/scrape-control'
+import {
+  SCRAPE_RUNS_KEY,
+  fetchScrapeRuns,
+  markRunsStoppedInCache,
+  prependOptimisticRun,
+  refreshScrapeRuns,
+  subscribeScrapeRuns,
+  type ScrapeRunRow,
+} from '@/lib/scrape-runs'
 import { cn } from '@/lib/utils'
 
-type Run = {
-  id: string
-  started_at: string
-  finished_at: string | null
-  status: string
-  posts_seen: number
-  l1_extract_count: number
-  candidates_upserted: number
-  alive_count: number
-  source?: string | null
-  error?: string | null
-}
+type Run = ScrapeRunRow
 
 export function AdminScrapePage() {
   const qc = useQueryClient()
   const list = useQuery({
-    queryKey: ['admin', 'scrape_runs'],
-    queryFn: async () => {
-      const { data, error } = await adminDb
-        .from('iptv_scrape_runs')
-        .select(
-          'id, started_at, finished_at, status, posts_seen, l1_extract_count, candidates_upserted, alive_count, source, error',
-        )
-        .order('started_at', { ascending: false })
-        .limit(50)
-      if (error) throw error
-      return (data ?? []) as Run[]
-    },
+    queryKey: SCRAPE_RUNS_KEY,
+    queryFn: () => fetchScrapeRuns(50),
     refetchInterval: (q) =>
-      q.state.data?.some((r) => r.status === 'running') ? 4_000 : 15_000,
+      q.state.data?.some((r) => r.status === 'running') ? 1_500 : 8_000,
+    refetchOnWindowFocus: true,
   })
+
+  useEffect(() => {
+    return subscribeScrapeRuns(() => {
+      void refreshScrapeRuns(qc)
+    })
+  }, [qc])
 
   const latest = list.data?.[0] ?? null
   const running = latest?.status === 'running'
 
   const start = useMutation({
     mutationFn: () => scrapeControl('start'),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] }),
+    onSuccess: async (res) => {
+      if (res.run) {
+        prependOptimisticRun(qc, res.run)
+      } else if (res.runId) {
+        prependOptimisticRun(qc, {
+          id: res.runId,
+          started_at: new Date().toISOString(),
+          status: 'running',
+          source: 'manual-admin',
+        })
+      }
+      await refreshScrapeRuns(qc)
+    },
   })
   const stop = useMutation({
-    mutationFn: () =>
-      scrapeControl('stop', { runId: latest?.id }),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] }),
+    mutationFn: () => scrapeControl('stop', { runId: latest?.id }),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
+      markRunsStoppedInCache(qc, {
+        runId: latest?.id,
+        error: 'Stop requested from admin',
+      })
+    },
+    onSuccess: async () => {
+      await refreshScrapeRuns(qc)
+    },
+    onError: async () => {
+      await refreshScrapeRuns(qc)
+    },
   })
   const markStuck = useMutation({
     mutationFn: () => scrapeControl('mark_stuck'),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] }),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
+      markRunsStoppedInCache(qc, {
+        error: 'Marked stuck from admin (Inngest may have died)',
+      })
+    },
+    onSuccess: async () => {
+      await refreshScrapeRuns(qc)
+    },
+    onError: async () => {
+      await refreshScrapeRuns(qc)
+    },
   })
 
   const settings = useQuery({
@@ -126,8 +152,23 @@ export function AdminScrapePage() {
         .eq('id', 1)
       if (error) throw error
     },
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['admin', 'iptv_ops_settings'] }),
+    onMutate: async (enabled) => {
+      await qc.cancelQueries({ queryKey: ['admin', 'iptv_ops_settings'] })
+      const prev = qc.getQueryData(['admin', 'iptv_ops_settings'])
+      qc.setQueryData(['admin', 'iptv_ops_settings'], (old: unknown) => ({
+        ...(old && typeof old === 'object' ? old : {}),
+        scrape_cron_enabled: enabled,
+        scrape_cron: savedCron,
+      }))
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['admin', 'iptv_ops_settings'], ctx.prev)
+    },
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ['admin', 'iptv_ops_settings'] })
+      await qc.refetchQueries({ queryKey: ['admin', 'iptv_ops_settings'] })
+    },
   })
 
   const saveSchedule = useMutation({
@@ -141,9 +182,17 @@ export function AdminScrapePage() {
         .update({ scrape_cron: next })
         .eq('id', 1)
       if (error) throw error
+      return next
     },
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['admin', 'iptv_ops_settings'] }),
+    onSuccess: async (next) => {
+      qc.setQueryData(['admin', 'iptv_ops_settings'], (old: unknown) => ({
+        ...(old && typeof old === 'object' ? old : {}),
+        scrape_cron: next,
+        scrape_cron_enabled: cronEnabled,
+      }))
+      await qc.invalidateQueries({ queryKey: ['admin', 'iptv_ops_settings'] })
+      await qc.refetchQueries({ queryKey: ['admin', 'iptv_ops_settings'] })
+    },
   })
 
   const cronEnabled = settings.data?.scrape_cron_enabled !== false
@@ -206,6 +255,14 @@ export function AdminScrapePage() {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={list.isFetching}
+              onClick={() => void refreshScrapeRuns(qc)}
+            >
+              {list.isFetching ? 'Refreshing…' : 'Refresh'}
+            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -498,14 +555,33 @@ npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
           </thead>
           <tbody>
             {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-forja-border">
+              <tr
+                key={r.id}
+                className={cn(
+                  'border-t border-forja-border transition-colors',
+                  r.status === 'running' && 'bg-amber-400/5',
+                  r.id === latest?.id && 'bg-white/[0.03]',
+                )}
+              >
                 <td className="px-3 py-2 text-xs">
                   {new Date(r.started_at).toLocaleString()}
                 </td>
                 <td className="px-3 py-2 font-mono-ui text-xs">
                   {r.source ?? '—'}
                 </td>
-                <td className="px-3 py-2">{r.status}</td>
+                <td
+                  className={cn(
+                    'px-3 py-2 capitalize',
+                    r.status === 'running' && 'font-semibold text-amber-400',
+                    r.status === 'ok' && 'text-forja-green',
+                    r.status === 'error' && 'text-red-400',
+                  )}
+                >
+                  {r.status}
+                  {r.status === 'running' ? (
+                    <span className="ml-1 inline-block size-1.5 animate-pulse rounded-full bg-amber-400 align-middle" />
+                  ) : null}
+                </td>
                 <td className="px-3 py-2 tabular-nums">{r.posts_seen}</td>
                 <td className="px-3 py-2 tabular-nums">{r.l1_extract_count}</td>
                 <td className="px-3 py-2 tabular-nums">

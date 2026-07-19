@@ -31,6 +31,15 @@ import {
   formatShareCode,
 } from '@/lib/iptv-portal-share'
 import { scrapeControl } from '@/lib/scrape-control'
+import {
+  SCRAPE_RUNS_LATEST_KEY,
+  fetchScrapeRuns,
+  markRunsStoppedInCache,
+  prependOptimisticRun,
+  refreshScrapeRuns,
+  subscribeScrapeRuns,
+  type ScrapeRunRow,
+} from '@/lib/scrape-runs'
 import { cn } from '@/lib/utils'
 
 type Cand = {
@@ -46,17 +55,7 @@ type Cand = {
   last_checked_at: string | null
 }
 
-type ScrapeRun = {
-  id: string
-  started_at: string
-  finished_at: string | null
-  status: string
-  posts_seen: number
-  l1_extract_count: number
-  candidates_upserted: number
-  alive_count: number
-  error?: string | null
-}
+type ScrapeRun = ScrapeRunRow
 
 type HostGroup = {
   host: string
@@ -601,21 +600,18 @@ export function AdminPoolPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const runs = useQuery({
-    queryKey: ['admin', 'scrape_runs', 'latest'],
-    queryFn: async () => {
-      const { data, error } = await adminDb
-        .from('iptv_scrape_runs')
-        .select(
-          'id, started_at, finished_at, status, posts_seen, l1_extract_count, candidates_upserted, alive_count, error',
-        )
-        .order('started_at', { ascending: false })
-        .limit(5)
-      if (error) throw error
-      return (data ?? []) as ScrapeRun[]
-    },
+    queryKey: SCRAPE_RUNS_LATEST_KEY,
+    queryFn: () => fetchScrapeRuns(5),
     refetchInterval: (q) =>
-      q.state.data?.some((r) => r.status === 'running') ? 4_000 : 20_000,
+      q.state.data?.some((r) => r.status === 'running') ? 1_500 : 10_000,
+    refetchOnWindowFocus: true,
   })
+
+  useEffect(() => {
+    return subscribeScrapeRuns(() => {
+      void refreshScrapeRuns(qc)
+    })
+  }, [qc])
 
   const latestRun = runs.data?.[0] ?? null
   const running = latestRun?.status === 'running'
@@ -678,9 +674,18 @@ export function AdminPoolPage() {
 
   const startScrape = useMutation({
     mutationFn: () => scrapeControl('start'),
-    onSuccess: async () => {
+    onSuccess: async (res) => {
       setActionError(null)
-      await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
+      if (res.run) prependOptimisticRun(qc, res.run)
+      else if (res.runId) {
+        prependOptimisticRun(qc, {
+          id: res.runId,
+          started_at: new Date().toISOString(),
+          status: 'running',
+          source: 'manual-admin',
+        })
+      }
+      await refreshScrapeRuns(qc)
     },
     onError: (e) => {
       setActionError(errMessage(e, 'Could not start scrape'))
@@ -690,23 +695,38 @@ export function AdminPoolPage() {
   const stopScrape = useMutation({
     mutationFn: () =>
       scrapeControl('stop', { runId: latestRun?.id }),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
+      markRunsStoppedInCache(qc, {
+        runId: latestRun?.id,
+        error: 'Stop requested from admin',
+      })
+    },
     onSuccess: async () => {
       setActionError(null)
-      await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
+      await refreshScrapeRuns(qc)
     },
-    onError: (e) => {
+    onError: async (e) => {
       setActionError(errMessage(e, 'Could not stop scrape'))
+      await refreshScrapeRuns(qc)
     },
   })
 
   const markStuck = useMutation({
     mutationFn: () => scrapeControl('mark_stuck'),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
+      markRunsStoppedInCache(qc, {
+        error: 'Marked stuck from admin (Inngest may have died)',
+      })
+    },
     onSuccess: async () => {
       setActionError(null)
-      await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
+      await refreshScrapeRuns(qc)
     },
-    onError: (e) => {
+    onError: async (e) => {
       setActionError(errMessage(e, 'Could not mark stuck'))
+      await refreshScrapeRuns(qc)
     },
   })
 

@@ -89,18 +89,56 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
             })
           }
 
-          // start
+          // start — insert run row first so admin UI updates immediately
           const jobId = crypto.randomUUID()
-          const { ids } = await sendInngestEvent({
-            name: 'iptv/catalog.scrape',
-            data: {
-              jobId,
-              maxPages: body.maxPages,
-              maxVerify: body.maxVerify,
-            },
-          })
+          const { data: run, error: runErr } = await sb
+            .from('iptv_scrape_runs')
+            .insert({
+              status: 'running',
+              source: 'manual-admin',
+              posts_seen: 0,
+            })
+            .select('id, started_at, status, source')
+            .single()
+          if (runErr || !run?.id) {
+            return json(
+              { error: runErr?.message ?? 'Failed to create scrape run' },
+              500,
+            )
+          }
 
-          return json({ ok: true, action: 'start', jobId, ids })
+          try {
+            const { ids } = await sendInngestEvent({
+              name: 'iptv/catalog.scrape',
+              data: {
+                jobId,
+                runId: run.id,
+                maxPages: body.maxPages,
+                maxVerify: body.maxVerify,
+              },
+            })
+            return json({
+              ok: true,
+              action: 'start',
+              jobId,
+              runId: run.id,
+              run,
+              ids,
+            })
+          } catch (e) {
+            await sb
+              .from('iptv_scrape_runs')
+              .update({
+                status: 'error',
+                finished_at: new Date().toISOString(),
+                error:
+                  e instanceof Error
+                    ? e.message
+                    : 'Failed to enqueue Inngest scrape',
+              })
+              .eq('id', run.id)
+            throw e
+          }
         } catch (error) {
           const message =
             error instanceof Error ? error.message : 'Scrape control failed'

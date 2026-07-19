@@ -2,10 +2,23 @@ import { supabase } from '@/lib/supabase'
 
 export type ScrapeAction = 'start' | 'stop' | 'mark_stuck'
 
+export type ScrapeControlResult = {
+  ok: boolean
+  jobId?: string
+  runId?: string
+  count?: number
+  run?: {
+    id: string
+    started_at: string
+    status: string
+    source?: string | null
+  }
+}
+
 export async function scrapeControl(
   action: ScrapeAction,
   body?: { runId?: string; maxPages?: number; maxVerify?: number },
-): Promise<{ ok: boolean; jobId?: string; count?: number }> {
+): Promise<ScrapeControlResult> {
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -23,12 +36,16 @@ export async function scrapeControl(
     error?: string
     ok?: boolean
     jobId?: string
+    runId?: string
     count?: number
+    run?: ScrapeControlResult['run']
   }
   if (!res.ok) throw new Error(json.error || `Scrape ${action} failed`)
   return {
     ok: true,
     jobId: json.jobId,
+    runId: json.runId,
     count: json.count,
+    run: json.run,
   }
 }

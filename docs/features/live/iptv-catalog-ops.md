@@ -18,7 +18,7 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 - **Dashboard** — pool size, alive count, scrape runs, account count
 - **Accounts** — search by email; toggle `iptvScrape`; grant/revoke credits (+5 / −1)
 - **Pool** — table of hosts (one line: host / accounts / alive / scraped); expand to a 2-column portal grid (Account→IPTV row content, actions on hover). Filter by **status** (alive / dead / unchecked) and **region**. **Check status** (radio icon) on a portal or on the host row runs Xtream `player_api` and updates alive/expiry/region. Start/stop scrape from the bar
-- **Scrape** — view worker run history (pages, L1 extract, upserted, alive)
+- **Scrape** — run history updates live (run row created on Start; realtime + fast poll). Refresh / Stop / Mark stuck apply immediately in the UI
 
 ## Scrape (Inngest on admin)
 

@@ -32,6 +32,8 @@ const UNVERIFIED_STATUS: PortalStatus = {
 
 type ScrapeData = {
   jobId?: string
+  /** Pre-created by admin API so UI shows running immediately. */
+  runId?: string
   maxPages?: number
   maxResultsPerPage?: number
   maxVerify?: number
@@ -121,7 +123,16 @@ export const iptvCatalogScrape = inngest.createFunction(
 
     const runId = await step.run('create-scrape-run', async () => {
       const sb = createCatalogAdminClient()
-      return insertScrapeRun(sb, 'inngest-admin')
+      const existing = data.runId?.trim()
+      if (existing) {
+        const { data: row } = await sb
+          .from('iptv_scrape_runs')
+          .select('id')
+          .eq('id', existing)
+          .maybeSingle()
+        if (row?.id) return row.id as string
+      }
+      return insertScrapeRun(sb, isCron ? 'inngest-cron' : 'inngest-admin')
     })
 
     const portals = new Map<string, CatalogPortal>()
