@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
 import { adminDb } from '@/lib/admin-db'
+import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
 import {
   createPortalShare,
   formatShareCode,
@@ -756,12 +757,12 @@ export function AdminPoolPage() {
           </a>{' '}
           · Inngest{' '}
           <a
-            href="http://127.0.0.1:8288"
+            href={INNGEST_UI_URL}
             target="_blank"
             rel="noreferrer"
             className="text-forja-green hover:underline"
           >
-            :8288
+            {isInngestLocalUi ? ':8288' : 'Cloud'}
           </a>
         </p>
       </div>

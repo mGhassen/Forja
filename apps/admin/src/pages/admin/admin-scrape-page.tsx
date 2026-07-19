@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { adminDb } from '@/lib/admin-db'
+import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
 import { scrapeControl } from '@/lib/scrape-control'
 import { cn } from '@/lib/utils'
 
@@ -17,8 +18,6 @@ type Run = {
   source?: string | null
   error?: string | null
 }
-
-const INNGEST_DEV = 'http://127.0.0.1:8288'
 
 export function AdminScrapePage() {
   const qc = useQueryClient()
@@ -145,17 +144,26 @@ export function AdminScrapePage() {
             Logs
           </p>
           <p className="mt-2 text-sm text-forja-muted">
-            Step logs live in Inngest Dev UI (not in this table). Open while{' '}
-            <code className="font-mono-ui text-xs">pnpm dev</code> + Inngest CLI
-            are running.
+            {isInngestLocalUi ? (
+              <>
+                Step logs live in Inngest Dev UI (not in this table). Open while{' '}
+                <code className="font-mono-ui text-xs">pnpm dev</code> + Inngest
+                CLI are running.
+              </>
+            ) : (
+              <>
+                Step logs live in Inngest Cloud (not in this table). Open the
+                dashboard for function runs and cancel.
+              </>
+            )}
           </p>
           <a
-            href={INNGEST_DEV}
+            href={INNGEST_UI_URL}
             target="_blank"
             rel="noreferrer"
             className="mt-3 inline-block text-sm text-forja-green underline-offset-2 hover:underline"
           >
-            Open Inngest → {INNGEST_DEV}
+            Open Inngest → {INNGEST_UI_URL}
           </a>
           <p className="mt-2 font-mono-ui text-xs text-forja-muted">
             Function: iptv-catalog-scrape · steps: scrape-reddit-page-* ·
@@ -172,25 +180,27 @@ export function AdminScrapePage() {
             <code className="font-mono-ui text-xs">0 6 * * *</code> UTC daily
             (Inngest Cloud after sync). Pause in Inngest dashboard if needed.
           </p>
-          <p className="mt-2 text-sm text-forja-muted">
-            Prod (<code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
-            ): set <code className="font-mono-ui text-xs">INNGEST_EVENT_KEY</code>{' '}
-            + <code className="font-mono-ui text-xs">INNGEST_SIGNING_KEY</code> on
-            Vercel — never <code className="font-mono-ui text-xs">INNGEST_DEV</code>.
-            Sync app URL to{' '}
-            <code className="font-mono-ui text-xs">
-              /api/inngest
-            </code>
-            .
-          </p>
-          <p className="mt-2 text-sm text-forja-muted">
-            Local only: <code className="font-mono-ui text-xs">INNGEST_DEV=1</code>{' '}
-            + CLI →{' '}
-            <code className="font-mono-ui text-xs">
-              http://127.0.0.1:4000/api/inngest
-            </code>
-            .
-          </p>
+          {isInngestLocalUi ? (
+            <p className="mt-2 text-sm text-forja-muted">
+              Local: <code className="font-mono-ui text-xs">INNGEST_DEV=1</code>{' '}
+              + CLI →{' '}
+              <code className="font-mono-ui text-xs">
+                http://127.0.0.1:4000/api/inngest
+              </code>
+              .
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-forja-muted">
+              Prod (<code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
+              ):{' '}
+              <code className="font-mono-ui text-xs">INNGEST_EVENT_KEY</code> +{' '}
+              <code className="font-mono-ui text-xs">INNGEST_SIGNING_KEY</code> on
+              Vercel — never{' '}
+              <code className="font-mono-ui text-xs">INNGEST_DEV</code>. Sync app
+              URL to{' '}
+              <code className="font-mono-ui text-xs">/api/inngest</code>.
+            </p>
+          )}
           <Link
             to="/pool"
             className="mt-3 inline-block text-sm text-forja-green underline-offset-2 hover:underline"
@@ -200,15 +210,17 @@ export function AdminScrapePage() {
         </div>
       </div>
 
-      <pre className="overflow-x-auto rounded-xl border border-forja-border bg-forja-elevated p-3 font-mono-ui text-xs text-forja-muted">
-        {`# Terminal A — admin app
+      {isInngestLocalUi ? (
+        <pre className="overflow-x-auto rounded-xl border border-forja-border bg-forja-elevated p-3 font-mono-ui text-xs text-forja-muted">
+          {`# Terminal A — admin app
 cd apps/admin && pnpm dev
 
 # Terminal B — Inngest (logs + cron + cancel)
 npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
 
 # Then: Scrape → Run manual scrape  (or Pool → Start scrape)`}
-      </pre>
+        </pre>
+      ) : null}
 
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
