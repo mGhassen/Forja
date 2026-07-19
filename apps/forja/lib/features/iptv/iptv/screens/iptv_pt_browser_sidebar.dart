@@ -38,18 +38,17 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   Widget build(BuildContext context) {
     final selected = widget.selected;
     final highlight = selected || _tvFocused;
+    final emphatic = selected || _active || _tvFocused;
     final iconColor = _tvFocused || selected
         ? ForjaShellColors.brandGreen
         : _active
             ? Colors.white
-            : Colors.white.withValues(alpha: 0.82);
+            : ForjaShellColors.textSecondary;
     final titleColor = _tvFocused
         ? ForjaShellColors.brandGreen
-        : selected
+        : emphatic
             ? Colors.white
-            : _active
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.82);
+            : ForjaShellColors.textSecondary;
 
     return iptvTap(
       context: context,
@@ -104,7 +103,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
                 style: GoogleFonts.plusJakartaSans(
                   color: titleColor,
                   fontSize: widget.compact ? 13 : 14,
-                  fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: emphatic ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),

@@ -76,6 +76,22 @@ class VerifiedPortal {
         maxConnections: maxConnections,
         activeConnections: activeConnections,
       );
+
+  /// Keep credentials + user [label]; refresh account fields from a login probe.
+  VerifiedPortal withAccountFrom(VerifiedPortal fresh) => VerifiedPortal(
+        portal: portal,
+        label: label,
+        name: fresh.name,
+        expiry: fresh.expiry,
+        maxConnections: fresh.maxConnections,
+        activeConnections: fresh.activeConnections,
+      );
+
+  bool sameAccountFields(VerifiedPortal other) =>
+      name == other.name &&
+      expiry == other.expiry &&
+      maxConnections == other.maxConnections &&
+      activeConnections == other.activeConnections;
 }
 
 class IptvCategory {

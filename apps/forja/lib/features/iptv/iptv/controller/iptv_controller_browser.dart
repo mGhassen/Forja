@@ -404,13 +404,44 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         v.portal,
         timeout: const Duration(seconds: 5),
       );
-      _setPortalHealth(key, fresh != null);
+      if (fresh != null) {
+        await _mergePortalAccountInfo(v, fresh);
+        _setPortalHealth(key, true);
+      } else {
+        _setPortalHealth(key, false);
+      }
     } catch (_) {
       _setPortalHealth(key, false);
     } finally {
       _portalHealthInFlight.remove(key);
       notifyListeners();
     }
+  }
+
+  /// Persist expiry / seats / account name from a successful status probe.
+  Future<void> _mergePortalAccountInfo(
+    VerifiedPortal existing,
+    VerifiedPortal fresh,
+  ) async {
+    final idx = _c.verified.indexWhere((x) => x.key == existing.key);
+    final current = idx >= 0
+        ? _c.verified[idx]
+        : (_c.activePortal?.key == existing.key ? _c.activePortal : null);
+    if (current == null) return;
+
+    final updated = current.withAccountFrom(fresh);
+    if (current.sameAccountFields(updated)) return;
+
+    if (idx >= 0) {
+      final next = List<VerifiedPortal>.of(_c.verified);
+      next[idx] = updated;
+      _c.verified = next;
+      await IptvStore.save(_c.verified);
+    }
+    if (_c.activePortal?.key == current.key) {
+      _c.activePortal = updated;
+    }
+    notifyListeners();
   }
 
   bool isPortalHealthChecking(String key) =>
