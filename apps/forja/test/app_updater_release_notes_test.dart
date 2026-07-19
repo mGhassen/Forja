@@ -19,6 +19,12 @@ void main() {
         ),
         isEmpty,
       );
+      expect(
+        AppUpdaterReleaseNotes.cleanBody(
+          '**Full Changelog**: https://github.com/mGhassen/Forja/compare/v1.2.282...v1.2.283',
+        ),
+        isEmpty,
+      );
     });
 
     test('keeps thematic bullets and strips leading H1', () {

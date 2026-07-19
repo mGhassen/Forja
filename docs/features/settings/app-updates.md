@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/manifest.json` — version and installer filenames). Installer files download from the versioned path (`v{version}/{filename}`). The update dialog loads release notes from GitHub Releases for every version since yours (up to 16), with a left version list and a link to the full web changelog. Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
+Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/manifest.json` — version and installer filenames). Installer files download from the versioned path (`v{version}/{filename}`). The update dialog loads release notes from the same CDN (`changelog/index.json` + `changelog/{version}.md` for every version since yours, up to 16), with a left version list and a link to the full web changelog. Those note files stay on the CDN permanently (unlike installers, which keep only the newest few versions). Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
 
 ## How to open it
 

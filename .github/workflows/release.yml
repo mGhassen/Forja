@@ -530,7 +530,9 @@ jobs:
       # publish_release checks out the version tag (changelog accuracy). That tree
       # may predate the R2 uploader when using "Existing tag" — pull tooling from
       # the workflow commit (github.sha) in that case.
-      - name: Upload installers to Cloudflare R2
+      # Uploads installers under v{version}/ + latest/ (pruned to KEEP), and mirrors
+      # docs/changelog/done/*.md → changelog/{version}.md + index.json (kept forever).
+      - name: Upload installers + changelogs to Cloudflare R2
         run: |
           if [[ ! -f scripts/upload_release_to_r2.py ]]; then
             echo "R2 uploader missing on tag; fetching from workflow ref ${{ github.sha }}"

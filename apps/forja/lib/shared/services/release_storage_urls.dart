@@ -5,8 +5,10 @@
 /// In-app updates:
 /// - Discovery: `{RELEASE_CDN_URL}/latest/manifest.json`
 /// - Installer: `{RELEASE_CDN_URL}/v{version}/{filename}`
+/// - Notes: `{RELEASE_CDN_URL}/changelog/index.json` + `changelog/{version}.md`
 ///
 /// `latest/{installer}` is for the website download buttons only.
+/// `changelog/` is a permanent archive (not pruned with installer retention).
 class ReleaseStorageUrls {
   ReleaseStorageUrls._();
 
@@ -24,6 +26,21 @@ class ReleaseStorageUrls {
     final root = _root;
     if (root == null) return null;
     return '$root/latest/manifest.json';
+  }
+
+  /// `{RELEASE_CDN_URL}/changelog/index.json` — version list for update notes.
+  static String? changelogIndexUrl() {
+    final root = _root;
+    if (root == null) return null;
+    return '$root/changelog/index.json';
+  }
+
+  /// `{RELEASE_CDN_URL}/changelog/{version}.md` — frozen release notes body.
+  static String? changelogUrl({required String version}) {
+    final root = _root;
+    if (root == null) return null;
+    final ver = version.startsWith('v') ? version.substring(1) : version;
+    return '$root/changelog/$ver.md';
   }
 
   /// `{RELEASE_CDN_URL}/latest/{filename}` — site download CTAs only.

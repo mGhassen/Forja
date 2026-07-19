@@ -14,6 +14,8 @@ Objects:
   v{version}/{filename}
   latest/{filename}
   latest/manifest.json   — app updater discovery (version + asset filenames only)
+  changelog/{version}.md — frozen release notes (kept forever; never pruned)
+  changelog/index.json   — version list for the in-app update dialog
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.error
@@ -158,6 +161,7 @@ def put_object(
     path: Path,
     access_key: str,
     secret_key: str,
+    content_type: str = "application/octet-stream",
 ) -> None:
     body = path.read_bytes()
     # Encode each path segment; keep slashes.
@@ -169,10 +173,86 @@ def put_object(
         canonical_uri=canonical_uri,
         access_key=access_key,
         secret_key=secret_key,
-        extra_headers={"content-type": "application/octet-stream"},
+        extra_headers={"content-type": content_type},
         body=body,
         unsigned_payload=True,
     )
+
+
+_RELEASED_MD = re.compile(r"^(\d+\.\d+\.\d+)-\[released\]\.md$")
+
+
+def changelog_done_dir() -> Path:
+    return Path(__file__).resolve().parent.parent / "docs" / "changelog" / "done"
+
+
+def collect_released_changelogs(done_dir: Path) -> list[tuple[str, Path]]:
+    """Return (version, path) for every docs/changelog/done/*-[released].md."""
+    if not done_dir.is_dir():
+        return []
+    out: list[tuple[str, Path]] = []
+    for path in sorted(done_dir.iterdir()):
+        if not path.is_file():
+            continue
+        match = _RELEASED_MD.match(path.name)
+        if not match:
+            continue
+        out.append((match.group(1), path))
+    out.sort(key=lambda item: semver_key(item[0]), reverse=True)
+    return out
+
+
+def upload_changelog_archive(
+    *,
+    endpoint: str,
+    bucket: str,
+    access_key: str,
+    secret_key: str,
+) -> int:
+    """Mirror frozen changelog markdown under changelog/ (never pruned)."""
+    entries = collect_released_changelogs(changelog_done_dir())
+    if not entries:
+        print("No docs/changelog/done/*-[released].md files; skipping changelog/ upload.")
+        return 0
+
+    uploaded = 0
+    for version, path in entries:
+        key = f"changelog/{version}.md"
+        print(f"Uploading {path.name} → s3://{bucket}/{key}")
+        put_object(
+            endpoint=endpoint,
+            bucket=bucket,
+            key=key,
+            path=path,
+            access_key=access_key,
+            secret_key=secret_key,
+            content_type="text/markdown; charset=utf-8",
+        )
+        uploaded += 1
+
+    index = {
+        "versions": [version for version, _ in entries],
+    }
+    index_bytes = (json.dumps(index, indent=2) + "\n").encode("utf-8")
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp.write(index_bytes)
+        tmp_path = Path(tmp.name)
+    try:
+        print(f"Uploading changelog/index.json → s3://{bucket}/changelog/index.json")
+        put_object(
+            endpoint=endpoint,
+            bucket=bucket,
+            key="changelog/index.json",
+            path=tmp_path,
+            access_key=access_key,
+            secret_key=secret_key,
+            content_type="application/json; charset=utf-8",
+        )
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    print(f"Uploaded {uploaded} changelog markdown file(s) + index.json under changelog/.")
+    return uploaded
 
 
 def list_keys(
@@ -340,7 +420,7 @@ def main() -> None:
         latest_names.append(path.name)
         uploaded += 1
 
-    # Changelog/notes stay on GitHub Releases — manifest is version + files only.
+    # Manifest is version + installer filenames only (notes live under changelog/).
     published_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     manifest = {
         "version": version,
@@ -360,6 +440,7 @@ def main() -> None:
             path=tmp_path,
             access_key=access_key,
             secret_key=secret_key,
+            content_type="application/json; charset=utf-8",
         )
         print(f"  mirror → s3://{bucket}/{prefix}/manifest.json")
         put_object(
@@ -369,9 +450,18 @@ def main() -> None:
             path=tmp_path,
             access_key=access_key,
             secret_key=secret_key,
+            content_type="application/json; charset=utf-8",
         )
     finally:
         tmp_path.unlink(missing_ok=True)
+
+    # Permanent notes archive — never pruned with installer retention.
+    upload_changelog_archive(
+        endpoint=endpoint,
+        bucket=bucket,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
 
     print(
         f"Uploaded {uploaded} release asset(s) + manifest to R2 "
@@ -379,6 +469,7 @@ def main() -> None:
     )
 
     # Drop stale objects under latest/ that are not part of this release.
+    # Never touch changelog/ here — that prefix is a permanent archive.
     all_keys = list_keys(
         endpoint=endpoint,
         bucket=bucket,
@@ -401,7 +492,7 @@ def main() -> None:
             secret_key=secret_key,
         )
 
-    print(f"Pruning R2 to newest {keep} version(s)…")
+    print(f"Pruning R2 installer prefixes to newest {keep} version(s)…")
 
     keys = all_keys
     versions = sorted(
@@ -425,7 +516,12 @@ def main() -> None:
         return
 
     print(f"Deleting: {', '.join(drop)}")
-    to_remove = [k for k in keys if k.split("/", 1)[0] in drop]
+    # Only v{version}/ installer trees — never changelog/ or latest/.
+    to_remove = [
+        k
+        for k in keys
+        if k.split("/", 1)[0] in drop and not k.startswith("changelog/")
+    ]
     if not to_remove:
         print(f"No objects under {', '.join(drop)}; done.")
         return

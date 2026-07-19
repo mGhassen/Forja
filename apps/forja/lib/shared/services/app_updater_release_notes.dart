@@ -7,7 +7,7 @@ class AppUpdaterReleaseNotes {
   static const int maxChangelogVersions = 16;
 
   static final _fullChangelogOnly = RegExp(
-    r'^\s*Full Changelog:\s*\S+\s*$',
+    r'^\s*(?:\*\*)?Full Changelog(?:\*\*)?\s*:\s*\S+\s*$',
     multiLine: true,
     caseSensitive: false,
   );

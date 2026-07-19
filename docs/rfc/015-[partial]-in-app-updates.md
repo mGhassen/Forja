@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs) |
-| **Current slice** | R2 installers + GitHub notes in dialog (max 16); hosted smoke A37 |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) |
+| **Current slice** | R2 `changelog/` archive + dialog reads CDN notes; hosted smoke A37 / A45 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -134,9 +134,19 @@
 
 ---
 
+## Acceptance (R2 changelog archive)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A43 | Release CI mirrors `docs/changelog/done/*-[released].md` → R2 `changelog/{version}.md` + `changelog/index.json` | ✅ |
+| 2 | R15-A44 | R2 prune / stale `latest/` cleanup never deletes `changelog/` (permanent notes archive) | ✅ |
+| 3 | R15-A45 | Update dialog loads notes from R2 `changelog/` for versions since installed (max 16); GitHub Releases fallback if CDN empty | ⬜ |
+
+---
+
 ## Summary
 
-Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — version + installer filenames only), then downloads the platform installer from the versioned R2 path. Changelog bodies for the dialog come from GitHub Releases (not stored on R2); the UI lists up to 16 versions since the installed build and links to the portal `/changelog`.
+Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — version + installer filenames only), then downloads the platform installer from the versioned R2 path. Changelog bodies for the dialog come from the permanent R2 `changelog/` archive (`index.json` + `{version}.md`), with GitHub Releases as fallback; the UI lists up to 16 versions since the installed build and links to the portal `/changelog`.
 
 ## Goals
 
@@ -165,11 +175,14 @@ Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — versi
                             │
 ┌───────────────────────────▼─────────────────────────────┐
 │  apps/forja/lib/shared/services/app_updater_service.dart │
-│    GET GitHub Releases API → semver compare → UpdateInfo │
+│    R2 manifest → semver → notes from changelog/ → UpdateInfo │
 └───────────────┬─────────────────────────┬───────────────┘
                 │                         │
-        GitHub Releases API           Cloudflare R2
-     (version + notes + names)   public {CDN}/vX.Y.Z/*
+        Cloudflare R2                 GitHub Releases
+  latest/manifest.json              (notes fallback only)
+  vX.Y.Z/{installer}
+  changelog/{version}.md  (kept forever)
+  changelog/index.json
 ```
 
 

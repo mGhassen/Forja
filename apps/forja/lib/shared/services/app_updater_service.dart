@@ -13,7 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// In-app updates.
 ///
 /// Discovery + download: Cloudflare R2 (`latest/manifest.json`, `v{ver}/{file}`).
-/// Changelog bodies: GitHub Releases (not stored on R2).
+/// Changelog bodies: R2 `changelog/` (permanent); GitHub Releases as fallback.
 class AppUpdaterService {
   static const String githubRepo = 'mGhassen/Forja';
   static const String githubReleasesUrl =
@@ -26,6 +26,11 @@ class AppUpdaterService {
 
   static const Map<String, String> _githubHeaders = {
     'Accept': 'application/vnd.github+json',
+    'User-Agent': 'Forja-AppUpdater',
+  };
+
+  static const Map<String, String> _markdownHeaders = {
+    'Accept': 'text/markdown, text/plain, */*',
     'User-Agent': 'Forja-AppUpdater',
   };
 
@@ -108,8 +113,108 @@ class AppUpdaterService {
     );
   }
 
-  /// Changelog text from GitHub Releases (max 16 versions since installed).
+  /// Release notes: R2 `changelog/` first, GitHub Releases if CDN empty.
   Future<List<VersionChangelog>> _fetchChangelogs({
+    required String currentVersion,
+    required String latestVersion,
+  }) async {
+    final fromCdn = await _fetchChangelogsFromR2(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+    );
+    if (fromCdn.isNotEmpty) return fromCdn;
+
+    return _fetchChangelogsFromGitHub(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+    );
+  }
+
+  Future<List<VersionChangelog>> _fetchChangelogsFromR2({
+    required String currentVersion,
+    required String latestVersion,
+  }) async {
+    final indexUrl = ReleaseStorageUrls.changelogIndexUrl();
+    if (indexUrl == null) return const [];
+
+    try {
+      final indexResponse = await http.get(
+        Uri.parse(indexUrl),
+        headers: _jsonHeaders,
+      );
+      if (indexResponse.statusCode != 200) {
+        debugPrint(
+          'AppUpdater: changelog index HTTP ${indexResponse.statusCode}',
+        );
+        return const [];
+      }
+
+      final decoded = json.decode(indexResponse.body);
+      if (decoded is! Map<String, dynamic>) return const [];
+      final versionsRaw = decoded['versions'];
+      if (versionsRaw is! List) return const [];
+
+      final versions = <String>[
+        for (final v in versionsRaw)
+          if (v is String && v.trim().isNotEmpty) v.trim(),
+      ];
+      if (versions.isEmpty) return const [];
+
+      final selected = versions
+          .where((v) => AppUpdaterReleaseNotes.isNewerVersion(currentVersion, v))
+          .where(
+            (v) =>
+                AppUpdaterReleaseNotes.compareVersions(v, latestVersion) <= 0,
+          )
+          .toList()
+        ..sort(
+          (a, b) => AppUpdaterReleaseNotes.compareVersions(b, a),
+        );
+
+      if (selected.isEmpty) return const [];
+
+      final capped = selected
+          .take(AppUpdaterReleaseNotes.maxChangelogVersions)
+          .toList();
+
+      final bodies = await Future.wait(
+        capped.map((version) => _fetchChangelogMarkdown(version)),
+      );
+
+      final entries = <ReleaseNotesEntry>[];
+      for (var i = 0; i < capped.length; i++) {
+        final body = bodies[i];
+        if (body == null || body.isEmpty) continue;
+        entries.add(ReleaseNotesEntry(version: capped[i], body: body));
+      }
+
+      return AppUpdaterReleaseNotes.collect(
+        currentVersion: currentVersion,
+        latestVersion: latestVersion,
+        releases: entries,
+      );
+    } catch (e) {
+      debugPrint('AppUpdater: R2 changelog fetch failed: $e');
+      return const [];
+    }
+  }
+
+  Future<String?> _fetchChangelogMarkdown(String version) async {
+    final url = ReleaseStorageUrls.changelogUrl(version: version);
+    if (url == null) return null;
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _markdownHeaders,
+      );
+      if (response.statusCode != 200) return null;
+      return response.body;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<VersionChangelog>> _fetchChangelogsFromGitHub({
     required String currentVersion,
     required String latestVersion,
   }) async {
@@ -118,7 +223,10 @@ class AppUpdaterService {
         Uri.parse(githubReleasesUrl),
         headers: _githubHeaders,
       );
-      if (response.statusCode != 200) return const [];
+      if (response.statusCode != 200) {
+        debugPrint('AppUpdater: GitHub releases HTTP ${response.statusCode}');
+        return const [];
+      }
 
       final decoded = json.decode(response.body);
       if (decoded is! List) return const [];
@@ -144,7 +252,7 @@ class AppUpdaterService {
         releases: entries,
       );
     } catch (e) {
-      debugPrint('AppUpdater: changelog fetch failed: $e');
+      debugPrint('AppUpdater: GitHub changelog fetch failed: $e');
       return const [];
     }
   }

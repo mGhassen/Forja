@@ -108,6 +108,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 7/7 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [085-[open]-…](085-[open]-desktop-involuntary-signout-dumps-login.md) | Involuntary sign-out dumps to login mid-use | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [086-[fixed]-…](fixed/086-[fixed]-provider-score-running-total-floor.md) | Provider score re-sum buried ups under Auto fails | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [087-[open]-…](087-[open]-update-dialog-empty-changelogs.md) | Update dialog empty notes (R2 changelog archive) | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
