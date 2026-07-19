@@ -528,7 +528,9 @@ class _ChannelCellState extends State<_ChannelCell> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      color: ForjaShellColors.textPrimary,
+                      color: _hovered
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.82),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.2,

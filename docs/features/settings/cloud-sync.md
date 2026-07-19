@@ -115,8 +115,9 @@ Not synced — device-specific or sensitive:
 - Create, rename, and delete profiles on desktop or the web (max **5** per
   account), with 30 avatars organized into Characters, Creatures, Space, and
   Retro categories. Signup does not invent a default profile — the first one is
-  yours, with default settings applied when you create it. Add profile is hidden
-  once you hit the limit.
+  yours. Each new profile starts from platform defaults (playback, tabs, Stremio,
+  IPTV portals) — it never copies the profile you were using. Add profile is
+  hidden once you hit the limit.
 - The desktop chooser, rail, and Profile & account page use the same avatar
   artwork selected on the web
 - Add, edit, search, favorite, share, or remove IPTV portals from

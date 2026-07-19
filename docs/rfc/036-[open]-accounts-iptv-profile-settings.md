@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 8** components · **16 / 26** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles) |
-| **Current slice** | Account feature flags (`iptvScrape`) shipped — web shows VIP Activated when on; admin UI for toggling still open; M3U device-local only; max 5 profiles/account |
+| **Progress** | **3 / 8** components · **17 / 27** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles; new-profile defaults no prior-profile bleed) |
+| **Current slice** | Account feature flags (`iptvScrape`) shipped — web shows VIP Activated when on; admin UI for toggling still open; M3U device-local only; max 5 profiles/account; Flutter seeds platform defaults on create/switch merge |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -67,6 +67,7 @@
 | 24 | R36-A24 | `profile_settings.payload` has no `iptv` key; M3U playlists are device-local only (portals remain in `iptv_portals` / `user_iptv_portals`) | ✅ |
 | 25 | R36-A25 | Web Account → IPTV shows VIP Activated banner when `accounts.features.iptvScrape` is on (hidden when off) | ✅ |
 | 26 | R36-A26 | Max 5 profiles per account — DB trigger + web/app hide Add at limit | ✅ |
+| 27 | R36-A27 | New profile create + empty-payload merge: reset synced local to platform defaults (playback/nav/Stremio/IPTV) then push — never inherit prior profile's device prefs | ✅ |
 
 ---
 

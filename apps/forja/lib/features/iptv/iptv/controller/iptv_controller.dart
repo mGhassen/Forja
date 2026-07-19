@@ -581,6 +581,7 @@ class IptvController extends ChangeNotifier
       return;
     }
     activePortal = portal;
+    ensurePortalHealth(portal);
     final section = await IptvStore.loadLastSection();
     await openSection(section, persistSection: false);
   }
@@ -620,16 +621,19 @@ class IptvController extends ChangeNotifier
 
   /// Force network reload for [section] (shelf reload control).
   Future<void> reloadSection(IptvSection section) async {
-    if (activePortal == null) {
+    final portal = activePortal;
+    if (portal == null) {
       openPortalPanel();
       notifyListeners();
       return;
     }
+    refreshPortalHealth(portal);
     await openSection(section, force: true);
   }
 
   Future<void> selectPortal(VerifiedPortal p, {bool closePanel = true}) async {
     activePortal = p;
+    ensurePortalHealth(p);
     await IptvStore.saveLastPortalKey(p.key);
     if (closePanel) closePortalPanel();
     await openSection(IptvSection.live);
@@ -704,6 +708,9 @@ class IptvController extends ChangeNotifier
         .removeListener(_onEpgPrefChanged);
     IptvStore.listRevision.removeListener(_onStoreListRevision);
     cancelAllLazyChecks();
+    _cancelAllPortalHealthTimers();
+    portalHealth.clear();
+    _portalHealthInFlight.clear();
     super.dispose();
   }
 }

@@ -234,7 +234,12 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       t.cancel();
     }
     _c._healthDebounce.clear();
-    _cancelAllPortalHealthTimers();
+    // Do not touch portal health expiry — catalog open/reload must keep
+    // the active-portal status cache until TTL or an explicit refresh.
+    for (final t in _portalHealthDebounce.values) {
+      t.cancel();
+    }
+    _portalHealthDebounce.clear();
   }
 
   /// Probe a single live stream — capped concurrency, called after debounce.
@@ -292,17 +297,18 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   bool? healthFor(String streamId) => _c.streamHealth[streamId];
 
-  // ── Portal panel live probes (hover / focus) ──
+  // ── Portal status (active button + panel rows) ──
   final Map<String, bool> portalHealth = {};
   final Set<String> _portalHealthInFlight = {};
   final Map<String, Timer> _portalHealthDebounce = {};
   final Map<String, Timer> _portalHealthExpiry = {};
   static const _portalHealthDelay = Duration(milliseconds: 350);
-  /// After this, green/red dots return to gray unknown until the next probe.
+  /// Cached green/red for this long, then re-probe the active portal.
   static const _portalHealthTtl = Duration(minutes: 2);
 
   bool? portalHealthFor(String key) => portalHealth[key];
 
+  /// Hover/focus probe — skips when a fresh cache entry exists.
   void schedulePortalHealthCheck(VerifiedPortal v) {
     final key = v.key;
     if (key.isEmpty) return;
@@ -315,6 +321,31 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     });
   }
 
+  /// Probe when a portal becomes active (select / restore). Cache hit = no-op.
+  void ensurePortalHealth(VerifiedPortal v) {
+    final key = v.key;
+    if (key.isEmpty) return;
+    if (portalHealth.containsKey(key)) return;
+    if (_portalHealthInFlight.contains(key)) return;
+    cancelPortalHealthCheck(key);
+    unawaited(_runPortalHealthCheck(v));
+  }
+
+  /// Drop cache and re-probe (shelf reload / explicit refresh).
+  void refreshPortalHealth(VerifiedPortal v) {
+    final key = v.key;
+    if (key.isEmpty) return;
+    cancelPortalHealthCheck(key);
+    _portalHealthExpiry[key]?.cancel();
+    _portalHealthExpiry.remove(key);
+    portalHealth.remove(key);
+    if (_portalHealthInFlight.contains(key)) {
+      notifyListeners();
+      return;
+    }
+    unawaited(_runPortalHealthCheck(v));
+  }
+
   void cancelPortalHealthCheck(String key) {
     _portalHealthDebounce[key]?.cancel();
     _portalHealthDebounce.remove(key);
@@ -325,8 +356,11 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _portalHealthExpiry[key]?.cancel();
     _portalHealthExpiry[key] = Timer(_portalHealthTtl, () {
       _portalHealthExpiry.remove(key);
-      if (portalHealth.remove(key) != null) {
-        notifyListeners();
+      portalHealth.remove(key);
+      notifyListeners();
+      final active = _c.activePortal;
+      if (active != null && active.key == key) {
+        unawaited(_runPortalHealthCheck(active));
       }
     });
     notifyListeners();

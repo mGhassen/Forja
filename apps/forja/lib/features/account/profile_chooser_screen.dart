@@ -245,10 +245,16 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     });
     try {
       if (_screen == _Screen.create) {
+        // Push the outgoing profile before createProfile flips the active id.
+        if (_activeProfileId != null) {
+          await SyncDomainBridge.instance.prepareProfileSwitch();
+        }
         final profile = await SyncService.instance.createProfile(
           name: _nameCtrl.text,
           avatarKey: _avatarKey,
         );
+        // New profile must not inherit the previous profile's local prefs.
+        await SyncDomainBridge.instance.seedNewProfileDefaults();
         if (!mounted) return;
         if (creatingFirst) {
           setState(() => _busy = false);

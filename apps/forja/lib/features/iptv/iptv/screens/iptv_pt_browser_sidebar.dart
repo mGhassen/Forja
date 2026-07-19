@@ -41,15 +41,15 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     final iconColor = _tvFocused || selected
         ? ForjaShellColors.brandGreen
         : _active
-            ? ForjaShellColors.iconHover
-            : ForjaShellColors.iconMuted;
+            ? Colors.white
+            : Colors.white.withValues(alpha: 0.82);
     final titleColor = _tvFocused
         ? ForjaShellColors.brandGreen
         : selected
-            ? ForjaShellColors.textPrimary
+            ? Colors.white
             : _active
-                ? ForjaShellColors.textSecondary
-                : ForjaShellColors.iconMuted;
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.82);
 
     return iptvTap(
       context: context,

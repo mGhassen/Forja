@@ -37,6 +37,51 @@ class SyncDomainBridge {
     await pushAllLocal();
   }
 
+  /// Wipe synced local domains to platform defaults (no prior-profile bleed).
+  ///
+  /// Local KV is device-global; every profile switch/create must reset before
+  /// applying that profile's cloud payload.
+  Future<void> resetSyncedLocalToPlatformDefaults({
+    bool clearIptv = true,
+  }) async {
+    final defaults = PlatformDefaults.forProfile(SettingsService.platformProfile);
+    await importPreferences({
+      'play_source_torrent_enabled': defaults.playSourceTorrent,
+      'play_source_stremio_enabled': defaults.playSourceStremio,
+      'play_source_webstreaming_enabled': defaults.playSourceWebstreaming,
+      'preferred_audio_lang': 'None',
+      'avoid_unsupported_audio': true,
+      'auto_next_episode': true,
+      'auto_skip_intro': false,
+      'iptv_epg_enabled': defaults.iptvEpgEnabled,
+      'max_playback_height': 0,
+    });
+    await _settings.setNavbarConfig(
+      List<String>.from(defaults.visibleNavIds),
+    );
+    await _settings.setDefaultNavTab('home');
+
+    final addons = await _settings.getStremioAddons();
+    for (final addon in addons) {
+      final baseUrl = (addon['baseUrl'] as String?)?.trim() ?? '';
+      if (baseUrl.isNotEmpty) {
+        await _settings.removeStremioAddon(baseUrl);
+      }
+    }
+
+    if (clearIptv) {
+      await IptvStore.save(const []);
+      await IptvStore.saveFavorites({});
+    }
+  }
+
+  /// After creating a profile: local defaults + push so cloud is not `{}` / prior prefs.
+  Future<void> seedNewProfileDefaults() async {
+    cancelPendingPushes();
+    await resetSyncedLocalToPlatformDefaults(clearIptv: true);
+    await pushAllLocal();
+  }
+
   Future<void> pullAndMergeAll() async {
     if (!SyncService.instance.isSignedIn) {
       AccountFeatures.instance.clear();
@@ -45,11 +90,16 @@ class SyncDomainBridge {
     await SyncService.instance.pullAccountFeatures();
     final remote = await SyncService.instance.pullProfileSettings();
     if (remote == null) {
-      await pushAllLocal();
+      // Missing row — seed defaults under the active profile (never push prior prefs).
+      await seedNewProfileDefaults();
       return;
     }
     await _applyLeanPayload(remote);
     await _pullAndApplyUserIptvPortals();
+    // Empty `{}` insert left cloud hollow — backfill real defaults once.
+    if (remote.isEmpty) {
+      await pushAllLocal();
+    }
   }
 
   /// Pull cloud portal assignments into local IPTV store (after deal / remote edit).
@@ -93,6 +143,9 @@ class SyncDomainBridge {
   }
 
   Future<void> _applyLeanPayload(Map<String, dynamic> payload) async {
+    // Reset first: missing lean keys must not keep the previous profile's local state.
+    await resetSyncedLocalToPlatformDefaults(clearIptv: false);
+
     final playback = payload['playback'];
     if (playback is Map) {
       await importPreferences(Map<String, dynamic>.from(playback));
