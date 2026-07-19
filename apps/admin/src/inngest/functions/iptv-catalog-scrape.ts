@@ -11,19 +11,27 @@ import type { CatalogPortal } from '@/server/iptv-catalog/types'
 import { portalKey } from '@/server/iptv-catalog/types'
 import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
 
-type ScrapeEvent = {
-  name: 'iptv/catalog.scrape'
-  data: {
-    maxPages?: number
-    maxResultsPerPage?: number
-    /** Cap how many portals get a verify-status step (Vercel-friendly). */
-    maxVerify?: number
-  }
+type ScrapeData = {
+  jobId?: string
+  maxPages?: number
+  maxResultsPerPage?: number
+  maxVerify?: number
+}
+
+async function markRun(runId: string, error?: string) {
+  const sb = createCatalogAdminClient()
+  // DB check: status in (running, ok, error) — no cancelled
+  await patchScrapeRun(sb, runId, {
+    status: 'error',
+    finished_at: new Date().toISOString(),
+    error: error ?? null,
+  })
 }
 
 /**
- * Daily (and on-demand) IPTV catalog scrape on Vercel via Inngest.
- * Each portal gets its own `verify-portal-status-*` step that hits player_api.
+ * Daily + on-demand catalog scrape.
+ * Cancel with event `iptv/catalog.scrape.cancel` (same jobId).
+ * Each portal: step `verify-portal-status-*` → player_api.
  */
 export const iptvCatalogScrape = inngest.createFunction(
   {
@@ -31,9 +39,27 @@ export const iptvCatalogScrape = inngest.createFunction(
     concurrency: { limit: 1 },
     retries: 1,
     triggers: [{ cron: '0 6 * * *' }, { event: 'iptv/catalog.scrape' }],
+    // concurrency 1 → any cancel event stops the active scrape
+    cancelOn: [{ event: 'iptv/catalog.scrape.cancel' }],
+    onFailure: async ({ error }) => {
+      try {
+        const sb = createCatalogAdminClient()
+        const { data: rows } = await sb
+          .from('iptv_scrape_runs')
+          .select('id')
+          .eq('status', 'running')
+          .order('started_at', { ascending: false })
+          .limit(1)
+        const id = rows?.[0]?.id
+        if (id) await markRun(id, error.message)
+      } catch {
+        // ignore
+      }
+    },
   },
   async ({ event, step }) => {
-    const data = (event?.data ?? {}) as ScrapeEvent['data']
+    const data = (event?.data ?? {}) as ScrapeData
+    const jobId = data.jobId ?? event.id
     const maxPages = Math.min(Math.max(data.maxPages ?? 5, 1), 20)
     const maxResultsPerPage = Math.min(
       Math.max(data.maxResultsPerPage ?? 50, 1),
@@ -62,6 +88,14 @@ export const iptvCatalogScrape = inngest.createFunction(
       if (!after) break
     }
 
+    await step.run('checkpoint-after-reddit', async () => {
+      const sb = createCatalogAdminClient()
+      await patchScrapeRun(sb, runId, {
+        posts_seen: postsSeen,
+        l1_extract_count: portals.size,
+      })
+    })
+
     const list = [...portals.values()].slice(0, maxVerify)
     let aliveCount = 0
     let upserted = 0
@@ -77,8 +111,6 @@ export const iptvCatalogScrape = inngest.createFunction(
           const sb = createCatalogAdminClient()
           await upsertCatalogCandidate(sb, portal, status, region)
           return {
-            url: portal.url,
-            username: portal.username,
             alive: status.alive,
             status: status.status,
             region: region.primary,
@@ -89,6 +121,18 @@ export const iptvCatalogScrape = inngest.createFunction(
       upserted++
       if (outcome.alive) aliveCount++
       else deadCount++
+
+      if (i % 5 === 0 || i === list.length - 1) {
+        await step.run(`progress-${i}`, async () => {
+          const sb = createCatalogAdminClient()
+          await patchScrapeRun(sb, runId, {
+            candidates_upserted: upserted,
+            alive_count: aliveCount,
+            posts_seen: postsSeen,
+            l1_extract_count: portals.size,
+          })
+        })
+      }
     }
 
     await step.run('finalize-scrape-run', async () => {
@@ -100,10 +144,12 @@ export const iptvCatalogScrape = inngest.createFunction(
         l1_extract_count: portals.size,
         candidates_upserted: upserted,
         alive_count: aliveCount,
+        error: null,
       })
     })
 
     return {
+      jobId,
       runId,
       scrapedUnique: portals.size,
       verified: list.length,
@@ -111,5 +157,33 @@ export const iptvCatalogScrape = inngest.createFunction(
       aliveCount,
       deadCount,
     }
+  },
+)
+
+/** When Inngest cancels the scrape, close DB run so Pool UI unsticks. */
+export const iptvCatalogScrapeCancelled = inngest.createFunction(
+  {
+    id: 'iptv-catalog-scrape-cancelled',
+    triggers: [{ event: 'inngest/function.cancelled' }],
+  },
+  async ({ event, step }) => {
+    const fnId = String(
+      (event.data as { function_id?: string })?.function_id ?? '',
+    )
+    if (!fnId.includes('iptv-catalog-scrape') || fnId.includes('cancelled')) {
+      return { skipped: true }
+    }
+    await step.run('mark-db-cancelled', async () => {
+      const sb = createCatalogAdminClient()
+      const { data: rows } = await sb
+        .from('iptv_scrape_runs')
+        .select('id')
+        .eq('status', 'running')
+        .order('started_at', { ascending: false })
+        .limit(3)
+      for (const row of rows ?? []) {
+        await markRun(row.id as string, 'Stopped / cancelled')
+      }
+    })
   },
 )

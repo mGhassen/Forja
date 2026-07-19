@@ -105,7 +105,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [081-[fixed]-…](fixed/081-[fixed]-macos-quit-mpv-demux-sigsegv.md) | macOS quit mpv demux SIGSEGV | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [082-[open]-…](082-[open]-multi-server-collect-all.md) | Multi-server must show every mirror | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [083-[open]-…](083-[open]-anime-first-hit-no-background-scan.md) | Anime first playable wins (no background scan) | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 6/6 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 7/7 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [085-[open]-…](085-[open]-desktop-involuntary-signout-dumps-login.md) | Involuntary sign-out dumps to login mid-use | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

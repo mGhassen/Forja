@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 3** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I84-T04 | Emit Megaplay/Vidwish via `/stream/ani/{anilist}/{ep}/{lang}` when no Anikoto embed id | ✅ |
 | 5 | I84-T05 | `savedSourceNeedsAnikoto('megaplay')` → false (AniList path) | ✅ |
 | 6 | I84-T06 | Rust `direct_embed`: nekostream/mewstream file → megaplay playback Referer | ✅ |
+| 7 | I84-T07 | Anime `probeStreamUrl` + reload/bridge hits apply `resolvePlaybackHttpHeaders` before CDN check / open | ✅ |
 
 ---
 

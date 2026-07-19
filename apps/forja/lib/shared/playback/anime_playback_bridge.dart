@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 typedef AnimeResolvedHit = ({AnimeEmbed embed, ExtractedMedia media});
@@ -135,11 +136,19 @@ abstract final class AnimePlaybackBridge {
         providerRank: rank,
       );
       if (rankedSources.isEmpty) continue;
+      final rankedHdrs = rankedSources.first.headers;
+      final fallbackHdrs = hit.headers ?? const <String, String>{};
+      final rawHdrs =
+          rankedHdrs.isNotEmpty ? rankedHdrs : Map<String, String>.from(fallbackHdrs);
+      final headers = resolvePlaybackHttpHeaders(
+        rawHdrs.isEmpty ? null : rawHdrs,
+        streamUrl: rankedSources.first.url,
+      );
       scored.add((
         embed: embed,
         media: ExtractedMedia(
           url: rankedSources.first.url,
-          headers: rankedSources.first.headers,
+          headers: headers,
           provider: embed.server,
           sources: playableSourcesToStreamSources(rankedSources),
           externalSubtitles: hit.subtitles,
@@ -219,7 +228,17 @@ abstract final class AnimePlaybackBridge {
   static List<StreamSource> _hitsToStreamSources(List<AnimeResolvedHit> hits) {
     final sources = <StreamSource>[];
     for (final h in hits) {
-      final headers = Map<String, String>.from(h.media.headers);
+      final headers = resolvePlaybackHttpHeaders(
+        h.media.headers.isEmpty ? null : Map<String, String>.from(h.media.headers),
+        streamUrl: h.media.url,
+      );
+      if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
+        final origin = h.embed.refererOrigin;
+        if (origin.isNotEmpty) {
+          headers['Referer'] = '$origin/';
+          headers.putIfAbsent('Origin', () => origin);
+        }
+      }
       sources.add(StreamSource(
         url: h.media.url,
         title: h.media.sources?.first.title ?? 'Stream',

@@ -1,3 +1,6 @@
-import { iptvCatalogScrape } from './iptv-catalog-scrape'
+import {
+  iptvCatalogScrape,
+  iptvCatalogScrapeCancelled,
+} from './iptv-catalog-scrape'
 
-export const functions = [iptvCatalogScrape]
+export const functions = [iptvCatalogScrape, iptvCatalogScrapeCancelled]

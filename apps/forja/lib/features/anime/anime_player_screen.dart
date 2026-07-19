@@ -619,6 +619,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   /// Probe CDN reachability before open / cache write (movie I43 style).
+  /// [AnimeService.probeStreamUrl] rewrites CDN Referer (nekostream → megaplay).
   Future<List<_AnimeResolvedHit>> _playableHits(
     List<_AnimeResolvedHit> hits,
   ) async {

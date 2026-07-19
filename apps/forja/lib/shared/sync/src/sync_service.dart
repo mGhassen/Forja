@@ -193,6 +193,13 @@ class SyncService {
     _notifyIdentityChanged();
   }
 
+  /// gotrue already cleared tokens (session expired / missing). Drop cloud
+  /// feature flags and refresh chrome — do **not** tear down the shell.
+  void handleInvoluntarySessionLoss() {
+    AccountFeatures.instance.clear();
+    _notifyIdentityChanged();
+  }
+
   /// Applies tokens from [DesktopBrowserAuth] (web portal → localhost callback).
   ///
   /// Refresh-only on purpose: a non-expired [accessToken] makes gotrue call

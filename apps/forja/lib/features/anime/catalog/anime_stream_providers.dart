@@ -11,29 +11,26 @@ class AnimeStreamProviders {
   ///
   /// AnimeRealms was removed (upstream API gone — domain is a storefront).
   /// AllAnime `Uv-mp4` was removed (upstream no longer returns it).
+  /// Megaplay/Vidwish first: direct embed extract (no Miruro CF WebView).
   static const List<String> defaultOrder = [
-    // AniKoto (Miruro bee) — preferred first
-    'miruro:bee',
+    'megaplay',
+    'vidwish',
+    // VidNest — AniList-native HiAnime / AnimePahe
+    'vidnest:hianime',
+    'vidnest:animepahe',
     // AllAnime — Yt-mp4 is the reliable direct MP4; Default aliases to it first
     'allanime:Default',
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
-    // VidNest — AniList-native HiAnime / AnimePahe
-    'vidnest:hianime',
-    'vidnest:animepahe',
-    // Anikoto HD embeds
-    'megaplay',
-    'vidwish',
-    // HiAnime / AnimePahe (Miruro)
+    // AniKoto (Miruro bee) + other Miruro pipes (CF WebView)
+    'miruro:bee',
     'miruro:zoro',
     'miruro:kiwi',
-    // Strong Miruro pipes
     'miruro:ally',
     'miruro:hop',
     'miruro:bonk',
     'miruro:moo',
-    // Weaker Miruro internals / regional
     'miruro:animedunya',
     'miruro:arc',
     'miruro:jet',

@@ -25,6 +25,22 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
+/// Whether a [AuthChangeEvent.signedOut] should replace the running app with
+/// [AccountEntryScreen].
+///
+/// Explicit sign-out always returns to account. Involuntary loss
+/// ([SignOutReason.sessionExpired] / [SignOutReason.sessionMissing]) must
+/// **not** destroy the shell while the user is already in the app — gotrue
+/// already cleared tokens; dumping to login mid-playback is the bug.
+bool shouldReturnToAccountOnSignOut({
+  required SignOutReason? reason,
+  required bool inActiveAppShell,
+}) {
+  if (reason == SignOutReason.userInitiated) return true;
+  if (inActiveAppShell) return false;
+  return true;
+}
+
 enum _StartupStage { update, account, profiles, splash }
 
 /// Cold-start gate: update check first, then optional account entry, then splash.
@@ -50,7 +66,12 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   @override
   void initState() {
     super.initState();
-    _authSub = SyncService.instance.authChanges.listen(_onAuthState);
+    _authSub = SyncService.instance.authChanges.listen(
+      _onAuthState,
+      onError: (Object e, StackTrace st) {
+        debugPrint('[DesktopStartupGate] auth stream error: $e');
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_runUpdateGate());
     });
@@ -102,7 +123,27 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
 
   void _onAuthState(AuthState state) {
     if (!mounted) return;
+    debugPrint(
+      '[DesktopStartupGate] auth event=${state.event.name} '
+      'reason=${state.signOutReason?.name ?? 'none'} '
+      'stage=$_stage signedIn=${SyncService.instance.isSignedIn}',
+    );
     if (state.event != AuthChangeEvent.signedOut) return;
+
+    final inShell = _stage == _StartupStage.splash;
+    if (!shouldReturnToAccountOnSignOut(
+      reason: state.signOutReason,
+      inActiveAppShell: inShell,
+    )) {
+      debugPrint(
+        '[DesktopStartupGate] Keeping app shell after involuntary sign-out '
+        '(${state.signOutReason?.name ?? 'unknown'}) — re-auth from Settings',
+      );
+      SyncDomainBridge.instance.cancelPendingPushes();
+      SyncService.instance.handleInvoluntarySessionLoss();
+      return;
+    }
+
     _returnToAccountAfterSignOut();
   }
 

@@ -17,7 +17,7 @@ export function createCatalogAdminClient(): SupabaseClient {
 
 export async function insertScrapeRun(
   sb: SupabaseClient,
-  source = 'inngest-web',
+  source = 'inngest-admin',
 ): Promise<string> {
   const { data, error } = await sb
     .from('iptv_scrape_runs')

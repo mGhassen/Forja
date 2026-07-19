@@ -25,7 +25,7 @@ import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
-import { supabase } from '@/lib/supabase'
+import { scrapeControl } from '@/lib/scrape-control'
 import { cn } from '@/lib/utils'
 
 type Cand = {
@@ -511,28 +511,36 @@ export function AdminPoolPage() {
   const groups = useMemo(() => groupByHost(list.data ?? []), [list.data])
 
   const startScrape = useMutation({
-    mutationFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session?.access_token) throw new Error('Not signed in')
-      const res = await fetch('/api/iptv-catalog-scrape', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({}),
-      })
-      const json = (await res.json().catch(() => ({}))) as { error?: string }
-      if (!res.ok) throw new Error(json.error || 'Could not start scrape')
-    },
+    mutationFn: () => scrapeControl('start'),
     onSuccess: async () => {
       setActionError(null)
       await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
     },
     onError: (e) => {
       setActionError(errMessage(e, 'Could not start scrape'))
+    },
+  })
+
+  const stopScrape = useMutation({
+    mutationFn: () =>
+      scrapeControl('stop', { runId: latestRun?.id }),
+    onSuccess: async () => {
+      setActionError(null)
+      await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
+    },
+    onError: (e) => {
+      setActionError(errMessage(e, 'Could not stop scrape'))
+    },
+  })
+
+  const markStuck = useMutation({
+    mutationFn: () => scrapeControl('mark_stuck'),
+    onSuccess: async () => {
+      setActionError(null)
+      await qc.invalidateQueries({ queryKey: ['admin', 'scrape_runs'] })
+    },
+    onError: (e) => {
+      setActionError(errMessage(e, 'Could not mark stuck'))
     },
   })
 
@@ -688,19 +696,53 @@ export function AdminPoolPage() {
               <p className="text-sm text-red-400">{latestRun.error}</p>
             ) : null}
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={running || startScrape.isPending}
-            onClick={() => startScrape.mutate()}
-          >
-            {running
-              ? 'Scraping…'
-              : startScrape.isPending
-                ? 'Starting…'
-                : 'Start scrape'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {running ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={stopScrape.isPending || markStuck.isPending}
+                  onClick={() => stopScrape.mutate()}
+                >
+                  {stopScrape.isPending ? 'Stopping…' : 'Stop'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={stopScrape.isPending || markStuck.isPending}
+                  onClick={() => markStuck.mutate()}
+                >
+                  Mark stuck
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={startScrape.isPending}
+                onClick={() => startScrape.mutate()}
+              >
+                {startScrape.isPending ? 'Starting…' : 'Start scrape'}
+              </Button>
+            )}
+          </div>
         </div>
+        <p className="mt-3 text-xs text-forja-muted">
+          Logs + cron: open{' '}
+          <a href="/scrape" className="text-forja-green hover:underline">
+            Scrape
+          </a>{' '}
+          · Inngest{' '}
+          <a
+            href="http://127.0.0.1:8288"
+            target="_blank"
+            rel="noreferrer"
+            className="text-forja-green hover:underline"
+          >
+            :8288
+          </a>
+        </p>
       </div>
 
       {list.error ? (

@@ -586,10 +586,35 @@ class ProviderRuntimeSnapshot {
       kisskhMirrors: overlay.kisskhMirrors.isNotEmpty
           ? overlay.kisskhMirrors
           : kisskhMirrors,
-      cdnRefererRules: overlay.cdnRefererRules.isNotEmpty
-          ? overlay.cdnRefererRules
-          : cdnRefererRules,
+      // Overlay first (ops override), then builtins whose host needles are
+      // not fully covered — incomplete remote edits must not wipe nekostream.
+      cdnRefererRules: _unionCdnRefererRules(
+        builtins: cdnRefererRules,
+        overlay: overlay.cdnRefererRules,
+      ),
     );
+  }
+
+  /// Prefer [overlay] rules; keep [builtins] rules whose host needles are not
+  /// all present on some overlay rule.
+  static List<CdnRefererRule> _unionCdnRefererRules({
+    required List<CdnRefererRule> builtins,
+    required List<CdnRefererRule> overlay,
+  }) {
+    if (overlay.isEmpty) return builtins;
+    final out = List<CdnRefererRule>.from(overlay);
+    for (final b in builtins) {
+      final covered = overlay.any((o) {
+        if (b.hostContains.isEmpty) return false;
+        return b.hostContains.every(
+          (needle) => o.hostContains.any(
+            (h) => h.toLowerCase() == needle.toLowerCase(),
+          ),
+        );
+      });
+      if (!covered) out.add(b);
+    }
+    return out;
   }
 
   Map<String, dynamic> toJson() => {

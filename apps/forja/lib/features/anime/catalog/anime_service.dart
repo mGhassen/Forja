@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
+import 'package:forja/shared/player/player/utils.dart';
 
 class AnimeService {
   // ─── GraphQL helper ─────────────────────────────────────────────
@@ -841,13 +842,18 @@ class AnimeService {
   }
 
   /// Lightweight reachability check before replaying cached stream URLs.
+  ///
+  /// Always runs [resolvePlaybackHttpHeaders] first — anime CDNs (nekostream /
+  /// mewstream) 403 without the Megaplay Referer, and cache/reload paths often
+  /// still carry scrape (`enma.lol`) or Miruro origins.
   Future<bool> probeStreamUrl(
     String url,
     Map<String, String> headers,
   ) async {
     if (url.isEmpty) return false;
     try {
-      return await probeStreamUrlRust(url, headers);
+      final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+      return await probeStreamUrlRust(url, hdrs);
     } catch (_) {
       return false;
     }

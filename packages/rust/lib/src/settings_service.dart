@@ -377,6 +377,33 @@ class SettingsService {
   /// Default anime stream try-order. Kept in sync with
   /// `AnimeStreamProviders.defaultOrder` in the host app.
   static const List<String> defaultAnimeProviderOrder = <String>[
+    'megaplay',
+    'vidwish',
+    'vidnest:hianime',
+    'vidnest:animepahe',
+    'allanime:Default',
+    'allanime:Yt-mp4',
+    'allanime:S-mp4',
+    'allanime:Luf-Mp4',
+    'miruro:bee',
+    'miruro:zoro',
+    'miruro:kiwi',
+    'miruro:ally',
+    'miruro:hop',
+    'miruro:bonk',
+    'miruro:moo',
+    'miruro:animedunya',
+    'miruro:arc',
+    'miruro:jet',
+    'miruro:bun',
+    'miruro:kuz',
+    'miruro:telli',
+    'watchhentai',
+    'hentaini',
+  ];
+
+  /// Pre-1.2.x default (Miruro CF first). Exact match → migrate to Megaplay-first.
+  static const List<String> _legacyAnimeProviderOrder = <String>[
     'miruro:bee',
     'allanime:Default',
     'allanime:Yt-mp4',
@@ -410,7 +437,21 @@ class SettingsService {
     if (saved.isEmpty) {
       return List<String>.from(defaultAnimeProviderOrder);
     }
+    // Uncustomized installs still have the Miruro-first list — migrate once so
+    // Auto doesn't sit on CF WebView before Megaplay can start.
+    if (_listEquals(saved, _legacyAnimeProviderOrder)) {
+      await setAnimeProviderOrder(defaultAnimeProviderOrder);
+      return List<String>.from(defaultAnimeProviderOrder);
+    }
     return mergeProviderOrder(saved, defaultAnimeProviderOrder);
+  }
+
+  static bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   Future<void> setAnimeProviderOrder(List<String> order) async =>

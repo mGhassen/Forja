@@ -45,6 +45,43 @@ void main() {
       );
     });
 
+    test('incomplete remote CDN rules keep builtin mewstream/nekostream', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'cdnRefererRules': [
+          {
+            'hostContains': ['mewstream'],
+            'referer': 'https://ops.megaplay.test/',
+            'origin': 'https://ops.megaplay.test',
+            'acceptRefererContains': ['megaplay'],
+          },
+        ],
+      });
+      expect(remote, isNotNull);
+      final merged =
+          ProviderRuntimeSnapshot.builtins().merged(remote!);
+      expect(
+        merged.cdnRefererRules.any(
+          (r) =>
+              r.hostContains.contains('mewstream') &&
+              r.referer.contains('ops.megaplay.test'),
+        ),
+        isTrue,
+      );
+      expect(
+        merged.cdnRefererRules.any(
+          (r) => r.hostContains.contains('nekostream'),
+        ),
+        isTrue,
+      );
+      ProviderRuntimeConfig.instance.debugSetSnapshot(merged);
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: 'https://9hjkrt.nekostream.site/a/b/master.m3u8',
+      );
+      expect(h['Referer'], 'https://megaplay.buzz/');
+    });
+
     test('unsupported schema ignored', () {
       expect(
         ProviderRuntimeSnapshot.tryParse({'schema': 99, 'anime': {}}),
