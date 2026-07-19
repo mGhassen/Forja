@@ -27,7 +27,10 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Daily cron `0 6 * * *` UTC runs `iptv-catalog-scrape`
-4. Each portal is a step `verify-portal-status-*` that hits Xtream `player_api` then upserts into the pool
+4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
+5. Each portal is a step `verify-portal-status-*` that hits Xtream `player_api` then upserts into the pool
+
+If a run shows **posts > 0** but **L1 = 0** and no `verify-portal-status-*` steps, paste decrypt / deep extract failed (not Inngest itself).
 
 Local:
 

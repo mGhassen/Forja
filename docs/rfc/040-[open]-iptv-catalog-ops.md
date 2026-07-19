@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **13 / 15** acceptance (Inngest TS scrape on admin; AI + Stalker deferred) |
-| **Current slice** | Inngest catalog scrape on admin — migrations smoke; AI/Stalker deferred |
+| **Progress** | **5 / 5** components · **14 / 16** acceptance (Inngest TS scrape + L2 paste; AI + Stalker deferred) |
+| **Current slice** | Inngest catalog scrape on admin — L2 paste.sh decrypt shipped; AI/Stalker deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -46,6 +46,7 @@
 | 13 | R40-A13 | Ops console under web `/admin` (shared AuthProvider + Forja UI; no separate `apps/admin`) | ✅ |
 | 14 | R40-A14 | Separate `apps/admin` TanStack Start app (same stack/auth/design as web; not portal routes) | ✅ |
 | 15 | R40-A15 | Inngest TS scrape on `apps/admin` (cron + per-portal `verify-portal-status` step; Rust worker on hold) | ✅ |
+| 16 | R40-A16 | Admin Inngest scrape: L2 base64 → paste.sh decrypt + extract (parity with `crates/iptv` deep links); drop banned Reddit subs | ✅ |
 
 ---
 
