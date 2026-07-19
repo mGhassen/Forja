@@ -310,7 +310,9 @@ function EditDialog({
   )
 }
 
-/** Same row chrome as Account → IPTV portals. */
+const ACTION_RAIL_W = 108
+
+/** Table-style portal row — Account→IPTV content, actions on hover. */
 function CandidateRow({
   c,
   sharing,
@@ -331,127 +333,146 @@ function CandidateRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const expiry = portalExpiryTone(c.expiry)
   const seats = seatsTone(c.max_connections)
+  const pinRail = confirmDelete || sharing || !!shareCode
 
   return (
-    <li className="flex min-h-22 items-center gap-2 px-0.5 py-2.5">
-      {confirmDelete ? (
-        <div className="min-w-0 flex-1">
+    <li
+      className={cn(
+        'group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0',
+        'hover:bg-white/[0.03] focus-within:bg-white/[0.03]',
+        pinRail && 'bg-white/[0.03]',
+      )}
+    >
+      <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
+        {confirmDelete ? (
           <p className="text-[13px] font-semibold text-red-400">
             Delete this portal?
           </p>
-        </div>
-      ) : shareCode || sharing ? (
-        <div className="min-w-0 flex-1">
-          {sharing && !shareCode ? (
-            <p className="text-sm text-forja-muted">Creating share code…</p>
+        ) : shareCode || sharing ? (
+          <div className="min-w-0">
+            {sharing && !shareCode ? (
+              <p className="text-sm text-forja-muted">Creating share code…</p>
+            ) : (
+              <>
+                <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
+                  SHARE CODE
+                </p>
+                <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
+                  {shareCode}
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1 space-y-1">
+            <p
+              className={cn(
+                'flex items-center gap-1.5 text-[11px] font-semibold',
+                expiry.className,
+              )}
+            >
+              <CalendarDays className="size-3 shrink-0" />
+              <span className="truncate">{expiry.label}</span>
+            </p>
+            <p className="truncate text-[13px] font-semibold text-forja-text">
+              {c.username}
+            </p>
+            <p className="truncate text-sm text-white/55">{c.url}</p>
+            <p
+              className={cn(
+                'flex items-center gap-1.5 text-[11px] font-semibold',
+                seats.className,
+              )}
+            >
+              <Users className="size-3 shrink-0" />
+              <span>{seats.label}</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-end overflow-hidden transition-[width] duration-180 ease-out',
+          pinRail
+            ? 'w-[108px]'
+            : 'w-0 group-hover:w-[108px] group-focus-within:w-[108px]',
+        )}
+      >
+        <div
+          className="flex h-full shrink-0 items-center justify-end pr-1"
+          style={{ width: ACTION_RAIL_W }}
+        >
+          {confirmDelete ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                disabled={deleting}
+                aria-label="Confirm delete"
+                onClick={() => {
+                  setConfirmDelete(false)
+                  onDelete()
+                }}
+              >
+                <Check className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                aria-label="Cancel delete"
+                onClick={() => setConfirmDelete(false)}
+              >
+                <X className="size-4" />
+              </Button>
+            </>
           ) : (
             <>
-              <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
-                SHARE CODE
-              </p>
-              <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
-                {shareCode}
-              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={sharing}
+                aria-label="Copy share code"
+                title="Copy share code"
+                onClick={onShare}
+              >
+                {sharing ? (
+                  <Share2 className="size-4 animate-pulse" />
+                ) : shareCode ? (
+                  <Check className="size-4 text-forja-green" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                aria-label="Edit portal"
+                onClick={onEdit}
+              >
+                <Pencil className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                aria-label="Delete portal"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
             </>
           )}
         </div>
-      ) : (
-        <div className="min-w-0 flex-1 space-y-1">
-          <p
-            className={cn(
-              'flex items-center gap-1.5 text-[11px] font-semibold',
-              expiry.className,
-            )}
-          >
-            <CalendarDays className="size-3 shrink-0" />
-            <span className="truncate">{expiry.label}</span>
-          </p>
-          <p className="truncate text-[13px] font-semibold text-forja-text">
-            {c.username}
-          </p>
-          <p className="truncate text-sm text-white/55">{c.url}</p>
-          <p
-            className={cn(
-              'flex items-center gap-1.5 text-[11px] font-semibold',
-              seats.className,
-            )}
-          >
-            <Users className="size-3 shrink-0" />
-            <span>{seats.label}</span>
-          </p>
-        </div>
-      )}
-
-      <div className="flex shrink-0 items-center self-center">
-        {confirmDelete ? (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-              disabled={deleting}
-              aria-label="Confirm delete"
-              onClick={() => {
-                setConfirmDelete(false)
-                onDelete()
-              }}
-            >
-              <Check className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              aria-label="Cancel delete"
-              onClick={() => setConfirmDelete(false)}
-            >
-              <X className="size-4" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              disabled={sharing}
-              aria-label="Copy share code"
-              title="Copy share code"
-              onClick={onShare}
-            >
-              {sharing ? (
-                <Share2 className="size-4 animate-pulse" />
-              ) : shareCode ? (
-                <Check className="size-4 text-forja-green" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              aria-label="Edit portal"
-              onClick={onEdit}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-              aria-label="Delete portal"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </>
-        )}
       </div>
     </li>
   )
@@ -766,63 +787,73 @@ export function AdminPoolPage() {
         />
       ) : null}
 
-      <div className="space-y-3">
+      <div className="overflow-hidden rounded-xl border border-forja-border">
         {list.isLoading ? (
-          <p className="text-sm text-forja-muted">Loading…</p>
+          <p className="px-4 py-4 text-sm text-forja-muted">Loading…</p>
         ) : groups.length === 0 ? (
-          <p className="text-sm text-forja-muted">Pool is empty.</p>
+          <p className="px-4 py-4 text-sm text-forja-muted">Pool is empty.</p>
         ) : (
-          groups.map((g) => {
-            const expanded = open.has(g.host)
-            return (
-              <div
-                key={g.host}
-                className="overflow-hidden rounded-xl border border-forja-border"
-              >
-                <button
-                  type="button"
-                  onClick={() => toggle(g.host)}
-                  aria-expanded={expanded}
-                  className="flex w-full items-start gap-3 px-4 py-3.5 text-left hover:bg-white/[0.03]"
+          <>
+            <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem] gap-3 border-b border-forja-border bg-forja-elevated/50 px-3 py-2 text-xs font-medium text-forja-muted sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem]">
+              <span>Host</span>
+              <span className="text-right tabular-nums">Accounts</span>
+              <span className="text-right tabular-nums">Alive</span>
+              <span className="text-right">Scraped</span>
+            </div>
+            {groups.map((g) => {
+              const expanded = open.has(g.host)
+              return (
+                <div
+                  key={g.host}
+                  className="border-t border-forja-border first:border-t-0"
                 >
-                  <span
-                    className="mt-0.5 w-4 shrink-0 text-forja-muted"
-                    aria-hidden
+                  <button
+                    type="button"
+                    onClick={() => toggle(g.host)}
+                    aria-expanded={expanded}
+                    className="grid w-full grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem] items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.03] sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem]"
                   >
-                    {expanded ? '▾' : '▸'}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold text-forja-text">
-                      {g.host}
-                    </p>
-                    <p className="mt-1 text-sm text-forja-muted">
-                      {g.rows.length} account{g.rows.length === 1 ? '' : 's'}
-                      {g.alive > 0 ? ` · ${g.alive} alive` : ''}
-                    </p>
-                    <p className="mt-0.5 text-sm text-forja-muted">
-                      Scraped {relativeTime(g.lastScrapedAt)}
-                    </p>
-                  </div>
-                </button>
-                {expanded ? (
-                  <ul className="divide-y divide-forja-border border-t border-forja-border px-4">
-                    {g.rows.map((c) => (
-                      <CandidateRow
-                        key={c.id}
-                        c={c}
-                        sharing={sharingId === c.id}
-                        shareCode={shareFlash[c.id] ?? null}
-                        deleting={remove.isPending}
-                        onShare={() => void copyShare(c)}
-                        onEdit={() => void beginEdit(c)}
-                        onDelete={() => remove.mutate(c.id)}
-                      />
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            )
-          })
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="w-3 shrink-0 text-forja-muted"
+                        aria-hidden
+                      >
+                        {expanded ? '▾' : '▸'}
+                      </span>
+                      <span className="truncate text-sm font-semibold text-forja-text">
+                        {g.host}
+                      </span>
+                    </span>
+                    <span className="text-right text-sm tabular-nums text-forja-muted">
+                      {g.rows.length}
+                    </span>
+                    <span className="text-right text-sm tabular-nums text-forja-muted">
+                      {g.alive}
+                    </span>
+                    <span className="text-right text-sm text-forja-muted">
+                      {relativeTime(g.lastScrapedAt)}
+                    </span>
+                  </button>
+                  {expanded ? (
+                    <ul className="grid grid-cols-1 border-t border-forja-border bg-forja-surface/20 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
+                      {g.rows.map((c) => (
+                        <CandidateRow
+                          key={c.id}
+                          c={c}
+                          sharing={sharingId === c.id}
+                          shareCode={shareFlash[c.id] ?? null}
+                          deleting={remove.isPending}
+                          onShare={() => void copyShare(c)}
+                          onEdit={() => void beginEdit(c)}
+                          onDelete={() => remove.mutate(c.id)}
+                        />
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              )
+            })}
+          </>
         )}
       </div>
     </div>
