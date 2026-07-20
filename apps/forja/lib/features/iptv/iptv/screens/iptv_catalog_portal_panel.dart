@@ -388,7 +388,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                   tooltip: credits > 0
                       ? 'Deal portals from pool ($credits credits)'
                       : 'Deal portals (no credits)',
-                  onPressed: () => _showDealDialog(context),
+                  onPressed: credits < 1
+                      ? null
+                      : () => unawaited(ctrl.dealFromPool()),
                   icon: Icons.casino_rounded,
                   color: credits > 0 ? IptvShellStyle.accent : null,
                   tvRowId: 'iptv-portal-header',
@@ -423,127 +425,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           ),
         );
       },
-    );
-  }
-
-  Future<void> _showDealDialog(BuildContext context) async {
-    const regions = ['ANY', 'EU', 'US', 'UK', 'TR', 'DE', 'FR', 'MIXED'];
-    var region = 'ANY';
-    var busy = false;
-    String? error;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => ShellScope.rehost(
-        context,
-        StatefulBuilder(
-          builder: (ctx, setLocal) {
-            final credits = AccountFeatures.instance.iptvCredits;
-            return AlertDialog(
-              backgroundColor: const Color(0xFF141414),
-              title: const Text('Deal portals'),
-              content: SizedBox(
-                width: 360,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Spend 1 credit for up to 5 alive portals from the pool.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Credits: $credits',
-                      style: TextStyle(
-                        color: credits > 0
-                            ? IptvShellStyle.accent
-                            : Colors.white54,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Region',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final r in regions)
-                          ChoiceChip(
-                            label: Text(r),
-                            selected: region == r,
-                            onSelected: busy
-                                ? null
-                                : (_) => setLocal(() => region = r),
-                            selectedColor: IptvShellStyle.accent
-                                .withValues(alpha: 0.35),
-                            labelStyle: TextStyle(
-                              color: region == r
-                                  ? Colors.white
-                                  : Colors.white70,
-                              fontSize: 12,
-                            ),
-                            backgroundColor: Colors.white10,
-                          ),
-                      ],
-                    ),
-                    if (error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        error!,
-                        style: const TextStyle(
-                          color: Color(0xFFF87171),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: busy ? null : () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: busy || credits < 1
-                      ? null
-                      : () async {
-                          setLocal(() {
-                            busy = true;
-                            error = null;
-                          });
-                          final result = await widget.ctrl.dealFromPool(
-                            region: region,
-                            count: 5,
-                          );
-                          if (!ctx.mounted) return;
-                          if (result.error != null) {
-                            setLocal(() {
-                              busy = false;
-                              error = result.error;
-                            });
-                            return;
-                          }
-                          Navigator.pop(ctx);
-                        },
-                  child: Text(busy ? 'Dealing…' : 'Deal 5'),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
     );
   }
 

@@ -1,6 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { ExternalLink, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import {
+  EmptyState,
+  MetricChip,
+  PageHeader,
+  Panel,
+  PanelLabel,
+  StatusBadge,
+  selectClassName,
+  tableClassName,
+  tableWrapClassName,
+  tdClassName,
+  thClassName,
+} from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +29,7 @@ import {
   parseDailyUtc,
 } from '@/lib/scrape-cron'
 import { scrapeControl } from '@/lib/scrape-control'
+import { runDurationLabel } from '@/lib/ops-overview'
 import {
   SCRAPE_RUNS_KEY,
   fetchScrapeRuns,
@@ -212,39 +227,65 @@ export function AdminScrapePage() {
     (settings.error as Error | null)?.message
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-disp text-xl font-bold tracking-tight">
-          Scrape control
-        </h1>
-        <p className="mt-1 text-sm text-forja-muted">
-          Manual run, stop stuck jobs, cron, and Inngest logs. Pool is for the
-          candidate inventory — this tab is ops.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Scrape"
+        description="Run jobs, watch live metrics, and set the UTC schedule. Inventory lives in Pool."
+        actions={
+          <>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/pool">Pool</Link>
+            </Button>
+            <Button asChild variant="secondary" size="sm">
+              <a href={INNGEST_UI_URL} target="_blank" rel="noreferrer">
+                Inngest
+                <ExternalLink className="size-3.5" />
+              </a>
+            </Button>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-forja-border bg-forja-elevated/40 px-5 py-4">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
-              Current
-            </p>
+      <Panel tone="accent">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-3">
+            <PanelLabel>Current run</PanelLabel>
             {latest ? (
               <>
-                <p
-                  className={cn(
-                    'text-base font-semibold capitalize',
-                    latest.status === 'running' && 'text-amber-400',
-                    latest.status === 'ok' && 'text-forja-green',
-                    latest.status === 'error' && 'text-red-400',
-                  )}
-                >
-                  {latest.status}
-                </p>
-                <p className="text-sm text-forja-muted">
-                  {latest.posts_seen} posts · L1 {latest.l1_extract_count} ·
-                  upserted {latest.candidates_upserted} · alive{' '}
-                  {latest.alive_count}
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={latest.status} />
+                  <span className="text-xs text-forja-muted">
+                    {new Date(latest.started_at).toLocaleString()}
+                    {latest.source ? ` · ${latest.source}` : ''}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+                  <MetricChip label="Posts" value={latest.posts_seen} />
+                  <MetricChip label="L1" value={latest.l1_extract_count} />
+                  <MetricChip label="Deep" value={latest.deep_ref_count} />
+                  <MetricChip
+                    label="L2 ok"
+                    value={latest.l2_fetch_ok}
+                  />
+                  <MetricChip
+                    label="L2 fail"
+                    value={latest.l2_fetch_fail}
+                  />
+                  <MetricChip
+                    label="L2 extract"
+                    value={latest.l2_extract_count}
+                  />
+                  <MetricChip
+                    label="Upserted"
+                    value={latest.candidates_upserted}
+                  />
+                  <MetricChip label="Alive" value={latest.alive_count} />
+                </div>
+                <p className="text-xs text-forja-muted">
+                  Duration {runDurationLabel(latest)}
+                  {latest.finished_at
+                    ? ` · finished ${new Date(latest.finished_at).toLocaleString()}`
+                    : ' · in progress'}
                 </p>
                 {latest.error ? (
                   <p className="text-sm text-red-400">{latest.error}</p>
@@ -258,18 +299,21 @@ export function AdminScrapePage() {
             <Button
               type="button"
               variant="ghost"
+              size="sm"
               disabled={list.isFetching}
               onClick={() => void refreshScrapeRuns(qc)}
             >
-              {list.isFetching ? 'Refreshing…' : 'Refresh'}
+              <RefreshCw
+                className={cn('size-3.5', list.isFetching && 'animate-spin')}
+              />
+              Refresh
             </Button>
             <Button
               type="button"
-              variant="secondary"
               disabled={busy || running}
               onClick={() => start.mutate()}
             >
-              {start.isPending ? 'Starting…' : 'Run manual scrape'}
+              {start.isPending ? 'Starting…' : 'Run scrape'}
             </Button>
             <Button
               type="button"
@@ -285,57 +329,32 @@ export function AdminScrapePage() {
               disabled={busy || !running}
               onClick={() => markStuck.mutate()}
             >
-              Mark stuck failed
+              Mark stuck
             </Button>
           </div>
         </div>
-        {err ? <p className="mt-3 text-sm text-red-400">{err}</p> : null}
-      </div>
+        {err ? <p className="mt-4 text-sm text-red-400">{err}</p> : null}
+      </Panel>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-forja-border px-5 py-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
-            Logs
-          </p>
-          <p className="mt-2 text-sm text-forja-muted">
-            {isInngestLocalUi ? (
-              <>
-                Step logs live in Inngest Dev UI (not in this table). Open while{' '}
-                <code className="font-mono-ui text-xs">pnpm dev</code> + Inngest
-                CLI are running.
-              </>
-            ) : (
-              <>
-                Step logs live in Inngest Cloud (not in this table). Open the
-                dashboard for function runs and cancel.
-              </>
-            )}
-          </p>
-          <a
-            href={INNGEST_UI_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-block text-sm text-forja-green underline-offset-2 hover:underline"
-          >
-            Open Inngest → {INNGEST_UI_URL}
-          </a>
-          <p className="mt-2 font-mono-ui text-xs text-forja-muted">
-            Function: iptv-catalog-scrape · steps: scrape-reddit-page-* ·
-            upsert-candidates-unverified (player_api verify off — flip
-            VERIFY_PORTAL_STATUS to re-enable verify-portal-status-*)
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-forja-border px-5 py-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
-                Automation
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel>
+          <PanelLabel>Automation</PanelLabel>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p
+                className={cn(
+                  'text-sm font-semibold',
+                  cronEnabled ? 'text-forja-green' : 'text-amber-400',
+                )}
+              >
+                {settings.isLoading
+                  ? 'Loading…'
+                  : cronEnabled
+                    ? 'Schedule on'
+                    : 'Schedule off'}
               </p>
-              <p className="mt-2 text-sm text-forja-muted">
-                Change the schedule below (UTC). When off, ticks no-op;{' '}
-                <span className="text-forja-text">Run manual scrape</span>{' '}
-                still works.
+              <p className="mt-0.5 text-xs text-forja-muted">
+                Off = ticks no-op; manual run still works
               </p>
             </div>
             <button
@@ -350,11 +369,6 @@ export function AdminScrapePage() {
                 (setCronEnabled.isPending || settings.isLoading) &&
                   'opacity-60',
               )}
-              title={
-                cronEnabled
-                  ? 'Schedule enabled — click to disable'
-                  : 'Schedule disabled — click to enable'
-              }
             >
               <span
                 className={cn(
@@ -364,25 +378,13 @@ export function AdminScrapePage() {
               />
             </button>
           </div>
-          <p
-            className={cn(
-              'mt-2 text-sm font-semibold',
-              cronEnabled ? 'text-forja-green' : 'text-amber-400',
-            )}
-          >
-            {settings.isLoading
-              ? 'Loading…'
-              : cronEnabled
-                ? 'Scheduled scrape on'
-                : 'Scheduled scrape off'}
-          </p>
 
-          <div className="mt-4 space-y-3 border-t border-forja-border pt-4">
+          <div className="mt-5 space-y-3 border-t border-forja-border pt-4">
             <div className="space-y-1.5">
               <Label htmlFor="scrape-preset">Preset</Label>
               <select
                 id="scrape-preset"
-                className="flex h-9 w-full rounded-md border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text"
+                className={selectClassName}
                 value={presetId}
                 disabled={settings.isLoading || saveSchedule.isPending}
                 onChange={(e) => {
@@ -400,14 +402,11 @@ export function AdminScrapePage() {
                 {daily &&
                 !SCRAPE_CRON_PRESETS.some((p) => p.cron === draftCron) ? (
                   <option value="daily-custom">
-                    Every day at{' '}
-                    {String(daily.hour).padStart(2, '0')}:
+                    Every day at {String(daily.hour).padStart(2, '0')}:
                     {String(daily.minute).padStart(2, '0')} UTC
                   </option>
                 ) : null}
-                {!daily ? (
-                  <option value="custom">Custom cron</option>
-                ) : null}
+                {!daily ? <option value="custom">Custom cron</option> : null}
               </select>
             </div>
 
@@ -417,7 +416,7 @@ export function AdminScrapePage() {
                   <Label htmlFor="scrape-hour">Hour (UTC)</Label>
                   <select
                     id="scrape-hour"
-                    className="flex h-9 w-full rounded-md border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text"
+                    className={selectClassName}
                     value={hour}
                     disabled={settings.isLoading || saveSchedule.isPending}
                     onChange={(e) => {
@@ -437,7 +436,7 @@ export function AdminScrapePage() {
                   <Label htmlFor="scrape-minute">Minute</Label>
                   <select
                     id="scrape-minute"
-                    className="flex h-9 w-full rounded-md border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text"
+                    className={selectClassName}
                     value={minute}
                     disabled={settings.isLoading || saveSchedule.isPending}
                     onChange={(e) => {
@@ -496,106 +495,137 @@ export function AdminScrapePage() {
               {saveSchedule.isPending ? 'Saving…' : 'Save schedule'}
             </Button>
           </div>
+        </Panel>
 
+        <Panel>
+          <PanelLabel>Step logs</PanelLabel>
+          <p className="mt-3 text-sm leading-relaxed text-forja-muted">
+            {isInngestLocalUi
+              ? 'Per-step logs live in Inngest Dev UI (not this table). Keep pnpm dev + Inngest CLI running.'
+              : 'Per-step logs live in Inngest Cloud. Open the dashboard for function runs and cancel.'}
+          </p>
+          <a
+            href={INNGEST_UI_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-forja-green hover:underline"
+          >
+            Open Inngest
+            <ExternalLink className="size-3.5" />
+          </a>
+          <p className="mt-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted">
+            iptv-catalog-scrape · scrape-reddit-page-* ·
+            upsert-candidates-unverified
+          </p>
           {isInngestLocalUi ? (
-            <p className="mt-3 text-sm text-forja-muted">
-              Local: <code className="font-mono-ui text-xs">INNGEST_DEV=1</code>{' '}
-              + CLI →{' '}
-              <code className="font-mono-ui text-xs">
-                http://127.0.0.1:4000/api/inngest
-              </code>
-              .
-            </p>
+            <pre className="mt-4 overflow-x-auto rounded-xl border border-forja-border bg-black/25 p-3 font-mono-ui text-[11px] text-forja-muted">
+              {`npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest`}
+            </pre>
           ) : (
-            <p className="mt-3 text-sm text-forja-muted">
-              Prod (
-              <code className="font-mono-ui text-xs">admin.forjahq.xyz</code>
-              ): sync Inngest to{' '}
-              <code className="font-mono-ui text-xs">/api/inngest</code>.
+            <p className="mt-3 text-xs text-forja-muted">
+              Sync Inngest to{' '}
+              <code className="font-mono-ui">admin.forjahq.xyz/api/inngest</code>
             </p>
           )}
-          <Link
-            to="/pool"
-            className="mt-3 inline-block text-sm text-forja-green underline-offset-2 hover:underline"
-          >
-            → Catalog pool
-          </Link>
-        </div>
+        </Panel>
       </div>
-
-      {isInngestLocalUi ? (
-        <pre className="overflow-x-auto rounded-xl border border-forja-border bg-forja-elevated p-3 font-mono-ui text-xs text-forja-muted">
-          {`# Terminal A — admin app
-cd apps/admin && pnpm dev
-
-# Terminal B — Inngest (logs + cron + cancel)
-npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
-
-# Then: Scrape → Run manual scrape  (or Pool → Start scrape)`}
-        </pre>
-      ) : null}
 
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-forja-border">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-forja-elevated text-forja-muted">
-            <tr>
-              <th className="px-3 py-2">Started</th>
-              <th className="px-3 py-2">Source</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Posts</th>
-              <th className="px-3 py-2">L1</th>
-              <th className="px-3 py-2">Upserted</th>
-              <th className="px-3 py-2">Alive</th>
-              <th className="px-3 py-2">Error</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(list.data ?? []).map((r) => (
-              <tr
-                key={r.id}
-                className={cn(
-                  'border-t border-forja-border transition-colors',
-                  r.status === 'running' && 'bg-amber-400/5',
-                  r.id === latest?.id && 'bg-white/[0.03]',
-                )}
-              >
-                <td className="px-3 py-2 text-xs">
-                  {new Date(r.started_at).toLocaleString()}
-                </td>
-                <td className="px-3 py-2 font-mono-ui text-xs">
-                  {r.source ?? '—'}
-                </td>
-                <td
-                  className={cn(
-                    'px-3 py-2 capitalize',
-                    r.status === 'running' && 'font-semibold text-amber-400',
-                    r.status === 'ok' && 'text-forja-green',
-                    r.status === 'error' && 'text-red-400',
-                  )}
-                >
-                  {r.status}
-                  {r.status === 'running' ? (
-                    <span className="ml-1 inline-block size-1.5 animate-pulse rounded-full bg-amber-400 align-middle" />
-                  ) : null}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{r.posts_seen}</td>
-                <td className="px-3 py-2 tabular-nums">{r.l1_extract_count}</td>
-                <td className="px-3 py-2 tabular-nums">
-                  {r.candidates_upserted}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{r.alive_count}</td>
-                <td className="max-w-[220px] truncate px-3 py-2 text-xs text-red-400">
-                  {r.error ?? '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {!list.isLoading && (list.data?.length ?? 0) === 0 ? (
+        <EmptyState
+          title="No scrape history"
+          description="Hit Run scrape to create the first run."
+        />
+      ) : (
+        <div className={tableWrapClassName}>
+          <div className="overflow-x-auto">
+            <table className={tableClassName}>
+              <thead>
+                <tr>
+                  <th className={thClassName}>Started</th>
+                  <th className={thClassName}>Source</th>
+                  <th className={thClassName}>Status</th>
+                  <th className={thClassName}>Dur</th>
+                  <th className={thClassName}>Posts</th>
+                  <th className={thClassName}>L1</th>
+                  <th className={thClassName}>Deep</th>
+                  <th className={thClassName}>L2 ok</th>
+                  <th className={thClassName}>L2 fail</th>
+                  <th className={thClassName}>L2 ex</th>
+                  <th className={thClassName}>Up</th>
+                  <th className={thClassName}>Alive</th>
+                  <th className={thClassName}>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(list.data ?? []).map((r) => (
+                  <tr
+                    key={r.id}
+                    className={cn(
+                      'border-t border-forja-border/80 transition-colors hover:bg-white/[0.02]',
+                      r.status === 'running' && 'bg-amber-400/[0.04]',
+                    )}
+                  >
+                    <td className={cn(tdClassName, 'whitespace-nowrap text-xs')}>
+                      {new Date(r.started_at).toLocaleString()}
+                    </td>
+                    <td
+                      className={cn(
+                        tdClassName,
+                        'font-mono-ui text-xs text-forja-muted',
+                      )}
+                    >
+                      {r.source ?? '—'}
+                    </td>
+                    <td className={tdClassName}>
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums text-xs')}>
+                      {runDurationLabel(r)}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.posts_seen}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.l1_extract_count}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.deep_ref_count}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.l2_fetch_ok}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.l2_fetch_fail}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.l2_extract_count}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.candidates_upserted}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.alive_count}
+                    </td>
+                    <td
+                      className={cn(
+                        tdClassName,
+                        'max-w-[180px] truncate text-xs text-red-400',
+                      )}
+                      title={r.error ?? undefined}
+                    >
+                      {r.error ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

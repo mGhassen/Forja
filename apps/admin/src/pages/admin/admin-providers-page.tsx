@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { PageHeader, Panel } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { adminDb } from '@/lib/admin-db'
 
@@ -87,47 +88,41 @@ export function AdminProvidersPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-disp text-xl font-bold tracking-tight">
-            Provider runtime
-          </h1>
-          <p className="mt-1 text-sm text-forja-muted">
-            Hosts, URL templates, WebStreamr bases, anime mirrors, CDN Referer
-            rules. App merges over builtins (schema {SUPPORTED_SCHEMA}). Extract
-            logic stays in the client.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={row.isLoading || save.isPending}
-            onClick={() => format()}
-          >
-            Format
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={row.isLoading || save.isPending}
-            onClick={() => void row.refetch()}
-          >
-            Reload
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={row.isLoading || save.isPending}
-            onClick={() => save.mutate(text)}
-          >
-            {save.isPending ? 'Saving…' : 'Save'}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Providers"
+        description={`Hosts, URL templates, WebStreamr bases, anime mirrors, CDN Referer rules. App merges over builtins (schema ${SUPPORTED_SCHEMA}).`}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={row.isLoading || save.isPending}
+              onClick={() => format()}
+            >
+              Format
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={row.isLoading || save.isPending}
+              onClick={() => void row.refetch()}
+            >
+              Reload
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={row.isLoading || save.isPending}
+              onClick={() => save.mutate(text)}
+            >
+              {save.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </>
+        }
+      />
 
       {row.data?.updated_at ? (
         <p className="text-xs text-forja-muted">
@@ -144,20 +139,24 @@ export function AdminProvidersPage() {
         </p>
       ) : null}
       {save.isSuccess && !localError ? (
-        <p className="text-sm text-forja-green">Saved. Clients refresh within ~6h TTL or next cold start.</p>
+        <p className="text-sm text-forja-green">
+          Saved. Clients refresh within ~6h TTL or next cold start.
+        </p>
       ) : null}
 
-      <textarea
-        className="min-h-[28rem] w-full resize-y rounded-xl border border-forja-border bg-forja-elevated p-3 font-mono-ui text-xs leading-relaxed text-forja-text outline-none focus:border-forja-green/50"
-        spellCheck={false}
-        value={text}
-        disabled={row.isLoading}
-        onChange={(e) => {
-          setText(e.target.value)
-          setLocalError(null)
-          save.reset()
-        }}
-      />
+      <Panel className="p-0 overflow-hidden">
+        <textarea
+          className="min-h-[28rem] w-full resize-y border-0 bg-transparent p-4 font-mono-ui text-xs leading-relaxed text-forja-text outline-none focus:ring-0"
+          spellCheck={false}
+          value={text}
+          disabled={row.isLoading}
+          onChange={(e) => {
+            setText(e.target.value)
+            setLocalError(null)
+            save.reset()
+          }}
+        />
+      </Panel>
     </div>
   )
 }

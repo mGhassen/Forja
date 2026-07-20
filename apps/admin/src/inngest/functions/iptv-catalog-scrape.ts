@@ -139,12 +139,20 @@ export const iptvCatalogScrape = inngest.createFunction(
     const seenPostIds = new Set<string>()
     let after: string | null = null
     let postsSeen = 0
+    let deepRefCount = 0
+    let l2FetchOk = 0
+    let l2FetchFail = 0
+    let l2ExtractCount = 0
 
     for (let page = 0; page < maxPages; page++) {
       const result = await step.run(`scrape-reddit-page-${page}`, async () =>
         scrapeCatalogPage(after, maxResultsPerPage),
       )
       postsSeen += result.postsSeen
+      deepRefCount += result.funnel?.deepRefCount ?? 0
+      l2FetchOk += result.funnel?.l2FetchOk ?? 0
+      l2FetchFail += result.funnel?.l2FetchFail ?? 0
+      l2ExtractCount += result.funnel?.l2ExtractCount ?? 0
       for (const id of result.postIds) seenPostIds.add(id)
       for (const p of result.portals) {
         portals.set(portalKey(p), p)
@@ -162,6 +170,10 @@ export const iptvCatalogScrape = inngest.createFunction(
       await patchScrapeRun(sb, runId, {
         posts_seen: postsSeen,
         l1_extract_count: portals.size,
+        deep_ref_count: deepRefCount,
+        l2_fetch_ok: l2FetchOk,
+        l2_fetch_fail: l2FetchFail,
+        l2_extract_count: l2ExtractCount,
       })
     })
 
@@ -202,6 +214,10 @@ export const iptvCatalogScrape = inngest.createFunction(
               alive_count: aliveCount,
               posts_seen: postsSeen,
               l1_extract_count: portals.size,
+              deep_ref_count: deepRefCount,
+              l2_fetch_ok: l2FetchOk,
+              l2_fetch_fail: l2FetchFail,
+              l2_extract_count: l2ExtractCount,
             })
           })
         }
@@ -227,6 +243,10 @@ export const iptvCatalogScrape = inngest.createFunction(
         finished_at: new Date().toISOString(),
         posts_seen: postsSeen,
         l1_extract_count: portals.size,
+        deep_ref_count: deepRefCount,
+        l2_fetch_ok: l2FetchOk,
+        l2_fetch_fail: l2FetchFail,
+        l2_extract_count: l2ExtractCount,
         candidates_upserted: upserted,
         alive_count: aliveCount,
         error: null,
@@ -242,6 +262,11 @@ export const iptvCatalogScrape = inngest.createFunction(
       upserted,
       aliveCount,
       deadCount,
+      deepRefCount,
+      l2FetchOk,
+      l2FetchFail,
+      l2ExtractCount,
+      postsSeen,
     }
   },
 )

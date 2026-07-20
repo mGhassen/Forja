@@ -115,9 +115,10 @@ class SyncDomainBridge {
   }
 
   /// Pull cloud portal assignments into local IPTV store (after deal / remote edit).
-  Future<void> pullIptvPortalsFromCloud() async {
-    if (!SyncService.instance.isSignedIn) return;
-    await _pullAndApplyUserIptvPortals();
+  /// Returns `false` when the pull failed and local inventory was left unchanged.
+  Future<bool> pullIptvPortalsFromCloud() async {
+    if (!SyncService.instance.isSignedIn) return false;
+    return _pullAndApplyUserIptvPortals();
   }
 
   Future<void> pushAllLocal() async {
@@ -271,8 +272,15 @@ class SyncDomainBridge {
     await SyncService.instance.replaceUserIptvPortals(assignments);
   }
 
-  Future<void> _pullAndApplyUserIptvPortals() async {
-    final rows = await SyncService.instance.pullUserIptvPortals();
+  Future<bool> _pullAndApplyUserIptvPortals() async {
+    final List<Map<String, dynamic>> rows;
+    try {
+      rows = await SyncService.instance.pullUserIptvPortals();
+    } catch (e) {
+      // Keep local inventory — never replace with [] on credential/RPC failure.
+      debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
+      return false;
+    }
     final portals = <VerifiedPortal>[];
     final favoriteKeys = <String>{};
     for (final row in rows) {
@@ -304,6 +312,7 @@ class SyncDomainBridge {
     }
     await IptvStore.save(portals);
     await IptvStore.saveFavorites(favoriteKeys);
+    return true;
   }
 
   Future<Map<String, dynamic>> exportPreferences() async {

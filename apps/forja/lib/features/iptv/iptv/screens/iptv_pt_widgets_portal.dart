@@ -143,8 +143,12 @@ class _PortalListView extends StatelessWidget {
                       if (signedIn)
                         IptvPrimaryButton(
                           icon: Icons.casino_rounded,
-                          label: 'Deal portals',
-                          onPressed: () => _showDealDialog(context),
+                          label: credits > 0
+                              ? 'Deal portals ($credits)'
+                              : 'Deal portals',
+                          onPressed: credits < 1
+                              ? null
+                              : () => unawaited(ctrl.dealFromPool()),
                         ),
                       if (canScrape) ...[
                         if (signedIn) const SizedBox(height: 12),
@@ -244,7 +248,9 @@ class _PortalListView extends StatelessWidget {
               icon: Icons.casino_rounded,
               label: credits > 0 ? 'Deal ($credits)' : 'Deal',
               subtle: false,
-              onPressed: () => _showDealDialog(context),
+              onPressed: credits < 1
+                  ? null
+                  : () => unawaited(ctrl.dealFromPool()),
             ),
           if (canScrape)
             (
@@ -322,121 +328,6 @@ class _PortalListView extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Future<void> _showDealDialog(BuildContext context) async {
-    const regions = ['ANY', 'EU', 'US', 'UK', 'TR', 'DE', 'FR', 'MIXED'];
-    var region = 'ANY';
-    var busy = false;
-    String? error;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => ShellScope.rehost(
-        context,
-        StatefulBuilder(
-          builder: (ctx, setLocal) {
-            final credits = AccountFeatures.instance.iptvCredits;
-            return AlertDialog(
-              backgroundColor: IptvShellStyle.surface,
-              title: Text(
-                'Deal portals',
-                style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
-              ),
-              content: SizedBox(
-                width: 360,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Spend 1 credit for up to 5 alive portals from the pool.',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white60,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Credits: $credits',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: credits > 0
-                            ? IptvShellStyle.accent
-                            : Colors.white54,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final r in regions)
-                          ChoiceChip(
-                            label: Text(r),
-                            selected: region == r,
-                            onSelected: busy
-                                ? null
-                                : (_) => setLocal(() => region = r),
-                            selectedColor:
-                                IptvShellStyle.accent.withValues(alpha: 0.35),
-                            labelStyle: TextStyle(
-                              color:
-                                  region == r ? Colors.white : Colors.white70,
-                              fontSize: 12,
-                            ),
-                            backgroundColor: Colors.white10,
-                          ),
-                      ],
-                    ),
-                    if (error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        error!,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: const Color(0xFFEF4444),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: busy ? null : () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: busy || credits < 1
-                      ? null
-                      : () async {
-                          setLocal(() {
-                            busy = true;
-                            error = null;
-                          });
-                          final result = await ctrl.dealFromPool(
-                            region: region,
-                            count: 5,
-                          );
-                          if (!ctx.mounted) return;
-                          if (result.error != null) {
-                            setLocal(() {
-                              busy = false;
-                              error = result.error;
-                            });
-                            return;
-                          }
-                          Navigator.pop(ctx);
-                        },
-                  child: Text(busy ? 'Dealing…' : 'Deal 5'),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
     );
   }
 

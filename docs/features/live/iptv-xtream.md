@@ -60,7 +60,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
-- **Deal** (signed-in) spends **1 credit** for up to **5** alive portals from the shared catalog pool; pick a region filter (`ANY` / `EU` / `US` / …). Credits are granted by admins; balance shows in Portals and on web **Account → IPTV**.
+- **Deal** (signed-in) spends **1 credit** for up to **5** alive portals from the shared catalog pool (same one-tap style as Scrape; region `ANY`). Credits are granted by admins; balance shows in Portals and on web **Account → IPTV**.
 - **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk. Scrape understands plain `get.php` links, Host/User/Pass cards (including common unicode spellings), and tabular `host:port user:pass` dumps — Stalker/MAC portal posts are ignored (Forja uses Xtream login, not device MAC). Operators fill the shared pool via [Catalog ops](iptv-catalog-ops.md).
 - Portal quality varies — timeouts usually mean provider or network issues
 - Clear stale alive checks / channel scan hits from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay)

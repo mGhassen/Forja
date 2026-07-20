@@ -561,13 +561,21 @@ mixin _IptvControllerPortal on ChangeNotifier {
         region: region,
         count: count,
       );
-      await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
       await SyncService.instance.pullAccountFeatures();
-      await _c._softReloadPortalsFromStore();
+      final pulled =
+          await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
+      if (pulled) {
+        await _c._softReloadPortalsFromStore();
+      }
       final n = ids.length;
-      _c.statusText = n == 0
-          ? 'Deal returned no portals.'
-          : 'Dealt $n portal${n == 1 ? '' : 's'} ($region).';
+      if (!pulled && n > 0) {
+        _c.statusText =
+            'Dealt $n portal${n == 1 ? '' : 's'} but sync failed — try again later.';
+      } else {
+        _c.statusText = n == 0
+            ? 'Deal returned no portals.'
+            : 'Dealt $n portal${n == 1 ? '' : 's'}.';
+      }
       notifyListeners();
       return (assigned: n, error: null);
     } catch (e) {

@@ -777,22 +777,20 @@ class SyncService {
   Future<List<Map<String, dynamic>>> getIptvPortals(List<String> ids) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null || ids.isEmpty) return const [];
-    try {
-      final rows = await client.rpc(
-        'get_iptv_portals',
-        params: {'p_ids': ids},
-      );
-      if (rows is! List) return const [];
-      return [
-        for (final raw in rows) Map<String, dynamic>.from(raw as Map),
-      ];
-    } catch (e) {
-      debugPrint('[Sync] getIptvPortals error: $e');
-      return const [];
-    }
+    final rows = await client.rpc(
+      'get_iptv_portals',
+      params: {'p_ids': ids},
+    );
+    if (rows is! List) return const [];
+    return [
+      for (final raw in rows) Map<String, dynamic>.from(raw as Map),
+    ];
   }
 
   /// Load this profile's portal assignments (`user_iptv_portals` + credentials).
+  ///
+  /// Throws when assignments exist but credentials cannot be loaded — callers
+  /// must not treat that as an empty inventory (would wipe local store).
   Future<List<Map<String, dynamic>>> pullUserIptvPortals() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
@@ -800,41 +798,46 @@ class SyncService {
     final profile = await activeProfile();
     if (profile == null) return const [];
 
-    try {
-      final rows = await client
-          .from('user_iptv_portals')
-          .select()
-          .eq('account_id', userId)
-          .eq('profile_id', profile.id)
-          .order('created_at');
-      if (rows.isEmpty) return const [];
-      final assignments = [
-        for (final raw in rows) Map<String, dynamic>.from(raw as Map),
-      ];
-      final ids = <String>[
-        for (final a in assignments)
-          if ((a['portal_id'] as String?)?.isNotEmpty == true)
-            a['portal_id'] as String,
-      ];
-      final globals = await getIptvPortals(ids);
-      final byId = {
-        for (final g in globals) (g['id'] as String? ?? ''): g,
-      };
-      final out = <Map<String, dynamic>>[];
-      for (final a in assignments) {
-        final id = a['portal_id'] as String? ?? '';
-        final g = byId[id];
-        if (g == null) continue;
-        out.add({
-          ...a,
-          'portal': g,
-        });
-      }
-      return out;
-    } catch (e) {
-      debugPrint('[Sync] pullUserIptvPortals error: $e');
-      return const [];
+    final rows = await client
+        .from('user_iptv_portals')
+        .select()
+        .eq('account_id', userId)
+        .eq('profile_id', profile.id)
+        .order('created_at');
+    if (rows.isEmpty) return const [];
+    final assignments = [
+      for (final raw in rows) Map<String, dynamic>.from(raw as Map),
+    ];
+    final ids = <String>[
+      for (final a in assignments)
+        if ((a['portal_id'] as String?)?.isNotEmpty == true)
+          a['portal_id'] as String,
+    ];
+    final globals = await getIptvPortals(ids);
+    if (ids.isNotEmpty && globals.isEmpty) {
+      throw StateError(
+        'Failed to load portal credentials for ${ids.length} assignment(s)',
+      );
     }
+    final byId = {
+      for (final g in globals) (g['id'] as String? ?? ''): g,
+    };
+    final out = <Map<String, dynamic>>[];
+    for (final a in assignments) {
+      final id = a['portal_id'] as String? ?? '';
+      final g = byId[id];
+      if (g == null) continue;
+      out.add({
+        ...a,
+        'portal': g,
+      });
+    }
+    if (out.isEmpty && ids.isNotEmpty) {
+      throw StateError(
+        'Portal credentials missing for ${ids.length} assignment(s)',
+      );
+    }
+    return out;
   }
 
   /// Replace this profile's `user_iptv_portals` rows.

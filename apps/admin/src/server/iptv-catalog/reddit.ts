@@ -224,11 +224,32 @@ async function extractDeepPortals(
     return true
   }).slice(0, 4)
 
+  let l2FetchOk = 0
+  let l2FetchFail = 0
+  const sizeBefore = acc.size
   for (const dl of unique) {
     if (acc.size >= maxResults) break
     const text = await fetchPasteBody(dl)
-    if (text) addExtracted(acc, text, 'catalog-deep', maxResults, postId)
+    if (text) {
+      l2FetchOk++
+      addExtracted(acc, text, 'catalog-deep', maxResults, postId)
+    } else {
+      l2FetchFail++
+    }
   }
+  return {
+    deepRefCount: unique.length,
+    l2FetchOk,
+    l2FetchFail,
+    l2ExtractCount: Math.max(0, acc.size - sizeBefore),
+  }
+}
+
+export type ScrapePageFunnel = {
+  deepRefCount: number
+  l2FetchOk: number
+  l2FetchFail: number
+  l2ExtractCount: number
 }
 
 export type ScrapePageResult = {
@@ -238,6 +259,7 @@ export type ScrapePageResult = {
   nextAfter: string | null
   subreddit: string
   postsSeen: number
+  funnel: ScrapePageFunnel
 }
 
 /** One Reddit /new page → extracted portals + pagination cursor. */
@@ -258,10 +280,24 @@ export async function scrapeCatalogPage(
     }
   } | null
 
+  const emptyFunnel: ScrapePageFunnel = {
+    deepRefCount: 0,
+    l2FetchOk: 0,
+    l2FetchFail: 0,
+    l2ExtractCount: 0,
+  }
+
   if (!root?.data) {
     const nextAfter =
       subIdx + 1 < CATALOG_SUBS.length ? `reddit:${subIdx + 1}:` : null
-    return { portals: [], nextAfter, subreddit: sub, postsSeen: 0 }
+    return {
+      portals: [],
+      postIds: [],
+      nextAfter,
+      subreddit: sub,
+      postsSeen: 0,
+      funnel: emptyFunnel,
+    }
   }
 
   const posts = root.data.children ?? []
@@ -275,6 +311,7 @@ export async function scrapeCatalogPage(
 
   const acc = new Map<string, CatalogPortal>()
   const postIds: string[] = []
+  const funnel: ScrapePageFunnel = { ...emptyFunnel }
   for (const child of posts) {
     if (acc.size >= maxResults) break
     const d = child.data
@@ -292,7 +329,11 @@ export async function scrapeCatalogPage(
     const body = `${title}\n${selftext}`
     addExtracted(acc, body, 'catalog', maxResults, postId)
     if (acc.size >= maxResults) break
-    await extractDeepPortals(body, acc, maxResults, postId)
+    const deep = await extractDeepPortals(body, acc, maxResults, postId)
+    funnel.deepRefCount += deep.deepRefCount
+    funnel.l2FetchOk += deep.l2FetchOk
+    funnel.l2FetchFail += deep.l2FetchFail
+    funnel.l2ExtractCount += deep.l2ExtractCount
   }
 
   return {
@@ -301,5 +342,6 @@ export async function scrapeCatalogPage(
     nextAfter,
     subreddit: sub,
     postsSeen: posts.length,
+    funnel,
   }
 }

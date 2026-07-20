@@ -6,6 +6,7 @@ import {
   type SetStateAction,
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import {
   ArrowDown,
   ArrowUp,
@@ -19,6 +20,13 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import {
+  MetricChip,
+  PageHeader,
+  Panel,
+  PanelLabel,
+  StatusBadge,
+} from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,6 +39,7 @@ import {
   formatShareCode,
 } from '@/lib/iptv-portal-share'
 import { scrapeControl } from '@/lib/scrape-control'
+import { runDurationLabel } from '@/lib/ops-overview'
 import {
   SCRAPE_RUNS_LATEST_KEY,
   fetchScrapeRuns,
@@ -881,41 +890,46 @@ export function AdminPoolPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-disp text-xl font-bold tracking-tight">
-          Catalog pool
-        </h1>
-        <p className="mt-1 text-sm text-forja-muted">
-          Grouped by host. Check status, copy, edit, or delete.
-        </p>
-      </div>
+      <PageHeader
+        title="Pool"
+        description="Grouped by host. Check status, copy, edit, or remove from the deal pool."
+        actions={
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/scrape">Scrape control</Link>
+          </Button>
+        }
+      />
 
-      <div className="rounded-xl border border-forja-border bg-forja-elevated/40 px-5 py-4">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
-              Scrape
-            </p>
+      <Panel tone="accent">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-3">
+            <PanelLabel>Scrape</PanelLabel>
             {latestRun ? (
               <>
-                <p
-                  className={cn(
-                    'text-base font-semibold capitalize',
-                    latestRun.status === 'running' && 'text-amber-400',
-                    latestRun.status === 'ok' && 'text-forja-green',
-                    latestRun.status === 'error' && 'text-red-400',
-                  )}
-                >
-                  {latestRun.status}
-                </p>
-                <p className="text-sm text-forja-muted">
-                  Started {relativeTime(latestRun.started_at)}
-                  {latestRun.status === 'running'
-                    ? ` · ${latestRun.posts_seen} posts`
-                    : ` · ${latestRun.candidates_upserted} upserted · ${latestRun.alive_count} alive`}
-                </p>
-                <p className="font-mono-ui text-xs text-forja-muted/80">
-                  {shortRunId(latestRun.id)}
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={latestRun.status} />
+                  <span className="text-xs text-forja-muted">
+                    {relativeTime(latestRun.started_at)} ·{' '}
+                    {shortRunId(latestRun.id)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                  <MetricChip label="Posts" value={latestRun.posts_seen} />
+                  <MetricChip label="L1" value={latestRun.l1_extract_count} />
+                  <MetricChip label="Deep" value={latestRun.deep_ref_count} />
+                  <MetricChip
+                    label="L2 ok/fail"
+                    value={`${latestRun.l2_fetch_ok}/${latestRun.l2_fetch_fail}`}
+                  />
+                  <MetricChip
+                    label="Upserted"
+                    value={latestRun.candidates_upserted}
+                  />
+                  <MetricChip label="Alive" value={latestRun.alive_count} />
+                </div>
+                <p className="text-xs text-forja-muted">
+                  {runDurationLabel(latestRun)}
+                  {latestRun.source ? ` · ${latestRun.source}` : ''}
                 </p>
               </>
             ) : (
@@ -948,7 +962,6 @@ export function AdminPoolPage() {
             ) : (
               <Button
                 type="button"
-                variant="secondary"
                 disabled={startScrape.isPending}
                 onClick={() => startScrape.mutate()}
               >
@@ -957,22 +970,22 @@ export function AdminPoolPage() {
             )}
           </div>
         </div>
-        <p className="mt-3 text-xs text-forja-muted">
-          Logs + cron: open{' '}
-          <a href="/scrape" className="text-forja-green hover:underline">
+        <p className="mt-4 text-xs text-forja-muted">
+          Schedule + logs:{' '}
+          <Link to="/scrape" className="text-forja-green hover:underline">
             Scrape
-          </a>{' '}
-          · Inngest{' '}
+          </Link>{' '}
+          ·{' '}
           <a
             href={INNGEST_UI_URL}
             target="_blank"
             rel="noreferrer"
             className="text-forja-green hover:underline"
           >
-            {isInngestLocalUi ? ':8288' : 'Cloud'}
+            Inngest {isInngestLocalUi ? 'Dev' : 'Cloud'}
           </a>
         </p>
-      </div>
+      </Panel>
 
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
