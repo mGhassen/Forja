@@ -26,16 +26,26 @@ Future<T?> showLoadingOverlayDialog<T>(
 }
 
 /// Removes the loading dialog without popping whatever route was pushed above it.
+///
+/// Safe to call twice (cancel + async cleanup) and while the navigator is
+/// mid-build/transition — mutates on the next frame and no-ops if already gone.
 void dismissLoadingOverlayRoute(BuildContext loadingDialogContext) {
   if (!loadingDialogContext.mounted) return;
+  final navigator = Navigator.of(loadingDialogContext);
   final route = ModalRoute.of(loadingDialogContext);
-  if (route != null) {
-    Navigator.of(loadingDialogContext).removeRoute(route);
-    return;
+  if (route != null && !route.isActive) return;
+
+  void dismiss() {
+    if (!navigator.mounted) return;
+    if (route != null) {
+      if (!route.isActive) return;
+      navigator.removeRoute(route);
+      return;
+    }
+    if (navigator.canPop()) navigator.pop();
   }
-  if (Navigator.of(loadingDialogContext).canPop()) {
-    Navigator.of(loadingDialogContext).pop();
-  }
+
+  WidgetsBinding.instance.addPostFrameCallback((_) => dismiss());
 }
 
 /// Fades the loading overlay out while the player route fades in underneath.
