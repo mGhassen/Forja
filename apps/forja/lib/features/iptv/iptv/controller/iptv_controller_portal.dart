@@ -546,6 +546,9 @@ mixin _IptvControllerPortal on ChangeNotifier {
     if (!SyncService.instance.isSignedIn) {
       return (assigned: 0, error: 'Sign in to deal portals.');
     }
+    if (!AccountFeatures.instance.isDealPortalEnabled) {
+      return (assigned: 0, error: 'Deal portals is not enabled for this account.');
+    }
     if (AccountFeatures.instance.iptvCredits < 1) {
       return (assigned: 0, error: 'No credits left.');
     }

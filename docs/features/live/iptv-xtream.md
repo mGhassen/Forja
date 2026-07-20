@@ -39,7 +39,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 ## Setup
 
 1. Get portal URL, username, and password from your IPTV provider
-2. Open **Portals** → **Add**, **Deal** (signed-in, spends 1 catalog credit for up to 5 pool portals), or **Scrape** / **Find Portals** when your account has IPTV scrape unlocked
+2. Open **Portals** → **Add**, **Deal** when your account has Deal unlocked (spends 1 catalog credit for up to 5 pool portals), or **Scrape** / **Find Portals** when scrape is unlocked
 3. To import from a share code: in the portal dialog (**Share code** title), paste or type the 8-character code into the tall **XXXX-XXXX** squares centered in the dialog — when the code resolves, the dialog asks for an optional **Portal name**, then connects after you confirm (or cancel to go back). Tap the **↓** control on the bottom edge to expand manual entry (title becomes **Add Portal**; optional **Portal name**, then URL, username, password as underline fields) — confirm with the green check icon or dismiss with the muted close icon at the bottom-right (only when expanded); use the header **X** to close without saving. **Edit portal** includes the same **Portal name** field. On the **web** remote settings page, add portals with the manual form, or **Export CSV** to download portals (credentials included) as a spreadsheet file; **Save** to sync.
 4. Tap a portal in the list to load its catalog
 
@@ -60,7 +60,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
-- **Deal** (signed-in) spends **1 credit** for up to **5** alive portals from the shared catalog pool (weighted lottery — less-dealt / recently checked hosts preferred, diverse hosts when possible; region `ANY`). Credits are granted by admins; balance shows in Portals and on web **Account → IPTV**.
+- **Deal** is available only when your signed-in account has `dealPortal` enabled (default off). It spends **1 credit** for up to **5** alive portals from the shared catalog pool (weighted lottery — less-dealt / recently checked hosts preferred, diverse hosts when possible; region `ANY`). Credits are granted by admins; balance shows in Portals and on web **Account → IPTV** only when Deal is unlocked.
 - **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk. Scrape understands plain `get.php` links, Host/User/Pass cards (including common unicode spellings), and tabular `host:port user:pass` dumps — Stalker/MAC portal posts are ignored (Forja uses Xtream login, not device MAC). Operators fill the shared pool via [Catalog ops](iptv-catalog-ops.md).
 - Portal quality varies — timeouts usually mean provider or network issues
 - Clear stale alive checks / channel scan hits from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay)

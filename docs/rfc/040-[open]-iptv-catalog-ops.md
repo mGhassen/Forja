@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **20 / 22** acceptance (admin assign; AI + Stalker deferred) |
-| **Current slice** | Admin assign/unassign portals; AI/Stalker deferred |
+| **Progress** | **5 / 5** components · **21 / 23** acceptance (dealPortal flag; AI + Stalker deferred) |
+| **Current slice** | `dealPortal` feature flag + admin feature-flags UX; AI/Stalker deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,6 +53,7 @@
 | 20 | R40-A20 | Admin Scrape Automation: edit UTC schedule (presets / time / cron) via `iptv_ops_settings.scrape_cron`; Inngest minute tick matches expression | ✅ |
 | 21 | R40-A21 | `deal_iptv_portals` weighted lotto — inverse `dealt_count` × freshness, prefer 1 host per pack, fill pass if needed | ✅ |
 | 22 | R40-A22 | Admin assign/unassign portals (Accounts expand + Pool people); optional credit burn / dealt bump | ✅ |
+| 23 | R40-A23 | `dealPortal` account feature flag (default off); Deal UI hidden; `deal_iptv_portals` rejects when off; admin per-flag RPCs + Features dialog | ✅ |
 
 ---
 
@@ -77,6 +78,7 @@ Per-user Find Portals hits the same `/new` posts, cannot filter catalog region, 
 ## Contracts
 
 - **Pool ≠ user assignment** — same `iptv_portals` row; `catalog_pool` marks deal inventory; `user_iptv_portals` is who has it.
+- **Deal gate** — `accounts.features.dealPortal` (lean JSON, default off) + `iptv_credits ≥ 1`. Flag checked in app UI and in `deal_iptv_portals`.
 - **L1 / L2** — extract-time only; DB keeps Reddit `post_id` on the portal / scrape_posts, never post body.
 - **Worker** uses service role; admin UI uses authenticated `is_admin` RPCs/RLS.
 - **No AI in foundation** — optional later on L2 miss samples only.

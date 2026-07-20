@@ -89,10 +89,11 @@ class _PortalListView extends StatelessWidget {
       listenable: AccountFeatures.instance.revision,
       builder: (context, _) {
         final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
-        final signedIn = SyncService.instance.isSignedIn;
+        final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
+            SyncService.instance.isSignedIn;
         final credits = AccountFeatures.instance.iptvCredits;
         final emptyHint = ctrl.statusText.isEmpty
-            ? (signedIn
+            ? (canDeal
                 ? (canScrape
                     ? 'Deal from the pool, find portals,\nor add one manually.'
                     : 'Deal from the pool, or add a portal manually.')
@@ -127,7 +128,7 @@ class _PortalListView extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(color: Colors.white60),
                       ),
-                      if (signedIn) ...[
+                      if (canDeal) ...[
                         const SizedBox(height: 8),
                         Text(
                           '$credits credit${credits == 1 ? '' : 's'}',
@@ -140,7 +141,7 @@ class _PortalListView extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 28),
-                      if (signedIn)
+                      if (canDeal)
                         IptvPrimaryButton(
                           icon: Icons.casino_rounded,
                           label: credits > 0
@@ -151,24 +152,24 @@ class _PortalListView extends StatelessWidget {
                               : () => unawaited(ctrl.dealFromPool()),
                         ),
                       if (canScrape) ...[
-                        if (signedIn) const SizedBox(height: 12),
+                        if (canDeal) const SizedBox(height: 12),
                         IptvPrimaryButton(
                           icon: ctrl.isScraping
                               ? Icons.stop_circle_rounded
                               : Icons.travel_explore,
                           label: ctrl.isScraping ? 'Stop' : 'Find Portals',
-                          subtle: signedIn,
+                          subtle: canDeal,
                           onPressed:
                               ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
                         ),
                       ],
-                      if (!canScrape && !signedIn)
+                      if (!canScrape && !canDeal)
                         IptvPrimaryButton(
                           icon: Icons.add_rounded,
                           label: 'Add portal',
                           onPressed: () => _showAddDialog(context),
                         ),
-                      if (signedIn || canScrape) ...[
+                      if (canDeal || canScrape) ...[
                         const SizedBox(height: 12),
                         IptvPrimaryButton(
                           icon: Icons.add_rounded,
@@ -239,11 +240,12 @@ class _PortalListView extends StatelessWidget {
       listenable: AccountFeatures.instance.revision,
       builder: (context, _) {
         final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
-        final signedIn = SyncService.instance.isSignedIn;
+        final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
+            SyncService.instance.isSignedIn;
         final credits = AccountFeatures.instance.iptvCredits;
         final actions =
             <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
-          if (signedIn)
+          if (canDeal)
             (
               icon: Icons.casino_rounded,
               label: credits > 0 ? 'Deal ($credits)' : 'Deal',
@@ -258,7 +260,7 @@ class _PortalListView extends StatelessWidget {
                   ? Icons.stop_circle_rounded
                   : Icons.travel_explore,
               label: ctrl.isScraping ? 'Stop' : 'Scrape',
-              subtle: signedIn,
+              subtle: canDeal,
               onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
             ),
           if (canScrape && ctrl.canGetMore)

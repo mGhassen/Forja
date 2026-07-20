@@ -305,12 +305,13 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       listenable: AccountFeatures.instance.revision,
       builder: (context, _) {
         final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
-        final signedIn = SyncService.instance.isSignedIn;
+        final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
+            SyncService.instance.isSignedIn;
         final credits = AccountFeatures.instance.iptvCredits;
         // search (+ scrape?) (+ deal?) + add
         var headerCount = 2;
         if (canScrape) headerCount++;
-        if (signedIn) headerCount++;
+        if (canDeal) headerCount++;
         iptvSyncRow(
           rowId: 'iptv-portal-header',
           sortOrder: 0,
@@ -319,7 +320,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         var idx = 0;
         final searchIndex = idx++;
         final scrapeIndex = canScrape ? idx++ : -1;
-        final dealIndex = signedIn ? idx++ : -1;
+        final dealIndex = canDeal ? idx++ : -1;
         final addIndex = idx;
         return Container(
           padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
@@ -334,7 +335,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 'Portals',
                 style: IptvShellStyle.headerTitle.copyWith(fontSize: 18),
               ),
-              if (signedIn) ...[
+              if (canDeal) ...[
                 const SizedBox(width: 8),
                 Text(
                   '$credits cr',
@@ -360,7 +361,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 onDownEdge: () => iptvFocusRowItem('portals', 0),
                 onRightEdge: () => iptvFocusRowItem(
                   'iptv-portal-header',
-                  canScrape ? scrapeIndex : (signedIn ? dealIndex : addIndex),
+                  canScrape ? scrapeIndex : (canDeal ? dealIndex : addIndex),
                 ),
               ),
               if (canScrape)
@@ -380,10 +381,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       iptvFocusRowItem('iptv-portal-header', searchIndex),
                   onRightEdge: () => iptvFocusRowItem(
                     'iptv-portal-header',
-                    signedIn ? dealIndex : addIndex,
+                    canDeal ? dealIndex : addIndex,
                   ),
                 ),
-              if (signedIn)
+              if (canDeal)
                 IptvIconAction(
                   tooltip: credits > 0
                       ? 'Deal portals from pool ($credits credits)'
@@ -416,7 +417,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 onDownEdge: () => iptvFocusRowItem('portals', 0),
                 onLeftEdge: () => iptvFocusRowItem(
                   'iptv-portal-header',
-                  signedIn
+                  canDeal
                       ? dealIndex
                       : (canScrape ? scrapeIndex : searchIndex),
                 ),

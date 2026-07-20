@@ -162,6 +162,7 @@ export function AccountSettingsIptvPage() {
   const portalsHook = useUserIptvPortals()
   const { data: accountFeatures } = useAccountFeatures()
   const iptvScrapeActive = accountFeatures?.iptvScrape === true
+  const dealPortalActive = accountFeatures?.dealPortal === true
   const iptvCredits = accountFeatures?.iptvCredits ?? 0
   const profileId = portalsHook.profileId
   const isLoading = portalsHook.isLoading
@@ -424,34 +425,36 @@ export function AccountSettingsIptvPage() {
       }
     >
       <div className="mb-8 space-y-3">
-        <div
-          className={cn(
-            'overflow-hidden rounded-xl border border-white/10',
-            'bg-linear-to-r from-white/8 via-white/3 to-transparent',
-          )}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 sm:px-5">
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold tracking-tight text-[#EDE6DA]">
-                Catalog credits
-              </h3>
-              <p className="mt-1 text-xs leading-5 text-forja-muted">
-                Spend credits in the Forja app (IPTV → Deal) to pull alive portals
-                from the shared pool. Granting is admin-only.
-              </p>
+        {dealPortalActive ? (
+          <div
+            className={cn(
+              'overflow-hidden rounded-xl border border-white/10',
+              'bg-linear-to-r from-white/8 via-white/3 to-transparent',
+            )}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 sm:px-5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold tracking-tight text-[#EDE6DA]">
+                  Catalog credits
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-forja-muted">
+                  Spend credits in the Forja app (IPTV → Deal) to pull alive
+                  portals from the shared pool. Granting is admin-only.
+                </p>
+              </div>
+              <span
+                className={cn(
+                  'shrink-0 rounded-full border px-2.5 py-1 font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em]',
+                  iptvCredits > 0
+                    ? 'border-forja-green/40 bg-forja-green/10 text-forja-green'
+                    : 'border-white/15 bg-white/5 text-forja-muted',
+                )}
+              >
+                {iptvCredits} credit{iptvCredits === 1 ? '' : 's'}
+              </span>
             </div>
-            <span
-              className={cn(
-                'shrink-0 rounded-full border px-2.5 py-1 font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em]',
-                iptvCredits > 0
-                  ? 'border-forja-green/40 bg-forja-green/10 text-forja-green'
-                  : 'border-white/15 bg-white/5 text-forja-muted',
-              )}
-            >
-              {iptvCredits} credit{iptvCredits === 1 ? '' : 's'}
-            </span>
           </div>
-        </div>
+        ) : null}
         {iptvScrapeActive ? (
           <div
             className={cn(

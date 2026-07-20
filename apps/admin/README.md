@@ -33,7 +33,7 @@ Needs `SUPABASE_SERVICE_ROLE_KEY` + Inngest keys (see `.env.example`). Inngest t
 |------|------|
 | `/login` | Same auth + captcha as web |
 | `/` | Dashboard |
-| `/accounts` | Credits + `iptvScrape` |
+| `/accounts` | Credits + feature flags (`iptvScrape`, `dealPortal`, …) |
 | `/pool` | Catalog candidates |
 | `/scrape` | Scrape run history |
 | `/api/inngest` | Inngest serve (server) |

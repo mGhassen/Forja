@@ -97,7 +97,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [1.0.2-[draft].md](1.0.2-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — overlay, providers, casting, settings UX, passkeys (19/30) |
 | [1.0.3-[draft].md](1.0.3-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — Resolver Engine (5/8) |
 | [1.0.4-[draft].md](1.0.4-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — web portal + desktop account/profile shell + i18n (20/25; hosted secrets + Edge/Turnstile/recovery + Sessions inactivity 168h ops; RFC-037) |
-| [1.0.5-[draft].md](1.0.5-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV catalog ops + Inngest scrape (17/18; RFC-040) |
+| [1.0.5-[draft].md](1.0.5-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV catalog ops + Inngest scrape (18/19; RFC-040) |
 | [1.0.6-[draft].md](1.0.6-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV Live EPG guide (4/5; RFC-041) |
 | [1.0.7-[draft].md](1.0.7-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — unified auth web + Flutter (6/8; RFC-042) |
 | `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |

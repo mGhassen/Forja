@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Minus, Plus, Search } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
+import { AccountFeaturesDialog } from '@/components/account-features-dialog'
 import {
   IptvAssignDialog,
   IptvPortalPeopleDialog,
@@ -23,6 +24,10 @@ import {
 } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  enabledFeatureDefs,
+  parseAccountFeatures,
+} from '@/lib/account-features'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
 import {
@@ -42,7 +47,7 @@ type AccountRow = {
   email: string | null
   is_admin: boolean
   iptv_credits: number
-  features: { iptvScrape?: boolean } | null
+  features: Record<string, unknown> | null
 }
 
 function AccountPortals({
@@ -274,6 +279,7 @@ export function AdminAccountsPage() {
     id: string
     email: string | null
   } | null>(null)
+  const [featuresFor, setFeaturesFor] = useState<AccountRow | null>(null)
 
   const list = useQuery({
     queryKey: ['admin', 'accounts', q],
@@ -303,20 +309,6 @@ export function AdminAccountsPage() {
     enabled: accountIds.length > 0,
   })
 
-  const setScrape = useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-      setBusyId(id)
-      const { error } = await adminDb.rpc('admin_set_iptv_scrape', {
-        p_account_id: id,
-        p_enabled: enabled,
-      })
-      if (error) throw error
-    },
-    onSettled: () => setBusyId(null),
-    onSuccess: () =>
-      void qc.invalidateQueries({ queryKey: ['admin', 'accounts'] }),
-  })
-
   const adjustCredits = useMutation({
     mutationFn: async ({ id, delta }: { id: string; delta: number }) => {
       setBusyId(id)
@@ -336,7 +328,7 @@ export function AdminAccountsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Accounts"
-        description="Credits, Find Portals, and per-account portal assignments."
+        description="Credits, feature flags, and per-account portal assignments."
       />
 
       <div className="relative max-w-md">
@@ -355,10 +347,8 @@ export function AdminAccountsPage() {
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
       ) : null}
-      {setScrape.error || adjustCredits.error ? (
-        <p className="text-sm text-red-400">
-          {(setScrape.error ?? adjustCredits.error)?.message}
-        </p>
+      {adjustCredits.error ? (
+        <p className="text-sm text-red-400">{adjustCredits.error.message}</p>
       ) : null}
 
       {!list.isLoading && (list.data?.length ?? 0) === 0 ? (
@@ -376,12 +366,13 @@ export function AdminAccountsPage() {
                   <th className={thClassName}>Email</th>
                   <th className={cn(thClassName, 'w-20')}>Portals</th>
                   <th className={cn(thClassName, 'w-44')}>Credits</th>
-                  <th className={cn(thClassName, 'w-36')}>Find portals</th>
+                  <th className={cn(thClassName, 'min-w-40')}>Features</th>
                 </tr>
               </thead>
               <tbody>
                 {(list.data ?? []).map((a) => {
-                  const scrape = a.features?.iptvScrape === true
+                  const feats = parseAccountFeatures(a.features)
+                  const enabled = enabledFeatureDefs(feats)
                   const credits = a.iptv_credits ?? 0
                   const rowBusy = busyId === a.id
                   const expanded = openId === a.id
@@ -460,29 +451,24 @@ export function AdminAccountsPage() {
                         <td className={tdClassName}>
                           <button
                             type="button"
-                            role="switch"
-                            aria-checked={scrape}
-                            aria-label={
-                              scrape
-                                ? 'Disable Find Portals'
-                                : 'Enable Find Portals'
-                            }
-                            disabled={rowBusy}
-                            onClick={() =>
-                              setScrape.mutate({ id: a.id, enabled: !scrape })
-                            }
-                            className={cn(
-                              'relative h-7 w-12 shrink-0 rounded-full transition-colors',
-                              scrape ? 'bg-forja-green' : 'bg-white/15',
-                              rowBusy && 'opacity-60',
-                            )}
+                            onClick={() => setFeaturesFor(a)}
+                            className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border border-forja-border px-2 py-1 text-left transition-colors hover:border-forja-green/40 hover:bg-forja-green/5"
+                            title="Edit feature flags"
                           >
-                            <span
-                              className={cn(
-                                'absolute top-0.5 size-6 rounded-full bg-[#0B0A0A] shadow transition-transform',
-                                scrape ? 'left-5' : 'left-0.5',
-                              )}
-                            />
+                            {enabled.length === 0 ? (
+                              <span className="text-xs text-forja-muted">
+                                None · Edit
+                              </span>
+                            ) : (
+                              enabled.map((d) => (
+                                <span
+                                  key={d.key}
+                                  className="rounded bg-forja-green/15 px-1.5 py-0.5 text-[10px] font-semibold text-forja-green"
+                                >
+                                  {d.shortLabel}
+                                </span>
+                              ))
+                            )}
                           </button>
                         </td>
                       </tr>
@@ -524,6 +510,18 @@ export function AdminAccountsPage() {
             })
             void qc.invalidateQueries({ queryKey: ['admin', 'accounts'] })
           }}
+        />
+      ) : null}
+
+      {featuresFor ? (
+        <AccountFeaturesDialog
+          accountId={featuresFor.id}
+          accountEmail={featuresFor.email}
+          features={
+            (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
+              .features
+          }
+          onClose={() => setFeaturesFor(null)}
         />
       ) : null}
     </div>

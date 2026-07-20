@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **3 / 8** components · **17 / 27** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles; new-profile defaults no prior-profile bleed) |
-| **Current slice** | Account feature flags (`iptvScrape`) shipped — web shows VIP Activated when on; admin UI for toggling still open; M3U device-local only; max 5 profiles/account; Flutter seeds platform defaults on create/switch merge |
+| **Current slice** | Account feature flags (`iptvScrape`, `dealPortal`) — admin Features dialog on Accounts; M3U device-local only; max 5 profiles/account; Flutter seeds platform defaults on create/switch merge |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -100,9 +100,10 @@ On write, clients call compact helpers:
 `accounts.features` is a lean JSON object on the account row (not per-profile):
 
 - Default `{}` — all features off (including guests / signed-out)
-- Only store enabled keys — e.g. `{ "iptvScrape": true }`
-- Never store `"iptvScrape": false`
-- First flag: **`iptvScrape`** gates Reddit / Find Portals scrape in the app
+- Only store enabled keys — e.g. `{ "iptvScrape": true, "dealPortal": true }`
+- Never store `"iptvScrape": false` / `"dealPortal": false`
+- **`iptvScrape`** — Reddit / Find Portals scrape in the app
+- **`dealPortal`** — Deal lottery from catalog pool (credits separate; see [RFC-040](040-[open]-iptv-catalog-ops.md) R40-A23). Admin toggles via dedicated RPCs (`admin_set_iptv_scrape`, `admin_set_deal_portal`) and the Accounts Features dialog.
 - Activation this slice: SQL / seed / service-role; admin UI later (R36-A08)
 
 ## Correction (M3U out of settings)

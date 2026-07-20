@@ -4,16 +4,19 @@
 export type AccountFeaturesPayload = {
   /** Reddit / Find Portals scrape in the IPTV tab. */
   iptvScrape?: true
+  /** Deal lottery packs from the catalog pool (requires credits). */
+  dealPortal?: true
 }
 
 export type AccountFeaturesExpanded = {
   iptvScrape: boolean
+  dealPortal: boolean
   /** Catalog pool deal balance (accounts.iptv_credits). */
   iptvCredits: number
 }
 
 export function emptyAccountFeatures(): AccountFeaturesExpanded {
-  return { iptvScrape: false, iptvCredits: 0 }
+  return { iptvScrape: false, dealPortal: false, iptvCredits: 0 }
 }
 
 export function expandAccountFeatures(
@@ -33,6 +36,7 @@ export function expandAccountFeatures(
     : 0
   return {
     iptvScrape: p.iptvScrape === true,
+    dealPortal: p.dealPortal === true,
     iptvCredits: credits,
   }
 }
@@ -44,6 +48,7 @@ export function compactAccountFeatures(
   if (!f) return {}
   const out: AccountFeaturesPayload = {}
   if (f.iptvScrape === true) out.iptvScrape = true
+  if (f.dealPortal === true) out.dealPortal = true
   return out
 }
 
