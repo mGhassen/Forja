@@ -31,7 +31,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 ## Tips
 
 - More seeders = smoother start; sort torrents by seeders in Settings
-- First play of a magnet waits for the file head, a real video frame, **and** a seekable duration before playback is confirmed — dead or incomplete swarms time out with an error instead of freezing on a black screen or a 0:00 seek bar
+- First play of a magnet waits for the file head **and** a real video frame before playback is confirmed — dead or incomplete swarms time out with an error instead of freezing on a black screen. Duration is synced into the seek bar as soon as mpv reports it (often immediately; sometimes after more pieces land)
 - Magnet metadata first uses a short hash-validated metadata-cache lookup, then falls back to DHT/trackers for up to about 90 seconds — cold or uncommon swarms can still take longer than desktop clients with an established DHT table
 - After metadata, Forja waits for the start of the file (up to about 3 minutes) so the player can probe the container; playback can start once enough head bytes arrive even if the full probe target is not met yet
 - Stremio/Torrentio magnet links are always resolved through the torrent engine or debrid — they are never opened as a local file path. Season-pack rows use the addon’s file index so the matching episode starts

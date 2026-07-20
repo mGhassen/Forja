@@ -467,20 +467,11 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             if (!opened) {
               throw Exception('Failed to open media');
             }
-            // Duration often arrives before confirm; the stream listener drops
-            // those events. Sync (and wait) so the seek bar isn't stuck at 0:00.
-            final needsDuration = sourceExpectsDuration(openedUrl);
-            final hasDuration = !needsDuration ||
-                await waitForSeekableDuration(
-                  _s._player,
-                  timeout: isTorrent
-                      ? const Duration(seconds: 20)
-                      : const Duration(seconds: 5),
-                );
-            if (_fallbackAborted(initGen)) return;
-            if (!hasDuration) {
-              throw Exception('Opened without duration');
-            }
+            _s._detectHlsQualities(openedUrl, widget.headers);
+            // Confirm first — duration events before this were dropped by the
+            // stream listener. Do not block open waiting for duration: torrent
+            // moov can arrive late; a long wait froze the loading transition.
+            _s._markPlaybackConfirmed(true);
             syncPlayerProgressNotifiers(
               _s._player,
               duration: _s._durationNotifier,
@@ -492,14 +483,12 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
               final dur = _s._player.state.duration;
               final nearCredits = dur.inSeconds >= 90 &&
                   seekAfterOpen >= dur - const Duration(seconds: 15);
-              if (!nearCredits) {
+              if (!nearCredits && dur > Duration.zero) {
                 await _s._player.seek(seekAfterOpen);
                 if (_fallbackAborted(initGen)) return;
               }
-              _s._hasInitialSeek = true;
+              if (dur > Duration.zero) _s._hasInitialSeek = true;
             }
-            _s._detectHlsQualities(openedUrl, widget.headers);
-            _s._markPlaybackConfirmed(true);
             _s._syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
             await _ensureTvPlaybackStarted();
