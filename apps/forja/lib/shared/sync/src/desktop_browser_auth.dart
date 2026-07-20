@@ -197,7 +197,6 @@ class DesktopBrowserAuth {
                   refreshToken: refresh,
                 ),
               );
-              unawaited(_bringAppToFront());
             } catch (e, st) {
               debugPrint('[DesktopBrowserAuth] apply tokens failed: $e\n$st');
               await _writeCallbackResponse(

@@ -106,7 +106,9 @@ class _BrowserViewState extends State<_BrowserView> {
       final idx = cats.indexWhere((c) => c.id == selected);
       if (idx < 0) return;
       final rowH = widget.compact ? 42.0 : 46.0;
-      final target = (6.0 + idx * rowH)
+      // Leave 3 rows above so the selection lands as the 4th visible category.
+      const keepAbove = 3;
+      final target = (6.0 + (idx - keepAbove) * rowH)
           .clamp(0.0, _categoryScroll.position.maxScrollExtent);
       _categoryScroll.jumpTo(target);
     }

@@ -386,7 +386,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     return 8;
   }
 
-  double _topBarLeftPadding(BuildContext context) => 8;
+  double _topBarLeftPadding(BuildContext context) => 16;
 
   /// Floating revert button shown only while desktop PiP is active.
   /// Transparent hover region across the whole window; the button itself

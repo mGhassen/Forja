@@ -529,7 +529,7 @@ class PlayerTopBar extends StatelessWidget {
         return MouseRegion(
           onEnter: (_) => playerChromeCancelSeekScrubs(),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
+            padding: EdgeInsets.fromLTRB(16, topPadding(context), 16, 6),
             child: SizedBox(
               width: double.infinity,
               child: ConstrainedBox(

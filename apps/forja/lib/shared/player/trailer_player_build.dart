@@ -90,7 +90,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           top: DesktopWindowChrome.isDesktop
               ? DesktopWindowChrome.topInset(context) + 6
               : MediaQuery.paddingOf(context).top + 6,
-          left: 8,
+          left: 16,
           child: tvFocus
               ? FocusTraversalOrder(
                   order: const NumericFocusOrder(1),
