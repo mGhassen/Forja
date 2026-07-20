@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { MonitorSmartphone, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MonitorSmartphone, RefreshCw } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsSection } from '@/components/settings-section'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,21 @@ import {
   type AuthSessionRow,
   type SessionGeo,
 } from '@/lib/auth-sessions'
+
+const PAGE_SIZE = 10
+
+function pageSlice<T>(items: T[], page: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+  const safePage = Math.min(Math.max(page, 1), totalPages)
+  const start = (safePage - 1) * PAGE_SIZE
+  return {
+    page: safePage,
+    totalPages,
+    start: items.length === 0 ? 0 : start + 1,
+    end: Math.min(start + PAGE_SIZE, items.length),
+    items: items.slice(start, start + PAGE_SIZE),
+  }
+}
 
 function SessionMetaRow({
   label,
@@ -84,11 +99,7 @@ function ConnectionCard({
             className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-forja-border bg-forja-green/10"
             aria-hidden
           >
-            {flag ? (
-              <span className="text-2xl leading-none">{flag}</span>
-            ) : (
-              <MonitorSmartphone className="size-5 text-forja-green" />
-            )}
+            <MonitorSmartphone className="size-5 text-forja-green" />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -157,8 +168,14 @@ export function AccountSettingsConnectionsPage() {
   const [error, setError] = useState<string | null>(null)
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [signingOutAll, setSigningOutAll] = useState(false)
+  const [page, setPage] = useState(1)
 
   const currentId = currentSessionIdFromAccessToken(session?.access_token)
+  const slice = useMemo(() => pageSlice(rows, page), [rows, page])
+
+  useEffect(() => {
+    if (page !== slice.page) setPage(slice.page)
+  }, [page, slice.page])
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -168,9 +185,11 @@ export function AccountSettingsConnectionsPage() {
     if (listError) {
       setError(listError)
       setRows([])
+      setPage(1)
       return
     }
     setRows(sessions)
+    setPage(1)
   }, [])
 
   useEffect(() => {
@@ -238,17 +257,53 @@ export function AccountSettingsConnectionsPage() {
           ) : rows.length === 0 ? (
             <p className="text-sm text-forja-muted">No active sessions found.</p>
           ) : (
-            <ul className="space-y-3">
-              {rows.map((row) => (
-                <ConnectionCard
-                  key={row.id}
-                  row={row}
-                  isCurrent={row.id === currentId}
-                  revoking={revokingId === row.id}
-                  onRevoke={() => void onRevoke(row.id)}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="space-y-3">
+                {slice.items.map((row) => (
+                  <ConnectionCard
+                    key={row.id}
+                    row={row}
+                    isCurrent={row.id === currentId}
+                    revoking={revokingId === row.id}
+                    onRevoke={() => void onRevoke(row.id)}
+                  />
+                ))}
+              </ul>
+              {rows.length > PAGE_SIZE ? (
+                <div className="flex items-center justify-between gap-3 text-xs text-forja-muted">
+                  <span>
+                    {slice.start}–{slice.end} of {rows.length} sessions
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      disabled={slice.page <= 1}
+                      aria-label="Previous page"
+                      onClick={() => setPage(slice.page - 1)}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <span className="min-w-12 text-center">
+                      {slice.page}/{slice.totalPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      disabled={slice.page >= slice.totalPages}
+                      aria-label="Next page"
+                      onClick={() => setPage(slice.page + 1)}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
 
           {error ? (
