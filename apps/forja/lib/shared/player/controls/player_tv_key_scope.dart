@@ -112,14 +112,16 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   }
 }
 
-/// True when TV focus is on a player chrome control (not the video key scope).
+/// True when TV focus is on chrome or a floating menu (not the video key scope).
 bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
   final primary = FocusManager.instance.primaryFocus;
   if (primary == null || identical(primary, playerKeyNode)) return false;
   FocusNode? node = primary;
   while (node != null) {
     final label = node.debugLabel;
-    if (label == 'player-chrome' || label == 'exo-player-chrome') {
+    if (label == 'player-chrome' ||
+        label == 'exo-player-chrome' ||
+        label == 'player-tv-menu') {
       return true;
     }
     node = node.parent;

@@ -393,6 +393,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     if (!_isTv) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_playFocus.canRequestFocus) return;
+      // Menu/panel owns the remote — don't yank focus back to Play.
+      if (playerChromeOverlayBlocksFocusClaim()) return;
       _playFocus.requestFocus();
     });
   }
@@ -1328,7 +1330,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           body: Stack(
             fit: StackFit.expand,
             children: [
-              ExoPlayerView(viewId: _viewId),
+              ExoPlayerView(
+                key: ValueKey<int>(_viewId),
+                viewId: _viewId,
+              ),
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,

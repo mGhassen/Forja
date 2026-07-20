@@ -114,6 +114,44 @@ KeyEventResult shellTrapTvFocusHorizontalEdge(
   return KeyEventResult.ignored;
 }
 
+/// Marks a subtree where ↑/← / ↓/→ walk focus linearly (menus, dialogs).
+///
+/// Without this, [FocusScopeNode.focusInDirection] often fails inside overlay
+/// menus and arrows leak to the player chrome underneath.
+class ShellTvLinearFocusScope extends InheritedWidget {
+  const ShellTvLinearFocusScope({super.key, required super.child});
+
+  static bool activeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<ShellTvLinearFocusScope>() != null;
+
+  @override
+  bool updateShouldNotify(covariant ShellTvLinearFocusScope oldWidget) => false;
+}
+
+/// Linear D-pad inside [ShellTvLinearFocusScope] — traps at first/last item.
+KeyEventResult shellTvLinearMenuArrows({
+  required BuildContext context,
+  required KeyEvent event,
+}) {
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+  if (!ShellTvLinearFocusScope.activeOf(context)) {
+    return KeyEventResult.ignored;
+  }
+  final key = event.logicalKey;
+  final scope = FocusScope.of(context);
+  if (key == LogicalKeyboardKey.arrowUp ||
+      key == LogicalKeyboardKey.arrowLeft) {
+    scope.previousFocus();
+    return KeyEventResult.handled;
+  }
+  if (key == LogicalKeyboardKey.arrowDown ||
+      key == LogicalKeyboardKey.arrowRight) {
+    scope.nextFocus();
+    return KeyEventResult.handled;
+  }
+  return KeyEventResult.ignored;
+}
+
 /// Coordinator-first D-pad arrows for catalog rows — traps horizontal edges.
 KeyEventResult shellTvHandleRowArrows({
   required KeyEvent event,

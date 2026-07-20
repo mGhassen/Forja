@@ -70,6 +70,7 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
     if (!widget.tvRemoteEnabled) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_s._playFocus.canRequestFocus) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
       _s._playFocus.requestFocus();
     });
   }

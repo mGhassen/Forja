@@ -73,11 +73,13 @@ class _ServerMenuHeader extends StatefulWidget {
 
 class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final showReloadGlyph = widget.showReload && (tvFocus || _hovered);
+    final showReloadGlyph =
+        widget.showReload && (tvFocus ? _focused || _hovered : _hovered);
     final playingColor = PlayerPopupTokens.accent;
 
     final row = MouseRegion(
@@ -194,7 +196,16 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
       ),
     );
 
-    return row;
+    if (!tvFocus || widget.onTap == null) return row;
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 8,
+      showFocusBorder: true,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: row,
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -257,40 +258,52 @@ class _SubtitleOffChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? PlayerPopupTokens.accent : Colors.transparent,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final face = Container(
+      height: 28,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: selected ? PlayerPopupTokens.accent : Colors.transparent,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        hoverColor: selected
-            ? Colors.black.withValues(alpha: 0.06)
-            : ForjaShellColors.inkHover,
-        child: Container(
-          height: 28,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-            border: Border.all(
-              color: selected
-                  ? PlayerPopupTokens.accent
-                  : PlayerPopupTokens.border,
-            ),
-          ),
-          child: Text(
-            'Off',
-            style: TextStyle(
-              color: selected
-                  ? PlayerPopupTokens.accentFg
-                  : PlayerPopupTokens.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        border: Border.all(
+          color: selected
+              ? PlayerPopupTokens.accent
+              : PlayerPopupTokens.border,
         ),
       ),
+      child: Text(
+        'Off',
+        style: TextStyle(
+          color: selected
+              ? PlayerPopupTokens.accentFg
+              : PlayerPopupTokens.muted,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    if (!tvFocus) {
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          hoverColor: selected
+              ? Colors.black.withValues(alpha: 0.06)
+              : ForjaShellColors.inkHover,
+          child: face,
+        ),
+      );
+    }
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      child: face,
     );
   }
 }

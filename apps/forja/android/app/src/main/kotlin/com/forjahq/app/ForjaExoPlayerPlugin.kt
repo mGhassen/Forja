@@ -73,13 +73,18 @@ class ExoPlayerHost(
     }
 
     fun attachView(view: PlayerView) {
+        if (playerView === view) return
+        // Remount: swap surface without releasing the ExoPlayer host.
+        playerView?.player = null
         playerView = view
         view.useController = false
         player?.let { view.player = it }
     }
 
-    fun detachView() {
-        playerView?.player = null
+    fun detachView(view: PlayerView) {
+        // Ignore stale PlatformView dispose after a remount already attached a new view.
+        if (playerView !== view) return
+        view.player = null
         playerView = null
     }
 
@@ -376,6 +381,11 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
         hosts.remove(viewId)?.dispose()
     }
 
+    /** Detach a surface only — host/player live until Dart calls [dispose]. */
+    internal fun detachHostView(viewId: Int, view: PlayerView) {
+        hosts[viewId]?.detachView(view)
+    }
+
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "isTelevision" -> {
@@ -494,7 +504,8 @@ class ExoPlayerPlatformView(
     override fun getView(): View = playerView
 
     override fun dispose() {
-        plugin.hostFor(hostId).detachView()
-        plugin.releaseHost(hostId)
+        // Do not releaseHost here — Flutter remounts VirtualDisplay AndroidViews
+        // (common on ATV) and that would kill playback mid-stream.
+        plugin.detachHostView(hostId, playerView)
     }
 }

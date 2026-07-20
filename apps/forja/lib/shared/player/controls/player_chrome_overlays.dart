@@ -119,23 +119,52 @@ Widget playerSidePanelTvScope({
 }) {
   final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
   if (!tv) return child;
-  return FocusTraversalGroup(
-    policy: ReadingOrderTraversalPolicy(),
-    child: Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.escape ||
-            key == LogicalKeyboardKey.goBack) {
-          onClose();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: child,
+  // FocusScope traps FocusableControl arrows here — not in player chrome.
+  return FocusScope(
+    debugLabel: 'player-tv-menu',
+    autofocus: true,
+    onKeyEvent: (node, event) {
+      if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.escape ||
+          key == LogicalKeyboardKey.goBack) {
+        onClose();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: ShellTvLinearFocusScope(
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: _TvPanelFocusOnOpen(child: child),
+      ),
     ),
   );
+}
+
+class _TvPanelFocusOnOpen extends StatefulWidget {
+  const _TvPanelFocusOnOpen({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TvPanelFocusOnOpen> createState() => _TvPanelFocusOnOpenState();
+}
+
+class _TvPanelFocusOnOpenState extends State<_TvPanelFocusOnOpen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scope = FocusScope.of(context);
+      if (scope.focusedChild != null) return;
+      scope.nextFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Dismisses the topmost player chrome overlay (menus, panels) if any is open.
@@ -180,3 +209,6 @@ bool playerChromeOverlayBlocksSeek() {
       PlayerTorrentFilePanel.isShowing ||
       PlayerSubtitleSettingsDialog.isShowing;
 }
+
+/// True while a menu/panel owns the remote — do not steal focus back to Play.
+bool playerChromeOverlayBlocksFocusClaim() => playerChromeOverlayBlocksSeek();

@@ -329,7 +329,10 @@ class PlayerPopupPanel {
         ShellScope.maybeOf(overlayContext)?.inputPolicy.useFocusableMoodChips ??
         false;
     if (!tv) return child;
-    return Focus(
+    // FocusScope (not bare Focus) so FocusableControl D-pad stays inside the
+    // menu — otherwise FocusScope.of() resolves to the player chrome underneath.
+    return FocusScope(
+      debugLabel: 'player-tv-menu',
       autofocus: true,
       onKeyEvent: (node, event) {
         if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
@@ -341,9 +344,40 @@ class PlayerPopupPanel {
         }
         return KeyEventResult.ignored;
       },
-      child: child,
+      child: ShellTvLinearFocusScope(
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: _TvMenuFocusOnOpen(child: child),
+        ),
+      ),
     );
   }
+}
+
+/// Ensures primary focus lands on the first menu control after open.
+class _TvMenuFocusOnOpen extends StatefulWidget {
+  const _TvMenuFocusOnOpen({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TvMenuFocusOnOpen> createState() => _TvMenuFocusOnOpenState();
+}
+
+class _TvMenuFocusOnOpenState extends State<_TvMenuFocusOnOpen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scope = FocusScope.of(context);
+      if (scope.focusedChild != null) return;
+      scope.nextFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _TvPopupListFocusScope extends StatefulWidget {
@@ -508,16 +542,28 @@ class _PopupChromeButton extends StatefulWidget {
 
 class _PopupChromeButtonState extends State<_PopupChromeButton> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    final highlight = _hovered;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final highlight = _hovered || _focused;
     final borderColor = highlight
         ? PlayerPopupTokens.accentBorder
         : PlayerPopupTokens.border;
     final iconColor = highlight
         ? PlayerPopupTokens.accent
         : PlayerPopupTokens.muted;
+    final face = Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        border: Border.all(color: borderColor),
+      ),
+      child: Icon(widget.icon, size: 14, color: iconColor),
+    );
     final button = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -525,20 +571,20 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: widget.onTap,
-          hoverColor: PlayerPopupTokens.accentFill,
-          child: Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-              border: Border.all(color: borderColor),
-            ),
-            child: Icon(widget.icon, size: 14, color: iconColor),
-          ),
-        ),
+        child: tvFocus
+            ? FocusableControl(
+                onTap: widget.onTap,
+                borderRadius: PlayerPopupTokens.chipRadius,
+                scaleOnFocus: 1.0,
+                showFocusBorder: true,
+                onFocusChange: (f) => setState(() => _focused = f),
+                child: face,
+              )
+            : InkWell(
+                onTap: widget.onTap,
+                hoverColor: PlayerPopupTokens.accentFill,
+                child: face,
+              ),
       ),
     );
     if (widget.tooltip == null) return button;
@@ -785,6 +831,7 @@ class PlayerPopupOptionChip extends StatelessWidget {
 
     if (!tvFocus || onTap == null) return chip;
     return FocusableControl(
+      autoFocus: _TvPopupListFocusScope.claimAutofocus(context),
       onTap: onTap,
       borderRadius: PlayerPopupTokens.chipRadius,
       showFocusBorder: true,
