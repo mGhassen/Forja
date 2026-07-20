@@ -67,23 +67,23 @@ void main() {
       );
     });
 
-    test('expired session keeps shell while app is running', () {
+    test('expired session returns to account while app is running', () {
       expect(
         shouldReturnToAccountOnSignOut(
           reason: SignOutReason.sessionExpired,
           inActiveAppShell: true,
         ),
-        isFalse,
+        isTrue,
       );
     });
 
-    test('missing session keeps shell while app is running', () {
+    test('missing session returns to account while app is running', () {
       expect(
         shouldReturnToAccountOnSignOut(
           reason: SignOutReason.sessionMissing,
           inActiveAppShell: true,
         ),
-        isFalse,
+        isTrue,
       );
     });
 

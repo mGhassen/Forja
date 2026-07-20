@@ -273,14 +273,14 @@ class SyncService {
   Future<void> signOut() async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
+    // Gate listens for signedOut and wipes account-bound local state (IPTV…).
     await client.auth.signOut();
     AccountFeatures.instance.clear();
     _notifyIdentityChanged();
   }
 
-  /// gotrue already cleared tokens (session expired / missing). Drop cloud
-  /// feature flags and refresh chrome — do **not** tear down the shell.
-  void handleInvoluntarySessionLoss() {
+  /// Drop cloud feature flags and refresh chrome after session end.
+  void clearIdentityAfterSignOut() {
     AccountFeatures.instance.clear();
     _notifyIdentityChanged();
   }

@@ -40,6 +40,17 @@ class SyncDomainBridge {
     await pushAllLocal();
   }
 
+  /// After sign-out / session loss: cancel pushes, reset synced domains, wipe
+  /// IPTV portals + credential caches, notify live controllers.
+  Future<void> clearAccountBoundLocalState() async {
+    cancelPendingPushes();
+    await resetSyncedLocalToPlatformDefaults(clearIptv: true);
+    await IptvStore.clearLastPortalKey();
+    await IptvAliveStore.clearAll();
+    await IptvChannelResultsStore.clearAll();
+    IptvStore.notifyListChanged();
+  }
+
   /// Wipe synced local domains to platform defaults (no prior-profile bleed).
   ///
   /// Local KV is device-global; every profile switch/create must reset before
@@ -84,6 +95,9 @@ class SyncDomainBridge {
     if (clearIptv) {
       await IptvStore.save(const []);
       await IptvStore.saveFavorites({});
+      // save() schedules a push — cancel so a mid-wipe timer cannot fire empty
+      // portals after a later re-auth race.
+      cancelPendingPushes();
     }
   }
 

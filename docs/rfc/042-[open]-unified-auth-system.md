@@ -79,5 +79,5 @@ Unify Forja auth around one Supabase project with Guepard-grade structure: thin 
 
 ### Related
 
-- [Issue 085](../issues/085-[open]-desktop-involuntary-signout-dumps-login.md) — involuntary sign-out shell symptom
+- [Issue 085](../issues/085-[open]-desktop-involuntary-signout-dumps-login.md) — session loss → login + wipe (no Guest portal leak)
 - Guepard: `packages/supabase` hooks + MFA + desktop rehydrate `inFlight`

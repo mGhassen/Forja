@@ -28,16 +28,13 @@ DesktopStartupDestination resolveDesktopStartupDestination({
 /// Whether a [AuthChangeEvent.signedOut] should replace the running app with
 /// [AccountEntryScreen].
 ///
-/// Explicit sign-out always returns to account. Involuntary loss
-/// ([SignOutReason.sessionExpired] / [SignOutReason.sessionMissing]) must
-/// **not** destroy the shell while the user is already in the app — gotrue
-/// already cleared tokens; dumping to login mid-playback is the bug.
+/// Always yes — including involuntary [SignOutReason.sessionExpired] /
+/// [SignOutReason.sessionMissing]. Keeping the shell left Guest chrome with
+/// prior account IPTV portals still loaded (security leak).
 bool shouldReturnToAccountOnSignOut({
   required SignOutReason? reason,
   required bool inActiveAppShell,
 }) {
-  if (reason == SignOutReason.userInitiated) return true;
-  if (inActiveAppShell) return false;
   return true;
 }
 
@@ -129,31 +126,26 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
       'stage=$_stage signedIn=${SyncService.instance.isSignedIn}',
     );
     if (state.event != AuthChangeEvent.signedOut) return;
-
-    final inShell = _stage == _StartupStage.splash;
-    if (!shouldReturnToAccountOnSignOut(
-      reason: state.signOutReason,
-      inActiveAppShell: inShell,
-    )) {
-      debugPrint(
-        '[DesktopStartupGate] Keeping app shell after involuntary sign-out '
-        '(${state.signOutReason?.name ?? 'unknown'}) — re-auth from Settings',
-      );
-      SyncDomainBridge.instance.cancelPendingPushes();
-      SyncService.instance.handleInvoluntarySessionLoss();
-      return;
-    }
-
-    _returnToAccountAfterSignOut();
+    assert(
+      shouldReturnToAccountOnSignOut(
+        reason: state.signOutReason,
+        inActiveAppShell: _stage == _StartupStage.splash,
+      ),
+    );
+    unawaited(_returnToAccountAfterSignOut());
   }
 
-  void _returnToAccountAfterSignOut() {
+  Future<void> _returnToAccountAfterSignOut() async {
     final isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
     if (!isDesktop || !ForjaSupabase.isConfigured) return;
     if (_stage == _StartupStage.account) return;
 
-    SyncDomainBridge.instance.cancelPendingPushes();
+    // Wipe account-bound local state before showing login (portals, prefs).
+    await SyncDomainBridge.instance.clearAccountBoundLocalState();
+    SyncService.instance.clearIdentityAfterSignOut();
+    if (!mounted) return;
+
     // Fresh splash/main tree on next entry — do not keep prior dismiss flag.
     ShellBus.splashDismissed.value = false;
     ShellBus.hideGlobalNav.value = false;

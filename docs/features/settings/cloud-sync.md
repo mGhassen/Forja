@@ -99,16 +99,18 @@ Not synced — device-specific or sensitive:
   still use the avatar profile splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
-  choose **Continue without an account**. Device-local settings stay on disk for
-  guest / offline use; cloud sync stops until you sign in again
+  choose **Continue without an account**. Account-bound local data on this
+  device is cleared (IPTV portals and passwords, synced playback/nav prefs reset
+  to platform defaults); cloud sync stops until you sign in again
 - Cloud sessions expire after **30 days without a refresh** (Auth inactivity
   timeout). Opening the app or the web portal refreshes the session so normal
-  daily use stays signed in. If the session expires while you are already using
-  the app (for example after a failed token refresh), Forja stays on the screen
-  you were on — it does **not** dump you back to the desktop sign-in screen.
-  Sign in again from **Settings → Profile & account** (or **Web login**) to
-  restore sync. Web portal and desktop can stay signed in together — each has
-  its own Auth session after Web login.
+  daily use stays signed in. If the session is lost while you are already using
+  the app (for example after a failed token refresh), Forja returns to the
+  desktop sign-in screen and clears the same account-bound local data — it does
+  **not** stay open as Guest with your prior portals still loaded. Sign in again
+  (or continue as guest with a clean local slate) to keep using the app. Web
+  portal and desktop can stay signed in together — each has its own Auth session
+  after Web login.
 - Open **Account** after sign-in on the web: create a profile if needed, pick one
   on **Who’s watching?**, then land in **Remote settings**. Use the **Account**
   sidebar item for passkeys, log out, or permanent account delete (confirm by
