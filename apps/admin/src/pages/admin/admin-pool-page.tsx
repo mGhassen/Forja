@@ -33,6 +33,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
 import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
@@ -1041,48 +1048,49 @@ export function AdminPoolPage() {
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
-          <label
+          <Label
             htmlFor="pool-status-filter"
             className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
           >
             Status
-          </label>
-          <select
-            id="pool-status-filter"
+          </Label>
+          <Select
             value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(
-                e.target.value as 'all' | 'alive' | 'dead' | 'unchecked',
-              )
+            onValueChange={(v) =>
+              setStatusFilter(v as 'all' | 'alive' | 'dead' | 'unchecked')
             }
-            className="h-9 rounded-md border border-forja-border bg-forja-elevated px-2.5 text-sm text-forja-text outline-none focus:border-forja-green/50"
           >
-            <option value="all">All</option>
-            <option value="alive">Alive</option>
-            <option value="dead">Dead</option>
-            <option value="unchecked">Unchecked</option>
-          </select>
+            <SelectTrigger id="pool-status-filter" className="w-[9rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="alive">Alive</SelectItem>
+              <SelectItem value="dead">Dead</SelectItem>
+              <SelectItem value="unchecked">Unchecked</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
-          <label
+          <Label
             htmlFor="pool-region-filter"
             className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
           >
             Region
-          </label>
-          <select
-            id="pool-region-filter"
-            value={regionFilter}
-            onChange={(e) => setRegionFilter(e.target.value)}
-            className="h-9 min-w-[8rem] rounded-md border border-forja-border bg-forja-elevated px-2.5 text-sm text-forja-text outline-none focus:border-forja-green/50"
-          >
-            <option value="all">All</option>
-            {regionOptions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+          </Label>
+          <Select value={regionFilter} onValueChange={setRegionFilter}>
+            <SelectTrigger id="pool-region-filter" className="min-w-[8rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {regionOptions.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <p className="pb-2 text-xs text-forja-muted">
           {filteredRows.length}
