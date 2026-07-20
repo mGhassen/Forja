@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../engine_jobs.dart';
 import 'debrid_api.dart';
 import 'torrent_stream_service.dart';
 
@@ -68,6 +69,7 @@ String formatTorrentEngineLoadingMessage(TorrentStats? stats) {
 /// fast with [DebridAuthException] (no silent fallback to local engine).
 ///
 /// [onStatus] receives live peer/buffer lines while the local engine resolves.
+/// Status FFI runs on the EngineJobs waiter isolate — not the UI isolate.
 Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
   required String magnet,
   required bool useDebrid,
@@ -105,13 +107,17 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
 
   if (!localTorrentEngine) return null;
 
-  Timer? statusTimer;
+  StreamSubscription<String>? statusSub;
   if (onStatus != null) {
     onStatus(formatTorrentEngineLoadingMessage(null));
-    statusTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      onStatus(
-        formatTorrentEngineLoadingMessage(TorrentStreamService().activeStats()),
+    var last = '';
+    statusSub = EngineJobs.torrentStatusJsonStream().listen((json) {
+      final message = formatTorrentEngineLoadingMessage(
+        TorrentStreamService().statsFromStatusJson(json),
       );
+      if (message == last) return;
+      last = message;
+      onStatus(message);
     });
   }
 
@@ -134,6 +140,6 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
       sourceLabel: 'Local Torrent Engine',
     );
   } finally {
-    statusTimer?.cancel();
+    await statusSub?.cancel();
   }
 }

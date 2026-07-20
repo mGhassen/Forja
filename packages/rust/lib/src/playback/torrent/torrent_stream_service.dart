@@ -235,9 +235,16 @@ class TorrentStreamService {
   }
 
   /// Active swarm stats — readable while [streamTorrent] is still resolving.
+  ///
+  /// Prefer [EngineJobs.torrentStatusJsonStream] + [statsFromStatusJson] from
+  /// the UI so status FFI stays off the main isolate.
   TorrentStats? activeStats() {
     if (!RustLib.isInitialized || !_rustReady) return null;
-    final json = RustLib.instance.torrentStatusJson();
+    return statsFromStatusJson(RustLib.instance.torrentStatusJson());
+  }
+
+  /// Parse [torrentStatusJson] / waiter stream payloads.
+  TorrentStats? statsFromStatusJson(String json) {
     if (json == 'null' || json.isEmpty) return null;
     return _rustStatsFromJson(json, _rustActiveHash ?? '');
   }

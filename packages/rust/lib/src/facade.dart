@@ -51,6 +51,7 @@ abstract final class Engine {
             'Rust engine v${RustLib.instance.version} ($candidate)',
           );
           await EngineWorkerPool.start(_libraryPath!);
+          await EngineJobs.ensureStarted(_libraryPath!);
           return;
         } catch (e, st) {
           RustLib.reset();
