@@ -185,9 +185,6 @@ export function EmptyState({
   )
 }
 
-export const selectClassName =
-  'flex h-9 w-full rounded-lg border border-forja-border bg-forja-elevated px-3 text-sm text-forja-text outline-none transition-colors hover:border-forja-border focus-visible:border-forja-green/50 focus-visible:ring-2 focus-visible:ring-forja-green/30 disabled:opacity-50'
-
 export const tableWrapClassName =
   'overflow-hidden rounded-2xl border border-forja-border'
 

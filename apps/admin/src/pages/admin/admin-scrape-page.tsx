@@ -9,7 +9,6 @@ import {
   Panel,
   PanelLabel,
   StatusBadge,
-  selectClassName,
   tableClassName,
   tableWrapClassName,
   tdClassName,
@@ -18,6 +17,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
 import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
 import {
@@ -382,75 +388,85 @@ export function AdminScrapePage() {
           <div className="mt-5 space-y-3 border-t border-forja-border pt-4">
             <div className="space-y-1.5">
               <Label htmlFor="scrape-preset">Preset</Label>
-              <select
-                id="scrape-preset"
-                className={selectClassName}
+              <Select
                 value={presetId}
                 disabled={settings.isLoading || saveSchedule.isPending}
-                onChange={(e) => {
-                  const id = e.target.value
+                onValueChange={(id) => {
                   if (id === 'custom' || id === 'daily-custom') return
                   const preset = SCRAPE_CRON_PRESETS.find((p) => p.id === id)
                   if (preset) setDraftCron(preset.cron)
                 }}
               >
-                {SCRAPE_CRON_PRESETS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-                {daily &&
-                !SCRAPE_CRON_PRESETS.some((p) => p.cron === draftCron) ? (
-                  <option value="daily-custom">
-                    Every day at {String(daily.hour).padStart(2, '0')}:
-                    {String(daily.minute).padStart(2, '0')} UTC
-                  </option>
-                ) : null}
-                {!daily ? <option value="custom">Custom cron</option> : null}
-              </select>
+                <SelectTrigger id="scrape-preset">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCRAPE_CRON_PRESETS.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                  {daily &&
+                  !SCRAPE_CRON_PRESETS.some((p) => p.cron === draftCron) ? (
+                    <SelectItem value="daily-custom">
+                      Every day at {String(daily.hour).padStart(2, '0')}:
+                      {String(daily.minute).padStart(2, '0')} UTC
+                    </SelectItem>
+                  ) : null}
+                  {!daily ? (
+                    <SelectItem value="custom">Custom cron</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
 
             {daily || presetId === 'daily-custom' ? (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="scrape-hour">Hour (UTC)</Label>
-                  <select
-                    id="scrape-hour"
-                    className={selectClassName}
-                    value={hour}
+                  <Select
+                    value={String(hour)}
                     disabled={settings.isLoading || saveSchedule.isPending}
-                    onChange={(e) => {
-                      const h = Number(e.target.value)
+                    onValueChange={(v) => {
+                      const h = Number(v)
                       setHour(h)
                       setDraftCron(dailyCronFromUtc(h, minute))
                     }}
                   >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {String(i).padStart(2, '0')}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="scrape-hour">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="scrape-minute">Minute</Label>
-                  <select
-                    id="scrape-minute"
-                    className={selectClassName}
-                    value={minute}
+                  <Select
+                    value={String(minute)}
                     disabled={settings.isLoading || saveSchedule.isPending}
-                    onChange={(e) => {
-                      const m = Number(e.target.value)
+                    onValueChange={(v) => {
+                      const m = Number(v)
                       setMinute(m)
                       setDraftCron(dailyCronFromUtc(hour, m))
                     }}
                   >
-                    {Array.from({ length: 60 }, (_, i) => (
-                      <option key={i} value={i}>
-                        {String(i).padStart(2, '0')}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="scrape-minute">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 60 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             ) : (

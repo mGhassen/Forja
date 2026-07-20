@@ -245,6 +245,13 @@ class SyncDomainBridge {
 
   Future<void> _pushUserIptvPortals() async {
     final portals = await IptvStore.load();
+    // Never push an empty inventory — that deletes cloud assignments.
+    // Last-portal delete uses replace with the remaining list; true wipe is
+    // explicit per-row removes, not sync-from-empty-local.
+    if (portals.isEmpty) {
+      debugPrint('[Sync] skip IPTV push — local portals empty (refuse cloud wipe)');
+      return;
+    }
     final favorites = await IptvStore.loadFavorites();
     final assignments =
         <({String portalId, String portalName, bool favorite})>[];
@@ -269,6 +276,13 @@ class SyncDomainBridge {
       ));
     }
 
+    if (assignments.isEmpty) {
+      debugPrint(
+        '[Sync] skip IPTV push — upsert produced 0 ids (refuse cloud wipe)',
+      );
+      return;
+    }
+
     await SyncService.instance.replaceUserIptvPortals(assignments);
   }
 
@@ -279,6 +293,16 @@ class SyncDomainBridge {
     } catch (e) {
       // Keep local inventory — never replace with [] on credential/RPC failure.
       debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
+      return false;
+    }
+    final local = await IptvStore.load();
+    if (rows.isEmpty && local.isNotEmpty) {
+      // Empty cloud while local still has portals — do not wipe device.
+      // Re-push so cloud is healed (e.g. after a bad empty replace).
+      debugPrint(
+        '[Sync] cloud IPTV empty but local has ${local.length} — keeping local, pushing',
+      );
+      await _pushUserIptvPortals();
       return false;
     }
     final portals = <VerifiedPortal>[];

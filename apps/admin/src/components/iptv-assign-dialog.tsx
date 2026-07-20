@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Panel, PanelLabel, selectClassName } from '@/components/admin-ui'
+import { Panel, PanelLabel } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   assignPortal,
   fetchAccountProfiles,
@@ -212,25 +219,34 @@ export function IptvAssignDialog({
 
         <div className="space-y-1.5">
           <Label htmlFor="assign-profile">Profile</Label>
-          <select
-            id="assign-profile"
-            className={selectClassName}
-            disabled={!accountId || profiles.isLoading}
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
+          <Select
+            value={profileId || undefined}
+            onValueChange={setProfileId}
+            disabled={
+              !accountId ||
+              profiles.isLoading ||
+              (profiles.data ?? []).length === 0
+            }
           >
-            {(profiles.data ?? []).length === 0 ? (
-              <option value="">
-                {accountId ? 'No profiles' : 'Pick an account first'}
-              </option>
-            ) : (
-              (profiles.data ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
+            <SelectTrigger id="assign-profile">
+              <SelectValue
+                placeholder={
+                  !accountId
+                    ? 'Pick an account first'
+                    : profiles.isLoading
+                      ? 'Loading…'
+                      : 'No profiles'
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {(profiles.data ?? []).map((p) => (
+                <SelectItem key={p.id} value={p.id}>
                   {p.name}
-                </option>
-              ))
-            )}
-          </select>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm">
