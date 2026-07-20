@@ -539,10 +539,16 @@ impl TorrentEngine {
             ),
             ..Default::default()
         };
-        let response = tokio::time::timeout(add_timeout, session.add_torrent(add, Some(add_opts)))
-            .await
-            .map_err(|_| add_timeout_msg)?
-            .map_err(|e| e.to_string())?;
+        if utils::engine_cancel::is_requested() {
+            return Err(utils::engine_cancel::cancelled_message());
+        }
+        let response = utils::engine_cancel::with_cancel(async {
+            tokio::time::timeout(add_timeout, session.add_torrent(add, Some(add_opts)))
+                .await
+                .map_err(|_| add_timeout_msg.clone())?
+                .map_err(|e| e.to_string())
+        })
+        .await?;
 
         let handle = match response {
             AddTorrentResponse::Added(_, handle) => handle,
@@ -552,15 +558,21 @@ impl TorrentEngine {
             }
         };
 
-        tokio::time::timeout(TORRENT_INIT_TIMEOUT, handle.wait_until_initialized())
-            .await
-            .map_err(|_| {
-                format!(
-                    "Timed out initializing torrent storage ({}s)",
-                    TORRENT_INIT_TIMEOUT.as_secs()
-                )
-            })?
-            .map_err(|e| e.to_string())?;
+        if utils::engine_cancel::is_requested() {
+            return Err(utils::engine_cancel::cancelled_message());
+        }
+        utils::engine_cancel::with_cancel(async {
+            tokio::time::timeout(TORRENT_INIT_TIMEOUT, handle.wait_until_initialized())
+                .await
+                .map_err(|_| {
+                    format!(
+                        "Timed out initializing torrent storage ({}s)",
+                        TORRENT_INIT_TIMEOUT.as_secs()
+                    )
+                })?
+                .map_err(|e| e.to_string())
+        })
+        .await?;
 
         let torrent_id = handle.id();
         let details = api
@@ -745,25 +757,32 @@ async fn wait_for_stream_head(
     let mut buf = vec![0u8; need];
     let mut read = 0usize;
 
-    let timed_out = tokio::time::timeout(timeout, async {
-        while read < need {
-            let n = stream
-                .read(&mut buf[read..])
-                .await
-                .map_err(|e| e.to_string())?;
-            if n == 0 {
-                break;
+    let timed_out = utils::engine_cancel::with_cancel(async {
+        tokio::time::timeout(timeout, async {
+            while read < need {
+                if utils::engine_cancel::is_requested() {
+                    return Err(utils::engine_cancel::cancelled_message());
+                }
+                let n = stream
+                    .read(&mut buf[read..])
+                    .await
+                    .map_err(|e| e.to_string())?;
+                if n == 0 {
+                    break;
+                }
+                read += n;
             }
-            read += n;
-        }
-        Ok::<(), String>(())
+            Ok::<(), String>(())
+        })
+        .await
+        .map_err(|_| "head_timeout".to_string())?
     })
     .await;
 
     match timed_out {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => return Err(e),
-        Err(_) => {
+        Ok(()) => {}
+        Err(e) if e == utils::engine_cancel::cancelled_message() => return Err(e),
+        Err(e) if e == "head_timeout" => {
             if read >= min_accept {
                 // Partial head — hand URL to mpv; HTTP stream continues pull.
                 return Ok(());
@@ -774,6 +793,7 @@ async fn wait_for_stream_head(
                  (got {read}/{need} bytes, peers={peers}/{seen}, progress={progress}B)"
             ));
         }
+        Err(e) => return Err(e),
     }
 
     if read == 0 {

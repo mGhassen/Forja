@@ -130,6 +130,36 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
         return;
       }
 
+      final localTorrentOpen = isLocalTorrentStreamUrl(openedUrl);
+      final needsDuration = sourceExpectsDuration(openedUrl);
+      final hasDuration = !needsDuration ||
+          await waitForSeekableDuration(
+            _s._player,
+            timeout: localTorrentOpen
+                ? const Duration(seconds: 20)
+                : const Duration(seconds: 5),
+          );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!hasDuration) {
+        debugPrint(
+          '[Player] ${catalogStreamKindLabel(stream)} switch opened without duration: $openedUrl',
+        );
+        await _s._player.stop();
+        _s._statusController.upsert(
+          statusId,
+          title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        return;
+      }
+      syncPlayerProgressNotifiers(
+        _s._player,
+        duration: _s._durationNotifier,
+        position: _s._positionNotifier,
+        buffered: _s._bufferedNotifier,
+      );
+
       setState(() {
         _s._currentUrl = resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;

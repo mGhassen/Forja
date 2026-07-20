@@ -251,21 +251,23 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
 
     if (!mounted) return;
     _s._streamCancelled = false;
+    final overlayMessage = ValueNotifier<String>(
+      stremioResolveLoadingMessage(
+        profile: _s._playbackProfile,
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
+    );
     final fadeOutNotifier = ValueNotifier(false);
     final failureNotifier = ValueNotifier<ResolveFailure?>(null);
     BuildContext? loadingDialogContext;
-    final loadingMessage = stremioResolveLoadingMessage(
-      profile: _s._playbackProfile,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
     showLoadingOverlayDialog(
       context,
       builder: (dialogContext) {
         loadingDialogContext = dialogContext;
         return LoadingOverlay(
           movie: _s._movie,
-          message: loadingMessage,
+          messageNotifier: overlayMessage,
           fadeOutNotifier: fadeOutNotifier,
           failureNotifier: failureNotifier,
           subtitle: playbackSourceHint(
@@ -287,9 +289,13 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       season: isTv ? _s._selectedSeason : null,
       episode: isTv ? _s._selectedEpisode : null,
       isCancelled: () => !mounted || _s._streamCancelled,
+      onStatus: (status) {
+        if (!_s._streamCancelled) overlayMessage.value = status;
+      },
     );
 
     if (_s._streamCancelled) {
+      overlayMessage.dispose();
       fadeOutNotifier.dispose();
       failureNotifier.dispose();
       return;
@@ -344,6 +350,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         Navigator.of(loadingDialogContext!).canPop()) {
       Navigator.of(loadingDialogContext!).pop();
     }
+    overlayMessage.dispose();
     fadeOutNotifier.dispose();
     failureNotifier.dispose();
   }
@@ -570,6 +577,9 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         localTorrentEngine: _s._playbackProfile.localTorrentEngine,
         season: isTv ? _s._selectedSeason : null,
         episode: isTv ? _s._selectedEpisode : null,
+        onStatus: (status) {
+          if (!_s._streamCancelled) overlayMessage.value = status;
+        },
       );
       if (_s._streamCancelled) {
         popLoading();

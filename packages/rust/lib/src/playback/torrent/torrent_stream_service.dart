@@ -234,6 +234,14 @@ class TorrentStreamService {
     return _rustStatsFromJson(RustLib.instance.torrentStatusJson(), hash);
   }
 
+  /// Active swarm stats — readable while [streamTorrent] is still resolving.
+  TorrentStats? activeStats() {
+    if (!RustLib.isInitialized || !_rustReady) return null;
+    final json = RustLib.instance.torrentStatusJson();
+    if (json == 'null' || json.isEmpty) return null;
+    return _rustStatsFromJson(json, _rustActiveHash ?? '');
+  }
+
   Stream<TorrentStats> statsStream(
     String magnetOrHash, {
     Duration interval = const Duration(seconds: 1),

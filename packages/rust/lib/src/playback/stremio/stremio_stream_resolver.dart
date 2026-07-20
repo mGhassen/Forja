@@ -196,6 +196,7 @@ Future<StremioResolveOutcome> resolveStremioStream({
   int? season,
   int? episode,
   bool Function()? isCancelled,
+  void Function(String status)? onStatus,
 }) async {
   final svc = settings ?? SettingsService();
   final useDebrid = await svc.useDebridForStreams();
@@ -226,6 +227,7 @@ Future<StremioResolveOutcome> resolveStremioStream({
       season: season,
       episode: episode,
       fileIdx: fileIdx,
+      onStatus: onStatus,
     );
     if (isCancelled?.call() == true) {
       return StremioResolveFailure(
