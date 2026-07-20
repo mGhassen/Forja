@@ -42,6 +42,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   final KissKhService _service = KissKhService();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'asian-drama-details-play');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'asian-drama-details-back');
   bool _detailsHeroInitialFocusDone = false;
   KdramaDetails? _details;
   Map<String, dynamic>? _progress;
@@ -60,6 +61,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   void dispose() {
     KissKhService.watchHistoryRevision.removeListener(_onHistoryChanged);
     _heroPlayFocus.dispose();
+    _backFocus.dispose();
     _detailsScrollController.dispose();
     super.dispose();
   }
@@ -85,8 +87,12 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
         .whenComplete(focusPlay);
   }
 
-  void _popDetailsFromTvUp() {
-    maybePopShellOverlay();
+  void _focusDetailsBack() {
+    if (!_backFocus.canRequestFocus) {
+      maybePopShellOverlay();
+      return;
+    }
+    _backFocus.requestFocus();
   }
 
   void _onHistoryChanged() => _refreshProgress();
@@ -259,7 +265,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                 _buildError()
               else
                 _buildScrollLayout(),
-              const MediaDetailsBackButton(),
+              MediaDetailsBackButton(focusNode: _backFocus),
             ],
           ),
         );
@@ -301,7 +307,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     }
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
-    final heroPopUp = tvFocus ? _popDetailsFromTvUp : null;
+    final heroPopUp = tvFocus ? _focusDetailsBack : null;
 
     final episodePicker = det.episodes.isNotEmpty
         ? MediaDetailsBody.padContent(

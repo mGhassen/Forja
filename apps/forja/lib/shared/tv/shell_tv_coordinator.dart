@@ -678,20 +678,20 @@ abstract final class ShellTvFocusCoordinator {
     if (handle == null) return false;
 
     if (!down) {
+      // Explicit onFocusUp (e.g. Featured/Popular → Play) skips intermediate rows.
+      if (handle.onFocusUp != null) {
+        handle.onFocusUp!();
+        return true;
+      }
       if (handle.isFirstRow) {
-        if (handle.onFocusUp != null) {
-          handle.onFocusUp!();
-          return true;
-        }
         return focusHero(revealFull: true, tabId: tabId);
       }
       final prev = _prevRow(tabId, handle.sortOrder);
       if (prev == null) return false;
       if (prev.sortOrder < 0) {
-        if (handle.onFocusUp != null) {
-          handle.onFocusUp!();
-          return true;
-        }
+        // Catalog → hero action row (Play / icons), not the gallery plane.
+        final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+        if (focusRowItem(tabId, prev.rowId, target)) return true;
         return focusHero(revealFull: true, tabId: tabId);
       }
       final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);

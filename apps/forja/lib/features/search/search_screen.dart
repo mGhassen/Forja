@@ -37,6 +37,7 @@ class SearchScreenState extends State<SearchScreen>
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _closeFocusNode = FocusNode(debugLabel: 'search-close');
   final FocusNode _firstHelperFocusNode = FocusNode();
   final ScrollController _helpersScrollController = ScrollController();
   final ScrollController _resultsScrollController = ScrollController();
@@ -57,7 +58,7 @@ class SearchScreenState extends State<SearchScreen>
   bool _isSearching = false;
 
   int? _helperFocusedIndex;
-  int _gridFocusedIndex = 0;
+  int? _gridFocusedIndex;
 
   /// After picking a proposition, focus the matching grid card once results exist.
   int? _pendingGridFocusIndex;
@@ -85,8 +86,9 @@ class SearchScreenState extends State<SearchScreen>
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ShellBus.notifyShellChromeChanged();
-      if (widget.overlay && mounted && !_isDesktopLayout(context)) {
-        _focusNode.requestFocus();
+      // Overlay from Home (incl. TV desktop layout) must land on the field.
+      if (widget.overlay && mounted) {
+        _focusSearchFieldBrowse();
       }
     });
   }
@@ -108,6 +110,7 @@ class SearchScreenState extends State<SearchScreen>
     _controller.dispose();
     _debounce?.cancel();
     _focusNode.dispose();
+    _closeFocusNode.dispose();
     _firstHelperFocusNode.dispose();
     _helpersScrollController.dispose();
     _resultsScrollController.dispose();

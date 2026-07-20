@@ -440,6 +440,8 @@ class ForjaTopBarIcon extends StatefulWidget {
     this.hitSize,
     this.focusNode,
     this.onFocusChange,
+    this.manageFocus = true,
+    this.highlighted,
   });
 
   final IconData icon;
@@ -449,6 +451,12 @@ class ForjaTopBarIcon extends StatefulWidget {
   final double? hitSize;
   final FocusNode? focusNode;
   final ValueChanged<bool>? onFocusChange;
+
+  /// When false, skip owning a [Focus] (parent already focuses, e.g. TV tap).
+  final bool manageFocus;
+
+  /// External highlight (TV focus from parent). Combined with hover/focus.
+  final bool? highlighted;
 
   @override
   State<ForjaTopBarIcon> createState() => _ForjaTopBarIconState();
@@ -465,7 +473,7 @@ class _ForjaTopBarIconState extends State<ForjaTopBarIcon> {
 
   @override
   Widget build(BuildContext context) {
-    final active = _hover || _focused;
+    final active = _hover || _focused || (widget.highlighted == true);
     final idle = ForjaShellColors.cinematic.textSecondary;
 
     Widget button = MouseRegion(
@@ -496,7 +504,7 @@ class _ForjaTopBarIconState extends State<ForjaTopBarIcon> {
       ),
     );
 
-    if (widget.onTap != null) {
+    if (widget.onTap != null && widget.manageFocus) {
       button = Focus(
         focusNode: widget.focusNode,
         debugLabel: widget.focusNode?.debugLabel ?? 'forja-top-bar-icon',
@@ -534,6 +542,8 @@ class ForjaCloseButton extends StatelessWidget {
     this.size = 20,
     this.hitSize = 36,
     this.compact = false,
+    this.focusNode,
+    this.onKeyEvent,
   });
 
   const ForjaCloseButton.compact({
@@ -543,6 +553,8 @@ class ForjaCloseButton extends StatelessWidget {
     this.color,
     this.size = 18,
     this.hitSize = 32,
+    this.focusNode,
+    this.onKeyEvent,
   }) : compact = true;
 
   final VoidCallback? onTap;
@@ -551,6 +563,8 @@ class ForjaCloseButton extends StatelessWidget {
   final double size;
   final double hitSize;
   final bool compact;
+  final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -561,6 +575,8 @@ class ForjaCloseButton extends StatelessWidget {
       size: size,
       hitSize: hitSize,
       onTap: onTap,
+      focusNode: focusNode,
+      onKeyEvent: onKeyEvent,
     );
   }
 }

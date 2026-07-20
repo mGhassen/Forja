@@ -22,7 +22,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - **Info | +** pill opens details or toggles My List
 - Swipe or drag on the hero (or tap the step indicators on the right) to cycle featured titles — the full hero slide moves together: backdrop, title, metadata, overview, and actions
 - On **desktop**, **Cmd+F** (macOS) or **Ctrl+F** (Windows/Linux) opens the films search overlay (same as the search icon in the hero menu). On macOS this also enables **Edit → Find…**.
-- On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page (hero Play). D-pad **←/→** on the hero gallery swaps the entire hero slide; **OK** on the gallery opens details for the current title
+- On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page (hero Play). D-pad **←/→** on the hero gallery swaps the entire hero slide; **OK** on the gallery opens details for the current title. From a catalog row under the hero, **↑** focuses hero **Play** (not the gallery). **←** to the nav rail and **→** restores the same row/card you left.
 - Open any poster to view details and play
 - Jump into a Stremio addon catalog rail when configured (e.g. **Cinemeta · Top** after Popular / moods — needs Play source → Stremio on)
 - View Trakt recommendation and calendar sections when connected

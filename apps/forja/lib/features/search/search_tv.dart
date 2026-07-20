@@ -59,7 +59,8 @@ mixin _SearchTv on State<SearchScreen> {
   _FlatSearchResult? get _focusedResult {
     final results = _flatResults();
     if (results.isEmpty) return null;
-    final index = _s._gridFocusedIndex.clamp(0, results.length - 1);
+    final index = _s._gridFocusedIndex;
+    if (index == null || index < 0 || index >= results.length) return null;
     return results[index];
   }
 
@@ -77,10 +78,19 @@ mixin _SearchTv on State<SearchScreen> {
     }
   }
 
+  void _clearGridFocusedIndex(int index) {
+    if (_s._gridFocusedIndex == index) {
+      setState(() => _s._gridFocusedIndex = null);
+    }
+  }
+
   void _setHelperFocusedIndex(int index) {
     final count = _helperItemCount();
     if (count == 0) return;
-    setState(() => _s._helperFocusedIndex = index.clamp(0, count - 1));
+    setState(() {
+      _s._helperFocusedIndex = index.clamp(0, count - 1);
+      _s._gridFocusedIndex = null;
+    });
   }
 
   void _setGridFocusedIndex(int index) {
@@ -134,7 +144,10 @@ mixin _SearchTv on State<SearchScreen> {
     final count = _helperItemCount();
     if (count == 0) return;
     final clamped = index.clamp(0, count - 1);
-    setState(() => _s._helperFocusedIndex = clamped);
+    setState(() {
+      _s._helperFocusedIndex = clamped;
+      _s._gridFocusedIndex = null;
+    });
 
     void tryFocus({int attempt = 0}) {
       if (ShellTvFocusCoordinator.focusRowItem('search', 'helpers', clamped)) {
@@ -323,11 +336,43 @@ mixin _SearchTv on State<SearchScreen> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _s._query.trim().isNotEmpty) return;
-      if (ShellTvFocus.currentNavTabId != 'search') return;
+      // Overlay keeps nav on Home — still re-assert field focus.
+      final onSearchTab = ShellTvFocus.currentNavTabId == 'search';
+      if (!onSearchTab && !_s.widget.overlay) return;
       if (!_s._focusNode.hasFocus) {
         _s._focusNode.requestFocus();
       }
     });
+  }
+
+  void _focusSearchClose() {
+    if (!_s._closeFocusNode.canRequestFocus) return;
+    _s._closeFocusNode.requestFocus();
+  }
+
+  void _focusFilmCardsFromClose() {
+    if (_flatResults().isNotEmpty) {
+      _focusResultCardAt(0);
+      return;
+    }
+    if (_helperItemCount() > 0) {
+      _focusFirstHelper();
+    }
+  }
+
+  KeyEventResult _searchCloseKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _focusSearchFieldBrowse();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _focusFilmCardsFromClose();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   /// Called when the Search tab becomes selected (shell tab switch).
@@ -382,6 +427,11 @@ mixin _SearchTv on State<SearchScreen> {
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (_helperItemCount() <= 0) return KeyEventResult.ignored;
       _focusFirstHelper();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+        _s._query.isNotEmpty) {
+      _focusSearchClose();
       return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && _s._searchFieldEditing) {

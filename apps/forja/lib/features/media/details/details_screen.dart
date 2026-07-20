@@ -226,6 +226,9 @@ class _DetailsScreenState extends State<DetailsScreen>
   final FocusNode _detailsHeroPlayFocus = FocusNode(
     debugLabel: 'details-hero-play',
   );
+  final FocusNode _detailsBackFocus = FocusNode(
+    debugLabel: 'details-back',
+  );
   bool _detailsHeroInitialFocusDone = false;
 
   // MDBlist aggregated ratings
@@ -280,6 +283,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _streamCancelled = true;
     _cancelActiveSourceFetch();
     _detailsHeroPlayFocus.dispose();
+    _detailsBackFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
     _jackett.dispose();

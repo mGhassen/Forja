@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Centered play control for catalog / continue-watching cards.
 /// Fades in on hover/focus; active state uses brand green and floats upward.
@@ -9,6 +10,8 @@ class ShellCardPlayOverlay extends StatefulWidget {
     required this.active,
     this.visible = true,
     this.onTap,
+    this.focusNode,
+    this.onKeyEvent,
     this.diameter = 48,
     this.iconSize = 28,
   });
@@ -16,6 +19,8 @@ class ShellCardPlayOverlay extends StatefulWidget {
   final bool active;
   final bool visible;
   final VoidCallback? onTap;
+  final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final double diameter;
   final double iconSize;
 
@@ -31,9 +36,10 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
   late final AnimationController _pulseController;
   late final Animation<double> _pulse;
   bool _buttonHovered = false;
+  bool _buttonFocused = false;
 
   bool get _pulseEnabled =>
-      _buttonHovered &&
+      (_buttonHovered || _buttonFocused) &&
       widget.active &&
       widget.visible &&
       !(MediaQuery.maybeOf(context)?.disableAnimations ?? false);
@@ -114,7 +120,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     // play control must not win the gesture arena over the parent card
     // (episode select). Hover tracking stays enabled for the pulse.
     final interactive = widget.onTap != null && widget.visible;
-    final lifted = widget.active && widget.visible;
+    final lifted = (widget.active || _buttonFocused) && widget.visible;
     final buttonFace = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
       duration: const Duration(milliseconds: 200),
@@ -132,16 +138,17 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             width: widget.diameter,
             height: widget.diameter,
             decoration: BoxDecoration(
-              color: widget.active
+              color: widget.active || _buttonFocused
                   ? ForjaShellColors.brandGreen
                   : Colors.black.withValues(alpha: 0.42),
               shape: BoxShape.circle,
               border: Border.all(
-                color: widget.active
+                color: widget.active || _buttonFocused
                     ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
                     : Colors.white.withValues(alpha: 0.24),
+                width: _buttonFocused ? 2 : 1,
               ),
-              boxShadow: widget.active
+              boxShadow: widget.active || _buttonFocused
                   ? [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.35),
@@ -156,7 +163,9 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
               scale: _pulse,
               child: Icon(
                 Icons.play_arrow_rounded,
-                color: widget.active ? const Color(0xFF111827) : Colors.white,
+                color: widget.active || _buttonFocused
+                    ? const Color(0xFF111827)
+                    : Colors.white,
                 size: widget.iconSize,
               ),
             ),
@@ -165,7 +174,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
       ),
     );
 
-    final button = MouseRegion(
+    Widget button = MouseRegion(
       key: const ValueKey('shell-card-play-hover-target'),
       cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
       onEnter: (_) {
@@ -186,6 +195,24 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             )
           : buttonFace,
     );
+
+    if (interactive && widget.focusNode != null) {
+      button = Focus(
+        focusNode: widget.focusNode,
+        onFocusChange: (focused) {
+          setState(() => _buttonFocused = focused);
+          _syncPulse();
+        },
+        onKeyEvent: (node, event) {
+          final custom = widget.onKeyEvent?.call(node, event);
+          if (custom == KeyEventResult.handled) return KeyEventResult.handled;
+          if (!shellTvIsActivateKey(event)) return KeyEventResult.ignored;
+          widget.onTap?.call();
+          return KeyEventResult.handled;
+        },
+        child: button,
+      );
+    }
 
     return Positioned.fill(child: Center(child: button));
   }

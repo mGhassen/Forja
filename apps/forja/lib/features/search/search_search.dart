@@ -78,7 +78,7 @@ mixin _SearchSearch on State<SearchScreen> {
   void _onSearchChanged(String query) {
     setState(() {
       _s._query = query;
-      _s._gridFocusedIndex = 0;
+      _s._gridFocusedIndex = null;
     });
     ShellBus.notifyShellChromeChanged();
     _s._debounce?.cancel();
@@ -87,7 +87,7 @@ mixin _SearchSearch on State<SearchScreen> {
         _s._sections.clear();
         _s._isSearching = false;
         _s._helperFocusedIndex = null;
-        _s._gridFocusedIndex = 0;
+        _s._gridFocusedIndex = null;
         _s._pendingGridFocusIndex = null;
       });
       if (_s._tvFocus(context) && _s._focusNode.hasFocus) {
@@ -108,7 +108,7 @@ mixin _SearchSearch on State<SearchScreen> {
     setState(() {
       _s._sections.clear();
       _s._isSearching = true;
-      _s._gridFocusedIndex = 0;
+      _s._gridFocusedIndex = null;
     });
 
     int pendingCount = 1 + _s._addonProviders.length; // TMDB + each addon

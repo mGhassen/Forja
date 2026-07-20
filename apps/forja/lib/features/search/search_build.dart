@@ -206,9 +206,12 @@ mixin _SearchBuild on State<SearchScreen> {
                 ? ForjaCloseButton.compact(
                     tooltip: null,
                     color: ForjaShellColors.textSecondary,
+                    focusNode: _s._closeFocusNode,
+                    onKeyEvent: _s._searchCloseKeyEvent,
                     onTap: () {
                       _s._controller.clear();
                       _s._onSearchChanged('');
+                      _s._focusSearchFieldBrowse();
                     },
                   )
                 : null,
@@ -374,6 +377,8 @@ mixin _SearchBuild on State<SearchScreen> {
                     _s._gridFocusedIndex = index;
                     _s._helperFocusedIndex = null;
                   });
+                } else {
+                  _s._clearGridFocusedIndex(index);
                 }
               },
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
 
@@ -107,6 +108,8 @@ class CustomSeekbar extends StatefulWidget {
   final VoidCallback? onDragEnd;
   final bool tvFocusable;
   final FocusNode? focusNode;
+  final FocusNode? tvFocusUpNode;
+  final VoidCallback? onTvFocusUp;
   final Duration tvSeekStep;
 
   const CustomSeekbar({
@@ -119,6 +122,8 @@ class CustomSeekbar extends StatefulWidget {
     this.onDragEnd,
     this.tvFocusable = false,
     this.focusNode,
+    this.tvFocusUpNode,
+    this.onTvFocusUp,
     this.tvSeekStep = const Duration(seconds: 10),
   });
 
@@ -130,6 +135,8 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
   bool _isDragging = false;
   double _dragValue = 0.0; // In milliseconds
   bool _tvFocused = false;
+  /// TV: OK engages thumb scrub; L/R nudge preview; OK commits; Back cancels.
+  bool _tvScrubArmed = false;
 
   // Hover state for Desktop
   bool _isHovering = false;
@@ -156,25 +163,53 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
 
   void _cancelScrubFromOverlay() {
     if (!mounted) return;
-    if (!_isDragging && !_isHovering) return;
+    if (!_isDragging && !_isHovering && !_tvScrubArmed) return;
     final wasDragging = _isDragging;
     setState(() {
       _isDragging = false;
       _isHovering = false;
+      _tvScrubArmed = false;
     });
     if (wasDragging) widget.onDragEnd?.call();
   }
 
-  void _seekByStep(int direction) {
-    final onSeek = widget.onSeek;
-    if (onSeek == null) return;
+  void _nudgeTvScrub(int direction) {
     final total = widget.duration;
     if (total <= Duration.zero) return;
-    final delta = widget.tvSeekStep * direction;
-    var next = widget.position + delta;
+    final base = _tvScrubArmed
+        ? Duration(milliseconds: _dragValue.toInt())
+        : widget.position;
+    var next = base + widget.tvSeekStep * direction;
     if (next < Duration.zero) next = Duration.zero;
     if (next > total) next = total;
-    onSeek(next);
+    setState(() {
+      _tvScrubArmed = true;
+      _isDragging = true;
+      _dragValue = next.inMilliseconds.toDouble();
+    });
+    widget.onDragStart?.call();
+  }
+
+  void _commitTvScrub() {
+    if (!_tvScrubArmed) return;
+    final seekTo = Duration(milliseconds: _dragValue.toInt());
+    setState(() {
+      _tvScrubArmed = false;
+      _isDragging = false;
+    });
+    if (!playerChromeOverlayBlocksSeek()) {
+      widget.onSeek?.call(seekTo);
+    }
+    widget.onDragEnd?.call();
+  }
+
+  void _cancelTvScrub() {
+    if (!_tvScrubArmed) return;
+    setState(() {
+      _tvScrubArmed = false;
+      _isDragging = false;
+    });
+    widget.onDragEnd?.call();
   }
 
   KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
@@ -182,23 +217,65 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
       return KeyEventResult.ignored;
     }
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.arrowLeft) {
-      _seekByStep(-1);
+    if (shellTvIsActivateKey(event)) {
+      if (_tvScrubArmed) {
+        _commitTvScrub();
+      } else {
+        setState(() {
+          _tvScrubArmed = true;
+          _isDragging = true;
+          _dragValue = widget.position.inMilliseconds.toDouble();
+        });
+        widget.onDragStart?.call();
+      }
       return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack) {
+      if (_tvScrubArmed) {
+        _cancelTvScrub();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (_tvScrubArmed) {
+        _nudgeTvScrub(-1);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
-      _seekByStep(1);
-      return KeyEventResult.handled;
+      if (_tvScrubArmed) {
+        _nudgeTvScrub(1);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
-    TraversalDirection? direction;
     if (key == LogicalKeyboardKey.arrowUp) {
-      direction = TraversalDirection.up;
-    } else if (key == LogicalKeyboardKey.arrowDown) {
-      direction = TraversalDirection.down;
+      if (_tvScrubArmed) {
+        _cancelTvScrub();
+      }
+      if (widget.onTvFocusUp != null) {
+        widget.onTvFocusUp!();
+        return KeyEventResult.handled;
+      }
+      final upNode = widget.tvFocusUpNode;
+      if (upNode != null && upNode.canRequestFocus) {
+        upNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+      if (FocusScope.of(context).focusInDirection(TraversalDirection.up)) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
-    if (direction != null &&
-        FocusScope.of(context).focusInDirection(direction)) {
-      return KeyEventResult.handled;
+    if (key == LogicalKeyboardKey.arrowDown) {
+      if (_tvScrubArmed) return KeyEventResult.handled;
+      if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
     return KeyEventResult.ignored;
   }
@@ -304,13 +381,23 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                   ),
                   // Thumb
                   Positioned(
-                    left: (relativePosition * constraints.maxWidth) - ((_isDragging || _tvFocused) ? 8.0 : 6.0),
+                    left: (relativePosition * constraints.maxWidth) -
+                        ((_isDragging || _tvFocused || _tvScrubArmed)
+                            ? 8.0
+                            : 6.0),
                     child: Container(
-                      width: (_isDragging || _tvFocused) ? 16.0 : 12.0,
-                      height: (_isDragging || _tvFocused) ? 16.0 : 12.0,
+                      width: (_isDragging || _tvFocused || _tvScrubArmed)
+                          ? 16.0
+                          : 12.0,
+                      height: (_isDragging || _tvFocused || _tvScrubArmed)
+                          ? 16.0
+                          : 12.0,
                       decoration: BoxDecoration(
                         color: ForjaShellColors.brandGreen,
                         shape: BoxShape.circle,
+                        border: _tvScrubArmed
+                            ? Border.all(color: Colors.white, width: 2)
+                            : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.3),
@@ -362,7 +449,15 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
 
         return Focus(
           focusNode: _focusNode,
-          onFocusChange: (focused) => setState(() => _tvFocused = focused),
+          onFocusChange: (focused) {
+            setState(() {
+              _tvFocused = focused;
+              if (!focused && _tvScrubArmed) {
+                _tvScrubArmed = false;
+                _isDragging = false;
+              }
+            });
+          },
           onKeyEvent: _onTvKey,
           child: track,
         );

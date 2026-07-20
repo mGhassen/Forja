@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
@@ -9,16 +8,21 @@ import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
+import 'package:forja/shared/player/controls/player_episode_menu.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
-import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -45,6 +49,9 @@ class ExoPlayerScreen extends StatefulWidget {
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
+    this.providers,
+    this.stremioId,
+    this.stremioAddonBaseUrl,
     this.onSaveProgress,
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
@@ -71,6 +78,9 @@ class ExoPlayerScreen extends StatefulWidget {
   final num? hubEpisodeNumber;
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
+  final Map<String, dynamic>? providers;
+  final String? stremioId;
+  final String? stremioAddonBaseUrl;
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
@@ -110,6 +120,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   String _episodeLoadingStatus = 'Loading next episode…';
   bool _episodeLoadingFailed = false;
   double _volume = 100;
+  double _rate = 1.0;
+  String _resizeMode = 'fit';
+  ExoTracksSnapshot _tracks = ExoTracksSnapshot.empty;
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -220,6 +233,12 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         subtitles: subs,
       );
       await ExoPlayerBridge.setVolume(_viewId, _volume / 150.0);
+      if (_rate != 1.0) {
+        await ExoPlayerBridge.setRate(_viewId, _rate);
+      }
+      if (_resizeMode != 'fit') {
+        await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
+      }
     } catch (e) {
       debugPrint('[ExoPlayer] open failed: $e');
       await _failCurrentSource('Failed to open stream');
@@ -304,6 +323,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         }
         unawaited(_failCurrentSource(msg));
         break;
+      case 'tracksChanged':
+        if (!mounted) return;
+        setState(() {
+          _tracks = ExoTracksSnapshot.fromMap(event);
+          _rate = _tracks.rate;
+        });
+        break;
     }
   }
 
@@ -386,42 +412,19 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     _startHideTimer();
   }
 
-  void _mediaKitHint(String feature) {
-    ForjaToast.info('$feature is not available in ExoPlayer — switch to MediaKit in Settings.');
-    _startHideTimer();
-  }
-
-  Future<void> _showExoUnavailableDialog(
-    String feature,
-    BuildContext anchorContext,
-  ) async {
-    await PlayerPopupPanel.show(
-      context: context,
-      title: feature,
-      child: ListView(
-        padding: const EdgeInsets.all(8),
-        shrinkWrap: true,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: Text(
-              '$feature is not available in ExoPlayer.',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-          ),
-          if (widget.onSwitchPlayer != null)
-            PlayerPopupListTile(
-              label: 'Switch to MediaKit',
-              subtitle: 'Full player controls on Android TV',
-              onTap: () {
-                PlayerPopupPanel.dismiss();
-                unawaited(_showPlayerMenu(anchorContext));
-              },
-            ),
-        ],
-      ),
-    );
-    if (_isTv) _claimPlayFocus();
+  Future<ExoTracksSnapshot> _refreshTracks() async {
+    try {
+      final snap = await ExoPlayerBridge.getTracks(_viewId);
+      if (mounted) {
+        setState(() {
+          _tracks = snap;
+          _rate = snap.rate;
+        });
+      }
+      return snap;
+    } catch (_) {
+      return _tracks;
+    }
   }
 
   Future<void> _showSourceMenu(BuildContext anchorContext) async {
@@ -466,14 +469,219 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         context: context,
         episodes: widget.hubEpisodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
-        onEpisodeSelected: widget.onHubEpisodeSelected!,
+        onEpisodeSelected: (ep) async {
+          setState(() {
+            _loadingNextEp = true;
+            _episodeLoadingLabel = 'Episode ${ep.displayNumber}';
+            _episodeLoadingStatus = 'Loading episode info…';
+            _episodeLoadingFailed = false;
+          });
+          try {
+            await widget.onHubEpisodeSelected!(ep);
+            if (mounted) {
+              setState(() {
+                _loadingNextEp = false;
+                _episodeLoadingFailed = false;
+              });
+            }
+          } catch (_) {
+            if (!mounted) return;
+            setState(() {
+              _episodeLoadingStatus = 'Could not load this episode';
+              _episodeLoadingFailed = true;
+            });
+            await Future<void>.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              setState(() {
+                _loadingNextEp = false;
+                _episodeLoadingFailed = false;
+              });
+            }
+          }
+        },
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,
       );
       if (_isTv) _claimPlayFocus();
       return;
     }
-    await _showExoUnavailableDialog('Episodes', anchorContext);
+    final movie = widget.movie;
+    if (movie == null || movie.mediaType != 'tv') return;
+    await PlayerEpisodeMenu.show(
+      context,
+      movie: movie,
+      currentSeason: widget.selectedSeason ?? 1,
+      currentEpisode: widget.selectedEpisode ?? 1,
+      onEpisodeSelected: _switchToEpisode,
+      anchorContext: anchorContext,
+    );
+    if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _switchToEpisode(int season, int episode) async {
+    if (widget.movie == null) return;
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode) {
+      return;
+    }
+    setState(() {
+      _loadingNextEp = true;
+      _episodeLoadingLabel = 'Season $season · Episode $episode';
+      _episodeLoadingStatus = 'Loading episode info…';
+      _episodeLoadingFailed = false;
+    });
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+
+    try {
+      await _saveProgress();
+      setState(() => _episodeLoadingStatus = 'Checking sources…');
+
+      final chain = episodeProviderChain(
+        providers: widget.providers,
+        activeProvider: widget.activeProvider,
+        currentProvider: widget.activeProvider,
+        magnetLink: widget.magnetLink,
+      );
+      if (chain.isEmpty) {
+        throw Exception('No provider available for S${season}E$episode');
+      }
+
+      EpisodeSwitchResult? resolved;
+      for (final key in chain) {
+        if (!mounted) return;
+        setState(() {
+          _episodeLoadingStatus = key == 'torrent'
+              ? 'Resolving torrent…'
+              : key == 'stremio_direct'
+                  ? 'Checking Stremio…'
+                  : 'Checking sources…';
+        });
+        resolved = await resolveEpisodeForProvider(
+          providerKey: key,
+          movie: widget.movie!,
+          season: season,
+          episode: episode,
+          providers: widget.providers,
+          magnetLink: widget.magnetLink,
+          stremioId: widget.stremioId,
+          stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+        );
+        if (resolved != null) break;
+      }
+      if (resolved == null || resolved.streamUrl.isEmpty) {
+        throw Exception('Could not find stream for S${season}E$episode');
+      }
+      if (!mounted) return;
+      setState(() => _episodeLoadingStatus = 'Opening stream…');
+
+      final nextTitle = '${widget.movie!.title} - S$season E$episode';
+      final catalog = isCatalogSourcesMode(resolved.activeProvider);
+      if (resolved.magnetLink != null && resolved.magnetLink!.isNotEmpty) {
+        TorrentStreamService().retainForExternalHandoff = true;
+      }
+      try {
+        await ExoPlayerBridge.stop(_viewId);
+      } catch (_) {}
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        AppRouter.slideRoute(
+          (_) => PlayerScreen(
+            streamUrl: resolved!.streamUrl,
+            title: nextTitle,
+            headers: catalog ? null : resolved.headers,
+            movie: widget.movie,
+            selectedSeason: season,
+            selectedEpisode: episode,
+            magnetLink: resolved.magnetLink,
+            fileIndex: resolved.fileIndex,
+            activeProvider: resolved.activeProvider,
+            stremioId: widget.stremioId,
+            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+            providers: catalog ? null : widget.providers,
+            sources: catalog ? null : resolved.sources,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[ExoPlayer] episode switch failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _episodeLoadingStatus = 'Could not find a stream for this episode';
+        _episodeLoadingFailed = true;
+      });
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        setState(() {
+          _loadingNextEp = false;
+          _episodeLoadingFailed = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showAudioMenu(BuildContext anchorContext) async {
+    final tracks = await _refreshTracks();
+    if (!mounted) return;
+    await ExoPlayerMenus.showAudio(
+      context: context,
+      tracks: tracks,
+      anchorContext: anchorContext,
+      onSelect: (id) => ExoPlayerBridge.selectTrack(
+        _viewId,
+        type: 'audio',
+        trackId: id,
+      ),
+    );
+    if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _showSubtitlesMenu(BuildContext anchorContext) async {
+    final tracks = await _refreshTracks();
+    if (!mounted) return;
+    await ExoPlayerMenus.showSubtitles(
+      context: context,
+      tracks: tracks,
+      anchorContext: anchorContext,
+      onSelect: (id) => ExoPlayerBridge.selectTrack(
+        _viewId,
+        type: 'text',
+        trackId: id,
+      ),
+    );
+    if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _showQualityMenu(BuildContext anchorContext) async {
+    final tracks = await _refreshTracks();
+    if (!mounted) return;
+    await ExoPlayerMenus.showQuality(
+      context: context,
+      tracks: tracks,
+      anchorContext: anchorContext,
+      onSelect: (id) => ExoPlayerBridge.selectTrack(
+        _viewId,
+        type: 'video',
+        trackId: id,
+      ),
+    );
+    if (_isTv) _claimPlayFocus();
+  }
+
+  void _showSettingsMenu(BuildContext anchorContext) {
+    ExoPlayerMenus.showSettings(
+      context: context,
+      anchorContext: anchorContext,
+      rateOf: () => _rate,
+      resizeModeOf: () => _resizeMode,
+      onRate: (rate) async {
+        await ExoPlayerBridge.setRate(_viewId, rate);
+        if (mounted) setState(() => _rate = rate);
+      },
+      onResize: (mode) async {
+        await ExoPlayerBridge.setResizeMode(_viewId, mode);
+        if (mounted) setState(() => _resizeMode = mode);
+      },
+    );
   }
 
   Future<void> _exit() async {
@@ -572,9 +780,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     }
     return null;
   }
-
-  String _currentStreamUrl() =>
-      _sources.isNotEmpty ? _sources[_sourceIndex].url : widget.mediaPath;
 
   String _streamPickerLabel() {
     if (_sources.isEmpty) return 'Source';
@@ -680,23 +885,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                           ? (anchorContext) =>
                               unawaited(_showPlayerMenu(anchorContext))
                           : null,
-                      showCast:
-                          CastingService.instance.isAirPlayAvailable ||
-                          CastingService.instance.isChromecastAvailable,
-                      onCast: () {
-                        showPlayerCastPicker(
-                          context,
-                          streamUrl: _currentStreamUrl(),
-                          title: widget.title,
-                          headers: widget.headers,
-                          statusController: _statusController,
-                        );
-                        _startHideTimer();
-                      },
-                      showPip: PipService.instance.isSupported,
-                      onPip: () {
-                        _mediaKitHint('Picture-in-picture');
-                      },
                     ),
                   ),
                 )
@@ -730,23 +918,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                         ? (anchorContext) =>
                             unawaited(_showPlayerMenu(anchorContext))
                         : null,
-                    showCast:
-                        CastingService.instance.isAirPlayAvailable ||
-                        CastingService.instance.isChromecastAvailable,
-                    onCast: () {
-                      showPlayerCastPicker(
-                        context,
-                        streamUrl: _currentStreamUrl(),
-                        title: widget.title,
-                        headers: widget.headers,
-                        statusController: _statusController,
-                      );
-                      _startHideTimer();
-                    },
-                    showPip: PipService.instance.isSupported,
-                    onPip: () {
-                      _mediaKitHint('Picture-in-picture');
-                    },
                   ),
                 ),
         ),
@@ -929,14 +1100,14 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                               iconSize: iconSz,
                               tooltip: 'Audio',
                               onPressedWithContext: (ctx) =>
-                                  unawaited(_showExoUnavailableDialog('Audio', ctx)),
+                                  unawaited(_showAudioMenu(ctx)),
                             ),
                             PlayerFlatIconButton(
                               icon: Icons.subtitles_outlined,
                               size: btnSize,
                               iconSize: iconSz,
                               onPressedWithContext: (ctx) =>
-                                  unawaited(_showExoUnavailableDialog('Subtitles', ctx)),
+                                  unawaited(_showSubtitlesMenu(ctx)),
                             ),
                             PlayerFlatIconButton(
                               icon: Icons.hd_outlined,
@@ -944,14 +1115,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                               iconSize: iconSz,
                               tooltip: 'Quality',
                               onPressedWithContext: (ctx) =>
-                                  unawaited(_showExoUnavailableDialog('Quality', ctx)),
+                                  unawaited(_showQualityMenu(ctx)),
                             ),
                             PlayerFlatIconButton(
                               icon: Icons.settings_outlined,
                               size: btnSize,
                               iconSize: iconSz,
-                              onPressedWithContext: (ctx) =>
-                                  unawaited(_showExoUnavailableDialog('Settings', ctx)),
+                              onPressedWithContext: _showSettingsMenu,
                             ),
                           ],
                         ),
@@ -1091,8 +1261,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 size: btnSize,
                 iconSize: iconSz,
                 tooltip: 'Audio',
-                onPressedWithContext: (ctx) =>
-                    unawaited(_showExoUnavailableDialog('Audio', ctx)),
+                onPressedWithContext: (ctx) => unawaited(_showAudioMenu(ctx)),
               ),
             ),
             const SizedBox(width: 2),
@@ -1104,7 +1273,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 size: btnSize,
                 iconSize: iconSz,
                 onPressedWithContext: (ctx) =>
-                    unawaited(_showExoUnavailableDialog('Subtitles', ctx)),
+                    unawaited(_showSubtitlesMenu(ctx)),
               ),
             ),
             const SizedBox(width: 2),
@@ -1116,8 +1285,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 size: btnSize,
                 iconSize: iconSz,
                 tooltip: 'Quality',
-                onPressedWithContext: (ctx) =>
-                    unawaited(_showExoUnavailableDialog('Quality', ctx)),
+                onPressedWithContext: (ctx) => unawaited(_showQualityMenu(ctx)),
               ),
             ),
             const SizedBox(width: 2),
@@ -1128,8 +1296,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 icon: Icons.settings_outlined,
                 size: btnSize,
                 iconSize: iconSz,
-                onPressedWithContext: (ctx) =>
-                    unawaited(_showExoUnavailableDialog('Settings', ctx)),
+                onPressedWithContext: _showSettingsMenu,
               ),
             ),
           ],

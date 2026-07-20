@@ -418,9 +418,10 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                 tvTabId: 'asian_drama',
                 tvRowId: 'latest',
                 tvRowOrder: _catalogRowBase + 0,
-                tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
-                  tabId: 'asian_drama',
-                ),
+                tvFocusUp: () {
+                  ShellTvFocusCoordinator.revealHeroForTab('asian_drama');
+                  ShellTvFocus.focusHomeHeroPlay();
+                },
                 cardBuilder: (context, card, index) => _dramaPosterCard(
                   card,
                   listIndex: index,
@@ -476,10 +477,11 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'latest',
                                       tvRowOrder: _catalogRowBase + 0,
-                                      tvFocusUp: () =>
-                                          ShellTvFocusCoordinator.focusHero(
-                                        tabId: 'asian_drama',
-                                      ),
+                                      tvFocusUp: () {
+                                        ShellTvFocusCoordinator
+                                            .revealHeroForTab('asian_drama');
+                                        ShellTvFocus.focusHomeHeroPlay();
+                                      },
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,

@@ -67,9 +67,10 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                 tvTabId: 'anime',
                 tvRowId: 'trending',
                 tvRowOrder: _catalogRowBase + 0,
-                tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
-                  tabId: 'anime',
-                ),
+                tvFocusUp: () {
+                  ShellTvFocusCoordinator.revealHeroForTab('anime');
+                  ShellTvFocus.focusHomeHeroPlay();
+                },
                 cardBuilder: (context, anime, index) => _animePosterCard(
                   anime,
                   listIndex: index,
@@ -135,9 +136,12 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                     tvTabId: 'anime',
                                     tvRowId: 'trending',
                                     tvRowOrder: _catalogRowBase + 0,
-                                    tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
-                                      tabId: 'anime',
-                                    ),
+                                    tvFocusUp: () {
+                                      ShellTvFocusCoordinator.revealHeroForTab(
+                                        'anime',
+                                      );
+                                      ShellTvFocus.focusHomeHeroPlay();
+                                    },
                                     cardBuilder: (context, anime, index) =>
                                         _animePosterCard(
                                       anime,

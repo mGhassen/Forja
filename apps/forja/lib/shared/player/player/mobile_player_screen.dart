@@ -192,6 +192,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
   bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
   Movie? _heroMovie;
   String? _episodeOverview;
   bool _isLocked = false;
@@ -394,6 +395,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     _playFocus.dispose();
+    _backFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _indicatorHideTimer?.cancel();

@@ -116,12 +116,16 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       isInTraktCollection: _s._trackerState.isInTraktCollection,
       playFocusNode: policy.heroPlayAutoFocus ? _s._detailsHeroPlayFocus : null,
       tvTabId: policy.useFocusableMoodChips ? MediaDetailsTv.tabId : null,
-      tvFocusUp: policy.useFocusableMoodChips ? _popDetailsFromTvUp : null,
+      tvFocusUp: policy.useFocusableMoodChips ? _focusDetailsBack : null,
     );
   }
 
-  void _popDetailsFromTvUp() {
-    maybePopShellOverlay();
+  void _focusDetailsBack() {
+    if (!_s._detailsBackFocus.canRequestFocus) {
+      maybePopShellOverlay();
+      return;
+    }
+    _s._detailsBackFocus.requestFocus();
   }
 
   Future<void> _clearProgress() async {
@@ -196,7 +200,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
             Center(
               child: CircularProgressIndicator(color: AppTheme.primaryColor),
             ),
-            const MediaDetailsBackButton(),
+            MediaDetailsBackButton(focusNode: _s._detailsBackFocus),
           ],
         ),
       );
@@ -213,7 +217,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
               onClose: _s._closeSourcesPanel,
               child: _buildSourcesPanelContent(),
             ),
-          const MediaDetailsBackButton(),
+          MediaDetailsBackButton(focusNode: _s._detailsBackFocus),
         ],
       ),
     );

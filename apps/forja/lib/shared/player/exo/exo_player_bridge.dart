@@ -3,6 +3,78 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+/// One selectable Media3 track exposed to Dart menus.
+class ExoTrackInfo {
+  const ExoTrackInfo({
+    required this.id,
+    required this.label,
+    this.language = '',
+    this.selected = false,
+    this.height = 0,
+    this.bitrate = 0,
+  });
+
+  final String id;
+  final String label;
+  final String language;
+  final bool selected;
+  final int height;
+  final int bitrate;
+
+  factory ExoTrackInfo.fromMap(Map<dynamic, dynamic> map) {
+    return ExoTrackInfo(
+      id: map['id']?.toString() ?? '',
+      label: map['label']?.toString() ?? 'Track',
+      language: map['language']?.toString() ?? '',
+      selected: map['selected'] == true,
+      height: (map['height'] as num?)?.toInt() ?? 0,
+      bitrate: (map['bitrate'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Snapshot of audio / text / video tracks from the native ExoPlayer host.
+class ExoTracksSnapshot {
+  const ExoTracksSnapshot({
+    this.audio = const [],
+    this.text = const [],
+    this.video = const [],
+    this.videoAuto = true,
+    this.textOff = true,
+    this.rate = 1.0,
+  });
+
+  final List<ExoTrackInfo> audio;
+  final List<ExoTrackInfo> text;
+  final List<ExoTrackInfo> video;
+  final bool videoAuto;
+  final bool textOff;
+  final double rate;
+
+  static const empty = ExoTracksSnapshot();
+
+  factory ExoTracksSnapshot.fromMap(Map<dynamic, dynamic>? map) {
+    if (map == null) return empty;
+    List<ExoTrackInfo> parse(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw
+          .whereType<Map>()
+          .map((e) => ExoTrackInfo.fromMap(Map<dynamic, dynamic>.from(e)))
+          .where((t) => t.id.isNotEmpty)
+          .toList();
+    }
+
+    return ExoTracksSnapshot(
+      audio: parse(map['audio']),
+      text: parse(map['text']),
+      video: parse(map['video']),
+      videoAuto: map['videoAuto'] != false,
+      textOff: map['textOff'] == true,
+      rate: (map['rate'] as num?)?.toDouble() ?? 1.0,
+    );
+  }
+}
+
 /// Native Media3 ExoPlayer bridge (Android only).
 class ExoPlayerBridge {
   ExoPlayerBridge._();
@@ -69,6 +141,40 @@ class ExoPlayerBridge {
       _channel.invokeMethod<void>('setVolume', {
         'viewId': viewId,
         'volume': volume.clamp(0.0, 1.0),
+      });
+
+  static Future<void> setRate(int viewId, double rate) =>
+      _channel.invokeMethod<void>('setRate', {
+        'viewId': viewId,
+        'rate': rate.clamp(0.25, 2.0),
+      });
+
+  /// [mode]: `fit` | `fill` | `zoom`
+  static Future<void> setResizeMode(int viewId, String mode) =>
+      _channel.invokeMethod<void>('setResizeMode', {
+        'viewId': viewId,
+        'mode': mode,
+      });
+
+  static Future<ExoTracksSnapshot> getTracks(int viewId) async {
+    final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'getTracks',
+      {'viewId': viewId},
+    );
+    return ExoTracksSnapshot.fromMap(raw);
+  }
+
+  /// [type]: `audio` | `text` | `video`. Pass `trackId` null/`off` for text off,
+  /// null/`auto` for video auto.
+  static Future<void> selectTrack(
+    int viewId, {
+    required String type,
+    String? trackId,
+  }) =>
+      _channel.invokeMethod<void>('selectTrack', {
+        'viewId': viewId,
+        'type': type,
+        'trackId': trackId,
       });
 
   static Future<void> stop(int viewId) =>

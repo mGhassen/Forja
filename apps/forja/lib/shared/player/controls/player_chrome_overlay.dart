@@ -481,6 +481,7 @@ class PlayerTopBar extends StatelessWidget {
     required this.onBack,
     this.trailing,
     this.tvFocusable = false,
+    this.backFocusNode,
   });
 
   final String title;
@@ -492,6 +493,7 @@ class PlayerTopBar extends StatelessWidget {
   final VoidCallback onBack;
   final Widget? trailing;
   final bool tvFocusable;
+  final FocusNode? backFocusNode;
 
   String? get _episodeLine {
     if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
@@ -595,6 +597,7 @@ class PlayerTopBar extends StatelessWidget {
                         onPressed: onBack,
                         size: 44,
                         tvFocusable: tvFocusable,
+                        focusNode: backFocusNode,
                       ),
                     ),
                     Positioned(

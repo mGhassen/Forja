@@ -30,6 +30,8 @@ class HomeTopBar extends StatefulWidget {
 class _HomeTopBarState extends State<HomeTopBar> {
   final GlobalKey _categoriesKey = GlobalKey();
   bool _categoriesOpen = false;
+  bool _searchFocused = false;
+  bool _searchHovered = false;
   final FocusNode _menuFocus = FocusNode(debugLabel: 'home-menu');
   final FocusNode _searchFocus = FocusNode(debugLabel: 'home-search');
   final FocusNode _categoriesTabFocus = FocusNode(
@@ -221,9 +223,16 @@ class _HomeTopBarState extends State<HomeTopBar> {
   }
 
   Widget _buildSearchAction({required bool tvFocus}) {
-    final searchH = shellScaled(context, 34).clamp(24.0, 34.0);
     final searchW = shellScaled(context, 44).clamp(32.0, 44.0);
     final iconSize = shellScaled(context, 30).clamp(20.0, 30.0);
+    final icon = ForjaTopBarIcon(
+      icon: Icons.search_rounded,
+      size: iconSize,
+      hitSize: searchW,
+      manageFocus: !tvFocus,
+      highlighted: tvFocus ? (_searchFocused || _searchHovered) : null,
+      onTap: tvFocus ? null : _openSearch,
+    );
     if (tvFocus) {
       return shellFocusableTap(
         context: context,
@@ -237,26 +246,11 @@ class _HomeTopBarState extends State<HomeTopBar> {
         tvItemIndex: 3,
         focusNode: _searchFocus,
         onDownEdge: () => ShellTvFocus.focusHomeHeroGallery(),
-        child: SizedBox(
-          height: searchH,
-          width: searchW,
-          child: Center(
-            child: Icon(
-              Icons.search_rounded,
-              color: Colors.white,
-              size: iconSize,
-            ),
-          ),
-        ),
+        onFocusChange: (focused) => setState(() => _searchFocused = focused),
+        onHoverChange: (hovered) => setState(() => _searchHovered = hovered),
+        child: icon,
       );
     }
-
-    final icon = ForjaTopBarIcon(
-      icon: Icons.search_rounded,
-      size: iconSize,
-      hitSize: searchW,
-      onTap: _openSearch,
-    );
 
     return SizedBox(height: 34, child: Center(child: icon));
   }
@@ -611,7 +605,7 @@ class _CategoryTabState extends State<_CategoryTab> {
   }
 }
 
-class _FlatMenuRow extends StatelessWidget {
+class _FlatMenuRow extends StatefulWidget {
   const _FlatMenuRow({
     required this.label,
     required this.selected,
@@ -633,31 +627,42 @@ class _FlatMenuRow extends StatelessWidget {
   final VoidCallback? onLeftEdge;
 
   @override
+  State<_FlatMenuRow> createState() => _FlatMenuRowState();
+}
+
+class _FlatMenuRowState extends State<_FlatMenuRow> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final highlight = widget.selected || _hovered || _focused;
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Text(
-        label,
+        widget.label,
         style: GoogleFonts.plusJakartaSans(
           fontSize: 14,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-          color: selected ? cinematic.textPrimary : cinematic.textSecondary,
+          fontWeight: highlight ? FontWeight.w600 : FontWeight.w500,
+          color: highlight ? Colors.white : cinematic.textSecondary,
         ),
       ),
     );
 
     return shellFocusableTap(
       context: context,
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: 4,
-      listIndex: listIndex,
-      focusNode: focusNode,
-      onUpEdge: onUpEdge,
-      onLeftEdge: onLeftEdge,
-      tvTabId: tvFocus ? 'home' : null,
-      tvZone: tvFocus ? ShellTvZone.topBar : null,
-      tvItemIndex: listIndex,
+      listIndex: widget.listIndex,
+      focusNode: widget.focusNode,
+      onUpEdge: widget.onUpEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      tvTabId: widget.tvFocus ? 'home' : null,
+      tvZone: widget.tvFocus ? ShellTvZone.topBar : null,
+      tvItemIndex: widget.listIndex,
       child: row,
     );
   }

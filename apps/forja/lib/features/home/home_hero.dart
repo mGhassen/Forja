@@ -128,6 +128,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   @override
   Widget build(BuildContext context) {
+    // KeepAlive tabs all mount — only Home owns shared nodes while selected.
+    if (ShellTvFocus.currentNavTabId == 'home') {
+      ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+      ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _publishHomeHeroHeight();

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -127,6 +126,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   List<StreamProviderProbe> _probes = const [];
   bool _providerListOpen = false;
   ResolveFailure? _failure;
+  final FocusNode _providersButtonFocus =
+      FocusNode(debugLabel: 'loading-providers');
+  final FocusNode _cancelFocus = FocusNode(debugLabel: 'loading-cancel');
+  final List<FocusNode> _providerRowFocus = [];
 
   double get _logoBottomReserve =>
       _providerListOpen ? _statusStripReserve + 200 : _statusStripReserve;
@@ -145,6 +148,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     widget.fadeOutNotifier?.addListener(_onFadeOutRequested);
     widget.failureNotifier?.addListener(_onFailureChanged);
     _probes = widget.providerProbesNotifier?.value ?? const [];
+    _syncProviderRowFocusNodes();
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -164,6 +168,112 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     if (_showingFailure) {
       _pulseController.stop();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focusInitialAction();
+    });
+  }
+
+  void _syncProviderRowFocusNodes() {
+    final need = _probes.length;
+    while (_providerRowFocus.length < need) {
+      _providerRowFocus.add(
+        FocusNode(debugLabel: 'loading-provider-${_providerRowFocus.length}'),
+      );
+    }
+    while (_providerRowFocus.length > need) {
+      _providerRowFocus.removeLast().dispose();
+    }
+  }
+
+  void _focusInitialAction() {
+    if (_showProviderProbes && _providersButtonFocus.canRequestFocus) {
+      _providersButtonFocus.requestFocus();
+      return;
+    }
+    if (_cancelFocus.canRequestFocus) {
+      _cancelFocus.requestFocus();
+    }
+  }
+
+  void _focusFirstProviderRow() {
+    _syncProviderRowFocusNodes();
+    for (var i = 0; i < _probes.length; i++) {
+      if (!_canManualCheck(_probes[i])) continue;
+      final node = _providerRowFocus[i];
+      if (node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+    }
+  }
+
+  KeyEventResult _providersButtonKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (_cancelFocus.canRequestFocus) {
+        _cancelFocus.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+    if (key == LogicalKeyboardKey.arrowUp && _providerListOpen) {
+      _focusFirstProviderRow();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter) {
+      setState(() => _providerListOpen = !_providerListOpen);
+      if (_providerListOpen) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _focusFirstProviderRow();
+        });
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _cancelButtonKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight && _showProviderProbes) {
+      if (_providersButtonFocus.canRequestFocus) {
+        _providersButtonFocus.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+    if (key == LogicalKeyboardKey.arrowUp && _providerListOpen) {
+      _focusFirstProviderRow();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _focusNextProviderRow(int index) {
+    for (var i = index + 1; i < _probes.length; i++) {
+      if (!_canManualCheck(_probes[i])) continue;
+      final next = _providerRowFocus[i];
+      if (next.canRequestFocus) {
+        next.requestFocus();
+        return;
+      }
+    }
+    // Last provider → back to providers button.
+    if (_providersButtonFocus.canRequestFocus) {
+      _providersButtonFocus.requestFocus();
+    }
+  }
+
+  void _focusPrevProviderRow(int index) {
+    for (var i = index - 1; i >= 0; i--) {
+      if (!_canManualCheck(_probes[i])) continue;
+      final prev = _providerRowFocus[i];
+      if (prev.canRequestFocus) {
+        prev.requestFocus();
+        return;
+      }
+    }
   }
 
   void _onMessageChanged() {
@@ -176,7 +286,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   void _onProbesChanged() {
     final next = widget.providerProbesNotifier?.value;
     if (next != null && mounted) {
-      setState(() => _probes = next);
+      setState(() {
+        _probes = next;
+        _syncProviderRowFocusNodes();
+      });
     }
   }
 
@@ -208,6 +321,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     widget.providerProbesNotifier?.removeListener(_onProbesChanged);
     widget.fadeOutNotifier?.removeListener(_onFadeOutRequested);
     widget.failureNotifier?.removeListener(_onFailureChanged);
+    for (final n in _providerRowFocus) {
+      n.dispose();
+    }
+    _providersButtonFocus.dispose();
+    _cancelFocus.dispose();
     _pulseController.dispose();
     _fadeOutController.dispose();
     super.dispose();
@@ -315,6 +433,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   Widget _providerListPanel() {
+    _syncProviderRowFocusNodes();
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 220, maxWidth: 360),
       child: DecoratedBox(
@@ -383,19 +502,16 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               ),
             );
             if (!canTap) return row;
-            // Local Material so InkWell hover/splash paints on the row
-            // (ancestor Material is behind the opaque list panel fill).
-            return MouseRegion(
-              cursor: SystemMouseCursors.click,
+            return FocusableControl(
+              focusNode: _providerRowFocus[index],
+              borderRadius: 8,
+              scaleOnFocus: 1.02,
+              onTap: () => widget.onManualCheckProvider!(probe.id),
+              onDownEdge: () => _focusNextProviderRow(index),
+              onUpEdge: () => _focusPrevProviderRow(index),
               child: Material(
                 color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => widget.onManualCheckProvider!(probe.id),
-                  borderRadius: BorderRadius.circular(8),
-                  hoverColor: ForjaShellColors.inkHover,
-                  splashColor: ForjaShellColors.inkSplash,
-                  child: row,
-                ),
+                child: row,
               ),
             );
           },
@@ -406,55 +522,72 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   Widget _cancelActionRow() {
     final showListToggle = _showProviderProbes;
-    final cancelButton = TextButton(
-      onPressed: widget.onCancel,
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.white.withValues(alpha: 0.7),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 32,
-          vertical: 12,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: Colors.white.withValues(alpha: 0.3),
+    final cancelButton = Focus(
+      focusNode: _cancelFocus,
+      onKeyEvent: _cancelButtonKey,
+      child: TextButton(
+        onPressed: widget.onCancel,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white.withValues(alpha: 0.7),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 32,
+            vertical: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
           ),
         ),
-      ),
-      child: const Text(
-        'CANCEL',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 3,
-          fontFamily: 'Poppins',
+        child: const Text(
+          'CANCEL',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 3,
+            fontFamily: 'Poppins',
+          ),
         ),
       ),
     );
 
     if (!showListToggle) return cancelButton;
 
-    final listButton = IconButton(
-      onPressed: () => setState(() => _providerListOpen = !_providerListOpen),
-      tooltip: _providerListOpen ? 'Hide servers' : 'Show servers',
-      style: IconButton.styleFrom(
-        foregroundColor: Colors.white.withValues(
-          alpha: _providerListOpen ? 0.95 : 0.7,
+    final listButton = Focus(
+      focusNode: _providersButtonFocus,
+      onKeyEvent: _providersButtonKey,
+      child: IconButton(
+        onPressed: () {
+          setState(() => _providerListOpen = !_providerListOpen);
+          if (_providerListOpen) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _focusFirstProviderRow();
+            });
+          }
+        },
+        tooltip: _providerListOpen ? 'Hide servers' : 'Show servers',
+        style: IconButton.styleFrom(
+          foregroundColor: Colors.white.withValues(
+            alpha: _providerListOpen || _providersButtonFocus.hasFocus
+                ? 0.95
+                : 0.7,
+          ),
+          backgroundColor: _providerListOpen || _providersButtonFocus.hasFocus
+              ? Colors.white.withValues(alpha: 0.12)
+              : Colors.transparent,
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.3),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          padding: const EdgeInsets.all(12),
         ),
-        backgroundColor: _providerListOpen
-            ? Colors.white.withValues(alpha: 0.12)
-            : Colors.transparent,
-        side: BorderSide(
-          color: Colors.white.withValues(alpha: 0.3),
+        icon: Icon(
+          _providerListOpen ? Icons.layers : Icons.layers_outlined,
+          size: 20,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        padding: const EdgeInsets.all(12),
-      ),
-      icon: Icon(
-        _providerListOpen ? Icons.layers : Icons.layers_outlined,
-        size: 20,
       ),
     );
 

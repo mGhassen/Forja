@@ -37,6 +37,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   final AnimeService _service = AnimeService();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'anime-details-play');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'anime-details-back');
   bool _detailsHeroInitialFocusDone = false;
 
   AnimeCard? _full;
@@ -58,6 +59,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   @override
   void dispose() {
     _heroPlayFocus.dispose();
+    _backFocus.dispose();
     _detailsScrollController.dispose();
     super.dispose();
   }
@@ -93,8 +95,12 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
         .whenComplete(focusPlay);
   }
 
-  void _popDetailsFromTvUp() {
-    maybePopShellOverlay();
+  void _focusDetailsBack() {
+    if (!_backFocus.canRequestFocus) {
+      maybePopShellOverlay();
+      return;
+    }
+    _backFocus.requestFocus();
   }
 
   AnimeCard get _data => _full ?? widget.anime;
@@ -272,7 +278,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                 _buildError()
               else
                 _buildScrollLayout(),
-              const MediaDetailsBackButton(),
+              MediaDetailsBackButton(focusNode: _backFocus),
             ],
           ),
         );
@@ -314,7 +320,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     }
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
-    final heroPopUp = tvFocus ? _popDetailsFromTvUp : null;
+    final heroPopUp = tvFocus ? _focusDetailsBack : null;
     final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
     final relatedOrder = showEpisodeRail ? 1 : 0;
 

@@ -5,9 +5,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
@@ -80,6 +82,8 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   Timer? _timer;
   int _index = 0;
   bool _tvHeroInitialFocusDone = false;
+  bool _searchFocused = false;
+  bool _searchHovered = false;
 
   bool get _compact {
     if (ShellScope.metricsOf(context).usesTvDensity) return false;
@@ -227,8 +231,40 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         defaultBottom;
   }
 
+  Widget _buildSearchAction({required bool tvNav}) {
+    final icon = ForjaTopBarIcon(
+      icon: Icons.search_rounded,
+      size: shellScaled(context, 30).clamp(20.0, 30.0),
+      hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
+      manageFocus: !tvNav,
+      highlighted: tvNav ? (_searchFocused || _searchHovered) : null,
+      onTap: tvNav ? null : widget.onSearch,
+    );
+    if (!tvNav) return icon;
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onSearch!,
+      borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      focusNode: _tvSearchFocus,
+      tvTabId: widget.tvTabId,
+      tvZone: ShellTvZone.topBar,
+      onDownEdge: ShellTvFocus.focusHomeHeroPlay,
+      onFocusChange: (focused) => setState(() => _searchFocused = focused),
+      onHoverChange: (hovered) => setState(() => _searchHovered = hovered),
+      child: icon,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // KeepAlive tabs all mount — only the active tab owns the shared nodes.
+    if (widget.tvTabId != null &&
+        ShellTvFocus.currentNavTabId == widget.tvTabId) {
+      ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+      ShellTvFocus.hubHeroSearch = _tvSearchFocus;
+    }
+
     final slides = widget.slides;
     if (slides.isEmpty) {
       return homeCinematicHeroShimmer(
@@ -276,34 +312,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             Positioned(
               top: textTop,
               right: shellHomeSectionHorizontalPadding(context),
-              child: tvNav
-                  ? shellFocusableTap(
-                      context: context,
-                      onTap: widget.onSearch!,
-                      borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
-                      scaleOnFocus: ShellTokens.focusActiveScale,
-                      focusNode: _tvSearchFocus,
-                      tvTabId: widget.tvTabId,
-                      tvZone: ShellTvZone.topBar,
-                      onDownEdge: ShellTvFocus.focusHomeHeroPlay,
-                      child: SizedBox(
-                        height: shellScaled(context, 34).clamp(24.0, 34.0),
-                        width: shellScaled(context, 44).clamp(32.0, 44.0),
-                        child: Center(
-                          child: Icon(
-                            Icons.search_rounded,
-                            color: Colors.white,
-                            size: shellScaled(context, 30).clamp(20.0, 30.0),
-                          ),
-                        ),
-                      ),
-                    )
-                  : ForjaTopBarIcon(
-                      icon: Icons.search_rounded,
-                      size: shellScaled(context, 30).clamp(20.0, 30.0),
-                      hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
-                      onTap: widget.onSearch,
-                    ),
+              child: _buildSearchAction(tvNav: tvNav),
             ),
           Positioned(
             left: shellHomeSectionHorizontalPadding(context),
@@ -788,17 +797,21 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   Widget _buildActionRow(HubHeroSlide slide) {
     final policy = ShellScope.inputPolicyOf(context);
     final tvNav = policy.useFocusableMoodChips;
+    final tabId = widget.tvTabId;
+    void focusHubSearch() {
+      if (tabId == null) return;
+      ShellTvFocusCoordinator.revealHeroForTab(tabId);
+      ShellTvFocus.focusHubHeroSearch();
+    }
+
     final play = HeroPillPlayButton(
       label: 'Play',
       onTap: slide.onPlay,
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
-      tvTabId: tvNav ? widget.tvTabId : null,
-      onUpEdge: tvNav
-          ? () {
-              ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId ?? '');
-              ShellTvFocus.focusHubHeroSearch();
-            }
-          : null,
+      tvTabId: tvNav ? tabId : null,
+      tvRowId: tvNav && tabId != null ? MediaDetailsTv.heroRowId : null,
+      tvItemIndex: tvNav ? 0 : null,
+      onUpEdge: tvNav ? focusHubSearch : null,
       onKeyEvent: tvNav
           ? (node, event) {
               if (!shellTvIsNavigationKey(event)) {
@@ -813,7 +826,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             }
           : null,
     );
-    return HeroPillActionRow(
+    final row = HeroPillActionRow(
       children: [
         if (tvNav)
           FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
@@ -822,13 +835,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         const SizedBox(width: 10),
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
-          tvTabId: tvNav ? widget.tvTabId : null,
-          onUpEdge: tvNav
-          ? () {
-              ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId ?? '');
-              ShellTvFocus.focusHubHeroSearch();
-            }
-          : null,
+          tvTabId: tvNav ? tabId : null,
+          tvRowId: tvNav && tabId != null ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: tvNav ? 1 : null,
+          onUpEdge: tvNav ? focusHubSearch : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,
@@ -838,6 +848,13 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           ],
         ),
       ],
+    );
+    if (!tvNav || tabId == null) return row;
+    return DetailsHeroTvActionScope(
+      tabId: tabId,
+      itemCount: 2,
+      onFocusUp: focusHubSearch,
+      child: row,
     );
   }
 

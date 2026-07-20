@@ -301,6 +301,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                         : null,
                     onBack: _s._exitPlayer,
                     tvFocusable: true,
+                    backFocusNode: _s._backFocus,
                     trailing: PlayerTopBarActions(
                       tvFocusable: true,
                       showPlayer: widget.onSwitchPlayer != null,
@@ -513,6 +514,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                                           position: position,
                                           bufferedPosition: buffered,
                                           tvFocusable: true,
+                                          tvFocusUpNode: _s._backFocus,
                                           onSeek: (t) => unawaited(_s._seekTo(t)),
                                         ),
                                       )

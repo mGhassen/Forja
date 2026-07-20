@@ -11,9 +11,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -29,6 +32,7 @@ class ExoPlayerHost(
     private var playerView: PlayerView? = null
     private var player: ExoPlayer? = null
     private var progressRunnable: Runnable? = null
+    private var videoAuto = true
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -36,6 +40,7 @@ class ExoPlayerHost(
                 Player.STATE_READY -> {
                     emit(mapOf("type" to "ready"))
                     emit(mapOf("type" to "buffering", "value" to false))
+                    emitTracks()
                 }
                 Player.STATE_ENDED -> emit(mapOf("type" to "ended"))
             }
@@ -51,6 +56,10 @@ class ExoPlayerHost(
             if (isPlaying) {
                 emit(mapOf("type" to "buffering", "value" to false))
             }
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+            emitTracks()
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -76,6 +85,7 @@ class ExoPlayerHost(
 
     fun open(url: String, headers: Map<String, String>, startMs: Long, subtitles: List<Map<String, String>>) {
         stopInternal(releasePlayer = true)
+        videoAuto = true
         val httpFactory = DefaultHttpDataSource.Factory()
         val requestHeaders = headers.toMutableMap()
         val userAgent = requestHeaders.remove("User-Agent")
@@ -143,12 +153,153 @@ class ExoPlayerHost(
         player?.volume = volume.coerceIn(0f, 1f)
     }
 
+    fun setRate(rate: Float) {
+        player?.setPlaybackSpeed(rate.coerceIn(0.25f, 2.0f))
+    }
+
+    fun setResizeMode(mode: String) {
+        val view = playerView ?: return
+        view.resizeMode = when (mode) {
+            "fill" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+            "zoom" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
+    }
+
+    fun getTracks(): Map<String, Any?> {
+        val p = player ?: return emptyTracks()
+        return mapOf(
+            "audio" to trackList(p.currentTracks, C.TRACK_TYPE_AUDIO),
+            "text" to trackList(p.currentTracks, C.TRACK_TYPE_TEXT),
+            "video" to trackList(p.currentTracks, C.TRACK_TYPE_VIDEO),
+            "videoAuto" to videoAuto,
+            "textOff" to !p.currentTracks.isTypeSelected(C.TRACK_TYPE_TEXT),
+            "rate" to p.playbackParameters.speed.toDouble(),
+        )
+    }
+
+    fun selectTrack(type: String, trackId: String?) {
+        val p = player ?: return
+        val trackType = when (type) {
+            "audio" -> C.TRACK_TYPE_AUDIO
+            "text" -> C.TRACK_TYPE_TEXT
+            "video" -> C.TRACK_TYPE_VIDEO
+            else -> return
+        }
+
+        if (type == "video" && (trackId == null || trackId == "auto")) {
+            videoAuto = true
+            p.trackSelectionParameters = p.trackSelectionParameters
+                .buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+                .build()
+            emitTracks()
+            return
+        }
+
+        if (type == "text" && (trackId == null || trackId == "off")) {
+            p.trackSelectionParameters = p.trackSelectionParameters
+                .buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+            emitTracks()
+            return
+        }
+
+        val parsed = parseTrackId(trackId ?: return) ?: return
+        if (parsed.first != trackType) return
+        val groups = p.currentTracks.groups
+        if (parsed.second < 0 || parsed.second >= groups.size) return
+        val group = groups[parsed.second]
+        if (group.type != trackType) return
+        if (parsed.third < 0 || parsed.third >= group.length) return
+
+        if (type == "video") videoAuto = false
+
+        p.trackSelectionParameters = p.trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(trackType, false)
+            .setOverrideForType(
+                TrackSelectionOverride(group.mediaTrackGroup, listOf(parsed.third)),
+            )
+            .build()
+        emitTracks()
+    }
+
     fun stop() {
         stopInternal(releasePlayer = true)
     }
 
     fun dispose() {
         stopInternal(releasePlayer = true)
+    }
+
+    private fun emptyTracks(): Map<String, Any?> = mapOf(
+        "audio" to emptyList<Map<String, Any?>>(),
+        "text" to emptyList<Map<String, Any?>>(),
+        "video" to emptyList<Map<String, Any?>>(),
+        "videoAuto" to true,
+        "textOff" to true,
+        "rate" to 1.0,
+    )
+
+    private fun trackList(tracks: Tracks, type: Int): List<Map<String, Any?>> {
+        val out = ArrayList<Map<String, Any?>>()
+        for (gi in 0 until tracks.groups.size) {
+            val group = tracks.groups[gi]
+            if (group.type != type) continue
+            for (ti in 0 until group.length) {
+                if (!group.isTrackSupported(ti)) continue
+                val format = group.getTrackFormat(ti)
+                val id = "$type:$gi:$ti"
+                val label = when (type) {
+                    C.TRACK_TYPE_VIDEO -> {
+                        val h = format.height
+                        val bitrate = format.bitrate
+                        when {
+                            h > 0 -> "${h}p"
+                            bitrate > 0 -> "${bitrate / 1000} kbps"
+                            else -> "Track ${out.size + 1}"
+                        }
+                    }
+                    else -> {
+                        val lang = format.language
+                        val label = format.label
+                        when {
+                            !label.isNullOrBlank() -> label
+                            !lang.isNullOrBlank() -> lang
+                            else -> "Track ${out.size + 1}"
+                        }
+                    }
+                }
+                out.add(
+                    mapOf(
+                        "id" to id,
+                        "label" to label,
+                        "language" to (format.language ?: ""),
+                        "selected" to group.isTrackSelected(ti),
+                        "height" to format.height,
+                        "bitrate" to format.bitrate,
+                    ),
+                )
+            }
+        }
+        return out
+    }
+
+    private fun parseTrackId(id: String): Triple<Int, Int, Int>? {
+        val parts = id.split(':')
+        if (parts.size != 3) return null
+        val type = parts[0].toIntOrNull() ?: return null
+        val group = parts[1].toIntOrNull() ?: return null
+        val track = parts[2].toIntOrNull() ?: return null
+        return Triple(type, group, track)
+    }
+
+    private fun emitTracks() {
+        emit(mapOf("type" to "tracksChanged") + getTracks())
     }
 
     private fun stopInternal(releasePlayer: Boolean) {
@@ -159,6 +310,7 @@ class ExoPlayerHost(
             player?.release()
             player = null
         }
+        videoAuto = true
     }
 
     private fun startProgressLoop() {
@@ -265,6 +417,29 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                 val viewId = call.argument<Int>("viewId")!!
                 val volume = call.argument<Number>("volume")?.toFloat() ?: 1f
                 hostFor(viewId).setVolume(volume)
+                result.success(null)
+            }
+            "setRate" -> {
+                val viewId = call.argument<Int>("viewId")!!
+                val rate = call.argument<Number>("rate")?.toFloat() ?: 1f
+                hostFor(viewId).setRate(rate)
+                result.success(null)
+            }
+            "setResizeMode" -> {
+                val viewId = call.argument<Int>("viewId")!!
+                val mode = call.argument<String>("mode") ?: "fit"
+                hostFor(viewId).setResizeMode(mode)
+                result.success(null)
+            }
+            "getTracks" -> {
+                val viewId = call.argument<Int>("viewId")!!
+                result.success(hostFor(viewId).getTracks())
+            }
+            "selectTrack" -> {
+                val viewId = call.argument<Int>("viewId")!!
+                val type = call.argument<String>("type") ?: return result.error("ARG", "type required", null)
+                val trackId = call.argument<String>("trackId")
+                hostFor(viewId).selectTrack(type, trackId)
                 result.success(null)
             }
             "stop" -> {
