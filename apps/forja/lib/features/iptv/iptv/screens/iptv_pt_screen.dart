@@ -67,6 +67,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
+    await SyncService.instance.pullAccountFeatures(force: force);
     await _ctrl.init();
   }
 
@@ -80,6 +81,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
       restoreFocus: iptvRestoreCatalogFocus,
       enterFromNavFocus: () => iptvEnterFromNav(_ctrl),
     );
+    unawaited(SyncService.instance.pullAccountFeatures());
     _ctrl.init().then((_) {
       if (mounted) markShellTabFresh();
     });
@@ -110,7 +112,10 @@ class _IptvPtScreenState extends State<IptvPtScreen>
     return VisibilityDetector(
       key: const Key('iptv_pt_screen'),
       onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0) _syncShellNav();
+        if (info.visibleFraction > 0) {
+          _syncShellNav();
+          unawaited(SyncService.instance.pullAccountFeatures());
+        }
       },
       child: PopScope(
         canPop: !_ctrl.portalPanelOpen && _ctrl.view != IptvView.episodeList,

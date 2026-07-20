@@ -564,7 +564,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
         region: region,
         count: count,
       );
-      await SyncService.instance.pullAccountFeatures();
+      await SyncService.instance.pullAccountFeatures(force: true);
       final pulled =
           await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
       if (pulled) {

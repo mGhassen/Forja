@@ -292,6 +292,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(SyncService.instance.refreshSession());
+      unawaited(SyncService.instance.pullAccountFeatures());
       return;
     }
     if (state == AppLifecycleState.detached) {

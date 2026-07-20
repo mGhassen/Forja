@@ -35,7 +35,10 @@ class SyncService {
   Session? get session => ForjaSupabase.clientOrNull?.auth.currentSession;
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
   static const _refreshDebounce = Duration(seconds: 30);
+  static const _featuresPullMinInterval = Duration(seconds: 2);
   DateTime? _lastRefreshAttempt;
+  DateTime? _lastFeaturesPullAt;
+  Future<Map<String, dynamic>>? _featuresPullInFlight;
 
   Stream<AuthState> get authChanges {
     final client = ForjaSupabase.clientOrNull;
@@ -618,7 +621,32 @@ class SyncService {
   }
 
   /// Lean `accounts.features` — empty map means all flags off.
-  Future<Map<String, dynamic>> pullAccountFeatures() async {
+  ///
+  /// Coalesces concurrent calls; skips network if a pull finished within
+  /// [_featuresPullMinInterval] unless [force] (e.g. after Deal).
+  Future<Map<String, dynamic>> pullAccountFeatures({bool force = false}) async {
+    if (!force && _featuresPullInFlight != null) {
+      return _featuresPullInFlight!;
+    }
+    if (!force &&
+        _lastFeaturesPullAt != null &&
+        DateTime.now().difference(_lastFeaturesPullAt!) <
+            _featuresPullMinInterval) {
+      return const {};
+    }
+
+    final future = _pullAccountFeaturesBody();
+    _featuresPullInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_featuresPullInFlight, future)) {
+        _featuresPullInFlight = null;
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _pullAccountFeaturesBody() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) {
@@ -675,6 +703,7 @@ class SyncService {
         iptvCredits: credits,
         isAdmin: isAdmin,
       );
+      _lastFeaturesPullAt = DateTime.now();
       return map;
     } catch (e) {
       debugPrint('[Sync] pullAccountFeatures error: $e');

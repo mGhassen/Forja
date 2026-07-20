@@ -753,6 +753,8 @@ class IptvController extends ChangeNotifier
 
   // ── Init ──
   Future<void> init() async {
+    // Fresh flags/credits from cloud (admin toggles) before portal chrome builds.
+    unawaited(SyncService.instance.pullAccountFeatures());
     final stored = await IptvStore.load();
     _favoritePortals
       ..clear()
