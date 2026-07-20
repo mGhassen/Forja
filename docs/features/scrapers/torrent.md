@@ -15,6 +15,7 @@ Automatic on [Media details](../movies-tv/media-details.md) when you view torren
 - See combined results from all three indexers
 - Sort by seeders, size, or other options (Settings → Sources)
 - Play magnets or torrent files via [torrent playback](../playback/torrent-playback.md)
+- On desktop, hover a torrent row in Sources to copy its magnet link
 
 ## Setup (if needed)
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
@@ -36,6 +37,7 @@ class TorrentSourceTile extends StatelessWidget {
             !result.name.toLowerCase().contains(source.toLowerCase())
         ? source
         : null;
+    final magnet = result.magnet.trim();
 
     final flags = meta.flags.trim();
     return _SourceBadgeCard(
@@ -47,6 +49,7 @@ class TorrentSourceTile extends StatelessWidget {
       provider: provider,
       seeders: seedsLabel,
       flags: flags.isEmpty ? null : flags,
+      magnet: magnet.isEmpty ? null : magnet,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -354,6 +357,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.provider,
     this.seeders,
     this.flags,
+    this.magnet,
   });
 
   final VoidCallback onTap;
@@ -368,6 +372,7 @@ class _SourceBadgeCard extends StatefulWidget {
   final String? provider;
   final String? seeders;
   final String? flags;
+  final String? magnet;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
@@ -426,6 +431,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         widget.provider != null && widget.provider!.trim().isNotEmpty;
     final hasSeeders = widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasFlags = widget.flags != null && widget.flags!.trim().isNotEmpty;
+    final magnet = widget.magnet;
+    final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hovered;
     const seedColor = Color(0xFF22C55E);
 
     return FocusableControl(
@@ -472,7 +479,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                               ),
                             ),
                           ),
-                        // Row 1: title + provider / seeders column
+                        // Row 1: title + copy magnet (hover) + provider / seeders
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -489,6 +496,35 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 ),
                               ),
                             ),
+                            if (showCopyMagnet) ...[
+                              const SizedBox(width: 4),
+                              Tooltip(
+                                message: 'Copy magnet',
+                                child: Material(
+                                  type: MaterialType.transparency,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () async {
+                                      await Clipboard.setData(
+                                        ClipboardData(text: magnet),
+                                      );
+                                      ForjaToast.success(
+                                        'Magnet copied',
+                                        duration: const Duration(seconds: 2),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        Icons.content_copy_rounded,
+                                        size: 15,
+                                        color: cinematic.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             if (hasProvider || hasSeeders) ...[
                               const SizedBox(width: 8),
                               ConstrainedBox(

@@ -8,7 +8,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 
 ## How to open it
 
-- Pick a torrent on [Media details](../movies-tv/media-details.md)
+- Pick a torrent on [Media details](../movies-tv/media-details.md); on desktop, hover a torrent row in Sources to copy its magnet
 - Paste a magnet on the [Magnet player](../utilities/magnet-player.md) tab
 - Play a debrid-resolved torrent link
 
