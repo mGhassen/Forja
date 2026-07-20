@@ -418,24 +418,40 @@ class SyncDomainBridge {
     return {'addons': await _settings.getStremioAddons()};
   }
 
+  /// Install / refresh manifests from cloud lean rows (`baseUrl` only).
+  /// Same contract as [importNuvio] — cloud never stores full manifests.
   Future<void> importStremio(Map<String, dynamic> payload) async {
     final addons = payload['addons'] as List? ?? const [];
     final remoteUrls = <String>{
       for (final raw in addons)
-        if ((raw as Map)['baseUrl'] is String) (raw)['baseUrl'] as String,
-    };
+        if ((raw as Map)['baseUrl'] is String)
+          ((raw)['baseUrl'] as String).trim(),
+    }..removeWhere((u) => u.isEmpty);
+
     final current = await _settings.getStremioAddons();
     for (final addon in current) {
-      final baseUrl = addon['baseUrl'] as String? ?? '';
+      final baseUrl = (addon['baseUrl'] as String?)?.trim() ?? '';
       if (baseUrl.isNotEmpty && !remoteUrls.contains(baseUrl)) {
         await _settings.removeStremioAddon(baseUrl);
       }
     }
+
+    final stremio = StremioService();
     for (final raw in addons) {
-      final addon = Map<String, dynamic>.from(raw as Map);
-      final baseUrl = addon['baseUrl'] as String? ?? '';
+      final lean = Map<String, dynamic>.from(raw as Map);
+      final baseUrl = (lean['baseUrl'] as String?)?.trim() ?? '';
       if (baseUrl.isEmpty) continue;
-      await _settings.saveStremioAddon(addon);
+      try {
+        final fresh = await stremio.fetchManifest(baseUrl);
+        if (fresh != null) {
+          await _settings.saveStremioAddon(fresh);
+          continue;
+        }
+      } catch (e) {
+        debugPrint('[Sync] Stremio manifest fetch failed ($baseUrl): $e');
+      }
+      // Keep lean row so Settings still lists it; Sources hydrates later.
+      await _settings.saveStremioAddon(lean);
     }
   }
 

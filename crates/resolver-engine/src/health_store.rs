@@ -245,8 +245,8 @@ impl ProviderHealthStore {
                 stream.or(server).unwrap_or(fallback)
             },
         );
-        if delta != 0 {
-            apply_provider_delta(&mut g, memory_key, delta);
+        if before != after {
+            apply_provider_delta(&mut g, memory_key, before, after);
         }
         drop(g);
         self.persist();
@@ -271,11 +271,30 @@ pub fn provider_from_memory_key(key: &str) -> Option<String> {
     .filter(|s| !s.is_empty())
 }
 
-fn apply_provider_delta(g: &mut HealthState, memory_key: &str, delta: i32) {
+/// Global Σ delta for a title net change.
+///
+/// Decreases always apply (floored at 0 on the running total). Increases do
+/// **not** repay debt that the floor already ate — otherwise fail-then-up on a
+/// cold provider (`0 → −2 → 0`) would leave a phantom `+2` Σ while the title
+/// nets to 0 (UI: `+2` `−2` badge `2`).
+fn credited_global_delta(before: i32, after: i32) -> i32 {
+    let delta = after - before;
+    if delta <= 0 {
+        return delta;
+    }
+    let repayable = (-before).max(0);
+    (delta - repayable).max(0)
+}
+
+fn apply_provider_delta(g: &mut HealthState, memory_key: &str, before: i32, after: i32) {
     let Some(provider) = provider_from_memory_key(memory_key) else {
         return;
     };
-    let next = (g.provider_totals.get(&provider).copied().unwrap_or(0) + delta).max(0);
+    let credited = credited_global_delta(before, after);
+    if credited == 0 {
+        return;
+    }
+    let next = (g.provider_totals.get(&provider).copied().unwrap_or(0) + credited).max(0);
     if next == 0 {
         g.provider_totals.remove(&provider);
     } else {
@@ -517,6 +536,39 @@ mod tests {
         assert_eq!(store.score_for("movie:1:cold"), -4);
         assert_eq!(store.global_score_for("cold"), 0);
         assert!(!store.all_provider_totals().contains_key("cold"));
+    }
+
+    #[test]
+    fn fail_then_up_same_title_does_not_inflate_global() {
+        let store = ProviderHealthStore::new();
+        store.reset_for_test();
+        let key = "anime:21:e1:anikoto";
+        // Stream dies before server-up is recorded (common probe order).
+        store.record_stream_fail(key);
+        store.record_server_up(key);
+        assert_eq!(store.server_verdict_for(key), Some(2));
+        assert_eq!(store.stream_verdict_for(key), Some(-2));
+        assert_eq!(store.score_for(key), 0);
+        assert_eq!(store.global_score_for("anikoto"), 0);
+
+        // Up-then-fail still nets to 0.
+        store.reset_for_test();
+        store.record_server_up(key);
+        store.record_stream_fail(key);
+        assert_eq!(store.global_score_for("anikoto"), 0);
+    }
+
+    #[test]
+    fn climbing_out_of_negative_then_above_water_counts() {
+        let store = ProviderHealthStore::new();
+        store.reset_for_test();
+        let key = "movie:1:vidrock";
+        store.record_server_failure(key);
+        assert_eq!(store.global_score_for("vidrock"), 0);
+        // −2 → +2: repay 2 of floor debt, credit the remaining +2.
+        store.record_server_up(key);
+        assert_eq!(store.score_for(key), 2);
+        assert_eq!(store.global_score_for("vidrock"), 2);
     }
 
     #[test]

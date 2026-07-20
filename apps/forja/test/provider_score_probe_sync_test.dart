@@ -30,7 +30,7 @@ void main() {
         status: StreamProviderProbeStatus.failed,
         hasSources: false,
       );
-      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 0);
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), -2);
 
       await ProviderScoreProbeSync.onProbeStatusChanged(
         scope: scope,
@@ -39,7 +39,7 @@ void main() {
         hasSources: true,
       );
       expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 2);
-      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidrock'), 2);
+      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidrock'), 4);
     });
 
     test('syncSourcesCache marks every cached provider up', () async {
@@ -81,10 +81,11 @@ void main() {
       expect(ProviderScoreMemory.scoreFor(scope, 'vidnest'), 4);
     });
 
-    test('server that never resolved floors at 0', () async {
+    test('server that never resolved keeps title net negative', () async {
       await ProviderScoreMemory.recordServerFailure(scope, 'vidzee');
-      expect(ProviderScoreMemory.scoreFor(scope, 'vidzee'), 0);
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidzee'), -2);
       expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidzee'), -2);
+      expect(ProviderScoreMemory.globalScoreFor('vidzee'), 0);
     });
 
     test('re-checking the same title does not drift', () async {
@@ -93,6 +94,13 @@ void main() {
         await ProviderScoreMemory.recordStreamFail(scope, 'webstreamr');
       }
       expect(ProviderScoreMemory.scoreFor(scope, 'webstreamr'), 0);
+    });
+
+    test('stream fail before server up leaves global Σ at 0', () async {
+      await ProviderScoreMemory.recordStreamFail(scope, 'anikoto');
+      await ProviderScoreMemory.recordServerUp(scope, 'anikoto');
+      expect(ProviderScoreMemory.scoreFor(scope, 'anikoto'), 0);
+      expect(ProviderScoreMemory.globalScoreFor('anikoto'), 0);
     });
   });
 }

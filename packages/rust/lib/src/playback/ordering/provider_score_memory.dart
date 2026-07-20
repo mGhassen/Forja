@@ -113,11 +113,20 @@ abstract final class ProviderScoreMemory {
     };
   }
 
-  static void _applyProviderDelta(String memoryKey, int delta) {
-    if (delta == 0) return;
+  /// See Rust `credited_global_delta` — floor-eaten debt must not inflate Σ.
+  static int _creditedGlobalDelta(int before, int after) {
+    final delta = after - before;
+    if (delta <= 0) return delta;
+    final repayable = (-before).clamp(0, 1 << 30);
+    return (delta - repayable).clamp(0, 1 << 30);
+  }
+
+  static void _applyProviderDelta(String memoryKey, int before, int after) {
+    final credited = _creditedGlobalDelta(before, after);
+    if (credited == 0) return;
     final provider = _providerFromMemoryKey(memoryKey);
     if (provider == null || provider.isEmpty) return;
-    final next = ((_providerTotals[provider] ?? 0) + delta).clamp(0, 1 << 30);
+    final next = ((_providerTotals[provider] ?? 0) + credited).clamp(0, 1 << 30);
     if (next == 0) {
       _providerTotals.remove(provider);
     } else {
@@ -306,7 +315,9 @@ abstract final class ProviderScoreMemory {
     _lastDelta[key] = delta != 0
         ? delta
         : (stream ?? server ?? _lastDelta[key] ?? 0);
-    _applyProviderDelta(key, delta);
+    if (before != after) {
+      _applyProviderDelta(key, before, after);
+    }
     revision.value++;
   }
 

@@ -233,10 +233,45 @@ class StremioService {
     return results;
   }
 
+  static bool _hasManifestResources(Map<String, dynamic> addon) {
+    final manifest = addon['manifest'];
+    if (manifest is! Map) return false;
+    final resources = manifest['resources'];
+    return resources is List && resources.isNotEmpty;
+  }
+
+  /// Cloud sync stores lean rows (`baseUrl` + name). Re-fetch manifests so
+  /// Sources can filter by `resources` (same idea as Nuvio import).
+  Future<List<Map<String, dynamic>>> hydrateInstalledAddons() async {
+    final all = await _settings.getStremioAddons();
+    if (all.isEmpty) return const [];
+    final out = <Map<String, dynamic>>[];
+    for (final addon in all) {
+      if (_hasManifestResources(addon)) {
+        out.add(addon);
+        continue;
+      }
+      final baseUrl = addon['baseUrl']?.toString().trim() ?? '';
+      if (baseUrl.isEmpty) continue;
+      try {
+        final fresh = await fetchManifest(baseUrl);
+        if (fresh != null) {
+          await _settings.saveStremioAddon(fresh);
+          out.add(fresh);
+          continue;
+        }
+      } catch (e) {
+        debugPrint('[StremioService] hydrate failed ($baseUrl): $e');
+      }
+      out.add(addon);
+    }
+    return out;
+  }
+
   /// Helper to get all installed addons that support a specific resource.
   /// Optionally filters by content [type] (e.g. 'movie', 'series').
   Future<List<Map<String, dynamic>>> getAddonsForResource(String resourceName, {String? type}) async {
-    final allAddons = await _settings.getStremioAddons();
+    final allAddons = await hydrateInstalledAddons();
     return allAddons.where((addon) {
       final manifest = addon['manifest'];
       if (manifest is! Map) return false;
@@ -281,7 +316,7 @@ class StremioService {
     // because many addons omit 'catalog' from their resources array even
     // when they provide catalogs.  The presence of a non-empty 'catalogs'
     // list in the manifest is the authoritative signal.
-    final allAddons = await _settings.getStremioAddons();
+    final allAddons = await hydrateInstalledAddons();
     final catalogAddons = allAddons.where((addon) {
       final manifest = addon['manifest'];
       if (manifest is! Map) return false;

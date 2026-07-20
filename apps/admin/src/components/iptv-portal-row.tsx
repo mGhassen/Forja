@@ -368,5 +368,6 @@ export function IptvPortalActionRow({
   )
 }
 
+/** Flat 2-col grid — no nested card chrome (same as Pool host expand). */
 export const iptvPortalGridClassName =
-  'grid grid-cols-1 overflow-hidden rounded-xl border border-forja-border sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70'
+  'grid grid-cols-1 border-t border-forja-border/70 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70'

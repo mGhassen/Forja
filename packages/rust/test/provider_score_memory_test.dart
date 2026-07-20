@@ -76,6 +76,21 @@ void main() {
       expect(ProviderScoreMemory.allGlobalScores().containsKey('cold'), isFalse);
     });
 
+    test('fail then up on same title does not inflate global Σ', () async {
+      final scope = ProviderScoreScope.anime(anilistId: 21, episode: 1);
+      await ProviderScoreMemory.recordStreamFail(scope, 'anikoto');
+      await ProviderScoreMemory.recordServerUp(scope, 'anikoto');
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'anikoto'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(scope, 'anikoto'), -2);
+      expect(ProviderScoreMemory.scoreFor(scope, 'anikoto'), 0);
+      expect(ProviderScoreMemory.globalScoreFor('anikoto'), 0);
+
+      ProviderScoreMemory.resetForTest();
+      await ProviderScoreMemory.recordServerUp(scope, 'anikoto');
+      await ProviderScoreMemory.recordStreamFail(scope, 'anikoto');
+      expect(ProviderScoreMemory.globalScoreFor('anikoto'), 0);
+    });
+
     test('fails at zero do not erase later ups', () async {
       await ProviderScoreMemory.recordServerFailure(
         ProviderScoreScope.anime(anilistId: 1, episode: 1),

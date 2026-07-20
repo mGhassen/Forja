@@ -185,7 +185,7 @@ function AccountPortals({
   }
 
   return (
-    <div className="space-y-3 border-t border-forja-border/80 bg-black/20 px-3 py-3">
+    <div className="space-y-2 border-t border-forja-border/80 px-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
           Portals ({list.data?.length ?? 0})
