@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { closeDesktopHandoffWindow } from '@/lib/desktop-auth-callback'
+import {
+  closeDesktopHandoffWindow,
+  focusDesktopApp,
+} from '@/lib/desktop-auth-callback'
 
 const CLOSE_AFTER_SECONDS = 10
 
@@ -22,6 +25,15 @@ export function DesktopAuthDone({
 }) {
   const [secondsLeft, setSecondsLeft] = useState(CLOSE_AFTER_SECONDS)
   const [closeBlocked, setCloseBlocked] = useState(false)
+
+  useEffect(() => {
+    if (phase !== 'done') return
+    const onPageHide = () => {
+      void focusDesktopApp()
+    }
+    window.addEventListener('pagehide', onPageHide)
+    return () => window.removeEventListener('pagehide', onPageHide)
+  }, [phase])
 
   useEffect(() => {
     if (phase !== 'done') return

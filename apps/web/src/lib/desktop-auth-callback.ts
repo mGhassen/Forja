@@ -20,6 +20,8 @@ const STORAGE_KEY = 'forja.desktop_auth'
 const HANDOFF_DONE_KEY = 'forja.desktop_auth_done'
 /** Brief pause while minting B / posting to loopback (portal keeps session A). */
 const HANDOFF_LOCK_KEY = 'forja.desktop_auth_lock'
+/** Loopback `/focus` URL — bring Forja forward when the handoff tab closes. */
+const FOCUS_KEY = 'forja.desktop_auth_focus'
 
 export type DesktopAuthParams = {
   callback: string | null
@@ -295,12 +297,61 @@ export async function mintAndHandoffToDesktop(options: {
   }
 }
 
+/** Persist loopback `/focus` so Close tab can raise the desktop app. */
+export function rememberDesktopFocusTarget(
+  callback: string,
+  state: string | null,
+): void {
+  if (typeof window === 'undefined') return
+  if (!isSafeDesktopCallback(callback)) return
+  try {
+    const url = new URL(callback)
+    url.pathname = '/focus'
+    url.search = ''
+    if (state) url.searchParams.set('state', state)
+    sessionStorage.setItem(FOCUS_KEY, url.toString())
+  } catch {
+    // ignore
+  }
+}
+
+/** Ask the desktop loopback to show + focus the Forja window (best-effort). */
+export async function focusDesktopApp(): Promise<void> {
+  if (typeof window === 'undefined') return
+  let raw: string | null = null
+  try {
+    raw = sessionStorage.getItem(FOCUS_KEY)
+  } catch {
+    return
+  }
+  if (!raw) return
+  try {
+    const url = new URL(raw)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return
+    if (url.pathname !== '/focus') return
+    await fetch(url.toString(), {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
+      keepalive: true,
+      headers: { Accept: 'application/json' },
+    })
+  } catch {
+    // App not listening / already closed the focus grace window.
+  }
+}
+
 /**
  * After the app has session B: clear handoff params, keep portal Auth storage,
  * show the done UI (no reload / no localStorage wipe).
  */
 export function completeDesktopHandoffKeepingPortal(): void {
   if (typeof window === 'undefined') return
+  const params = resolveDesktopAuthParams()
+  if (params.callback) {
+    rememberDesktopFocusTarget(params.callback, params.state)
+  }
   unlockDesktopHandoff()
   clearDesktopAuthParams()
   try {
@@ -335,16 +386,18 @@ export function consumeDesktopHandoffDone(): boolean {
 }
 
 /**
- * Best-effort close after desktop handoff. Browsers only allow this for
- * script-opened windows; tabs opened by the OS often stay open — the
+ * Best-effort close after desktop handoff. Raises Forja first, then tries
+ * window.close(). Browsers often block close for OS-opened tabs — the
  * DesktopAuthDone page asks the user to close manually in that case.
  */
 export function closeDesktopHandoffWindow(): void {
   if (typeof window === 'undefined') return
-  try {
-    window.open('', '_self')
-    window.close()
-  } catch {
-    // ignore
-  }
+  void focusDesktopApp().finally(() => {
+    try {
+      window.open('', '_self')
+      window.close()
+    } catch {
+      // ignore
+    }
+  })
 }

@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// Opens the Forja web portal login and captures the session via a localhost
 /// callback (desktop OAuth-style). The portal `fetch()`es the loopback URL so
@@ -21,6 +22,15 @@ class DesktopBrowserAuth {
     'FORJA_WEB_URL',
     defaultValue: 'http://127.0.0.1:3000',
   );
+
+  /// How long to keep `/focus` alive after a successful handoff so the portal
+  /// can bring Forja forward when the user closes the tab.
+  @visibleForTesting
+  static Duration focusRetainDuration = const Duration(seconds: 45);
+
+  /// Test hook — skips `window_manager` when set.
+  @visibleForTesting
+  static Future<void> Function()? bringToFrontOverride;
 
   static Uri signupUri() => Uri.parse('$webUrl/signup');
 
@@ -42,6 +52,8 @@ class DesktopBrowserAuth {
   }) async {
     final state = _randomState();
     HttpServer? server;
+    StreamSubscription<HttpRequest>? sub;
+    var retainForFocus = false;
     try {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final callback = Uri(
@@ -60,7 +72,7 @@ class DesktopBrowserAuth {
       );
 
       final completer = Completer<DesktopBrowserAuthResult>();
-      late final StreamSubscription<HttpRequest> sub;
+      final focusDone = Completer<void>();
       Timer? timer;
       var applyingTokens = false;
 
@@ -103,6 +115,25 @@ class DesktopBrowserAuth {
             _applyCors(request.response);
             request.response.statusCode = HttpStatus.noContent;
             await request.response.close();
+            return;
+          }
+
+          if (request.method == 'GET' && request.uri.path == '/focus') {
+            final returnedState = request.uri.queryParameters['state'];
+            if (returnedState == state) {
+              await _bringAppToFront();
+              await _writeCallbackResponse(
+                request,
+                title: 'Focused',
+                body: 'Forja is in front.',
+                ok: true,
+              );
+              if (!focusDone.isCompleted) focusDone.complete();
+            } else {
+              _applyCors(request.response);
+              request.response.statusCode = HttpStatus.forbidden;
+              await request.response.close();
+            }
             return;
           }
 
@@ -166,6 +197,7 @@ class DesktopBrowserAuth {
                   refreshToken: refresh,
                 ),
               );
+              unawaited(_bringAppToFront());
             } catch (e, st) {
               debugPrint('[DesktopBrowserAuth] apply tokens failed: $e\n$st');
               await _writeCallbackResponse(
@@ -204,10 +236,29 @@ class DesktopBrowserAuth {
       await launch(loginUrl);
 
       try {
-        return await completer.future;
+        final result = await completer.future;
+        if (result.isSuccess) {
+          retainForFocus = true;
+        }
+        return result;
       } finally {
         timer.cancel();
-        await sub.cancel();
+        if (retainForFocus && server != null && sub != null) {
+          final retainedServer = server;
+          final retainedSub = sub;
+          server = null;
+          sub = null;
+          unawaited(
+            _retainFocusListener(
+              server: retainedServer,
+              sub: retainedSub,
+              focusDone: focusDone,
+            ),
+          );
+        } else {
+          await sub?.cancel();
+          sub = null;
+        }
       }
     } catch (e, st) {
       debugPrint('[DesktopBrowserAuth] failed: $e\n$st');
@@ -216,6 +267,45 @@ class DesktopBrowserAuth {
       );
     } finally {
       await server?.close(force: true);
+    }
+  }
+
+  static Future<void> _retainFocusListener({
+    required HttpServer server,
+    required StreamSubscription<HttpRequest> sub,
+    required Completer<void> focusDone,
+  }) async {
+    try {
+      if (focusRetainDuration <= Duration.zero) {
+        if (!focusDone.isCompleted) focusDone.complete();
+      } else {
+        await Future.any<void>([
+          focusDone.future,
+          Future<void>.delayed(focusRetainDuration),
+        ]);
+      }
+    } finally {
+      await sub.cancel();
+      await server.close(force: true);
+    }
+  }
+
+  static Future<void> _bringAppToFront() async {
+    final override = bringToFrontOverride;
+    if (override != null) {
+      await override();
+      return;
+    }
+    if (kIsWeb) return;
+    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
+    try {
+      if (await windowManager.isMinimized()) {
+        await windowManager.restore();
+      }
+      await windowManager.show();
+      await windowManager.focus();
+    } catch (e, st) {
+      debugPrint('[DesktopBrowserAuth] bring to front failed: $e\n$st');
     }
   }
 
