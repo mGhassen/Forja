@@ -187,8 +187,8 @@ When testing **Web login** locally, run the portal (`pnpm --filter web dev` on
 `http://127.0.0.1:3000`) and keep `FORJA_WEB_URL` at that default. Restart the
 web dev server after pulling Vite host changes so it binds IPv4 (not only
 `[::1]`). After a successful handoff the portal stays signed in and shows a
-confirmation in the same browser tab (login chrome morphs into a full-page OK
-with a short countdown or **Close tab**). You can close the tab anytime. Deploy `mint-desktop-session` on the linked Supabase
+confirmation in the same login card (loading → signed-in, short countdown
+or **Close tab**). Story panel and header stay. You can close the tab anytime. Deploy `mint-desktop-session` on the linked Supabase
 project for Web login to mint the desktop session.
 
 GitHub build/release workflows use repository secrets `SUPABASE_URL`,

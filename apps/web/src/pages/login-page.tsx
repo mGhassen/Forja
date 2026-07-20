@@ -27,7 +27,6 @@ import { captchaConfigured } from '@/lib/captcha'
 import {
   completeDesktopHandoffKeepingPortal,
   consumeDesktopHandoffDone,
-  getDesktopAuthUiDone,
   isSafeDesktopCallback,
   lockDesktopHandoff,
   mintAndHandoffToDesktop,
@@ -68,7 +67,7 @@ function LoginForm() {
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   useLayoutEffect(() => {
-    if (consumeDesktopHandoffDone() || getDesktopAuthUiDone()) {
+    if (consumeDesktopHandoffDone()) {
       setDesktopHandoff(true)
       setDesktopReady(true)
       return
@@ -287,10 +286,6 @@ function LoginForm() {
   const showCredentialsForm =
     !isDesktopLogin || (!loading && !user && !desktopHandoff)
 
-  if (desktopHandoff) {
-    return <DesktopAuthDone />
-  }
-
   // SSR + first client paint match (no window yet) — neutral, no credentials.
   if (!desktopReady) {
     return (
@@ -306,56 +301,67 @@ function LoginForm() {
     )
   }
 
-  if (desktopPendingAuth || desktopSignedIn) {
+  // Same login card chrome for loading / done / return — never a separate page.
+  if (
+    desktopHandoff ||
+    desktopPendingAuth ||
+    desktopSignedIn ||
+    (isDesktopLogin && handoffBusy)
+  ) {
+    const showLoading =
+      desktopHandoff
+        ? false
+        : handoffBusy || desktopPendingAuth || !desktopSignedIn
     return (
-      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+      <section className="flex h-full min-h-0 flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
         <Reveal variant="right" className="reveal-slow w-full max-w-md">
           <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
             <Card className="border-0 bg-transparent shadow-none">
-              <CardHeader className="space-y-2 pb-2">
-                <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
-                  Desktop handoff
-                </p>
-                <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                  {desktopSignedIn ? 'Return to Forja' : 'Connecting…'}
-                </CardTitle>
-                <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                  {desktopSignedIn
-                    ? 'You are already signed in here. Forja gets its own session — this browser stays signed in.'
-                    : 'Checking your portal session before finishing desktop login.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {error ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
-                  >
-                    {error}
-                  </p>
-                ) : null}
-                {!desktopSignedIn || handoffBusy ? (
-                  <div className="flex items-center justify-center gap-3 py-4 text-sm text-[rgba(237,230,218,0.55)]">
-                    <Loader2
-                      className="size-5 animate-spin text-forja-green"
-                      aria-hidden
-                    />
-                    {handoffBusy
-                      ? 'Connecting to Forja…'
-                      : 'Looking up your session…'}
-                  </div>
-                ) : null}
-                {desktopSignedIn ? (
-                  <Button
-                    type="button"
-                    disabled={handoffBusy}
-                    onClick={() => void onReturnToForja()}
-                    className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                  >
-                    {handoffBusy ? 'Connecting to Forja…' : 'Return to Forja'}
-                  </Button>
-                ) : null}
-              </CardContent>
+              {desktopHandoff || showLoading ? (
+                <CardContent className="pt-2">
+                  <DesktopAuthDone
+                    phase={desktopHandoff ? 'done' : 'loading'}
+                    loadingLabel={
+                      handoffBusy
+                        ? 'Signing you in and connecting to the desktop app…'
+                        : 'Checking your portal session…'
+                    }
+                  />
+                </CardContent>
+              ) : (
+                <>
+                  <CardHeader className="space-y-2 pb-2">
+                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
+                      Desktop handoff
+                    </p>
+                    <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
+                      Return to Forja
+                    </CardTitle>
+                    <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
+                      You are already signed in here. Forja gets its own session
+                      — this browser stays signed in.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    {error ? (
+                      <p
+                        role="alert"
+                        className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                      >
+                        {error}
+                      </p>
+                    ) : null}
+                    <Button
+                      type="button"
+                      disabled={handoffBusy}
+                      onClick={() => void onReturnToForja()}
+                      className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    >
+                      Return to Forja
+                    </Button>
+                  </CardContent>
+                </>
+              )}
             </Card>
           </LiquidGlass>
         </Reveal>
@@ -364,7 +370,7 @@ function LoginForm() {
   }
 
   return (
-    <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+    <section className="flex h-full min-h-0 flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
       <Reveal variant="right" className="reveal-slow w-full max-w-md">
         <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
           <Card className="border-0 bg-transparent shadow-none">

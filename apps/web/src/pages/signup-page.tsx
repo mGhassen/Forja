@@ -24,7 +24,6 @@ import { captchaConfigured } from '@/lib/captcha'
 import {
   completeDesktopHandoffKeepingPortal,
   consumeDesktopHandoffDone,
-  getDesktopAuthUiDone,
   isSafeDesktopCallback,
   lockDesktopHandoff,
   mintAndHandoffToDesktop,
@@ -55,7 +54,7 @@ function SignupForm() {
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   useEffect(() => {
-    if (consumeDesktopHandoffDone() || getDesktopAuthUiDone()) {
+    if (consumeDesktopHandoffDone()) {
       setDesktopHandoffDone(true)
       return
     }
@@ -179,10 +178,20 @@ function SignupForm() {
 
   if (desktopHandoffDone) {
     return (
-      <DesktopAuthDone
-        title="Account ready"
-        body="Forja on your desktop has your new session. You can return to the app now."
-      />
+      <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+        <Reveal variant="right" className="reveal-slow w-full max-w-md">
+          <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
+            <Card className="border-0 bg-transparent shadow-none">
+              <CardContent className="pt-2">
+                <DesktopAuthDone
+                  title="Account ready"
+                  body="Forja on your desktop has your new session. You can return to the app now."
+                />
+              </CardContent>
+            </Card>
+          </LiquidGlass>
+        </Reveal>
+      </section>
     )
   }
 

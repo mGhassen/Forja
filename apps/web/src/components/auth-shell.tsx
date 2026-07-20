@@ -1,15 +1,11 @@
-import { useSyncExternalStore } from 'react'
 import { Outlet, useRouterState } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
 import {
-  getDesktopAuthUiDone,
   isSafeDesktopCallback,
   resolveDesktopAuthParams,
-  subscribeDesktopAuthUiDone,
 } from '@/lib/desktop-auth-callback'
-import { cn } from '@/lib/utils'
 
 function emphasisForPath(pathname: string): string | undefined {
   if (pathname.startsWith('/signup')) {
@@ -33,38 +29,24 @@ function emphasisForPath(pathname: string): string | undefined {
 export function AuthShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const emphasis = emphasisForPath(pathname)
-  const handoffDone = useSyncExternalStore(
-    subscribeDesktopAuthUiDone,
-    getDesktopAuthUiDone,
-    () => false,
-  )
 
   return (
-    <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
+    <div className="film-grain relative flex min-h-screen flex-col bg-forja-bg text-[#EDE6DA]">
       <PageAtmosphere recipe="auth" />
-      <div className="relative z-10">
-        {/* Keep Outlet mounted — hide chrome only so login state survives the morph. */}
-        <div
-          className={cn(handoffDone && 'hidden')}
-          aria-hidden={handoffDone}
-        >
-          <SiteHeader />
-        </div>
-        <main
-          className={cn(
-            'relative grid min-h-screen',
-            handoffDone
-              ? 'grid-cols-1'
-              : 'lg:grid-cols-[1.05fr_0.95fr]',
-          )}
-        >
-          <div
-            className={cn(handoffDone && 'hidden')}
-            aria-hidden={handoffDone}
-          >
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <SiteHeader />
+        {/*
+          minmax(0,…) keeps the marquee/w-max story panel from blowing the
+          left column wider than its track. flex-1 fills viewport under header
+          instead of stacking another full min-h-screen.
+        */}
+        <main className="relative grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <div className="min-h-0 min-w-0 overflow-hidden">
             <AuthStoryPanel emphasis={emphasis} />
           </div>
-          <Outlet />
+          <div className="min-h-0 min-w-0">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

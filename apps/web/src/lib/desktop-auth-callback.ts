@@ -20,11 +20,6 @@ const STORAGE_KEY = 'forja.desktop_auth'
 const HANDOFF_DONE_KEY = 'forja.desktop_auth_done'
 /** Brief pause while minting B / posting to loopback (portal keeps session A). */
 const HANDOFF_LOCK_KEY = 'forja.desktop_auth_lock'
-/** Auth shell collapses to full-bleed OK UI (same tab). */
-const UI_DONE_KEY = 'forja.desktop_auth_ui_done'
-
-let desktopAuthUiDone = false
-const uiDoneListeners = new Set<() => void>()
 
 export type DesktopAuthParams = {
   callback: string | null
@@ -300,57 +295,6 @@ export async function mintAndHandoffToDesktop(options: {
   }
 }
 
-function readUiDoneFromStorage(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return sessionStorage.getItem(UI_DONE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function notifyDesktopAuthUiDone(): void {
-  for (const listener of uiDoneListeners) listener()
-}
-
-/** Collapse AuthShell chrome and show full-bleed DesktopAuthDone (same tab). */
-export function markDesktopAuthUiDone(): void {
-  if (desktopAuthUiDone && readUiDoneFromStorage()) return
-  desktopAuthUiDone = true
-  if (typeof window !== 'undefined') {
-    try {
-      sessionStorage.setItem(UI_DONE_KEY, '1')
-    } catch {
-      // ignore
-    }
-  }
-  notifyDesktopAuthUiDone()
-}
-
-export function clearDesktopAuthUiDone(): void {
-  if (!desktopAuthUiDone && !readUiDoneFromStorage()) return
-  desktopAuthUiDone = false
-  if (typeof window !== 'undefined') {
-    try {
-      sessionStorage.removeItem(UI_DONE_KEY)
-    } catch {
-      // ignore
-    }
-  }
-  notifyDesktopAuthUiDone()
-}
-
-export function getDesktopAuthUiDone(): boolean {
-  return desktopAuthUiDone || readUiDoneFromStorage()
-}
-
-export function subscribeDesktopAuthUiDone(onStoreChange: () => void): () => void {
-  uiDoneListeners.add(onStoreChange)
-  return () => {
-    uiDoneListeners.delete(onStoreChange)
-  }
-}
-
 /**
  * After the app has session B: clear handoff params, keep portal Auth storage,
  * show the done UI (no reload / no localStorage wipe).
@@ -371,7 +315,6 @@ export function completeDesktopHandoffKeepingPortal(): void {
   url.searchParams.delete('refresh_token')
   const next = url.pathname + url.search + url.hash
   window.history.replaceState(null, '', next)
-  markDesktopAuthUiDone()
 }
 
 /**
@@ -385,7 +328,6 @@ export function consumeDesktopHandoffDone(): boolean {
     sessionStorage.removeItem(HANDOFF_DONE_KEY)
     sessionStorage.removeItem(HANDOFF_LOCK_KEY)
     clearDesktopAuthParams()
-    if (done) markDesktopAuthUiDone()
     return done
   } catch {
     return false
