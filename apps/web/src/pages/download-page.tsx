@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { DownloadHelp } from '@/components/download-help'
 import { SiteFooter } from '@/components/legal-shell'
 import { PageAtmosphere } from '@/components/page-atmosphere'
-import { ReleaseNotes } from '@/components/release-notes'
 import { Reveal } from '@/components/reveal'
 import { SiteHeader } from '@/components/site-header'
 import {
@@ -32,6 +31,23 @@ function guessPlatform(): ShowcasePlatformId {
   if (plat.includes('mac') || ua.includes('mac')) return 'macos'
   if (plat.includes('linux') || ua.includes('linux')) return 'linux'
   return 'windows'
+}
+
+/** First `# …` heading from a release notes body (e.g. `1.2.365 — Dabaghin`). */
+function releaseTitleFromNotes(
+  notes: string | null | undefined,
+  version: string | null | undefined,
+): string | null {
+  if (notes) {
+    for (const line of notes.split(/\r?\n/)) {
+      const t = line.trim()
+      if (t.startsWith('# ')) {
+        const title = t.slice(2).trim()
+        if (title) return title
+      }
+    }
+  }
+  return version ? version : null
 }
 
 function MagnetDownload({
@@ -96,6 +112,7 @@ function PlatformPicker({
   const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
   const assets = assetsById[selected.id] ?? []
   const primary = primaryById[selected.id] ?? assets[0] ?? null
+  const releaseTitle = releaseTitleFromNotes(notes, version)
 
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16 lg:items-start">
@@ -231,7 +248,7 @@ function PlatformPicker({
             </ul>
           )}
 
-          {notes ? (
+          {releaseTitle ? (
             <div className="border-t border-[rgba(237,230,218,0.1)] pt-5">
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
                 <p className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-brand">
@@ -245,7 +262,9 @@ function PlatformPicker({
                   Full changelog →
                 </Link>
               </div>
-              <ReleaseNotes markdown={notes} className="max-h-56" />
+              <p className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
+                {releaseTitle}
+              </p>
             </div>
           ) : null}
         </div>
