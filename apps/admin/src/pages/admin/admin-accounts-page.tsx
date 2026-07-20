@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Minus, Plus, Search, Trash2 } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
 import { IptvAssignDialog } from '@/components/iptv-assign-dialog'
+import { IptvPortalCardBody } from '@/components/iptv-portal-card'
 import {
   EmptyState,
   PageHeader,
@@ -74,38 +75,36 @@ function AccountPortals({
       ) : (list.data?.length ?? 0) === 0 ? (
         <p className="text-sm text-forja-muted">No portals on this account.</p>
       ) : (
-        <ul className="space-y-1.5">
+        <ul className="overflow-hidden rounded-xl border border-forja-border">
           {(list.data ?? []).map((a) => (
             <li
               key={a.id}
-              className="flex items-center gap-3 rounded-lg border border-forja-border/70 bg-forja-elevated/40 px-3 py-2"
+              className="group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0 hover:bg-white/[0.03]"
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-forja-text">
-                  {a.username || '—'}
-                  <span className="ml-2 text-xs font-normal text-forja-muted">
-                    {a.profile_name}
-                    {a.catalog_pool ? ' · pool' : ''}
-                    {a.alive === true
-                      ? ' · alive'
-                      : a.alive === false
-                        ? ' · dead'
-                        : ''}
-                  </span>
-                </p>
-                <p className="truncate text-xs text-forja-muted">{a.url}</p>
+              <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
+                <IptvPortalCardBody
+                  portal={a}
+                  badge={
+                    <span className="shrink-0 truncate rounded bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-forja-muted">
+                      {a.profile_name}
+                    </span>
+                  }
+                />
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8 shrink-0 text-forja-muted hover:text-red-300"
-                disabled={remove.isPending}
-                aria-label="Unassign portal"
-                onClick={() => remove.mutate(a.id)}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
+              <div className="flex shrink-0 items-center pr-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                  disabled={remove.isPending}
+                  aria-label="Unassign portal"
+                  title="Unassign portal"
+                  onClick={() => remove.mutate(a.id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
             </li>
           ))}
         </ul>

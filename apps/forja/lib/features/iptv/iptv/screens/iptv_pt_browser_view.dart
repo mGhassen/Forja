@@ -91,8 +91,15 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _scrollCategorySidebarToSelected() {
+    var tries = 0;
     void attempt() {
-      if (!mounted || !_categoryScroll.hasClients) return;
+      if (!mounted) return;
+      if (!_categoryScroll.hasClients) {
+        if (tries++ < 4) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        }
+        return;
+      }
       final cats = widget.ctrl.browserSidebarCategories;
       final selected = widget.ctrl.browserSelectedCategoryId;
       if (selected == null) return;
@@ -104,8 +111,6 @@ class _BrowserViewState extends State<_BrowserView> {
       _categoryScroll.jumpTo(target);
     }
 
-    attempt();
-    // Remounted scroll view may not have extents until the next frame.
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
@@ -715,7 +720,7 @@ class _BrowserViewState extends State<_BrowserView> {
     );
   }
 
-  void _onStreamTap(IptvStream s) {
+  Future<void> _onStreamTap(IptvStream s) async {
     final ctrl = widget.ctrl;
     final p = ctrl.activePortal;
     if (p == null) return;
@@ -726,6 +731,7 @@ class _BrowserViewState extends State<_BrowserView> {
     if (s.kind == 'live') {
       unawaited(ctrl.recordLiveWatched(s.streamId));
     }
+    final catId = s.categoryId;
     ctrl.noteBrowserSearchPlayedStream(s);
     final url = IptvClient.streamUrl(p.portal, s);
     final channelGuide = s.kind == 'live'
@@ -737,7 +743,7 @@ class _BrowserViewState extends State<_BrowserView> {
             streamHealth: Map<String, bool>.from(ctrl.streamHealth),
           )
         : null;
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen.singleStream(
           url: url,
@@ -747,5 +753,11 @@ class _BrowserViewState extends State<_BrowserView> {
         ),
       ),
     );
+    if (!mounted) return;
+    // After watch: select the channel's category and scroll it into view.
+    if (catId.isNotEmpty) {
+      ctrl.selectBrowserCategory(catId);
+    }
+    _scrollCategorySidebarToSelected();
   }
 }

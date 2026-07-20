@@ -300,7 +300,11 @@ mixin _DesktopPlayerPlayback
           _s._markProviderLoadFailed(_s._currentProvider!);
         }
 
-        if ((_s._providerPinned || _s._sourcePinned || widget.pinSource) &&
+        // Anime owns reload: skip same-server pin re-extract — VidNest/Megaplay
+        // often re-emit the same ad-poisoned nekostream URL. Walk Auto instead.
+        final hostOwnsReloadEarly = widget.onReloadStreams != null;
+        if (!hostOwnsReloadEarly &&
+            (_s._providerPinned || _s._sourcePinned || widget.pinSource) &&
             !_fallbackAborted(initGen)) {
           final pid = _s._currentProvider ?? widget.activeProvider;
           final movie = widget.movie;

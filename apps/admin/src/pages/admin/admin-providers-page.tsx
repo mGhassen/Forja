@@ -352,6 +352,17 @@ export function AdminProvidersPage() {
         description="Hosts, URL templates, WebStreamr bases, anime mirrors, CDN Referer rules. App deep-merges over builtins (schema 1). Extract logic stays in the client."
         actions={
           <>
+            {mode === 'json' ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() => formatJson()}
+              >
+                Format
+              </Button>
+            ) : null}
             <div className="flex rounded-lg border border-forja-border p-0.5">
               <Button
                 type="button"
@@ -374,17 +385,6 @@ export function AdminProvidersPage() {
                 JSON
               </Button>
             </div>
-            {mode === 'json' ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                onClick={() => formatJson()}
-              >
-                Format
-              </Button>
-            ) : null}
             <Button
               type="button"
               variant="secondary"

@@ -107,13 +107,54 @@ fn search_slugs(query: &str) -> Vec<String> {
             let s = slug.as_str().to_string();
             if seen.insert(s.clone()) {
                 out.push(s);
-                if out.len() >= 12 {
+                // Popular franchises bury the TV series under movies/OVAs
+                // (Naruto TV is ~#21). Keep enough unique slugs to reach it.
+                if out.len() >= 40 {
                     break;
                 }
             }
         }
     }
     out
+}
+
+/// Movie/OVA/spin-off noise that Anikoto ranks above the main TV series.
+fn slug_is_side_content(slug: &str) -> bool {
+    const MARKERS: &[&str] = &[
+        "movie",
+        "ova",
+        "ona",
+        "special",
+        "spin-off",
+        "spinoff",
+        "the-movie",
+        "film",
+        "recap",
+        "summary",
+    ];
+    MARKERS.iter().any(|m| slug.contains(m))
+}
+
+/// Rank HTML search hits so exact title slugs are probed before movies.
+/// Higher is better. Side-content slugs are heavily demoted.
+fn slug_probe_score(slug: &str, title_tokens: &HashSet<String>) -> f64 {
+    let tokens = slug_tokens(slug);
+    if tokens.is_empty() || title_tokens.is_empty() {
+        return if slug_is_side_content(slug) { -1.0 } else { 0.0 };
+    }
+    let mut score = jaccard(&tokens, title_tokens);
+    // Prefer slugs whose token set is close to the title (not "road of naruto").
+    if tokens.is_subset(title_tokens) || title_tokens.is_subset(&tokens) {
+        score += 0.35;
+    }
+    // Extra exactness: title tokens all appear and slug isn't much longer.
+    if title_tokens.iter().all(|t| tokens.contains(t)) && tokens.len() <= title_tokens.len() + 1 {
+        score += 0.25;
+    }
+    if slug_is_side_content(slug) {
+        score -= 1.5;
+    }
+    score
 }
 
 fn id_from_slug(slug: &str) -> Option<i64> {
@@ -248,24 +289,33 @@ pub fn anikoto_resolve(
         }
     }
 
-    let mut candidates = HashSet::new();
+    let mut title_tokens = HashSet::new();
     for q in &queries {
-        for slug in search_slugs(q) {
-            candidates.insert(slug);
-            if candidates.len() >= 10 {
-                break;
-            }
-        }
-        if candidates.len() >= 10 {
-            break;
-        }
+        title_tokens.extend(tokenize(q, STOPWORDS));
     }
 
-    let probe: Vec<String> = candidates.into_iter().take(8).collect();
+    let mut candidates: Vec<String> = Vec::new();
+    let mut seen = HashSet::new();
+    for q in &queries {
+        for slug in search_slugs(q) {
+            if seen.insert(slug.clone()) {
+                candidates.push(slug);
+            }
+        }
+    }
+    // Probe exact-title TV slugs first — Anikoto HTML search ranks movies
+    // ahead of the main series (e.g. Naruto TV at rank 21).
+    candidates.sort_by(|a, b| {
+        slug_probe_score(b, &title_tokens)
+            .partial_cmp(&slug_probe_score(a, &title_tokens))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    const MAX_PROBE: usize = 24;
     let mut resolved = Vec::new();
     let mut ani_id_matches = Vec::new();
 
-    for slug in probe {
+    for slug in candidates.into_iter().take(MAX_PROBE) {
         let Some(id) = id_from_slug(&slug) else { continue };
         let Ok(j) = anikoto_get(&format!("/series/{id}")) else {
             continue;
@@ -286,6 +336,10 @@ pub fn anikoto_resolve(
             episodes: ep_count,
         };
         if found_ani == ani_id {
+            // Fast path: exact AniList id + plausible catalog — stop probing.
+            if episode_count_plausible(ep_count, expected_episodes) {
+                return Ok(Some(load_series(id)?));
+            }
             ani_id_matches.push(cand);
         } else {
             resolved.push(cand);
@@ -297,33 +351,26 @@ pub fn anikoto_resolve(
     }
     // Rejected ani_id stubs stay out of fuzzy — don't promote a 1-ep movie.
 
-    // Strategy C: fuzzy slug match
-    if !resolved.is_empty() {
-        let mut title_tokens = HashSet::new();
-        for q in &queries {
-            title_tokens.extend(tokenize(q, STOPWORDS));
-        }
-        if !title_tokens.is_empty() {
-            let mut best: Option<&Candidate> = None;
-            let mut best_score = 0.0_f64;
-            for c in &resolved {
-                if !episode_count_plausible(c.episodes, expected_episodes) {
-                    continue;
-                }
-                let slug_tokens = slug_tokens(&c.slug);
-                if slug_tokens.is_empty() {
-                    continue;
-                }
-                let score = jaccard(&slug_tokens, &title_tokens);
-                if score > best_score {
-                    best_score = score;
-                    best = Some(c);
-                }
+    // Strategy C: fuzzy slug match (side-content already demoted in probe order)
+    if !resolved.is_empty() && !title_tokens.is_empty() {
+        let mut best: Option<&Candidate> = None;
+        let mut best_score = 0.0_f64;
+        for c in &resolved {
+            if !episode_count_plausible(c.episodes, expected_episodes) {
+                continue;
             }
-            if let Some(c) = best {
-                if best_score >= 0.40 {
-                    return Ok(Some(load_series(c.id)?));
-                }
+            if slug_is_side_content(&c.slug) && expected_episodes > 1 {
+                continue;
+            }
+            let score = slug_probe_score(&c.slug, &title_tokens);
+            if score > best_score {
+                best_score = score;
+                best = Some(c);
+            }
+        }
+        if let Some(c) = best {
+            if best_score >= 0.40 {
+                return Ok(Some(load_series(c.id)?));
             }
         }
     }
@@ -385,5 +432,17 @@ mod tests {
             },
         ];
         assert_eq!(pick_best_ani_id_match(&mut cands, 220), None);
+    }
+
+    #[test]
+    fn slug_probe_prefers_main_series_over_movies() {
+        let title = tokenize("Naruto", STOPWORDS);
+        let tv = slug_probe_score("naruto-eybxz", &title);
+        let movie = slug_probe_score("naruto-shippuuden-movie-6-road-to-ninja-w2wqq", &title);
+        let road = slug_probe_score("road-of-naruto-ggjw8", &title);
+        assert!(tv > movie, "tv={tv} movie={movie}");
+        assert!(tv > road, "tv={tv} road={road}");
+        assert!(slug_is_side_content("naruto-ova7-chunin-exam"));
+        assert!(!slug_is_side_content("naruto-eybxz"));
     }
 }

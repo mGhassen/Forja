@@ -10,7 +10,6 @@ import { Link } from '@tanstack/react-router'
 import {
   ArrowDown,
   ArrowUp,
-  CalendarDays,
   Check,
   Copy,
   Pencil,
@@ -18,10 +17,10 @@ import {
   Share2,
   Trash2,
   UserPlus,
-  Users,
   X,
 } from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
+import { IptvPortalCardBody } from '@/components/iptv-portal-card'
 import {
   MetricChip,
   PageHeader,
@@ -182,50 +181,6 @@ function shortRunId(id: string): string {
   return id.replace(/-/g, '').slice(0, 8)
 }
 
-function portalExpiryTone(expiry?: string | null): {
-  label: string
-  className: string
-} {
-  const label = (expiry ?? '').trim() || 'Unknown'
-  const end = (() => {
-    const d = new Date(label)
-    return Number.isNaN(d.getTime()) ? null : d
-  })()
-  if (!end) {
-    return {
-      label: label === 'Unknown' ? 'Ends: Unknown' : `Ends: ${label}`,
-      className: 'text-forja-muted',
-    }
-  }
-  const today = new Date()
-  const midnight = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  )
-  const days = Math.floor((end.getTime() - midnight.getTime()) / 86_400_000)
-  const className =
-    days < 0
-      ? 'text-red-400'
-      : days <= 7
-        ? 'text-amber-400'
-        : days <= 30
-          ? 'text-yellow-400'
-          : 'text-forja-green'
-  return {
-    label: `${days < 0 ? 'Expired' : 'Ends'} ${label}`,
-    className,
-  }
-}
-
-function seatsTone(max?: string | null) {
-  const cap = (max ?? '').trim() || '?'
-  return {
-    label: `Max ${cap}`,
-    className: 'text-sky-400',
-  }
-}
-
 function errMessage(e: unknown, fallback: string): string {
   if (e instanceof Error && e.message) return e.message
   if (typeof e === 'object' && e && 'message' in e) {
@@ -370,30 +325,6 @@ function EditDialog({
 
 const ACTION_RAIL_W = 180
 
-function aliveTone(alive: boolean | null): {
-  label: string
-  className: string
-  dotClass: string
-} {
-  if (alive === true)
-    return {
-      label: 'Alive',
-      className: 'text-forja-green',
-      dotClass: 'bg-forja-green shadow-[0_0_8px_rgba(28,231,131,0.55)]',
-    }
-  if (alive === false)
-    return {
-      label: 'Dead',
-      className: 'text-red-400',
-      dotClass: 'bg-red-500',
-    }
-  return {
-    label: 'Unchecked',
-    className: 'text-forja-muted',
-    dotClass: 'bg-white/25',
-  }
-}
-
 /** Table-style portal row — Account→IPTV content, actions on hover. */
 function CandidateRow({
   c,
@@ -420,9 +351,6 @@ function CandidateRow({
 }) {
   const inPool = c.catalog_pool === true
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const expiry = portalExpiryTone(c.expiry)
-  const seats = seatsTone(c.max_connections)
-  const status = aliveTone(c.alive)
   const pinRail = confirmDelete || sharing || !!shareCode || checking
 
   return (
@@ -454,45 +382,7 @@ function CandidateRow({
             )}
           </div>
         ) : (
-          <div className="min-w-0 flex-1 space-y-1">
-            <p
-              className={cn(
-                'flex items-center gap-1.5 text-[11px] font-semibold',
-                expiry.className,
-              )}
-            >
-              <CalendarDays className="size-3 shrink-0" />
-              <span className="truncate">{expiry.label}</span>
-            </p>
-            <p className="flex min-w-0 items-center gap-2">
-              <span
-                className={cn(
-                  'size-2 shrink-0 rounded-full',
-                  checking ? 'animate-pulse bg-amber-400' : status.dotClass,
-                )}
-                title={checking ? 'Checking…' : status.label}
-                aria-label={checking ? 'Checking status' : status.label}
-              />
-              <span className="truncate text-[13px] font-semibold text-forja-text">
-                {c.username}
-              </span>
-              {inPool ? (
-                <span className="shrink-0 rounded bg-forja-green/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-forja-green">
-                  pool
-                </span>
-              ) : null}
-            </p>
-            <p className="truncate text-sm text-white/55">{c.url}</p>
-            <p
-              className={cn(
-                'flex items-center gap-1.5 text-[11px] font-semibold',
-                seats.className,
-              )}
-            >
-              <Users className="size-3 shrink-0" />
-              <span>{seats.label}</span>
-            </p>
-          </div>
+          <IptvPortalCardBody portal={c} checking={checking} />
         )}
       </div>
 
@@ -639,6 +529,9 @@ export function AdminPoolPage() {
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'alive' | 'dead' | 'unchecked'
   >('all')
+  const [inventoryFilter, setInventoryFilter] = useState<
+    'all' | 'pool' | 'nonpool'
+  >('all')
   const [regionFilter, setRegionFilter] = useState<string>('all')
   const [sortKey, setSortKey] = useState<SortKey>('accounts')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -692,6 +585,8 @@ export function AdminPoolPage() {
   const filteredRows = useMemo(() => {
     const rows = list.data ?? []
     return rows.filter((c) => {
+      if (inventoryFilter === 'pool' && c.catalog_pool !== true) return false
+      if (inventoryFilter === 'nonpool' && c.catalog_pool === true) return false
       if (statusFilter === 'alive' && c.alive !== true) return false
       if (statusFilter === 'dead' && c.alive !== false) return false
       if (statusFilter === 'unchecked' && c.alive != null) return false
@@ -703,7 +598,7 @@ export function AdminPoolPage() {
       }
       return true
     })
-  }, [list.data, statusFilter, regionFilter])
+  }, [list.data, inventoryFilter, statusFilter, regionFilter])
 
   const groups = useMemo(
     () => sortHostGroups(groupByHost(filteredRows), sortKey, sortDir),
@@ -929,7 +824,7 @@ export function AdminPoolPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pool"
-        description="Grouped by host. Check status, copy, edit, or remove from the deal pool."
+        description="All portals, grouped by host. Filter deal inventory vs the rest. Check status, assign, or remove from the deal pool."
         actions={
           <Button asChild variant="ghost" size="sm">
             <Link to="/scrape">Scrape control</Link>
@@ -1057,6 +952,29 @@ export function AdminPoolPage() {
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="pool-inventory-filter"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
+          >
+            Inventory
+          </Label>
+          <Select
+            value={inventoryFilter}
+            onValueChange={(v) =>
+              setInventoryFilter(v as 'all' | 'pool' | 'nonpool')
+            }
+          >
+            <SelectTrigger id="pool-inventory-filter" className="w-[9.5rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="pool">Deal pool</SelectItem>
+              <SelectItem value="nonpool">Not in pool</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1.5">
           <Label
             htmlFor="pool-status-filter"

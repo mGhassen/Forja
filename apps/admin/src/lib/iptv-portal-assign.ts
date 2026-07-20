@@ -27,6 +27,8 @@ export type AssignmentRow = {
   url: string
   username: string
   alive: boolean | null
+  expiry: string | null
+  max_connections: string | null
   catalog_pool: boolean
   region_primary: string
 }
@@ -87,35 +89,15 @@ export async function fetchAssignmentsForAccount(
       `
       id, portal_id, profile_id, portal_name,
       profiles!user_iptv_portals_profile_id_fkey ( name ),
-      iptv_portals ( url, username, alive, catalog_pool, region_primary )
+      iptv_portals ( url, username, alive, expiry, max_connections, catalog_pool, region_primary )
     `,
     )
     .eq('account_id', accountId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
-    const prof = r.profiles as { name?: string } | null
-    const portal = r.iptv_portals as {
-      url?: string
-      username?: string
-      alive?: boolean | null
-      catalog_pool?: boolean
-      region_primary?: string
-    } | null
-    return {
-      id: r.id as string,
-      portal_id: r.portal_id as string,
-      profile_id: r.profile_id as string,
-      portal_name: (r.portal_name as string) ?? '',
-      profile_name: prof?.name ?? 'Profile',
-      account_email: null,
-      url: portal?.url ?? '',
-      username: portal?.username ?? '',
-      alive: portal?.alive ?? null,
-      catalog_pool: portal?.catalog_pool === true,
-      region_primary: portal?.region_primary ?? 'UNKNOWN',
-    }
-  })
+  return ((data ?? []) as Array<Record<string, unknown>>).map((r) =>
+    mapAssignmentRow(r, { accountEmail: null }),
+  )
 }
 
 export async function fetchAssignmentsForPortal(
@@ -128,36 +110,47 @@ export async function fetchAssignmentsForPortal(
       id, portal_id, profile_id, portal_name, account_id,
       profiles!user_iptv_portals_profile_id_fkey ( name ),
       accounts!user_iptv_portals_account_id_fkey ( email ),
-      iptv_portals ( url, username, alive, catalog_pool, region_primary )
+      iptv_portals ( url, username, alive, expiry, max_connections, catalog_pool, region_primary )
     `,
     )
     .eq('portal_id', portalId)
     .order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
-    const prof = r.profiles as { name?: string } | null
     const acct = r.accounts as { email?: string | null } | null
-    const portal = r.iptv_portals as {
-      url?: string
-      username?: string
-      alive?: boolean | null
-      catalog_pool?: boolean
-      region_primary?: string
-    } | null
-    return {
-      id: r.id as string,
-      portal_id: r.portal_id as string,
-      profile_id: r.profile_id as string,
-      portal_name: (r.portal_name as string) ?? '',
-      profile_name: prof?.name ?? 'Profile',
-      account_email: acct?.email ?? null,
-      url: portal?.url ?? '',
-      username: portal?.username ?? '',
-      alive: portal?.alive ?? null,
-      catalog_pool: portal?.catalog_pool === true,
-      region_primary: portal?.region_primary ?? 'UNKNOWN',
-    }
+    return mapAssignmentRow(r, { accountEmail: acct?.email ?? null })
   })
+}
+
+function mapAssignmentRow(
+  r: Record<string, unknown>,
+  opts: { accountEmail: string | null },
+): AssignmentRow {
+  const prof = r.profiles as { name?: string } | null
+  const portal = r.iptv_portals as {
+    url?: string
+    username?: string
+    alive?: boolean | null
+    expiry?: string | null
+    max_connections?: string | null
+    catalog_pool?: boolean
+    region_primary?: string
+  } | null
+  return {
+    id: r.id as string,
+    portal_id: r.portal_id as string,
+    profile_id: r.profile_id as string,
+    portal_name: (r.portal_name as string) ?? '',
+    profile_name: prof?.name ?? 'Profile',
+    account_email: opts.accountEmail,
+    url: portal?.url ?? '',
+    username: portal?.username ?? '',
+    alive: portal?.alive ?? null,
+    expiry: portal?.expiry ?? null,
+    max_connections: portal?.max_connections ?? null,
+    catalog_pool: portal?.catalog_pool === true,
+    region_primary: portal?.region_primary ?? 'UNKNOWN',
+  }
 }
 
 export async function countAssignmentsForAccounts(

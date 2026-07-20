@@ -890,6 +890,108 @@ String formatDuration(Duration duration) {
   }
 }
 
+/// Known anti-scraper ad CDNs injected into anime HLS media playlists.
+bool _isAnimeHlsAdHost(String url) {
+  final u = url.toLowerCase();
+  return u.contains('ibyteimg.com') ||
+      u.contains('byteimg.com') ||
+      u.contains('p16-ad-') ||
+      u.contains('ad-site-i18n');
+}
+
+String _joinPlaylistUri(String base, String uri) {
+  final t = uri.trim();
+  if (t.startsWith('http://') || t.startsWith('https://')) return t;
+  final b = Uri.tryParse(base);
+  if (b == null) return t;
+  return b.resolve(t).toString();
+}
+
+/// Sample media segments — masters can be valid while every segment is a PNG ad.
+///
+/// Runs in Dart (not only Rust) so a stale app-bundle `libffi` cannot let
+/// nekostream/vivibebe green-pass then fail at decode.
+Future<bool> hlsMediaSegmentsLookPlayable(
+  String playlistUrl,
+  Map<String, String> headers,
+) async {
+  try {
+    final master = await animeHttp(
+      'GET',
+      playlistUrl,
+      headers: headers,
+      maxRetries: 0,
+      timeoutSecs: 8,
+    );
+    if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
+
+    var mediaUrl = playlistUrl;
+    var body = master.body;
+    final lines = body.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (!line.startsWith('#EXT-X-STREAM-INF')) continue;
+      if (i + 1 >= lines.length) break;
+      final next = lines[i + 1].trim();
+      if (next.isEmpty || next.startsWith('#')) continue;
+      mediaUrl = _joinPlaylistUri(playlistUrl, next);
+      final media = await animeHttp(
+        'GET',
+        mediaUrl,
+        headers: headers,
+        maxRetries: 0,
+        timeoutSecs: 8,
+      );
+      if (media.status != 200 || !media.body.contains('#EXTM3U')) return false;
+      body = media.body;
+      break;
+    }
+
+    final segs = body
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty && !l.startsWith('#'))
+        .map((l) => _joinPlaylistUri(mediaUrl, l))
+        .take(4)
+        .toList();
+    if (segs.isEmpty) {
+      return !body.contains('#EXT-X-STREAM-INF');
+    }
+
+    var checked = 0;
+    var poisoned = 0;
+    for (final seg in segs) {
+      if (_isAnimeHlsAdHost(seg)) {
+        checked++;
+        poisoned++;
+        continue;
+      }
+      try {
+        final res = await animeHttp(
+          'GET',
+          seg,
+          headers: {...headers, 'Range': 'bytes=0-15'},
+          maxRetries: 0,
+          timeoutSecs: 8,
+        );
+        if (res.status != 200 && res.status != 206) continue;
+        checked++;
+        final ct = (res.headers['content-type'] ?? '').toLowerCase();
+        if (_isAnimeHlsAdHost(res.finalUrl) || ct.startsWith('image/')) {
+          poisoned++;
+        }
+      } catch (_) {
+        // Network blip — don't count.
+      }
+    }
+    if (checked == 0) return true;
+    // Reject when ≥ half of sampled segments are ads/images.
+    return poisoned * 2 < checked;
+  } catch (_) {
+    return false;
+  }
+}
+
 /// Lightweight reachability check for stream menu reload.
 Future<bool> probeStreamSourceUrl(
   String url,
@@ -899,11 +1001,14 @@ Future<bool> probeStreamSourceUrl(
   if (normalized.isEmpty) return false;
   final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: normalized);
   try {
-    // HLS: Rust probe samples media segments — masters can be valid while
-    // every segment is a PNG ad (nekostream / vivibebe / ibyteimg).
     if (normalized.contains('.m3u8') ||
         normalized.toLowerCase().contains('/api/proxy')) {
-      return await probeStreamUrlRust(normalized, hdrs);
+      // Dart segment sample first — must not depend on app-bundle libffi freshness.
+      if (!await hlsMediaSegmentsLookPlayable(normalized, hdrs)) {
+        debugPrint('[Player] HLS media poison/ad segments — reject $normalized');
+        return false;
+      }
+      return true;
     }
     var res = await animeHttp(
       'HEAD',

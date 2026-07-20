@@ -324,17 +324,34 @@ class AnimeService {
   // Cache: AniList ID -> resolved AnikotoSeries (with episode embed IDs)
   final Map<int, AnikotoSeries?> _anikotoCache = {};
 
+  /// Reject movie/OVA stubs when AniList expects a long series.
+  bool _anikotoEpisodeCountPlausible(int got, int expected) {
+    if (got <= 0) return false;
+    if (expected <= 0) return true;
+    return got >= (expected / 2).ceil();
+  }
+
   Future<AnikotoSeries?> resolveAnikoto(AnimeCard anime) async {
-    if (_anikotoCache.containsKey(anime.id)) return _anikotoCache[anime.id];
+    final expected = anime.episodes ?? 0;
+    final cached = _anikotoCache[anime.id];
+    if (cached != null) {
+      if (_anikotoEpisodeCountPlausible(cached.episodes.length, expected)) {
+        return cached;
+      }
+      // Drop movie/OVA stub cached before AniList episode count was known.
+      _anikotoCache.remove(anime.id);
+    }
     AnikotoSeries? s;
     try {
       final data = await anikotoResolveSeries(
         anilistId: anime.id,
         titleEnglish: anime.titleEnglish,
         titleRomaji: anime.titleRomaji,
-        expectedEpisodes: anime.episodes ?? 0,
+        expectedEpisodes: expected,
       );
-      if (data != null) {
+      if (data != null &&
+          data.episodes.isNotEmpty &&
+          _anikotoEpisodeCountPlausible(data.episodes.length, expected)) {
         s = AnikotoSeries(
           id: data.id,
           episodes: data.episodes
@@ -348,11 +365,17 @@ class AnimeService {
               )
               .toList(),
         );
+      } else if (data != null && kDebugMode) {
+        debugPrint(
+          '[Anikoto] rejected stub id=${data.id} '
+          'eps=${data.episodes.length} expected=$expected',
+        );
       }
     } catch (e) {
       if (kDebugMode) debugPrint('[Anikoto] resolve failed: $e');
     }
-    _anikotoCache[anime.id] = s;
+    // Only cache hits — misses retry after getDetails fills episodes.
+    if (s != null) _anikotoCache[anime.id] = s;
     return s;
   }
 
@@ -843,17 +866,15 @@ class AnimeService {
 
   /// Lightweight reachability check before replaying cached stream URLs.
   ///
-  /// Always runs [resolvePlaybackHttpHeaders] first — anime CDNs (nekostream /
-  /// mewstream) 403 without the Megaplay Referer, and cache/reload paths often
-  /// still carry scrape (`enma.lol`) or Miruro origins.
+  /// Uses [probeStreamSourceUrl] (CDN Referer rewrite + HLS media-segment
+  /// poison check) so nekostream masters that only serve PNG ads fail here.
   Future<bool> probeStreamUrl(
     String url,
     Map<String, String> headers,
   ) async {
     if (url.isEmpty) return false;
     try {
-      final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: url);
-      return await probeStreamUrlRust(url, hdrs);
+      return await probeStreamSourceUrl(url, headers);
     } catch (_) {
       return false;
     }

@@ -315,7 +315,10 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           _s._markProviderLoadFailed(_s._currentProvider!);
         }
 
-        if ((_s._providerPinned || _s._sourcePinned || widget.pinSource) &&
+        // Anime owns reload: skip same-server pin re-extract (poison CDN loop).
+        final hostOwnsReloadEarly = widget.onReloadStreams != null;
+        if (!hostOwnsReloadEarly &&
+            (_s._providerPinned || _s._sourcePinned || widget.pinSource) &&
             !_fallbackAborted(initGen)) {
           final pid = _s._currentProvider ?? widget.activeProvider;
           final movie = widget.movie;
