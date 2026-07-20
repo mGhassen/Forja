@@ -18,6 +18,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as ApiLatestReleaseRouteImport } from './routes/api.latest-release'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 import { Route as ApiChangelogRouteImport } from './routes/api.changelog'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
@@ -78,6 +79,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLatestReleaseRoute = ApiLatestReleaseRouteImport.update({
+  id: '/api/latest-release',
+  path: '/api/latest-release',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/changelog': typeof ApiChangelogRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/latest-release': typeof ApiLatestReleaseRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/changelog': typeof ApiChangelogRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/latest-release': typeof ApiLatestReleaseRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/account/settings': typeof AccountSettingsRouteWithChildren
   '/api/changelog': typeof ApiChangelogRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/latest-release': typeof ApiLatestReleaseRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_auth/login/mfa': typeof AuthLoginMfaRoute
   '/account/settings/account': typeof AccountSettingsAccountRoute
@@ -270,6 +279,7 @@ export interface FileRouteTypes {
     | '/account/settings'
     | '/api/changelog'
     | '/api/iptv-share'
+    | '/api/latest-release'
     | '/auth/callback'
     | '/login/mfa'
     | '/account/settings/account'
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/account/settings'
     | '/api/changelog'
     | '/api/iptv-share'
+    | '/api/latest-release'
     | '/auth/callback'
     | '/login/mfa'
     | '/account/settings/account'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/account/settings'
     | '/api/changelog'
     | '/api/iptv-share'
+    | '/api/latest-release'
     | '/auth/callback'
     | '/_auth/login/mfa'
     | '/account/settings/account'
@@ -348,6 +360,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiChangelogRoute: typeof ApiChangelogRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
+  ApiLatestReleaseRoute: typeof ApiLatestReleaseRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
@@ -414,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/latest-release': {
+      id: '/api/latest-release'
+      path: '/api/latest-release'
+      fullPath: '/api/latest-release'
+      preLoaderRoute: typeof ApiLatestReleaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/iptv-share': {
@@ -616,6 +636,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiChangelogRoute: ApiChangelogRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
+  ApiLatestReleaseRoute: ApiLatestReleaseRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport

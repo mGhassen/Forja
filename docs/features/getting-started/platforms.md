@@ -17,7 +17,7 @@ Forja is a cross-platform Flutter app with a Rust engine under the hood. The sam
 | **Linux** | AppImage |
 | **macOS** | DMG |
 
-Download builds from the [web download page](https://forjahq.xyz/download) (files hosted on Cloudflare R2). Published installers ship via **Release Forja** in Actions (GitHub Release for tags/notes + R2 upload for binaries).
+Download builds from the [web download page](https://forjahq.xyz/download). The site reads `latest/manifest.json` on the Cloudflare R2 CDN and serves installer links under `cdn.forjahq.xyz/latest/…`. Published installers ship via **Release Forja** in Actions (R2 upload for binaries + notes under `changelog/`).
 
 ## What you can do
 

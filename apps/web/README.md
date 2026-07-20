@@ -51,8 +51,7 @@ Migrations and the `sync-github-releases` Edge Function live under [`supabase/`]
 
 1. Create a Supabase project (or link an existing one)
 2. Apply migrations: `supabase db push` (from `apps/web` with CLI linked)
-3. Deploy the Edge Function and set secrets (`GITHUB_TOKEN` optional for higher rate limits)
-4. Invoke `sync-github-releases` after each GitHub release (or schedule a cron)
+3. Set host env `RELEASE_CDN_URL` / `VITE_RELEASE_CDN_URL` to the public R2 CDN base (required for `/download` and `/api/changelog`)
 
 Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`.
 
@@ -62,8 +61,8 @@ Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE
 |------|--------|
 | `/` | Public landing |
 | `/iptv` | IPTV player story — live playlists & controls |
-| `/download` | Public — latest mirrored release |
-| `/changelog` | Public — release notes from GitHub + `docs/changelog/done` |
+| `/download` | Public — latest installers from R2 `latest/manifest.json` |
+| `/changelog` | Public — release notes from R2 `changelog/` |
 | `/terms` | Terms of use |
 | `/dmca` | DMCA / copyright notice |
 | `/login`, `/signup` | Public — email/password auth (Turnstile when configured) |

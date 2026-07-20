@@ -13,9 +13,8 @@ import {
   type ShowcasePlatform,
   type ShowcasePlatformId,
 } from '@/hooks/use-releases'
-import { supabaseConfigured } from '@/lib/supabase'
 import { startBackgroundDownload } from '@/lib/start-download'
-import type { ReleaseAsset } from '@/lib/database.types'
+import type { ReleaseAsset } from '@/hooks/use-releases'
 import { cn } from '@/lib/utils'
 
 function formatBytes(n: number | null): string | null {
@@ -310,9 +309,7 @@ export function DownloadPage() {
               )}
               {!isLoading && !isError && !data && (
                 <p className="font-mono-ui text-xs uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)]">
-                  {supabaseConfigured
-                    ? 'Nothing to grab yet - check back soon'
-                    : 'Downloads are not ready on this site yet'}
+                  Nothing to grab yet - check back soon
                 </p>
               )}
             </div>

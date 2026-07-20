@@ -38,8 +38,8 @@ function DownloadTrigger({
 }
 
 /**
- * One download control per platform, wired to the latest release asset
- * (version from GitHub Releases; file URL from Supabase Storage).
+ * One download control per platform, wired to the latest R2 release asset
+ * (`latest/manifest.json` → CDN `latest/{filename}`).
  * Platforms without a file in the latest release fall back to `/download`.
  */
 export function PlatformDownloadButtons({
