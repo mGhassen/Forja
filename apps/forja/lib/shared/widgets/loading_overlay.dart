@@ -299,8 +299,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     setState(() => _failure = next);
     if (next != null) {
       _pulseController.stop();
+      // ResolveFailurePanel autofocuses Try again / Close after this rebuild.
     } else if (!_pulseController.isAnimating) {
       _pulseController.repeat(reverse: true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _showingFailure) return;
+        _focusInitialAction();
+      });
     }
   }
 
@@ -958,14 +963,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         : widget.onCancel;
     if (escapeAction == null) return overlay;
 
+    // While resolving, keep a root Focus so Escape works. On failure, do not
+    // autofocus here — ResolveFailurePanel owns Try again / Close.
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): escapeAction,
       },
-      child: Focus(
-        autofocus: true,
-        child: overlay,
-      ),
+      child: _showingFailure
+          ? overlay
+          : Focus(
+              autofocus: true,
+              child: overlay,
+            ),
     );
   }
 }

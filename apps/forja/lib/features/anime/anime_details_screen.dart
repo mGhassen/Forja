@@ -388,7 +388,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             durationMs: durMs,
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
-              itemCount: _progress != null ? 2 : 1,
+              itemCount: (_progress != null ? 2 : 1) + 2,
               onFocusUp: heroPopUp,
               child: Row(
                 children: [
@@ -409,6 +409,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
                       tvItemIndexStart: 1,
+                      onUpEdge: heroPopUp,
                       slots: [
                         HeroPillIconSlot(
                           icon: Icons.delete_outline_rounded,
@@ -422,6 +423,10 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                   HeroPillSegmentedChoice<String>(
                     selected: _category,
                     onSelected: (cat) => setState(() => _category = cat),
+                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                    tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                    tvItemIndexStart: _progress != null ? 2 : 1,
+                    onUpEdge: heroPopUp,
                     segments: const [
                       HeroPillSegment(
                         value: 'sub',

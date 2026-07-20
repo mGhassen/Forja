@@ -268,6 +268,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                           position: _s._position,
                           onSeek: _s._seek,
                           tvFocusable: true,
+                          tvFocusUpNode: _s._backFocus,
                         ),
                       )
                     : CustomSeekbar(

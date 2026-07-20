@@ -123,22 +123,25 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
               ),
             ),
             if (_showPin)
-              Tooltip(
-                message: widget.pinned ? 'Unpin category' : 'Pin category',
-                waitDuration: const Duration(milliseconds: 400),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: InkWell(
-                    onTap: widget.onTogglePin,
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        widget.pinned
-                            ? Icons.push_pin_rounded
-                            : Icons.push_pin_outlined,
-                        size: widget.compact ? 16 : 17,
-                        color: ForjaShellColors.iconMuted,
+              ExcludeFocus(
+                excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+                child: Tooltip(
+                  message: widget.pinned ? 'Unpin category' : 'Pin category',
+                  waitDuration: const Duration(milliseconds: 400),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      onTap: widget.onTogglePin,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          widget.pinned
+                              ? Icons.push_pin_rounded
+                              : Icons.push_pin_outlined,
+                          size: widget.compact ? 16 : 17,
+                          color: ForjaShellColors.iconMuted,
+                        ),
                       ),
                     ),
                   ),

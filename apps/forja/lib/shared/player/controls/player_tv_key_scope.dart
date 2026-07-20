@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Captures leanback / D-pad keys inside a player route.
 ///
@@ -78,6 +79,18 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (!widget.enabled) return KeyEventResult.ignored;
+    // Volume keys must win even while a chrome control holds focus.
+    if (shellTvIsNavigationKey(event)) {
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.audioVolumeUp) {
+        widget.onVolumeUp();
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.audioVolumeDown) {
+        widget.onVolumeDown();
+        return KeyEventResult.handled;
+      }
+    }
     if (widget.showControls && playerTvChromeHasFocus(widget.focusNode)) {
       return KeyEventResult.ignored;
     }
@@ -105,7 +118,10 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
   if (primary == null || identical(primary, playerKeyNode)) return false;
   FocusNode? node = primary;
   while (node != null) {
-    if (node.debugLabel == 'player-chrome') return true;
+    final label = node.debugLabel;
+    if (label == 'player-chrome' || label == 'exo-player-chrome') {
+      return true;
+    }
     node = node.parent;
   }
   return false;

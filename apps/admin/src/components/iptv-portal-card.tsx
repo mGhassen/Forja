@@ -1,5 +1,9 @@
 import { CalendarDays, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
+import {
+  formatPortalExpiry,
+  parsePortalExpiry,
+} from '@/lib/iptv-portal-expiry'
 import { cn } from '@/lib/utils'
 
 export type IptvPortalCardData = {
@@ -15,17 +19,15 @@ export function portalExpiryTone(expiry?: string | null): {
   label: string
   className: string
 } {
-  const label = (expiry ?? '').trim() || 'Unknown'
-  const end = (() => {
-    const d = new Date(label)
-    return Number.isNaN(d.getTime()) ? null : d
-  })()
+  const raw = (expiry ?? '').trim() || 'Unknown'
+  const end = parsePortalExpiry(raw)
   if (!end) {
     return {
-      label: label === 'Unknown' ? 'Ends: Unknown' : `Ends: ${label}`,
+      label: raw === 'Unknown' ? 'Ends: Unknown' : `Ends: ${raw}`,
       className: 'text-forja-muted',
     }
   }
+  const display = formatPortalExpiry(raw) ?? raw
   const today = new Date()
   const midnight = new Date(
     today.getFullYear(),
@@ -42,7 +44,7 @@ export function portalExpiryTone(expiry?: string | null): {
           ? 'text-yellow-400'
           : 'text-forja-green'
   return {
-    label: `${days < 0 ? 'Expired' : 'Ends'} ${label}`,
+    label: `${days < 0 ? 'Expired' : 'Ends'} ${display}`,
     className,
   }
 }

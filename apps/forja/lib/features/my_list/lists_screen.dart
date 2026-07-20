@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -180,22 +181,32 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     final name = list['name']?.toString() ?? 'List';
     final itemCount = list['item_count'] as int? ?? 0;
 
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _TraktListItemsScreen(
-        listId: slug,
-        listName: name,
-        itemCount: itemCount,
+    pushShellRoute(
+      context,
+      AppRouter.slideShellRoute(
+        (_) => _TraktListItemsScreen(
+          listId: slug,
+          listName: name,
+          itemCount: itemCount,
+        ),
       ),
-    ));
+    );
   }
 
   void _openMdblistItems(Map<String, dynamic> list, {bool isUserList = false}) {
     final id = list['id'] as int? ?? 0;
     final name = list['name']?.toString() ?? 'List';
 
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _MdblistItemsScreen(listId: id, listName: name, isUserList: isUserList),
-    ));
+    pushShellRoute(
+      context,
+      AppRouter.slideShellRoute(
+        (_) => _MdblistItemsScreen(
+          listId: id,
+          listName: name,
+          isUserList: isUserList,
+        ),
+      ),
+    );
   }
 
   @override
@@ -735,18 +746,20 @@ Widget _movieListTile({
   required Movie movie,
   required VoidCallback onTap,
   VoidCallback? onRemove,
+  String tvTabId = 'settings',
 }) {
   final posterUrl = movie.posterPath.isNotEmpty
       ? TmdbApi.getImageUrl(movie.posterPath)
       : '';
+  final policy = ShellScope.inputPolicyOf(context);
 
   return shellFocusableTap(
     context: context,
     onTap: onTap,
     borderRadius: 14,
     showFocusBorder: true,
-    tvTabId: 'mylist',
-    tvZone: ShellTvZone.row,
+    tvTabId: tvTabId,
+    tvZone: ShellTvZone.settings,
     child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -797,9 +810,16 @@ Widget _movieListTile({
             ),
           ),
           if (onRemove != null)
-            IconButton(
-              icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent.withValues(alpha: 0.7), size: 22),
-              onPressed: onRemove,
+            ExcludeFocus(
+              excluding: !policy.scaleOnHover,
+              child: IconButton(
+                icon: Icon(
+                  Icons.remove_circle_outline,
+                  color: Colors.redAccent.withValues(alpha: 0.7),
+                  size: 22,
+                ),
+                onPressed: onRemove,
+              ),
             ),
         ],
       ),

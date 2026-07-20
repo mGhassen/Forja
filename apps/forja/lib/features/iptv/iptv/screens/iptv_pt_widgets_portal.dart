@@ -18,8 +18,11 @@ class _PortalListView extends StatelessWidget {
             actions: [
               IptvIconAction(
                 tooltip: 'M3U Playlists',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const M3uPlaylistsScreen()),
+                onPressed: () => pushShellRoute(
+                  context,
+                  AppRouter.slideShellRoute(
+                    (_) => const M3uPlaylistsScreen(),
+                  ),
                 ),
                 icon: Icons.playlist_play_rounded,
               ),
@@ -141,43 +144,13 @@ class _PortalListView extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 28),
-                      if (canDeal)
-                        IptvPrimaryButton(
-                          icon: Icons.casino_rounded,
-                          label: credits > 0
-                              ? 'Deal portals ($credits)'
-                              : 'Deal portals',
-                          onPressed: credits < 1
-                              ? null
-                              : () => unawaited(ctrl.dealFromPool()),
-                        ),
-                      if (canScrape) ...[
-                        if (canDeal) const SizedBox(height: 12),
-                        IptvPrimaryButton(
-                          icon: ctrl.isScraping
-                              ? Icons.stop_circle_rounded
-                              : Icons.travel_explore,
-                          label: ctrl.isScraping ? 'Stop' : 'Find Portals',
-                          subtle: canDeal,
-                          onPressed:
-                              ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-                        ),
-                      ],
-                      if (!canScrape && !canDeal)
-                        IptvPrimaryButton(
-                          icon: Icons.add_rounded,
-                          label: 'Add portal',
-                          onPressed: () => _showAddDialog(context),
-                        ),
-                      if (canDeal || canScrape) ...[
-                        const SizedBox(height: 12),
-                        IptvPrimaryButton(
-                          icon: Icons.add_rounded,
-                          label: 'Add portal',
-                          subtle: true,
-                          onPressed: () => _showAddDialog(context),
-                        ),
-                      ],
+                      _PortalEmptyCtas(
+                        ctrl: ctrl,
+                        canDeal: canDeal,
+                        canScrape: canScrape,
+                        credits: credits,
+                        onAdd: () => _showAddDialog(context),
+                      ),
                     ],
                   ),
                 ),
@@ -647,6 +620,125 @@ class _Pill extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Empty portals CTAs — autofocuses the first enabled action on TV.
+class _PortalEmptyCtas extends StatefulWidget {
+  const _PortalEmptyCtas({
+    required this.ctrl,
+    required this.canDeal,
+    required this.canScrape,
+    required this.credits,
+    required this.onAdd,
+  });
+
+  final IptvController ctrl;
+  final bool canDeal;
+  final bool canScrape;
+  final int credits;
+  final VoidCallback onAdd;
+
+  @override
+  State<_PortalEmptyCtas> createState() => _PortalEmptyCtasState();
+}
+
+class _PortalEmptyCtasState extends State<_PortalEmptyCtas> {
+  final FocusNode _primaryFocus =
+      FocusNode(debugLabel: 'iptv-portal-empty-primary');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!iptvUseTvFocus(context)) return;
+      if (_primaryFocus.canRequestFocus) _primaryFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _primaryFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = widget.ctrl;
+    final canDeal = widget.canDeal;
+    final canScrape = widget.canScrape;
+    final credits = widget.credits;
+    final children = <Widget>[];
+    var nextIndex = 0;
+    var assignedPrimary = false;
+
+    FocusNode? takePrimary() {
+      if (assignedPrimary) return null;
+      assignedPrimary = true;
+      return _primaryFocus;
+    }
+
+    if (canDeal) {
+      final enabled = credits >= 1;
+      children.add(
+        IptvPrimaryButton(
+          icon: Icons.casino_rounded,
+          label: credits > 0 ? 'Deal portals ($credits)' : 'Deal portals',
+          focusNode: enabled ? takePrimary() : null,
+          tvRowId: 'iptv-portal-empty',
+          tvItemIndex: nextIndex++,
+          onPressed: enabled ? () => unawaited(ctrl.dealFromPool()) : null,
+        ),
+      );
+    }
+    if (canScrape) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 12));
+      children.add(
+        IptvPrimaryButton(
+          icon: ctrl.isScraping
+              ? Icons.stop_circle_rounded
+              : Icons.travel_explore,
+          label: ctrl.isScraping ? 'Stop' : 'Find Portals',
+          subtle: canDeal,
+          focusNode: takePrimary(),
+          tvRowId: 'iptv-portal-empty',
+          tvItemIndex: nextIndex++,
+          onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+        ),
+      );
+    }
+    if (!canScrape && !canDeal) {
+      children.add(
+        IptvPrimaryButton(
+          icon: Icons.add_rounded,
+          label: 'Add portal',
+          focusNode: takePrimary(),
+          tvRowId: 'iptv-portal-empty',
+          tvItemIndex: nextIndex++,
+          onPressed: widget.onAdd,
+        ),
+      );
+    }
+    if (canDeal || canScrape) {
+      children.add(const SizedBox(height: 12));
+      children.add(
+        IptvPrimaryButton(
+          icon: Icons.add_rounded,
+          label: 'Add portal',
+          subtle: true,
+          focusNode: takePrimary(),
+          tvRowId: 'iptv-portal-empty',
+          tvItemIndex: nextIndex++,
+          onPressed: widget.onAdd,
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: children,
     );
   }
 }

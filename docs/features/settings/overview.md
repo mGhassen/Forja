@@ -32,7 +32,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
 - IPTV / Live Matches alone → movie Settings stay hidden until you turn a VOD tab back on in **Navigation**, then play sources under **Playback**
-- On TV, use D-pad to move through categories, then into toggles and actions
+- On **TV**, D-pad moves through the category list (entering Settings focuses the first category); **OK** opens a category in the shell overlay; **Back** / the focused back control returns to the hub. Toggles and dropdowns: **OK** flips a toggle or cycles the selected option; nested switches/menus do not steal focus
 - Theme / appearance picker is not shipped yet — see [Appearance](appearance.md)
 
 ## Related

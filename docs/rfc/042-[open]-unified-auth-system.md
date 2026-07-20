@@ -11,8 +11,8 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **8 / 16** acceptance |
-| **Current slice** | Handoff UX + Connections audit shipped — remaining web/Flutter smoke ⬜ |
+| **Progress** | **5 / 5** components · **9 / 16** acceptance |
+| **Current slice** | Desktop session Keychain persist (release) shipped — remaining web/Flutter smoke ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -50,7 +50,7 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R42-A07 | Session persisted via secure storage on desktop | ⬜ |
+| 1 | R42-A07 | Session persisted via secure storage on desktop | ✅ |
 | 2 | R42-A08 | Single in-flight `refreshSession` (boot/resume/focus) | ⬜ |
 | 3 | R42-A09 | Password sign-in shows TOTP challenge when MFA enrolled | ⬜ |
 | 4 | R42-A10 | Web login / OAuth completes MFA on portal then hands desktop its own session | ⬜ |

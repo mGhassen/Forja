@@ -12,7 +12,9 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_epg_guide_view.dart'
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';

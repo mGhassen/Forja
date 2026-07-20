@@ -4,7 +4,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_card.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_widget_imports.dart';
 
-class AsianDramaContinueWatchingSection extends StatelessWidget {
+class AsianDramaContinueWatchingSection extends StatefulWidget {
   final List<Map<String, dynamic>> entries;
   final int? resumingDramaId;
   final void Function(Map<String, dynamic> entry) onResume;
@@ -23,7 +23,27 @@ class AsianDramaContinueWatchingSection extends StatelessWidget {
   });
 
   @override
+  State<AsianDramaContinueWatchingSection> createState() =>
+      _AsianDramaContinueWatchingSectionState();
+}
+
+class _AsianDramaContinueWatchingSectionState
+    extends State<AsianDramaContinueWatchingSection> {
+  static const _rowId = 'continue-watching';
+
+  @override
+  void dispose() {
+    shellTvUnregisterRow(tabId: 'asian_drama', rowId: _rowId);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (widget.entries.isEmpty) {
+      shellTvUnregisterRow(tabId: 'asian_drama', rowId: _rowId);
+      return const SizedBox.shrink();
+    }
+
     final w = MediaQuery.of(context).size.width;
     final hPad = w < 380 ? 14.0 : 24.0;
     return Column(
@@ -46,12 +66,13 @@ class AsianDramaContinueWatchingSection extends StatelessWidget {
             builder: (context) {
               shellTvRegisterRow(
                 tabId: 'asian_drama',
-                rowId: 'continue-watching',
+                rowId: _rowId,
                 sortOrder: 0,
-                itemCount: entries.length,
-                onFocusUp: () => ShellTvFocusCoordinator.focusHero(
-                  tabId: 'asian_drama',
-                ),
+                itemCount: widget.entries.length,
+                onFocusUp: () {
+                  ShellTvFocusCoordinator.revealHeroForTab('asian_drama');
+                  ShellTvFocus.focusHomeHeroPlay();
+                },
               );
               return FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
@@ -60,19 +81,20 @@ class AsianDramaContinueWatchingSection extends StatelessWidget {
                   physics: const BouncingScrollPhysics(),
                   clipBehavior: Clip.none,
                   padding: EdgeInsets.symmetric(horizontal: hPad),
-                  itemCount: entries.length,
+                  itemCount: widget.entries.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 14),
                   itemBuilder: (_, i) {
-                    final entry = entries[i];
-                    final card = cardFromEntry(entry);
+                    final entry = widget.entries[i];
+                    final card = widget.cardFromEntry(entry);
                     final dramaId = (entry['id'] as num?)?.toInt();
                     return AsianDramaContinueWatchingCard(
                       listIndex: i,
                       entry: entry,
-                      isLoading: dramaId != null && resumingDramaId == dramaId,
-                      onTap: () => onResume(entry),
-                      onRemove: () => onRemove(entry),
-                      onInfo: () => onOpenDetails(card),
+                      isLoading:
+                          dramaId != null && widget.resumingDramaId == dramaId,
+                      onTap: () => widget.onResume(entry),
+                      onRemove: () => widget.onRemove(entry),
+                      onInfo: () => widget.onOpenDetails(card),
                     );
                   },
                 ),

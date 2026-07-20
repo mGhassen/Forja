@@ -84,6 +84,46 @@ void main() {
       expect(handled, isTrue);
       expect(toggled, 1);
     });
+
+    test('hardware volume keys always adjust volume', () {
+      var up = 0;
+      var down = 0;
+      final handler = PlayerTvRemoteKeyHandler(
+        onBack: () {},
+        onPlayPause: () {},
+        onShowControls: () {},
+        onSeekBack: () {},
+        onSeekForward: () {},
+        onVolumeUp: () => up++,
+        onVolumeDown: () => down++,
+        onToggleControls: () {},
+      );
+
+      expect(
+        handler.handle(
+          KeyDownEvent(
+            physicalKey: PhysicalKeyboardKey(0),
+            logicalKey: LogicalKeyboardKey.audioVolumeUp,
+            timeStamp: Duration.zero,
+          ),
+          showControls: true,
+        ),
+        isTrue,
+      );
+      expect(
+        handler.handle(
+          KeyDownEvent(
+            physicalKey: PhysicalKeyboardKey(0),
+            logicalKey: LogicalKeyboardKey.audioVolumeDown,
+            timeStamp: Duration.zero,
+          ),
+          showControls: true,
+        ),
+        isTrue,
+      );
+      expect(up, 1);
+      expect(down, 1);
+    });
   });
 
   testWidgets('tvFocusable chrome buttons expose FocusableControl', (tester) async {

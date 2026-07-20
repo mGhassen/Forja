@@ -31,20 +31,30 @@ class ForjaSupabase {
       );
       return;
     }
+    final localStorage = kIsWeb
+        ? null
+        : ForjaSecureLocalStorage(persistSessionKey: _persistSessionKey);
     await Supabase.initialize(
       url: url,
       // Same project key as apps/web VITE_SUPABASE_PUBLISHABLE_KEY.
       publishableKey: publishableKey,
       authOptions: FlutterAuthClientOptions(
-        // Desktop/mobile: OS secure store (Guepard keychain pattern).
+        // Desktop/mobile: OS secure store. macOS release uses login keychain
+        // (see ForjaSecureLocalStorage) — Data Protection Keychain breaks
+        // non-sandbox / Developer ID builds (-34018).
         // Web builds keep SharedPreferences / localStorage defaults.
-        localStorage: kIsWeb
-            ? null
-            : ForjaSecureLocalStorage(persistSessionKey: _persistSessionKey),
+        localStorage: localStorage,
       ),
     );
     _initialized = true;
-    debugPrint('[Supabase] Initialized');
+    final signedIn = Supabase.instance.client.auth.currentSession != null;
+    final persisted = localStorage == null
+        ? null
+        : await localStorage.hasAccessToken();
+    debugPrint(
+      '[Supabase] Initialized signedIn=$signedIn '
+      'persistedSession=${persisted ?? 'n/a (web)'}',
+    );
   }
 
   static SupabaseClient? get clientOrNull {

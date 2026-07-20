@@ -8,7 +8,7 @@
 /// Fix: pre-build the embed `<iframe>` with `referrerpolicy` and attach the
 /// IFrame API to that element instead of letting `YT.Player` create one.
 /// See https://developers.google.com/youtube/terms/required-minimum-functionality
-const kYoutubeEmbedOrigin = 'https://com.forja.app';
+const kYoutubeEmbedOrigin = 'https://com.forjahq.app';
 
 /// nocookie embed URL with origin + widget_referrer for WebView Referer policy.
 String youtubeNocookieEmbedSrc({

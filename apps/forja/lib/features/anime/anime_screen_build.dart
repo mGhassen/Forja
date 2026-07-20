@@ -30,6 +30,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
     int? rank,
     int? listIndex,
     String? tvRowId,
+    VoidCallback? onUpEdge,
   }) {
     final subtitle = [
       if (anime.seasonYear != null) '${anime.seasonYear}',
@@ -44,7 +45,9 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
       badge: anime.format,
       rank: rank,
       listIndex: listIndex,
+      tvTabId: 'anime',
       tvRowId: tvRowId,
+      onUpEdge: onUpEdge,
       onTap: () => _s._openDetails(anime),
     );
   }
@@ -393,6 +396,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
         final list = snapshot.data ?? <AnimeCard>[];
 
         if (loading || list.isEmpty) {
+          shellTvUnregisterRow(tabId: 'anime', rowId: 'mood-results');
           if (loading || !snapshot.hasData) {
             return homeLoadingShimmer(
               SizedBox(
@@ -427,22 +431,25 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
               return FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
                 child: ListView.separated(
-            clipBehavior: Clip.none,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.symmetric(
-              horizontal: shellHomeSectionHorizontalPadding(context),
-            ),
-            itemCount: list.length,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: shellMovieCardRowGap(context)),
-            itemBuilder: (context, index) =>
-                _animePosterCard(
-              list[index],
-              listIndex: index,
-              tvRowId: 'mood-results',
-            ),
-          ),
+                  clipBehavior: Clip.none,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellHomeSectionHorizontalPadding(context),
+                  ),
+                  itemCount: list.length,
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: shellMovieCardRowGap(context)),
+                  itemBuilder: (context, index) => _animePosterCard(
+                    list[index],
+                    listIndex: index,
+                    tvRowId: 'mood-results',
+                    onUpEdge: shellTvResultsUpToChips(
+                      tabId: 'anime',
+                      chipRowId: 'mood-chips',
+                    ),
+                  ),
+                ),
               );
             },
           ),

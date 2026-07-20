@@ -13,8 +13,8 @@ Tap **My List** in the navigation bar.
 ## What you can do
 
 - View all bookmarked movies and series in a grid
-- Tap a poster to open details and play
-- Remove items from the list (with undo)
+- Tap a poster to open details and play — on **TV**, D-pad moves across the grid; entering the tab focuses the first poster; **←** from the leftmost column returns to the nav rail
+- Remove items from the list (with undo) — on **TV**, the red remove chip is mouse-only (open the title and clear My List from details)
 - Add items from any details screen via the list/bookmark action
 
 ## Tips

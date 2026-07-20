@@ -469,7 +469,8 @@ class AnimeService {
 
   /// Build Megaplay/Vidwish + Miruro/AllAnime/VidNest embeds for an episode.
   ///
-  /// Megaplay/Vidwish always emit: Anikoto `s-2` when matched, else `/stream/ani/`.
+  /// Megaplay: Anikoto `s-2` when matched, else `/stream/ani/`.
+  /// Vidwish: only Anikoto `s-2` — `/stream/ani/` is dead on that host.
   List<AnimeEmbed> buildAllEmbeds({
     required int anilistId,
     required int episode,
@@ -486,6 +487,7 @@ class AnimeService {
           .firstWhere((_) => true, orElse: () => null);
       embedId = ep?.embedId;
     }
+    final hasCatalogId = embedId != null && embedId.isNotEmpty;
 
     final all = <AnimeEmbed>[
       AnimeEmbed(
@@ -500,18 +502,19 @@ class AnimeService {
           embedId: embedId,
         ),
       ),
-      AnimeEmbed(
-        label: AnimeStreamProviders.displayName('vidwish'),
-        server: 'vidwish',
-        category: 'sub',
-        url: _embed(
+      if (hasCatalogId)
+        AnimeEmbed(
+          label: AnimeStreamProviders.displayName('vidwish'),
           server: 'vidwish',
-          anilistId: anilistId,
-          episode: episode,
           category: 'sub',
-          embedId: embedId,
+          url: _embed(
+            server: 'vidwish',
+            anilistId: anilistId,
+            episode: episode,
+            category: 'sub',
+            embedId: embedId,
+          ),
         ),
-      ),
       AnimeEmbed(
         label: AnimeStreamProviders.displayName('megaplay'),
         server: 'megaplay',
@@ -524,18 +527,19 @@ class AnimeService {
           embedId: embedId,
         ),
       ),
-      AnimeEmbed(
-        label: AnimeStreamProviders.displayName('vidwish'),
-        server: 'vidwish',
-        category: 'dub',
-        url: _embed(
+      if (hasCatalogId)
+        AnimeEmbed(
+          label: AnimeStreamProviders.displayName('vidwish'),
           server: 'vidwish',
-          anilistId: anilistId,
-          episode: episode,
           category: 'dub',
-          embedId: embedId,
+          url: _embed(
+            server: 'vidwish',
+            anilistId: anilistId,
+            episode: episode,
+            category: 'dub',
+            embedId: embedId,
+          ),
         ),
-      ),
     ];
     // Miruro fallback — emit one embed per known provider per category. The
     // resolver fans them all out in parallel; whichever returns a stream

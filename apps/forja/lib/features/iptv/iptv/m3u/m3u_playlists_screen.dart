@@ -15,6 +15,8 @@ import 'package:forja/shared/design/design.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'm3u_models.dart';
 import 'm3u_parser.dart';
 import 'm3u_store.dart';
@@ -31,11 +33,18 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
   bool _loading = true;
   bool _busy = false;
   String? _error;
+  final FocusNode _addUrlFocus = FocusNode(debugLabel: 'm3u-add-url');
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _addUrlFocus.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -45,6 +54,13 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       _playlists = list;
       _loading = false;
     });
+    if (list.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (!iptvUseTvFocus(context)) return;
+        if (_addUrlFocus.canRequestFocus) _addUrlFocus.requestFocus();
+      });
+    }
   }
 
   Future<void> _persist() async {
@@ -442,9 +458,12 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
           playlist: p,
           listIndex: i,
           onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => M3uChannelsScreen(playlist: p),
-            ));
+            pushShellRoute(
+              context,
+              AppRouter.slideShellRoute(
+                (_) => M3uChannelsScreen(playlist: p),
+              ),
+            );
           },
           onRefresh: p.sourceUrl == null ? null : () => _refresh(p),
           onDelete: () => _delete(p),
@@ -467,6 +486,9 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             child: IptvPrimaryButton(
               icon: Icons.link_rounded,
               label: 'Add from URL',
+              focusNode: _addUrlFocus,
+              tvRowId: 'm3u-bottom',
+              tvItemIndex: 0,
               onPressed: _busy ? null : _showAddUrlDialog,
             ),
           ),
@@ -476,6 +498,8 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
               icon: Icons.upload_file_rounded,
               label: 'Upload File',
               subtle: true,
+              tvRowId: 'm3u-bottom',
+              tvItemIndex: 1,
               onPressed: _busy ? null : _pickAndImportFile,
             ),
           ),
@@ -704,20 +728,23 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
   }
 
   void _play(M3uChannel ch) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => IptvPtPlayerScreen(
-        sources: [
-          IptvPlaySource(url: ch.url, label: widget.playlist.name),
-        ],
-        title: ch.name,
-        subtitle: ch.group.isNotEmpty ? ch.group : widget.playlist.name,
-        logoUrl: ch.logo.isEmpty ? null : ch.logo,
-        channelGuide: IptvChannelGuide.fromM3uPlaylist(
-          widget.playlist.channels,
-          initialChannel: ch,
+    pushShellRoute(
+      context,
+      AppRouter.slideShellRoute(
+        (_) => IptvPtPlayerScreen(
+          sources: [
+            IptvPlaySource(url: ch.url, label: widget.playlist.name),
+          ],
+          title: ch.name,
+          subtitle: ch.group.isNotEmpty ? ch.group : widget.playlist.name,
+          logoUrl: ch.logo.isEmpty ? null : ch.logo,
+          channelGuide: IptvChannelGuide.fromM3uPlaylist(
+            widget.playlist.channels,
+            initialChannel: ch,
+          ),
         ),
       ),
-    ));
+    );
   }
 
   @override

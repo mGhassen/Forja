@@ -93,21 +93,49 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
 
   bool _restoreLiveMatchesTvFocus() {
     bool tryFocus() {
-      final handle = ShellTvFocusCoordinator.rowHandle(_LiveMatchesScreenState._tabId, _LiveMatchesScreenState._gridRowId);
-      if (handle == null || handle.itemCount <= 0) return false;
-      final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
-      return _focusGridItem(idx);
+      final grid = ShellTvFocusCoordinator.rowHandle(
+        _LiveMatchesScreenState._tabId,
+        _LiveMatchesScreenState._gridRowId,
+      );
+      if (grid != null && grid.itemCount > 0) {
+        final idx = grid.lastFocusedIndex.clamp(0, grid.itemCount - 1);
+        return _focusGridItem(idx);
+      }
+      for (final rowId in _s._timelineTvRowIds) {
+        final handle = ShellTvFocusCoordinator.rowHandle(
+          _LiveMatchesScreenState._tabId,
+          rowId,
+        );
+        if (handle == null || handle.itemCount <= 0) continue;
+        final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
+        return ShellTvFocusCoordinator.focusRowItem(
+          _LiveMatchesScreenState._tabId,
+          rowId,
+          idx,
+        );
+      }
+      return false;
     }
 
     if (tryFocus()) return true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || ShellTvFocus.currentNavTabId != _LiveMatchesScreenState._tabId) return;
+      if (!mounted ||
+          ShellTvFocus.currentNavTabId != _LiveMatchesScreenState._tabId) {
+        return;
+      }
       tryFocus();
     });
     return false;
   }
 
   void _registerGridRow(int itemCount) {
+    for (final id in _s._timelineTvRowIds) {
+      shellTvUnregisterRow(
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: id,
+      );
+    }
+    _s._timelineTvRowIds.clear();
     shellTvRegisterRow(
       tabId: _LiveMatchesScreenState._tabId,
       rowId: _LiveMatchesScreenState._gridRowId,

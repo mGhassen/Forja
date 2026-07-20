@@ -35,7 +35,11 @@ pub fn direct_embed_extract(embed_url: &str, referer: Option<&str>) -> Result<Op
         ),
     ]);
 
-    let page = anime_get(embed_url, &page_headers, 15)?;
+    // Transport / soft-404 / missing player → None (race tries next host).
+    // Do not Err — callers treat that as an exceptional failure and log stacks.
+    let Ok(page) = anime_get(embed_url, &page_headers, 15) else {
+        return Ok(None);
+    };
     if page.status != 200 {
         return Ok(None);
     }
@@ -58,7 +62,9 @@ pub fn direct_embed_extract(embed_url: &str, referer: Option<&str>) -> Result<Op
         ("Accept".into(), "application/json, text/plain, */*".into()),
     ]);
 
-    let api = anime_get(&api_url, &api_headers, 15)?;
+    let Ok(api) = anime_get(&api_url, &api_headers, 15) else {
+        return Ok(None);
+    };
     if api.status != 200 {
         return Ok(None);
     }

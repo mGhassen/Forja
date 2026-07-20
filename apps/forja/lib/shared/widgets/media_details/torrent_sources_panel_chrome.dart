@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Compact top chrome for the Sources panel:
 /// title + count · kind tabs · provider chips · search/filters.
@@ -234,17 +236,7 @@ class _TitleRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: onCancelFetch,
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: cinematic.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                _SourcesCancelChip(onCancel: onCancelFetch),
               ],
             ],
           ),
@@ -316,17 +308,18 @@ class _KindTabs extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            for (final option in options)
+            for (var i = 0; i < options.length; i++)
               _KindTab(
-                label: option.label,
-                icon: option.icon,
-                iconData: option.iconData,
-                selected: selected == option.id,
-                onTap: () => onChanged(option.id),
+                label: options[i].label,
+                icon: options[i].icon,
+                iconData: options[i].iconData,
+                selected: selected == options[i].id,
+                tvItemIndex: i,
+                onTap: () => onChanged(options[i].id),
                 // Reload only the opened kind — never prefetch a hidden category.
-                onReload: onReloadKind == null || selected != option.id
+                onReload: onReloadKind == null || selected != options[i].id
                     ? null
-                    : () => onReloadKind!(option.id),
+                    : () => onReloadKind!(options[i].id),
               ),
           ],
         ),
@@ -340,6 +333,7 @@ class _KindTab extends StatefulWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    required this.tvItemIndex,
     this.icon,
     this.iconData,
     this.onReload,
@@ -349,6 +343,7 @@ class _KindTab extends StatefulWidget {
   final Widget? icon;
   final IconData? iconData;
   final bool selected;
+  final int tvItemIndex;
   final VoidCallback onTap;
   final VoidCallback? onReload;
 
@@ -358,23 +353,106 @@ class _KindTab extends StatefulWidget {
 
 class _KindTabState extends State<_KindTab> {
   bool _hovered = false;
+  bool _focused = false;
   bool _reloadHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
-    final emphasize = selected || _hovered;
+    final emphasize = selected || _hovered || _focused;
     final color = selected
         ? cinematic.textPrimary
-        : (_hovered
+        : (_hovered || _focused
             ? cinematic.textPrimary.withValues(alpha: 0.88)
             : cinematic.textSecondary);
     final indicatorColor = selected
         ? ForjaShellColors.sectionAccent
-        : (_hovered
+        : (_hovered || _focused
             ? cinematic.textSecondary.withValues(alpha: 0.55)
             : Colors.transparent);
+
+    final face = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+      transform: Matrix4.translationValues(
+        0,
+        (_hovered || _focused) && !selected ? -0.5 : 0,
+        0,
+      ),
+      transformAlignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: indicatorColor,
+            width: selected ? 2.0 : 1.5,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: selected ? -0.1 : 0,
+            color: color,
+            height: 1.1,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.icon != null || widget.iconData != null) ...[
+                AnimatedScale(
+                  scale: emphasize ? 1.06 : 1.0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  child: IconTheme(
+                    data: IconThemeData(size: 14, color: color),
+                    child: widget.icon ??
+                        Icon(widget.iconData, size: 14, color: color),
+                  ),
+                ),
+                const SizedBox(width: 7),
+              ],
+              Text(widget.label),
+              if (widget.onReload != null) ...[
+                const SizedBox(width: 8),
+                // Reload stays pointer-only on TV — Kind tab OK switches kinds.
+                ExcludeFocus(
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => setState(() => _reloadHovered = true),
+                    onExit: (_) => setState(() => _reloadHovered = false),
+                    child: GestureDetector(
+                      onTap: widget.onReload,
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedOpacity(
+                        opacity: _hovered || selected || _focused ? 1 : 0.7,
+                        duration: const Duration(milliseconds: 160),
+                        child: AnimatedRotation(
+                          turns: _reloadHovered ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 320),
+                          curve: Curves.easeOutCubic,
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            size: 14,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -383,83 +461,75 @@ class _KindTabState extends State<_KindTab> {
         _reloadHovered = false;
       }),
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(
+      child: shellFocusableTap(
+        context: context,
         onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-          transform: Matrix4.translationValues(0, _hovered && !selected ? -0.5 : 0, 0),
-          transformAlignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: indicatorColor,
-                width: selected ? 2.0 : 1.5,
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 9),
-            child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                letterSpacing: selected ? -0.1 : 0,
-                color: color,
-                height: 1.1,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.icon != null || widget.iconData != null) ...[
-                    AnimatedScale(
-                      scale: emphasize ? 1.06 : 1.0,
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      child: IconTheme(
-                        data: IconThemeData(size: 14, color: color),
-                        child: widget.icon ??
-                            Icon(widget.iconData, size: 14, color: color),
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                  ],
-                  Text(widget.label),
-                  if (widget.onReload != null) ...[
-                    const SizedBox(width: 8),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      onEnter: (_) => setState(() => _reloadHovered = true),
-                      onExit: (_) => setState(() => _reloadHovered = false),
-                      child: GestureDetector(
-                        onTap: widget.onReload,
-                        behavior: HitTestBehavior.opaque,
-                        child: AnimatedOpacity(
-                          opacity: _hovered || selected ? 1 : 0.7,
-                          duration: const Duration(milliseconds: 160),
-                          child: AnimatedRotation(
-                            turns: _reloadHovered ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 320),
-                            curve: Curves.easeOutCubic,
-                            child: Icon(
-                              Icons.refresh_rounded,
-                              size: 14,
-                              color: color,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        listIndex: widget.tvItemIndex,
+        tvRowId: 'sources-kind',
+        tvItemIndex: widget.tvItemIndex,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: face,
+      ),
+    );
+  }
+}
+
+class _SourcesCancelChip extends StatefulWidget {
+  const _SourcesCancelChip({required this.onCancel});
+
+  final VoidCallback onCancel;
+
+  @override
+  State<_SourcesCancelChip> createState() => _SourcesCancelChipState();
+}
+
+class _SourcesCancelChipState extends State<_SourcesCancelChip> {
+  final FocusNode _focus = FocusNode(debugLabel: 'sources-cancel');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_focus.canRequestFocus) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    final label = Text(
+      'Cancel',
+      style: TextStyle(
+        color: cinematic.textSecondary,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return GestureDetector(onTap: widget.onCancel, child: label);
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onCancel,
+      focusNode: _focus,
+      borderRadius: 8,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      tvRowId: 'sources-cancel',
+      tvItemIndex: 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: label,
       ),
     );
   }

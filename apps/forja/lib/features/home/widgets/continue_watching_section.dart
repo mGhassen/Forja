@@ -287,6 +287,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
         ? 'S$season E$episode${episodeTitle != null && episodeTitle.isNotEmpty ? ' • $episodeTitle' : ''}'
         : '';
 
+    final policy = ShellScope.inputPolicyOf(context);
     final cardWidth = HomeHistoryCard.cardWidth(context);
     final cardHeight = HomeHistoryCard.cardHeight(context);
 
@@ -354,43 +355,46 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
               ),
             ),
 
-            // Top-right actions
+            // Top-right actions (mouse only — TV uses card select + details via info elsewhere)
             Positioned(
               top: 6, right: 6,
-              child: Column(
-                children: [
-                  ForjaCloseButton(
-                    size: 14,
-                    hitSize: 28,
-                    color: Colors.white70,
-                    onTap: widget.onRemove,
-                  ),
-                  const SizedBox(height: 4),
-                  Material(
-                    color: Colors.transparent,
-                    shape: const CircleBorder(),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      hoverColor: ForjaShellColors.inkHover,
-                      splashColor: ForjaShellColors.inkSplash,
-                      highlightColor: ForjaShellColors.inkSplash,
-                      onTap: widget.onInfo,
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.info_outline_rounded,
-                          color: Colors.white70,
-                          size: 14,
+              child: ExcludeFocus(
+                excluding: !policy.scaleOnHover,
+                child: Column(
+                  children: [
+                    ForjaCloseButton(
+                      size: 14,
+                      hitSize: 28,
+                      color: Colors.white70,
+                      onTap: widget.onRemove,
+                    ),
+                    const SizedBox(height: 4),
+                    Material(
+                      color: Colors.transparent,
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        hoverColor: ForjaShellColors.inkHover,
+                        splashColor: ForjaShellColors.inkSplash,
+                        highlightColor: ForjaShellColors.inkSplash,
+                        onTap: widget.onInfo,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 

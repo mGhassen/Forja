@@ -48,7 +48,7 @@ Thread name: `Chrome_InProcGp`. This is **not** `media_kit` / player UI — it i
 
 **Dart (View layer — supplement):** [`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart) sets `hardwareAcceleration: false` on TV. Maps to `LAYER_TYPE_NONE` — does **not** stop `Chrome_InProcGp`.
 
-**Native (boot):** [`ForjaApplication.kt`](../../apps/forja/android/app/src/main/kotlin/com/forja/app/ForjaApplication.kt) + [`WebViewTvWorkaround.kt`](../../apps/forja/android/app/src/main/kotlin/com/forja/app/WebViewTvWorkaround.kt) — software warm-up; boot skips `setWebContentsDebuggingEnabled` on TV.
+**Native (boot):** [`ForjaApplication.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/ForjaApplication.kt) + [`WebViewTvWorkaround.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/WebViewTvWorkaround.kt) — software warm-up; boot skips `setWebContentsDebuggingEnabled` on TV.
 
 **Stream play (TV — no headless WebView):** [`atv_webview_guard.dart`](../../apps/forja/lib/shared/webview/atv_webview_guard.dart) blocks `StreamExtractor`, `AmriExtractor`, and Videasy WASM WebView on TV. [`tv_stream_fallback.dart`](../../apps/forja/lib/shared/playback/tv_stream_fallback.dart) resolves via WebStreamr / Vidsrc / 111477. Details webstreaming extraction prioritizes Rust providers on TV.
 

@@ -3,6 +3,8 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Debrid service selection and API key configuration.
@@ -180,19 +182,28 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
   }
 
   Widget _apiKeyLink(String label, String url) {
-    return InkWell(
+    return shellFocusableTap(
+      context: context,
       onTap: () async {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: ForjaShellColors.brandGreen,
-          fontSize: 12,
-          decoration: TextDecoration.underline,
+      borderRadius: 6,
+      scaleOnFocus: 1.0,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: ForjaShellColors.brandGreen,
+            fontSize: 12,
+            decoration: TextDecoration.underline,
+          ),
         ),
       ),
     );

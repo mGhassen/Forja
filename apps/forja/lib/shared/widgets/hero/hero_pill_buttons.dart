@@ -553,15 +553,24 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
     required this.segments,
     required this.selected,
     required this.onSelected,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvItemIndexStart,
+    this.onUpEdge,
   });
 
   final List<HeroPillSegment<T>> segments;
   final T selected;
   final ValueChanged<T> onSelected;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? tvItemIndexStart;
+  final VoidCallback? onUpEdge;
 
   @override
   Widget build(BuildContext context) {
     if (segments.isEmpty) return const SizedBox.shrink();
+    final useTvCompact = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     return Container(
       height: _kHeroPillHeight,
@@ -583,6 +592,13 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
               isFirst: i == 0,
               isLast: i == segments.length - 1,
               onTap: () => onSelected(segments[i].value),
+              useTvCompact: useTvCompact,
+              tvTabId: tvTabId,
+              tvRowId: tvRowId,
+              tvItemIndex: tvItemIndexStart != null
+                  ? tvItemIndexStart! + i
+                  : null,
+              onUpEdge: onUpEdge,
             ),
           ],
         ],
@@ -598,6 +614,11 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
     required this.isFirst,
     required this.isLast,
     required this.onTap,
+    required this.useTvCompact,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.onUpEdge,
   });
 
   final HeroPillSegment<T> segment;
@@ -605,17 +626,44 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
   final VoidCallback onTap;
+  final bool useTvCompact;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
 
   @override
   Widget build(BuildContext context) {
     final foreground = selected
         ? Colors.white
         : Colors.white.withValues(alpha: 0.55);
+    final tvMeta = tvTabId != null && useTvCompact
+        ? ShellTvFocusMeta(
+            tabId: tvTabId!,
+            zone: tvRowId != null && tvItemIndex != null
+                ? ShellTvZone.row
+                : ShellTvZone.hero,
+            rowId: tvRowId,
+            itemIndex: tvItemIndex,
+          )
+        : null;
+    final effectiveOnKey = onUpEdge != null
+        ? (FocusNode node, KeyEvent event) {
+            final up = ShellTvFocus.onArrowUp(event, () {
+              onUpEdge!();
+              return true;
+            });
+            if (up == KeyEventResult.handled) return up;
+            return KeyEventResult.ignored;
+          }
+        : null;
 
     return ForjaInteractive(
       onTap: onTap,
       hoverScale: 1.03,
       pressScale: 0.97,
+      tvMeta: tvMeta,
+      onKeyEvent: effectiveOnKey,
       builder: (hover, pressed) {
         final active = selected || hover || pressed;
         return AnimatedContainer(

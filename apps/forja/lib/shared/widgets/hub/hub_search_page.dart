@@ -64,6 +64,7 @@ class HubSearchPage extends StatefulWidget {
 class _HubSearchPageState extends State<HubSearchPage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _closeFocusNode = FocusNode(debugLabel: 'hub-search-close');
   final FocusNode _firstHelperFocusNode = FocusNode();
   final ScrollController _helpersScrollController = ScrollController();
   final ScrollController _resultsScrollController = ScrollController();
@@ -186,9 +187,16 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   void _onSearchFieldFocusChange() {
     if (mounted) setState(() {});
-    if (!_focusNode.hasFocus && _searchFieldEditing && mounted) {
-      setState(() => _searchFieldEditing = false);
+    if (!_focusNode.hasFocus) {
+      if (_searchFieldEditing && mounted) {
+        setState(() => _searchFieldEditing = false);
+      }
+      return;
     }
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _focusNode),
+    );
   }
 
   bool _handleFindShortcut() {
@@ -203,6 +211,10 @@ class _HubSearchPageState extends State<HubSearchPage> {
     }
     _resetHelpersScroll();
     _focusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _focusNode),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _query.trim().isNotEmpty) return;
       if (!_focusNode.hasFocus) {
@@ -230,6 +242,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
     _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
+    _closeFocusNode.dispose();
     _firstHelperFocusNode.dispose();
     _helpersScrollController.dispose();
     _resultsScrollController.dispose();
@@ -544,12 +557,81 @@ class _HubSearchPageState extends State<HubSearchPage> {
     return _recommendationTitles.length;
   }
 
+  void _focusSearchClose() {
+    if (!_closeFocusNode.canRequestFocus) return;
+    _closeFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _closeFocusNode),
+    );
+  }
+
+  /// Left from a film card → recommendation at the visually aligned helper row.
+  void _focusHelperAtVisualLevelFromGrid(int gridIndex) {
+    final count = _helperItemCount();
+    if (count <= 0) return;
+    final helperRowId = _helpersRowIdForFocus();
+    final cardY = _tvItemCenterGlobalY(_resultsRowId, gridIndex);
+    if (cardY == null) {
+      _focusFirstHelper();
+      return;
+    }
+    var best = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < count; i++) {
+      final y = _tvItemCenterGlobalY(helperRowId, i);
+      if (y == null) continue;
+      final dist = (y - cardY).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    _focusHelperAtIndex(best);
+  }
+
+  void _focusFilmCardsFromClose() {
+    if (_results.isNotEmpty) {
+      _focusResultCardAt(0);
+      return;
+    }
+    if (_helperItemCount() > 0) {
+      _focusFirstHelper();
+    }
+  }
+
+  KeyEventResult _searchCloseKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _focusSearchFieldBrowse();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _focusFilmCardsFromClose();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      // Browse: trap — nav exit is Down → suggestions → Left.
+      // Editing: ignore so the caret can move.
+      if (_searchFieldEditing) return KeyEventResult.ignored;
+      return KeyEventResult.handled;
+    }
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (_helperItemCount() <= 0) return KeyEventResult.ignored;
       _focusFirstHelper();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+        _query.isNotEmpty) {
+      _focusSearchClose();
       return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
@@ -593,9 +675,12 @@ class _HubSearchPageState extends State<HubSearchPage> {
           ForjaCloseButton.compact(
             tooltip: null,
             color: ForjaShellColors.cinematic.textPrimary,
+            focusNode: _closeFocusNode,
+            onKeyEvent: _searchCloseKeyEvent,
             onTap: () {
               _controller.clear();
               _onSearchChanged('');
+              _focusSearchFieldBrowse();
             },
           ),
         const SizedBox(width: 4),
@@ -731,9 +816,12 @@ class _HubSearchPageState extends State<HubSearchPage> {
                 ? ForjaCloseButton.compact(
                     tooltip: null,
                     color: ForjaShellColors.textSecondary,
+                    focusNode: _closeFocusNode,
+                    onKeyEvent: _searchCloseKeyEvent,
                     onTap: () {
                       _controller.clear();
                       _onSearchChanged('');
+                      _focusSearchFieldBrowse();
                     },
                   )
                 : null,
@@ -959,7 +1047,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
               resultsRowId: _resultsRowId,
               onTap: () => setState(() => _gridFocusedIndex = index),
               onOpen: () => widget.onOpen(item),
-              onLeftEdge: firstColumn && tvFocus ? _focusFirstHelper : null,
+              onLeftEdge: firstColumn && tvFocus
+                  ? () => _focusHelperAtVisualLevelFromGrid(index)
+                  : null,
               onUpEdge: firstRow && tvFocus ? _focusSearchFieldBrowse : null,
               onFocusChange: (focused) {
                 if (focused) {

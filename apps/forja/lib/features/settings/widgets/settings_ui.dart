@@ -13,6 +13,7 @@ class SettingsCategoryTile extends StatelessWidget {
     this.subtitle,
     required this.selected,
     required this.onTap,
+    this.focusNode,
   });
 
   final IconData icon;
@@ -20,6 +21,7 @@ class SettingsCategoryTile extends StatelessWidget {
   final String? subtitle;
   final bool selected;
   final VoidCallback onTap;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +92,7 @@ class SettingsCategoryTile extends StatelessWidget {
       navLeftAlways: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
+      focusNode: focusNode,
       child: child,
     );
   }
@@ -211,13 +214,22 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
             child: Row(
               children: [
                 if (widget.showBack)
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed:
-                        widget.onBack ?? () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: ForjaShellColors.textPrimary,
+                  shellFocusableTap(
+                    context: context,
+                    onTap: widget.onBack ??
+                        () => Navigator.of(context).maybePop(),
+                    borderRadius: 20,
+                    scaleOnFocus: 1.0,
+                    showFocusBorder: true,
+                    navLeftAlways: true,
+                    tvTabId: 'settings',
+                    tvZone: ShellTvZone.settings,
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.arrow_back_rounded,
+                        color: ForjaShellColors.textPrimary,
+                      ),
                     ),
                   ),
                 Expanded(
@@ -335,10 +347,13 @@ class SettingsToggleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          ForjaSwitch(
-            value: value,
-            onChanged: onChanged,
-            scale: ForjaSwitch.settingsScale,
+          ExcludeFocus(
+            excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+            child: ForjaSwitch(
+              value: value,
+              onChanged: onChanged,
+              scale: ForjaSwitch.settingsScale,
+            ),
           ),
         ],
       ),
@@ -404,36 +419,39 @@ class SettingsSelectRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: ForjaShellColors.sectionIconBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: ForjaShellColors.borderSubtle),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: value,
-                dropdownColor: ForjaShellColors.cinematic.menuSurface,
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: ForjaShellColors.brandGreen,
-                  size: 20,
+          ExcludeFocus(
+            excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: ForjaShellColors.sectionIconBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ForjaShellColors.borderSubtle),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: value,
+                  dropdownColor: ForjaShellColors.cinematic.menuSurface,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: ForjaShellColors.brandGreen,
+                    size: 20,
+                  ),
+                  style: const TextStyle(
+                    color: ForjaShellColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  items: options
+                      .map(
+                        (o) => DropdownMenuItem(
+                          value: o,
+                          child: Text(o),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: onChanged,
                 ),
-                style: const TextStyle(
-                  color: ForjaShellColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-                items: options
-                    .map(
-                      (o) => DropdownMenuItem(
-                        value: o,
-                        child: Text(o),
-                      ),
-                    )
-                    .toList(),
-                onChanged: onChanged,
               ),
             ),
           ),
@@ -443,7 +461,12 @@ class SettingsSelectRow extends StatelessWidget {
 
     return shellFocusableTap(
       context: context,
-      onTap: () {},
+      onTap: () {
+        if (options.isEmpty) return;
+        final i = options.indexOf(value);
+        final next = options[((i < 0 ? 0 : i) + 1) % options.length];
+        onChanged(next);
+      },
       scaleOnFocus: 1.0,
       navLeftAlways: true,
       tvTabId: 'settings',
@@ -782,42 +805,140 @@ Future<bool> showSettingsConfirmDialog({
 }) async {
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
+    builder: (ctx) => ShellScope.rehost(
+      context,
+      _SettingsConfirmDialog(
+        title: title,
+        body: body,
+        confirmLabel: confirmLabel,
+        destructive: destructive,
+      ),
+    ),
+  );
+  return result == true;
+}
+
+class _SettingsConfirmDialog extends StatefulWidget {
+  const _SettingsConfirmDialog({
+    required this.title,
+    required this.body,
+    required this.confirmLabel,
+    required this.destructive,
+  });
+
+  final String title;
+  final String body;
+  final String confirmLabel;
+  final bool destructive;
+
+  @override
+  State<_SettingsConfirmDialog> createState() => _SettingsConfirmDialogState();
+}
+
+class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
+  final FocusNode _cancelFocus =
+      FocusNode(debugLabel: 'settings-confirm-cancel');
+  final FocusNode _confirmFocus =
+      FocusNode(debugLabel: 'settings-confirm-ok');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      final node = widget.destructive ? _cancelFocus : _confirmFocus;
+      if (node.canRequestFocus) node.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _cancelFocus.dispose();
+    _confirmFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final confirmColor = widget.destructive
+        ? const Color(0xFFF87171)
+        : ForjaShellColors.brandGreen;
+
+    Widget action({
+      required String label,
+      required Color color,
+      required FontWeight weight,
+      required FocusNode focus,
+      required bool value,
+      VoidCallback? onLeft,
+      VoidCallback? onRight,
+    }) {
+      if (!tv) {
+        return TextButton(
+          onPressed: () => Navigator.pop(context, value),
+          child: Text(
+            label,
+            style: TextStyle(color: color, fontWeight: weight),
+          ),
+        );
+      }
+      return shellFocusableTap(
+        context: context,
+        onTap: () => Navigator.pop(context, value),
+        focusNode: focus,
+        borderRadius: 10,
+        scaleOnFocus: ShellTokens.focusActiveScale,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        onLeftEdge: onLeft,
+        onRightEdge: onRight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(
+            label,
+            style: TextStyle(color: color, fontWeight: weight),
+          ),
+        ),
+      );
+    }
+
+    return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
-        title,
+        widget.title,
         style: const TextStyle(color: ForjaShellColors.textPrimary),
       ),
       content: Text(
-        body,
+        widget.body,
         style: const TextStyle(color: ForjaShellColors.textSecondary),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text(
-            'Cancel',
-            style: TextStyle(color: ForjaShellColors.textSecondary),
-          ),
+        action(
+          label: 'Cancel',
+          color: ForjaShellColors.textSecondary,
+          weight: FontWeight.w500,
+          focus: _cancelFocus,
+          value: false,
+          onRight: () {
+            if (_confirmFocus.canRequestFocus) _confirmFocus.requestFocus();
+          },
         ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: Text(
-            confirmLabel,
-            style: TextStyle(
-              color: destructive
-                  ? const Color(0xFFF87171)
-                  : ForjaShellColors.brandGreen,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        action(
+          label: widget.confirmLabel,
+          color: confirmColor,
+          weight: FontWeight.w700,
+          focus: _confirmFocus,
+          value: true,
+          onLeft: () {
+            if (_cancelFocus.canRequestFocus) _cancelFocus.requestFocus();
+          },
         ),
       ],
-    ),
-  );
-  return result == true;
+    );
+  }
 }

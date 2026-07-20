@@ -100,6 +100,13 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
   Widget _buildTimelineBody() {
     final buckets = _timelineBuckets;
     if (buckets.isEmpty) {
+      for (final id in _s._timelineTvRowIds) {
+        shellTvUnregisterRow(
+          tabId: _LiveMatchesScreenState._tabId,
+          rowId: id,
+        );
+      }
+      _s._timelineTvRowIds.clear();
       return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -115,10 +122,32 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
       );
     }
 
-    final totalCards = buckets.fold<int>(0, (n, b) => n + b.entries.length);
     final tvFocus = _s._tvFocus(context);
     if (tvFocus) {
-      _s._registerGridRow(totalCards);
+      shellTvUnregisterRow(
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: _LiveMatchesScreenState._gridRowId,
+      );
+      final nextIds = <String>{
+        for (final b in buckets) 'tl-${b.bucketMs}',
+      };
+      for (final id in _s._timelineTvRowIds.difference(nextIds)) {
+        shellTvUnregisterRow(
+          tabId: _LiveMatchesScreenState._tabId,
+          rowId: id,
+        );
+      }
+      _s._timelineTvRowIds
+        ..clear()
+        ..addAll(nextIds);
+      for (var i = 0; i < buckets.length; i++) {
+        shellTvRegisterRow(
+          tabId: _LiveMatchesScreenState._tabId,
+          rowId: 'tl-${buckets[i].bucketMs}',
+          sortOrder: 2 + i,
+          itemCount: buckets[i].entries.length,
+        );
+      }
     }
 
     return Column(
@@ -234,8 +263,6 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
       for (var b = 0; b < buckets.length; b++)
         _buildTimedBucketRow(
           bucket: buckets[b],
-          bucketIndex: b,
-          buckets: buckets,
           top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
           cardWidth: cardWidth,
           cardHeight: cardHeight,
@@ -255,9 +282,6 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         final bucket = buckets[bucketIndex];
         final link = _s._timelineCardLinks['$hb:$hi'];
         if (link != null) {
-          final flatBase = buckets
-              .take(bucketIndex)
-              .fold<int>(0, (n, x) => n + x.entries.length);
           children.add(
             Positioned(
               left: 0,
@@ -276,10 +300,12 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                       ),
                       child: _s._gridEntryCard(
                         bucket.entries[hi],
-                        flatBase + hi,
+                        hi,
                         bucket.entries.length,
                         null,
                         forceActive: true,
+                        tvRowId: 'tl-${bucket.bucketMs}',
+                        tvZone: ShellTvZone.row,
                       ),
                     ),
                   ),
@@ -299,18 +325,12 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
 
   Widget _buildTimedBucketRow({
     required _TimelineBucket bucket,
-    required int bucketIndex,
-    required List<_TimelineBucket> buckets,
     required double top,
     required double cardWidth,
     required double cardHeight,
     required double gap,
     required bool hoverLift,
   }) {
-    final flatBase = buckets
-        .take(bucketIndex)
-        .fold<int>(0, (n, b) => n + b.entries.length);
-
     return Positioned(
       key: ValueKey(bucket.bucketMs),
       left: _timelineRulerWidth + 6,
@@ -326,13 +346,8 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         itemCount: bucket.entries.length,
         separatorBuilder: (_, _) => SizedBox(width: gap),
         itemBuilder: (context, i) {
-          final flatIndex = flatBase + i;
           final entry = bucket.entries[i];
-          final upEdge = bucketIndex == 0
-              ? () => _s._focusTopBarItem(
-                  _LiveMatchesScreenState._topBarServersIndex,
-                )
-              : null;
+          final rowId = 'tl-${bucket.bucketMs}';
           // Opaque base so overlapping rows never show through the card.
           Widget slot = SizedBox(
             width: cardWidth,
@@ -344,9 +359,11 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
               ),
               child: _s._gridEntryCard(
                 entry,
-                flatIndex,
+                i,
                 bucket.entries.length,
-                upEdge,
+                null,
+                tvRowId: rowId,
+                tvZone: ShellTvZone.row,
                 onHoverChanged: hoverLift
                     ? (hovered) => _onTimelineCardHover(bucket.bucketMs, i, hovered)
                     : null,
@@ -461,12 +478,25 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                 color: ForjaShellColors.cinematic.borderSubtle,
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final g in _TimelineGranularity.values)
-                  _buildTimelineGranularityTab(g),
-              ],
+            child: Builder(
+              builder: (context) {
+                final values = _TimelineGranularity.values;
+                if (_s._tvFocus(context)) {
+                  shellTvRegisterRow(
+                    tabId: _LiveMatchesScreenState._tabId,
+                    rowId: _LiveMatchesScreenState._granularityRowId,
+                    sortOrder: 1,
+                    itemCount: values.length,
+                  );
+                }
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < values.length; i++)
+                      _buildTimelineGranularityTab(values[i], i, values.length),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -474,7 +504,11 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
     );
   }
 
-  Widget _buildTimelineGranularityTab(_TimelineGranularity g) {
+  Widget _buildTimelineGranularityTab(
+    _TimelineGranularity g,
+    int index,
+    int itemCount,
+  ) {
     final selected = _s._timelineGranularity == g;
     final cinematic = ForjaShellColors.cinematic;
     final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
@@ -509,6 +543,26 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
       context: context,
       borderRadius: radius,
       scaleOnFocus: 1.0,
+      listIndex: index,
+      tvTabId: _LiveMatchesScreenState._tabId,
+      tvRowId: _LiveMatchesScreenState._granularityRowId,
+      tvItemIndex: index,
+      onLeftEdge: shellTvChipLeftEdge(
+        context,
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: _LiveMatchesScreenState._granularityRowId,
+        index: index,
+      ),
+      onRightEdge: shellTvChipRightEdge(
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: _LiveMatchesScreenState._granularityRowId,
+        index: index,
+        itemCount: itemCount,
+      ),
+      onUpEdge: () => _s._focusTopBarItem(
+        _LiveMatchesScreenState._topBarServersIndex,
+      ),
+      onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
       onTap: () {
         _s._timelineAutoScrolled = false;
         setState(() => _s._timelineGranularity = g);
@@ -927,55 +981,59 @@ class _TimelinePlayheadPill extends StatelessWidget {
     final clock =
         '${time.hour.toString().padLeft(2, '0')}:'
         '${time.minute.toString().padLeft(2, '0')}';
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Tooltip(
-          message: 'Jump to now',
-          waitDuration: const Duration(milliseconds: 600),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E20),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: accent.withValues(alpha: 0.6)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  date,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  clock,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    height: 1.0,
-                  ),
-                ),
-              ],
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E20),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            date,
+            style: TextStyle(
+              color: accent,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
             ),
           ),
-        ),
+          const SizedBox(height: 1),
+          Text(
+            clock,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Tooltip(
+      message: 'Jump to now',
+      waitDuration: const Duration(milliseconds: 600),
+      child: shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 10,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        tvTabId: _LiveMatchesScreenState._tabId,
+        tvZone: ShellTvZone.topBar,
+        child: pill,
       ),
     );
   }

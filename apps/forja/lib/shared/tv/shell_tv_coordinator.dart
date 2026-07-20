@@ -428,7 +428,13 @@ abstract final class ShellTvFocusCoordinator {
         }
         return _restoreDefault(tabId);
       case ShellTvZone.topBar:
-        return ShellTvFocus.focusHomeSearch() || ShellTvFocus.focusHomeMenu();
+        // Prefer the remembered node (Search field/close). Never steal to Home
+        // chrome when restoring a non-home tab.
+        if (_tryRestoreLiveNode(memory)) return true;
+        if (tabId == 'home') {
+          return ShellTvFocus.focusHomeSearch() || ShellTvFocus.focusHomeMenu();
+        }
+        return _restoreDefault(tabId);
       case ShellTvZone.chipStrip:
       case ShellTvZone.settings:
         if (memory.node != null && memory.node!.canRequestFocus) {

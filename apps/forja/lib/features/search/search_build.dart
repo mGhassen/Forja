@@ -369,7 +369,9 @@ mixin _SearchBuild on State<SearchScreen> {
               gridColumns: gridColumns,
               onTap: () => _s._setGridFocusedIndex(index),
               onOpen: () => _s._openResult(item),
-              onLeftEdge: firstColumn && tvFocus ? _s._focusFirstHelper : null,
+              onLeftEdge: firstColumn && tvFocus
+                  ? () => _s._focusHelperAtVisualLevelFromGrid(index)
+                  : null,
               onUpEdge: firstRow && tvFocus ? _s._focusSearchFieldBrowse : null,
               onFocusChange: (focused) {
                 if (focused) {

@@ -40,6 +40,7 @@ import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
@@ -193,6 +194,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
+  final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   Movie? _heroMovie;
   String? _episodeOverview;
   bool _isLocked = false;
@@ -396,6 +398,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     _playFocus.dispose();
     _backFocus.dispose();
+    _tvKeyFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _indicatorHideTimer?.cancel();

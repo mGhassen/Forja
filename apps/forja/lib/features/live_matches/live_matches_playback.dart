@@ -1,55 +1,58 @@
 part of 'live_matches_screen.dart';
 
 mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
+  /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
+  Future<bool> _runWithCancellableLoading(
+    String message,
+    Future<void> Function() action,
+  ) async {
+    if (!mounted) return false;
+    var cancelled = false;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      useRootNavigator: true,
+      builder: (ctx) => PopScope(
+        canPop: true,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) cancelled = true;
+        },
+        child: _LiveCancellableLoadingDialog(
+          message: message,
+          onCancel: () => Navigator.of(ctx).pop(),
+        ),
+      ),
+    );
+    try {
+      await action();
+    } finally {
+      if (mounted && !cancelled) {
+        final nav = Navigator.of(context, rootNavigator: true);
+        if (nav.canPop()) nav.pop();
+      }
+    }
+    return !cancelled && mounted;
+  }
 
   Future<void> _openMergedMatch(
     _DamiTvStream ppv,
     _StreamedMatch streamed,
   ) async {
     if (!mounted) return;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            decoration: BoxDecoration(
-              color: ForjaShellColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: ForjaShellColors.cinematic.borderSubtle,
-              ),
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  color: ForjaShellColors.sectionAccent,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Loading PPV and Streamed sources…',
-                  style: TextStyle(color: ForjaShellColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
     final streams = <_StreamedStream>[];
-    try {
-      for (final source in streamed.sources) {
-        streams.addAll(await _fetchStreamedStreams(source));
-      }
-    } catch (e) {
-      debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
-    }
-    if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
+    final ok = await _runWithCancellableLoading(
+      'Loading PPV and Streamed sources…',
+      () async {
+        try {
+          for (final source in streamed.sources) {
+            streams.addAll(await _fetchStreamedStreams(source));
+          }
+        } catch (e) {
+          debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
+        }
+      },
+    );
+    if (!ok) return;
 
     final hasPpv = ppv.iframe.isNotEmpty;
     if (!hasPpv && streams.isEmpty) {
@@ -85,50 +88,20 @@ mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
     }
     if (!mounted) return;
 
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            decoration: BoxDecoration(
-              color: ForjaShellColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: ForjaShellColors.cinematic.borderSubtle,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  color: ForjaShellColors.sectionAccent,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Loading streams…',
-                  style: TextStyle(color: ForjaShellColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
     final streams = <_StreamedStream>[];
-    try {
-      for (final source in match.sources) {
-        streams.addAll(await _fetchStreamedStreams(source));
-      }
-    } catch (e) {
-      debugPrint('[LiveMatches] Streamed resolve error: $e');
-    }
-
-    if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
+    final ok = await _runWithCancellableLoading(
+      'Loading streams…',
+      () async {
+        try {
+          for (final source in match.sources) {
+            streams.addAll(await _fetchStreamedStreams(source));
+          }
+        } catch (e) {
+          debugPrint('[LiveMatches] Streamed resolve error: $e');
+        }
+      },
+    );
+    if (!ok) return;
 
     if (streams.isEmpty) {
       ForjaToast.info('No streams available for this event');
@@ -197,48 +170,18 @@ mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
       return;
     }
 
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            decoration: BoxDecoration(
-              color: ForjaShellColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: ForjaShellColors.cinematic.borderSubtle,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  color: ForjaShellColors.sectionAccent,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Connecting to stream…',
-                  style: const TextStyle(color: ForjaShellColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
     String? playUrl;
-    try {
-      playUrl = await _resolvePpvPlayUrl(s.iframe);
-    } catch (e) {
-      debugPrint('[LiveMatches] PPV resolve error: $e');
-    }
-
-    if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
+    final ok = await _runWithCancellableLoading(
+      'Connecting to stream…',
+      () async {
+        try {
+          playUrl = await _resolvePpvPlayUrl(s.iframe);
+        } catch (e) {
+          debugPrint('[LiveMatches] PPV resolve error: $e');
+        }
+      },
+    );
+    if (!ok) return;
 
     if (playUrl != null) {
       await Navigator.push(

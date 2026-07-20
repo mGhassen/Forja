@@ -92,12 +92,13 @@ Not synced — device-specific or sensitive:
   not the boot intro splash, and not an in-settings dropdown. After it finishes,
   the app opens that profile’s **default menu** tab (the starred tab under
   **Settings → Features**), not the screen you were on before switching.
-- On desktop, a restored session goes straight to the boot splash. A new
-  interactive sign-in opens **Who’s watching?** so you can choose the device
-  profile first. If the account has no profiles yet, you create one before
-  continuing. Tapping a profile there selects it and continues into the logo
-  boot splash (engines + catalog). Mid-session switches from Profile & account
-  still use the avatar profile splash.
+- On desktop, a restored session goes straight to the boot splash (the session
+  is kept in the OS Keychain / Keystore across quit — including macOS release
+  builds). A new interactive sign-in opens **Who’s watching?** so you can
+  choose the device profile first. If the account has no profiles yet, you
+  create one before continuing. Tapping a profile there selects it and
+  continues into the logo boot splash (engines + catalog). Mid-session
+  switches from Profile & account still use the avatar profile splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Account-bound local data on this

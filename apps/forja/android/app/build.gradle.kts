@@ -22,7 +22,7 @@ if (buildRust) {
 }
 
 android {
-    namespace = "com.forja.app"
+    namespace = "com.forjahq.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -33,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.forja.app"
+        applicationId = "com.forjahq.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

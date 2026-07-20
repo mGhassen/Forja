@@ -2181,7 +2181,7 @@ class _MusicScreenState extends State<MusicScreen>
       ForjaToast.info('No downloads to show');
       return;
     }
-    final path = downloaded.first.localPath ?? 'Android/media/com.forja.app/Music';
+    final path = downloaded.first.localPath ?? 'Android/media/com.forjahq.app/Music';
     final dirPath = File(path).parent.path;
 
     showDialog(

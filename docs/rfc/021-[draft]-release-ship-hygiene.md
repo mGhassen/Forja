@@ -131,7 +131,7 @@ Update:
 - [`bootstrap.dart`](../../apps/forja/lib/app/bootstrap.dart) splash config
 - [`pubspec.yaml`](../../apps/forja/pubspec.yaml) `flutter.assets` entries
 
-Bundle id: `com.forja.app` (consistent across platforms).
+Bundle id: `com.forjahq.app` (consistent across platforms).
 
 ## 6. Desktop window chrome
 

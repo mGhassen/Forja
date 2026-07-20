@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Pure layout maths for the Live catalog EPG timeline.
 class IptvEpgTimeline {
@@ -366,16 +369,35 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
             children: [
               SizedBox(
                 width: _channelColW,
-                child: ListView.builder(
-                  controller: _vChannels,
-                  physics: const ClampingScrollPhysics(),
-                  itemExtent: _rowH,
-                  itemCount: streams.length,
-                  itemBuilder: (_, i) => _ChannelCell(
-                    stream: streams[i],
-                    ctrl: widget.ctrl,
-                    onTap: () => widget.onPlay(streams[i]),
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    if (iptvUseTvFocus(context) && streams.isNotEmpty) {
+                      shellTvRegisterRow(
+                        tabId: 'iptv',
+                        rowId: 'epg-channels',
+                        sortOrder: 10,
+                        itemCount: streams.length,
+                        orientation: ShellTvRowOrientation.vertical,
+                      );
+                    } else {
+                      shellTvUnregisterRow(
+                        tabId: 'iptv',
+                        rowId: 'epg-channels',
+                      );
+                    }
+                    return ListView.builder(
+                      controller: _vChannels,
+                      physics: const ClampingScrollPhysics(),
+                      itemExtent: _rowH,
+                      itemCount: streams.length,
+                      itemBuilder: (_, i) => _ChannelCell(
+                        stream: streams[i],
+                        ctrl: widget.ctrl,
+                        listIndex: i,
+                        onTap: () => widget.onPlay(streams[i]),
+                      ),
+                    );
+                  },
                 ),
               ),
               Expanded(
@@ -446,11 +468,13 @@ class _ChannelCell extends StatefulWidget {
     required this.stream,
     required this.ctrl,
     required this.onTap,
+    this.listIndex,
   });
 
   final IptvStream stream;
   final IptvController ctrl;
   final VoidCallback onTap;
+  final int? listIndex;
 
   @override
   State<_ChannelCell> createState() => _ChannelCellState();
@@ -458,30 +482,32 @@ class _ChannelCell extends StatefulWidget {
 
 class _ChannelCellState extends State<_ChannelCell> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final stream = widget.stream;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          hoverColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          child: Container(
+    final active = _hovered || _focused;
+    return iptvTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 0,
+      listIndex: widget.listIndex,
+      tvRowId: 'epg-channels',
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: Container(
             height: _kEpgRowH,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              color: _hovered
+              color: active
                   ? ForjaShellColors.inkHover
                   : Colors.transparent,
               border: Border(
                 left: BorderSide(
-                  color: _hovered
+                  color: active
                       ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
                       : Colors.transparent,
                   width: 2.5,
@@ -528,27 +554,27 @@ class _ChannelCellState extends State<_ChannelCell> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      color: _hovered
+                      color: active
                           ? Colors.white
                           : ForjaShellColors.textSecondary,
                       fontSize: 13,
-                      fontWeight:
-                          _hovered ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                       height: 1.2,
                     ),
                   ),
                 ),
-                IptvLiveFavoriteButton(
-                  streamId: stream.streamId,
-                  ctrl: widget.ctrl,
-                  reveal: _hovered,
-                  iconSize: 14,
+                ExcludeFocus(
+                  excluding: iptvUseTvFocus(context),
+                  child: IptvLiveFavoriteButton(
+                    streamId: stream.streamId,
+                    ctrl: widget.ctrl,
+                    reveal: active,
+                    iconSize: 14,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/pages/settings_category_bodies.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/widgets/settings_hub_scaffold.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
@@ -15,10 +17,34 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedId = SettingsCategoryId.profile;
+  final FocusNode _firstHubFocus = FocusNode(debugLabel: 'settings-hub-0');
+
+  @override
+  void initState() {
+    super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'settings',
+      defaultFocus: () => _firstHubFocus,
+      enterFromNavFocus: () {
+        if (_firstHubFocus.canRequestFocus) {
+          _firstHubFocus.requestFocus();
+        }
+      },
+      restoreFocus: () {
+        if (_firstHubFocus.canRequestFocus) {
+          _firstHubFocus.requestFocus();
+          return true;
+        }
+        return false;
+      },
+    );
+  }
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.unregisterTabDefaults('settings');
     ShellTvFocusCoordinator.clearTab('settings');
+    _firstHubFocus.dispose();
     super.dispose();
   }
 
@@ -27,15 +53,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _selectedId = id);
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => SettingsCategoryPage(categoryId: id),
+    pushShellRoute(
+      context,
+      AppRouter.slideShellRoute(
+        (_) => SettingsCategoryPage(categoryId: id),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SettingsHubScaffold(selectedId: _selectedId, onSelect: _onSelect);
+    return SettingsHubScaffold(
+      selectedId: _selectedId,
+      onSelect: _onSelect,
+      firstTileFocusNode: _firstHubFocus,
+    );
   }
 }

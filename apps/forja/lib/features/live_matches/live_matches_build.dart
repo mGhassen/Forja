@@ -38,6 +38,74 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     return EdgeInsets.fromLTRB(horizontal, 4, horizontal, 20);
   }
 
+  Widget _cdnModeChips(BuildContext context) {
+    if (_tvFocus(context)) {
+      shellTvRegisterRow(
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: _LiveMatchesScreenState._cdnModeRowId,
+        sortOrder: 1,
+        itemCount: 2,
+      );
+    }
+    return Row(
+      children: [
+        ForjaShellChip(
+          label: '📺 Channels',
+          selected: _s._cdnShowChannels,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          fontSize: 11.5,
+          listIndex: 0,
+          tvTabId: _LiveMatchesScreenState._tabId,
+          tvRowId: _LiveMatchesScreenState._cdnModeRowId,
+          onTap: () => setState(() => _s._cdnShowChannels = true),
+          onLeftEdge: shellTvChipLeftEdge(
+            context,
+            tabId: _LiveMatchesScreenState._tabId,
+            rowId: _LiveMatchesScreenState._cdnModeRowId,
+            index: 0,
+          ),
+          onRightEdge: shellTvChipRightEdge(
+            tabId: _LiveMatchesScreenState._tabId,
+            rowId: _LiveMatchesScreenState._cdnModeRowId,
+            index: 0,
+            itemCount: 2,
+          ),
+          onUpEdge: () => _s._focusTopBarItem(
+            _LiveMatchesScreenState._topBarServersIndex,
+          ),
+          onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
+        ),
+        const SizedBox(width: 6),
+        ForjaShellChip(
+          label: '⚽ Sports',
+          selected: !_s._cdnShowChannels,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          fontSize: 11.5,
+          listIndex: 1,
+          tvTabId: _LiveMatchesScreenState._tabId,
+          tvRowId: _LiveMatchesScreenState._cdnModeRowId,
+          onTap: () => setState(() => _s._cdnShowChannels = false),
+          onLeftEdge: shellTvChipLeftEdge(
+            context,
+            tabId: _LiveMatchesScreenState._tabId,
+            rowId: _LiveMatchesScreenState._cdnModeRowId,
+            index: 1,
+          ),
+          onRightEdge: shellTvChipRightEdge(
+            tabId: _LiveMatchesScreenState._tabId,
+            rowId: _LiveMatchesScreenState._cdnModeRowId,
+            index: 1,
+            itemCount: 2,
+          ),
+          onUpEdge: () => _s._focusTopBarItem(
+            _LiveMatchesScreenState._topBarServersIndex,
+          ),
+          onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
+        ),
+      ],
+    );
+  }
+
   int _gridColumns(BoxConstraints constraints, double cardWidth) =>
       (constraints.maxWidth / cardWidth).floor().clamp(1, 8);
 
@@ -439,18 +507,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
   Widget _buildAllBody() {
     final entries = _allGridEntries;
     if (entries.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
-            Text(
-              'No streams available',
-              style: TextStyle(color: Colors.white38, fontSize: 16),
-            ),
-          ],
-        ),
+      return ShellErrorRetryPanel(
+        message: 'No streams available',
+        onRetry: _s._load,
+        label: 'Refresh',
+        statusIcon: Icons.sports_rounded,
+        buttonIcon: Icons.refresh,
       );
     }
     return LayoutBuilder(
@@ -492,6 +554,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     VoidCallback? upEdge, {
     bool forceActive = false,
     ValueChanged<bool>? onHoverChanged,
+    String tvRowId = 'grid',
+    ShellTvZone tvZone = ShellTvZone.grid,
   }) {
     return switch (entry) {
       _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
@@ -501,6 +565,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         onUpEdge: upEdge,
         forceActive: forceActive,
         onHoverChanged: onHoverChanged,
+        tvRowId: tvRowId,
+        tvZone: tvZone,
         onTap: () => _s._openDamiTvStream(stream),
       ),
       _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
@@ -510,6 +576,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         onUpEdge: upEdge,
         forceActive: forceActive,
         onHoverChanged: onHoverChanged,
+        tvRowId: tvRowId,
+        tvZone: tvZone,
         onTap: () => _s._openStreamedMatch(match),
       ),
       _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
@@ -520,6 +588,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
           onUpEdge: upEdge,
           forceActive: forceActive,
           onHoverChanged: onHoverChanged,
+          tvRowId: tvRowId,
+          tvZone: tvZone,
           playableOverride:
               (ppv.iframe.isNotEmpty || streamed.sources.isNotEmpty) &&
               (ppv.isLive || streamed.isLive),
@@ -532,6 +602,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         onUpEdge: upEdge,
         forceActive: forceActive,
         onHoverChanged: onHoverChanged,
+        tvRowId: tvRowId,
+        tvZone: tvZone,
         onTap: () => _s._openCdnSportEvent(event),
       ),
     };
@@ -540,18 +612,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
   Widget _buildStreamedBody() {
     final matches = _s._filteredStreamed;
     if (matches.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
-            Text(
-              'No streams available',
-              style: TextStyle(color: Colors.white38, fontSize: 16),
-            ),
-          ],
-        ),
+      return ShellErrorRetryPanel(
+        message: 'No streams available',
+        onRetry: _s._load,
+        label: 'Refresh',
+        statusIcon: Icons.sports_rounded,
+        buttonIcon: Icons.refresh,
       );
     }
     return LayoutBuilder(
@@ -588,18 +654,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
   Widget _buildDamiTvBody() {
     final streams = _s._filteredDamiTv;
     if (streams.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
-            Text(
-              'No streams available',
-              style: TextStyle(color: Colors.white38, fontSize: 16),
-            ),
-          ],
-        ),
+      return ShellErrorRetryPanel(
+        message: 'No streams available',
+        onRetry: _s._load,
+        label: 'Refresh',
+        statusIcon: Icons.sports_rounded,
+        buttonIcon: Icons.refresh,
       );
     }
     return LayoutBuilder(
@@ -637,18 +697,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     if (_s._cdnShowChannels) {
       final channels = _s._cdnChannels.where((c) => c.status == 'online').toList();
       if (channels.isEmpty) {
-        return const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.tv_rounded, color: Colors.white24, size: 64),
-              SizedBox(height: 16),
-              Text(
-                'No channels available',
-                style: TextStyle(color: Colors.white38, fontSize: 16),
-              ),
-            ],
-          ),
+        return ShellErrorRetryPanel(
+          message: 'No channels available',
+          onRetry: _s._load,
+          label: 'Refresh',
+          statusIcon: Icons.tv_rounded,
+          buttonIcon: Icons.refresh,
         );
       }
       return Column(
@@ -660,31 +714,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
               ShellTokens.bodyHorizontalPadding,
               6,
             ),
-            child: Row(
-              children: [
-                ForjaShellChip(
-                  label: '📺 Channels',
-                  selected: _s._cdnShowChannels,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  fontSize: 11.5,
-                  onTap: () => setState(() => _s._cdnShowChannels = true),
-                ),
-                const SizedBox(width: 6),
-                ForjaShellChip(
-                  label: '⚽ Sports',
-                  selected: !_s._cdnShowChannels,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  fontSize: 11.5,
-                  onTap: () => setState(() => _s._cdnShowChannels = false),
-                ),
-              ],
-            ),
+            child: _cdnModeChips(context),
           ),
           Expanded(
             child: LayoutBuilder(
@@ -721,18 +751,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     } else {
       final sports = _s._filteredCdnSports;
       if (sports.isEmpty) {
-        return const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
-              SizedBox(height: 16),
-              Text(
-                'No sports events available',
-                style: TextStyle(color: Colors.white38, fontSize: 16),
-              ),
-            ],
-          ),
+        return ShellErrorRetryPanel(
+          message: 'No sports events available',
+          onRetry: _s._load,
+          label: 'Refresh',
+          statusIcon: Icons.sports_rounded,
+          buttonIcon: Icons.refresh,
         );
       }
       return Column(
@@ -744,31 +768,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
               ShellTokens.bodyHorizontalPadding,
               6,
             ),
-            child: Row(
-              children: [
-                ForjaShellChip(
-                  label: '📺 Channels',
-                  selected: _s._cdnShowChannels,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  fontSize: 11.5,
-                  onTap: () => setState(() => _s._cdnShowChannels = true),
-                ),
-                const SizedBox(width: 6),
-                ForjaShellChip(
-                  label: '⚽ Sports',
-                  selected: !_s._cdnShowChannels,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  fontSize: 11.5,
-                  onTap: () => setState(() => _s._cdnShowChannels = false),
-                ),
-              ],
-            ),
+            child: _cdnModeChips(context),
           ),
           Expanded(
             child: LayoutBuilder(

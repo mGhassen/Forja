@@ -56,6 +56,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
+  static const _granularityRowId = 'timeline-granularity';
+  static const _cdnModeRowId = 'cdn-mode';
 
   // tabs: All + each sport
   List<_Sport> _sports = [];
@@ -84,6 +86,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   /// track the real card's on-screen position (`bucketMs:index`).
   final Map<String, LayerLink> _timelineCardLinks = {};
 
+  /// Registered TV row ids for timeline hour buckets (`tl-<bucketMs>`).
+  final Set<String> _timelineTvRowIds = {};
+
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
   List<_DamiTvStream> _damiTvStreams = [];
@@ -108,6 +113,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     super.initState();
     ShellTvFocusCoordinator.registerTabDefaults(
       _tabId,
+      enterFromNavFocus: () {
+        _restoreLiveMatchesTvFocus();
+      },
       restoreFocus: _restoreLiveMatchesTvFocus,
     );
     _syncTimelineLiveTick();
@@ -121,6 +129,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     _refreshFocusNode.dispose();
     _viewFocusNode.dispose();
     _timelineScrollController.dispose();
+    ShellTvFocusCoordinator.unregisterTabDefaults(_tabId);
     ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();

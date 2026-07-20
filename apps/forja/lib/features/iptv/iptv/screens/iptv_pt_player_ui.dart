@@ -1005,35 +1005,41 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                   itemBuilder: (_, i) {
                     final s = _s._sources[i];
                     final active = i == _s._sourceIdx;
-                    return ListTile(
-                      leading: Icon(
-                        active
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_off,
-                        color: active ? IptvShellStyle.accent : Colors.white54,
-                      ),
-                      title: Text(
-                        s.label,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white,
-                          fontWeight: active
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                      subtitle: Text(
-                        s.url,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white54,
-                          fontSize: 11,
-                        ),
-                      ),
+                    return iptvTap(
+                      context: ctx,
                       onTap: () {
                         Navigator.of(ctx).pop();
                         _s._switchSource(i);
                       },
+                      borderRadius: 0,
+                      listIndex: i,
+                      child: ListTile(
+                        leading: Icon(
+                          active
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color:
+                              active ? IptvShellStyle.accent : Colors.white54,
+                        ),
+                        title: Text(
+                          s.label,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontWeight: active
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                        subtitle: Text(
+                          s.url,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
                     );
                   },
                 ),

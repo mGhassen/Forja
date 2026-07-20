@@ -304,10 +304,17 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: iptvCloseButton(
-                    context,
-                    color: Colors.white70,
-                    onTap: widget.onClose,
+                  child: Builder(
+                    builder: (context) {
+                      final close = iptvCloseButton(
+                        context,
+                        color: Colors.white70,
+                        onTap: widget.onClose,
+                      );
+                      return iptvUseTvFocus(context)
+                          ? ExcludeFocus(child: close)
+                          : close;
+                    },
                   ),
                 ),
               ],
@@ -334,12 +341,19 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                     GoogleFonts.plusJakartaSans(color: Colors.white30, fontSize: 13),
                 suffixIcon: _queryCtrl.text.isEmpty
                     ? null
-                    : iptvCloseButton(
-                        context,
-                        onTap: () {
-                          _queryCtrl.clear();
-                          _onQueryChanged('');
-                          _queryFocus.requestFocus();
+                    : Builder(
+                        builder: (context) {
+                          final clear = iptvCloseButton(
+                            context,
+                            onTap: () {
+                              _queryCtrl.clear();
+                              _onQueryChanged('');
+                              _queryFocus.requestFocus();
+                            },
+                          );
+                          return iptvUseTvFocus(context)
+                              ? ExcludeFocus(child: clear)
+                              : clear;
                         },
                       ),
                 filled: true,

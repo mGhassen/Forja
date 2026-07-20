@@ -104,9 +104,10 @@ class _EpisodeTile extends StatelessWidget {
           final p = ctrl.activePortal;
           if (p == null) return;
           final url = IptvClient.episodeUrl(p.portal, episode);
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => IptvPtPlayerScreen(
+          pushShellRoute(
+            context,
+            AppRouter.slideShellRoute(
+              (_) => IptvPtPlayerScreen(
                 sources: [IptvPlaySource(url: url, label: p.displayLabel)],
                 title: 'Ep ${episode.episode} · ${episode.title}',
                 subtitle: 'Season ${episode.season}',

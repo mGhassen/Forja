@@ -9,6 +9,7 @@ import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
@@ -132,6 +133,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   late List<_ExoSource> _sources;
   int _sourceIndex = 0;
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'exo-player-back');
+  final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
 
   @override
   void initState() {
@@ -799,6 +802,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   void dispose() {
     _disposed = true;
     _playFocus.dispose();
+    _backFocus.dispose();
+    _tvKeyFocus.dispose();
     _statusController.dispose();
     _isBufferingNotifier.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -878,6 +883,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                         : null,
                     onBack: () => unawaited(_exit()),
                     tvFocusable: true,
+                    backFocusNode: _backFocus,
                     trailing: PlayerTopBarActions(
                       tvFocusable: true,
                       showPlayer: widget.onSwitchPlayer != null,
@@ -1005,6 +1011,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                             position: _position,
                             bufferedPosition: _buffered,
                             tvFocusable: true,
+                            tvFocusUpNode: _backFocus,
                             onSeek: (t) {
                               unawaited(ExoPlayerBridge.seekTo(_viewId, t));
                             },
@@ -1410,7 +1417,26 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       ),
     );
 
-    return body;
+    if (!_isTv) return body;
+    return PlayerTvKeyScope(
+      enabled: true,
+      focusNode: _tvKeyFocus,
+      showControls: _showControls,
+      onBack: () => unawaited(_exit()),
+      onPlayPause: _togglePlayPause,
+      onShowControls: () {
+        setState(() => _showControls = true);
+        _claimPlayFocus();
+      },
+      onSeekBack: () =>
+          unawaited(_seekRelative(const Duration(seconds: -10))),
+      onSeekForward: () =>
+          unawaited(_seekRelative(const Duration(seconds: 10))),
+      onVolumeUp: () => unawaited(_setVolume(_volume + 10)),
+      onVolumeDown: () => unawaited(_setVolume(_volume - 10)),
+      onToggleControls: _toggleControls,
+      child: body,
+    );
   }
 }
 

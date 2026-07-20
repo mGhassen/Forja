@@ -12,10 +12,12 @@ class SettingsHubScaffold extends StatefulWidget {
     super.key,
     required this.selectedId,
     required this.onSelect,
+    this.firstTileFocusNode,
   });
 
   final String selectedId;
   final ValueChanged<String> onSelect;
+  final FocusNode? firstTileFocusNode;
 
   @override
   State<SettingsHubScaffold> createState() => _SettingsHubScaffoldState();
@@ -73,6 +75,7 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
                 categories: categories,
                 selectedId: widget.selectedId,
                 onSelect: widget.onSelect,
+                firstTileFocusNode: widget.firstTileFocusNode,
               ),
             ),
             Container(
@@ -126,6 +129,7 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
                   title: c.title,
                   subtitle: c.subtitle,
                   selected: false,
+                  focusNode: index == 0 ? widget.firstTileFocusNode : null,
                   onTap: () => widget.onSelect(c.id),
                 );
               },
@@ -142,11 +146,13 @@ class _CategorySidebar extends StatelessWidget {
     required this.categories,
     required this.selectedId,
     required this.onSelect,
+    this.firstTileFocusNode,
   });
 
   final List<SettingsCategoryMeta> categories;
   final String selectedId;
   final ValueChanged<String> onSelect;
+  final FocusNode? firstTileFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -171,6 +177,7 @@ class _CategorySidebar extends StatelessWidget {
                 title: c.title,
                 subtitle: c.subtitle,
                 selected: c.id == selectedId,
+                focusNode: index == 0 ? firstTileFocusNode : null,
                 onTap: () => onSelect(c.id),
               );
             },

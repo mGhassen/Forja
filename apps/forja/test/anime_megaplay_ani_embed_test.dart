@@ -24,6 +24,14 @@ void main() {
       );
     });
 
+    test('without Anikoto skips Vidwish (ani path dead on that host)', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 5114,
+        episode: 1,
+      );
+      expect(embeds.where((e) => e.server == 'vidwish'), isEmpty);
+    });
+
     test('with Anikoto embed id prefers /stream/s-2/', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 5114,
@@ -43,6 +51,12 @@ void main() {
       final mega = embeds.where((e) => e.server == 'megaplay').toList();
       expect(
         mega.every((e) => e.url.contains('/stream/s-2/136197/')),
+        isTrue,
+      );
+      final wish = embeds.where((e) => e.server == 'vidwish').toList();
+      expect(wish, isNotEmpty);
+      expect(
+        wish.every((e) => e.url.contains('/stream/s-2/136197/')),
         isTrue,
       );
     });

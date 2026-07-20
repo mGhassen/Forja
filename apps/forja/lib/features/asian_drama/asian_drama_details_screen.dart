@@ -389,6 +389,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
                       tvItemIndexStart: 1,
+                      onUpEdge: heroPopUp,
                       slots: [
                         HeroPillIconSlot(
                           icon: Icons.delete_outline_rounded,

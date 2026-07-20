@@ -14,7 +14,7 @@ FLAGS="_ --disable-gpu --disable-gpu-rasterization"
   echo "Warning: could not write $FLAG_FILE (need writable /data/local/tmp on device)" >&2
 }
 
-"$ADB" -s "$DEVICE" shell am force-stop com.forja.app 2>/dev/null || true
+"$ADB" -s "$DEVICE" shell am force-stop com.forjahq.app 2>/dev/null || true
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/apps/forja"

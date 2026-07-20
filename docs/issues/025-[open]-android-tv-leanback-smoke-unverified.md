@@ -46,7 +46,11 @@
 
 ## Summary
 
-[RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) adaptive shell ships native leanback detection (`MainActivity` MethodChannel), platform defaults seeding, `ShellHost` TV profile, `TvPlayerScreen` D-pad keys, focusable player chrome, and leanback manifest banner. **Leanback launcher and full D-pad flows are not verified** on this machine (no Android TV AVD / `adb` as of 2026-07-10).
+[RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) adaptive shell ships native leanback detection (`MainActivity` MethodChannel), platform defaults seeding, `ShellHost` TV profile, `TvPlayerScreen` D-pad keys, focusable player chrome, and leanback manifest banner.
+
+**Code (2026-07-20):** In-scope tab D-pad wiring landed for Home, Search, Anime, Asian Drama, My List, Settings, IPTV, Live Matches, plus shared player/seek/volume and shell restore. That does **not** flip `I25-M01`–`M08` — those still need leanback device / TV AVD smoke.
+
+**Leanback launcher and full D-pad flows are not verified** on device (manual matrix below still ⬜).
 
 ## Blocker (manual matrix)
 

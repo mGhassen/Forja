@@ -348,6 +348,33 @@ mixin _SearchTv on State<SearchScreen> {
   void _focusSearchClose() {
     if (!_s._closeFocusNode.canRequestFocus) return;
     _s._closeFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      'search',
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _s._closeFocusNode),
+    );
+  }
+
+  /// Left from a film card → recommendation at the visually aligned helper row.
+  void _focusHelperAtVisualLevelFromGrid(int gridIndex) {
+    final count = _helperItemCount();
+    if (count <= 0) return;
+    final cardY = _tvItemCenterGlobalY('results', gridIndex);
+    if (cardY == null) {
+      _focusFirstHelper();
+      return;
+    }
+    var best = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < count; i++) {
+      final y = _tvItemCenterGlobalY('helpers', i);
+      if (y == null) continue;
+      final dist = (y - cardY).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    _focusHelperAtIndex(best);
   }
 
   void _focusFilmCardsFromClose() {
@@ -377,14 +404,18 @@ mixin _SearchTv on State<SearchScreen> {
 
   /// Called when the Search tab becomes selected (shell tab switch).
   void focusTvBrowseFieldIfEmpty() {
-    if (!ShellTokens.isAndroidTvDevice) return;
+    if (!_tvFocus(context)) return;
     if (_s._query.trim().isNotEmpty) return;
     _focusSearchFieldBrowse();
   }
 
   /// TV: opening Search with no query — browse field, not first recommendation.
   bool _restoreSearchTvFocusIfEmpty() {
-    if (!ShellTokens.isAndroidTvDevice) return false;
+    final ctx = _s._focusNode.context;
+    final tv = ctx != null
+        ? ShellScope.inputPolicyOf(ctx).useFocusableMoodChips
+        : ShellTokens.isAndroidTvDevice;
+    if (!tv) return false;
     if (_s._query.trim().isNotEmpty) return false;
     _focusSearchFieldBrowse();
     return true;
@@ -424,6 +455,12 @@ mixin _SearchTv on State<SearchScreen> {
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      // Browse: trap — nav exit is Down → suggestions → Left.
+      // Editing: ignore so the caret can move.
+      if (_s._searchFieldEditing) return KeyEventResult.ignored;
+      return KeyEventResult.handled;
+    }
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (_helperItemCount() <= 0) return KeyEventResult.ignored;
       _focusFirstHelper();

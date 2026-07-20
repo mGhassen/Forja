@@ -79,9 +79,9 @@ class ExoTracksSnapshot {
 class ExoPlayerBridge {
   ExoPlayerBridge._();
 
-  static const MethodChannel _channel = MethodChannel('com.forja.app/exoplayer');
+  static const MethodChannel _channel = MethodChannel('com.forjahq.app/exoplayer');
   static const EventChannel _events =
-      EventChannel('com.forja.app/exoplayer_events');
+      EventChannel('com.forjahq.app/exoplayer_events');
 
   static bool? _isTelevisionCache;
 

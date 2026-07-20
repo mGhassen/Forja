@@ -376,6 +376,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       badge: card.label,
       rank: rank,
       listIndex: listIndex,
+      tvTabId: 'asian_drama',
       tvRowId: tvRowId,
       onTap: () => _openDetails(card),
     );

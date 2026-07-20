@@ -548,9 +548,10 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                     hit,
                     ...ctrl.channelResults.where((h) => h != hit),
                   ];
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => IptvPtPlayerScreen.fromHits(
+                  pushShellRoute(
+                    context,
+                    AppRouter.slideShellRoute(
+                      (_) => IptvPtPlayerScreen.fromHits(
                         hits: ordered,
                         title: ctrl.activeHardcoded?.name ?? hit.stream.name,
                         logoUrl: hit.stream.icon,

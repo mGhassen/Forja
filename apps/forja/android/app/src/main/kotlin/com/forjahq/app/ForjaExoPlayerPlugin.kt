@@ -1,4 +1,4 @@
-package com.forja.app
+package com.forjahq.app
 
 import android.content.Context
 import android.content.res.Configuration
@@ -465,8 +465,8 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
     }
 
     companion object {
-        const val CHANNEL = "com.forja.app/exoplayer"
-        const val EVENT_CHANNEL = "com.forja.app/exoplayer_events"
+        const val CHANNEL = "com.forjahq.app/exoplayer"
+        const val EVENT_CHANNEL = "com.forjahq.app/exoplayer_events"
         const val VIEW_TYPE = "forja-exoplayer"
     }
 }

@@ -5,7 +5,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    final body = PopScope(
       canPop: _s._routePopAllowed,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
@@ -241,6 +241,40 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             ),
           ),
         ),
+    );
+
+    if (!widget.tvRemoteEnabled) return body;
+    return PlayerTvKeyScope(
+      enabled: true,
+      focusNode: _s._tvKeyFocus,
+      showControls: _s._showControls,
+      onBack: () => unawaited(_s._exitPlayer()),
+      onPlayPause: () {
+        if (_s._player.state.playing) {
+          _s._player.pause();
+        } else {
+          _s._player.play();
+        }
+      },
+      onShowControls: () {
+        setState(() => _s._showControls = true);
+        _s._claimPlayFocus();
+      },
+      onSeekBack: () {
+        final pos = _s._positionNotifier.value - const Duration(seconds: 10);
+        unawaited(
+          _s._seekTo(pos < Duration.zero ? Duration.zero : pos),
+        );
+      },
+      onSeekForward: () {
+        final dur = _s._durationNotifier.value;
+        final pos = _s._positionNotifier.value + const Duration(seconds: 10);
+        unawaited(_s._seekTo(pos > dur ? dur : pos));
+      },
+      onVolumeUp: () => _s._nudgeTvVolume(10),
+      onVolumeDown: () => _s._nudgeTvVolume(-10),
+      onToggleControls: _s._toggleControls,
+      child: body,
     );
   }
 

@@ -15,7 +15,7 @@ Beyond My List, Forja can show lists you've created or follow on Trakt and MDBLi
 - Browse your Trakt lists when logged in
 - Browse your MDBList lists when an API key is configured
 - Explore MDBList top/public lists
-- Open any list item to view details and play
+- Open any list item to view details and play — on **TV**, list detail opens in the shell overlay so **Back** returns to Settings → Lists
 
 ## Setup (if needed)
 

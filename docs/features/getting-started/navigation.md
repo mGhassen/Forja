@@ -37,7 +37,8 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - **Hero:** UP from the first row scrolls the hero fully visible and focuses Play; LEFT from Play focuses the **active** nav tab (not a geometric neighbor)
 - **Home hero (TV):** DOWN from the top menu (Search / Films / TV Shows / Categories) focuses the **hero gallery** (backdrop carousel); **←/→** change the featured title and backdrop image; UP from the gallery returns to the top menu; DOWN from the gallery focuses **Play**; UP from **Play** (and the info / My List pills) focuses the gallery
 - **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use the **same card sizes, spacing, and section layout as desktop**; D-pad focus and coordinator-registered rows/chips are unchanged
-- Search uses the **two-column desktop layout** on TV (trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on suggestions first — not the search field
+- **Anime / Asian Drama hubs:** **↑** from Continue Watching (and first catalog row) focuses hero **Play**; Anime mood posters **↑** return to mood chips; empty Continue Watching is not in the focus graph
+- Search uses the **two-column desktop layout** on TV (trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on the **search field** first — **Down** moves to suggestions
 - Phone layout is unchanged — TV behavior applies only on Android TV / leanback devices
 - **Dev:** `flutter run --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
 

@@ -3,7 +3,7 @@
 import 'package:forja/features/anime/widgets/anime_continue_watching_card.dart';
 import 'package:forja/features/anime/widgets/anime_widget_imports.dart';
 
-class AnimeContinueWatchingSection extends StatelessWidget {
+class AnimeContinueWatchingSection extends StatefulWidget {
   final List<Map<String, dynamic>> entries;
   final ScrollController scrollController;
   final int? resumingAnimeId;
@@ -21,12 +21,21 @@ class AnimeContinueWatchingSection extends StatelessWidget {
     required this.onOpenDetails,
   });
 
+  @override
+  State<AnimeContinueWatchingSection> createState() =>
+      _AnimeContinueWatchingSectionState();
+}
+
+class _AnimeContinueWatchingSectionState
+    extends State<AnimeContinueWatchingSection> {
+  static const _rowId = 'continue-watching';
+
   void _scrollBy(BuildContext context, double delta) {
-    if (!scrollController.hasClients) return;
-    scrollController.animateTo(
-      (scrollController.offset + delta).clamp(
+    if (!widget.scrollController.hasClients) return;
+    widget.scrollController.animateTo(
+      (widget.scrollController.offset + delta).clamp(
         0.0,
-        scrollController.position.maxScrollExtent,
+        widget.scrollController.position.maxScrollExtent,
       ),
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
@@ -46,9 +55,22 @@ class AnimeContinueWatchingSection extends StatelessWidget {
   }
 
   @override
+  void dispose() {
+    shellTvUnregisterRow(tabId: 'anime', rowId: _rowId);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (widget.entries.isEmpty) {
+      shellTvUnregisterRow(tabId: 'anime', rowId: _rowId);
+      return const SizedBox.shrink();
+    }
+
     final w = MediaQuery.of(context).size.width;
     final hPad = w < 380 ? 14.0 : 24.0;
+    final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -62,17 +84,19 @@ class AnimeContinueWatchingSection extends StatelessWidget {
             24,
             16,
           ),
-          trailing: [
-            GestureDetector(
-              onTap: () => _scrollBy(context, -400),
-              child: _arrowButton(Icons.arrow_back_ios_new_rounded),
-            ),
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: () => _scrollBy(context, 400),
-              child: _arrowButton(Icons.arrow_forward_ios_rounded),
-            ),
-          ],
+          trailing: showArrows
+              ? [
+                  GestureDetector(
+                    onTap: () => _scrollBy(context, -400),
+                    child: _arrowButton(Icons.arrow_back_ios_new_rounded),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _scrollBy(context, 400),
+                    child: _arrowButton(Icons.arrow_forward_ios_rounded),
+                  ),
+                ]
+              : const [],
         ),
         SizedBox(
           height: AnimeContinueWatchingCard.cardHeight(context),
@@ -80,24 +104,26 @@ class AnimeContinueWatchingSection extends StatelessWidget {
             builder: (context) {
               shellTvRegisterRow(
                 tabId: 'anime',
-                rowId: 'continue-watching',
+                rowId: _rowId,
                 sortOrder: 0,
-                itemCount: entries.length,
-                onFocusUp: () =>
-                    ShellTvFocusCoordinator.focusHero(tabId: 'anime'),
+                itemCount: widget.entries.length,
+                onFocusUp: () {
+                  ShellTvFocusCoordinator.revealHeroForTab('anime');
+                  ShellTvFocus.focusHomeHeroPlay();
+                },
               );
               return FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
                 child: ListView.separated(
-                  controller: scrollController,
+                  controller: widget.scrollController,
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   clipBehavior: Clip.none,
                   padding: EdgeInsets.symmetric(horizontal: hPad),
-                  itemCount: entries.length,
+                  itemCount: widget.entries.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 14),
                   itemBuilder: (_, i) {
-                    final entry = entries[i];
+                    final entry = widget.entries[i];
                     final anime = AnimeCard.fromJson(
                       (entry['anime'] as Map).cast<String, dynamic>(),
                     );
@@ -105,11 +131,11 @@ class AnimeContinueWatchingSection extends StatelessWidget {
                     return AnimeContinueWatchingCard(
                       listIndex: i,
                       entry: entry,
-                      isLoading:
-                          resumeId != null && resumingAnimeId == resumeId,
-                      onTap: () => onResume(entry),
-                      onRemove: () => onRemove(entry),
-                      onInfo: () => onOpenDetails(anime),
+                      isLoading: resumeId != null &&
+                          widget.resumingAnimeId == resumeId,
+                      onTap: () => widget.onResume(entry),
+                      onRemove: () => widget.onRemove(entry),
+                      onInfo: () => widget.onOpenDetails(anime),
                     );
                   },
                 ),

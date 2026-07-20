@@ -25,6 +25,8 @@ import 'package:forja/features/settings/splash_preview_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
 
 /// Builds the body for a Settings category (lazy — only when selected / pushed).
@@ -479,56 +481,77 @@ class _SettingsNavigationPageBodyState
                 return Container(
                   key: ValueKey(id),
                   color: Colors.transparent,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 2),
-                    leading: NavDestinationIcon(
-                      destination: dest,
-                      selected: isVisible,
-                      color: isVisible
-                          ? ForjaShellColors.textPrimary
-                          : ForjaShellColors.iconMuted,
-                      size: 22,
-                    ),
-                    title: Text(
-                      dest.label,
-                      style: TextStyle(
+                  child: shellFocusableTap(
+                    context: context,
+                    onTap: () {
+                      setState(() {
+                        if (isVisible) {
+                          _navbarVisible.remove(id);
+                        } else {
+                          _navbarVisible.add(id);
+                        }
+                      });
+                      _saveNavbarConfig();
+                    },
+                    scaleOnFocus: 1.0,
+                    navLeftAlways: true,
+                    tvTabId: 'settings',
+                    tvZone: ShellTvZone.settings,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 2),
+                      leading: NavDestinationIcon(
+                        destination: dest,
+                        selected: isVisible,
                         color: isVisible
                             ? ForjaShellColors.textPrimary
-                            : ForjaShellColors.textSecondary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                            : ForjaShellColors.iconMuted,
+                        size: 22,
                       ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _defaultNavStar(id, enabled: isVisible),
-                        ForjaSwitch(
-                          value: isVisible,
-                          scale: ForjaSwitch.settingsScale,
-                          onChanged: (val) {
-                            setState(() {
-                              if (val) {
-                                _navbarVisible.add(id);
-                              } else {
-                                _navbarVisible.remove(id);
-                              }
-                            });
-                            _saveNavbarConfig();
-                          },
+                      title: Text(
+                        dest.label,
+                        style: TextStyle(
+                          color: isVisible
+                              ? ForjaShellColors.textPrimary
+                              : ForjaShellColors.textSecondary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(
-                              Icons.drag_handle,
-                              color: ForjaShellColors.iconMuted,
-                              size: 20,
+                      ),
+                      trailing: ExcludeFocus(
+                        excluding: ShellScope.inputPolicyOf(context)
+                            .useFocusableMoodChips,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _defaultNavStar(id, enabled: isVisible),
+                            ForjaSwitch(
+                              value: isVisible,
+                              scale: ForjaSwitch.settingsScale,
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val) {
+                                    _navbarVisible.add(id);
+                                  } else {
+                                    _navbarVisible.remove(id);
+                                  }
+                                });
+                                _saveNavbarConfig();
+                              },
                             ),
-                          ),
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Icon(
+                                  Icons.drag_handle,
+                                  color: ForjaShellColors.iconMuted,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 );

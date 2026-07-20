@@ -558,6 +558,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     }
     _c.statusText = 'Dealing $count portals ($region)…';
     notifyListeners();
+    final beforeKeys = _c.verified.map((v) => v.key).toSet();
     try {
       final ids = await SyncService.instance.dealIptvPortals(
         profileId: profile.id,
@@ -569,6 +570,13 @@ mixin _IptvControllerPortal on ChangeNotifier {
           await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
       if (pulled) {
         await _c._softReloadPortalsFromStore();
+        // Same session-new chrome as scrape (accent + NEW badge until hover).
+        for (final v in _c.verified) {
+          if (!beforeKeys.contains(v.key)) {
+            _c._registerPortalAdded(v.key);
+          }
+        }
+        _c.verified = _c._sortPortals(_c.verified);
       }
       final n = ids.length;
       if (!pulled && n > 0) {

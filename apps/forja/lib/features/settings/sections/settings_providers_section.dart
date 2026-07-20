@@ -263,21 +263,30 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
                     ),
                     trailing: builtIn
                         ? null
-                        : IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Color(0xFFF87171),
-                              size: 20,
+                        : ExcludeFocus(
+                            excluding: ShellScope.inputPolicyOf(context)
+                                .useFocusableMoodChips,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Color(0xFFF87171),
+                                size: 20,
+                              ),
+                              onPressed: () =>
+                                  _removeNuvioAddon(addon.manifestUrl),
+                              tooltip: 'Remove addon',
                             ),
-                            onPressed: () =>
-                                _removeNuvioAddon(addon.manifestUrl),
-                            tooltip: 'Remove addon',
                           ),
                     children: addon.scrapers.map((s) {
-                      return SwitchListTile(
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 8),
-                        dense: true,
+                      final subtitle = [
+                        if (s.description != null && s.description!.isNotEmpty)
+                          s.description!,
+                        if (s.supportedTypes.isNotEmpty)
+                          s.supportedTypes.join(', '),
+                      ].join(' \u00b7 ');
+                      return SettingsToggleRow(
+                        title: s.name,
+                        subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
                         value: s.enabled,
                         onChanged: (val) async {
                           await NuvioService.instance.setScraperEnabled(
@@ -287,27 +296,6 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
                           );
                           await _loadNuvioAddons();
                         },
-                        title: Text(
-                          s.name,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: ForjaShellColors.textPrimary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          [
-                            if (s.description != null &&
-                                s.description!.isNotEmpty)
-                              s.description!,
-                            if (s.supportedTypes.isNotEmpty)
-                              s.supportedTypes.join(', '),
-                          ].join(' \u00b7 '),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: ForjaShellColors.textSecondary,
-                          ),
-                        ),
                       );
                     }).toList(),
                   ),

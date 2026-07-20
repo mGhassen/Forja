@@ -1,4 +1,4 @@
-package com.forja.app
+package com.forjahq.app
 
 import android.graphics.Color
 import android.os.Bundle

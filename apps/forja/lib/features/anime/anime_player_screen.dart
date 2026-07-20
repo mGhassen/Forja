@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/playback/anime_playback_bridge.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
@@ -466,6 +467,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     DomainStreamProviderResolver.cancelAllPending();
   }
 
+  /// Resolve finished (play or fail) — kill Miruro WebView so SPA /health stops.
+  void _closeMiruroPipe() {
+    MiruroPipeSession.instance.cancelPending();
+  }
+
   void _setPhase(String phase) {
     _messageNotifier.value = phase;
   }
@@ -837,6 +843,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       _setStatusLine(
         'We couldn’t find a working source for this episode.',
       );
+      _closeMiruroPipe();
       return;
     }
 
@@ -858,12 +865,19 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           onProgress: _animeResolveProgress(preferredEmbeds),
           maxInFlight: 1,
         );
-        if (!mounted || _cancelled || _resolverStopped) return;
+        if (!mounted || _cancelled || _resolverStopped) {
+          _closeMiruroPipe();
+          return;
+        }
         if (prefHits.isNotEmpty) {
           final playable = await _playableHits(prefHits);
-          if (!mounted || _cancelled || _resolverStopped) return;
+          if (!mounted || _cancelled || _resolverStopped) {
+            _closeMiruroPipe();
+            return;
+          }
           if (playable.isNotEmpty) {
             _activeEmbed = playable.first.embed;
+            _closeMiruroPipe();
             await _launchPlayer(
               playable,
               usedSavedSource: true,
@@ -968,6 +982,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       if (_cancelled || _resolverStopped) {
         sourcesListNotifier.dispose();
         providerSourcesCache.dispose();
+        _closeMiruroPipe();
         return;
       }
       if (_manualSwitchRequested && _manualPreferredSourceKey != null) {
@@ -981,6 +996,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       if (!mounted || _cancelled) {
         sourcesListNotifier.dispose();
         providerSourcesCache.dispose();
+        _closeMiruroPipe();
         return;
       }
       if (playable.isNotEmpty) {
@@ -989,6 +1005,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         final usedSaved = !SourceEngine.isAuto(preferred) &&
             _preferredSourceKey != null &&
             playable.any((h) => h.embed.sourceKey == _preferredSourceKey);
+        _closeMiruroPipe();
         await _launchPlayer(
           playable,
           usedSavedSource: usedSaved,
@@ -1020,10 +1037,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (!mounted || _cancelled) {
       sourcesListNotifier.dispose();
       providerSourcesCache.dispose();
+      _closeMiruroPipe();
       return;
     }
     sourcesListNotifier.dispose();
     providerSourcesCache.dispose();
+    _closeMiruroPipe();
     if (_autoRecheckUsed >= 1) {
       setState(() => _awaitingManualRecheck = true);
       _setPhase('Still searching…');

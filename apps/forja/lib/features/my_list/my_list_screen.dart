@@ -19,6 +19,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
   final MyListService _myList = MyListService();
   final TmdbApi _api = TmdbApi();
   List<Map<String, dynamic>> _items = [];
+  static const _gridRowId = 'grid';
 
   @override
   Duration get shellStaleAfter => ShellTokens.tabStaleDefault;
@@ -34,6 +35,14 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
     super.initState();
     _items = _myList.items;
     MyListService.changeNotifier.addListener(_onListChanged);
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'mylist',
+      enterFromNavFocus: () {
+        ShellTvFocusCoordinator.focusRowItem('mylist', _gridRowId, 0);
+      },
+      restoreFocus: () =>
+          ShellTvFocusCoordinator.focusRowItem('mylist', _gridRowId, 0),
+    );
     markShellTabFresh();
   }
 
@@ -45,6 +54,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.unregisterTabDefaults('mylist');
     ShellTvFocusCoordinator.clearTab('mylist');
     MyListService.changeNotifier.removeListener(_onListChanged);
     super.dispose();
@@ -125,7 +135,13 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
             ],
           ),
         ),
-        if (_items.isEmpty)
+        if (_items.isEmpty) ...[
+          Builder(
+            builder: (context) {
+              shellTvUnregisterRow(tabId: 'mylist', rowId: _gridRowId);
+              return const SliverToBoxAdapter(child: SizedBox.shrink());
+            },
+          ),
           SliverFillRemaining(
             child: Center(
               child: Column(
@@ -145,8 +161,8 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                 ],
               ),
             ),
-          )
-        else
+          ),
+        ] else
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               ShellTokens.bodyHorizontalPadding,
@@ -254,6 +270,7 @@ class _MyListCard extends StatelessWidget {
         ? TmdbApi.getImageUrl(poster)
         : poster;
 
+    final policy = ShellScope.inputPolicyOf(context);
     return shellFocusableTap(
       context: context,
       onTap: onTap,
@@ -262,6 +279,7 @@ class _MyListCard extends StatelessWidget {
       gridIndex: gridIndex,
       gridColumns: gridColumns,
       tvTabId: 'mylist',
+      tvRowId: 'grid',
       tvZone: ShellTvZone.grid,
       tvItemIndex: gridIndex,
       child: Container(
@@ -353,21 +371,24 @@ class _MyListCard extends StatelessWidget {
               ),
             ),
 
-            // Remove button — must be AFTER title so it renders on top
+            // Remove — mouse only on TV (card OK opens; remove via long-press elsewhere N/A)
             Positioned(
               bottom: 4, right: 4,
-              child: shellFocusableTap(
-                context: context,
-                onTap: onRemove,
-                borderRadius: 20,
-                scaleOnFocus: ShellTokens.focusActiveScale,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
+              child: ExcludeFocus(
+                excluding: !policy.scaleOnHover,
+                child: shellFocusableTap(
+                  context: context,
+                  onTap: onRemove,
+                  borderRadius: 20,
+                  scaleOnFocus: ShellTokens.focusActiveScale,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 14, color: Colors.white),
                   ),
-                  child: const Icon(Icons.close, size: 14, color: Colors.white),
                 ),
               ),
             ),

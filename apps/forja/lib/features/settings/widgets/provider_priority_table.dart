@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Tabbed webstreaming server preference + live reliability.
@@ -94,6 +96,14 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
     }
   }
 
+  void _moveServer(List<String> order, int from, int to) {
+    if (from == to || from < 0 || to < 0 || to >= order.length) return;
+    final next = List<String>.from(order);
+    final item = next.removeAt(from);
+    next.insert(to, item);
+    _onOrderChanged(next);
+  }
+
   VoidCallback get _onOrderReset => switch (_tab) {
     _ScoringTab.anime => widget.onAnimeOrderReset,
     _ScoringTab.asianDrama => widget.onAsianDramaOrderReset,
@@ -159,44 +169,64 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
           const SizedBox(height: 12),
           _ColumnLegend(),
           const SizedBox(height: 4),
-          ReorderableListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            buildDefaultDragHandles: false,
-            itemCount: order.length,
-            onReorderItem: (oldIndex, newIndex) {
-              if (_tab == _ScoringTab.asianDrama) return;
-              final next = List<String>.from(order);
-              final item = next.removeAt(oldIndex);
-              next.insert(newIndex, item);
-              _onOrderChanged(next);
-            },
-            itemBuilder: (context, index) {
-              final id = order[index];
-              final disabled = disabledProviders.contains(id);
-              final row = rowById[id];
-              final score =
-                  row?.reliabilityScore ??
-                  ProviderScoreMemory.globalScoreFor(id);
-              final tries = row?.supported == true ? tryPositionById[id] : null;
-              return _ServerRow(
-                key: ValueKey('${_tab.name}-$id'),
-                index: index,
-                name: _catalog[id] ?? id,
-                score: score,
-                tries: disabled ? null : tries,
-                disabled: disabled,
-                reorderable: _tab != _ScoringTab.asianDrama,
+          Builder(
+            builder: (context) {
+              final tv =
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+              final reorderable = _tab != _ScoringTab.asianDrama;
+              if (tv && reorderable) {
+                shellTvRegisterRow(
+                  tabId: 'settings',
+                  rowId: 'scoring-move',
+                  sortOrder: 1,
+                  itemCount: order.length * 2,
+                  orientation: ShellTvRowOrientation.vertical,
+                );
+              }
+              return ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                itemCount: order.length,
+                onReorderItem: (oldIndex, newIndex) {
+                  if (_tab == _ScoringTab.asianDrama) return;
+                  final next = List<String>.from(order);
+                  final item = next.removeAt(oldIndex);
+                  next.insert(newIndex, item);
+                  _onOrderChanged(next);
+                },
+                itemBuilder: (context, index) {
+                  final id = order[index];
+                  final disabled = disabledProviders.contains(id);
+                  final row = rowById[id];
+                  final score =
+                      row?.reliabilityScore ??
+                      ProviderScoreMemory.globalScoreFor(id);
+                  final tries =
+                      row?.supported == true ? tryPositionById[id] : null;
+                  return _ServerRow(
+                    key: ValueKey('${_tab.name}-$id'),
+                    index: index,
+                    name: _catalog[id] ?? id,
+                    score: score,
+                    tries: disabled ? null : tries,
+                    disabled: disabled,
+                    reorderable: reorderable,
+                    onMoveUp: reorderable && index > 0
+                        ? () => _moveServer(order, index, index - 1)
+                        : null,
+                    onMoveDown: reorderable && index < order.length - 1
+                        ? () => _moveServer(order, index, index + 1)
+                        : null,
+                  );
+                },
               );
             },
           ),
           if (_tab != _ScoringTab.asianDrama)
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: _onOrderReset,
-                child: const Text('Reset order'),
-              ),
+              child: _ResetOrderButton(onPressed: _onOrderReset),
             )
           else
             Padding(
@@ -221,32 +251,22 @@ class _TabStrip extends StatelessWidget {
   final _ScoringTab tab;
   final ValueChanged<_ScoringTab> onChanged;
 
+  static const _tabs = <(_ScoringTab, String)>[
+    (_ScoringTab.movies, 'Movies'),
+    (_ScoringTab.series, 'Series'),
+    (_ScoringTab.anime, 'Anime'),
+    (_ScoringTab.asianDrama, 'Asian Drama'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    Widget chip(_ScoringTab value, String label) {
-      final selected = tab == value;
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => onChanged(value),
-          child: Ink(
-            decoration: shellChipDecoration(selected: selected),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: selected
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                  fontSize: 12.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: 'settings',
+        rowId: 'scoring-tabs',
+        sortOrder: 0,
+        itemCount: _tabs.length,
       );
     }
 
@@ -254,10 +274,27 @@ class _TabStrip extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        chip(_ScoringTab.movies, 'Movies'),
-        chip(_ScoringTab.series, 'Series'),
-        chip(_ScoringTab.anime, 'Anime'),
-        chip(_ScoringTab.asianDrama, 'Asian Drama'),
+        for (var i = 0; i < _tabs.length; i++)
+          ForjaShellChip(
+            label: _tabs[i].$2,
+            selected: tab == _tabs[i].$1,
+            listIndex: i,
+            tvTabId: 'settings',
+            tvRowId: 'scoring-tabs',
+            onTap: () => onChanged(_tabs[i].$1),
+            onLeftEdge: shellTvChipLeftEdge(
+              context,
+              tabId: 'settings',
+              rowId: 'scoring-tabs',
+              index: i,
+            ),
+            onRightEdge: shellTvChipRightEdge(
+              tabId: 'settings',
+              rowId: 'scoring-tabs',
+              index: i,
+              itemCount: _tabs.length,
+            ),
+          ),
       ],
     );
   }
@@ -300,6 +337,8 @@ class _ServerRow extends StatelessWidget {
     required this.tries,
     required this.disabled,
     required this.reorderable,
+    this.onMoveUp,
+    this.onMoveDown,
   });
 
   final int index;
@@ -308,9 +347,12 @@ class _ServerRow extends StatelessWidget {
   final int? tries;
   final bool disabled;
   final bool reorderable;
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     return Material(
       color: Colors.transparent,
       child: Padding(
@@ -329,6 +371,27 @@ class _ServerRow extends StatelessWidget {
                   color: disabled
                       ? ForjaShellColors.iconMuted
                       : const Color(0xFF7DDEA0),
+                ),
+              )
+            else if (tv)
+              SizedBox(
+                width: 56,
+                height: 36,
+                child: Row(
+                  children: [
+                    _MoveChip(
+                      icon: Icons.keyboard_arrow_up_rounded,
+                      enabled: onMoveUp != null,
+                      onTap: onMoveUp,
+                      tvItemIndex: index * 2,
+                    ),
+                    _MoveChip(
+                      icon: Icons.keyboard_arrow_down_rounded,
+                      enabled: onMoveDown != null,
+                      onTap: onMoveDown,
+                      tvItemIndex: index * 2 + 1,
+                    ),
+                  ],
                 ),
               )
             else
@@ -383,6 +446,80 @@ class _ServerRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoveChip extends StatelessWidget {
+  const _MoveChip({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+    required this.tvItemIndex,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback? onTap;
+  final int tvItemIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: enabled ? onTap : null,
+      borderRadius: 6,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      tvTabId: 'settings',
+      tvRowId: 'scoring-move',
+      tvItemIndex: tvItemIndex,
+      child: SizedBox(
+        width: 26,
+        height: 32,
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.iconMuted,
+        ),
+      ),
+    );
+  }
+}
+
+class _ResetOrderButton extends StatelessWidget {
+  const _ResetOrderButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return TextButton(
+        onPressed: onPressed,
+        child: const Text('Reset order'),
+      );
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onPressed,
+      borderRadius: 10,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      tvTabId: 'settings',
+      tvRowId: 'scoring-reset',
+      tvItemIndex: 0,
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Text(
+          'Reset order',
+          style: TextStyle(
+            color: ForjaShellColors.brandGreen,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

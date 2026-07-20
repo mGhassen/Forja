@@ -6,4 +6,4 @@ Icon=forja
 Terminal=false
 Type=Application
 Categories=AudioVideo;Video;
-StartupWMClass=com.forja.app
+StartupWMClass=com.forjahq.app

@@ -14,7 +14,11 @@ import 'kv.dart';
 /// until migration into Keychain succeeds. MissingPluginException (unit tests)
 /// is soft-skipped.
 abstract final class SecureSettings {
-  static const FlutterSecureStorage _secure = FlutterSecureStorage();
+  // macOS release is non-sandboxed — Data Protection Keychain returns -34018.
+  static const FlutterSecureStorage _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    mOptions: MacOsOptions(useDataProtectionKeyChain: false),
+  );
 
   /// Debrid
   static const rdAccessToken = 'rd_access_token';

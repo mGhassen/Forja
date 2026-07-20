@@ -1,4 +1,4 @@
-package com.forja.app
+package com.forjahq.app
 
 import android.app.Application
 import android.content.Context

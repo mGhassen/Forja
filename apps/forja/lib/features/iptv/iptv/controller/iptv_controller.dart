@@ -65,7 +65,7 @@ class IptvController extends ChangeNotifier
   /// Favorite portal keys — pinned to the top of the list.
   final Set<String> _favoritePortals = {};
 
-  /// Session-new portals (scrape / add / import) — visual badge only.
+  /// Session-new portals (scrape / deal / add / import) — visual badge only.
   final List<String> _newPortalKeys = [];
 
   /// Non-favorite display order: most recently added/scraped first.

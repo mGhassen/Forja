@@ -1,3 +1,4 @@
+import { formatPortalExpiry } from '@/lib/iptv-portal-expiry'
 import type { CatalogPortal, PortalStatus } from './types'
 
 function enc(s: string): string {
@@ -73,7 +74,9 @@ export async function verifyPortalStatus(
       alive,
       status: status || (alive ? 'active' : 'dead'),
       expiry:
-        info.exp_date != null ? String(info.exp_date) : null,
+        info.exp_date != null
+          ? formatPortalExpiry(String(info.exp_date))
+          : null,
       maxConnections:
         info.max_connections != null
           ? String(info.max_connections).replaceAll('"', '')

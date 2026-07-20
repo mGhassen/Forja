@@ -20,6 +20,8 @@ class _BrowserViewState extends State<_BrowserView> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   final FocusNode _openPortalFocus = FocusNode(debugLabel: 'iptv-open-portal');
+  final FocusNode _reloadEmptyFocus =
+      FocusNode(debugLabel: 'iptv-streams-reload');
   final ScrollController _categoryScroll = ScrollController();
   Timer? _scrollSettleTimer;
   bool _didInitialFocus = false;
@@ -48,6 +50,7 @@ class _BrowserViewState extends State<_BrowserView> {
     _categoryScroll.dispose();
     _searchFocus.dispose();
     _openPortalFocus.dispose();
+    _reloadEmptyFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -675,6 +678,15 @@ class _BrowserViewState extends State<_BrowserView> {
   Widget _buildStreamsEmpty() {
     final ctrl = widget.ctrl;
     if (ctrl.browserAllStreams.isEmpty) {
+      final canReload = ctrl.activeSection != null;
+      if (canReload && iptvUseTvFocus(context)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_reloadEmptyFocus.canRequestFocus) {
+            _reloadEmptyFocus.requestFocus();
+          }
+        });
+      }
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -688,9 +700,12 @@ class _BrowserViewState extends State<_BrowserView> {
             IptvPrimaryButton(
               icon: Icons.refresh_rounded,
               label: 'Reload',
-              onPressed: ctrl.activeSection == null
-                  ? null
-                  : () => ctrl.reloadSection(ctrl.activeSection!),
+              focusNode: _reloadEmptyFocus,
+              tvRowId: 'iptv-streams-reload',
+              tvItemIndex: 0,
+              onPressed: canReload
+                  ? () => ctrl.reloadSection(ctrl.activeSection!)
+                  : null,
             ),
           ],
         ),
@@ -745,9 +760,10 @@ class _BrowserViewState extends State<_BrowserView> {
             streamHealth: Map<String, bool>.from(ctrl.streamHealth),
           )
         : null;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => IptvPtPlayerScreen.singleStream(
+    await pushShellRoute(
+      context,
+      AppRouter.slideShellRoute(
+        (_) => IptvPtPlayerScreen.singleStream(
           url: url,
           stream: s,
           portalName: p.displayLabel,

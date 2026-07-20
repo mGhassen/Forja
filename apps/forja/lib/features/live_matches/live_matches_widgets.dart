@@ -2,7 +2,7 @@ part of 'live_matches_screen.dart';
 
 // ─── Server picker sheet ────────────────────────────────────────────────────
 
-class _LiveMatchesServerSheet extends StatelessWidget {
+class _LiveMatchesServerSheet extends StatefulWidget {
   const _LiveMatchesServerSheet({
     required this.current,
     required this.onSelected,
@@ -12,7 +12,50 @@ class _LiveMatchesServerSheet extends StatelessWidget {
   final ValueChanged<_LiveMatchesServer> onSelected;
 
   @override
+  State<_LiveMatchesServerSheet> createState() =>
+      _LiveMatchesServerSheetState();
+}
+
+class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
+  static const _rowId = 'live-server-sheet';
+  final FocusNode _firstFocus =
+      FocusNode(debugLabel: 'live-server-sheet-first');
+
+  List<_LiveMatchesServer> get _servers => [
+        _LiveMatchesServer.all,
+        ..._LiveMatchesServer.values
+            .where((server) => server != _LiveMatchesServer.all),
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final servers = _servers;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: 'live_matches',
+        rowId: _rowId,
+        sortOrder: 0,
+        itemCount: servers.length,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
       child: Column(
@@ -44,20 +87,15 @@ class _LiveMatchesServerSheet extends StatelessWidget {
             style: TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          _LiveMatchesServerSheetOption(
-            server: _LiveMatchesServer.all,
-            current: current,
-            onSelected: onSelected,
-          ),
-          ..._LiveMatchesServer.values
-              .where((server) => server != _LiveMatchesServer.all)
-              .map(
-                (server) => _LiveMatchesServerSheetOption(
-                  server: server,
-                  current: current,
-                  onSelected: onSelected,
-                ),
-              ),
+          for (var i = 0; i < servers.length; i++)
+            _LiveMatchesServerSheetOption(
+              server: servers[i],
+              current: widget.current,
+              onSelected: widget.onSelected,
+              tvItemIndex: i,
+              tvRowId: _rowId,
+              focusNode: i == 0 ? _firstFocus : null,
+            ),
         ],
       ),
     );
@@ -69,11 +107,17 @@ class _LiveMatchesServerSheetOption extends StatelessWidget {
     required this.server,
     required this.current,
     required this.onSelected,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
   });
 
   final _LiveMatchesServer server;
   final _LiveMatchesServer current;
   final ValueChanged<_LiveMatchesServer> onSelected;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +126,11 @@ class _LiveMatchesServerSheetOption extends StatelessWidget {
       onTap: () => onSelected(server),
       borderRadius: 12,
       navLeftAlways: true,
+      focusNode: focusNode,
+      listIndex: tvItemIndex,
       tvTabId: 'live_matches',
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
       tvZone: ShellTvZone.row,
       child: ListTile(
         leading: Icon(
@@ -370,6 +418,8 @@ class _CdnSportCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
+  final String tvRowId;
+  final ShellTvZone tvZone;
   const _CdnSportCard({
     required this.event,
     required this.onTap,
@@ -378,6 +428,8 @@ class _CdnSportCard extends StatefulWidget {
     this.onUpEdge,
     this.forceActive = false,
     this.onHoverChanged,
+    this.tvRowId = 'grid',
+    this.tvZone = ShellTvZone.grid,
   });
 
   @override
@@ -551,12 +603,14 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       onTap: canPlay ? widget.onTap : null,
       borderRadius: 14,
       scaleOnFocus: 1.0,
-      gridIndex: widget.gridIndex,
-      gridColumns: widget.gridColumns,
+      gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
+      gridColumns:
+          widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
+      listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
       tvTabId: 'live_matches',
-      tvRowId: 'grid',
-      tvZone: ShellTvZone.grid,
+      tvRowId: widget.tvRowId,
+      tvZone: widget.tvZone,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) {
@@ -570,7 +624,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
 
 // ─── CDN Channel Sheet ────────────────────────────────────────────────────────
 
-class _CdnChannelSheet extends StatelessWidget {
+class _CdnChannelSheet extends StatefulWidget {
   final _CdnSportEvent event;
   final void Function(_CdnChannel) onChannelSelected;
   const _CdnChannelSheet({
@@ -579,7 +633,43 @@ class _CdnChannelSheet extends StatelessWidget {
   });
 
   @override
+  State<_CdnChannelSheet> createState() => _CdnChannelSheetState();
+}
+
+class _CdnChannelSheetState extends State<_CdnChannelSheet> {
+  static const _rowId = 'live-cdn-channel-sheet';
+  final FocusNode _firstFocus =
+      FocusNode(debugLabel: 'live-cdn-channel-sheet-first');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final channels = widget.event.channels;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: 'live_matches',
+        rowId: _rowId,
+        sortOrder: 0,
+        itemCount: channels.length,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
       child: Column(
@@ -598,7 +688,7 @@ class _CdnChannelSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            '${event.homeTeam} vs ${event.awayTeam}',
+            '${widget.event.homeTeam} vs ${widget.event.awayTeam}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -611,18 +701,22 @@ class _CdnChannelSheet extends StatelessWidget {
             style: TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          ...event.channels.map(
-            (ch) => shellFocusableTap(
+          for (var i = 0; i < channels.length; i++)
+            shellFocusableTap(
               context: context,
-              onTap: () => onChannelSelected(ch),
+              onTap: () => widget.onChannelSelected(channels[i]),
               borderRadius: 12,
               navLeftAlways: true,
+              focusNode: i == 0 ? _firstFocus : null,
+              listIndex: i,
               tvTabId: 'live_matches',
+              tvRowId: _rowId,
+              tvItemIndex: i,
               tvZone: ShellTvZone.row,
               child: ListTile(
-                leading: ch.image.isNotEmpty
+                leading: channels[i].image.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: ch.image,
+                        imageUrl: channels[i].image,
                         width: 32,
                         height: 32,
                         fit: BoxFit.contain,
@@ -636,15 +730,15 @@ class _CdnChannelSheet extends StatelessWidget {
                         color: ForjaShellColors.sectionAccent,
                       ),
                 title: Text(
-                  ch.name,
+                  channels[i].name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                subtitle: ch.viewers > 0
+                subtitle: channels[i].viewers > 0
                     ? Text(
-                        '${ch.viewers} viewers',
+                        '${channels[i].viewers} viewers',
                         style: const TextStyle(
                           color: Colors.white38,
                           fontSize: 11,
@@ -657,7 +751,6 @@ class _CdnChannelSheet extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1208,7 +1301,7 @@ class _LiveMatchesEmbedPlayerScreenState
 
 // ─── Streamed stream sheet ────────────────────────────────────────────────────
 
-class _MergedMatchStreamSheet extends StatelessWidget {
+class _MergedMatchStreamSheet extends StatefulWidget {
   const _MergedMatchStreamSheet({
     required this.title,
     required this.ppv,
@@ -1224,10 +1317,47 @@ class _MergedMatchStreamSheet extends StatelessWidget {
   final ValueChanged<_StreamedStream> onStreamedSelected;
 
   @override
+  State<_MergedMatchStreamSheet> createState() =>
+      _MergedMatchStreamSheetState();
+}
+
+class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
+  static const _rowId = 'live-merged-stream-sheet';
+  final FocusNode _firstFocus =
+      FocusNode(debugLabel: 'live-merged-stream-sheet-first');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sorted = [...streamed]
+    final sorted = [...widget.streamed]
       ..sort((a, b) => b.viewers.compareTo(a.viewers));
-    final count = sorted.length + (ppv == null ? 0 : 1);
+    final count = sorted.length + (widget.ppv == null ? 0 : 1);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: 'live_matches',
+        rowId: _rowId,
+        sortOrder: 0,
+        itemCount: count,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    }
+    final streamedOffset = widget.ppv == null ? 0 : 1;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -1246,7 +1376,7 @@ class _MergedMatchStreamSheet extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            title,
+            widget.title,
             style: const TextStyle(
               color: ForjaShellColors.textPrimary,
               fontSize: 17,
@@ -1266,16 +1396,27 @@ class _MergedMatchStreamSheet extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  if (ppv != null)
-                    _MergedPpvStreamRow(stream: ppv!, onTap: onPpvSelected),
-                  for (final stream in sorted)
+                  if (widget.ppv != null)
+                    _MergedPpvStreamRow(
+                      stream: widget.ppv!,
+                      onTap: widget.onPpvSelected,
+                      tvItemIndex: 0,
+                      tvRowId: _rowId,
+                      focusNode: _firstFocus,
+                    ),
+                  for (var i = 0; i < sorted.length; i++)
                     _StreamedStreamRow(
-                      stream: stream,
+                      stream: sorted[i],
                       sourceLabel: _StreamedStreamSheet.sourceLabel(
-                        stream.source,
+                        sorted[i].source,
                       ),
                       serverLabel: 'Streamed',
-                      onTap: () => onStreamedSelected(stream),
+                      onTap: () => widget.onStreamedSelected(sorted[i]),
+                      tvItemIndex: streamedOffset + i,
+                      tvRowId: _rowId,
+                      focusNode: widget.ppv == null && i == 0
+                          ? _firstFocus
+                          : null,
                     ),
                 ],
               ),
@@ -1288,10 +1429,19 @@ class _MergedMatchStreamSheet extends StatelessWidget {
 }
 
 class _MergedPpvStreamRow extends StatelessWidget {
-  const _MergedPpvStreamRow({required this.stream, required this.onTap});
+  const _MergedPpvStreamRow({
+    required this.stream,
+    required this.onTap,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
+  });
 
   final _DamiTvStream stream;
   final VoidCallback onTap;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -1300,7 +1450,11 @@ class _MergedPpvStreamRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: 10,
       navLeftAlways: true,
+      focusNode: focusNode,
+      listIndex: tvItemIndex,
       tvTabId: 'live_matches',
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
       tvZone: ShellTvZone.row,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
@@ -1334,7 +1488,7 @@ class _MergedPpvStreamRow extends StatelessWidget {
   }
 }
 
-class _StreamedStreamSheet extends StatelessWidget {
+class _StreamedStreamSheet extends StatefulWidget {
   final _StreamedMatch match;
   final List<_StreamedStream> streams;
   final void Function(_StreamedStream) onStreamSelected;
@@ -1350,16 +1504,49 @@ class _StreamedStreamSheet extends StatelessWidget {
     return source[0].toUpperCase() + source.substring(1);
   }
 
-  /// Flat list sorted by viewers (a rough reliability hint — dead feeds
-  /// trend low).
+  @override
+  State<_StreamedStreamSheet> createState() => _StreamedStreamSheetState();
+}
+
+class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
+  static const _rowId = 'live-streamed-stream-sheet';
+  final FocusNode _firstFocus =
+      FocusNode(debugLabel: 'live-streamed-stream-sheet-first');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
   List<_StreamedStream> _sortedByViewers() {
-    return [...streams]..sort((a, b) => b.viewers.compareTo(a.viewers));
+    return [...widget.streams]..sort((a, b) => b.viewers.compareTo(a.viewers));
   }
 
   @override
   Widget build(BuildContext context) {
     final sorted = _sortedByViewers();
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: 'live_matches',
+        rowId: _rowId,
+        sortOrder: 0,
+        itemCount: sorted.length,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -1379,7 +1566,7 @@ class _StreamedStreamSheet extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            match.title,
+            widget.match.title,
             style: const TextStyle(
               color: ForjaShellColors.textPrimary,
               fontSize: 17,
@@ -1402,12 +1589,17 @@ class _StreamedStreamSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final stream in sorted)
+                    for (var i = 0; i < sorted.length; i++)
                       _StreamedStreamRow(
-                        stream: stream,
-                        sourceLabel: sourceLabel(stream.source),
+                        stream: sorted[i],
+                        sourceLabel: _StreamedStreamSheet.sourceLabel(
+                          sorted[i].source,
+                        ),
                         serverLabel: 'Streamed',
-                        onTap: () => onStreamSelected(stream),
+                        onTap: () => widget.onStreamSelected(sorted[i]),
+                        tvItemIndex: i,
+                        tvRowId: _rowId,
+                        focusNode: i == 0 ? _firstFocus : null,
                       ),
                   ],
                 ),
@@ -1425,12 +1617,18 @@ class _StreamedStreamRow extends StatelessWidget {
   final String sourceLabel;
   final String serverLabel;
   final VoidCallback onTap;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
 
   const _StreamedStreamRow({
     required this.stream,
     required this.sourceLabel,
     this.serverLabel = 'Streamed',
     required this.onTap,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
   });
 
   @override
@@ -1444,7 +1642,11 @@ class _StreamedStreamRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: 10,
       navLeftAlways: true,
+      focusNode: focusNode,
+      listIndex: tvItemIndex,
       tvTabId: 'live_matches',
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
       tvZone: ShellTvZone.row,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
@@ -1577,6 +1779,8 @@ class _StreamedMatchCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
+  final String tvRowId;
+  final ShellTvZone tvZone;
 
   const _StreamedMatchCard({
     required this.match,
@@ -1586,6 +1790,8 @@ class _StreamedMatchCard extends StatefulWidget {
     this.onUpEdge,
     this.forceActive = false,
     this.onHoverChanged,
+    this.tvRowId = 'grid',
+    this.tvZone = ShellTvZone.grid,
   });
 
   @override
@@ -1756,12 +1962,14 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       onTap: canPlay ? widget.onTap : null,
       borderRadius: 14,
       scaleOnFocus: 1.0,
-      gridIndex: widget.gridIndex,
-      gridColumns: widget.gridColumns,
+      gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
+      gridColumns:
+          widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
+      listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
       tvTabId: 'live_matches',
-      tvRowId: 'grid',
-      tvZone: ShellTvZone.grid,
+      tvRowId: widget.tvRowId,
+      tvZone: widget.tvZone,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) {
@@ -1784,6 +1992,8 @@ class _DamiTvMatchCard extends StatefulWidget {
   final bool? playableOverride;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
+  final String tvRowId;
+  final ShellTvZone tvZone;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
@@ -1793,6 +2003,8 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.playableOverride,
     this.forceActive = false,
     this.onHoverChanged,
+    this.tvRowId = 'grid',
+    this.tvZone = ShellTvZone.grid,
   });
 
   @override
@@ -2010,12 +2222,14 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       onTap: canPlay ? widget.onTap : null,
       borderRadius: 14,
       scaleOnFocus: 1.0,
-      gridIndex: widget.gridIndex,
-      gridColumns: widget.gridColumns,
+      gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
+      gridColumns:
+          widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
+      listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
       tvTabId: 'live_matches',
-      tvRowId: 'grid',
-      tvZone: ShellTvZone.grid,
+      tvRowId: widget.tvRowId,
+      tvZone: widget.tvZone,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) {
@@ -2023,6 +2237,98 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
         widget.onHoverChanged?.call(hovered);
       },
       child: card,
+    );
+  }
+}
+
+/// Blocking load dialog with a Cancel control (Back / barrier also dismiss).
+class _LiveCancellableLoadingDialog extends StatefulWidget {
+  const _LiveCancellableLoadingDialog({
+    required this.message,
+    required this.onCancel,
+  });
+
+  final String message;
+  final VoidCallback onCancel;
+
+  @override
+  State<_LiveCancellableLoadingDialog> createState() =>
+      _LiveCancellableLoadingDialogState();
+}
+
+class _LiveCancellableLoadingDialogState
+    extends State<_LiveCancellableLoadingDialog> {
+  final FocusNode _cancelFocus =
+      FocusNode(debugLabel: 'live-loading-cancel');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_cancelFocus.canRequestFocus) _cancelFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _cancelFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        decoration: BoxDecoration(
+          color: ForjaShellColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: ForjaShellColors.cinematic.borderSubtle,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              color: ForjaShellColors.sectionAccent,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              widget.message,
+              style: const TextStyle(color: ForjaShellColors.textPrimary),
+            ),
+            const SizedBox(height: 18),
+            if (tvFocus)
+              shellFocusableTap(
+                context: context,
+                onTap: widget.onCancel,
+                focusNode: _cancelFocus,
+                borderRadius: 24,
+                scaleOnFocus: ShellTokens.focusActiveScale,
+                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: ForjaShellColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+            else
+              TextButton(
+                onPressed: widget.onCancel,
+                child: const Text('Cancel'),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
