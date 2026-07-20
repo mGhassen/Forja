@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { DownloadHelp } from '@/components/download-help'
 import { SiteFooter } from '@/components/legal-shell'
@@ -81,12 +82,16 @@ function PlatformPicker({
   onSelect,
   assetsById,
   primaryById,
+  version,
+  notes,
 }: {
   platforms: ShowcasePlatform[]
   selectedId: ShowcasePlatformId
   onSelect: (id: ShowcasePlatformId) => void
   assetsById: Record<ShowcasePlatformId, ReleaseAsset[]>
   primaryById: Record<ShowcasePlatformId, ReleaseAsset | null>
+  version: string | null
+  notes: string | null
 }) {
   const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
   const assets = assetsById[selected.id] ?? []
@@ -177,6 +182,9 @@ function PlatformPicker({
           )}
         >
           {selected.format}
+          {version ? (
+            <span className="text-[rgba(237,230,218,0.35)]"> · v{version}</span>
+          ) : null}
         </p>
         <h2 className="font-disp mt-4 text-[clamp(40px,6vw,72px)] uppercase leading-[0.88] tracking-[-0.03em]">
           {selected.label}
@@ -222,6 +230,24 @@ function PlatformPicker({
               ))}
             </ul>
           )}
+
+          {notes ? (
+            <div className="border-t border-[rgba(237,230,218,0.1)] pt-5">
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+                <p className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-brand">
+                  What&apos;s new{version ? ` · v${version}` : ''}
+                </p>
+                <Link
+                  to="/changelog"
+                  search={version ? { v: version } : undefined}
+                  className="font-mono-ui text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)] transition-colors hover:text-flame"
+                >
+                  Full changelog →
+                </Link>
+              </div>
+              <ReleaseNotes markdown={notes} className="max-h-56" />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -324,6 +350,8 @@ export function DownloadPage() {
               onSelect={setSelectedId}
               assetsById={assetsById}
               primaryById={primaryById}
+              version={data?.version ?? null}
+              notes={data?.body ?? null}
             />
           </div>
         </Reveal>
@@ -395,19 +423,6 @@ export function DownloadPage() {
         </Reveal>
 
         <DownloadHelp />
-
-        {data?.body ? (
-          <Reveal delayMs={180}>
-            <details className="mt-14 group border-t border-[rgba(237,230,218,0.14)] pt-10">
-              <summary className="font-mono-ui cursor-pointer list-none text-xs uppercase tracking-[0.18em] text-[rgba(237,230,218,0.42)] transition-colors hover:text-flame [&::-webkit-details-marker]:hidden">
-                <span className="group-open:text-brand">What&apos;s new · v{data.version}</span>
-              </summary>
-              <div className="mt-5">
-                <ReleaseNotes markdown={data.body} />
-              </div>
-            </details>
-          </Reveal>
-        ) : null}
       </main>
       <SiteFooter />
       </div>
