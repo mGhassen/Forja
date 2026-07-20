@@ -10,6 +10,14 @@ export type AuthSessionRow = {
   aal: string | null
 }
 
+export type SessionGeo = {
+  countryCode: string
+  country: string
+  city: string | null
+}
+
+const GEO_CACHE_PREFIX = 'forja.session_geo.'
+
 /** session_id claim from the current access token (JWT). */
 export function currentSessionIdFromAccessToken(
   accessToken: string | null | undefined,
@@ -62,12 +70,104 @@ export function formatSessionWhen(iso: string | null | undefined): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleString(undefined, {
-    year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/** Strip CIDR suffix from auth.sessions.ip (`1.2.3.4/32` → `1.2.3.4`). */
+export function formatSessionIp(ip: string | null | undefined): string | null {
+  if (!ip?.trim()) return null
+  return ip.trim().replace(/\/\d+$/, '')
+}
+
+function isLookupableIp(ip: string): boolean {
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return false
+  if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('169.254.')) {
+    return false
+  }
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) return false
+  return true
+}
+
+/** Regional-indicator flag emoji from ISO 3166-1 alpha-2. */
+export function countryCodeToFlagEmoji(code: string | null | undefined): string | null {
+  const c = code?.trim().toUpperCase()
+  if (!c || c.length !== 2 || !/^[A-Z]{2}$/.test(c)) return null
+  return String.fromCodePoint(
+    ...[...c].map((ch) => 0x1f1e6 - 65 + ch.charCodeAt(0)),
+  )
+}
+
+function readGeoCache(ip: string): SessionGeo | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(GEO_CACHE_PREFIX + ip)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SessionGeo
+    if (
+      typeof parsed.countryCode === 'string' &&
+      typeof parsed.country === 'string'
+    ) {
+      return {
+        countryCode: parsed.countryCode,
+        country: parsed.country,
+        city: typeof parsed.city === 'string' ? parsed.city : null,
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function writeGeoCache(ip: string, geo: SessionGeo): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(GEO_CACHE_PREFIX + ip, JSON.stringify(geo))
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Best-effort country for a public IP (ipwho.is). Cached per tab session.
+ * Returns null for private IPs or lookup failures.
+ */
+export async function lookupSessionGeo(
+  ip: string | null | undefined,
+): Promise<SessionGeo | null> {
+  const clean = formatSessionIp(ip)
+  if (!clean || !isLookupableIp(clean)) return null
+  const cached = readGeoCache(clean)
+  if (cached) return cached
+  try {
+    const res = await fetch(
+      `https://ipwho.is/${encodeURIComponent(clean)}?fields=success,country,country_code,city`,
+      { signal: AbortSignal.timeout(5000) },
+    )
+    if (!res.ok) return null
+    const body = (await res.json()) as {
+      success?: boolean
+      country?: string
+      country_code?: string
+      city?: string | null
+    }
+    if (!body.success || !body.country_code?.trim() || !body.country?.trim()) {
+      return null
+    }
+    const geo: SessionGeo = {
+      countryCode: body.country_code.trim().toUpperCase(),
+      country: body.country.trim(),
+      city: body.city?.trim() || null,
+    }
+    writeGeoCache(clean, geo)
+    return geo
+  } catch {
+    return null
+  }
 }
 
 export async function listMyAuthSessions(): Promise<{

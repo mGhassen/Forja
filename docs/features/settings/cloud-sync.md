@@ -77,7 +77,8 @@ Not synced — device-specific or sensitive:
   under web **Account** — after you enable it, sign-in asks for a 6-digit code
   (Web login completes MFA in the browser before minting the desktop session;
   in-app password sign-in shows the same challenge). Portal **Sign out** clears
-  this browser only; **Account → Connections** lists every active session and can
+  this browser only; **Account → Connections** lists every active session (device,
+  location with flag, IP, signed-in / last active) and can
   revoke one or **Sign out all devices** (including the desktop app). Already
   signed in on the portal? Web login skips the credentials form and finishes the
   handoff (or use **Return to Forja**). Create accounts only on the web

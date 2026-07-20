@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MonitorSmartphone, RefreshCw } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
@@ -6,13 +6,150 @@ import { SettingsSection } from '@/components/settings-section'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
 import {
+  countryCodeToFlagEmoji,
   currentSessionIdFromAccessToken,
   describeSessionPlace,
+  formatSessionIp,
   formatSessionWhen,
   listMyAuthSessions,
+  lookupSessionGeo,
   revokeMyAuthSession,
   type AuthSessionRow,
+  type SessionGeo,
 } from '@/lib/auth-sessions'
+
+function SessionMetaRow({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+      <dt className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.4)]">
+        {label}
+      </dt>
+      <dd className="min-w-0 text-[#EDE6DA]/children}</dd>
+    </div>
+  )
+}
+
+function ConnectionCard({
+  row,
+  isCurrent,
+  revoking,
+  onRevoke,
+}: {
+  row: AuthSessionRow
+  isCurrent: boolean
+  revoking: boolean
+  onRevoke: () => void
+}) {
+  const place = describeSessionPlace(row.user_agent)
+  const ip = formatSessionIp(row.ip)
+  const since = formatSessionWhen(row.created_at)
+  const lastActive = formatSessionWhen(
+    row.refreshed_at ?? row.updated_at ?? row.created_at,
+  )
+  const [geo, setGeo] = useState<SessionGeo | null>(null)
+  const [geoReady, setGeoReady] = useState(!formatSessionIp(row.ip))
+
+  useEffect(() => {
+    let cancelled = false
+    const hasIp = !!formatSessionIp(row.ip)
+    setGeo(null)
+    setGeoReady(!hasIp)
+    if (!hasIp) return
+    void lookupSessionGeo(row.ip).then((result) => {
+      if (cancelled) return
+      setGeo(result)
+      setGeoReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [row.ip])
+
+  const flag = countryCodeToFlagEmoji(geo?.countryCode)
+  const placeLine = geo
+    ? [geo.city, geo.country].filter(Boolean).join(', ')
+    : null
+
+  return (
+    <li className="rounded-xl border border-[rgba(237,230,218,0.12)] bg-forja-bg/40 p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(237,230,218,0.12)] bg-[rgba(28,231,131,0.08)]"
+            aria-hidden
+          >
+            {flag ? (
+              <span className="text-2xl leading-none">{flag}</span>
+            ) : (
+              <MonitorSmartphone className="size-5 text-forja-green" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-base font-semibold text-[#EDE6DA]">
+                {place.label}
+              </p>
+              {isCurrent ? (
+                <span className="rounded-full border border-forja-green/35 bg-forja-green/10 px-2 py-0.5 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                  This browser
+                </span>
+              ) : null}
+            </div>
+            {place.detail ? (
+              <p className="mt-1 text-sm text-[rgba(237,230,218,0.5)]">
+                {place.detail}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-red-300 hover:text-red-200"
+          disabled={revoking}
+          onClick={onRevoke}
+        >
+          {revoking ? 'Revoking…' : isCurrent ? 'Sign out' : 'Revoke'}
+        </Button>
+      </div>
+
+      <dl className="mt-4 space-y-2.5 border-t border-[rgba(237,230,218,0.1)] pt-4">
+        <SessionMetaRow label="Location">
+          {placeLine ? (
+            <span className="inline-flex items-center gap-2">
+              {flag ? (
+                <span className="text-lg leading-none" aria-hidden>
+                  {flag}
+                </span>
+              ) : null}
+              <span>{placeLine}</span>
+            </span>
+          ) : !geoReady ? (
+            <span className="text-[rgba(237,230,218,0.45)]">Looking up…</span>
+          ) : (
+            <span className="text-[rgba(237,230,218,0.45)]">Unknown</span>
+          )}
+        </SessionMetaRow>
+        <SessionMetaRow label="IP">
+          {ip ? (
+            <span className="font-mono-ui text-[13px] tracking-wide">{ip}</span>
+          ) : (
+            <span className="text-[rgba(237,230,218,0.45)]">—</span>
+          )}
+        </SessionMetaRow>
+        <SessionMetaRow label="Signed in">{since}</SessionMetaRow>
+        <SessionMetaRow label="Last active">{lastActive}</SessionMetaRow>
+      </dl>
+    </li>
+  )
+}
 
 export function AccountSettingsConnectionsPage() {
   const navigate = useNavigate()
@@ -70,11 +207,11 @@ export function AccountSettingsConnectionsPage() {
     <AccountSettingsShell
       section="account"
       title="Connections"
-      description="Every active sign-in for this account — browsers, desktop Web login, and the Forja app. Revoke anything you do not recognize."
+      description="Active sign-ins for this account. Revoke anything you do not recognize."
     >
       <SettingsSection
         label="Active sessions"
-        description="Where each session started, when it was created, and when it last refreshed."
+        description="Device, location, IP, and activity for each sign-in."
       >
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -108,63 +245,16 @@ export function AccountSettingsConnectionsPage() {
               No active sessions found.
             </p>
           ) : (
-            <ul className="space-y-2">
-              {rows.map((row) => {
-                const place = describeSessionPlace(row.user_agent)
-                const isCurrent = row.id === currentId
-                const since = formatSessionWhen(row.created_at)
-                const lastActive = formatSessionWhen(
-                  row.refreshed_at ?? row.updated_at ?? row.created_at,
-                )
-                return (
-                  <li
-                    key={row.id}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-[rgba(237,230,218,0.12)] bg-forja-bg/40 px-3 py-3"
-                  >
-                    <div className="flex min-w-0 items-start gap-3">
-                      <MonitorSmartphone
-                        className="mt-0.5 size-5 shrink-0 text-forja-green"
-                        aria-hidden
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#EDE6DA]">
-                          {place.label}
-                          {isCurrent ? (
-                            <span className="ml-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
-                              This browser
-                            </span>
-                          ) : null}
-                        </p>
-                        {place.detail ? (
-                          <p className="mt-0.5 text-xs text-[rgba(237,230,218,0.45)]">
-                            {place.detail}
-                          </p>
-                        ) : null}
-                        <p className="mt-1 text-xs text-[rgba(237,230,218,0.45)]">
-                          Since {since}
-                          {' · '}
-                          Last active {lastActive}
-                          {row.ip ? ` · ${row.ip}` : null}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-300 hover:text-red-200"
-                      disabled={revokingId === row.id}
-                      onClick={() => void onRevoke(row.id)}
-                    >
-                      {revokingId === row.id
-                        ? 'Revoking…'
-                        : isCurrent
-                          ? 'Sign out'
-                          : 'Revoke'}
-                    </Button>
-                  </li>
-                )
-              })}
+            <ul className="space-y-3">
+              {rows.map((row) => (
+                <ConnectionCard
+                  key={row.id}
+                  row={row}
+                  isCurrent={row.id === currentId}
+                  revoking={revokingId === row.id}
+                  onRevoke={() => void onRevoke(row.id)}
+                />
+              ))}
             </ul>
           )}
 
