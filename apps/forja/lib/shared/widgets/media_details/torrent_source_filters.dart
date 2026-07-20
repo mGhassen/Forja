@@ -459,6 +459,23 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     );
   }
 
+  bool _chipSelected(SourcesPanelProviderOption option) {
+    if (option.id == 'all_nuvio') {
+      final scraperIds = [
+        for (final o in widget.options)
+          if (o.id.startsWith('nuvio:')) o.id.substring('nuvio:'.length),
+      ];
+      return scraperIds.isNotEmpty &&
+          scraperIds.every(widget.nuvioSelectedScraperIds.contains);
+    }
+    if (option.id.startsWith('nuvio:')) {
+      return widget.nuvioSelectedScraperIds.contains(
+        option.id.substring('nuvio:'.length),
+      );
+    }
+    return widget.selectedSourceId == option.id;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.options.isEmpty) return const SizedBox.shrink();
@@ -486,11 +503,7 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                       padding: const EdgeInsets.only(right: 6),
                       child: _ProviderChip(
                         label: option.label,
-                        selected: option.id.startsWith('nuvio:')
-                            ? widget.nuvioSelectedScraperIds.contains(
-                                option.id.substring('nuvio:'.length),
-                              )
-                            : widget.selectedSourceId == option.id,
+                        selected: _chipSelected(option),
                         onTap: () => widget.onChipTap(option.id),
                       ),
                     ),

@@ -929,6 +929,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
     if (_kindFilter == 'nuvio') {
       return [
+        const SourcesPanelProviderOption(id: 'all_nuvio', label: 'All'),
         for (final a in _nuvioAddons)
           for (final s in a.scrapers)
             if (s.enabled)
@@ -1390,6 +1391,24 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   void _onChipTap(String id) {
+    if (id == 'all_nuvio') {
+      final enabled = enabledNuvioScraperIds(_nuvioAddons);
+      if (enabled.isEmpty) return;
+      final alreadyAll = enabled.every(_nuvioSelectedScraperIds.contains);
+      if (alreadyAll) return;
+      setState(() {
+        _selectedSourceId = 'all_nuvio';
+        _error = null;
+        _nuvioSelectedScraperIds = Set<String>.from(enabled);
+      });
+      unawaited(
+        NuvioService.instance.saveSourcesSelectedScraperIds(
+          _nuvioSelectedScraperIds,
+        ),
+      );
+      unawaited(_fetchNextNuvioScraper());
+      return;
+    }
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _nuvioSelectedScraperIds.contains(scraperId);

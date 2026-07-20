@@ -370,10 +370,15 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
           }
         }
         probeNotifier.value = probes;
+        // Only finished hits — not partial cache from abandoned checks.
         unawaited(
           ProviderScoreProbeSync.syncSourcesCache(
             scope: scope,
-            sourcesByProvider: providerSourcesCache.value,
+            sourcesByProvider: {
+              for (final hit in hits)
+                if (hit.streamSources.isNotEmpty)
+                  hit.providerId: hit.streamSources,
+            },
           ),
         );
       }

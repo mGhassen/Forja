@@ -35,28 +35,32 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
   Future<void> _recordStreamCheckSuccess(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    await ProviderScoreMemory.recordStreamUp(scope, providerId);
+    await ProviderScoreMemory.recordLinkedStreamsUp(scope, providerId);
+    ProviderScoreProbeSync.markScoredServerUp(scope, providerId);
     _notifySourceMenuChanged();
   }
 
   Future<void> _recordStreamCheckFailure(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    // Only −2 when every known stream is dead — not on the first failed row.
-    await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+    final applied = await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
       scope: scope,
       providerId: providerId,
       streamUrls: _streamUrlsForProvider(providerId),
       isStreamFailed: (url) =>
           _s._urlCheckStatuses[url] == PlayerSourceStatus.failed,
     );
+    if (applied) {
+      ProviderScoreProbeSync.markScoredLinkedDown(scope, providerId);
+    }
     _notifySourceMenuChanged();
   }
 
   Future<void> _recordStreamPlaySuccess(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    await ProviderScoreMemory.recordStreamUp(scope, providerId);
+    await ProviderScoreMemory.recordLinkedStreamsUp(scope, providerId);
+    ProviderScoreProbeSync.markScoredServerUp(scope, providerId);
     _notifySourceMenuChanged();
   }
 
@@ -69,14 +73,16 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       _notifySourceMenuChanged();
       return;
     }
-    // Only −2 when every known stream failed open — not on the first miss.
-    await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+    final applied = await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
       scope: scope,
       providerId: providerId,
       streamUrls: _streamUrlsForProvider(providerId),
       isStreamFailed: (url) =>
           _s._urlCheckStatuses[url] == PlayerSourceStatus.failed,
     );
+    if (applied) {
+      ProviderScoreProbeSync.markScoredLinkedDown(scope, providerId);
+    }
     _notifySourceMenuChanged();
   }
 
@@ -288,11 +294,9 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     _notifySourceMenuChanged();
   }
 
+  /// Extract-only — do not score. Server ±2 commits with stream outcome.
   void _scoreServerUp(String providerId) {
     if (providerId.isEmpty) return;
-    unawaited(ProviderScoreMemory.recordServerUp(_scoreScope, providerId));
-    ProviderScoreProbeSync.markScoredServerUp(_scoreScope, providerId);
-    _notifySourceMenuChanged();
   }
 
   void _cacheProviderSources(String providerId, List<StreamSource> sources) {
@@ -343,12 +347,8 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     _markProviderLoadSucceeded(pid);
     _syncProbeStatus(pid, StreamProviderProbeStatus.success);
     _finalizeProbeStatusesAfterPlayback();
-    unawaited(
-      ProviderScoreProbeSync.syncSourcesCache(
-        scope: _scoreScope,
-        sourcesByProvider: _liveProviderSourcesCache.value,
-      ),
-    );
+    // Score only via probe sync: +2 for finished success+streams, not the
+    // whole live cache (abandoned mid-check hosts must not get +2).
     _onProbeScoringChanged();
     _notifySourceMenuChanged();
   }

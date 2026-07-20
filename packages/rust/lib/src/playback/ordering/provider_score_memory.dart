@@ -195,6 +195,25 @@ abstract final class ProviderScoreMemory {
     String providerId,
   ) => _setVerdict(scope, providerId, stream: streamFailDelta);
 
+  /// Finished check: extract OK + stream OK → server +2 and stream +2 together.
+  static Future<void> recordLinkedStreamsUp(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await recordServerUp(scope, providerId);
+    await recordStreamUp(scope, providerId);
+  }
+
+  /// Finished check: extract OK + all streams dead → server +2 and stream −2
+  /// together (title nets 0). Never leave server +2 alone.
+  static Future<void> recordLinkedStreamsDown(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await recordServerUp(scope, providerId);
+    await recordStreamFail(scope, providerId);
+  }
+
   @Deprecated('Use recordStreamUp')
   static Future<void> recordStreamCheckUp(
     ProviderScoreScope? scope,
@@ -229,7 +248,7 @@ abstract final class ProviderScoreMemory {
     for (final url in streamUrls) {
       if (!isStreamFailed(url)) return false;
     }
-    await recordStreamFail(scope, providerId);
+    await recordLinkedStreamsDown(scope, providerId);
     return true;
   }
 

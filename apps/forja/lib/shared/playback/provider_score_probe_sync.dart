@@ -4,27 +4,38 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 /// Applies provider reliability scoring from CHECKING SOURCES probe updates.
+///
+/// Server and stream verdicts are **linked**:
+/// - extract empty / failed → server −2 only
+/// - extract OK + streams OK → +2 +2 (committed together when streams resolve)
+/// - extract OK + all streams dead → +2 −2 (committed together)
+/// - Cancel / mid-check / extract OK but streams not finished → nothing yet
 abstract final class ProviderScoreProbeSync {
-  static final Map<String, StreamProviderProbeStatus> _lastStatus = {};
+  /// Last applied score action per title/provider.
+  static final Map<String, String> _lastApplied = {};
 
   static String _key(ProviderScoreScope scope, String providerId) =>
       scope.memoryKey(ProviderScoreMemory.normalizeProviderId(providerId));
 
-  /// Drives only the **server** verdict: a provider that already extracted
-  /// streams resolved successfully (server up), even if those streams later
-  /// prove dead — stream health is scored separately by the player probe.
-  static StreamProviderProbeStatus effectiveStatus({
+  static String _actionFor({
     required StreamProviderProbeStatus status,
     required bool hasSources,
+    required bool streamsResolved,
   }) {
-    if (hasSources) {
-      if (status == StreamProviderProbeStatus.failed ||
-          status == StreamProviderProbeStatus.trying ||
-          status == StreamProviderProbeStatus.pending) {
-        return StreamProviderProbeStatus.success;
-      }
-    }
-    return status;
+    return switch (status) {
+      // Full check done (e.g. anime embed success) — commit linked +2+2.
+      StreamProviderProbeStatus.success
+          when hasSources && streamsResolved =>
+        'linked_up',
+      // Extract finished with streams; wait for player stream probe/play.
+      StreamProviderProbeStatus.success when hasSources => 'await_streams',
+      StreamProviderProbeStatus.success => 'down',
+      StreamProviderProbeStatus.failed when hasSources => 'skip',
+      StreamProviderProbeStatus.failed => 'down',
+      StreamProviderProbeStatus.trying => 'trying',
+      StreamProviderProbeStatus.pending => 'pending',
+      StreamProviderProbeStatus.skippedOnTv => 'skipped',
+    };
   }
 
   static Future<void> onProbeStatusChanged({
@@ -32,23 +43,25 @@ abstract final class ProviderScoreProbeSync {
     required String providerId,
     required StreamProviderProbeStatus status,
     bool hasSources = false,
+    /// When true, terminal success already includes a working stream (anime).
+    bool streamsResolved = false,
   }) async {
     if (scope == null || providerId.isEmpty) return;
-    final resolved =
-        effectiveStatus(status: status, hasSources: hasSources);
     final key = _key(scope, providerId);
-    final prev = _lastStatus[key];
-    if (prev == resolved) return;
-    _lastStatus[key] = resolved;
+    final action = _actionFor(
+      status: status,
+      hasSources: hasSources,
+      streamsResolved: streamsResolved,
+    );
+    if (_lastApplied[key] == action) return;
+    _lastApplied[key] = action;
 
-    switch (resolved) {
-      case StreamProviderProbeStatus.success:
-        await ProviderScoreMemory.recordServerUp(scope, providerId);
-      case StreamProviderProbeStatus.failed:
+    switch (action) {
+      case 'linked_up':
+        await ProviderScoreMemory.recordLinkedStreamsUp(scope, providerId);
+      case 'down':
         await ProviderScoreMemory.recordServerFailure(scope, providerId);
-      case StreamProviderProbeStatus.trying:
-      case StreamProviderProbeStatus.pending:
-      case StreamProviderProbeStatus.skippedOnTv:
+      default:
         break;
     }
   }
@@ -70,7 +83,8 @@ abstract final class ProviderScoreProbeSync {
     }
   }
 
-  /// Mark every provider that already has extracted streams as server-up.
+  /// Extract-only cache sync does **not** score — server/stream commit together
+  /// when stream play/probe finishes (or via [streamsResolved] for anime).
   static Future<void> syncSourcesCache({
     required ProviderScoreScope? scope,
     required Map<String, List<StreamSource>> sourcesByProvider,
@@ -87,11 +101,10 @@ abstract final class ProviderScoreProbeSync {
     }
   }
 
-  /// Call after manual server scoring so probe sync does not double-apply.
+  /// Call after linked stream scoring so probe sync does not double-apply.
   static void markScoredServerUp(ProviderScoreScope? scope, String providerId) {
     if (scope == null || providerId.isEmpty) return;
-    _lastStatus[_key(scope, providerId)] =
-        StreamProviderProbeStatus.success;
+    _lastApplied[_key(scope, providerId)] = 'linked_up';
   }
 
   static void markScoredServerFail(
@@ -99,7 +112,15 @@ abstract final class ProviderScoreProbeSync {
     String providerId,
   ) {
     if (scope == null || providerId.isEmpty) return;
-    _lastStatus[_key(scope, providerId)] = StreamProviderProbeStatus.failed;
+    _lastApplied[_key(scope, providerId)] = 'down';
+  }
+
+  static void markScoredLinkedDown(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) {
+    if (scope == null || providerId.isEmpty) return;
+    _lastApplied[_key(scope, providerId)] = 'linked_down';
   }
 
   static ProviderScoreScope? scopeFromPlayer({
@@ -120,8 +141,8 @@ abstract final class ProviderScoreProbeSync {
       );
 
   /// Reset in-session probe→score mapping (after user clears reliability).
-  static void clearSession() => _lastStatus.clear();
+  static void clearSession() => _lastApplied.clear();
 
   @visibleForTesting
-  static void resetForTest() => _lastStatus.clear();
+  static void resetForTest() => _lastApplied.clear();
 }

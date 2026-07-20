@@ -233,6 +233,10 @@ class StremioService {
     return results;
   }
 
+  /// Avoid re-fetching dead lean rows every Sources/Home call.
+  final Set<String> _hydrateFailedBases = {};
+  Future<List<Map<String, dynamic>>>? _hydrateInFlight;
+
   static bool _hasManifestResources(Map<String, dynamic> addon) {
     final manifest = addon['manifest'];
     if (manifest is! Map) return false;
@@ -242,7 +246,16 @@ class StremioService {
 
   /// Cloud sync stores lean rows (`baseUrl` + name). Re-fetch manifests so
   /// Sources can filter by `resources` (same idea as Nuvio import).
-  Future<List<Map<String, dynamic>>> hydrateInstalledAddons() async {
+  ///
+  /// Persists without per-row [SettingsService.addonChangeNotifier] bumps —
+  /// Home listens to that and would otherwise reload catalogs forever.
+  Future<List<Map<String, dynamic>>> hydrateInstalledAddons() {
+    return _hydrateInFlight ??= _hydrateInstalledAddonsImpl().whenComplete(() {
+      _hydrateInFlight = null;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _hydrateInstalledAddonsImpl() async {
     final all = await _settings.getStremioAddons();
     if (all.isEmpty) return const [];
     final out = <Map<String, dynamic>>[];
@@ -251,16 +264,25 @@ class StremioService {
         out.add(addon);
         continue;
       }
-      final baseUrl = addon['baseUrl']?.toString().trim() ?? '';
+      final baseUrl = SettingsService.normalizeStremioAddonBaseUrl(
+        addon['baseUrl']?.toString() ?? '',
+      );
       if (baseUrl.isEmpty) continue;
+      if (_hydrateFailedBases.contains(baseUrl)) {
+        out.add(addon);
+        continue;
+      }
       try {
         final fresh = await fetchManifest(baseUrl);
-        if (fresh != null) {
-          await _settings.saveStremioAddon(fresh);
+        if (fresh != null && _hasManifestResources(fresh)) {
+          // Silent persist — notifying would re-enter Home catalog load forever.
+          await _settings.saveStremioAddon(fresh, notify: false);
           out.add(fresh);
           continue;
         }
+        _hydrateFailedBases.add(baseUrl);
       } catch (e) {
+        _hydrateFailedBases.add(baseUrl);
         debugPrint('[StremioService] hydrate failed ($baseUrl): $e');
       }
       out.add(addon);

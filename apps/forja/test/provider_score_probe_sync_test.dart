@@ -12,18 +12,52 @@ void main() {
   group('ProviderScoreProbeSync', () {
     final scope = ProviderScoreScope.movie(tmdbId: 99);
 
-    test('providers with sources score +2 even if probe still trying', () async {
+    test('trying with sources does not score', () async {
       await ProviderScoreProbeSync.onProbeStatusChanged(
         scope: scope,
         providerId: 'vixsrc',
         status: StreamProviderProbeStatus.trying,
         hasSources: true,
       );
-      expect(ProviderScoreMemory.scoreFor(scope, 'vixsrc'), 2);
-      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vixsrc'), 2);
+      expect(ProviderScoreMemory.scoreFor(scope, 'vixsrc'), 0);
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'vixsrc'), isNull);
     });
 
-    test('failed probe with sources reconciles to server up', () async {
+    test('extract success alone does not apply server +2', () async {
+      await ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: scope,
+        providerId: 'vixsrc',
+        status: StreamProviderProbeStatus.success,
+        hasSources: true,
+      );
+      expect(ProviderScoreMemory.scoreFor(scope, 'vixsrc'), 0);
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'vixsrc'), isNull);
+    });
+
+    test('streamsResolved success commits linked +2+2', () async {
+      await ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: scope,
+        providerId: 'animehost',
+        status: StreamProviderProbeStatus.success,
+        hasSources: true,
+        streamsResolved: true,
+      );
+      expect(ProviderScoreMemory.scoreFor(scope, 'animehost'), 4);
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'animehost'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(scope, 'animehost'), 2);
+    });
+
+    test('success without sources applies −2', () async {
+      await ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: scope,
+        providerId: 'empty',
+        status: StreamProviderProbeStatus.success,
+        hasSources: false,
+      );
+      expect(ProviderScoreMemory.scoreFor(scope, 'empty'), -2);
+    });
+
+    test('failed without sources applies −2', () async {
       await ProviderScoreProbeSync.onProbeStatusChanged(
         scope: scope,
         providerId: 'vidrock',
@@ -31,34 +65,67 @@ void main() {
         hasSources: false,
       );
       expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), -2);
+    });
 
+    test('failed with sources (abandoned check) does not score', () async {
+      await ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: scope,
+        providerId: 'vidrock',
+        status: StreamProviderProbeStatus.trying,
+        hasSources: true,
+      );
       await ProviderScoreProbeSync.onProbeStatusChanged(
         scope: scope,
         providerId: 'vidrock',
         status: StreamProviderProbeStatus.failed,
         hasSources: true,
       );
-      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 2);
-      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidrock'), 4);
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 0);
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'vidrock'), isNull);
     });
 
-    test('syncSourcesCache marks every cached provider up', () async {
+    test('syncSourcesCache extract-only does not score', () async {
       await ProviderScoreProbeSync.syncSourcesCache(
         scope: scope,
         sourcesByProvider: {
           '111477': [
             StreamSource(url: 'http://x', title: 'a', type: 'mp4'),
           ],
-          'empty': const [],
         },
       );
-      expect(ProviderScoreMemory.scoreFor(scope, '111477'), 2);
-      expect(ProviderScoreMemory.scoreFor(scope, 'empty'), 0);
+      expect(ProviderScoreMemory.scoreFor(scope, '111477'), 0);
     });
   });
 
-  group('ProviderScoreMemory netted verdicts', () {
+  group('ProviderScoreMemory linked server+stream', () {
     final scope = ProviderScoreScope.movie(tmdbId: 7);
+
+    test('linked streams down is +2−2 net 0', () async {
+      await ProviderScoreMemory.recordLinkedStreamsDown(scope, 'anikoto');
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'anikoto'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(scope, 'anikoto'), -2);
+      expect(ProviderScoreMemory.scoreFor(scope, 'anikoto'), 0);
+      expect(ProviderScoreMemory.globalScoreFor('anikoto'), 0);
+    });
+
+    test('linked streams up is +2+2 net 4', () async {
+      await ProviderScoreMemory.recordLinkedStreamsUp(scope, 'vixsrc');
+      expect(ProviderScoreMemory.scoreFor(scope, 'vixsrc'), 4);
+      expect(ProviderScoreMemory.globalScoreFor('vixsrc'), 4);
+    });
+
+    test('all streams down commits linked +2−2', () async {
+      final applied = await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+        scope: scope,
+        providerId: 'vidrock',
+        streamUrls: const ['a', 'b'],
+        isStreamFailed: (_) => true,
+      );
+      expect(applied, isTrue);
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'vidrock'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(scope, 'vidrock'), -2);
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 0);
+    });
 
     test('up server + all streams dead nets 0', () async {
       await ProviderScoreMemory.recordServerUp(scope, 'vidrock');
@@ -68,15 +135,8 @@ void main() {
       expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidrock'), -2);
     });
 
-    test('up server + working stream nets 4', () async {
-      await ProviderScoreMemory.recordServerUp(scope, 'vixsrc');
-      await ProviderScoreMemory.recordStreamUp(scope, 'vixsrc');
-      expect(ProviderScoreMemory.scoreFor(scope, 'vixsrc'), 4);
-    });
-
     test('a proven working stream is sticky over later dead reports', () async {
-      await ProviderScoreMemory.recordServerUp(scope, 'vidnest');
-      await ProviderScoreMemory.recordStreamUp(scope, 'vidnest');
+      await ProviderScoreMemory.recordLinkedStreamsUp(scope, 'vidnest');
       await ProviderScoreMemory.recordStreamFail(scope, 'vidnest');
       expect(ProviderScoreMemory.scoreFor(scope, 'vidnest'), 4);
     });
@@ -84,16 +144,7 @@ void main() {
     test('server that never resolved keeps title net negative', () async {
       await ProviderScoreMemory.recordServerFailure(scope, 'vidzee');
       expect(ProviderScoreMemory.scoreFor(scope, 'vidzee'), -2);
-      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidzee'), -2);
       expect(ProviderScoreMemory.globalScoreFor('vidzee'), 0);
-    });
-
-    test('re-checking the same title does not drift', () async {
-      for (var i = 0; i < 5; i++) {
-        await ProviderScoreMemory.recordServerUp(scope, 'webstreamr');
-        await ProviderScoreMemory.recordStreamFail(scope, 'webstreamr');
-      }
-      expect(ProviderScoreMemory.scoreFor(scope, 'webstreamr'), 0);
     });
 
     test('stream fail before server up leaves global Σ at 0', () async {

@@ -192,6 +192,9 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
         );
       }
     } else if (_s._panelKindFilter == 'nuvio') {
+      options.add(
+        const SourcesPanelProviderOption(id: 'all_nuvio', label: 'All'),
+      );
       for (final a in _s._nuvioAddons) {
         for (final s in a.scrapers) {
           if (!s.enabled) continue;
@@ -223,6 +226,24 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
   }
 
   void _onSourceChipTap(String id) {
+    if (id == 'all_nuvio') {
+      final enabled = enabledNuvioScraperIds(_s._nuvioAddons);
+      if (enabled.isEmpty) return;
+      final alreadyAll = enabled.every(_s._nuvioSelectedScraperIds.contains);
+      if (alreadyAll) return;
+      setState(() {
+        _s._selectedSourceId = 'all_nuvio';
+        _s._errorMessage = null;
+        _s._nuvioSelectedScraperIds = Set<String>.from(enabled);
+      });
+      unawaited(
+        NuvioService.instance.saveSourcesSelectedScraperIds(
+          _s._nuvioSelectedScraperIds,
+        ),
+      );
+      unawaited(_s._fetchNextNuvioScraper());
+      return;
+    }
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _s._nuvioSelectedScraperIds.contains(scraperId);
@@ -287,8 +308,6 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       _s._searchJackett();
     } else if (id == 'prowlarr') {
       _s._searchProwlarr();
-    } else if (id == 'all_nuvio') {
-      setState(() => _s._errorMessage = null);
     } else if (_s._panelKindFilter == 'stremio') {
       setState(() {
         _s._applyStremioFilter();

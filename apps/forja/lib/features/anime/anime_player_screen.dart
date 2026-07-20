@@ -559,6 +559,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
             ),
             providerId: panelKey,
             status: nextStatus,
+            // Anime success = finished check with a working stream (linked +2+2).
+            hasSources: nextStatus == StreamProviderProbeStatus.success,
+            streamsResolved: nextStatus == StreamProviderProbeStatus.success,
           ),
         );
       }

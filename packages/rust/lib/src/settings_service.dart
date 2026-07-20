@@ -254,17 +254,46 @@ class SettingsService {
   Future<List<Map<String, dynamic>>> getStremioAddons() async =>
       kvGetMapList(_stremioAddonsKey);
 
-  Future<void> saveStremioAddon(Map<String, dynamic> addon) async {
+  /// Canonical addon host key — strips `/manifest.json` so lean sync URLs and
+  /// installed baseUrls collapse to one row.
+  static String normalizeStremioAddonBaseUrl(String url) {
+    var u = url.trim();
+    if (u.isEmpty) return u;
+    u = u.replaceFirst(RegExp(r'^stremio://', caseSensitive: false), 'https://');
+    u = u.replaceFirst(RegExp(r'/manifest\.json/?$', caseSensitive: false), '');
+    while (u.endsWith('/')) {
+      u = u.substring(0, u.length - 1);
+    }
+    return u;
+  }
+
+  Future<void> saveStremioAddon(
+    Map<String, dynamic> addon, {
+    bool notify = true,
+  }) async {
+    final normalized = Map<String, dynamic>.from(addon);
+    final rawBase = normalized['baseUrl']?.toString() ?? '';
+    final base = normalizeStremioAddonBaseUrl(rawBase);
+    if (base.isEmpty) return;
+    normalized['baseUrl'] = base;
+
     final current = await getStremioAddons();
-    current.removeWhere((a) => a['baseUrl'] == addon['baseUrl']);
-    current.add(addon);
+    current.removeWhere(
+      (a) =>
+          normalizeStremioAddonBaseUrl(a['baseUrl']?.toString() ?? '') == base,
+    );
+    current.add(normalized);
     await kvSetMapList(_stremioAddonsKey, current);
-    addonChangeNotifier.value++;
+    if (notify) addonChangeNotifier.value++;
   }
 
   Future<void> removeStremioAddon(String baseUrl) async {
+    final base = normalizeStremioAddonBaseUrl(baseUrl);
     final current = await getStremioAddons();
-    current.removeWhere((a) => a['baseUrl'] == baseUrl);
+    current.removeWhere(
+      (a) =>
+          normalizeStremioAddonBaseUrl(a['baseUrl']?.toString() ?? '') == base,
+    );
     await kvSetMapList(_stremioAddonsKey, current);
     addonChangeNotifier.value++;
   }

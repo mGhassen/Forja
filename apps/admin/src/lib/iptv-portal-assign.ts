@@ -89,7 +89,7 @@ export async function fetchAssignmentsForAccount(
       `
       id, portal_id, profile_id, portal_name,
       profiles!user_iptv_portals_profile_id_fkey ( name ),
-      iptv_portals ( url, username, alive, expiry, max_connections, catalog_pool, region_primary )
+      iptv_portals ( id, url, username, alive, expiry, max_connections, catalog_pool, region_primary )
     `,
     )
     .eq('account_id', accountId)
@@ -110,7 +110,7 @@ export async function fetchAssignmentsForPortal(
       id, portal_id, profile_id, portal_name, account_id,
       profiles!user_iptv_portals_profile_id_fkey ( name ),
       accounts!user_iptv_portals_account_id_fkey ( email ),
-      iptv_portals ( url, username, alive, expiry, max_connections, catalog_pool, region_primary )
+      iptv_portals ( id, url, username, alive, expiry, max_connections, catalog_pool, region_primary )
     `,
     )
     .eq('portal_id', portalId)
@@ -128,6 +128,7 @@ function mapAssignmentRow(
 ): AssignmentRow {
   const prof = r.profiles as { name?: string } | null
   const portal = r.iptv_portals as {
+    id?: string
     url?: string
     username?: string
     alive?: boolean | null
@@ -138,7 +139,7 @@ function mapAssignmentRow(
   } | null
   return {
     id: r.id as string,
-    portal_id: r.portal_id as string,
+    portal_id: (portal?.id ?? r.portal_id) as string,
     profile_id: r.profile_id as string,
     portal_name: (r.portal_name as string) ?? '',
     profile_name: prof?.name ?? 'Profile',

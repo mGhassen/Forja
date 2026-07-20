@@ -327,11 +327,10 @@ begin
   select public._iptv_decrypt_password(p.password)
     into pw
   from public.iptv_portals p
-  where p.id = p_id
-    and p.catalog_pool is true;
+  where p.id = p_id;
 
   if not found then
-    raise exception 'candidate not found';
+    raise exception 'portal not found';
   end if;
 
   return coalesce(pw, '');

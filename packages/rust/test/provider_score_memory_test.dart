@@ -130,10 +130,9 @@ void main() {
       expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), 2);
     });
 
-    test('all streams down on working server applies −2 once', () async {
+    test('all streams down on working server keeps sticky stream-up', () async {
       const urls = ['a', 'b'];
-      await ProviderScoreMemory.recordServerUp(movie, 'vixsrc');
-      await ProviderScoreMemory.recordStreamUp(movie, 'vixsrc');
+      await ProviderScoreMemory.recordLinkedStreamsUp(movie, 'vixsrc');
       expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 4);
 
       final applied = await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
@@ -143,8 +142,23 @@ void main() {
         isStreamFailed: (_) => true,
       );
       expect(applied, isTrue);
+      // Stream-up is sticky — later all-down does not erase a proven stream.
       expect(ProviderScoreMemory.scoreFor(movie, 'vixsrc'), 4);
-      expect(ProviderScoreMemory.lastDeltaFor(movie, 'vixsrc'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(movie, 'vixsrc'), 2);
+    });
+
+    test('all streams down without prior stream-up commits linked +2−2', () async {
+      final applied = await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+        scope: movie,
+        providerId: 'anikoto',
+        streamUrls: const ['a'],
+        isStreamFailed: (_) => true,
+      );
+      expect(applied, isTrue);
+      expect(ProviderScoreMemory.serverVerdictFor(movie, 'anikoto'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(movie, 'anikoto'), -2);
+      expect(ProviderScoreMemory.scoreFor(movie, 'anikoto'), 0);
+      expect(ProviderScoreMemory.globalScoreFor('anikoto'), 0);
     });
   });
 }
