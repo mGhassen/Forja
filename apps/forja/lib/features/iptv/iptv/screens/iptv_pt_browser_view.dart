@@ -20,10 +20,12 @@ class _BrowserViewState extends State<_BrowserView> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   final FocusNode _openPortalFocus = FocusNode(debugLabel: 'iptv-open-portal');
+  final ScrollController _categoryScroll = ScrollController();
   Timer? _scrollSettleTimer;
   bool _didInitialFocus = false;
   bool _wasLoading = false;
   bool _wasPortalPanelOpen = false;
+  String _lastBrowserSearch = '';
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
   bool get _needsPortal => widget.ctrl.activePortal == null;
@@ -32,6 +34,7 @@ class _BrowserViewState extends State<_BrowserView> {
   void initState() {
     super.initState();
     _searchCtrl.text = widget.ctrl.browserSearch;
+    _lastBrowserSearch = widget.ctrl.browserSearch.trim();
     _wasLoading = widget.ctrl.isLoading;
     _wasPortalPanelOpen = widget.ctrl.portalPanelOpen;
     widget.ctrl.addListener(_onCtrlChanged);
@@ -42,6 +45,7 @@ class _BrowserViewState extends State<_BrowserView> {
   void dispose() {
     widget.ctrl.removeListener(_onCtrlChanged);
     _scrollSettleTimer?.cancel();
+    _categoryScroll.dispose();
     _searchFocus.dispose();
     _openPortalFocus.dispose();
     _searchCtrl.dispose();
@@ -56,8 +60,14 @@ class _BrowserViewState extends State<_BrowserView> {
     final panelOpen = widget.ctrl.portalPanelOpen;
     final panelClosed = _wasPortalPanelOpen && !panelOpen;
     _wasPortalPanelOpen = panelOpen;
+    final search = widget.ctrl.browserSearch.trim();
+    final clearedSearch = _lastBrowserSearch.isNotEmpty && search.isEmpty;
+    _lastBrowserSearch = search;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (clearedSearch) {
+        _scrollCategorySidebarToSelected();
+      }
       if (panelClosed && !_needsPortal) {
         _focusCatalogGroup();
         return;
@@ -78,6 +88,25 @@ class _BrowserViewState extends State<_BrowserView> {
         }
       }
     });
+  }
+
+  void _scrollCategorySidebarToSelected() {
+    void attempt() {
+      if (!mounted || !_categoryScroll.hasClients) return;
+      final cats = widget.ctrl.browserSidebarCategories;
+      final selected = widget.ctrl.browserSelectedCategoryId;
+      if (selected == null) return;
+      final idx = cats.indexWhere((c) => c.id == selected);
+      if (idx < 0) return;
+      final rowH = widget.compact ? 42.0 : 46.0;
+      final target = (6.0 + idx * rowH)
+          .clamp(0.0, _categoryScroll.position.maxScrollExtent);
+      _categoryScroll.jumpTo(target);
+    }
+
+    attempt();
+    // Remounted scroll view may not have extents until the next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   void _syncInitialFocus() {
@@ -497,6 +526,7 @@ class _BrowserViewState extends State<_BrowserView> {
           // the short filtered list floating mid-viewport.
           return CustomScrollView(
             key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+            controller: _categoryScroll,
             slivers: [
               SliverPadding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
