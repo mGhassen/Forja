@@ -67,6 +67,7 @@ export function OpsOverviewStrip() {
     <div className="border-b border-forja-border/70 bg-forja-elevated/35">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Cell label="All" value={overview.isLoading ? '…' : (d?.all ?? '—')} />
           <Cell label="Pool" value={overview.isLoading ? '…' : (d?.pool ?? '—')} />
           <Cell
             label="Alive"

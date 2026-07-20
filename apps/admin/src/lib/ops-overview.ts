@@ -10,6 +10,7 @@ export const OPS_OVERVIEW_KEY = ['admin', 'ops_overview'] as const
 export type RegionCount = { region: string; count: number }
 
 export type OpsOverview = {
+  all: number
   pool: number
   alive: number
   dead: number
@@ -32,6 +33,7 @@ export type OpsOverview = {
 
 export async function fetchOpsOverview(): Promise<OpsOverview> {
   const [
+    all,
     pool,
     alive,
     dead,
@@ -47,6 +49,9 @@ export async function fetchOpsOverview(): Promise<OpsOverview> {
     regionRows,
     recent,
   ] = await Promise.all([
+    adminDb
+      .from('iptv_portals')
+      .select('id', { count: 'exact', head: true }),
     adminDb
       .from('iptv_portals')
       .select('id', { count: 'exact', head: true })
@@ -119,6 +124,7 @@ export async function fetchOpsOverview(): Promise<OpsOverview> {
   )
 
   return {
+    all: all.count ?? 0,
     pool: pool.count ?? 0,
     alive: alive.count ?? 0,
     dead: dead.count ?? 0,
