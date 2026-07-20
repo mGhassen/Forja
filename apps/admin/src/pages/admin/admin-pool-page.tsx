@@ -21,13 +21,7 @@ import {
 } from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
 import { IptvPortalCardBody } from '@/components/iptv-portal-card'
-import {
-  MetricChip,
-  PageHeader,
-  Panel,
-  PanelLabel,
-  StatusBadge,
-} from '@/components/admin-ui'
+import { PageHeader } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -41,22 +35,10 @@ import {
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
-import { INNGEST_UI_URL, isInngestLocalUi } from '@/lib/inngest-ui'
 import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
-import { scrapeControl } from '@/lib/scrape-control'
-import { runDurationLabel } from '@/lib/ops-overview'
-import {
-  SCRAPE_RUNS_LATEST_KEY,
-  fetchScrapeRuns,
-  markRunsStoppedInCache,
-  prependOptimisticRun,
-  refreshScrapeRuns,
-  subscribeScrapeRuns,
-  type ScrapeRunRow,
-} from '@/lib/scrape-runs'
 import { cn } from '@/lib/utils'
 
 type Cand = {
@@ -72,8 +54,6 @@ type Cand = {
   updated_at: string
   last_checked_at: string | null
 }
-
-type ScrapeRun = ScrapeRunRow
 
 type HostGroup = {
   host: string
@@ -175,10 +155,6 @@ function relativeTime(iso: string | null | undefined): string {
   const hr = Math.round(min / 60)
   if (hr < 48) return `${hr}h ago`
   return `${Math.round(hr / 24)}d ago`
-}
-
-function shortRunId(id: string): string {
-  return id.replace(/-/g, '').slice(0, 8)
 }
 
 function errMessage(e: unknown, fallback: string): string {
@@ -540,23 +516,6 @@ export function AdminPoolPage() {
     label: string
   } | null>(null)
 
-  const runs = useQuery({
-    queryKey: SCRAPE_RUNS_LATEST_KEY,
-    queryFn: () => fetchScrapeRuns(5),
-    refetchInterval: (q) =>
-      q.state.data?.some((r) => r.status === 'running') ? 1_500 : 10_000,
-    refetchOnWindowFocus: true,
-  })
-
-  useEffect(() => {
-    return subscribeScrapeRuns(() => {
-      void refreshScrapeRuns(qc)
-    })
-  }, [qc])
-
-  const latestRun = runs.data?.[0] ?? null
-  const running = latestRun?.status === 'running'
-
   const list = useQuery({
     queryKey: ['admin', 'pool'],
     queryFn: async () => {
@@ -570,7 +529,6 @@ export function AdminPoolPage() {
       if (error) throw error
       return (data ?? []) as Cand[]
     },
-    refetchInterval: running ? 8_000 : false,
   })
 
   const regionOptions = useMemo(() => {
@@ -613,64 +571,6 @@ export function AdminPoolPage() {
     setSortKey(key)
     setSortDir(key === 'host' ? 'asc' : 'desc')
   }
-
-  const startScrape = useMutation({
-    mutationFn: () => scrapeControl('start'),
-    onSuccess: async (res) => {
-      setActionError(null)
-      if (res.run) prependOptimisticRun(qc, res.run)
-      else if (res.runId) {
-        prependOptimisticRun(qc, {
-          id: res.runId,
-          started_at: new Date().toISOString(),
-          status: 'running',
-          source: 'manual-admin',
-        })
-      }
-      await refreshScrapeRuns(qc)
-    },
-    onError: (e) => {
-      setActionError(errMessage(e, 'Could not start scrape'))
-    },
-  })
-
-  const stopScrape = useMutation({
-    mutationFn: () =>
-      scrapeControl('stop', { runId: latestRun?.id }),
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
-      markRunsStoppedInCache(qc, {
-        runId: latestRun?.id,
-        error: 'Stop requested from admin',
-      })
-    },
-    onSuccess: async () => {
-      setActionError(null)
-      await refreshScrapeRuns(qc)
-    },
-    onError: async (e) => {
-      setActionError(errMessage(e, 'Could not stop scrape'))
-      await refreshScrapeRuns(qc)
-    },
-  })
-
-  const markStuck = useMutation({
-    mutationFn: () => scrapeControl('mark_stuck'),
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
-      markRunsStoppedInCache(qc, {
-        error: 'Marked stuck from admin (Inngest may have died)',
-      })
-    },
-    onSuccess: async () => {
-      setActionError(null)
-      await refreshScrapeRuns(qc)
-    },
-    onError: async (e) => {
-      setActionError(errMessage(e, 'Could not mark stuck'))
-      await refreshScrapeRuns(qc)
-    },
-  })
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -831,93 +731,6 @@ export function AdminPoolPage() {
           </Button>
         }
       />
-
-      <Panel tone="accent">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 space-y-3">
-            <PanelLabel>Scrape</PanelLabel>
-            {latestRun ? (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={latestRun.status} />
-                  <span className="text-xs text-forja-muted">
-                    {relativeTime(latestRun.started_at)} ·{' '}
-                    {shortRunId(latestRun.id)}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                  <MetricChip label="Posts" value={latestRun.posts_seen} />
-                  <MetricChip label="L1" value={latestRun.l1_extract_count} />
-                  <MetricChip label="Deep" value={latestRun.deep_ref_count} />
-                  <MetricChip
-                    label="L2 ok/fail"
-                    value={`${latestRun.l2_fetch_ok}/${latestRun.l2_fetch_fail}`}
-                  />
-                  <MetricChip
-                    label="Upserted"
-                    value={latestRun.candidates_upserted}
-                  />
-                  <MetricChip label="Alive" value={latestRun.alive_count} />
-                </div>
-                <p className="text-xs text-forja-muted">
-                  {runDurationLabel(latestRun)}
-                  {latestRun.source ? ` · ${latestRun.source}` : ''}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-forja-muted">No scrape runs yet.</p>
-            )}
-            {latestRun?.error ? (
-              <p className="text-sm text-red-400">{latestRun.error}</p>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {running ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={stopScrape.isPending || markStuck.isPending}
-                  onClick={() => stopScrape.mutate()}
-                >
-                  {stopScrape.isPending ? 'Stopping…' : 'Stop'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={stopScrape.isPending || markStuck.isPending}
-                  onClick={() => markStuck.mutate()}
-                >
-                  Mark stuck
-                </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                disabled={startScrape.isPending}
-                onClick={() => startScrape.mutate()}
-              >
-                {startScrape.isPending ? 'Starting…' : 'Start scrape'}
-              </Button>
-            )}
-          </div>
-        </div>
-        <p className="mt-4 text-xs text-forja-muted">
-          Schedule + logs:{' '}
-          <Link to="/scrape" className="text-forja-green hover:underline">
-            Scrape
-          </Link>{' '}
-          ·{' '}
-          <a
-            href={INNGEST_UI_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-forja-green hover:underline"
-          >
-            Inngest {isInngestLocalUi ? 'Dev' : 'Cloud'}
-          </a>
-        </p>
-      </Panel>
 
       {list.error ? (
         <p className="text-sm text-red-400">{(list.error as Error).message}</p>
