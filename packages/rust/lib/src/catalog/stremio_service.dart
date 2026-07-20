@@ -233,8 +233,8 @@ class StremioService {
     return results;
   }
 
-  /// Avoid re-fetching dead lean rows every Sources/Home call.
-  final Set<String> _hydrateFailedBases = {};
+  /// Avoid hammering dead lean rows; TTL so a transient fail can recover.
+  final Map<String, DateTime> _hydrateFailedUntil = {};
   Future<List<Map<String, dynamic>>>? _hydrateInFlight;
 
   static bool _hasManifestResources(Map<String, dynamic> addon) {
@@ -244,8 +244,33 @@ class StremioService {
     return resources is List && resources.isNotEmpty;
   }
 
+  static bool _hasCatalogs(Map<String, dynamic> addon) {
+    final manifest = addon['manifest'];
+    if (manifest is! Map) return false;
+    final cats = manifest['catalogs'];
+    return cats is List && cats.isNotEmpty;
+  }
+
+  /// Lean sync rows need a full manifest. Also re-fetch when `resources` exist
+  /// but `catalogs` is missing (Home/Search browse broken for Cinemeta).
+  static bool _needsManifestHydrate(Map<String, dynamic> addon) {
+    if (!_hasManifestResources(addon)) return true;
+    // Catalog/meta addons are useless for Home without a catalogs list.
+    final manifest = addon['manifest'];
+    if (manifest is! Map) return true;
+    final resources = manifest['resources'];
+    if (resources is! List) return true;
+    final claimsCatalog = resources.any((r) {
+      if (r is String) return r == 'catalog';
+      if (r is Map) return r['name'] == 'catalog';
+      return false;
+    });
+    if (claimsCatalog && !_hasCatalogs(addon)) return true;
+    return false;
+  }
+
   /// Cloud sync stores lean rows (`baseUrl` + name). Re-fetch manifests so
-  /// Sources can filter by `resources` (same idea as Nuvio import).
+  /// Sources can filter by `resources` and Home can read `catalogs`.
   ///
   /// Persists without per-row [SettingsService.addonChangeNotifier] bumps —
   /// Home listens to that and would otherwise reload catalogs forever.
@@ -258,9 +283,11 @@ class StremioService {
   Future<List<Map<String, dynamic>>> _hydrateInstalledAddonsImpl() async {
     final all = await _settings.getStremioAddons();
     if (all.isEmpty) return const [];
+    final now = DateTime.now();
+    _hydrateFailedUntil.removeWhere((_, until) => until.isBefore(now));
     final out = <Map<String, dynamic>>[];
     for (final addon in all) {
-      if (_hasManifestResources(addon)) {
+      if (!_needsManifestHydrate(addon)) {
         out.add(addon);
         continue;
       }
@@ -268,7 +295,8 @@ class StremioService {
         addon['baseUrl']?.toString() ?? '',
       );
       if (baseUrl.isEmpty) continue;
-      if (_hydrateFailedBases.contains(baseUrl)) {
+      final failedUntil = _hydrateFailedUntil[baseUrl];
+      if (failedUntil != null && failedUntil.isAfter(now)) {
         out.add(addon);
         continue;
       }
@@ -277,12 +305,13 @@ class StremioService {
         if (fresh != null && _hasManifestResources(fresh)) {
           // Silent persist — notifying would re-enter Home catalog load forever.
           await _settings.saveStremioAddon(fresh, notify: false);
+          _hydrateFailedUntil.remove(baseUrl);
           out.add(fresh);
           continue;
         }
-        _hydrateFailedBases.add(baseUrl);
+        _hydrateFailedUntil[baseUrl] = now.add(const Duration(seconds: 45));
       } catch (e) {
-        _hydrateFailedBases.add(baseUrl);
+        _hydrateFailedUntil[baseUrl] = now.add(const Duration(seconds: 45));
         debugPrint('[StremioService] hydrate failed ($baseUrl): $e');
       }
       out.add(addon);
@@ -411,6 +440,7 @@ class StremioService {
           'extra': extra,
           'supportsSearch': supported.contains('search'),
           'searchRequired': required.contains('search'),
+          'genreRequired': required.contains('genre'),
           'supportsGenre': supported.contains('genre'),
           'supportsSkip': supported.contains('skip'),
         });
@@ -449,8 +479,15 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        return _parseStremioCatalog(response.body);
+        final items = _parseStremioCatalog(response.body);
+        debugPrint(
+          '[StremioService.getCatalog] ${response.statusCode} → ${items.length} metas',
+        );
+        return items;
       }
+      debugPrint(
+        '[StremioService.getCatalog] HTTP ${response.statusCode} ($url)',
+      );
     } catch (e) {
       debugPrint('[StremioService] Catalog fetch error ($url): $e');
     }

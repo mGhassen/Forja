@@ -30,7 +30,14 @@ pub fn fetch_get_with_headers(
     timeout_secs: u64,
     headers: &HashMap<String, String>,
 ) -> Result<HttpResponse, String> {
-    fetch_with_headers(url, timeout_secs, headers, None)
+    // Catalog / manifest / stream-list GETs must not die when playback cancels
+    // a torrent job — Home Cinemeta rails were silently empty because of that.
+    RUNTIME.block_on(async {
+        utils::engine_cancel::with_shutdown_cancel(async {
+            fetch_with_headers_async(url, timeout_secs, headers, None).await
+        })
+        .await
+    })
 }
 
 pub fn fetch_post_with_headers(

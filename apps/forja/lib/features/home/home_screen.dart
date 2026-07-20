@@ -57,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
   final Map<String, List<Map<String, dynamic>>> _catalogItems = {};
   bool _catalogsLoaded = false;
   bool _stremioCatalogsLoading = true;
+  int _stremioCatalogGen = 0;
 
   // Trakt personalized sections
   List<Movie> _traktRecommendations = [];

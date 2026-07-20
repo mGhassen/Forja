@@ -24,13 +24,13 @@ Tap **Home** in the navigation bar (first tab by default).
 - On **desktop**, **Cmd+F** (macOS) or **Ctrl+F** (Windows/Linux) opens the films search overlay (same as the search icon in the hero menu). On macOS this also enables **Edit → Find…**.
 - On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page (hero Play). D-pad **←/→** on the hero gallery swaps the entire hero slide; **OK** on the gallery opens details for the current title
 - Open any poster to view details and play
-- Jump into a Stremio addon catalog rail when configured
+- Jump into a Stremio addon catalog rail when configured (e.g. **Cinemeta · Top** after Popular / moods — needs Play source → Stremio on)
 - View Trakt recommendation and calendar sections when connected
 
 ## Setup (if needed)
 
 - **Trakt** (optional): Settings → Accounts → Trakt — unlocks recommendations and calendars on Home
-- **Stremio addons** (optional): Settings → Providers & Addons — unlocks catalog rails
+- **Stremio addons** (optional): Settings → Providers & Addons — catalog addons like Cinemeta add Home rails + Search sections; stream addons like Torrentio appear under Sources → Stremio
 
 ## Tips
 

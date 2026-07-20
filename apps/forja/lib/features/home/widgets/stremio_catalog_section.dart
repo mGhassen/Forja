@@ -61,13 +61,8 @@ class HomeStremioCatalogSectionState extends State<HomeStremioCatalogSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      catalogName,
+                      '$addonName · $catalogName',
                       style: ShellSectionTitle.titleStyle,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      addonName,
-                      style: ShellSectionTitle.subtitleStyle(context),
                     ),
                   ],
                 ),

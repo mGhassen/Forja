@@ -688,6 +688,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   void _onAddonsChanged() {
     // Clear stale data and schedule a rebuild so the old sliders disappear
     // immediately while the new ones load.
+    _s._stremioCatalogGen++;
     setState(() {
       _s._stremioCatalogs = [];
       _s._catalogItems.clear();
@@ -731,69 +732,102 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   }
 
   Future<void> _loadStremioCatalogs() async {
+    final gen = ++_s._stremioCatalogGen;
     final stremioOn = await SettingsService().isPlaySourceStremioEnabled();
     if (!stremioOn) {
-      if (mounted) {
+      if (mounted && gen == _s._stremioCatalogGen) {
         setState(() {
+          _s._stremioCatalogs = [];
+          _s._catalogItems.clear();
           _s._stremioCatalogsLoading = false;
           _s._catalogsLoaded = true;
         });
       }
       return;
     }
-    if (mounted) setState(() => _s._stremioCatalogsLoading = true);
+    if (mounted && gen == _s._stremioCatalogGen) {
+      setState(() => _s._stremioCatalogsLoading = true);
+    }
     try {
       final catalogs = await _s._stremio.getAllCatalogs();
-      if (!mounted || catalogs.isEmpty) return;
+      if (!mounted || gen != _s._stremioCatalogGen) return;
+      if (catalogs.isEmpty) {
+        debugPrint(
+          '[HomeScreen] No Stremio catalogs (install Cinemeta + ensure manifest hydrated)',
+        );
+        setState(() {
+          _s._stremioCatalogs = [];
+          _s._catalogItems.clear();
+          _s._catalogsLoaded = true;
+        });
+        return;
+      }
 
-      // Group non-search-required catalogs by addon, preserving order.
+      // Browse rails only — skip search-only / genre-required catalogs.
       final Map<String, List<Map<String, dynamic>>> byAddon = {};
       for (final c in catalogs) {
         if (c['searchRequired'] == true) continue;
+        if (c['genreRequired'] == true) continue;
         final key = c['addonBaseUrl'] as String;
         byAddon.putIfAbsent(key, () => []).add(c);
       }
+      if (byAddon.isEmpty) {
+        debugPrint('[HomeScreen] Stremio catalogs present but none browsable');
+        setState(() {
+          _s._stremioCatalogs = [];
+          _s._catalogItems.clear();
+          _s._catalogsLoaded = true;
+        });
+        return;
+      }
 
-      // Mark that we've started loading so the build can show shimmer / placeholders.
-      if (mounted) setState(() => _s._catalogsLoaded = true);
+      if (mounted && gen == _s._stremioCatalogGen) {
+        setState(() => _s._catalogsLoaded = true);
+      }
 
-      // For each addon, try catalogs in order until one returns items.
-      // All addons are tried in parallel; within each addon they are tried sequentially.
       await Future.wait(byAddon.values.map((addonCatalogs) async {
         for (final cat in addonCatalogs) {
+          if (!mounted || gen != _s._stremioCatalogGen) return;
           try {
             final items = await _s._stremio.getCatalog(
               baseUrl: cat['addonBaseUrl'],
               type: cat['catalogType'],
               id: cat['catalogId'],
             );
-            if (items.isEmpty) continue; // try next catalog for this addon
+            if (items.isEmpty) continue;
 
-            // Tag each item with the addon that provided it
             for (final item in items) {
               item['_addonBaseUrl'] = cat['addonBaseUrl'];
               item['_addonName'] = cat['addonName'];
             }
-            if (mounted) {
-              final itemKey = '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
-              setState(() {
-                // Add the winning catalog to the list if not already present
-                if (!_s._stremioCatalogs.any((c) =>
+            if (!mounted || gen != _s._stremioCatalogGen) return;
+            final itemKey =
+                '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
+            setState(() {
+              if (!_s._stremioCatalogs.any(
+                (c) =>
                     c['addonBaseUrl'] == cat['addonBaseUrl'] &&
-                    c['catalogId'] == cat['catalogId'])) {
-                  _s._stremioCatalogs = [..._s._stremioCatalogs, cat];
-                }
-                _s._catalogItems[itemKey] = items;
-              });
-            }
-            return; // done for this addon
-          } catch (_) {}
+                    c['catalogId'] == cat['catalogId'],
+              )) {
+                _s._stremioCatalogs = [..._s._stremioCatalogs, cat];
+              }
+              _s._catalogItems[itemKey] = items;
+            });
+            debugPrint(
+              '[HomeScreen] Stremio rail ${cat['addonName']} / ${cat['catalogName']} (${items.length})',
+            );
+            return;
+          } catch (e) {
+            debugPrint('[HomeScreen] Stremio catalog fetch failed: $e');
+          }
         }
       }));
     } catch (e) {
       debugPrint('[HomeScreen] Error loading Stremio catalogs: $e');
     } finally {
-      if (mounted) setState(() => _s._stremioCatalogsLoading = false);
+      if (mounted && gen == _s._stremioCatalogGen) {
+        setState(() => _s._stremioCatalogsLoading = false);
+      }
     }
   }
 
