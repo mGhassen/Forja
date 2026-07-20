@@ -5,6 +5,7 @@ import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart';
@@ -88,7 +89,10 @@ Future<bool> _resumeWebStreamProvider(
     episode: episode,
   );
 
-  final cached = await WebstreamingStreamCache.read(cacheKey);
+  final cached = await WebstreamingStreamCache.readLive(
+    cacheKey,
+    probe: probeStreamSourceUrl,
+  );
   if (cached != null && cached.sources.isNotEmpty) {
     if (!context.mounted) return false;
     final activeProvider = cached.providerId.isNotEmpty
@@ -128,7 +132,9 @@ Future<bool> _resumeWebStreamProvider(
   final savedStreamUrl = item['streamUrl'] as String?;
   if (savedStreamUrl != null &&
       savedStreamUrl.trim().isNotEmpty &&
-      !isTorrentStreamUrl(savedStreamUrl)) {
+      !isTorrentStreamUrl(savedStreamUrl) &&
+      !isUnplayableCachedStreamUrl(savedStreamUrl) &&
+      await probeStreamSourceUrl(savedStreamUrl, null)) {
     if (!context.mounted) return false;
     debugPrint('[Resume] watch-history streamUrl hit $cacheKey');
     if (isWebStreamProviderId(providerId)) {

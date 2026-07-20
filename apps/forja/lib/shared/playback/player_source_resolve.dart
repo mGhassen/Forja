@@ -1,6 +1,7 @@
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 /// Player-side helpers for Source Engine Auto / pinned resolve.
@@ -114,7 +115,12 @@ abstract final class PlayerSourceResolve {
       season: season,
       episode: episode,
     );
-    final cached = await WebstreamingStreamCache.read(cacheKey);
+    final cached = bypassDiskCache
+        ? await WebstreamingStreamCache.read(cacheKey)
+        : await WebstreamingStreamCache.readLive(
+            cacheKey,
+            probe: probeStreamSourceUrl,
+          );
     // Only reuse cache when it is for this exact provider. A different
     // server's extract must resolve fresh.
     if (!bypassDiskCache &&

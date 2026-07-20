@@ -42,7 +42,10 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
 
   Future<void> _hydrateWebstreamingFromCache() async {
     if (!_s._playSourceWebstreaming || _s._webstreamingStreams.isNotEmpty) return;
-    final cached = await WebstreamingStreamCache.read(_webstreamingCacheKey());
+    final cached = await WebstreamingStreamCache.readLive(
+      _webstreamingCacheKey(),
+      probe: probeStreamSourceUrl,
+    );
     if (cached == null || cached.sources.isEmpty || !mounted) return;
     setState(() => _applyWebstreamingCacheHit(cached));
     debugPrint(
@@ -115,14 +118,30 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
   Future<void> _startWebstreamingOnlyPlayback() async {
     final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
     if (_s._webstreamingStreams.isNotEmpty) {
-      await _playWebstreamingStream(
-        _preferredWebstreamingSource(_s._webstreamingStreams),
-        startPosition: startPosition,
-      );
-      return;
+      final preferred = _preferredWebstreamingSource(_s._webstreamingStreams);
+      if (!isUnplayableCachedStreamUrl(preferred.url) &&
+          await probeStreamSourceUrl(preferred.url, preferred.headers)) {
+        if (!mounted) return;
+        await _playWebstreamingStream(
+          preferred,
+          startPosition: startPosition,
+        );
+        return;
+      }
+      // Stale in-memory extract (expired JWT / dead CDN) — drop and re-resolve.
+      await WebstreamingStreamCache.drop(_webstreamingCacheKey());
+      if (mounted) {
+        setState(() {
+          _s._webstreamingStreams = [];
+          _s._webstreamingActiveProviderId = null;
+        });
+      }
     }
 
-    final cached = await WebstreamingStreamCache.read(_webstreamingCacheKey());
+    final cached = await WebstreamingStreamCache.readLive(
+      _webstreamingCacheKey(),
+      probe: probeStreamSourceUrl,
+    );
     if (cached != null && cached.sources.isNotEmpty) {
       if (!mounted) return;
       setState(() => _applyWebstreamingCacheHit(cached));
@@ -152,9 +171,11 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     final rawSourceId = progress['sourceId'] as String? ?? '';
     if (savedUrl == null ||
         savedUrl.trim().isEmpty ||
-        isTorrentStreamUrl(savedUrl)) {
+        isTorrentStreamUrl(savedUrl) ||
+        isUnplayableCachedStreamUrl(savedUrl)) {
       return false;
     }
+    if (!await probeStreamSourceUrl(savedUrl, null)) return false;
     final sourceId = isWebStreamProviderId(rawSourceId)
         ? rawSourceId
         : (_s._webstreamingActiveProviderId ?? 'stream');

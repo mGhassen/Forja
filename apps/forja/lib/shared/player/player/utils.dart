@@ -974,6 +974,13 @@ Future<bool> hlsMediaSegmentsLookPlayable(
           maxRetries: 0,
           timeoutSecs: 8,
         );
+        // CloudStream leaf `page-N.html` returns 403 when the JWT/IP is stale —
+        // count auth failures, don't fail-open as "network blip".
+        if (res.status == 401 || res.status == 403 || res.status == 404) {
+          checked++;
+          poisoned++;
+          continue;
+        }
         if (res.status != 200 && res.status != 206) continue;
         checked++;
         final ct = (res.headers['content-type'] ?? '').toLowerCase();
@@ -985,7 +992,7 @@ Future<bool> hlsMediaSegmentsLookPlayable(
       }
     }
     if (checked == 0) return true;
-    // Reject when ≥ half of sampled segments are ads/images.
+    // Reject when ≥ half of sampled segments are ads/images/auth failures.
     return poisoned * 2 < checked;
   } catch (_) {
     return false;

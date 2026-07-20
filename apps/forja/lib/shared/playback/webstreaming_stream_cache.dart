@@ -23,8 +23,9 @@ class WebstreamingStreamCache {
 
   static const _diskKey = 'forja_webstreaming_stream_cache_v1';
   static const _diskMaxEntries = 24;
-  static const _diskMaxAge = Duration(hours: 2);
-  static const _sessionTtl = Duration(hours: 2);
+  /// Match anime stream cache — CloudStream JWT + CDN links go stale fast.
+  static const _diskMaxAge = Duration(minutes: 25);
+  static const _sessionTtl = Duration(minutes: 25);
   static const _sessionMaxEntries = 32;
 
   static final _session =
@@ -202,6 +203,30 @@ class WebstreamingStreamCache {
     final disk = await readDisk(key);
     if (disk != null) writeSession(key, disk);
     return disk;
+  }
+
+  /// [read] then [probe] the first source. Drops the entry when the CDN is dead
+  /// (expired token, CF 403 segments, …) so callers fall through to re-resolve.
+  static Future<WebstreamingCacheHit?> readLive(
+    String key, {
+    required Future<bool> Function(String url, Map<String, String>? headers)
+        probe,
+  }) async {
+    final hit = await read(key);
+    if (hit == null) return null;
+    final first = hit.sources.first;
+    final ok = await probe(first.url, first.headers);
+    if (!ok) {
+      if (kDebugMode) {
+        debugPrint(
+          '[WebstreamingCache] live probe failed — drop $key '
+          '(${first.url})',
+        );
+      }
+      await drop(key);
+      return null;
+    }
+    return hit;
   }
 
   static Future<void> write(String key, WebstreamingCacheHit hit) async {
