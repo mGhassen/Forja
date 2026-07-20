@@ -86,18 +86,9 @@ export function DmcaPage() {
           <li>Your physical or electronic signature</li>
         </ul>
         <p>
-          Open a GitHub issue on the Forja project with the title{' '}
+          Send a written notice with the subject{' '}
           <strong className="font-semibold text-[#EDE6DA]">DMCA</strong> and include the
-          details above:{' '}
-          <a
-            href="https://github.com/forja/forja/issues"
-            className="text-forja-green underline-offset-2 hover:underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            github.com/forja/forja/issues
-          </a>
-          .
+          details above.
         </p>
         <p>
           Notices about content that lives only on third-party sites must be sent to
