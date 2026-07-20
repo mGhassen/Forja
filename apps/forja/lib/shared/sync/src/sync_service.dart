@@ -858,14 +858,6 @@ class SyncService {
     final profile = await activeProfile();
     if (profile == null) return;
 
-    // Hard refuse: empty replace = DELETE all profile assignments.
-    if (assignments.isEmpty) {
-      debugPrint(
-        '[Sync] replaceUserIptvPortals refused empty list (would wipe cloud)',
-      );
-      return;
-    }
-
     final now = DateTime.now().toUtc().toIso8601String();
     try {
       await client
@@ -873,6 +865,8 @@ class SyncService {
           .delete()
           .eq('account_id', userId)
           .eq('profile_id', profile.id);
+
+      if (assignments.isEmpty) return;
 
       await client.from('user_iptv_portals').insert([
         for (final a in assignments)

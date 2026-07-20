@@ -86,7 +86,7 @@ export async function fetchAssignmentsForAccount(
     .select(
       `
       id, portal_id, profile_id, portal_name,
-      profiles ( name ),
+      profiles!user_iptv_portals_profile_id_fkey ( name ),
       iptv_portals ( url, username, alive, catalog_pool, region_primary )
     `,
     )
@@ -126,8 +126,8 @@ export async function fetchAssignmentsForPortal(
     .select(
       `
       id, portal_id, profile_id, portal_name, account_id,
-      profiles ( name ),
-      accounts ( email ),
+      profiles!user_iptv_portals_profile_id_fkey ( name ),
+      accounts!user_iptv_portals_account_id_fkey ( email ),
       iptv_portals ( url, username, alive, catalog_pool, region_primary )
     `,
     )

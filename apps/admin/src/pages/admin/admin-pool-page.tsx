@@ -69,6 +69,7 @@ type Cand = {
   max_connections: string | null
   region_primary: string
   dealt_count: number
+  catalog_pool: boolean
   updated_at: string
   last_checked_at: string | null
 }
@@ -417,6 +418,7 @@ function CandidateRow({
   onCheck: () => void
   onPeople: () => void
 }) {
+  const inPool = c.catalog_pool === true
   const [confirmDelete, setConfirmDelete] = useState(false)
   const expiry = portalExpiryTone(c.expiry)
   const seats = seatsTone(c.max_connections)
@@ -434,7 +436,7 @@ function CandidateRow({
       <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
         {confirmDelete ? (
           <p className="text-[13px] font-semibold text-red-400">
-            Delete this portal?
+            Remove from catalog pool?
           </p>
         ) : shareCode || sharing ? (
           <div className="min-w-0">
@@ -474,6 +476,11 @@ function CandidateRow({
               <span className="truncate text-[13px] font-semibold text-forja-text">
                 {c.username}
               </span>
+              {inPool ? (
+                <span className="shrink-0 rounded bg-forja-green/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-forja-green">
+                  pool
+                </span>
+              ) : null}
             </p>
             <p className="truncate text-sm text-white/55">{c.url}</p>
             <p
@@ -593,8 +600,13 @@ function CandidateRow({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                disabled={checking}
-                aria-label="Delete portal"
+                disabled={checking || !inPool}
+                aria-label="Remove from catalog pool"
+                title={
+                  inPool
+                    ? 'Remove from catalog pool'
+                    : 'Not in catalog pool'
+                }
                 onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 className="size-4" />
@@ -658,11 +670,10 @@ export function AdminPoolPage() {
       const { data, error } = await adminDb
         .from('iptv_portals')
         .select(
-          'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, updated_at, last_checked_at',
+          'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, updated_at, last_checked_at',
         )
-        .eq('catalog_pool', true)
         .order('updated_at', { ascending: false })
-        .limit(300)
+        .limit(5000)
       if (error) throw error
       return (data ?? []) as Cand[]
     },
@@ -779,7 +790,6 @@ export function AdminPoolPage() {
         .from('iptv_portals')
         .update(patch)
         .eq('id', editingId)
-        .eq('catalog_pool', true)
       if (error) throw error
     },
     onSuccess: async () => {
@@ -1105,7 +1115,7 @@ export function AdminPoolPage() {
         {list.isLoading ? (
           <p className="px-4 py-4 text-sm text-forja-muted">Loading…</p>
         ) : (list.data?.length ?? 0) === 0 ? (
-          <p className="px-4 py-4 text-sm text-forja-muted">Pool is empty.</p>
+          <p className="px-4 py-4 text-sm text-forja-muted">No portals.</p>
         ) : groups.length === 0 ? (
           <p className="px-4 py-4 text-sm text-forja-muted">
             No portals match these filters.

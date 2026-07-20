@@ -17,7 +17,7 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 
 - **Dashboard** — pool alive/dead/unchecked, credits, region breakdown, latest run funnel (posts / L1 / deep / L2 / upserted / duration), recent runs table. A stats strip under the nav repeats pool + latest run on every admin page
 - **Accounts** — search by email; credits stepper (−1 / +5) and Find Portals switch inline per row. Expand a row to see assigned portals, unassign, or **Assign portal** (any portal → pick profile; optional burn 1 credit / bump `dealt_count`)
-- **Pool** — table of hosts (one line: host / accounts / alive / scraped); expand to a 2-column portal grid (Account→IPTV row content, actions on hover). **User+** opens who has that portal + assign/unassign. Filter by **status** (alive / dead / unchecked) and **region**. **Check status** (radio icon) on a portal or on the host row runs Xtream `player_api` and updates alive/expiry/region. Start/stop scrape from the bar
+- **Pool** — lists **all** `iptv_portals` (not only scrape inventory). Catalog-pool rows show a **pool** badge; trash removes from catalog pool only (row stays). Host table (host / accounts / alive / scraped); expand for portal grid. **User+** opens who has that portal + assign/unassign. Filter by **status** / **region**. **Check status** runs Xtream `player_api`. Start/stop scrape from the bar
 - **Scrape** — run history updates live (run row created on Start; realtime + fast poll). Refresh / Stop / Mark stuck apply immediately in the UI
 - **Providers** — edit remote provider runtime config (templates, APIs, WebStreamr bases, anime hosts/mirrors, CDN Referer rules) via form sections or raw JSON
 

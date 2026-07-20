@@ -47,7 +47,9 @@ class SyncDomainBridge {
   Future<void> resetSyncedLocalToPlatformDefaults({
     bool clearIptv = true,
   }) async {
-    final defaults = PlatformDefaults.forProfile(SettingsService.platformProfile);
+    final defaults = PlatformDefaults.forProfile(
+      SettingsService.platformProfile,
+    );
     await importPreferences({
       'play_source_torrent_enabled': defaults.playSourceTorrent,
       'play_source_stremio_enabled': defaults.playSourceStremio,
@@ -60,9 +62,7 @@ class SyncDomainBridge {
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 0,
     });
-    await _settings.setNavbarConfig(
-      List<String>.from(defaults.visibleNavIds),
-    );
+    await _settings.setNavbarConfig(List<String>.from(defaults.visibleNavIds));
     await _settings.setDefaultNavTab('home');
 
     final addons = await _settings.getStremioAddons();
@@ -245,13 +245,6 @@ class SyncDomainBridge {
 
   Future<void> _pushUserIptvPortals() async {
     final portals = await IptvStore.load();
-    // Never push an empty inventory — that deletes cloud assignments.
-    // Last-portal delete uses replace with the remaining list; true wipe is
-    // explicit per-row removes, not sync-from-empty-local.
-    if (portals.isEmpty) {
-      debugPrint('[Sync] skip IPTV push — local portals empty (refuse cloud wipe)');
-      return;
-    }
     final favorites = await IptvStore.loadFavorites();
     final assignments =
         <({String portalId, String portalName, bool favorite})>[];
@@ -276,13 +269,6 @@ class SyncDomainBridge {
       ));
     }
 
-    if (assignments.isEmpty) {
-      debugPrint(
-        '[Sync] skip IPTV push — upsert produced 0 ids (refuse cloud wipe)',
-      );
-      return;
-    }
-
     await SyncService.instance.replaceUserIptvPortals(assignments);
   }
 
@@ -293,16 +279,6 @@ class SyncDomainBridge {
     } catch (e) {
       // Keep local inventory — never replace with [] on credential/RPC failure.
       debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
-      return false;
-    }
-    final local = await IptvStore.load();
-    if (rows.isEmpty && local.isNotEmpty) {
-      // Empty cloud while local still has portals — do not wipe device.
-      // Re-push so cloud is healed (e.g. after a bad empty replace).
-      debugPrint(
-        '[Sync] cloud IPTV empty but local has ${local.length} — keeping local, pushing',
-      );
-      await _pushUserIptvPortals();
       return false;
     }
     final portals = <VerifiedPortal>[];
@@ -341,14 +317,15 @@ class SyncDomainBridge {
 
   Future<Map<String, dynamic>> exportPreferences() async {
     return {
-      'play_source_torrent_enabled':
-          await _settings.isPlaySourceTorrentEnabled(),
-      'play_source_stremio_enabled': await _settings.isPlaySourceStremioEnabled(),
+      'play_source_torrent_enabled': await _settings
+          .isPlaySourceTorrentEnabled(),
+      'play_source_stremio_enabled': await _settings
+          .isPlaySourceStremioEnabled(),
       'play_source_nuvio_enabled': await _settings.isPlaySourceNuvioEnabled(),
-      'play_source_webstreaming_enabled':
-          await _settings.isPlaySourceWebstreamingEnabled(),
-      'simple_streaming_resolve_enabled':
-          await _settings.isSimpleStreamingResolveEnabled(),
+      'play_source_webstreaming_enabled': await _settings
+          .isPlaySourceWebstreamingEnabled(),
+      'simple_streaming_resolve_enabled': await _settings
+          .isSimpleStreamingResolveEnabled(),
       'preferred_audio_lang': await _settings.getPreferredAudioLanguage(),
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
       'auto_next_episode': await _settings.getAutoNextEpisode(),
@@ -414,8 +391,8 @@ class SyncDomainBridge {
     return {
       'stream_provider_order': await _settings.getStreamProviderOrder(),
       'anime_provider_order': await _settings.getAnimeProviderOrder(),
-      'asian_drama_provider_order':
-          await _settings.getAsianDramaProviderOrder(),
+      'asian_drama_provider_order': await _settings
+          .getAsianDramaProviderOrder(),
     };
   }
 
@@ -503,8 +480,8 @@ class SyncDomainBridge {
 void scheduleIptvSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainIptv);
 
-void schedulePreferencesSyncPush() => SyncDomainBridge.instance
-    .schedulePush(SyncDomainBridge._domainPreferences);
+void schedulePreferencesSyncPush() =>
+    SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainPreferences);
 
 void scheduleProvidersSyncPush() {
   // Provider order is device-local — do not push to cloud.
