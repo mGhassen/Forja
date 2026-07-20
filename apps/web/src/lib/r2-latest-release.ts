@@ -79,6 +79,7 @@ export function detectPlatformFromFilename(name: string): string {
 export function fromR2Manifest(
   base: string,
   manifest: R2LatestManifest,
+  body: string | null = null,
 ): R2LatestRelease {
   const version = manifest.version.replace(/^v/, '')
   const releaseId = `r2-${version}`
@@ -90,7 +91,7 @@ export function fromR2Manifest(
     id: releaseId,
     tag: `v${version}`,
     version,
-    body: null,
+    body,
     published_at: manifest.published_at?.trim() || new Date().toISOString(),
     html_url: null,
     source: 'r2',
@@ -104,6 +105,22 @@ export function fromR2Manifest(
       size_bytes: null,
     })),
   }
+}
+
+async function fetchChangelogBody(
+  base: string,
+  version: string,
+): Promise<string | null> {
+  const ver = version.replace(/^v/, '')
+  const res = await fetch(`${base}/changelog/${ver}.md`, {
+    headers: {
+      Accept: 'text/markdown, text/plain, */*',
+      'User-Agent': 'forja-web',
+    },
+  })
+  if (!res.ok) return null
+  const body = (await res.text()).trim()
+  return body || null
 }
 
 export async function fetchR2LatestRelease(): Promise<R2LatestRelease | null> {
@@ -131,10 +148,15 @@ export async function fetchR2LatestRelease(): Promise<R2LatestRelease | null> {
   const assets = Array.isArray(decoded.assets) ? decoded.assets : []
   if (!assets.length) return null
 
-  return fromR2Manifest(base, {
-    version,
-    published_at:
-      typeof decoded.published_at === 'string' ? decoded.published_at : undefined,
-    assets: assets.filter((a): a is string => typeof a === 'string'),
-  })
+  const body = await fetchChangelogBody(base, version)
+  return fromR2Manifest(
+    base,
+    {
+      version,
+      published_at:
+        typeof decoded.published_at === 'string' ? decoded.published_at : undefined,
+      assets: assets.filter((a): a is string => typeof a === 'string'),
+    },
+    body,
+  )
 }
