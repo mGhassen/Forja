@@ -1,18 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  MetricChip,
   PageHeader,
-  Panel,
-  PanelLabel,
   tableClassName,
-  tableWrapClassName,
   tdClassName,
   thClassName,
 } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { adminDb } from '@/lib/admin-db'
 import {
@@ -41,27 +36,84 @@ import { cn } from '@/lib/utils'
 
 type Mode = 'form' | 'json'
 
-function Field({
+const cellInputClassName =
+  'h-8 w-full min-w-0 border-0 bg-transparent px-1.5 py-1 font-mono-ui text-xs text-forja-text outline-none placeholder:text-forja-muted/70 focus:bg-forja-green/[0.06] focus:ring-0'
+
+const plainInputClassName =
+  'h-8 w-full border-b border-forja-border/70 bg-transparent px-0 py-1 font-mono-ui text-xs text-forja-text outline-none placeholder:text-forja-muted/70 focus:border-forja-green/50 focus:ring-0'
+
+const plainAreaClassName =
+  'min-h-24 w-full resize-y border-b border-forja-border/70 bg-transparent px-0 py-1.5 font-mono-ui text-xs leading-relaxed text-forja-text outline-none placeholder:text-forja-muted/70 focus:border-forja-green/50 focus:ring-0'
+
+function Section({
+  title,
+  hint,
+  action,
+  children,
+}: {
+  title: string
+  hint?: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-2 border-b border-forja-border/60 pb-2">
+        <div>
+          <h2 className="text-sm font-semibold text-forja-text">{title}</h2>
+          {hint ? (
+            <p className="mt-0.5 text-xs text-forja-muted">{hint}</p>
+          ) : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function CellInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  return (
+    <input
+      className={cn(cellInputClassName, className)}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      spellCheck={false}
+    />
+  )
+}
+
+function PlainField({
   label,
   value,
   onChange,
   placeholder,
-  mono,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
-  mono?: boolean
 }) {
   return (
-    <label className="block space-y-1.5">
-      <Label>{label}</Label>
-      <Input
-        className={cn(mono && 'font-mono-ui text-xs')}
+    <label className="block space-y-1">
+      <Label className="text-[11px] text-forja-muted">{label}</Label>
+      <input
+        className={plainInputClassName}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
+        spellCheck={false}
       />
     </label>
   )
@@ -79,31 +131,82 @@ function EmbedHostFields({
   const set = (k: keyof AnimeEmbedHost, v: string) =>
     onChange({ ...value, [k]: v })
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium text-forja-text">{title}</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Host" value={value.host} onChange={(v) => set('host', v)} mono />
-        <Field
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-forja-text">{title}</p>
+      <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+        <PlainField label="Host" value={value.host} onChange={(v) => set('host', v)} />
+        <PlainField
           label="Scrape referer"
           value={value.scrapeReferer}
           onChange={(v) => set('scrapeReferer', v)}
-          mono
         />
-        <Field
+        <PlainField
           label="Path (catalog)"
           value={value.pathCatalog}
           onChange={(v) => set('pathCatalog', v)}
           placeholder="/stream/s-2/{embedId}/{lang}"
-          mono
         />
-        <Field
+        <PlainField
           label="Path (AniList)"
           value={value.pathAnilist}
           onChange={(v) => set('pathAnilist', v)}
           placeholder="/stream/ani/{anilistId}/{ep}/{lang}"
-          mono
         />
       </div>
+    </div>
+  )
+}
+
+function DataTable({
+  headers,
+  colSpan,
+  empty,
+  children,
+  footer,
+}: {
+  headers: ReactNode[]
+  colSpan: number
+  empty?: boolean
+  children: ReactNode
+  footer?: ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto border-y border-forja-border/70">
+        <table className={tableClassName}>
+          <thead>
+            <tr className="border-b border-forja-border/60">
+              {headers.map((h, i) => (
+                <th
+                  key={i}
+                  className={cn(
+                    thClassName,
+                    'bg-transparent px-2 py-1.5 font-medium tracking-[0.08em]',
+                    i === headers.length - 1 && 'w-10',
+                  )}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {empty ? (
+              <tr>
+                <td
+                  colSpan={colSpan}
+                  className={cn(tdClassName, 'px-2 py-3 text-forja-muted')}
+                >
+                  No rows — add one below.
+                </td>
+              </tr>
+            ) : (
+              children
+            )}
+          </tbody>
+        </table>
+      </div>
+      {footer}
     </div>
   )
 }
@@ -120,81 +223,63 @@ function KvTable({
   onChange: (rows: KvRow[]) => void
 }) {
   return (
-    <div className="space-y-2">
-      <div className={tableWrapClassName}>
-        <div className="overflow-x-auto">
-          <table className={tableClassName}>
-            <thead>
-              <tr>
-                <th className={thClassName}>{keyLabel}</th>
-                <th className={thClassName}>{valueLabel}</th>
-                <th className={cn(thClassName, 'w-12')} />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className={cn(tdClassName, 'text-forja-muted')}
-                  >
-                    No rows — add one below.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r, i) => (
-                  <tr key={i} className="border-t border-forja-border/80">
-                    <td className={tdClassName}>
-                      <Input
-                        className="h-8 font-mono-ui text-xs"
-                        value={r.key}
-                        onChange={(e) => {
-                          const next = [...rows]
-                          next[i] = { ...r, key: e.target.value }
-                          onChange(next)
-                        }}
-                      />
-                    </td>
-                    <td className={tdClassName}>
-                      <Input
-                        className="h-8 font-mono-ui text-xs"
-                        value={r.value}
-                        onChange={(e) => {
-                          const next = [...rows]
-                          next[i] = { ...r, value: e.target.value }
-                          onChange(next)
-                        }}
-                      />
-                    </td>
-                    <td className={tdClassName}>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 text-forja-muted hover:text-red-300"
-                        onClick={() => onChange(rows.filter((_, j) => j !== i))}
-                        aria-label="Remove row"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        onClick={() => onChange([...rows, { key: '', value: '' }])}
-      >
-        <Plus className="size-3.5" />
-        Add
-      </Button>
-    </div>
+    <DataTable
+      headers={[keyLabel, valueLabel, '']}
+      colSpan={3}
+      empty={rows.length === 0}
+      footer={
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-forja-muted hover:text-forja-text"
+          onClick={() => onChange([...rows, { key: '', value: '' }])}
+        >
+          <Plus className="size-3.5" />
+          Add
+        </Button>
+      }
+    >
+      {rows.map((r, i) => (
+        <tr
+          key={i}
+          className="border-t border-forja-border/40 hover:bg-white/2"
+        >
+          <td className={cn(tdClassName, 'px-1 py-0.5')}>
+            <CellInput
+              value={r.key}
+              onChange={(v) => {
+                const next = [...rows]
+                next[i] = { ...r, key: v }
+                onChange(next)
+              }}
+            />
+          </td>
+          <td className={cn(tdClassName, 'px-1 py-0.5')}>
+            <CellInput
+              value={r.value}
+              onChange={(v) => {
+                const next = [...rows]
+                next[i] = { ...r, value: v }
+                onChange(next)
+              }}
+            />
+          </td>
+          <td className={cn(tdClassName, 'px-1 py-0.5')}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-forja-muted hover:text-red-300"
+              onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              aria-label="Remove row"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </td>
+        </tr>
+      ))}
+    </DataTable>
   )
 }
 
@@ -406,19 +491,24 @@ export function AdminProvidersPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <MetricChip label="Schema" value={SUPPORTED_SCHEMA} />
-        <MetricChip label="Templates" value={counts.templates} />
-        <MetricChip label="APIs" value={counts.apis} />
-        <MetricChip label="WebStreamr" value={counts.webstreamr} />
-        <MetricChip label="CDN rules" value={counts.cdn} />
+      <p className="text-xs text-forja-muted">
+        schema {SUPPORTED_SCHEMA}
+        <span className="mx-2 text-forja-border">·</span>
+        {counts.templates} templates
+        <span className="mx-2 text-forja-border">·</span>
+        {counts.apis} apis
+        <span className="mx-2 text-forja-border">·</span>
+        {counts.webstreamr} webstreamr
+        <span className="mx-2 text-forja-border">·</span>
+        {counts.cdn} cdn rules
         {row.data?.updated_at ? (
-          <span className="text-xs text-forja-muted">
-            Updated {new Date(row.data.updated_at).toLocaleString()}
-            {dirty ? ' · unsaved changes' : ''}
-          </span>
+          <>
+            <span className="mx-2 text-forja-border">·</span>
+            updated {new Date(row.data.updated_at).toLocaleString()}
+            {dirty ? ' · unsaved' : ''}
+          </>
         ) : null}
-      </div>
+      </p>
 
       {row.error ? (
         <p className="text-sm text-red-400">{(row.error as Error).message}</p>
@@ -435,157 +525,125 @@ export function AdminProvidersPage() {
       ) : null}
 
       {mode === 'json' ? (
-        <Panel className="overflow-hidden p-0">
-          <textarea
-            className="min-h-128 w-full resize-y border-0 bg-transparent p-4 font-mono-ui text-xs leading-relaxed text-forja-text outline-none focus:ring-0"
-            spellCheck={false}
-            value={jsonText}
-            disabled={row.isLoading}
-            onChange={(e) => {
-              setJsonText(e.target.value)
-              setLocalError(null)
-              save.reset()
-            }}
-          />
-        </Panel>
+        <textarea
+          className="min-h-128 w-full resize-y border-y border-forja-border/70 bg-transparent py-3 font-mono-ui text-xs leading-relaxed text-forja-text outline-none focus:ring-0"
+          spellCheck={false}
+          value={jsonText}
+          disabled={row.isLoading}
+          onChange={(e) => {
+            setJsonText(e.target.value)
+            setLocalError(null)
+            save.reset()
+          }}
+        />
       ) : (
-        <div className="space-y-4">
-          <Panel>
-            <PanelLabel>Templates</PanelLabel>
-            <p className="mt-1 mb-3 text-xs text-forja-muted">
-              Embed URL patterns — placeholders {'{tmdb}'}, {'{season}'},{' '}
-              {'{episode}'}.
-            </p>
-            <div className="space-y-2">
-              <div className={tableWrapClassName}>
-                <div className="overflow-x-auto">
-                  <table className={tableClassName}>
-                    <thead>
-                      <tr>
-                        <th className={thClassName}>Provider</th>
-                        <th className={thClassName}>Movie</th>
-                        <th className={thClassName}>TV</th>
-                        <th className={cn(thClassName, 'w-12')} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {templateRows.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className={cn(tdClassName, 'text-forja-muted')}
-                          >
-                            No templates — add one below.
-                          </td>
-                        </tr>
-                      ) : (
-                        templateRows.map((r, i) => (
-                          <tr
-                            key={i}
-                            className="border-t border-forja-border/80"
-                          >
-                            <td className={tdClassName}>
-                              <Input
-                                className="h-8 font-mono-ui text-xs"
-                                value={r.id}
-                                onChange={(e) => {
-                                  const next = [...templateRows]
-                                  next[i] = { ...r, id: e.target.value }
-                                  setTemplates(next)
-                                }}
-                              />
-                            </td>
-                            <td className={tdClassName}>
-                              <Input
-                                className="h-8 font-mono-ui text-xs"
-                                value={r.movie}
-                                onChange={(e) => {
-                                  const next = [...templateRows]
-                                  next[i] = { ...r, movie: e.target.value }
-                                  setTemplates(next)
-                                }}
-                              />
-                            </td>
-                            <td className={tdClassName}>
-                              <Input
-                                className="h-8 font-mono-ui text-xs"
-                                value={r.tv}
-                                onChange={(e) => {
-                                  const next = [...templateRows]
-                                  next[i] = { ...r, tv: e.target.value }
-                                  setTemplates(next)
-                                }}
-                              />
-                            </td>
-                            <td className={tdClassName}>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-8 text-forja-muted hover:text-red-300"
-                                onClick={() =>
-                                  setTemplates(
-                                    templateRows.filter((_, j) => j !== i),
-                                  )
-                                }
-                                aria-label="Remove template"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  setTemplates([
-                    ...templateRows,
-                    { id: '', movie: '', tv: '' },
-                  ])
-                }
-              >
-                <Plus className="size-3.5" />
-                Add template
-              </Button>
-            </div>
-          </Panel>
+        <div className="space-y-8">
+          <Section
+            title="Templates"
+            hint={`Embed URL patterns — {tmdb}, {season}, {episode}.`}
+          >
+            <DataTable
+              headers={['Provider', 'Movie', 'TV', '']}
+              colSpan={4}
+              empty={templateRows.length === 0}
+              footer={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-forja-muted hover:text-forja-text"
+                  onClick={() =>
+                    setTemplates([
+                      ...templateRows,
+                      { id: '', movie: '', tv: '' },
+                    ])
+                  }
+                >
+                  <Plus className="size-3.5" />
+                  Add template
+                </Button>
+              }
+            >
+              {templateRows.map((r, i) => (
+                <tr
+                  key={i}
+                  className="border-t border-forja-border/40 hover:bg-white/2"
+                >
+                  <td className={cn(tdClassName, 'w-36 px-1 py-0.5')}>
+                    <CellInput
+                      value={r.id}
+                      onChange={(v) => {
+                        const next = [...templateRows]
+                        next[i] = { ...r, id: v }
+                        setTemplates(next)
+                      }}
+                    />
+                  </td>
+                  <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                    <CellInput
+                      value={r.movie}
+                      onChange={(v) => {
+                        const next = [...templateRows]
+                        next[i] = { ...r, movie: v }
+                        setTemplates(next)
+                      }}
+                    />
+                  </td>
+                  <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                    <CellInput
+                      value={r.tv}
+                      onChange={(v) => {
+                        const next = [...templateRows]
+                        next[i] = { ...r, tv: v }
+                        setTemplates(next)
+                      }}
+                    />
+                  </td>
+                  <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-forja-muted hover:text-red-300"
+                      onClick={() =>
+                        setTemplates(templateRows.filter((_, j) => j !== i))
+                      }
+                      aria-label="Remove template"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          </Section>
 
-          <Panel>
-            <PanelLabel>APIs</PanelLabel>
-            <p className="mt-1 mb-3 text-xs text-forja-muted">
-              Named bases (vidnestApi, vidsrcEmbed, anikotoApi, …).
-            </p>
+          <Section
+            title="APIs"
+            hint="Named bases (vidnestApi, vidsrcEmbed, anikotoApi, …)."
+          >
             <KvTable
               rows={apiRows}
               keyLabel="Key"
               valueLabel="URL / host"
               onChange={setApis}
             />
-          </Panel>
+          </Section>
 
-          <Panel>
-            <PanelLabel>WebStreamr</PanelLabel>
-            <p className="mt-1 mb-3 text-xs text-forja-muted">
-              Source id → resolved base URL.
-            </p>
+          <Section
+            title="WebStreamr"
+            hint="Source id → resolved base URL."
+          >
             <KvTable
               rows={wsRows}
               keyLabel="Source id"
               valueLabel="Base URL"
               onChange={setWs}
             />
-          </Panel>
+          </Section>
 
-          <Panel>
-            <PanelLabel>Anime</PanelLabel>
-            <div className="mt-4 space-y-6">
+          <Section title="Anime">
+            <div className="space-y-6">
               <EmbedHostFields
                 title="Megaplay"
                 value={cfg.anime.megaplay}
@@ -606,11 +664,13 @@ export function AdminProvidersPage() {
                   }))
                 }
               />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <Label>Miruro origins ({counts.miruro})</Label>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <label className="block space-y-1">
+                  <Label className="text-[11px] text-forja-muted">
+                    Miruro origins ({counts.miruro})
+                  </Label>
                   <textarea
-                    className="min-h-28 w-full resize-y rounded-lg border border-forja-border bg-forja-elevated/60 p-3 font-mono-ui text-xs text-forja-text outline-none focus-visible:ring-2 focus-visible:ring-forja-green/35"
+                    className={plainAreaClassName}
                     spellCheck={false}
                     placeholder="https://www.miruro.tv"
                     value={listToLines(cfg.anime.miruroOrigins)}
@@ -626,10 +686,12 @@ export function AdminProvidersPage() {
                   />
                   <p className="text-[11px] text-forja-muted">One URL per line</p>
                 </label>
-                <label className="block space-y-1.5">
-                  <Label>KissKh mirrors ({counts.kisskh})</Label>
+                <label className="block space-y-1">
+                  <Label className="text-[11px] text-forja-muted">
+                    KissKh mirrors ({counts.kisskh})
+                  </Label>
                   <textarea
-                    className="min-h-28 w-full resize-y rounded-lg border border-forja-border bg-forja-elevated/60 p-3 font-mono-ui text-xs text-forja-text outline-none focus-visible:ring-2 focus-visible:ring-forja-green/35"
+                    className={plainAreaClassName}
                     spellCheck={false}
                     placeholder="https://kisskh.co"
                     value={listToLines(cfg.anime.kisskhMirrors)}
@@ -647,20 +709,17 @@ export function AdminProvidersPage() {
                 </label>
               </div>
             </div>
-          </Panel>
+          </Section>
 
-          <Panel>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <PanelLabel>CDN Referer rules</PanelLabel>
-                <p className="mt-1 text-xs text-forja-muted">
-                  Match stream host substrings → force Referer / Origin.
-                </p>
-              </div>
+          <Section
+            title="CDN Referer rules"
+            hint="Match stream host substrings → force Referer / Origin."
+            action={
               <Button
                 type="button"
-                variant="secondary"
+                variant="ghost"
                 size="sm"
+                className="h-7 px-2 text-forja-muted hover:text-forja-text"
                 onClick={() =>
                   setCfg((c) => ({
                     ...c,
@@ -679,25 +738,64 @@ export function AdminProvidersPage() {
                 <Plus className="size-3.5" />
                 Add rule
               </Button>
-            </div>
+            }
+          >
             {cfg.cdnRefererRules.length === 0 ? (
               <p className="text-sm text-forja-muted">No CDN rules.</p>
             ) : (
-              <div className="space-y-3">
+              <DataTable
+                headers={[
+                  'hostContains',
+                  'acceptRefererContains',
+                  'Referer',
+                  'Origin',
+                  '',
+                ]}
+                colSpan={5}
+              >
                 {cfg.cdnRefererRules.map((r, i) => (
-                  <div
+                  <tr
                     key={i}
-                    className="rounded-xl border border-forja-border/80 bg-black/20 p-4"
+                    className="border-t border-forja-border/40 hover:bg-white/2"
                   >
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forja-muted">
-                        Rule {i + 1}
-                      </p>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <CellInput
+                        value={listToCsv(r.hostContains)}
+                        onChange={(v) =>
+                          setRule(i, { hostContains: csvToList(v) })
+                        }
+                        placeholder="nekostream, mewstream"
+                      />
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <CellInput
+                        value={listToCsv(r.acceptRefererContains)}
+                        onChange={(v) =>
+                          setRule(i, {
+                            acceptRefererContains: csvToList(v),
+                          })
+                        }
+                        placeholder="megaplay"
+                      />
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <CellInput
+                        value={r.referer}
+                        onChange={(v) => setRule(i, { referer: v })}
+                      />
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <CellInput
+                        value={r.origin}
+                        onChange={(v) => setRule(i, { origin: v })}
+                      />
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
-                        className="text-forja-muted hover:text-red-300"
+                        size="icon"
+                        className="size-7 text-forja-muted hover:text-red-300"
                         onClick={() =>
                           setCfg((c) => ({
                             ...c,
@@ -706,48 +804,16 @@ export function AdminProvidersPage() {
                             ),
                           }))
                         }
+                        aria-label="Remove rule"
                       >
                         <Trash2 className="size-3.5" />
-                        Remove
                       </Button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field
-                        label="hostContains (comma-separated)"
-                        value={listToCsv(r.hostContains)}
-                        onChange={(v) =>
-                          setRule(i, { hostContains: csvToList(v) })
-                        }
-                        placeholder="nekostream, mewstream"
-                        mono
-                      />
-                      <Field
-                        label="acceptRefererContains (optional)"
-                        value={listToCsv(r.acceptRefererContains)}
-                        onChange={(v) =>
-                          setRule(i, { acceptRefererContains: csvToList(v) })
-                        }
-                        placeholder="megaplay"
-                        mono
-                      />
-                      <Field
-                        label="Referer"
-                        value={r.referer}
-                        onChange={(v) => setRule(i, { referer: v })}
-                        mono
-                      />
-                      <Field
-                        label="Origin"
-                        value={r.origin}
-                        onChange={(v) => setRule(i, { origin: v })}
-                        mono
-                      />
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
+              </DataTable>
             )}
-          </Panel>
+          </Section>
         </div>
       )}
     </div>

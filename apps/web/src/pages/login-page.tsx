@@ -27,6 +27,7 @@ import { captchaConfigured } from '@/lib/captcha'
 import {
   completeDesktopHandoffKeepingPortal,
   consumeDesktopHandoffDone,
+  getDesktopAuthUiDone,
   isSafeDesktopCallback,
   lockDesktopHandoff,
   mintAndHandoffToDesktop,
@@ -67,7 +68,7 @@ function LoginForm() {
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   useLayoutEffect(() => {
-    if (consumeDesktopHandoffDone()) {
+    if (consumeDesktopHandoffDone() || getDesktopAuthUiDone()) {
       setDesktopHandoff(true)
       setDesktopReady(true)
       return

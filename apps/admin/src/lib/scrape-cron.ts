@@ -77,6 +77,60 @@ export function cronMatchesUtc(expr: string, at: Date = new Date()): boolean {
   )
 }
 
+function truncateUtcMinute(at: Date): Date {
+  const d = new Date(at.getTime())
+  d.setUTCSeconds(0, 0)
+  return d
+}
+
+/** Most recent UTC minute ≤ `at` that matches `expr`. */
+export function lastCronSlotUtc(
+  expr: string,
+  at: Date = new Date(),
+): Date | null {
+  if (!isValidScrapeCron(expr)) return null
+  const cursor = truncateUtcMinute(at)
+  // Walk back at most 366 days.
+  for (let i = 0; i < 366 * 24 * 60; i++) {
+    if (cronMatchesUtc(expr, cursor)) return new Date(cursor.getTime())
+    cursor.setUTCMinutes(cursor.getUTCMinutes() - 1)
+  }
+  return null
+}
+
+/** Next UTC minute > `at` that matches `expr`. */
+export function nextCronUtc(expr: string, at: Date = new Date()): Date | null {
+  if (!isValidScrapeCron(expr)) return null
+  const cursor = truncateUtcMinute(at)
+  cursor.setUTCMinutes(cursor.getUTCMinutes() + 1)
+  for (let i = 0; i < 366 * 24 * 60; i++) {
+    if (cronMatchesUtc(expr, cursor)) return new Date(cursor.getTime())
+    cursor.setUTCMinutes(cursor.getUTCMinutes() + 1)
+  }
+  return null
+}
+
+/**
+ * True when the latest cron slot has arrived and we have not already started
+ * a scheduled run for that slot (catch-up if the tick was late).
+ */
+export function cronIsDueUtc(
+  expr: string,
+  at: Date,
+  lastScheduledStartedAt: Date | null,
+): boolean {
+  const slot = lastCronSlotUtc(expr, at)
+  if (!slot) return false
+  if (at.getTime() < slot.getTime()) return false
+  if (
+    lastScheduledStartedAt &&
+    lastScheduledStartedAt.getTime() >= slot.getTime()
+  ) {
+    return false
+  }
+  return true
+}
+
 export function dailyCronFromUtc(hour: number, minute: number): string {
   const h = Math.min(23, Math.max(0, Math.floor(hour)))
   const m = Math.min(59, Math.max(0, Math.floor(minute)))

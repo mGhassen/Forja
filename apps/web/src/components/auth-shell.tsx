@@ -1,11 +1,15 @@
+import { useSyncExternalStore } from 'react'
 import { Outlet, useRouterState } from '@tanstack/react-router'
 import { AuthStoryPanel } from '@/components/auth-story-panel'
 import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
 import {
+  getDesktopAuthUiDone,
   isSafeDesktopCallback,
   resolveDesktopAuthParams,
+  subscribeDesktopAuthUiDone,
 } from '@/lib/desktop-auth-callback'
+import { cn } from '@/lib/utils'
 
 function emphasisForPath(pathname: string): string | undefined {
   if (pathname.startsWith('/signup')) {
@@ -29,14 +33,37 @@ function emphasisForPath(pathname: string): string | undefined {
 export function AuthShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const emphasis = emphasisForPath(pathname)
+  const handoffDone = useSyncExternalStore(
+    subscribeDesktopAuthUiDone,
+    getDesktopAuthUiDone,
+    () => false,
+  )
 
   return (
     <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
       <PageAtmosphere recipe="auth" />
       <div className="relative z-10">
-        <SiteHeader />
-        <main className="relative grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-          <AuthStoryPanel emphasis={emphasis} />
+        {/* Keep Outlet mounted — hide chrome only so login state survives the morph. */}
+        <div
+          className={cn(handoffDone && 'hidden')}
+          aria-hidden={handoffDone}
+        >
+          <SiteHeader />
+        </div>
+        <main
+          className={cn(
+            'relative grid min-h-screen',
+            handoffDone
+              ? 'grid-cols-1'
+              : 'lg:grid-cols-[1.05fr_0.95fr]',
+          )}
+        >
+          <div
+            className={cn(handoffDone && 'hidden')}
+            aria-hidden={handoffDone}
+          >
+            <AuthStoryPanel emphasis={emphasis} />
+          </div>
           <Outlet />
         </main>
       </div>

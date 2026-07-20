@@ -24,6 +24,7 @@ import { captchaConfigured } from '@/lib/captcha'
 import {
   completeDesktopHandoffKeepingPortal,
   consumeDesktopHandoffDone,
+  getDesktopAuthUiDone,
   isSafeDesktopCallback,
   lockDesktopHandoff,
   mintAndHandoffToDesktop,
@@ -54,7 +55,7 @@ function SignupForm() {
   const isDesktopLogin = isSafeDesktopCallback(desktopParams.callback)
 
   useEffect(() => {
-    if (consumeDesktopHandoffDone()) {
+    if (consumeDesktopHandoffDone() || getDesktopAuthUiDone()) {
       setDesktopHandoffDone(true)
       return
     }

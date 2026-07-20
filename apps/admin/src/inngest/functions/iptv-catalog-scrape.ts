@@ -1,9 +1,10 @@
 import { inngest } from '@/inngest/client'
 import { classifyRegion } from '@/server/iptv-catalog/region'
 import { scrapeCatalogPage } from '@/server/iptv-catalog/reddit'
-import { cronMatchesUtc, isValidScrapeCron } from '@/lib/scrape-cron'
+import { cronIsDueUtc, isValidScrapeCron } from '@/lib/scrape-cron'
 import {
   createCatalogAdminClient,
+  getLastScheduledScrapeStartedAt,
   getScrapeCronSettings,
   insertScrapeRun,
   patchScrapeRun,
@@ -51,7 +52,8 @@ async function markRun(runId: string, error?: string) {
 
 /**
  * Scheduled + on-demand catalog scrape.
- * Inngest ticks every minute; schedule lives in iptv_ops_settings.scrape_cron (UTC).
+ * Inngest: daily 06:00 UTC kick + every-minute tick. Real schedule is
+ * iptv_ops_settings.scrape_cron (UTC) with due/catch-up (not exact-minute only).
  * Cancel with event `iptv/catalog.scrape.cancel` (same jobId).
  * When VERIFY_PORTAL_STATUS: each portal step verify-portal-status-* → player_api.
  * Otherwise: bulk upsert unverified (no portal HTTP).
@@ -61,7 +63,13 @@ export const iptvCatalogScrape = inngest.createFunction(
     id: 'iptv-catalog-scrape',
     concurrency: { limit: 1 },
     retries: 1,
-    triggers: [{ cron: '* * * * *' }, { event: 'iptv/catalog.scrape' }],
+    triggers: [
+      // Reliable default path (exact-minute every-minute ticks are easy to miss).
+      { cron: '0 6 * * *' },
+      // Custom scrape_cron (hourly / every 6h / …) + catch-up after a late tick.
+      { cron: '* * * * *' },
+      { event: 'iptv/catalog.scrape' },
+    ],
     // concurrency 1 → any cancel event stops the active scrape
     cancelOn: [{ event: 'iptv/catalog.scrape.cancel' }],
     onFailure: async ({ error }) => {
@@ -101,10 +109,14 @@ export const iptvCatalogScrape = inngest.createFunction(
             reason: `invalid scrape_cron=${settings.cron}`,
           }
         }
-        if (!cronMatchesUtc(settings.cron)) {
+        // Prefer Inngest's scheduled time; fall back to wall clock.
+        const ts = typeof event?.ts === 'number' ? event.ts : Date.now()
+        const now = new Date(ts)
+        const last = await getLastScheduledScrapeStartedAt(sb)
+        if (!cronIsDueUtc(settings.cron, now, last)) {
           return {
             run: false as const,
-            reason: `cron_mismatch=${settings.cron}`,
+            reason: `not_due cron=${settings.cron}`,
           }
         }
         return { run: true as const, cron: settings.cron }

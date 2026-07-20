@@ -40,6 +40,23 @@ export async function getScrapeCronSettings(
   }
 }
 
+/** Latest scheduled scrape start (for cron due / catch-up watermark). */
+export async function getLastScheduledScrapeStartedAt(
+  sb: SupabaseClient,
+): Promise<Date | null> {
+  const { data, error } = await sb
+    .from('iptv_scrape_runs')
+    .select('started_at')
+    .eq('source', 'inngest-cron')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  if (!data?.started_at) return null
+  const at = new Date(String(data.started_at))
+  return Number.isNaN(at.getTime()) ? null : at
+}
+
 export async function insertScrapeRun(
   sb: SupabaseClient,
   source = 'inngest-admin',

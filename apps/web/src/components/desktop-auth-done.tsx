@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { closeDesktopHandoffWindow } from '@/lib/desktop-auth-callback'
+import {
+  clearDesktopAuthUiDone,
+  closeDesktopHandoffWindow,
+  markDesktopAuthUiDone,
+} from '@/lib/desktop-auth-callback'
 
 const CLOSE_AFTER_SECONDS = 10
 
 /**
  * Full-viewport confirmation after desktop Web login / signup handoff.
- * Hides the auth story panel chrome; countdown then best-effort tab close.
+ * AuthShell collapses chrome when this mounts so the login tab morphs in place.
  */
 export function DesktopAuthDone({
   title = 'Signed in to Forja',
@@ -18,6 +22,11 @@ export function DesktopAuthDone({
 }) {
   const [secondsLeft, setSecondsLeft] = useState(CLOSE_AFTER_SECONDS)
   const [closeBlocked, setCloseBlocked] = useState(false)
+
+  useEffect(() => {
+    markDesktopAuthUiDone()
+    return () => clearDesktopAuthUiDone()
+  }, [])
 
   useEffect(() => {
     if (secondsLeft <= 0) {
@@ -39,7 +48,7 @@ export function DesktopAuthDone({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-forja-bg px-6 text-[#EDE6DA]">
+    <div className="desktop-auth-done relative flex min-h-screen items-center justify-center bg-forja-bg px-6 text-[#EDE6DA]">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         aria-hidden
@@ -48,7 +57,7 @@ export function DesktopAuthDone({
             'radial-gradient(ellipse 70% 50% at 50% 40%, rgba(28, 231, 131, 0.12), transparent 70%)',
         }}
       />
-      <main className="relative z-10 flex w-full max-w-md flex-col items-center text-center">
+      <main className="desktop-auth-done-inner relative z-10 flex w-full max-w-md flex-col items-center text-center">
         <div
           className="mb-8 flex size-14 items-center justify-center rounded-full border border-forja-green/40 bg-forja-green/10"
           aria-hidden
