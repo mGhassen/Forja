@@ -410,7 +410,9 @@ export function DownloadHelp() {
                   <span className="font-disp text-lg uppercase tracking-tight text-[#EDE6DA] sm:text-xl">
                     {item.q}
                   </span>
-                  <span className="font-mono-ui mt-1 shrink-0 text-[11px] uppercase tracking-[0.14em] text-brand transition group-open:text-flame">
+                  {/* pointer-events-none: Open/Close swap via group-open can
+                      steal the click and leave <details> stuck open. */}
+                  <span className="pointer-events-none font-mono-ui mt-1 shrink-0 text-[11px] uppercase tracking-[0.14em] text-brand transition group-open:text-flame">
                     <span className="group-open:hidden">Open</span>
                     <span className="hidden group-open:inline">Close</span>
                   </span>
