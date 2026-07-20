@@ -165,34 +165,8 @@ String _animeStreamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
   return 'Stream';
 }
 
-List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
-  final sources = <StreamSource>[];
-  for (final h in hits) {
-    // Prefer extractor headers; resolvePlaybackHttpHeaders fixes anime CDNs
-    // (mewstream → megaplay, etc.) and never falls back to vidnest.fun for HLS.
-    final headers = resolvePlaybackHttpHeaders(
-      h.media.headers.isEmpty ? null : Map<String, String>.from(h.media.headers),
-      streamUrl: h.media.url,
-    );
-    if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
-      final origin = h.embed.refererOrigin;
-      if (origin.isNotEmpty) {
-        headers['Referer'] = '$origin/';
-        headers.putIfAbsent('Origin', () => origin);
-      }
-    }
-    final rawTitle = h.media.sources?.first.title?.trim();
-    final sourceTitle =
-        (rawTitle != null && rawTitle.isNotEmpty) ? rawTitle : 'Stream';
-    sources.add(StreamSource(
-      url: h.media.url,
-      title: sourceTitle,
-      type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
-      headers: headers,
-    ));
-  }
-  return sources;
-}
+List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) =>
+    AnimePlaybackBridge.hitsToStreamSources(hits);
 
 Map<String, dynamic> _animeProviderMap(Iterable<AnimeEmbed> embeds) {
   return AnimePlaybackBridge.embedsToPanelProviders(embeds.toList());
@@ -923,8 +897,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
       for (final h in all) {
         urlToSourceKey[h.media.url] = h.embed.sourceKey;
-        final t = h.media.sources?.first.title ?? h.embed.displayName;
-        titleToSourceKey[t] = h.embed.sourceKey;
+        titleToSourceKey[h.embed.displayName] = h.embed.sourceKey;
+        for (final s in h.media.sources ?? const <StreamSource>[]) {
+          urlToSourceKey[s.url] = h.embed.sourceKey;
+          if (s.title.trim().isNotEmpty) {
+            titleToSourceKey[s.title] = h.embed.sourceKey;
+          }
+        }
         _markProbeStatus(
           h.embed.panelKey,
           StreamProviderProbeStatus.success,
@@ -1122,24 +1101,29 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     final urlKeys = urlToSourceKey ??
         <String, String>{
-          for (final h in hits) h.media.url: h.embed.sourceKey,
+          for (final h in hits) ...{
+            h.media.url: h.embed.sourceKey,
+            for (final s in h.media.sources ?? const <StreamSource>[])
+              s.url: h.embed.sourceKey,
+          },
         };
     final titleKeys = titleToSourceKey ??
         <String, String>{
-          for (final h in hits)
-            (h.media.sources?.first.title ?? h.embed.displayName):
-                h.embed.sourceKey,
+          for (final h in hits) ...{
+            h.embed.displayName: h.embed.sourceKey,
+            for (final s in h.media.sources ?? const <StreamSource>[])
+              if (s.title.trim().isNotEmpty) s.title: h.embed.sourceKey,
+          },
         };
 
-    final rawSources = sourcesListNotifier?.value.isNotEmpty == true
-        ? sourcesListNotifier!.value
-        : _hitsToStreamSources(hits);
+    // Player "current" list = winner servers only. Other providers live in cache.
+    final rawSources = _hitsToStreamSources([winner]);
     final sources = await PlaybackSelection.rankAndDedupe(
       sources: rawSources,
-      providerId: hits.first.embed.sourceKey,
+      providerId: winner.embed.sourceKey,
       providerRank: SourceEngine.orderProviders(
         domain: SourceDomain.anime,
-        candidateIds: [hits.first.embed.sourceKey],
+        candidateIds: [winner.embed.sourceKey],
         settingsOrder: _providerOrder,
       ).rows.first.effectiveRank,
     );

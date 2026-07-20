@@ -336,7 +336,7 @@ fn resolve_stream_referer(stream: &Value, src: &Value, anilist_id: i64, base: &s
 }
 
 fn stream_server_label(stream: &Value, index: usize) -> String {
-    for key in ["server", "label", "name", "id"] {
+    for key in ["server", "label", "name", "title", "quality", "id"] {
         if let Some(v) = stream.get(key).and_then(|v| v.as_str()) {
             let t = v.trim();
             if !t.is_empty() {
@@ -344,7 +344,61 @@ fn stream_server_label(stream: &Value, index: usize) -> String {
             }
         }
     }
-    format!("stream-{index}")
+    // Nested `{ server: { name: "VidPlay-1" } }` used by some Miruro pipes.
+    if let Some(server) = stream.get("server") {
+        if let Some(name) = server
+            .get("name")
+            .or_else(|| server.get("label"))
+            .or_else(|| server.get("title"))
+            .and_then(|v| v.as_str())
+        {
+            let t = name.trim();
+            if !t.is_empty() {
+                return t.to_string();
+            }
+        }
+    }
+    format!("Server {index}")
+}
+
+/// Keep direct-playable Miruro streams (HLS / MP4 / DASH). Drop HTML iframe
+/// wrappers mpv cannot open — AniKoto site buttons often map to these types.
+fn is_playable_miruro_stream(url: &str, stream_type: &str) -> bool {
+    let url = url.trim();
+    if url.is_empty() || !url.starts_with("http") {
+        return false;
+    }
+    let t = stream_type.trim().to_ascii_lowercase();
+    if matches!(t.as_str(), "iframe" | "embed" | "html" | "player") {
+        return false;
+    }
+    let u = url.to_ascii_lowercase();
+    let looks_direct = u.contains(".m3u8")
+        || u.contains(".mp4")
+        || u.contains(".mpd")
+        || u.contains(".mkv")
+        || u.contains(".webm")
+        || u.contains("/hls")
+        || u.contains("master.m3u8")
+        || u.contains("/playlist");
+    let looks_iframe = u.contains("/embed")
+        || u.contains("videoembed")
+        || u.contains("/e/")
+        || u.contains("player.php");
+    if looks_iframe && !looks_direct {
+        return false;
+    }
+    // Empty / hls / file / mp4 / dash / progressive — keep.
+    if t.is_empty()
+        || matches!(
+            t.as_str(),
+            "hls" | "file" | "mp4" | "dash" | "progressive" | "video" | "direct"
+        )
+    {
+        return true;
+    }
+    // Unknown type: keep only if URL looks like media.
+    looks_direct
 }
 
 pub fn miruro_resolve(
@@ -440,8 +494,10 @@ pub fn miruro_resolve(
         .cloned()
         .unwrap_or_else(|| OFFICIAL_DOMAINS[0].to_string());
     let tracks = parse_subtitle_tracks(&src);
+    // Pipe historically used `streams`; some providers emit JW-style `sources`.
     let streams = src
         .get("streams")
+        .or_else(|| src.get("sources"))
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
@@ -450,11 +506,12 @@ pub fn miruro_resolve(
 
     for raw in streams {
         let stream_type = raw.get("type").and_then(|v| v.as_str()).unwrap_or("");
-        if !stream_type.is_empty() && stream_type != "hls" {
-            continue;
-        }
-        let url = raw.get("url").and_then(|v| v.as_str()).unwrap_or("");
-        if url.is_empty() {
+        let url = raw
+            .get("url")
+            .or_else(|| raw.get("file"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if !is_playable_miruro_stream(url, stream_type) {
             continue;
         }
         stream_index += 1;
@@ -512,6 +569,38 @@ mod tests {
         let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
         let out = deobfuscate(&b64, "2").unwrap();
         assert_eq!(out, plain);
+    }
+
+    #[test]
+    fn playable_accepts_hls_and_mp4_skips_iframe() {
+        assert!(is_playable_miruro_stream(
+            "https://cdn.example/a/master.m3u8",
+            "hls"
+        ));
+        assert!(is_playable_miruro_stream(
+            "https://cdn.example/a/file.mp4",
+            "file"
+        ));
+        assert!(is_playable_miruro_stream(
+            "https://cdn.example/a/master.m3u8",
+            ""
+        ));
+        assert!(!is_playable_miruro_stream(
+            "https://megaplay.buzz/stream/s-2/1/sub",
+            "iframe"
+        ));
+        assert!(!is_playable_miruro_stream(
+            "https://vidwish.live/embed/abc",
+            "hls"
+        ));
+    }
+
+    #[test]
+    fn stream_label_prefers_server_name() {
+        let raw = json!({"server": "VidPlay-1", "url": "https://x/a.m3u8"});
+        assert_eq!(stream_server_label(&raw, 1), "VidPlay-1");
+        let nested = json!({"server": {"name": "HD-1"}, "url": "https://x/a.m3u8"});
+        assert_eq!(stream_server_label(&nested, 2), "HD-1");
     }
 
     #[test]

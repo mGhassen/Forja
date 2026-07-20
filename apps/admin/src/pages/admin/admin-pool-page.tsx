@@ -1,31 +1,18 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  Copy,
-  Pencil,
-  Radio,
-  Share2,
-  Trash2,
-  UserPlus,
-  X,
-} from 'lucide-react'
+import { ArrowDown, ArrowUp, Radio } from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
-import { IptvPortalCardBody } from '@/components/iptv-portal-card'
+import {
+  IptvPortalActionRow,
+  IptvPortalEditDialog,
+  decryptPortalPassword,
+  errMessage,
+  type IptvPortalEditForm,
+} from '@/components/iptv-portal-row'
 import { PageHeader } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PasswordInput } from '@/components/ui/password-input'
 import {
   Select,
   SelectContent,
@@ -64,13 +51,6 @@ type HostGroup = {
 
 type SortKey = 'host' | 'accounts' | 'alive' | 'scraped'
 type SortDir = 'asc' | 'desc'
-
-type EditForm = {
-  url: string
-  username: string
-  password: string
-  region_primary: string
-}
 
 function candidateHost(url: string): string {
   try {
@@ -157,339 +137,11 @@ function relativeTime(iso: string | null | undefined): string {
   return `${Math.round(hr / 24)}d ago`
 }
 
-function errMessage(e: unknown, fallback: string): string {
-  if (e instanceof Error && e.message) return e.message
-  if (typeof e === 'object' && e && 'message' in e) {
-    const m = (e as { message: unknown }).message
-    if (typeof m === 'string' && m.trim()) return m
-  }
-  if (typeof e === 'string' && e.trim()) return e
-  return fallback
-}
-
-async function decryptPassword(id: string): Promise<string> {
-  const { data, error } = await adminDb.rpc(
-    'admin_iptv_catalog_candidate_password',
-    { p_id: id },
-  )
-  if (error) {
-    const msg = errMessage(error, 'decrypt failed')
-    if (/does not exist|could not find.*function/i.test(msg)) {
-      throw new Error(
-        'Missing RPC admin_iptv_catalog_candidate_password — apply migration 20260719015100_admin_catalog_candidate_ops',
-      )
-    }
-    throw new Error(msg)
-  }
-  return typeof data === 'string' ? data : ''
-}
-
-function EditDialog({
-  form,
-  setForm,
-  saving,
-  error,
-  onClose,
-  onSave,
-}: {
-  form: EditForm
-  setForm: Dispatch<SetStateAction<EditForm>>
-  saving: boolean
-  error: string | null
-  onClose: () => void
-  onSave: () => void
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-cand-title"
-        className="w-full max-w-lg border border-forja-border bg-forja-elevated p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <h2 id="edit-cand-title" className="text-sm font-semibold">
-            Edit portal
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="cand-url">Panel URL</Label>
-            <Input
-              id="cand-url"
-              value={form.url}
-              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-              autoFocus
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cand-user">Username</Label>
-            <Input
-              id="cand-user"
-              value={form.username}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, username: e.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cand-pass">Password</Label>
-            <PasswordInput
-              id="cand-pass"
-              value={form.password}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, password: e.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="cand-region">Region</Label>
-            <Input
-              id="cand-region"
-              value={form.region_primary}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, region_primary: e.target.value }))
-              }
-            />
-          </div>
-          {error ? (
-            <p className="text-sm text-red-400 sm:col-span-2">{error}</p>
-          ) : null}
-          <div className="flex gap-2 sm:col-span-2">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={
-                saving || !form.url.trim() || !form.username.trim()
-              }
-              onClick={onSave}
-            >
-              {saving ? 'Saving…' : 'Save portal'}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const ACTION_RAIL_W = 180
-
-/** Table-style portal row — Account→IPTV content, actions on hover. */
-function CandidateRow({
-  c,
-  sharing,
-  shareCode,
-  deleting,
-  checking,
-  onShare,
-  onEdit,
-  onDelete,
-  onCheck,
-  onPeople,
-}: {
-  c: Cand
-  sharing: boolean
-  shareCode: string | null
-  deleting: boolean
-  checking: boolean
-  onShare: () => void
-  onEdit: () => void
-  onDelete: () => void
-  onCheck: () => void
-  onPeople: () => void
-}) {
-  const inPool = c.catalog_pool === true
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const pinRail = confirmDelete || sharing || !!shareCode || checking
-
-  return (
-    <li
-      className={cn(
-        'group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0',
-        'hover:bg-white/[0.03] focus-within:bg-white/[0.03]',
-        pinRail && 'bg-white/[0.03]',
-      )}
-    >
-      <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
-        {confirmDelete ? (
-          <p className="text-[13px] font-semibold text-red-400">
-            Remove from catalog pool?
-          </p>
-        ) : shareCode || sharing ? (
-          <div className="min-w-0">
-            {sharing && !shareCode ? (
-              <p className="text-sm text-forja-muted">Creating share code…</p>
-            ) : (
-              <>
-                <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
-                  SHARE CODE
-                </p>
-                <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
-                  {shareCode}
-                </p>
-              </>
-            )}
-          </div>
-        ) : (
-          <IptvPortalCardBody portal={c} checking={checking} />
-        )}
-      </div>
-
-      <div
-        className={cn(
-          'flex shrink-0 items-center justify-end overflow-hidden transition-[width] duration-180 ease-out',
-          pinRail
-            ? 'w-[180px]'
-            : 'w-0 group-hover:w-[180px] group-focus-within:w-[180px]',
-        )}
-      >
-        <div
-          className="flex h-full shrink-0 items-center justify-end pr-1"
-          style={{ width: ACTION_RAIL_W }}
-        >
-          {confirmDelete ? (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                disabled={deleting}
-                aria-label="Confirm delete"
-                onClick={() => {
-                  setConfirmDelete(false)
-                  onDelete()
-                }}
-              >
-                <Check className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                aria-label="Cancel delete"
-                onClick={() => setConfirmDelete(false)}
-              >
-                <X className="size-4" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                disabled={checking || sharing}
-                aria-label="Assigned accounts"
-                title="Assigned accounts"
-                onClick={onPeople}
-              >
-                <UserPlus className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                disabled={checking || sharing}
-                aria-label="Check portal status"
-                title="Check portal status"
-                onClick={onCheck}
-              >
-                <Radio
-                  className={cn(
-                    'size-4',
-                    checking && 'animate-pulse text-amber-400',
-                  )}
-                />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                disabled={sharing || checking}
-                aria-label="Copy share code"
-                title="Copy share code"
-                onClick={onShare}
-              >
-                {sharing ? (
-                  <Share2 className="size-4 animate-pulse" />
-                ) : shareCode ? (
-                  <Check className="size-4 text-forja-green" />
-                ) : (
-                  <Copy className="size-4" />
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                disabled={checking}
-                aria-label="Edit portal"
-                onClick={onEdit}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                disabled={checking || !inPool}
-                aria-label="Remove from catalog pool"
-                title={
-                  inPool
-                    ? 'Remove from catalog pool'
-                    : 'Not in catalog pool'
-                }
-                onClick={() => setConfirmDelete(true)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-    </li>
-  )
-}
-
 export function AdminPoolPage() {
   const qc = useQueryClient()
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<EditForm>({
+  const [form, setForm] = useState<IptvPortalEditForm>({
     url: '',
     username: '',
     password: '',
@@ -639,7 +291,7 @@ export function AdminPoolPage() {
       region_primary: c.region_primary,
     })
     try {
-      const pw = await decryptPassword(id)
+      const pw = await decryptPortalPassword(id)
       setEditingId((cur) => {
         if (cur === id) setForm((f) => ({ ...f, password: pw }))
         return cur
@@ -654,7 +306,7 @@ export function AdminPoolPage() {
     setActionError(null)
     setActionInfo(null)
     try {
-      const password = await decryptPassword(c.id)
+      const password = await decryptPortalPassword(c.id)
       const code = await createPortalShare({
         url: c.url,
         username: c.username,
@@ -743,7 +395,7 @@ export function AdminPoolPage() {
       ) : null}
 
       {editingId ? (
-        <EditDialog
+        <IptvPortalEditDialog
           form={form}
           setForm={setForm}
           saving={saveEdit.isPending}
@@ -952,14 +604,21 @@ export function AdminPoolPage() {
                   {expanded ? (
                     <ul className="grid grid-cols-1 border-t border-forja-border bg-forja-surface/20 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
                       {g.rows.map((c) => (
-                        <CandidateRow
+                        <IptvPortalActionRow
                           key={c.id}
-                          c={c}
+                          portal={c}
                           sharing={sharingId === c.id}
                           shareCode={shareFlash[c.id] ?? null}
                           deleting={remove.isPending}
                           checking={
                             checkingId === c.id || checkingHost === g.host
+                          }
+                          deleteConfirmLabel="Remove from catalog pool?"
+                          deleteDisabled={c.catalog_pool !== true}
+                          deleteTitle={
+                            c.catalog_pool
+                              ? 'Remove from catalog pool'
+                              : 'Not in catalog pool'
                           }
                           onShare={() => void copyShare(c)}
                           onEdit={() => void beginEdit(c)}

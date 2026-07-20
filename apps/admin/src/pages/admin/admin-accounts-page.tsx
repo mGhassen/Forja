@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Minus, Plus, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Minus, Plus, Search } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
-import { IptvAssignDialog } from '@/components/iptv-assign-dialog'
-import { IptvPortalCardBody } from '@/components/iptv-portal-card'
+import {
+  IptvAssignDialog,
+  IptvPortalPeopleDialog,
+} from '@/components/iptv-assign-dialog'
+import {
+  IptvPortalActionRow,
+  IptvPortalEditDialog,
+  decryptPortalPassword,
+  errMessage,
+  iptvPortalGridClassName,
+  type IptvPortalEditForm,
+} from '@/components/iptv-portal-row'
 import {
   EmptyState,
   PageHeader,
@@ -14,11 +24,17 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { adminDb } from '@/lib/admin-db'
+import { catalogVerify } from '@/lib/catalog-verify'
 import {
   countAssignmentsForAccounts,
   fetchAssignmentsForAccount,
+  type AssignmentRow,
   unassignPortal,
 } from '@/lib/iptv-portal-assign'
+import {
+  createPortalShare,
+  formatShareCode,
+} from '@/lib/iptv-portal-share'
 import { cn } from '@/lib/utils'
 
 type AccountRow = {
@@ -37,6 +53,23 @@ function AccountPortals({
   onAssign: () => void
 }) {
   const qc = useQueryClient()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<IptvPortalEditForm>({
+    url: '',
+    username: '',
+    password: '',
+    region_primary: 'UNKNOWN',
+  })
+  const [editError, setEditError] = useState<string | null>(null)
+  const [shareFlash, setShareFlash] = useState<Record<string, string>>({})
+  const [sharingId, setSharingId] = useState<string | null>(null)
+  const [checkingId, setCheckingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [peopleFor, setPeopleFor] = useState<{
+    id: string
+    label: string
+  } | null>(null)
+
   const list = useQuery({
     queryKey: ['admin', 'account_portals', accountId],
     queryFn: () => fetchAssignmentsForAccount(accountId),
@@ -52,6 +85,104 @@ function AccountPortals({
       await qc.invalidateQueries({ queryKey: ['admin', 'portal_assignees'] })
     },
   })
+
+  const saveEdit = useMutation({
+    mutationFn: async () => {
+      if (!editingId) return
+      const patch: Record<string, string> = {
+        url: form.url.trim(),
+        username: form.username.trim(),
+        region_primary: form.region_primary.trim() || 'UNKNOWN',
+      }
+      if (form.password.trim()) patch.password = form.password
+      const { error } = await adminDb
+        .from('iptv_portals')
+        .update(patch)
+        .eq('id', editingId)
+      if (error) throw error
+    },
+    onSuccess: async () => {
+      setEditingId(null)
+      setEditError(null)
+      setActionError(null)
+      await qc.invalidateQueries({
+        queryKey: ['admin', 'account_portals', accountId],
+      })
+      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+    },
+    onError: (e) => {
+      setEditError(e instanceof Error ? e.message : 'Save failed')
+    },
+  })
+
+  async function beginEdit(a: AssignmentRow) {
+    const id = a.portal_id
+    setEditError(null)
+    setActionError(null)
+    setEditingId(id)
+    setForm({
+      url: a.url,
+      username: a.username,
+      password: '',
+      region_primary: a.region_primary,
+    })
+    try {
+      const pw = await decryptPortalPassword(id)
+      setEditingId((cur) => {
+        if (cur === id) setForm((f) => ({ ...f, password: pw }))
+        return cur
+      })
+    } catch (e) {
+      setEditError(errMessage(e, 'Could not decrypt password'))
+    }
+  }
+
+  async function copyShare(a: AssignmentRow) {
+    setSharingId(a.portal_id)
+    setActionError(null)
+    try {
+      const password = await decryptPortalPassword(a.portal_id)
+      const code = await createPortalShare({
+        url: a.url,
+        username: a.username,
+        password,
+      })
+      const formatted = formatShareCode(code)
+      try {
+        await navigator.clipboard.writeText(code)
+      } catch {
+        // still show code if clipboard denied
+      }
+      setShareFlash((prev) => ({ ...prev, [a.portal_id]: formatted }))
+      window.setTimeout(() => {
+        setShareFlash((prev) => {
+          const next = { ...prev }
+          delete next[a.portal_id]
+          return next
+        })
+      }, 8000)
+    } catch (e) {
+      setActionError(errMessage(e, 'Could not create share code'))
+    } finally {
+      setSharingId(null)
+    }
+  }
+
+  async function checkPortal(a: AssignmentRow) {
+    setCheckingId(a.portal_id)
+    setActionError(null)
+    try {
+      await catalogVerify({ candidateId: a.portal_id })
+      await qc.invalidateQueries({
+        queryKey: ['admin', 'account_portals', accountId],
+      })
+      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+    } catch (e) {
+      setActionError(errMessage(e, 'Status check failed'))
+    } finally {
+      setCheckingId(null)
+    }
+  }
 
   return (
     <div className="space-y-3 border-t border-forja-border/80 bg-black/20 px-3 py-3">
@@ -70,45 +201,66 @@ function AccountPortals({
       {remove.error ? (
         <p className="text-sm text-red-400">{remove.error.message}</p>
       ) : null}
+      {actionError ? (
+        <p className="text-sm text-red-400">{actionError}</p>
+      ) : null}
       {list.isLoading ? (
         <p className="text-sm text-forja-muted">Loading…</p>
       ) : (list.data?.length ?? 0) === 0 ? (
         <p className="text-sm text-forja-muted">No portals on this account.</p>
       ) : (
-        <ul className="overflow-hidden rounded-xl border border-forja-border">
+        <ul className={iptvPortalGridClassName}>
           {(list.data ?? []).map((a) => (
-            <li
+            <IptvPortalActionRow
               key={a.id}
-              className="group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0 hover:bg-white/[0.03]"
-            >
-              <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
-                <IptvPortalCardBody
-                  portal={a}
-                  badge={
-                    <span className="shrink-0 truncate rounded bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-forja-muted">
-                      {a.profile_name}
-                    </span>
-                  }
-                />
-              </div>
-              <div className="flex shrink-0 items-center pr-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                  disabled={remove.isPending}
-                  aria-label="Unassign portal"
-                  title="Unassign portal"
-                  onClick={() => remove.mutate(a.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            </li>
+              portal={a}
+              badge={
+                <span className="shrink-0 truncate rounded bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-forja-muted">
+                  {a.profile_name}
+                </span>
+              }
+              sharing={sharingId === a.portal_id}
+              shareCode={shareFlash[a.portal_id] ?? null}
+              deleting={remove.isPending}
+              checking={checkingId === a.portal_id}
+              deleteConfirmLabel="Unassign portal from this account?"
+              deleteTitle="Unassign portal"
+              onShare={() => void copyShare(a)}
+              onEdit={() => void beginEdit(a)}
+              onDelete={() => remove.mutate(a.id)}
+              onCheck={() => void checkPortal(a)}
+              onPeople={() =>
+                setPeopleFor({
+                  id: a.portal_id,
+                  label: `${a.username} · ${a.url}`,
+                })
+              }
+            />
           ))}
         </ul>
       )}
+
+      {editingId ? (
+        <IptvPortalEditDialog
+          form={form}
+          setForm={setForm}
+          saving={saveEdit.isPending}
+          error={editError}
+          onClose={() => {
+            setEditingId(null)
+            setEditError(null)
+          }}
+          onSave={() => saveEdit.mutate()}
+        />
+      ) : null}
+
+      {peopleFor ? (
+        <IptvPortalPeopleDialog
+          portalId={peopleFor.id}
+          portalLabel={peopleFor.label}
+          onClose={() => setPeopleFor(null)}
+        />
+      ) : null}
     </div>
   )
 }

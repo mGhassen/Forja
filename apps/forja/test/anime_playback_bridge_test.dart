@@ -9,6 +9,54 @@ void main() {
     await initRustForAppTests();
   });
 
+  group('AnimePlaybackBridge.hitsToStreamSources', () {
+    test('expands every media.sources server under a Miruro hit', () {
+      const embed = AnimeEmbed(
+        label: 'AniKoto',
+        server: 'miruro',
+        category: 'sub',
+        url: 'miruro://anilist/1/1/sub/bee',
+      );
+      final hits = <AnimeResolvedHit>[
+        (
+          embed: embed,
+          media: ExtractedMedia(
+            url: 'https://cdn.example/a.m3u8',
+            headers: const {'Referer': 'https://www.miruro.tv/'},
+            provider: 'miruro',
+            sources: [
+              StreamSource(
+                url: 'https://cdn.example/a.m3u8',
+                title: 'VidPlay-1',
+                type: 'hls',
+                headers: const {'Referer': 'https://www.miruro.tv/'},
+              ),
+              StreamSource(
+                url: 'https://cdn.example/b.m3u8',
+                title: 'Vidstream-2',
+                type: 'hls',
+                headers: const {'Referer': 'https://www.miruro.tv/'},
+              ),
+              StreamSource(
+                url: 'https://cdn.example/c.mp4',
+                title: 'VidCloud-1',
+                type: 'video',
+                headers: const {'Referer': 'https://www.miruro.tv/'},
+              ),
+            ],
+          ),
+        ),
+      ];
+      final sources = AnimePlaybackBridge.hitsToStreamSources(hits);
+      expect(sources.map((s) => s.title), [
+        'VidPlay-1',
+        'Vidstream-2',
+        'VidCloud-1',
+      ]);
+      expect(sources.length, 3);
+    });
+  });
+
   group('AnimePlaybackBridge.embedsToPanelProviders', () {
     test('keeps sub and dub as separate panel rows', () {
       const embeds = [

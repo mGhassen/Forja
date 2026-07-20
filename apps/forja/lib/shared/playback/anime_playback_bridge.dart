@@ -222,12 +222,44 @@ abstract final class AnimePlaybackBridge {
       maxInFlight: 1,
     );
     if (hits.isEmpty) return null;
-    return _hitsToStreamSources(hits);
+    return hitsToStreamSources(hits);
   }
 
-  static List<StreamSource> _hitsToStreamSources(List<AnimeResolvedHit> hits) {
+  /// Expand every playable URL under each hit (Miruro multi-server).
+  static List<StreamSource> hitsToStreamSources(List<AnimeResolvedHit> hits) {
     final sources = <StreamSource>[];
     for (final h in hits) {
+      final multi = h.media.sources;
+      if (multi != null && multi.isNotEmpty) {
+        for (final s in multi) {
+          if (s.url.trim().isEmpty) continue;
+          final headers = resolvePlaybackHttpHeaders(
+            s.headers != null && s.headers!.isNotEmpty
+                ? Map<String, String>.from(s.headers!)
+                : (h.media.headers.isEmpty
+                    ? null
+                    : Map<String, String>.from(h.media.headers)),
+            streamUrl: s.url,
+          );
+          if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
+            final origin = h.embed.refererOrigin;
+            if (origin.isNotEmpty) {
+              headers['Referer'] = '$origin/';
+              headers.putIfAbsent('Origin', () => origin);
+            }
+          }
+          final rawTitle = s.title.trim();
+          sources.add(StreamSource(
+            url: s.url,
+            title: rawTitle.isNotEmpty ? rawTitle : 'Stream',
+            type: s.type.isNotEmpty
+                ? s.type
+                : (s.url.contains('.m3u8') ? 'hls' : 'video'),
+            headers: headers,
+          ));
+        }
+        continue;
+      }
       final headers = resolvePlaybackHttpHeaders(
         h.media.headers.isEmpty ? null : Map<String, String>.from(h.media.headers),
         streamUrl: h.media.url,
@@ -241,7 +273,7 @@ abstract final class AnimePlaybackBridge {
       }
       sources.add(StreamSource(
         url: h.media.url,
-        title: h.media.sources?.first.title ?? 'Stream',
+        title: 'Stream',
         type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
         headers: headers,
       ));
