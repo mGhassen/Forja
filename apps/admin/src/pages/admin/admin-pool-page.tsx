@@ -17,9 +17,11 @@ import {
   Radio,
   Share2,
   Trash2,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react'
+import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
 import {
   MetricChip,
   PageHeader,
@@ -358,7 +360,7 @@ function EditDialog({
   )
 }
 
-const ACTION_RAIL_W = 144
+const ACTION_RAIL_W = 180
 
 function aliveTone(alive: boolean | null): {
   label: string
@@ -395,6 +397,7 @@ function CandidateRow({
   onEdit,
   onDelete,
   onCheck,
+  onPeople,
 }: {
   c: Cand
   sharing: boolean
@@ -405,6 +408,7 @@ function CandidateRow({
   onEdit: () => void
   onDelete: () => void
   onCheck: () => void
+  onPeople: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const expiry = portalExpiryTone(c.expiry)
@@ -482,8 +486,8 @@ function CandidateRow({
         className={cn(
           'flex shrink-0 items-center justify-end overflow-hidden transition-[width] duration-180 ease-out',
           pinRail
-            ? 'w-[144px]'
-            : 'w-0 group-hover:w-[144px] group-focus-within:w-[144px]',
+            ? 'w-[180px]'
+            : 'w-0 group-hover:w-[180px] group-focus-within:w-[180px]',
         )}
       >
         <div
@@ -519,6 +523,18 @@ function CandidateRow({
             </>
           ) : (
             <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={checking || sharing}
+                aria-label="Assigned accounts"
+                title="Assigned accounts"
+                onClick={onPeople}
+              >
+                <UserPlus className="size-4" />
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
@@ -607,6 +623,10 @@ export function AdminPoolPage() {
   const [regionFilter, setRegionFilter] = useState<string>('all')
   const [sortKey, setSortKey] = useState<SortKey>('accounts')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [peopleFor, setPeopleFor] = useState<{
+    id: string
+    label: string
+  } | null>(null)
 
   const runs = useQuery({
     queryKey: SCRAPE_RUNS_LATEST_KEY,
@@ -1011,6 +1031,14 @@ export function AdminPoolPage() {
         />
       ) : null}
 
+      {peopleFor ? (
+        <IptvPortalPeopleDialog
+          portalId={peopleFor.id}
+          portalLabel={peopleFor.label}
+          onClose={() => setPeopleFor(null)}
+        />
+      ) : null}
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
           <label
@@ -1188,6 +1216,12 @@ export function AdminPoolPage() {
                           onEdit={() => void beginEdit(c)}
                           onDelete={() => remove.mutate(c.id)}
                           onCheck={() => void checkPortal(c)}
+                          onPeople={() =>
+                            setPeopleFor({
+                              id: c.id,
+                              label: `${c.username} · ${c.url}`,
+                            })
+                          }
                         />
                       ))}
                     </ul>

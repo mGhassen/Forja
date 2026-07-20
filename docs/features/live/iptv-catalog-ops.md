@@ -16,9 +16,10 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 ## What you can do
 
 - **Dashboard** — pool alive/dead/unchecked, credits, region breakdown, latest run funnel (posts / L1 / deep / L2 / upserted / duration), recent runs table. A stats strip under the nav repeats pool + latest run on every admin page
-- **Accounts** — search by email; toggle `iptvScrape`; grant/revoke credits (+5 / −1)
-- **Pool** — table of hosts (one line: host / accounts / alive / scraped); expand to a 2-column portal grid (Account→IPTV row content, actions on hover). Filter by **status** (alive / dead / unchecked) and **region**. **Check status** (radio icon) on a portal or on the host row runs Xtream `player_api` and updates alive/expiry/region. Start/stop scrape from the bar
+- **Accounts** — search by email; credits stepper (−1 / +5) and Find Portals switch inline per row. Expand a row to see assigned portals, unassign, or **Assign portal** (any portal → pick profile; optional burn 1 credit / bump `dealt_count`)
+- **Pool** — table of hosts (one line: host / accounts / alive / scraped); expand to a 2-column portal grid (Account→IPTV row content, actions on hover). **User+** opens who has that portal + assign/unassign. Filter by **status** (alive / dead / unchecked) and **region**. **Check status** (radio icon) on a portal or on the host row runs Xtream `player_api` and updates alive/expiry/region. Start/stop scrape from the bar
 - **Scrape** — run history updates live (run row created on Start; realtime + fast poll). Refresh / Stop / Mark stuck apply immediately in the UI
+- **Providers** — edit remote provider runtime config (templates, APIs, WebStreamr bases, anime hosts/mirrors, CDN Referer rules) via form sections or raw JSON
 
 ## Scrape (Inngest on admin)
 
@@ -54,6 +55,8 @@ cargo run -p iptv-worker -- scrape --verify
 ## Deal (API)
 
 Authenticated users with credits call RPC `deal_iptv_portals(profile_id, region, count)` (default region `ANY`, count `5`). Burns **1 credit**, assigns up to N alive pool portals into `user_iptv_portals`.
+
+**Lotto:** weighted random among eligible pool rows (`1/(1+dealt_count)`, 1.5× if checked in the last 7 days). Prefers distinct hosts in the pack, then fills if the pool is thin. Empty pack refunds the credit.
 
 In the Forja app: IPTV → Portals → **Deal** — one tap spends 1 credit for up to 5 portals (region `ANY`). Account → IPTV on the web shows the credit balance (deal itself stays in-app).
 

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **18 / 20** acceptance (editable scrape cron; AI + Stalker deferred) |
-| **Current slice** | Editable `scrape_cron` in admin Automation; AI/Stalker deferred |
+| **Progress** | **5 / 5** components · **20 / 22** acceptance (admin assign; AI + Stalker deferred) |
+| **Current slice** | Admin assign/unassign portals; AI/Stalker deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -51,12 +51,16 @@
 | 18 | R40-A18 | Admin Pool: manual Check status on portal or host (player_api → update alive) | ✅ |
 | 19 | R40-A19 | Single `iptv_portals` table + `catalog_pool`; drop `iptv_catalog_candidates` + scrape deep_refs / post body cols | ✅ |
 | 20 | R40-A20 | Admin Scrape Automation: edit UTC schedule (presets / time / cron) via `iptv_ops_settings.scrape_cron`; Inngest minute tick matches expression | ✅ |
+| 21 | R40-A21 | `deal_iptv_portals` weighted lotto — inverse `dealt_count` × freshness, prefer 1 host per pack, fill pass if needed | ✅ |
+| 22 | R40-A22 | Admin assign/unassign portals (Accounts expand + Pool people); optional credit burn / dealt bump | ✅ |
 
 ---
 
 ## Summary
 
 Move IPTV discovery off per-user Reddit scrape into a **central ops pipeline**: admin console + Rust worker write a shared catalog pool; users spend **credits** to **deal** portals (lottery pack) filtered by region. Same Supabase as Forja accounts/`iptv_portals` — no second database.
+
+**Deal lotto (R40-A21):** eligible = `catalog_pool` + `alive` + region + not already on profile. Weight = `1/(1+dealt_count)` × 1.5 if checked within 7 days. Draw via exponential race (`-ln(random())/weight`). Pass 1 prefers distinct hosts; pass 2 fills remaining. Empty pack refunds the credit.
 
 ## Goals
 
