@@ -26,11 +26,11 @@ function SessionMetaRow({
   children: ReactNode
 }) {
   return (
-    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm sm:grid-cols-[6.5rem_minmax(0,1fr)]">
-      <dt className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.4)]">
+    <div className="flex gap-3 text-sm">
+      <dt className="w-24 shrink-0 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-muted">
         {label}
       </dt>
-      <dd className="min-w-0 text-[#EDE6DA]/children}</dd>
+      <dd className="min-w-0 text-forja-text">{children}</dd>
     </div>
   )
 }
@@ -77,11 +77,11 @@ function ConnectionCard({
     : null
 
   return (
-    <li className="rounded-xl border border-[rgba(237,230,218,0.12)] bg-forja-bg/40 p-4 sm:p-5">
+    <li className="rounded-xl border border-forja-border bg-forja-bg/40 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(237,230,218,0.12)] bg-[rgba(28,231,131,0.08)]"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-forja-border bg-forja-green/10"
             aria-hidden
           >
             {flag ? (
@@ -92,7 +92,7 @@ function ConnectionCard({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-base font-semibold text-[#EDE6DA]">
+              <p className="text-base font-semibold text-forja-text">
                 {place.label}
               </p>
               {isCurrent ? (
@@ -102,9 +102,7 @@ function ConnectionCard({
               ) : null}
             </div>
             {place.detail ? (
-              <p className="mt-1 text-sm text-[rgba(237,230,218,0.5)]">
-                {place.detail}
-              </p>
+              <p className="mt-1 text-sm text-forja-muted">{place.detail}</p>
             ) : null}
           </div>
         </div>
@@ -120,7 +118,7 @@ function ConnectionCard({
         </Button>
       </div>
 
-      <dl className="mt-4 space-y-2.5 border-t border-[rgba(237,230,218,0.1)] pt-4">
+      <dl className="mt-4 space-y-2.5 border-t border-forja-border pt-4">
         <SessionMetaRow label="Location">
           {placeLine ? (
             <span className="inline-flex items-center gap-2">
@@ -132,16 +130,16 @@ function ConnectionCard({
               <span>{placeLine}</span>
             </span>
           ) : !geoReady ? (
-            <span className="text-[rgba(237,230,218,0.45)]">Looking up…</span>
+            <span className="text-forja-muted">Looking up…</span>
           ) : (
-            <span className="text-[rgba(237,230,218,0.45)]">Unknown</span>
+            <span className="text-forja-muted">Unknown</span>
           )}
         </SessionMetaRow>
         <SessionMetaRow label="IP">
           {ip ? (
             <span className="font-mono-ui text-[13px] tracking-wide">{ip}</span>
           ) : (
-            <span className="text-[rgba(237,230,218,0.45)]">—</span>
+            <span className="text-forja-muted">—</span>
           )}
         </SessionMetaRow>
         <SessionMetaRow label="Signed in">{since}</SessionMetaRow>
@@ -218,7 +216,7 @@ export function AccountSettingsConnectionsPage() {
             <Button
               type="button"
               variant="outline"
-              className="gap-2 border-[rgba(237,230,218,0.22)]"
+              className="gap-2"
               disabled={loading}
               onClick={() => void refresh()}
             >
@@ -228,7 +226,6 @@ export function AccountSettingsConnectionsPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-[rgba(237,230,218,0.22)]"
               disabled={signingOutAll}
               onClick={() => void onSignOutEverywhere()}
             >
@@ -237,13 +234,9 @@ export function AccountSettingsConnectionsPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-[rgba(237,230,218,0.55)]">
-              Loading connections…
-            </p>
+            <p className="text-sm text-forja-muted">Loading connections…</p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-[rgba(237,230,218,0.55)]">
-              No active sessions found.
-            </p>
+            <p className="text-sm text-forja-muted">No active sessions found.</p>
           ) : (
             <ul className="space-y-3">
               {rows.map((row) => (
