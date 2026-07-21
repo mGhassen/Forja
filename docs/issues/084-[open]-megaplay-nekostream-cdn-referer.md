@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 4** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,9 @@
 | 6 | I84-T06 | Rust `direct_embed`: nekostream/mewstream file → megaplay playback Referer | ✅ |
 | 7 | I84-T07 | Anime `probeStreamUrl` + reload/bridge hits apply `resolvePlaybackHttpHeaders` before CDN check / open | ✅ |
 | 8 | I84-T08 | Skip Vidwish embeds without Anikoto `s-2` id (`/stream/ani/` dead on vidwish.live); `direct_embed` transport miss → `Ok(None)` | ✅ |
+| 9 | I84-T09 | PNG-wrapped MPEG-TS: probe accepts wrap; `/hls-proxy?strip=png`; loopback URLs playable | ✅ |
+| 10 | I84-T10 | Anime open uses stripped proxy URL as `streamUrl` + `streamsPrevalidated` | ✅ |
+| 11 | I84-T11 | Browser embed fallback (Megaplay/VidNest WebView) when native exhausts or race fails | ✅ |
 
 ---
 
@@ -38,6 +41,7 @@
 | 2 | I84-A02 | Probe with missing headers still forces megaplay Referer (unit covered; app smoke) | ⬜ |
 | 3 | I84-A03 | Manual: Anikoto miss still plays Megaplay via `/stream/ani/` | ⬜ |
 | 4 | I84-A04 | Manual: Anikoto miss — race has no Vidwish `/stream/ani/` candidate; Megaplay still plays | ⬜ |
+| 5 | I84-A05 | Manual: if native player exhausts Megaplay/nekostream, Web player embed opens and plays | ⬜ |
 
 ---
 
@@ -46,6 +50,8 @@
 Megaplay extract still works ([API](https://megaplay.buzz/api)). CDN host rotated to `*.nekostream.site`. Without `Referer: https://megaplay.buzz/` the master returns **403**. Forja only rewrote `mewstream.buzz` / `lostproject` / `*megaplay*` hosts, so dropped headers derived a self-Referer → probe/play fail. `enma.lol` (scrape Referer) is also rejected by nekostream — must not count as a valid Megaplay-family playback Referer.
 
 Also: code assumed `/stream/ani/` always 404s and skipped Megaplay without Anikoto. That path is live again for **Megaplay** — emit it when no `episode_embed_id`, keep `/stream/s-2/` when Anikoto matches. **Vidwish** `/stream/ani/` stays a soft-404 / transport waste — only emit Vidwish when Anikoto provides an `s-2` id (I84-T08).
+
+**Playback (I84-T09–T11):** Nekostream segments are PNG-wrapped MPEG-TS (browser player strips them). Forja unwraps via `/hls-proxy?strip=png` and must not treat that loopback URL as unplayable. If native still fails, open the site’s own WebView player (Megaplay `/stream/ani/…`, VidNest `/anime/…` / `/animepahe/…`) so their JS decrypt/unwrap runs.
 
 ## Related
 

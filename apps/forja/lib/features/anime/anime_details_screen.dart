@@ -112,8 +112,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       _episodesLoading = true;
     });
 
-    // Metadata only — never paint AniList episode totals into the picker
-    // (that count is planned/announced; Anikoto's list is what's playable).
+    // Metadata + AniList episode rail (Anikoto only resolves on Play for Vidwish).
     _service.getDetails(widget.anime.id).then((d) {
       if (!mounted) return;
       setState(() => _full = d);

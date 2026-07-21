@@ -51,7 +51,7 @@ class HubHeroSlide {
   /// AniList banners are ~4.75:1; [BoxFit.cover] on the tall page-bleed hero
   /// zooms them into a tight crop — anime passes [BoxFit.fitWidth].
   final BoxFit imageFit;
-  final AlignmentGeometry imageAlignment;
+  final Alignment imageAlignment;
   final VoidCallback onPlay;
   final VoidCallback onDetails;
 }

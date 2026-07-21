@@ -26,7 +26,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | VOD tab |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Always (IPTV portals CSV / portal cache only if IPTV tab is on) |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu | Always |
-| [About](app-updates.md) | Check for updates, app version | Always |
+| [About](app-updates.md) | Check for updates, crash reporting opt-in, app version | Always |
 
 ## Tips
 

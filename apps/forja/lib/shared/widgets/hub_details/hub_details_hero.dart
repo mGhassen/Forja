@@ -482,16 +482,6 @@ class _HubHeroMainColumn extends StatelessWidget {
           ),
         ),
       ],
-      if (showProgress) ...[
-        const SizedBox(height: 14),
-        SizedBox(
-          width: 220,
-          child: WatchProgressBar(
-            positionMs: positionMs!,
-            durationMs: durationMs!,
-          ),
-        ),
-      ],
     ];
 
     return SizedBox(
@@ -516,6 +506,16 @@ class _HubHeroMainColumn extends StatelessWidget {
           if (actionRow != null) ...[
             const SizedBox(height: _actionGap),
             DetailsHeroActionRowFit(child: actionRow!),
+          ],
+          if (showProgress) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: 220,
+              child: WatchProgressBar(
+                positionMs: positionMs!,
+                durationMs: durationMs!,
+              ),
+            ),
           ],
         ],
       ),

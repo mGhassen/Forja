@@ -25,6 +25,7 @@ import 'package:forja/features/settings/splash_preview_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
+import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -614,6 +615,10 @@ class SettingsAboutPageBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
+        const SettingsGroup(
+          label: 'Privacy',
+          children: [SettingsCrashReportingRow()],
+        ),
         if (showSplashPreview)
           SettingsGroup(
             label: 'Developer',
@@ -630,6 +635,24 @@ class SettingsAboutPageBody extends StatelessWidget {
                     builder: (_) => const SplashPreviewScreen(),
                   ),
                 ),
+              ),
+              SettingsActionRow(
+                leading: const Icon(
+                  Icons.bug_report_outlined,
+                  color: ForjaShellColors.iconActive,
+                ),
+                title: 'Verify Sentry',
+                subtitle: Telemetry.isActive
+                    ? 'Send a test exception to the Forja Flutter project'
+                    : 'Enable Crash reporting first, then tap again',
+                onTap: () async {
+                  try {
+                    await Telemetry.sendTestException();
+                    ForjaToast.success('Test event sent — check Sentry Issues');
+                  } catch (e) {
+                    ForjaToast.info('$e');
+                  }
+                },
               ),
             ],
           ),

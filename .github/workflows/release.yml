@@ -73,6 +73,8 @@ env:
   FORJA_WEB_URL: ${{ secrets.FORJA_WEB_URL }}
   # Public Turnstile site key for in-app email/password when Auth captcha is on.
   TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+  # Optional Sentry DSN for crash reporting (RFC-043).
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
 jobs:
   resolve_version:
@@ -225,7 +227,8 @@ jobs:
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
-            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN"
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -271,7 +274,8 @@ jobs:
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
-            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN"
 
       - name: Embed Rust in release output
         shell: bash
@@ -340,7 +344,8 @@ jobs:
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
-            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN"
 
       - name: Embed Rust in release output
         run: ./scripts/embed_rust_in_release_output.sh linux
@@ -423,6 +428,7 @@ jobs:
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \

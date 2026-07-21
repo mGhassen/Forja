@@ -22,6 +22,9 @@ void main() {
         AnimeService.savedSourceNeedsAnikoto('megaplay'),
         isFalse,
       );
+      expect(AnimeService.savedSourceNeedsAnikoto(null), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto(''), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto('vidwish'), isTrue);
     });
 
     test('without Anikoto skips Vidwish (ani path dead on that host)', () {

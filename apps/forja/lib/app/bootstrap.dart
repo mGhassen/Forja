@@ -39,6 +39,7 @@ import 'package:forja/shared/catalog/tmdb_user_region.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
 
@@ -236,6 +237,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   await PlatformChannel.seedPlatformDefaultsAfterEngine();
 
   await AppTheme.initTheme();
+
+  // After Engine.init so crash-reporting opt-in is readable (RFC-043).
+  await Telemetry.ensureInitialized();
 
   PlayerPoolService().warmUp();
   debugPrint('[Boot] Preloading splash sound...');

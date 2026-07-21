@@ -168,8 +168,7 @@ fn id_from_slug(slug: &str) -> Option<i64> {
     cap.get(1)?.as_str().parse().ok()
 }
 
-fn load_series(anikoto_id: i64) -> Result<AnikotoSeriesOut, String> {
-    let j = anikoto_get(&format!("/series/{anikoto_id}"))?;
+fn series_from_json(anikoto_id: i64, j: &Value) -> AnikotoSeriesOut {
     let eps = j
         .pointer("/data/episodes")
         .and_then(|v| v.as_array())
@@ -189,10 +188,15 @@ fn load_series(anikoto_id: i64) -> Result<AnikotoSeriesOut, String> {
             })
         })
         .collect();
-    Ok(AnikotoSeriesOut {
+    AnikotoSeriesOut {
         id: anikoto_id,
         episodes,
-    })
+    }
+}
+
+fn load_series(anikoto_id: i64) -> Result<AnikotoSeriesOut, String> {
+    let j = anikoto_get(&format!("/series/{anikoto_id}"))?;
+    Ok(series_from_json(anikoto_id, &j))
 }
 
 fn slug_tokens(slug: &str) -> HashSet<String> {
@@ -244,43 +248,8 @@ pub fn anikoto_resolve(
 ) -> Result<Option<AnikotoSeriesOut>, String> {
     let ani_id = anilist_id.to_string();
 
-    // Strategy A: recent-anime feed
-    const MAX_PAGES: i32 = 6;
-    const PER_PAGE: i32 = 60;
-    for page in 1..=MAX_PAGES {
-        let path = format!("/recent-anime?page={page}&per_page={PER_PAGE}");
-        match anikoto_get(&path) {
-            Ok(list) => {
-                let data = list.get("data").and_then(|v| v.as_array()).cloned().unwrap_or_default();
-                for raw in &data {
-                    let Some(m) = raw.as_object() else { continue };
-                    let Some(found_ani) = m.get("ani_id").and_then(|v| v.as_str()) else {
-                        continue;
-                    };
-                    if found_ani == ani_id {
-                        let Some(id) = m.get("id").and_then(|v| v.as_i64()) else {
-                            continue;
-                        };
-                        let series = load_series(id)?;
-                        if episode_count_plausible(
-                            series.episodes.len() as i32,
-                            expected_episodes,
-                        ) {
-                            return Ok(Some(series));
-                        }
-                        // Wrong / stub entry for this ani_id — try search.
-                        break;
-                    }
-                }
-                if data.len() < PER_PAGE as usize {
-                    break;
-                }
-            }
-            Err(_) => break,
-        }
-    }
-
-    // Strategy B: HTML search + probe
+    // Title search + a few ranked probes only. Do not crawl recent-anime
+    // pages or hammer /watch HTML — that gets us blocked and stalls Play.
     let mut queries = Vec::new();
     for q in [title_english, title_romaji] {
         let t = q.trim();
@@ -311,34 +280,33 @@ pub fn anikoto_resolve(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    const MAX_PROBE: usize = 24;
+    // Cap hard: each probe is 2 HTTP (watch HTML + series JSON).
+    const MAX_PROBE: usize = 4;
     let mut resolved = Vec::new();
     let mut ani_id_matches = Vec::new();
+    let mut series_by_id: HashMap<i64, AnikotoSeriesOut> = HashMap::new();
 
     for slug in candidates.into_iter().take(MAX_PROBE) {
         let Some(id) = id_from_slug(&slug) else { continue };
         let Ok(j) = anikoto_get(&format!("/series/{id}")) else {
             continue;
         };
+        let series = series_from_json(id, &j);
+        let ep_count = series.episodes.len() as i32;
+        series_by_id.insert(id, series);
         let found_ani = j
             .pointer("/data/anime/ani_id")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        let ep_count = j
-            .pointer("/data/episodes")
-            .and_then(|v| v.as_array())
-            .map(|a| a.len() as i32)
-            .unwrap_or(0);
         let cand = Candidate {
             slug,
             id,
             episodes: ep_count,
         };
         if found_ani == ani_id {
-            // Fast path: exact AniList id + plausible catalog — stop probing.
             if episode_count_plausible(ep_count, expected_episodes) {
-                return Ok(Some(load_series(id)?));
+                return Ok(series_by_id.remove(&id));
             }
             ani_id_matches.push(cand);
         } else {
@@ -347,11 +315,12 @@ pub fn anikoto_resolve(
     }
 
     if let Some(id) = pick_best_ani_id_match(&mut ani_id_matches, expected_episodes) {
+        if let Some(s) = series_by_id.remove(&id) {
+            return Ok(Some(s));
+        }
         return Ok(Some(load_series(id)?));
     }
-    // Rejected ani_id stubs stay out of fuzzy — don't promote a 1-ep movie.
 
-    // Strategy C: fuzzy slug match (side-content already demoted in probe order)
     if !resolved.is_empty() && !title_tokens.is_empty() {
         let mut best: Option<&Candidate> = None;
         let mut best_score = 0.0_f64;
@@ -370,6 +339,9 @@ pub fn anikoto_resolve(
         }
         if let Some(c) = best {
             if best_score >= 0.40 {
+                if let Some(s) = series_by_id.remove(&c.id) {
+                    return Ok(Some(s));
+                }
                 return Ok(Some(load_series(c.id)?));
             }
         }

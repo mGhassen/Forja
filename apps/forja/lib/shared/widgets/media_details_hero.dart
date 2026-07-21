@@ -1195,16 +1195,19 @@ class _HeroMainColumn extends StatelessWidget {
   double _metaHeight() =>
       _metaWraps ? _metaBlockHeightWrapped : _metaBlockHeight;
 
-  double get _actionReserve =>
-      actionRow == null ? 0 : _actionGap + ShellTokens.shellButtonHeight;
+  double _footerReserve({required bool showProgress}) {
+    var reserved = 0.0;
+    if (actionRow != null) reserved += _actionGap + ShellTokens.shellButtonHeight;
+    if (showProgress) reserved += 14 + _progressBlockHeight;
+    return reserved;
+  }
 
-  /// Meta stack only — actions are reserved outside [Expanded].
+  /// Meta stack only — actions + progress are reserved outside [Expanded].
   double _metaUsedHeight({
     required bool showDirector,
     required bool showGenres,
     required bool showProviders,
     required bool showOverview,
-    required bool showProgress,
     required bool showMetaLine,
     required double titleHeight,
   }) {
@@ -1214,7 +1217,6 @@ class _HeroMainColumn extends StatelessWidget {
     if (showProviders) used += 10 + _providersBlockHeight;
     if (showDirector) used += 10 + _directorBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
-    if (showProgress) used += 14 + _progressBlockHeight;
     return used;
   }
 
@@ -1224,10 +1226,6 @@ class _HeroMainColumn extends StatelessWidget {
     final hasDirector = director != null && director.isNotEmpty;
     final bounded = maxHeight != null && maxHeight!.isFinite && maxHeight! > 0;
     final hasProgress = positionMs != null && durationMs != null;
-    // Actions are pinned below meta; budget the Expanded slot from what's left.
-    final metaBudget = bounded
-        ? (maxHeight! - _actionReserve).clamp(0.0, maxHeight!)
-        : null;
 
     var showDirector = hasDirector;
     var showGenres = movie.genres.isNotEmpty;
@@ -1238,55 +1236,61 @@ class _HeroMainColumn extends StatelessWidget {
     var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
-    if (metaBudget != null) {
-      final budget = metaBudget;
+    // Actions + progress are pinned below meta; budget Expanded from leftover.
+    double? metaBudget;
+    if (bounded) {
+      metaBudget = (maxHeight! - _footerReserve(showProgress: showProgress))
+          .clamp(0.0, maxHeight!);
+
       bool overBudget() =>
           _metaUsedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
             showProviders: showProviders,
             showOverview: showOverview,
-            showProgress: showProgress,
             showMetaLine: showMetaLine,
             titleHeight: titleHeight,
           ) >
-          budget;
+          metaBudget!;
 
       if (overBudget()) showDirector = false;
       if (overBudget()) showOverview = false;
       if (overBudget()) showProviders = false;
       if (overBudget()) showGenres = false;
       if (overBudget()) showMetaLine = false;
-      // Keep progress bar when possible — Resume CTA depends on the same data.
+      // Keep progress when possible — Resume CTA depends on the same data.
       if (overBudget()) {
         final rest = _metaUsedHeight(
           showDirector: showDirector,
           showGenres: showGenres,
           showProviders: showProviders,
           showOverview: showOverview,
-          showProgress: showProgress,
           showMetaLine: showMetaLine,
           titleHeight: 0,
         );
-        titleHeight = (budget - rest).clamp(0.0, _titleBlockHeight);
+        titleHeight = (metaBudget - rest).clamp(0.0, _titleBlockHeight);
         if (titleHeight < _titleMinHeight) {
           titleHeight = 0;
           showDirector = false;
           showGenres = false;
           showProviders = false;
           showOverview = false;
-          showProgress = false;
           showMetaLine = false;
+          if (showProgress) {
+            showProgress = false;
+            metaBudget =
+                (maxHeight! - _footerReserve(showProgress: false))
+                    .clamp(0.0, maxHeight!);
+          }
         }
       }
       if (showOverview) {
-        final leftover = budget -
+        final leftover = metaBudget -
             _metaUsedHeight(
               showDirector: showDirector,
               showGenres: showGenres,
               showProviders: showProviders,
               showOverview: false,
-              showProgress: showProgress,
               showMetaLine: showMetaLine,
               titleHeight: titleHeight,
             ) -
@@ -1304,7 +1308,6 @@ class _HeroMainColumn extends StatelessWidget {
                       showGenres: showGenres,
                       showProviders: showProviders,
                       showOverview: false,
-                      showProgress: showProgress,
                       showMetaLine: showMetaLine,
                       titleHeight: titleHeight,
                     ) -
@@ -1381,21 +1384,12 @@ class _HeroMainColumn extends StatelessWidget {
           ),
         ),
       ],
-      if (showProgress) ...[
-        const SizedBox(height: 14),
-        SizedBox(
-          width: 280,
-          child: WatchProgressBar(
-            positionMs: positionMs!,
-            durationMs: durationMs!,
-          ),
-        ),
-      ],
     ];
 
-    // Pin Play / Sources / icons below the clipped meta column so a tight
-    // series chrome (episode rail bleed) never clips hero actions out of the
-    // focus tree — D-pad left/right needs those nodes attached and focusable.
+    // Pin Play / Sources / icons (+ progress under them) below the clipped
+    // meta column so a tight series chrome (episode rail bleed) never clips
+    // hero actions out of the focus tree — D-pad left/right needs those
+    // nodes attached and focusable.
     return SizedBox(
       width: maxContentWidth,
       height: bounded ? maxHeight : null,
@@ -1421,6 +1415,16 @@ class _HeroMainColumn extends StatelessWidget {
           if (actionRow != null) ...[
             const SizedBox(height: _actionGap),
             DetailsHeroActionRowFit(child: actionRow!),
+          ],
+          if (showProgress) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: 280,
+              child: WatchProgressBar(
+                positionMs: positionMs!,
+                durationMs: durationMs!,
+              ),
+            ),
           ],
         ],
       ),

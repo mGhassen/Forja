@@ -42,6 +42,7 @@ class SettingsService {
       'play_source_webstreaming_enabled';
   static const String _simpleStreamingResolveKey =
       'simple_streaming_resolve_enabled';
+  static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
@@ -357,6 +358,13 @@ class SettingsService {
 
   Future<void> setSimpleStreamingResolveEnabled(bool enabled) async =>
       kvSetBool(_simpleStreamingResolveKey, enabled);
+
+  /// Opt-in crash reporting to Sentry (RFC-043). Default off.
+  Future<bool> isCrashReportingEnabled() async =>
+      kvGetBool(_crashReportingEnabledKey, fallback: false);
+
+  Future<void> setCrashReportingEnabled(bool enabled) async =>
+      kvSetBool(_crashReportingEnabledKey, enabled);
 
   static const String _streamProviderOrderKey = 'stream_provider_order';
   static const List<String> defaultStreamProviderOrder = <String>[

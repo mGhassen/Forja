@@ -156,3 +156,4 @@ How Forja finds torrents, streams, and subtitles from the web.
 | Resume where I left off | [Watch history](movies-tv/watch-history.md) |
 | Clear cache or watch history | [Cache & data](settings/cache-data.md) |
 | Customize the app | [Settings overview](settings/overview.md) · [Features](settings/navigation-bar.md) |
+| Opt in to crash reports | [App updates](settings/app-updates.md) |

@@ -380,18 +380,26 @@ class AnimeService {
   }
 
   Future<List<AnimeEpisode>> getEpisodes(AnimeCard anime) async {
-    // Always fetch fresh details so we get streamingEpisodes thumbnails
-    // (the AnimeCard from list views may not include them).
+    // AniList only — never crawl Anikoto here (HTML probe spam / block risk).
+    // Playable Anikoto ids resolve lazily in the player when Vidwish needs them.
     AnimeCard fresh = anime;
-    try {
-      fresh = await getDetails(anime.id);
-    } catch (_) {}
+    final hasCount = (anime.episodes ?? 0) > 0 ||
+        anime.nextAiringEpisode?['episode'] != null;
+    // List cards already carry the total — paint immediately. Only hit
+    // AniList when we have no count (details metadata loads separately).
+    if (!hasCount) {
+      try {
+        fresh = await getDetails(anime.id);
+      } catch (_) {}
+    }
     final thumbMap = _buildEpisodeThumbnailMap(fresh.streamingEpisodes);
 
-    // 1. Try Anikoto (playable IDs). Use fresh so expectedEpisodes is accurate.
-    final series = await resolveAnikoto(fresh);
-    if (series != null && series.episodes.isNotEmpty) {
-      return series.episodes
+    final cached = _anikotoCache[anime.id];
+    final expected = fresh.episodes ?? anime.episodes ?? 0;
+    if (cached != null &&
+        cached.episodes.isNotEmpty &&
+        _anikotoEpisodeCountPlausible(cached.episodes.length, expected)) {
+      return cached.episodes
           .map((e) => AnimeEpisode(
                 number: e.number,
                 title: e.title.isEmpty ? 'Episode ${e.number}' : e.title,
@@ -400,11 +408,19 @@ class AnimeService {
               ))
           .toList();
     }
-    // 2. Fallback: synthesize from AniList total when Anikoto misses / rejects stubs
+
+    return _synthesizeEpisodes(fresh, anime, thumbMap);
+  }
+
+  List<AnimeEpisode> _synthesizeEpisodes(
+    AnimeCard fresh,
+    AnimeCard fallback,
+    Map<int, String> thumbMap,
+  ) {
     final count = fresh.episodes ??
-        anime.episodes ??
+        fallback.episodes ??
         fresh.nextAiringEpisode?['episode'] ??
-        anime.nextAiringEpisode?['episode'];
+        fallback.nextAiringEpisode?['episode'];
     final n = (count is int && count > 0) ? count : 1;
     final airedNow = fresh.nextAiringEpisode?['episode'];
     final maxAvailable =
@@ -859,12 +875,9 @@ class AnimeService {
     }
   }
 
-  /// Vidwish still prefers Anikoto `s-2` ids (AniList mapping is spotty).
-  /// Megaplay works via `/stream/ani/` without Anikoto. Auto still resolves
-  /// Anikoto so Vidwish can use `s-2` when available.
+  /// Only Vidwish needs Anikoto `s-2` ids. Megaplay uses `/stream/ani/`.
+  /// Auto / empty / megaplay must not crawl Anikoto (probe spam / block risk).
   static bool savedSourceNeedsAnikoto(String? sourceKey) {
-    if (sourceKey == null || sourceKey.isEmpty) return true;
-    if (sourceKey == 'megaplay') return false;
     return sourceKey == 'vidwish';
   }
 

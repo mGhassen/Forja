@@ -13,6 +13,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 ## What you can do
 
 - Tap **Check for updates** in Settings
+- Toggle **Crash reporting** under **Privacy** (off by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
 - Accept update prompt when a newer version exists
 - Browse **What’s new** per version (left list, newest first, max 16 since your build)
 - Open **See full changelog on the web** for the complete history on the portal
@@ -28,6 +29,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 
 ## Tips
 
+- Crash reporting stays off until you enable it; local debug builds without `SENTRY_DSN` keep the toggle but send nothing
 - Published releases: `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
 - Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Workflows write on this repo)
