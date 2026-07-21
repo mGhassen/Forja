@@ -18,6 +18,13 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
             year: a.seasonYear?.toString(),
             badge: a.format,
             genres: a.genres,
+            // AniList banners are ultrawide (~1900×400); cover on the tall
+            // page-bleed hero crops to a tight zoom — fit width shows the scene.
+            // Portrait cover fallback stays on cover.
+            imageFit: a.bannerImage != null ? BoxFit.fitWidth : BoxFit.cover,
+            imageAlignment: a.bannerImage != null
+                ? Alignment.center
+                : Alignment.centerRight,
             onPlay: () => _s._openDetails(a),
             onDetails: () => _s._openDetails(a),
           ),
