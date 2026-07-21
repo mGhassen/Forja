@@ -606,8 +606,17 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
       ? TmdbApi.getImageUrl(widget.movie.logoPath)
       : null;
 
-  int? get _positionMs => widget.progress?['position'] as int?;
-  int? get _durationMs => widget.progress?['duration'] as int?;
+  int? get _positionMs {
+    final p = widget.progress;
+    if (p == null || p['position'] == null) return null;
+    return watchHistoryInt(p['position']);
+  }
+
+  int? get _durationMs {
+    final p = widget.progress;
+    if (p == null || p['duration'] == null) return null;
+    return watchHistoryInt(p['duration']);
+  }
 
   Color _shellBg(BuildContext context) => AppTheme.bgDark;
 
@@ -1247,8 +1256,8 @@ class _HeroMainColumn extends StatelessWidget {
       if (overBudget()) showOverview = false;
       if (overBudget()) showProviders = false;
       if (overBudget()) showGenres = false;
-      if (overBudget()) showProgress = false;
       if (overBudget()) showMetaLine = false;
+      // Keep progress bar when possible — Resume CTA depends on the same data.
       if (overBudget()) {
         final rest = _metaUsedHeight(
           showDirector: showDirector,

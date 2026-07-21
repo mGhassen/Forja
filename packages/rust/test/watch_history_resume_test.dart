@@ -49,6 +49,15 @@ void main() {
     });
   });
 
+  group('watchHistoryInt', () {
+    test('coerces int and double', () {
+      expect(watchHistoryInt(42), 42);
+      expect(watchHistoryInt(42.9), 42);
+      expect(watchHistoryInt(null), 0);
+      expect(watchHistoryInt('x', 7), 7);
+    });
+  });
+
   group('resumeStartPositionFromProgress', () {
     test('uses in-progress position only inside 2–90% window', () {
       expect(
@@ -58,6 +67,13 @@ void main() {
       expect(
         resumeStartPositionFromProgress({'position': 95_000, 'duration': 100_000}),
         Duration.zero,
+      );
+      expect(
+        resumeStartPositionFromProgress({
+          'position': 10_000.0,
+          'duration': 100_000.0,
+        }),
+        const Duration(milliseconds: 10_000),
       );
     });
   });

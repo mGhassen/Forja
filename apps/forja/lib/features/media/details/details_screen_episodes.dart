@@ -150,6 +150,10 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
       final data = await _s._api.getTvSeasonDetails(_s._movie.id, seasonNumber);
       if (mounted) {
         final poster = data['poster_path'] as String?;
+        // Preserve episode when refetching the already-selected season
+        // (history resolve sets S/E before this fetch; do not wipe to E1).
+        final previousSeason = _s._selectedSeason;
+        final previousEpisode = _s._selectedEpisode;
         setState(() {
           _s._seasonData = data;
           _s._isLoadingSeason = false;
@@ -159,11 +163,11 @@ mixin _DetailsScreenEpisodes on State<DetailsScreen> {
           if (poster != null && poster.isNotEmpty) {
             _s._seasonPosters[seasonNumber] = poster;
           }
-          // Only reset to episode 1 if no initial episode was provided,
-          // or if we're navigating to a different season after init.
           if (widget.initialEpisode != null &&
               seasonNumber == widget.initialSeason) {
             _s._selectedEpisode = widget.initialEpisode!;
+          } else if (seasonNumber == previousSeason && previousEpisode > 0) {
+            _s._selectedEpisode = previousEpisode;
           } else {
             _s._selectedEpisode = 1;
           }

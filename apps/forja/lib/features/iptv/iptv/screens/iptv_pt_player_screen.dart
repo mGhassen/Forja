@@ -13,6 +13,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
@@ -128,6 +129,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   /// Android MediaKit uses software decode — HW surfaces fail on many devices
   /// and ATV emulators (EGL_BAD_ATTRIBUTE, audio OK / black frame).
   bool _androidMediaKitSafeMode = false;
+
+  /// Windows D3D11 / ANGLE + live IPTV: HW decode plays ~15–20s then sticks
+  /// the last frame with no reconnect banner. Force software from boot.
+  bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
 
   /// Probed after each open — pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
@@ -262,6 +267,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     if (!_exoBackend && !kIsWeb && Platform.isAndroid) {
       _androidMediaKitSafeMode = true;
+    }
+    if (_windowsSoftwareDecode) {
+      _softwareDecodeForced = true;
     }
     _initOrientationAndChrome();
     WakelockPlus.enable();

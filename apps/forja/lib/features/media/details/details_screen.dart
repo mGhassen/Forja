@@ -121,6 +121,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   int _stremioFetchGen = 0;
   String? _errorMessage;
   Map<String, dynamic>? _lastProgress;
+  StreamSubscription<List<Map<String, dynamic>>>? _watchHistorySub;
   bool _sourcesPanelOpen = false;
   bool _autoPlayConsumed = false;
   bool _episodePlayPending = false;
@@ -264,6 +265,10 @@ class _DetailsScreenState extends State<DetailsScreen>
         : _movie.backdropPath);
     loadAtmosphere(url.startsWith('http') ? url : TmdbApi.getImageUrl(url));
     _checkHistory();
+    _watchHistorySub = WatchHistoryService().historyStream.listen((_) {
+      if (!mounted) return;
+      unawaited(_refreshProgressFromHistory());
+    });
     _loadSortPreference();
     _checkIndexerConfiguration();
     _loadWatchedEpisodes();
@@ -286,6 +291,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _detailsBackFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
+    _watchHistorySub?.cancel();
     _jackett.dispose();
     _prowlarr.dispose();
     _linkResolver.dispose();
@@ -301,6 +307,14 @@ class _DetailsScreenState extends State<DetailsScreen>
       episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
     );
     if (mounted) setState(() => _lastProgress = progress);
+  }
+
+  Future<void> _refreshProgressFromHistory() async {
+    await _checkHistory();
+    if (!mounted) return;
+    if (_movie.mediaType == 'tv') {
+      await _loadEpisodeProgressForSeason(_selectedSeason);
+    }
   }
 
   void _applyPanelFilterForSavedMethod(String? method) {

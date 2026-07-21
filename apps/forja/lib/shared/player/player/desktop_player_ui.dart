@@ -103,7 +103,7 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
       if (mounted) setState(() => _s._isFullscreen = false);
     }
     _s._cancelPendingStreamWork();
-    _s._saveWatchHistory();
+    await _s._saveWatchHistory();
     // Instant native mute/pause/ao=null — do not await hung media_kit stop
     // before popping (that left the UI stuck with audio still playing).
     await _s._stopPlaybackForExit();

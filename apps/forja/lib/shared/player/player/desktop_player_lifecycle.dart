@@ -106,6 +106,9 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
 
     HardwareKeyboard.instance.addHandler(_s._handleKeyEvent);
     unawaited(_createPlayer());
+    _s._progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!_s._disposed) unawaited(_saveWatchHistory(isBgPause: true));
+    });
   }
 
   Future<void> _createPlayer() async {
@@ -445,7 +448,10 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     }
   }
 
-  void _saveWatchHistory({bool isBgPause = false}) {
+  Future<void> _saveWatchHistory({bool isBgPause = false}) =>
+      _persistWatchHistory(isBgPause: isBgPause);
+
+  Future<void> _persistWatchHistory({bool isBgPause = false}) async {
     if (_s._historySaved && !isBgPause) return;
     final pos = _s._positionNotifier.value.inMilliseconds;
     final dur = _s._durationNotifier.value.inMilliseconds;
@@ -467,10 +473,9 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
       );
       return;
     }
-    _s._historySaved = true;
 
     if (widget.onSaveProgress != null && pos > 5000) {
-      widget.onSaveProgress!(
+      await widget.onSaveProgress!(
         Duration(milliseconds: pos),
         Duration(milliseconds: dur),
       );
@@ -484,7 +489,10 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
       _saveAnimeWatchPosition(pos, dur);
     }
 
-    if (widget.movie == null || widget.hubEpisodes != null) return;
+    if (widget.movie == null || widget.hubEpisodes != null) {
+      if (!isBgPause) _s._historySaved = true;
+      return;
+    }
     if (pos > 10000 && dur > 0) {
       final isTorrent = widget.magnetLink != null;
       final isStremioDirect = widget.activeProvider == 'stremio_direct';
@@ -510,7 +518,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
         }
       }
       final resolvedStreamUrl = _s._currentUrl ?? widget.mediaPath;
-      WatchHistoryService().saveProgress(
+      await WatchHistoryService().saveProgress(
         tmdbId: widget.movie!.id,
         imdbId: widget.movie!.imdbId,
         title: _s._displayTitle,
@@ -535,6 +543,8 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
         mediaType: widget.movie!.mediaType,
       );
+      // Periodic / lifecycle pause keeps writing; only exit latches the flag.
+      if (!isBgPause) _s._historySaved = true;
 
       // Trakt + Simkl scrobble — fire and forget
       final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;

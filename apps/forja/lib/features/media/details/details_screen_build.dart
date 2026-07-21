@@ -80,8 +80,8 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
 
   Widget _buildHeroActionRow() {
     final progress = _s._lastProgress;
-    final pos = progress?['position'] as int? ?? 0;
-    final dur = progress?['duration'] as int? ?? 0;
+    final pos = watchHistoryInt(progress?['position']);
+    final dur = watchHistoryInt(progress?['duration']);
     final hasResume =
         progress != null && WatchProgressBar.isResumable(pos, dur);
     final hasClearableProgress = progress != null && pos > 0;

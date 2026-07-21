@@ -178,6 +178,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   late final ValueNotifier<Map<String, List<StreamSource>>>
       _ownedProviderSourcesCache;
   bool _historySaved = false;
+  Timer? _progressSaveTimer;
   bool _hasError = false;
   String _errorMessage = '';
 
@@ -363,6 +364,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
+    _progressSaveTimer?.cancel();
     _pipSub?.cancel();
     _torrentStatsSub?.cancel();
     PlayerTorrentFilePanel.dismiss();

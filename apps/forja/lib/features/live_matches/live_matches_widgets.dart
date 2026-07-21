@@ -794,14 +794,9 @@ class _LiveMatchesEmbedPlayerScreenState
 
   /// Native popup ([window.open]) from an ad. Accepted off-screen so Streamed
   /// embeds that require a successful open keep working; never shown in UI.
-  /// Not used on Windows — multi-window + iframe wrapper regresses WebView2.
   int? _adWindowId;
 
-  /// Windows WebView2: load the embed URL directly (pre-046/049 path that
-  /// played streams). macOS/other: iframe wrapper + off-screen window.open.
-  late final bool _windowsDirectEmbed;
-  late final InAppWebViewInitialData? _initialData;
-  late final URLRequest? _initialUrlRequest;
+  late final InAppWebViewInitialData _initialData;
   late final InAppWebViewSettings _initialSettings;
   late final UnmodifiableListView<UserScript> _initialUserScripts;
 
@@ -837,7 +832,6 @@ class _LiveMatchesEmbedPlayerScreenState
     super.initState();
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
-    _windowsDirectEmbed = !kIsWeb && Platform.isWindows;
     _initialUserScripts = UnmodifiableListView([
       UserScript(
         source: _autoplayJs,
@@ -851,67 +845,38 @@ class _LiveMatchesEmbedPlayerScreenState
       ),
     ]);
 
-    if (_windowsDirectEmbed) {
-      // Restore the path that played on Windows before the macOS iframe /
-      // multi-window rewrite (issue 053). Opaque WebView2 create is still
-      // applied via forjaWebViewSettings.
-      _initialData = null;
-      _initialUrlRequest = URLRequest(
-        url: WebUri(embedUrl),
-        headers: {
-          'User-Agent': _ua['User-Agent']!,
-          'Referer': widget.referer,
-          'Origin': widget.origin,
-        },
-      );
-      _initialSettings = InAppWebViewSettings(
-        userAgent: _ua['User-Agent'],
-        domStorageEnabled: true,
-        mediaPlaybackRequiresUserGesture: false,
-        allowsInlineMediaPlayback: true,
-        javaScriptEnabled: true,
-        disableDefaultErrorPage: true,
-        allowsAirPlayForMediaPlayback: true,
-        // PiP can keep OS media sessions alive after the Flutter route pops.
-        allowsPictureInPictureMediaPlayback: false,
-        iframeAllow: 'autoplay; fullscreen; encrypted-media',
-        iframeAllowFullscreen: true,
-        useShouldOverrideUrlLoading: true,
-        supportMultipleWindows: false,
-        javaScriptCanOpenWindowsAutomatically: false,
-      );
-    } else {
-      final wrapperBase = widget.referer.endsWith('/')
-          ? widget.referer
-          : '${widget.referer}/';
-      _initialUrlRequest = null;
-      _initialData = InAppWebViewInitialData(
-        data: _buildLiveEmbedWrapperHtml(embedUrl),
-        baseUrl: WebUri(wrapperBase),
-        historyUrl: WebUri(wrapperBase),
-        mimeType: 'text/html',
-        encoding: 'utf-8',
-      );
-      _initialSettings = InAppWebViewSettings(
-        userAgent: _ua['User-Agent'],
-        domStorageEnabled: true,
-        mediaPlaybackRequiresUserGesture: false,
-        allowsInlineMediaPlayback: true,
-        javaScriptEnabled: true,
-        disableDefaultErrorPage: true,
-        allowsAirPlayForMediaPlayback: true,
-        // PiP can keep OS media sessions alive after the Flutter route pops.
-        allowsPictureInPictureMediaPlayback: false,
-        iframeAllow: 'autoplay; fullscreen; encrypted-media',
-        iframeAllowFullscreen: true,
-        useShouldOverrideUrlLoading: true,
-        // Accept window.open off-screen. Rejecting it falls back to main-frame
-        // ad navigations that break Streamed HLS (manifestParsingError).
-        supportMultipleWindows: true,
-        javaScriptCanOpenWindowsAutomatically: true,
-        contentBlockers: _liveEmbedContentBlockers(),
-      );
-    }
+    // Same path on all platforms (incl. Windows): iframe under catalog origin
+    // for document.referrer + off-screen window.open (issues 046 / 049).
+    // WebView2 opacity still forced opaque via forjaWebViewSettings (issue 053).
+    final wrapperBase = widget.referer.endsWith('/')
+        ? widget.referer
+        : '${widget.referer}/';
+    _initialData = InAppWebViewInitialData(
+      data: _buildLiveEmbedWrapperHtml(embedUrl),
+      baseUrl: WebUri(wrapperBase),
+      historyUrl: WebUri(wrapperBase),
+      mimeType: 'text/html',
+      encoding: 'utf-8',
+    );
+    _initialSettings = InAppWebViewSettings(
+      userAgent: _ua['User-Agent'],
+      domStorageEnabled: true,
+      mediaPlaybackRequiresUserGesture: false,
+      allowsInlineMediaPlayback: true,
+      javaScriptEnabled: true,
+      disableDefaultErrorPage: true,
+      allowsAirPlayForMediaPlayback: true,
+      // PiP can keep OS media sessions alive after the Flutter route pops.
+      allowsPictureInPictureMediaPlayback: false,
+      iframeAllow: 'autoplay; fullscreen; encrypted-media',
+      iframeAllowFullscreen: true,
+      useShouldOverrideUrlLoading: true,
+      // Accept window.open off-screen. Rejecting it falls back to main-frame
+      // ad navigations that break Streamed HLS (manifestParsingError).
+      supportMultipleWindows: true,
+      javaScriptCanOpenWindowsAutomatically: true,
+      contentBlockers: _liveEmbedContentBlockers(),
+    );
     // Clear the Flutter spinner early; iframe load / embedReady also clears it.
     // A long center spinner sits on top of the embed play button.
     _loadingWatchdog = Timer(const Duration(seconds: 2), _clearLoading);
@@ -1169,11 +1134,10 @@ class _LiveMatchesEmbedPlayerScreenState
                 fit: StackFit.expand,
                 children: [
                   ForjaInAppWebView(
-                    // Windows: direct embed URL (worked before macOS iframe rewrite).
-                    // Others: iframe under catalog origin for document.referrer + ad
-                    // isolation (issues 046 / 049).
+                    // iframe under catalog origin for document.referrer + ad
+                    // isolation (issues 046 / 049). Windows keeps opaque WebView2
+                    // via forjaWebViewSettings (issue 053).
                     initialData: _initialData,
-                    initialUrlRequest: _initialUrlRequest,
                     initialUserScripts: _initialUserScripts,
                     initialSettings: _initialSettings,
                     onWebViewCreated: (controller) {
@@ -1184,15 +1148,13 @@ class _LiveMatchesEmbedPlayerScreenState
                           unawaited(_toggleFullscreen());
                         },
                       );
-                      if (!_windowsDirectEmbed) {
-                        controller.addJavaScriptHandler(
-                          handlerName: 'embedReady',
-                          callback: (_) {
-                            _loadingWatchdog?.cancel();
-                            _clearLoading();
-                          },
-                        );
-                      }
+                      controller.addJavaScriptHandler(
+                        handlerName: 'embedReady',
+                        callback: (_) {
+                          _loadingWatchdog?.cancel();
+                          _clearLoading();
+                        },
+                      );
                     },
                     onLoadStart: (_, _) {
                       // Ad main-frame hijack attempts can fire load-start; do not
@@ -1217,19 +1179,17 @@ class _LiveMatchesEmbedPlayerScreenState
                     },
                     onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
                     onExitFullscreen: (_) => unawaited(_exitFullscreen()),
-                    onCreateWindow: _windowsDirectEmbed
-                        ? null
-                        : (_, action) async {
-                            // Keep a single hidden child; ignore extra ad spawns.
-                            if (!mounted || _adWindowId != null) return false;
-                            setState(() => _adWindowId = action.windowId);
-                            _adWindowCloseTimer?.cancel();
-                            _adWindowCloseTimer = Timer(
-                              const Duration(seconds: 4),
-                              _dismissAdWindow,
-                            );
-                            return true;
-                          },
+                    onCreateWindow: (_, action) async {
+                      // Keep a single hidden child; ignore extra ad spawns.
+                      if (!mounted || _adWindowId != null) return false;
+                      setState(() => _adWindowId = action.windowId);
+                      _adWindowCloseTimer?.cancel();
+                      _adWindowCloseTimer = Timer(
+                        const Duration(seconds: 4),
+                        _dismissAdWindow,
+                      );
+                      return true;
+                    },
                     shouldOverrideUrlLoading: (ctrl, action) async {
                       // Player CDNs and nested iframes leave embed.st — never cancel
                       // subframe navigations (that caused blank/white players).
@@ -1265,8 +1225,8 @@ class _LiveMatchesEmbedPlayerScreenState
                       ),
                     ),
                   // Off-screen host for ad window.open — required by some Streamed
-                  // embeds on macOS; never visible. Skipped on Windows direct path.
-                  if (!_windowsDirectEmbed && _adWindowId != null)
+                  // embeds; never visible.
+                  if (_adWindowId != null)
                     Positioned(
                       left: -2,
                       top: -2,

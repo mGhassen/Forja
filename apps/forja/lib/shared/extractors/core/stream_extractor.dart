@@ -1252,22 +1252,29 @@ class StreamExtractor {
 
     if (_headlessWebView != null) {
       _log('Disposing headless WebView...');
+      final webView = _headlessWebView;
+      // Null first so a hung dispose cannot block the next extract() forever
+      // (WKWebView dispose has been observed to never return on macOS).
+      _headlessWebView = null;
       try {
-        final controller = _headlessWebView?.webViewController;
+        final controller = webView?.webViewController;
         if (controller != null) {
-          await controller.evaluateJavascript(
-            source: '''
+          await controller
+              .evaluateJavascript(
+                source: '''
             document.querySelectorAll('video,audio').forEach(function(m) {
               try { m.pause(); m.removeAttribute('src'); m.load(); } catch(e) {}
             });
           ''',
-          );
+              )
+              .timeout(const Duration(seconds: 1));
         }
-        await _headlessWebView?.dispose();
+        await webView?.dispose().timeout(const Duration(seconds: 2));
+      } on TimeoutException {
+        _log('Headless WebView dispose timed out — abandoning');
       } catch (e) {
         _log('Error during disposal: $e');
       }
-      _headlessWebView = null;
     }
   }
 

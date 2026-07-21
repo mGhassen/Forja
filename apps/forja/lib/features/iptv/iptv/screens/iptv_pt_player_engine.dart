@@ -4,7 +4,9 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
   _IptvPtPlayerScreenState get _s => this as _IptvPtPlayerScreenState;
 
   bool get _useSoftwareDecode =>
-      _s._softwareDecodeForced || _s._androidMediaKitSafeMode;
+      _s._softwareDecodeForced ||
+      _s._androidMediaKitSafeMode ||
+      _s._windowsSoftwareDecode;
 
   void _initPlayerInstances() {
     _s._videoEpoch++;
@@ -171,7 +173,9 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       // Prefer safe GPU decode with software fallback — raw `auto` can stick on
       // a broken VideoToolbox session on macOS (black texture, audio OK).
       await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
-      await p.setProperty('vd-lavc-dr', 'yes');
+      // Direct rendering + D3D11 on Windows live feeds can stick the last
+      // frame after the readahead window (~20s) with A/V frozen.
+      await p.setProperty('vd-lavc-dr', _useSoftwareDecode ? 'no' : 'yes');
       await p.setProperty('vd-lavc-threads', '0');
 
       // Network: fail fast so the watchdog can step in
@@ -501,16 +505,14 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
         _triggerRecovery(reason: 'buffering > ${bufferGrace.inSeconds}s');
         return;
       }
-      // Detector 2: position frozen while playing.
-      // CRITICAL gates to avoid false positives on initial connect:
-      //  • !_s._buffering — if mpv reports buffering, position-not-advancing is
-      //    expected and detector 1 is the right signal.
-      //  • _s._lastPos > 0 — we must have received at least one decoded frame
-      //    since the last open. Until first frame, mpv flips playing=true
-      //    on play() but the position stream is silent; on slow streams
-      //    the initial connect easily exceeds 8 s.
-      if (_s._playing &&
-          !_s._buffering &&
+      // Detector 2: position frozen while user wants playback.
+      // Do NOT gate on !_buffering — Windows live feeds often flicker
+      // buffering true/false while the last frame is stuck, which resets
+      // detector 1's timer and previously left the stream dead forever
+      // with no "Reconnecting…" banner.
+      // Gate: _lastPos > 0 — avoid false positives before first frame
+      // (detector 4 covers that hang).
+      if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
           now.difference(_s._lastPosChange) > const Duration(milliseconds: 8000)) {
         _triggerRecovery(reason: 'position frozen > 8s');
@@ -622,10 +624,12 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       await Future.delayed(Duration(milliseconds: delay));
       if (_s._disposed) return;
 
-      // Fast path: silent self-pause on a live stream means the feed is
-      // gone. A seek/reload won't bring it back — jump straight to the
-      // "recreate the player" tier so we get a fully fresh socket.
-      if (forceHard) {
+      // Hard recreate is expensive and fragile on Windows (unbounded mpv
+      // dispose — issue 062). Prefer soft reopen for early stalls; only
+      // recreate after several soft failures (or non-Windows forceHard).
+      final allowHardRecreate = forceHard &&
+          (!_s._windowsSoftwareDecode || _s._retryAttempt > 4);
+      if (allowHardRecreate) {
         try {
           if (!await _recreatePlayer()) return;
           await _engineOpenSource(_s._sources[_s._sourceIdx]);
@@ -633,7 +637,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
         } catch (e) {
           debugPrint('[IPTV] hard recreate failed: $e');
         }
-      } else if (_s._retryAttempt <= 2) {
+      } else if (_s._retryAttempt <= 2 || (forceHard && _s._windowsSoftwareDecode)) {
         // Seek-to-zero only helps on DVR/HLS windows. Pure-live feeds reject
         // every seek and spam "Cannot seek in this stream" on each recovery.
         if (_s._streamSeekable && !_s._exoBackend) {
@@ -738,15 +742,13 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     if (!_s._playerAlive) return;
     _s._playerAlive = false;
     await _cancelPlayerSubscriptions();
-    try {
-      await _s._player!.stop();
-    } catch (_) {}
-    try {
-      MpvExclusiveSession.instance.untrackPlayer(_s._player!);
-      final disposeFuture = _s._player!.dispose();
-      MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
-      await disposeFuture;
-    } catch (_) {}
+    final player = _s._player;
+    if (player == null) return;
+    MpvExclusiveSession.instance.untrackPlayer(player);
+    // Timed stop/dispose — unbounded media_kit teardown freezes Windows.
+    final disposeFuture = teardownMediaKitPlayer(player);
+    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+    await disposeFuture;
   }
 
   Future<void> _finalizeExit() async {

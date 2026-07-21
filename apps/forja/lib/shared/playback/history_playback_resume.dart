@@ -410,8 +410,7 @@ Future<bool> resumeSavedWebStreamProvider({
 }) {
   final providerId = progress['sourceId'] as String? ?? '';
   if (!isWebStreamProviderId(providerId)) return Future.value(false);
-  final pos = startPosition ??
-      Duration(milliseconds: progress['position'] as int? ?? 0);
+  final pos = startPosition ?? resumeStartPositionFromProgress(progress);
   return _resumeWebStreamProvider(
     context,
     item: progress,
@@ -428,8 +427,7 @@ Future<bool> resumeSavedAmriStream({
   required Map<String, dynamic> progress,
   Duration? startPosition,
 }) {
-  final pos = startPosition ??
-      Duration(milliseconds: progress['position'] as int? ?? 0);
+  final pos = startPosition ?? resumeStartPositionFromProgress(progress);
   return _resumeAmriStream(
     context,
     item: progress,
@@ -445,8 +443,7 @@ Future<bool> resumeSavedTorrentStream({
   required Map<String, dynamic> progress,
   Duration? startPosition,
 }) {
-  final pos = startPosition ??
-      Duration(milliseconds: progress['position'] as int? ?? 0);
+  final pos = startPosition ?? resumeStartPositionFromProgress(progress);
   return _resumeTorrentStream(
     context,
     item: progress,
@@ -462,8 +459,7 @@ Future<bool> resumeSavedStremioDirectStream({
   required Map<String, dynamic> progress,
   Duration? startPosition,
 }) {
-  final pos = startPosition ??
-      Duration(milliseconds: progress['position'] as int? ?? 0);
+  final pos = startPosition ?? resumeStartPositionFromProgress(progress);
   return _resumeStremioDirectStream(
     context,
     item: progress,

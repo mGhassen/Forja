@@ -8,16 +8,23 @@ bool isInProgressResume(int position, int duration) {
 /// After this age, episode picks show the source panel instead of auto-launch.
 const watchHistoryStaleResumeThreshold = Duration(days: 7);
 
+/// Coerce JSON / FFI numbers (`int` or `double`) to [int].
+int watchHistoryInt(Object? value, [int fallback = 0]) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return fallback;
+}
+
 /// True when saved progress is older than [threshold] (missing timestamp = stale).
 bool isStaleResume(
   Map<String, dynamic>? progress, {
   Duration threshold = watchHistoryStaleResumeThreshold,
 }) {
   if (progress == null) return false;
-  final pos = (progress['position'] as int?) ?? 0;
+  final pos = watchHistoryInt(progress['position']);
   if (pos <= 0) return false;
-  final ts = progress['updatedAt'] as int?;
-  if (ts == null || ts <= 0) return true;
+  final ts = watchHistoryInt(progress['updatedAt'], -1);
+  if (ts <= 0) return true;
   return DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ts)) >
       threshold;
 }
@@ -35,8 +42,8 @@ bool hasSavedEpisodePlayback(Map<String, dynamic>? progress) {
 /// Resume position when still in progress; otherwise replay from the start
 /// using the same saved source.
 Duration resumeStartPositionFromProgress(Map<String, dynamic> progress) {
-  final pos = (progress['position'] as int?) ?? 0;
-  final dur = (progress['duration'] as int?) ?? 0;
+  final pos = watchHistoryInt(progress['position']);
+  final dur = watchHistoryInt(progress['duration']);
   if (pos <= 0) return Duration.zero;
   if (isInProgressResume(pos, dur)) return Duration(milliseconds: pos);
   return Duration.zero;
@@ -49,12 +56,12 @@ Map<String, dynamic>? latestInProgressForShow(
 ) {
   Map<String, dynamic>? best;
   for (final item in history) {
-    if (item['tmdbId'] != tmdbId) continue;
-    final pos = (item['position'] as int?) ?? 0;
-    final dur = (item['duration'] as int?) ?? 0;
+    if (watchHistoryInt(item['tmdbId'], -1) != tmdbId) continue;
+    final pos = watchHistoryInt(item['position']);
+    final dur = watchHistoryInt(item['duration']);
     if (!isInProgressResume(pos, dur)) continue;
-    final ts = (item['updatedAt'] as int?) ?? 0;
-    final bestTs = (best?['updatedAt'] as int?) ?? -1;
+    final ts = watchHistoryInt(item['updatedAt']);
+    final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
     if (ts > bestTs) best = item;
   }
   return best;
@@ -66,14 +73,15 @@ List<Map<String, dynamic>> inProgressPoolByShow(
 ) {
   final byShow = <int, Map<String, dynamic>>{};
   for (final item in history) {
-    final pos = (item['position'] as int?) ?? 0;
-    final dur = (item['duration'] as int?) ?? 0;
+    final pos = watchHistoryInt(item['position']);
+    final dur = watchHistoryInt(item['duration']);
     if (!isInProgressResume(pos, dur)) continue;
-    final tmdbId = item['tmdbId'] as int?;
-    if (tmdbId == null) continue;
+    final tmdbId = watchHistoryInt(item['tmdbId'], -1);
+    if (tmdbId < 0) continue;
     final existing = byShow[tmdbId];
-    final ts = (item['updatedAt'] as int?) ?? 0;
-    final existingTs = (existing?['updatedAt'] as int?) ?? -1;
+    final ts = watchHistoryInt(item['updatedAt']);
+    final existingTs =
+        existing == null ? -1 : watchHistoryInt(existing['updatedAt'], -1);
     if (ts > existingTs) byShow[tmdbId] = item;
   }
   return byShow.values.toList();

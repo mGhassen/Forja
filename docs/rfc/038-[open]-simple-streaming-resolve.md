@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **3 / 7** acceptance |
-| **Current slice** | Toggle + SimpleStreamingResolve + streamsPrevalidated wired; default-on; admin-only Settings UI — device smoke pending |
+| **Progress** | **3 / 3** components · **5 / 9** acceptance |
+| **Current slice** | Toggle + budgets (R38-A08) wired; default-on; admin-only Settings UI — device smoke pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,6 +36,8 @@
 | 5 | R38-A05 | Feature doc + changelog mention the experimental toggle | ✅ |
 | 6 | R38-A06 | Simple resolve defaults **on** when the setting key is unset | ✅ |
 | 7 | R38-A07 | Settings toggle visible only for `accounts.is_admin` (app + web) | ✅ |
+| 8 | R38-A08 | Per-provider budgets: VSEmbed 25s · WebStreamr 90s · host API 35s · embed sniff 75s (not flat 25/12) | ✅ |
+| 9 | R38-A09 | Device smoke: pinned WebStreamr + one embed succeed under Simple resolve (see [091](../issues/091-[open]-simple-resolve-budgets-kill-webstreamr-embeds.md)) | ⬜ |
 
 ---
 

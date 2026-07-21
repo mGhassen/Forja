@@ -265,29 +265,59 @@ class _StreamCardState extends State<_StreamCard> {
     final radius = shellCardBorderRadius(context);
     final inset = shellScaled(context, 8).clamp(4.0, 8.0);
     final titleSize = shellHubCardTitleFontSize(context);
+    final isLive = widget.stream.kind == 'live';
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          _streamThumb(),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.72),
-                  Colors.black.withValues(alpha: 0.95),
-                ],
-                stops: const [0.0, 0.45, 0.8, 1.0],
+          if (isLive)
+            _buildTvLiveLogoBody(
+              inset: inset,
+              titleSize: titleSize,
+              health: health,
+            )
+          else ...[
+            _streamThumb(),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.72),
+                    Colors.black.withValues(alpha: 0.95),
+                  ],
+                  stops: const [0.0, 0.45, 0.8, 1.0],
+                ),
               ),
             ),
+            Positioned(
+              left: inset,
+              right: inset,
+              bottom: inset,
+              child: Text(
+                widget.stream.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: health == false ? Colors.white54 : Colors.white,
+                  fontSize: titleSize,
+                  height: 1.15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          ShellCardPlayOverlay(
+            active: true,
+            visible: active,
+            diameter: isLive ? 28 : 48,
+            iconSize: isLive ? 16 : 28,
           ),
-          ShellCardPlayOverlay(active: true, visible: active),
-          if (widget.stream.kind == 'live')
+          if (isLive)
             Positioned(
               top: inset,
               left: inset,
@@ -304,10 +334,40 @@ class _StreamCardState extends State<_StreamCard> {
               right: inset,
               child: _healthDot(health, compact: true),
             ),
-          Positioned(
-            left: inset,
-            right: inset,
-            bottom: inset,
+        ],
+      ),
+    );
+  }
+
+  /// Live logos sit in a centered square band so wide/tall marks share one
+  /// optical box inside the tall poster cell (VOD stays full-bleed cover).
+  Widget _buildTvLiveLogoBody({
+    required double inset,
+    required double titleSize,
+    required bool? health,
+  }) {
+    return ColoredBox(
+      color: Colors.white.withValues(alpha: 0.03),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(inset, inset + 2, inset, 4),
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: _streamIconThumb(
+                    icon: widget.stream.icon,
+                    contain: true,
+                    padding: 6,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(inset, 0, inset, inset),
             child: Text(
               widget.stream.name,
               maxLines: 2,

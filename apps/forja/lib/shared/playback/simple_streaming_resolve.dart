@@ -9,14 +9,24 @@ import 'package:rust/rust.dart';
 ///
 /// Detached from the production race / player-reload failover loop.
 abstract final class SimpleStreamingResolve {
-  /// Rust-native scrapers — fast, no WebView.
+  /// Rust-native scrapers — no WebView.
   static const nativeIds = {'vidsrc', 'webstreamr'};
 
   /// Host HTTP APIs (may still fall back to WebView).
   static const hostApiIds = {'videasy', 'service111477'};
 
-  static const _nativeTimeout = Duration(seconds: 25);
-  static const _hostTimeout = Duration(seconds: 12);
+  /// VSEmbed is a short Rust chain.
+  static const _vidsrcTimeout = Duration(seconds: 25);
+
+  /// WebStreamr scrapes many country sources; 25s was cutting it off empty.
+  static const _webstreamrTimeout = Duration(seconds: 90);
+
+  /// Wings / 111477 HTTP before any sniff fallback.
+  static const _hostApiTimeout = Duration(seconds: 35);
+
+  /// Must cover EmbedExtractProfile sniff (45–60s) + probe headroom.
+  /// 12s previously killed every template embed so only VSEmbed survived.
+  static const _hostEmbedTimeout = Duration(seconds: 75);
 
   /// Walk providers (Auto order or a single pinned id). Returns the first
   /// provider that yields a reachable stream after filter+probe.
@@ -49,7 +59,7 @@ abstract final class SimpleStreamingResolve {
     for (final providerId in ordered) {
       if (cancelled()) return null;
       onProgress?.call(providerId, 'trying');
-      final budget = _timeoutFor(providerId);
+      final budget = timeoutFor(providerId);
       debugPrint(
         '[SimpleResolve] resolve $providerId (budget ${budget.inSeconds}s)',
       );
@@ -164,9 +174,12 @@ abstract final class SimpleStreamingResolve {
     return [...natives, ...apis, ...rest];
   }
 
-  static Duration _timeoutFor(String providerId) {
-    if (nativeIds.contains(providerId)) return _nativeTimeout;
-    return _hostTimeout;
+  @visibleForTesting
+  static Duration timeoutFor(String providerId) {
+    if (providerId == 'vidsrc') return _vidsrcTimeout;
+    if (providerId == 'webstreamr') return _webstreamrTimeout;
+    if (hostApiIds.contains(providerId)) return _hostApiTimeout;
+    return _hostEmbedTimeout;
   }
 
   /// Drop obvious junk before probing (wrong ep, season packs, zip, unplayable).

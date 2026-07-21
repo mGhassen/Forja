@@ -29,7 +29,7 @@ Tap **Live Matches** in the navigation bar.
 - Streamed / PPV embeds play inside a WebView iframe that mirrors the website parent page (`streamed.pk` / `ppv.is`); ad scripts that block the player page are filtered, and main-frame ad redirects are cancelled so they cannot take over the player
 - Ad popups are accepted off-screen (required by some Streamed embeds) and never shown over the player; main-frame ad redirects are still cancelled
 - WebView playback may behave differently per platform; some embeds still require a tap if the site blocks unmuted autoplay
-- On Windows, Live Matches loads the embed URL directly (the path that played before the macOS iframe rewrite) and forces an opaque WebView2 surface so the window does not go white/transparent; other platforms keep the iframe wrapper + hidden ad `window.open` host
+- On Windows, Live Matches uses the same iframe wrapper + hidden ad `window.open` host as other platforms, and forces an opaque WebView2 surface so the window does not go white/transparent
 - Escape still backs out of the embed player on all platforms (and stops the stream)
 
 ## Related

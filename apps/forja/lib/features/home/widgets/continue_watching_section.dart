@@ -269,11 +269,15 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
         ? storedBackdrop
         : widget.resolvedBackdropPath;
     final title = widget.item['title'] as String;
-    final season = widget.item['season'] as int?;
-    final episode = widget.item['episode'] as int?;
+    final season = widget.item['season'] == null
+        ? null
+        : watchHistoryInt(widget.item['season']);
+    final episode = widget.item['episode'] == null
+        ? null
+        : watchHistoryInt(widget.item['episode']);
     final episodeTitle = widget.item['episodeTitle'] as String?;
-    final position = widget.item['position'] as int;
-    final duration = widget.item['duration'] as int;
+    final position = watchHistoryInt(widget.item['position']);
+    final duration = watchHistoryInt(widget.item['duration']);
     
     final progress = duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
     final remaining = duration > 0 ? Duration(milliseconds: duration - position) : Duration.zero;

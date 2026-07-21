@@ -351,8 +351,12 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
     if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
       if (_s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId'])) {
         preselected = true;
-        final pos = (_s._lastProgress!['position'] as int?) ?? 0;
-        final dur = (_s._lastProgress!['duration'] as int?) ?? 0;
+        final pos = (_s._lastProgress!['position'] != null)
+            ? watchHistoryInt(_s._lastProgress!['position'])
+            : 0;
+        final dur = (_s._lastProgress!['duration'] != null)
+            ? watchHistoryInt(_s._lastProgress!['duration'])
+            : 0;
         if (dur > 0) {
           prog = (pos / dur).clamp(0.0, 1.0);
         }
@@ -390,8 +394,8 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
             ? _s._getHash(hs) == _s._getHash(sid)
             : hs == sid;
         if (match) {
-          final pos = _s._lastProgress!['position'] as int;
-          final dur = _s._lastProgress!['duration'] as int;
+          final pos = watchHistoryInt(_s._lastProgress!['position']);
+          final dur = watchHistoryInt(_s._lastProgress!['duration']);
           if (dur > 0) {
             prog = (pos / dur).clamp(0.0, 1.0);
             resumable = true;
@@ -417,7 +421,9 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
       onTap: () => _s._playStremioStream(
         s,
         startPosition: resumable
-            ? Duration(milliseconds: _s._lastProgress!['position'] as int)
+            ? Duration(
+                milliseconds: watchHistoryInt(_s._lastProgress!['position']),
+              )
             : widget.startPosition,
       ),
     );
