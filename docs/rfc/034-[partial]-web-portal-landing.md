@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **6 / 6** acceptance (password reset) · **6 / 7** acceptance (passkeys) · **0 / 1** mobile deferred |
-| **Current slice** | Password reset via email link (JWT) → `/reset-password` → sign in; passkeys on web + Flutter desktop |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **7 / 7** acceptance (password reset + signup confirm link) · **6 / 7** acceptance (passkeys) · **0 / 1** mobile deferred |
+| **Current slice** | Signup confirm + password reset via email link; passkeys on web + Flutter desktop |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -84,6 +84,7 @@
 | 4 | R34-A22 | Password reset is OTP-code based (not magic-link login): recovery email shows `{{ .Token }}`; `/reset-password` accepts email + code + new password via `verifyOtp` + `updateUser` | ✅ |
 | 5 | R34-A23 | Signup confirmation is OTP-code based: confirmation email shows code; signup page verifies via `verifyOtp` type `signup` | ✅ |
 | 6 | R34-A31 | Password reset uses email link (`{{ .ConfirmationURL }}` + `redirectTo` `/reset-password`); `PASSWORD_RECOVERY` → `updateUser` → sign out → `/login` (replaces typed OTP for recovery) | ✅ |
+| 7 | R34-A32 | Signup confirmation uses email link (`{{ .ConfirmationURL }}` + `emailRedirectTo` `/auth/callback`); signup UI asks user to open the link (no typed OTP) | ✅ |
 
 ---
 

@@ -294,10 +294,12 @@ export function ForjaAuthProvider({ host, children }: ForjaAuthProviderProps) {
     ): Promise<AuthResult> => {
       if (!configured) return unavailable()
       if (!signupEnabled) return featureOff('Sign up')
+      const emailRedirectTo = `${window.location.origin}/auth/callback`
       const { data, error } = await client.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo,
           ...(options?.captchaToken
             ? { captchaToken: options.captchaToken }
             : {}),

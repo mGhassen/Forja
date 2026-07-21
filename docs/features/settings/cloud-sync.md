@@ -26,7 +26,8 @@ profile is known — another profile’s settings are never shown first.
   **Account settings** opens Settings and dismisses any open media details so the
   hub is visible.
 - **Web:** sign in at `/login` with email/password or **Sign in with passkey**, or
-  create an account at `/signup` (Turnstile captcha when configured). Use
+  create an account at `/signup` (Turnstile captcha when configured) — check your
+  email and open the **Confirm email** link to finish signup. Use
   **Forgot password?** on `/login` (or open `/forgot-password`) to email a reset
   link; open the link to choose a new password on `/reset-password`, then sign in.
   Under **Account**, enroll and remove passkeys. New accounts have no profiles yet —

@@ -39,8 +39,11 @@ export function DesktopAuthDone({
     if (phase !== 'done') return
     if (secondsLeft <= 0) {
       closeDesktopHandoffWindow()
-      if (!window.closed) setCloseBlocked(true)
-      return
+      // Auto path has no user gesture — close usually fails; confirm after a tick.
+      const id = window.setTimeout(() => {
+        if (!window.closed) setCloseBlocked(true)
+      }, 50)
+      return () => window.clearTimeout(id)
     }
     const id = window.setTimeout(() => {
       setSecondsLeft((s) => s - 1)
@@ -50,7 +53,11 @@ export function DesktopAuthDone({
 
   function onCloseNow() {
     closeDesktopHandoffWindow()
-    if (!window.closed) setCloseBlocked(true)
+    // close() is sync but window.closed can lag a frame; don't flash the
+    // "could not close" copy before the browser has a chance to shut the tab.
+    window.setTimeout(() => {
+      if (!window.closed) setCloseBlocked(true)
+    }, 50)
   }
 
   if (phase === 'loading') {

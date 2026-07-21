@@ -104,6 +104,8 @@ jobs:
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
+        run: ./scripts/bundle_windows_msvc_crt.sh
+      - shell: bash
         run: ./scripts/verify_installer_payload.sh windows
       - uses: actions/upload-artifact@v4
         with:

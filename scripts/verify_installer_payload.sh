@@ -26,6 +26,8 @@ case "$PLATFORM" in
     RELEASE="$APP/build/windows/x64/runner/Release"
     require_file "$RELEASE/forja.exe"
     require_file "$RELEASE/ffi.dll"
+    require_file "$RELEASE/msvcp140.dll"
+    require_file "$RELEASE/vcruntime140.dll"
     if compgen -G "$RELEASE/libmpv"*.dll > /dev/null; then
       echo "ok: $RELEASE/libmpv*.dll"
     else

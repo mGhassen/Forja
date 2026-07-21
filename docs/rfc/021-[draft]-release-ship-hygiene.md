@@ -97,7 +97,7 @@ flutter build macos --release
 | Job | Output |
 |-----|--------|
 | macOS | `Forja-{version}-macos-arm64.dmg` |
-| Windows | `Forja-{version}-windows-setup.exe` via [`installer/windows/setup.iss`](../../installer/windows/setup.iss) |
+| Windows | `Forja-{version}-windows-setup.exe` via [`installer/windows/setup.iss`](../../installer/windows/setup.iss); CI bundles MSVC CRT via [`scripts/bundle_windows_msvc_crt.sh`](../../scripts/bundle_windows_msvc_crt.sh) before Inno |
 | Linux | `Forja-{version}-linux-x86_64.AppImage` |
 | Android TV | `Forja-{version}-android-tv-arm64.apk` + `Forja-{version}-android-tv-armeabi-v7a.apk` |
 

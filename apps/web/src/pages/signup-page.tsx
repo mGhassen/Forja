@@ -36,11 +36,10 @@ const MIN_PASSWORD_LENGTH = 6
 
 function SignupForm() {
   const navigate = useNavigate()
-  const { signUp, verifySignupOtp, user, loading, configured } = useAuth()
+  const { signUp, user, loading, configured } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [otp, setOtp] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -155,27 +154,6 @@ function SignupForm() {
     await finishAfterAuth()
   }
 
-  async function onConfirmOtp(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-
-    if (!otp.trim()) {
-      setError('Enter the code from your email.')
-      return
-    }
-
-    setSubmitting(true)
-    const { error: otpError } = await verifySignupOtp(email.trim(), otp)
-    setSubmitting(false)
-
-    if (otpError) {
-      setError(otpError)
-      return
-    }
-
-    await finishAfterAuth()
-  }
-
   if (desktopHandoffDone) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
@@ -201,64 +179,53 @@ function SignupForm() {
         <Reveal variant="right" className="reveal-slow w-full max-w-md">
           <LiquidGlass className="shadow-[0_32px_80px_-32px_rgba(0,0,0,0.85)]">
             <Card className="border-0 bg-transparent shadow-none">
-            <CardHeader className="space-y-2 pb-2">
-              <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-forja-green">
-                Check your inbox
-              </p>
-              <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
-                Confirm email
-              </CardTitle>
-              <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                We sent a confirmation code to{' '}
-                <span className="text-[#EDE6DA]">{email.trim()}</span>. Enter it
-                below, then you can sign in with your password anytime.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={onConfirmOtp} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-otp">Confirmation code</Label>
-                  <Input
-                    id="signup-otp"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    required
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="6-digit code"
-                    className="h-11 border-[rgba(237,230,218,0.16)] bg-forja-bg font-mono-ui tracking-[0.2em]"
-                  />
-                </div>
+              <CardHeader className="space-y-2 pb-2">
+                <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-forja-green">
+                  Check your inbox
+                </p>
+                <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
+                  Confirm email
+                </CardTitle>
+                <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
+                  We sent a confirmation link to{' '}
+                  <span className="text-[#EDE6DA]">{email.trim()}</span>. Open
+                  it to finish signup, then you can sign in with your password
+                  anytime. If you don&apos;t see it, check spam.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-3 rounded-xl border border-[rgba(237,230,218,0.12)] bg-black/20 px-4 py-4 text-sm leading-relaxed text-[rgba(237,230,218,0.55)]">
+                  <li>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                      1
+                    </span>{' '}
+                    Open the confirmation email
+                  </li>
+                  <li>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                      2
+                    </span>{' '}
+                    Click{' '}
+                    <span className="text-[#EDE6DA]">Confirm email</span>
+                  </li>
+                  <li>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
+                      3
+                    </span>{' '}
+                    Sign in with your password
+                  </li>
+                </ol>
 
-                {error ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
+                  <Link
+                    to="/login"
+                    className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
                   >
-                    {error}
-                  </p>
-                ) : null}
-
-                <Button
-                  type="submit"
-                  disabled={submitting || loading}
-                  className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
-                >
-                  {submitting ? 'Confirming…' : 'Confirm email'}
-                </Button>
-              </form>
-
-              <div className="mt-8 space-y-4 border-t border-[rgba(237,230,218,0.1)] pt-6">
-                <Link
-                  to="/login"
-                  className="font-mono-ui flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.38)] transition-colors hover:text-[#EDE6DA]"
-                >
-                  Back to sign in →
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+                    Back to sign in →
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </LiquidGlass>
         </Reveal>
       </section>

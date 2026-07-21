@@ -78,8 +78,9 @@ copy match the Forja dark brand (green CTA, paper text on near-black).
 | Reauthentication | `reauthentication.html` | Your Forja verification code |
 
 **Auth model:** email + password and passkeys (no magic-link login in the app).
-Signup confirmation emails are **OTP codes** typed in the web UI. Password reset
-uses a **clickable recovery link** (`{{ .ConfirmationURL }}`) that opens
+Signup confirmation and password reset both use a **clickable link**
+(`{{ .ConfirmationURL }}`). Signup `signUp` sets `emailRedirectTo` to
+`/auth/callback` (PKCE exchange → account). Recovery uses `redirectTo`
 `/reset-password` so the user sets a new password, then signs in.
 
 ### Session inactivity (30 days)
@@ -139,7 +140,8 @@ your public web origin so the logo loads in real inboxes.
 4. Sign up (or open `/forgot-password` to trigger recovery) → open Mailpit UI at **http://127.0.0.1:55324**
 5. For recovery: click the **reset link** in the email → `/reset-password` → choose
    a new password → sign in at `/login`
-6. For signup confirm: enter the **code** on the sign-up page after register
+6. For signup confirm: click **Confirm email** in the message → `/auth/callback`
+   → account (or sign in with the password you chose)
 7. Set `enable_confirmations = false` again if you want click-free test users
 
 ### Hosted (production Dashboard)
@@ -152,8 +154,10 @@ editing files in `templates/`:
 3. Confirm **URL Configuration → Site URL** is the public web origin (not
    `localhost`) so `{{ .SiteURL }}/brand/logo-email.png` resolves
 4. Redirect URLs must include `/login`, `/signup`, `/forgot-password`,
-   `/reset-password`, and `/account`. Recovery emails redirect to
-   `/reset-password`. Daily sign-in stays email/password or passkey (no magic-link login).
+   `/reset-password`, `/auth/callback`, and `/account`. Signup confirmation
+   emails redirect to `/auth/callback`; recovery emails redirect to
+   `/reset-password`. Daily sign-in stays email/password or passkey (no
+   magic-link login).
 
 From `apps/web` only:
 

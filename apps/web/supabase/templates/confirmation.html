@@ -22,11 +22,15 @@
         .email-pad-footer { padding-top: 28px !important; padding-bottom: 32px !important; }
         .email-title { font-size: 26px !important; line-height: 1.2 !important; }
         .email-body { font-size: 15px !important; }
-        .email-code-table { width: 100% !important; }
-        .email-code {
-          font-size: 28px !important;
-          letter-spacing: 0.14em !important;
-          padding: 22px 16px !important;
+        .email-btn-table { width: 100% !important; }
+        .email-btn-td { width: 100% !important; }
+        .email-btn {
+          display: block !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          text-align: center !important;
+          padding-left: 20px !important;
+          padding-right: 20px !important;
         }
       }
     </style>
@@ -44,7 +48,7 @@
     "
   >
     <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all">
-      Your Forja confirmation code is {{ .Token }}. Don’t share it.
+      Confirm your Forja account for {{ .Email }}. This link expires soon.
     </div>
     <table
       role="presentation"
@@ -136,48 +140,70 @@
                   color: rgba(237, 230, 218, 0.62);
                 "
               >
-                Enter this code on the Forja sign-up page to confirm
-                <span style="color: #ede6da">{{ .Email }}</span>.
-                Then sign in with your password.
+                Click the button below to confirm
+                <span style="color: #ede6da">{{ .Email }}</span>
+                and finish creating your Forja account. The link expires soon —
+                don’t share it.
               </td>
             </tr>
             <tr>
               <td class="email-pad" style="padding: 32px 32px 0 32px" align="center">
                 <table
                   role="presentation"
-                  class="email-code-table"
-                  width="100%"
+                  class="email-btn-table"
                   cellpadding="0"
                   cellspacing="0"
                   border="0"
-                  style="
-                    width: 100%;
-                    margin: 0 auto;
-                    background-color: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(237, 230, 218, 0.1);
-                    border-radius: 14px;
-                    overflow: hidden;
-                  "
+                  style="margin: 0 auto; width: auto"
                 >
                   <tr>
                     <td
-                      class="email-code"
+                      class="email-btn-td"
+                      align="center"
                       style="
-                        padding: 28px 24px;
-                        border-left: 3px solid #1ce783;
-                        font-family: 'Space Mono', 'Courier New', Courier, monospace;
-                        font-size: 36px;
-                        font-weight: 700;
-                        letter-spacing: 0.22em;
-                        color: #1ce783;
-                        text-align: center;
-                        word-break: break-all;
+                        border-radius: 999px;
+                        background-color: #1ce783;
                       "
                     >
-                      {{ .Token }}
+                      <a
+                        class="email-btn"
+                        href="{{ .ConfirmationURL }}"
+                        style="
+                          display: inline-block;
+                          padding: 16px 36px;
+                          font-family: 'Space Mono', 'Courier New', Courier, monospace;
+                          font-size: 12px;
+                          font-weight: 700;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                          text-decoration: none;
+                          color: #0b0a0a;
+                        "
+                      >
+                        Confirm email
+                      </a>
                     </td>
                   </tr>
                 </table>
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="email-pad"
+                style="
+                  padding: 24px 32px 0 32px;
+                  font-size: 13px;
+                  line-height: 1.55;
+                  color: rgba(237, 230, 218, 0.38);
+                  word-break: break-word;
+                  overflow-wrap: anywhere;
+                "
+              >
+                Button not working? Paste this link into your browser:<br />
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="color: rgba(237, 230, 218, 0.55); text-decoration: underline; word-break: break-all"
+                >{{ .ConfirmationURL }}</a>
               </td>
             </tr>
             <tr>

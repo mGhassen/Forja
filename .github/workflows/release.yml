@@ -277,6 +277,10 @@ jobs:
         shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
 
+      - name: Bundle MSVC CRT (msvcp140 / vcruntime140)
+        shell: bash
+        run: ./scripts/bundle_windows_msvc_crt.sh
+
       - name: Verify installer payload
         shell: bash
         run: ./scripts/verify_installer_payload.sh windows

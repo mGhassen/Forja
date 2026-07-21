@@ -174,7 +174,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       if (response.session == null) {
         setState(() {
           _message =
-              'Check your email to confirm the account, then come back to sign in.';
+              'Check your email and open the confirmation link, then come back to sign in.';
           _messageIsError = false;
         });
         return;

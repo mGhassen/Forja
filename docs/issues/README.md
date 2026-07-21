@@ -110,6 +110,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [086-[fixed]-…](fixed/086-[fixed]-provider-score-running-total-floor.md) | Provider score re-sum buried ups under Auto fails | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [087-[open]-…](087-[open]-update-dialog-empty-changelogs.md) | Update dialog empty notes (R2 changelog archive) | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [088-[fixed]-…](fixed/088-[fixed]-stale-webstreaming-cache-token-replay.md) | Stale webstreaming cache / history token replay | P1 | High | fixed | Complete · 4/4 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [089-[fixed]-…](fixed/089-[fixed]-windows-msvcp140-not-found.md) | Windows install: MSVCP140.dll not found | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -386,18 +386,21 @@ export function consumeDesktopHandoffDone(): boolean {
 }
 
 /**
- * Best-effort close after desktop handoff. Raises Forja first, then tries
- * window.close(). Browsers often block close for OS-opened tabs — the
- * DesktopAuthDone page asks the user to close manually in that case.
+ * Best-effort close after desktop handoff. Must call window.close()
+ * synchronously (same turn as the click) — awaiting focus first drops the
+ * user-gesture context and browsers ignore the close (feels like a 2nd click
+ * is required). Focus runs only if the tab is still open; successful close
+ * uses pagehide → focusDesktopApp in DesktopAuthDone.
  */
 export function closeDesktopHandoffWindow(): void {
   if (typeof window === 'undefined') return
-  void focusDesktopApp().finally(() => {
-    try {
-      window.open('', '_self')
-      window.close()
-    } catch {
-      // ignore
-    }
-  })
+  try {
+    window.open('', '_self')
+    window.close()
+  } catch {
+    // ignore
+  }
+  if (!window.closed) {
+    void focusDesktopApp()
+  }
 }
