@@ -258,6 +258,10 @@ class PlayerStreamMenu {
 
   /// Stable panel order — settings provider priority only.
   /// Reliability scores drive resolve/probe order elsewhere, not this list.
+  ///
+  /// Anime Miruro pipes (`miruro:*`) are clustered into one contiguous block
+  /// (keeping their relative settings order) so the Sources panel can show a
+  /// Miruro section header.
   @visibleForTesting
   static List<MapEntry<String, dynamic>> orderedProviderEntriesForPanel(
     Map<String, dynamic> providers, {
@@ -280,16 +284,61 @@ class PlayerStreamMenu {
       return probeIndex[providerId] ?? 999;
     }
 
+    int audioTie(String key) {
+      final cat = key.toLowerCase();
+      if (cat.endsWith(':sub')) return 0;
+      if (cat.endsWith(':dub')) return 1;
+      return 2;
+    }
+
     entries.sort((a, b) {
       final rankDiff = sortRank(a.key).compareTo(sortRank(b.key));
       if (rankDiff != 0) return rankDiff;
-      final aCat = a.key.toLowerCase();
-      final bCat = b.key.toLowerCase();
-      final aSub = aCat.endsWith(':sub') ? 0 : aCat.endsWith(':dub') ? 1 : 2;
-      final bSub = bCat.endsWith(':sub') ? 0 : bCat.endsWith(':dub') ? 1 : 2;
-      return aSub.compareTo(bSub);
+      return audioTie(a.key).compareTo(audioTie(b.key));
     });
-    return entries;
+
+    // Cluster Miruro pipes into one contiguous block (relative order kept).
+    // Adult hosts stay last.
+    final primary = <MapEntry<String, dynamic>>[];
+    final miruro = <MapEntry<String, dynamic>>[];
+    final adult = <MapEntry<String, dynamic>>[];
+    for (final e in entries) {
+      if (_isMiruroPanelProvider(e.key, e.value)) {
+        miruro.add(e);
+      } else if (_isAdultAnimePanelProvider(e.key, e.value)) {
+        adult.add(e);
+      } else {
+        primary.add(e);
+      }
+    }
+    if (miruro.isEmpty) return [...primary, ...adult];
+    return [...primary, ...miruro, ...adult];
+  }
+
+  static bool _isMiruroPanelProvider(String providerId, dynamic provider) {
+    if (provider is AnimeEmbed && provider.server == 'miruro') return true;
+    final id = _engineScoringId(providerId, provider).toLowerCase();
+    return id.startsWith('miruro:');
+  }
+
+  static bool _isAdultAnimePanelProvider(String providerId, dynamic provider) {
+    final id = _engineScoringId(providerId, provider).toLowerCase();
+    return id == 'watchhentai' || id == 'hentaini';
+  }
+
+  /// Section title shown above the first Miruro row in the Sources panel.
+  static String? panelSectionLabelFor({
+    required String providerId,
+    required dynamic provider,
+    required String? previousProviderId,
+    required dynamic previousProvider,
+  }) {
+    final isMiruro = _isMiruroPanelProvider(providerId, provider);
+    if (!isMiruro) return null;
+    if (previousProviderId == null) return 'Miruro';
+    final prevMiruro =
+        _isMiruroPanelProvider(previousProviderId, previousProvider);
+    return prevMiruro ? null : 'Miruro';
   }
 
   /// Live list for the active server; cache fallback when reopening a session.

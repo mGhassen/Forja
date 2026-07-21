@@ -348,6 +348,7 @@ class SyncDomainBridge {
       'auto_skip_intro': await _settings.getAutoSkipIntro(),
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
+      'anime_title_language': await _settings.getAnimeTitleLanguage(),
     };
   }
 
@@ -399,6 +400,11 @@ class SyncDomainBridge {
     if (payload.containsKey('max_playback_height')) {
       await _settings.setMaxPlaybackHeight(
         (payload['max_playback_height'] as num).toInt(),
+      );
+    }
+    if (payload.containsKey('anime_title_language')) {
+      await _settings.setAnimeTitleLanguage(
+        payload['anime_title_language'] as String,
       );
     }
   }

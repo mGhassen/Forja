@@ -56,15 +56,21 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    SettingsService.animeTitleLanguageNotifier.addListener(_onTitleLanguage);
     _load();
   }
 
   @override
   void dispose() {
+    SettingsService.animeTitleLanguageNotifier.removeListener(_onTitleLanguage);
     _heroPlayFocus.dispose();
     _backFocus.dispose();
     _detailsScrollController.dispose();
     super.dispose();
+  }
+
+  void _onTitleLanguage() {
+    if (mounted) setState(() {});
   }
 
   void _scrollDetailsHeroIntoView() {

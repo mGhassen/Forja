@@ -116,6 +116,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [092-[open]-…](092-[open]-windows-iptv-stream-freeze-after-20s.md) | Windows IPTV freezes after ~20s (no reconnect) | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [093-[open]-…](093-[open]-webstreamr-mbg-source-parity.md) | WebStreamr local scrape out of sync with MBG | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [094-[fixed]-…](fixed/094-[fixed]-iptv-catalog-refetch-every-launch.md) | IPTV catalog re-fetches on every launch | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [095-[fixed]-…](fixed/095-[fixed]-anime-english-titles-server-miss.md) | Anime English titles + SPECIALS server miss | P1 | High | fixed | Complete · 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

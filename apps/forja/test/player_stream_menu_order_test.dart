@@ -139,6 +139,88 @@ void main() {
 
       expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink', 'vidsrc']);
     });
+
+    test('clusters Miruro pipes under one contiguous block', () {
+      final scoreRows = {
+        'megaplay:sub': ProviderOrderRow(
+          id: 'megaplay',
+          settingsRank: 0,
+          domainScore: 10,
+          effectiveRank: 0,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'miruro:bee:sub': ProviderOrderRow(
+          id: 'miruro:bee',
+          settingsRank: 1,
+          domainScore: 10,
+          effectiveRank: 1,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'vidnest:hianime:sub': ProviderOrderRow(
+          id: 'vidnest:hianime',
+          settingsRank: 2,
+          domainScore: 10,
+          effectiveRank: 2,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'miruro:kiwi:sub': ProviderOrderRow(
+          id: 'miruro:kiwi',
+          settingsRank: 3,
+          domainScore: 10,
+          effectiveRank: 3,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+        'watchhentai': ProviderOrderRow(
+          id: 'watchhentai',
+          settingsRank: 4,
+          domainScore: 10,
+          effectiveRank: 4,
+          maxDisplacement: 2,
+          supported: true,
+        ),
+      };
+
+      final order = PlayerStreamMenu.orderedProviderEntriesForPanel(
+        {
+          'watchhentai': const {},
+          'miruro:kiwi:sub': const {},
+          'vidnest:hianime:sub': const {},
+          'megaplay:sub': const {},
+          'miruro:bee:sub': const {},
+        },
+        scoreRows: scoreRows,
+      );
+
+      expect(order.map((e) => e.key).toList(), [
+        'megaplay:sub',
+        'vidnest:hianime:sub',
+        'miruro:bee:sub',
+        'miruro:kiwi:sub',
+        'watchhentai',
+      ]);
+      expect(
+        PlayerStreamMenu.panelSectionLabelFor(
+          providerId: 'miruro:bee:sub',
+          provider: const {},
+          previousProviderId: 'vidnest:hianime:sub',
+          previousProvider: const {},
+        ),
+        'Miruro',
+      );
+      expect(
+        PlayerStreamMenu.panelSectionLabelFor(
+          providerId: 'miruro:kiwi:sub',
+          provider: const {},
+          previousProviderId: 'miruro:bee:sub',
+          previousProvider: const {},
+        ),
+        isNull,
+      );
+    });
   });
 
   group('PlayerStreamMenu panel stream order', () {

@@ -129,6 +129,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Reset Auth inactivity clock for restored sessions (30d timeout).
   unawaited(SyncService.instance.refreshSession(force: true));
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
+  unawaited(SettingsService().getAnimeTitleLanguage());
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
   }

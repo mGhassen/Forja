@@ -39,6 +39,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   bool _autoSkipIntro = false;
   bool _iptvEpgEnabled = true;
   String _maxPlaybackHeightLabel = 'Auto';
+  String _animeTitleLanguageLabel = 'Romaji';
   List<String> _streamProviderOrder = [];
   List<String> _animeProviderOrder = [];
 
@@ -77,6 +78,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     final iptvEpgEnabled = await _settings.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
     final maxPlaybackHeight = await _settings.getMaxPlaybackHeight();
+    final animeTitleLanguage = await _settings.getAnimeTitleLanguage();
     if (!mounted) return;
     setState(() {
       _playSourceTorrent = playSourceTorrent;
@@ -97,6 +99,8 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _maxPlaybackHeightLabel = SettingsService.maxPlaybackHeightLabel(
         maxPlaybackHeight,
       );
+      _animeTitleLanguageLabel =
+          SettingsService.animeTitleLanguageLabel(animeTitleLanguage);
     });
   }
 
@@ -278,6 +282,22 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                       SettingsService.maxPlaybackHeightOptions[val] ?? 0;
                   await _settings.setMaxPlaybackHeight(height);
                   setState(() => _maxPlaybackHeightLabel = val);
+                  schedulePreferencesSyncPush();
+                },
+              ),
+            if (widget.visibility.showVodPlayerExtras)
+              settingsFocusableDropdown(
+                context,
+                'Anime title language',
+                'How anime titles appear in the Anime hub, details, and player. Default Romaji. Stream matching always tries romaji first, then English, native, and AniList synonyms.',
+                _animeTitleLanguageLabel,
+                SettingsService.animeTitleLanguageOptions,
+                (val) async {
+                  if (val == null) return;
+                  await _settings.setAnimeTitleLanguage(
+                    SettingsService.animeTitleLanguageStored(val),
+                  );
+                  setState(() => _animeTitleLanguageLabel = val);
                   schedulePreferencesSyncPush();
                 },
               ),

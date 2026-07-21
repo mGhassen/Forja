@@ -270,18 +270,26 @@ fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<Cand
 
 pub fn anikoto_resolve(
     anilist_id: i64,
-    title_english: &str,
-    title_romaji: &str,
+    title_candidates: &[String],
     expected_episodes: i32,
+    media_format: &str,
 ) -> Result<Option<AnikotoSeriesOut>, String> {
     let ani_id = anilist_id.to_string();
+    let allow_side = media_is_side_format(media_format);
 
     // Title search + a few ranked probes only. Do not crawl recent-anime
     // pages or hammer /watch HTML — that gets us blocked and stalls Play.
+    // Caller orders candidates (romaji → english → native → synonyms).
     let mut queries = Vec::new();
-    for q in [title_english, title_romaji] {
+    for q in title_candidates {
         let t = q.trim();
-        if !t.is_empty() && !queries.iter().any(|x: &String| x == t) {
+        if t.is_empty() {
+            continue;
+        }
+        if !queries
+            .iter()
+            .any(|x: &String| x.eq_ignore_ascii_case(t))
+        {
             queries.push(t.to_string());
         }
     }
@@ -303,13 +311,13 @@ pub fn anikoto_resolve(
     // Probe exact-title TV slugs first — Anikoto HTML search ranks movies
     // ahead of the main series (e.g. Naruto TV at rank 21).
     candidates.sort_by(|a, b| {
-        slug_probe_score(b, &title_tokens)
-            .partial_cmp(&slug_probe_score(a, &title_tokens))
+        slug_probe_score(b, &title_tokens, allow_side)
+            .partial_cmp(&slug_probe_score(a, &title_tokens, allow_side))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // Cap hard: each probe is 2 HTTP (watch HTML + series JSON).
-    const MAX_PROBE: usize = 4;
+    const MAX_PROBE: usize = 6;
     let mut resolved = Vec::new();
     let mut ani_id_matches = Vec::new();
     let mut series_by_id: HashMap<i64, AnikotoSeriesOut> = HashMap::new();
@@ -356,10 +364,12 @@ pub fn anikoto_resolve(
             if !episode_count_plausible(c.episodes, expected_episodes) {
                 continue;
             }
-            if slug_is_side_content(&c.slug) && expected_episodes > 1 {
+            // Skip movie/OVA noise for long TV series — but keep it when
+            // AniList itself is SPECIAL/OVA/… (e.g. Character Endings).
+            if !allow_side && slug_is_side_content(&c.slug) && expected_episodes > 1 {
                 continue;
             }
-            let score = slug_probe_score(&c.slug, &title_tokens);
+            let score = slug_probe_score(&c.slug, &title_tokens, allow_side);
             if score > best_score {
                 best_score = score;
                 best = Some(c);
@@ -440,12 +450,31 @@ mod tests {
     #[test]
     fn slug_probe_prefers_main_series_over_movies() {
         let title = tokenize("Naruto", STOPWORDS);
-        let tv = slug_probe_score("naruto-eybxz", &title);
-        let movie = slug_probe_score("naruto-shippuuden-movie-6-road-to-ninja-w2wqq", &title);
-        let road = slug_probe_score("road-of-naruto-ggjw8", &title);
+        let tv = slug_probe_score("naruto-eybxz", &title, false);
+        let movie = slug_probe_score("naruto-shippuuden-movie-6-road-to-ninja-w2wqq", &title, false);
+        let road = slug_probe_score("road-of-naruto-ggjw8", &title, false);
         assert!(tv > movie, "tv={tv} movie={movie}");
         assert!(tv > road, "tv={tv} road={road}");
         assert!(slug_is_side_content("naruto-ova7-chunin-exam"));
         assert!(!slug_is_side_content("naruto-eybxz"));
+    }
+
+    #[test]
+    fn special_format_does_not_demote_special_slugs() {
+        let title = tokenize("Harukanaru Toki no Naka de Character Endings", STOPWORDS);
+        let special = slug_probe_score(
+            "harukanaru-toki-no-naka-de-hachiyou-shou-specials-abc12",
+            &title,
+            true,
+        );
+        let demoted = slug_probe_score(
+            "harukanaru-toki-no-naka-de-hachiyou-shou-specials-abc12",
+            &title,
+            false,
+        );
+        assert!(special > demoted, "special={special} demoted={demoted}");
+        assert!(media_is_side_format("SPECIAL"));
+        assert!(media_is_side_format("ova"));
+        assert!(!media_is_side_format("TV"));
     }
 }

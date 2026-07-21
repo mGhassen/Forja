@@ -694,11 +694,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       anilistId: widget.anime.id,
       episode: widget.episodeNumber,
       series: _series,
-      animeTitles: [
-        widget.anime.titleEnglish,
-        widget.anime.titleRomaji,
-        widget.anime.titleNative,
-      ],
+      animeTitles: widget.anime.resolveTitleCandidates(),
       isAdult: widget.anime.isAdult,
     );
   }
@@ -838,11 +834,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       anilistId: widget.anime.id,
       episode: widget.episodeNumber,
       series: _series,
-      animeTitles: [
-        widget.anime.titleEnglish,
-        widget.anime.titleRomaji,
-        widget.anime.titleNative,
-      ],
+      animeTitles: widget.anime.resolveTitleCandidates(),
       isAdult: widget.anime.isAdult,
     );
     if (kDebugMode && pref != null) {

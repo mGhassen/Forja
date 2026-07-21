@@ -345,15 +345,19 @@ class AnikotoSeriesData {
 
 Future<AnikotoSeriesData?> anikotoResolveSeries({
   required int anilistId,
-  required String titleEnglish,
-  required String titleRomaji,
+  required List<String> titleCandidates,
+  String mediaFormat = '',
   int expectedEpisodes = 0,
 }) async {
+  final titles = titleCandidates
+      .map((t) => t.trim())
+      .where((t) => t.isNotEmpty)
+      .toList(growable: false);
   final decoded = await animeExtractorRequest({
     'action': 'anikoto_resolve',
     'anilist_id': anilistId,
-    'title_english': titleEnglish,
-    'title_romaji': titleRomaji,
+    'title_candidates': titles,
+    'media_format': mediaFormat,
     'expected_episodes': expectedEpisodes,
   });
   final series = decoded['series'];

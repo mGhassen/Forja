@@ -46,6 +46,7 @@ class AnimeService {
   static const String _mediaFields = '''
     id
     title { romaji english native }
+    synonyms
     coverImage { large extraLarge color }
     bannerImage
     format
@@ -420,8 +421,8 @@ class AnimeService {
     try {
       final data = await anikotoResolveSeries(
         anilistId: anime.id,
-        titleEnglish: anime.titleEnglish,
-        titleRomaji: anime.titleRomaji,
+        titleCandidates: anime.resolveTitleCandidates(),
+        mediaFormat: anime.format ?? '',
         expectedEpisodes: expected,
       );
       if (data != null &&
@@ -1292,6 +1293,8 @@ class AnimeCard {
   final String titleEnglish;
   final String titleRomaji;
   final String titleNative;
+  /// AniList synonyms (extra search / scrape match strings).
+  final List<String> synonyms;
   final String? coverLarge;
   final String? coverExtraLarge;
   final String? coverColor;
@@ -1313,8 +1316,42 @@ class AnimeCard {
   final bool isAdult;
   final List<Map<String, String>> streamingEpisodes;
 
-  String get displayTitle =>
-      titleEnglish.isNotEmpty ? titleEnglish : (titleRomaji.isNotEmpty ? titleRomaji : titleNative);
+  /// UI title — Settings → Playback → Anime title language (default romaji).
+  String get displayTitle {
+    final lang = SettingsService.animeTitleLanguageNotifier.value;
+    return switch (lang) {
+      'english' => _firstTitle([titleEnglish, titleRomaji, titleNative]),
+      'native' => _firstTitle([titleNative, titleRomaji, titleEnglish]),
+      _ => _firstTitle([titleRomaji, titleEnglish, titleNative]),
+    };
+  }
+
+  /// Scrape / AllAnime / Anikoto query order: romaji → english → native → synonyms.
+  List<String> resolveTitleCandidates() {
+    final out = <String>[];
+    void add(String raw) {
+      final t = raw.trim();
+      if (t.isEmpty) return;
+      if (out.any((x) => x.toLowerCase() == t.toLowerCase())) return;
+      out.add(t);
+    }
+
+    add(titleRomaji);
+    add(titleEnglish);
+    add(titleNative);
+    for (final s in synonyms) {
+      add(s);
+    }
+    return out;
+  }
+
+  static String _firstTitle(List<String> ordered) {
+    for (final t in ordered) {
+      if (t.trim().isNotEmpty) return t.trim();
+    }
+    return '';
+  }
+
   String get coverUrl => coverExtraLarge ?? coverLarge ?? '';
   String get bannerOrCover => bannerImage ?? coverUrl;
   String get heroBackdrop => tmdbBackdropUrl ?? bannerOrCover;
@@ -1328,6 +1365,7 @@ class AnimeCard {
     required this.titleEnglish,
     required this.titleRomaji,
     required this.titleNative,
+    this.synonyms = const [],
     this.coverLarge,
     this.coverExtraLarge,
     this.coverColor,
@@ -1354,6 +1392,7 @@ class AnimeCard {
     String? titleEnglish,
     String? titleRomaji,
     String? titleNative,
+    List<String>? synonyms,
     String? coverLarge,
     String? coverExtraLarge,
     String? coverColor,
@@ -1379,6 +1418,7 @@ class AnimeCard {
       titleEnglish: titleEnglish ?? this.titleEnglish,
       titleRomaji: titleRomaji ?? this.titleRomaji,
       titleNative: titleNative ?? this.titleNative,
+      synonyms: synonyms ?? this.synonyms,
       coverLarge: coverLarge ?? this.coverLarge,
       coverExtraLarge: coverExtraLarge ?? this.coverExtraLarge,
       coverColor: coverColor ?? this.coverColor,
@@ -1417,11 +1457,16 @@ class AnimeCard {
               'site': (m['site'] ?? '').toString(),
             })
         .toList();
+    final synonyms = ((json['synonyms'] as List?) ?? const [])
+        .map((e) => e.toString().trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
     return AnimeCard(
       id: (json['id'] ?? 0) as int,
-      titleEnglish: (title['english'] ?? '') as String,
-      titleRomaji: (title['romaji'] ?? '') as String,
-      titleNative: (title['native'] ?? '') as String,
+      titleEnglish: (title['english'] ?? '') as String? ?? '',
+      titleRomaji: (title['romaji'] ?? '') as String? ?? '',
+      titleNative: (title['native'] ?? '') as String? ?? '',
+      synonyms: synonyms,
       coverLarge: cover['large'] as String?,
       coverExtraLarge: cover['extraLarge'] as String?,
       coverColor: cover['color'] as String?,
@@ -1453,6 +1498,7 @@ class AnimeCard {
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': {'english': titleEnglish, 'romaji': titleRomaji, 'native': titleNative},
+        'synonyms': synonyms,
         'coverImage': {'large': coverLarge, 'extraLarge': coverExtraLarge, 'color': coverColor},
         'bannerImage': bannerImage,
         if (tmdbBackdropUrl != null) 'tmdbBackdropUrl': tmdbBackdropUrl,

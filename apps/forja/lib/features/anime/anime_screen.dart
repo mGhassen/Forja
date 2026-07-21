@@ -97,6 +97,7 @@ class _AnimeScreenState extends State<AnimeScreen>
     );
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
+    SettingsService.animeTitleLanguageNotifier.addListener(_onTheme);
     AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
     unawaited(_load());
   }
@@ -106,6 +107,7 @@ class _AnimeScreenState extends State<AnimeScreen>
     ShellTvFocusCoordinator.clearTab('anime');
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
+    SettingsService.animeTitleLanguageNotifier.removeListener(_onTheme);
     AnimeService.watchHistoryRevision.removeListener(_onHistoryChanged);
     _cwScrollController.dispose();
     _scroll.dispose();

@@ -23,6 +23,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Toggle **IPTV programme guide (EPG)** when the IPTV tab is visible — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Reorder **Server reliability** when **Webstreaming** is on — Movies, Series, and Anime: drag preference (desktop) or **↑/↓** (TV); **Reset order** is D-pad focusable on TV; **Score** is live reliability; **Tries** is Auto check order. Asian Drama currently keeps one KissKH host enabled and shows the others **On hold**
 - Set **Max stream quality** to cap automatic selection (Auto, 4K, 1080p, 720p, …)
+- Choose **Anime title language** — **Romaji** (default), **English**, or **Native** — for Anime hub / details / player titles. Stream matching still searches romaji first, then English, native, and AniList synonyms
 
 Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URLs, images, scores, continue watching).
 

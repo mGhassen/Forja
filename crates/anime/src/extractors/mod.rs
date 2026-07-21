@@ -41,6 +41,8 @@ struct ExtractorRequest {
     #[serde(default)]
     title_romaji: String,
     #[serde(default)]
+    media_format: String,
+    #[serde(default)]
     expected_episodes: i32,
     #[serde(default)]
     embed_url: String,
@@ -132,13 +134,24 @@ pub fn extractor_json(request_json: &str) -> String {
         "vidnest_known_providers" => Ok(json!({ "providers": vidnest::KNOWN_PROVIDERS })),
         "hentaini_streams" => hentaini::hentaini_streams(&req.title_candidates, episode),
         "watchhentai_streams" => watchhentai::watchhentai_streams(&req.title_candidates, episode),
-        "anikoto_resolve" => anikoto::anikoto_resolve(
-            req.anilist_id,
-            &req.title_english,
-            &req.title_romaji,
-            req.expected_episodes,
-        )
-        .map(|series| json!({ "series": series })),
+        "anikoto_resolve" => {
+            let mut titles = req.title_candidates.clone();
+            if titles.is_empty() {
+                for t in [&req.title_romaji, &req.title_english] {
+                    let s = t.trim();
+                    if !s.is_empty() {
+                        titles.push(s.to_string());
+                    }
+                }
+            }
+            anikoto::anikoto_resolve(
+                req.anilist_id,
+                &titles,
+                req.expected_episodes,
+                &req.media_format,
+            )
+            .map(|series| json!({ "series": series }))
+        }
         "anikoto_site_streams" => anikoto_site::anikoto_site_streams(
             &req.slug,
             episode,

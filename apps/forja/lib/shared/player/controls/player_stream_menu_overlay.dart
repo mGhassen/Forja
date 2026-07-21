@@ -463,15 +463,46 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                 color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
-          KeyedSubtree(
-            key: ValueKey(orderedProviders[i].key),
-            child: _buildServerGroup(
-              providerId: orderedProviders[i].key,
-              provider: orderedProviders[i].value,
-              state: state,
-              probes: probes,
-              cache: cache,
-            ),
+          Builder(
+            builder: (context) {
+              final prev = i > 0 ? orderedProviders[i - 1] : null;
+              final section = PlayerStreamMenu.panelSectionLabelFor(
+                providerId: orderedProviders[i].key,
+                provider: orderedProviders[i].value,
+                previousProviderId: prev?.key,
+                previousProvider: prev?.value,
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (section != null) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
+                      child: Text(
+                        section.toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.55,
+                        ),
+                      ),
+                    ),
+                  ],
+                  KeyedSubtree(
+                    key: ValueKey(orderedProviders[i].key),
+                    child: _buildServerGroup(
+                      providerId: orderedProviders[i].key,
+                      provider: orderedProviders[i].value,
+                      state: state,
+                      probes: probes,
+                      cache: cache,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ],
