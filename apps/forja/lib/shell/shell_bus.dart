@@ -57,7 +57,7 @@ class ShellBus {
   );
 
   /// True while any fullscreen video player surface is mounted.
-  /// Used to hide chrome like background-update progress toasts over playback.
+  /// Hides shell nav for overlay players (IPTV) and update toasts over playback.
   static final ValueNotifier<bool> playerSurfaceActive = ValueNotifier<bool>(
     false,
   );

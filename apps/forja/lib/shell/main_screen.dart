@@ -231,6 +231,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.requestTab.addListener(_onRequestTab);
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
+    ShellBus.playerSurfaceActive.addListener(_onShellChromeChanged);
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
@@ -392,6 +393,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.requestTab.removeListener(_onRequestTab);
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
+    ShellBus.playerSurfaceActive.removeListener(_onShellChromeChanged);
     ShellBus.clearHideGlobalNav();
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
     MacOsShellChannel.dispose();
@@ -419,7 +421,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             tabFor: _tabFor,
             shellHeader: _shellHeader(),
             shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
-            hideGlobalNav: ShellBus.hideGlobalNav.value,
+            // IPTV (and other shell-overlay players) sit beside the rail;
+            // hide chrome while any player surface is mounted.
+            hideGlobalNav: ShellBus.hideGlobalNav.value ||
+                ShellBus.playerSurfaceActive.value,
           ),
         );
 
