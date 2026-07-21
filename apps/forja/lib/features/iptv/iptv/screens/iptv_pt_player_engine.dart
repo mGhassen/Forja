@@ -152,13 +152,15 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
         url: src.url,
         headers: const {'User-Agent': _IptvPtPlayerScreenState._ua},
       );
-      await ExoPlayerBridge.setVolume(_s._exoViewId!, _s._volume / 100.0);
     } else {
       await _s._player!.open(
         Media(src.url, httpHeaders: const {'User-Agent': _IptvPtPlayerScreenState._ua}),
       );
       await _s._player!.play();
     }
+    // Re-apply after every open/recreate — media_kit resets to 100, and
+    // mute is volume=0 in Dart state only.
+    _engineSetVolume(_s._volume);
   }
 
   Future<void> _applyMpvTunables() async {

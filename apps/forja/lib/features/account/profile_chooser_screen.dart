@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
@@ -25,17 +23,20 @@ Future<bool> presentProfileChooser(
   final result = await Navigator.of(context, rootNavigator: true).push<bool>(
     MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (context) => ProfileChooserScreen(
-        showBack: true,
-        initialMode: initialMode,
-        prepareCurrentOnSwitch: prepareCurrentOnSwitch,
-        closeIfAlreadyActive: closeIfAlreadyActive,
-        onProfileSelected: () => Navigator.of(context).pop(true),
-        onSignOut: allowSignOut
-            ? () {
-                Navigator.of(context).pop(false);
-              }
-            : null,
+      // Fullscreen covers MainScreen's caption — wrap again for Win/Linux.
+      builder: (context) => DesktopWindowChrome.wrapShell(
+        child: ProfileChooserScreen(
+          showBack: true,
+          initialMode: initialMode,
+          prepareCurrentOnSwitch: prepareCurrentOnSwitch,
+          closeIfAlreadyActive: closeIfAlreadyActive,
+          onProfileSelected: () => Navigator.of(context).pop(true),
+          onSignOut: allowSignOut
+              ? () {
+                  Navigator.of(context).pop(false);
+                }
+              : null,
+        ),
       ),
     ),
   );
@@ -320,13 +321,11 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     }
   }
 
-  /// Sits below macOS traffic lights (and desktop caption), not beside them.
+  /// Clears macOS traffic lights (MediaQuery top from [wrapShell]); Win/Linux
+  /// caption sits above this screen so padding is already 0.
   static double _backTopInset(BuildContext context) {
     final safeTop = MediaQuery.paddingOf(context).top;
-    final chromeTop = DesktopWindowChrome.isDesktop
-        ? DesktopWindowChrome.topInset(context)
-        : 0.0;
-    return math.max(safeTop, chromeTop) + (DesktopWindowChrome.isDesktop ? 8 : 10);
+    return safeTop + (DesktopWindowChrome.isDesktop ? 8 : 10);
   }
 
   @override
@@ -365,7 +364,6 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                   )
                 : _buildChooserBody(),
           ),
-          DesktopWindowChrome.overlayDragStrip(),
           if (showChromeBack)
             Positioned(
               top: _backTopInset(context),

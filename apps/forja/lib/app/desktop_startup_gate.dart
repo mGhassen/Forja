@@ -9,6 +9,7 @@ import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -163,7 +164,10 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
 
   @override
   Widget build(BuildContext context) {
-    return switch (_stage) {
+    // Splash → MainScreen owns its own caption. Pre-shell stages need chrome
+    // here — title bar is hidden app-wide, and WindowCaption only lives in
+    // DesktopWindowChrome.wrapShell.
+    final child = switch (_stage) {
       _StartupStage.update => const ColoredBox(
         color: AppTheme.appBackground,
         child: SizedBox.expand(),
@@ -180,5 +184,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
       ),
       _StartupStage.splash => widget.splash,
     };
+    if (_stage == _StartupStage.splash) return child;
+    return DesktopWindowChrome.wrapShell(child: child);
   }
 }

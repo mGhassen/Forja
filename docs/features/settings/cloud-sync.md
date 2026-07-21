@@ -17,8 +17,10 @@ profile is known — another profile’s settings are never shown first.
 - **Desktop startup:** if a newer build is available, the update prompt appears
   first; then sign in with email/password, **Sign in with passkey** (macOS /
   Windows), use **Web login** (browser handoff), or choose **Continue without an
-  account**. New accounts are created only on the web (**Create an account on the
-  web**). Linux, phones, and TV keep password and/or web login only.
+  account**. On Windows / Linux the sign-in and Who’s watching screens keep the
+  same window caption (min / max / close) as the main app. New accounts are
+  created only on the web (**Create an account on the web**). Linux, phones, and
+  TV keep password and/or web login only.
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
   **Settings → Profile & account**), or open that page from Settings —
   the page shows the active profile (**Watching now** — tap to switch), cloud
