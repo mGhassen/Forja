@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Local release CI menu — lists tags with filter, backfills, triggers GitHub Actions.
+# For a local macOS build + GitHub/R2 publish (no Actions), use ./scripts/release_local.sh
 #
 # Usage:
 #   ./scripts/release_ci.sh              # interactive menu

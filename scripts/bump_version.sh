@@ -17,15 +17,18 @@ semver="${current%%+*}"
 build="${current#*+}"
 [[ "$build" == "$current" ]] && build=0
 
+IFS=. read -r major minor patch <<<"$semver"
+
+# Sync only with tags on the current minor arc (e.g. v1.2.*). Stale local tags
+# from other minors (v1.3 / v1.4 leftovers) must not jump the bump.
 if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  latest_tag="$(git -C "$ROOT" tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -1 || true)"
+  latest_tag="$(git -C "$ROOT" tag -l "v${major}.${minor}.*" --sort=-v:refname 2>/dev/null | head -1 || true)"
   if [[ -n "$latest_tag" ]]; then
     tag_semver="${latest_tag#v}"
     semver="$(printf '%s\n%s\n' "$semver" "$tag_semver" | sort -V | tail -1)"
+    IFS=. read -r major minor patch <<<"$semver"
   fi
 fi
-
-IFS=. read -r major minor patch <<<"$semver"
 
 case "$BUMP" in
   patch) patch=$((patch + 1)) ;;

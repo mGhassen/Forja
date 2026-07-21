@@ -31,6 +31,9 @@ scripts:
   release:
     run: ../../scripts/release_ci.sh
     description: Interactive release menu — list tags, backfill, trigger GitHub Actions
+  release:local:
+    run: ../../scripts/release_local.sh
+    description: Local macOS release → GitHub + R2 (no Actions artifacts)
   rust:mobile-integration:
     run: ../../scripts/run_mobile_magnet_e2e.sh
     description: Mobile magnet E2E on connected Android/iOS device (P2-14)
