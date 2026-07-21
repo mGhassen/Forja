@@ -79,4 +79,20 @@ void main() {
       expect(isTorrentStreamUrl(''), isFalse);
     });
   });
+
+  group('isLocalLoopbackPlayUrl / isUnplayableCachedStreamUrl', () {
+    test('hls-proxy strip URLs are playable loopback', () {
+      const url =
+          'http://127.0.0.1:60329/hls-proxy?url=https%3A%2F%2Fx.m3u8&strip=png';
+      expect(isLocalLoopbackPlayUrl(url), isTrue);
+      expect(isUnplayableCachedStreamUrl(url), isFalse);
+    });
+
+    test('unknown loopback stays unplayable', () {
+      expect(
+        isUnplayableCachedStreamUrl('http://127.0.0.1:9/random'),
+        isTrue,
+      );
+    });
+  });
 }

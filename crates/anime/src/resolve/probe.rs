@@ -71,11 +71,7 @@ fn probe_hls_playable(url: &str, headers: &HashMap<String, String>) -> bool {
     let mut checked = 0u32;
     let mut poisoned = 0u32;
     for seg in sample {
-        if looks_like_ad_host(seg) {
-            checked += 1;
-            poisoned += 1;
-            continue;
-        }
+        // Always fetch — ibyteimg / nekostream hosts often wrap real MPEG-TS in PNG.
         match classify_segment_payload(seg, headers) {
             SegmentKind::Ad => {
                 checked += 1;
@@ -159,16 +155,52 @@ enum SegmentKind {
     Unknown,
 }
 
+/// Megaplay / nekostream wrap MPEG-TS in a PNG shell (ibyteimg). Probe must
+/// fetch enough bytes to see TS after the wrapper — not treat as a pure ad.
+fn png_wraps_mpeg_ts(bytes: &[u8]) -> bool {
+    if bytes.len() < 16 || bytes[0] != 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47
+    {
+        return false;
+    }
+    if let Some(iend) = bytes.windows(4).position(|w| w == b"IEND") {
+        let start = iend + 8;
+        if start < bytes.len() {
+            for p in start..bytes.len().saturating_sub(188) {
+                if bytes[p] == 0x47 && bytes[p + 188] == 0x47 {
+                    return true;
+                }
+            }
+            if bytes[start..].iter().any(|&b| b == 0x47) {
+                return true;
+            }
+        }
+    }
+    bytes.len() > 252 + 188 && bytes[252] == 0x47 && bytes[252 + 188] == 0x47
+}
+
 fn classify_segment_payload(url: &str, headers: &HashMap<String, String>) -> SegmentKind {
+    // Need ≥ ~440 bytes to detect Megaplay's 252-byte PNG → TS wrap.
     let mut hdrs = headers.clone();
-    hdrs.insert("Range".into(), "bytes=0-15".into());
+    hdrs.insert("Range".into(), "bytes=0-1023".into());
     let Ok(resp) = http::fetch_with_retries("GET", url, &hdrs, None, None, true, 8, 0) else {
         return SegmentKind::Unknown;
     };
     if !(resp.status == 200 || resp.status == 206) {
         return SegmentKind::Unknown;
     }
-    if looks_like_ad_host(&resp.final_url) {
+
+    use base64::Engine;
+    let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(resp.body_base64.as_bytes())
+    else {
+        return SegmentKind::Unknown;
+    };
+
+    // PNG-wrapped TS (ibyteimg / nekostream redirect) is playable via hls-proxy strip.
+    if png_wraps_mpeg_ts(&bytes) {
+        return SegmentKind::Video;
+    }
+
+    if looks_like_ad_host(&resp.final_url) || looks_like_ad_host(url) {
         return SegmentKind::Ad;
     }
     let ct = resp
@@ -179,12 +211,6 @@ fn classify_segment_payload(url: &str, headers: &HashMap<String, String>) -> Seg
     if ct.starts_with("image/") {
         return SegmentKind::Ad;
     }
-
-    use base64::Engine;
-    let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(resp.body_base64.as_bytes())
-    else {
-        return SegmentKind::Unknown;
-    };
     if bytes.len() >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
     {
         return SegmentKind::Ad;
@@ -247,13 +273,32 @@ index-f2.m3u8
     }
 
     #[test]
-    #[ignore = "network — ad-poisoned nekostream CDN"]
-    fn nekostream_poison_live_rejected() {
+    fn png_wrap_offset_252_detected() {
+        let mut raw = vec![0x89, 0x50, 0x4E, 0x47];
+        raw.extend(std::iter::repeat_n(0u8, 248));
+        raw.push(0x47);
+        raw.extend(std::iter::repeat_n(0u8, 187));
+        raw.push(0x47);
+        assert!(png_wraps_mpeg_ts(&raw));
+    }
+
+    #[test]
+    fn pure_png_without_ts_not_wrapped() {
+        let raw = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0];
+        assert!(!png_wraps_mpeg_ts(&raw));
+    }
+
+    #[test]
+    #[ignore = "network — Megaplay PNG-wrapped nekostream HLS"]
+    fn nekostream_png_wrap_live_accepted() {
         let url = "https://9hjkrt.nekostream.site/da9658912633e263254722493c6607b5/9aa1bc822e7ba3204431b520c369929e/master.m3u8";
         let mut h = HashMap::new();
         h.insert("User-Agent".into(), "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36".into());
         h.insert("Referer".into(), "https://megaplay.buzz/".into());
         h.insert("Origin".into(), "https://megaplay.buzz".into());
-        assert!(!probe_stream_url(url, &h), "ad-poisoned HLS must fail probe");
+        assert!(
+            probe_stream_url(url, &h),
+            "PNG-wrapped MPEG-TS must pass probe (play via hls-proxy strip)"
+        );
     }
 }

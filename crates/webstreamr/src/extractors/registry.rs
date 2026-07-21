@@ -1,10 +1,10 @@
 use crate::config::{self, Config};
 use crate::extractors::{
-    dropload_supports, extract_embed_html, extract_hubcloud_links,
-    extract_mfp_embed_html, extract_vidsrc_chain_json, filemoon_supports, fsst_supports,
-    hubcloud_supports, hubdrive_supports, kinoger_supports, rgshows_supports,
-    savefiles_supports, streamembed_supports, supervideo_supports, vidora_supports,
-    vixsrc_supports, youtube_supports,
+    dropload_supports, extract_embed_html, extract_hubcloud_links, extract_moviebox_download,
+    extract_mfp_embed_html, extract_vidsrc_chain_json, extract_vidzee_embed, filemoon_supports,
+    fsst_supports, hubcloud_supports, hubdrive_supports, kinoger_supports, moviebox_supports,
+    rgshows_supports, savefiles_supports, streamembed_supports, supervideo_supports,
+    vidora_supports, vidzee_supports, vixsrc_supports, youtube_supports,
 };
 use crate::fetcher::{fetch_status_body, fetch_text, FetchConfig};
 use crate::types::{ExtractResult, StreamFormat};
@@ -121,6 +121,16 @@ const EXTRACTORS: &[ExtractorDef] = &[
         via_mfp: false,
     },
     ExtractorDef {
+        id: "moviebox",
+        label: "MovieBox",
+        via_mfp: false,
+    },
+    ExtractorDef {
+        id: "vidzee",
+        label: "VidZee",
+        via_mfp: false,
+    },
+    ExtractorDef {
         id: "mixdrop",
         label: "Mixdrop",
         via_mfp: true,
@@ -202,6 +212,8 @@ fn host_matches(id: &str, host: &str, url: &Url, config: &Config) -> bool {
         "hubcloud" => hubcloud_supports(host),
         "rgshows" => rgshows_supports(host),
         "vidsrc" => Regex::new(r"vidsrc|vsrc|vsembed").unwrap().is_match(host),
+        "moviebox" => moviebox_supports(host),
+        "vidzee" => vidzee_supports(host),
         "mixdrop" => Regex::new(r"mixdrop|mixdrp|mixdroop|m1xdrop").unwrap().is_match(host),
         "streamtape" => {
             host.contains("streamtape")
@@ -341,6 +353,18 @@ pub fn run_extractor(embed_url: &str, meta: &EmbedMeta, config: &Config) -> Vec<
 
     match extractor_id {
         "vidsrc" => return run_vidsrc_extractor(&normalized, meta, &label),
+        "moviebox" => {
+            return extract_moviebox_download(&normalized)
+                .into_iter()
+                .filter_map(|r| map_extract(r, extractor_id, meta, &label))
+                .collect();
+        }
+        "vidzee" => {
+            return extract_vidzee_embed(&normalized)
+                .into_iter()
+                .filter_map(|r| map_extract(r, extractor_id, meta, &label))
+                .collect();
+        }
         "hubcloud" => return run_hubcloud_extractor(&normalized, meta, config, &label),
         "hubdrive" => return run_hubdrive_extractor(&normalized, meta, config, &label),
         "external" => {

@@ -152,6 +152,49 @@ pub fn parse_section(section: &str) -> Option<XtreamSection> {
     }
 }
 
+pub const UNCATEGORIZED_ID: &str = "__uncategorized__";
+
+/// Portal groups missing from `get_*_categories` but still referenced by streams.
+pub fn merge_orphan_categories(
+    api: Vec<ParsedCategory>,
+    streams: &[XtreamStreamRow],
+) -> Vec<ParsedCategory> {
+    let known: std::collections::HashSet<&str> = api
+        .iter()
+        .filter(|c| !c.id.is_empty() && c.id != UNCATEGORIZED_ID)
+        .map(|c| c.id.as_str())
+        .collect();
+    let mut orphan_ids = std::collections::BTreeSet::new();
+    let mut has_empty = false;
+    for s in streams {
+        if s.category_id.is_empty() {
+            has_empty = true;
+        } else if !known.contains(s.category_id.as_str()) {
+            orphan_ids.insert(s.category_id.clone());
+        }
+    }
+    if orphan_ids.is_empty() && !has_empty {
+        return api;
+    }
+    let single_bucket = api.is_empty() && orphan_ids.len() == 1;
+    let mut out = api;
+    for id in orphan_ids {
+        let name = if single_bucket {
+            "Channels".to_string()
+        } else {
+            format!("Group {id}")
+        };
+        out.push(ParsedCategory { id, name });
+    }
+    if has_empty {
+        out.push(ParsedCategory {
+            id: UNCATEGORIZED_ID.to_string(),
+            name: "Uncategorized".to_string(),
+        });
+    }
+    out
+}
+
 pub fn parse_categories_json(json: &str) -> String {
     match parse_categories_rows(json) {
         Ok(rows) => serde_json::to_string(&rows).unwrap_or_else(|_| "[]".into()),
@@ -276,5 +319,48 @@ mod tests {
         let rows = parse_streams_rows(json, XtreamSection::Vod).unwrap();
         assert_eq!(rows[0].container_ext, "mkv");
         assert_eq!(rows[0].kind, "vod");
+    }
+
+    #[test]
+    fn merges_orphan_live_categories() {
+        let streams = vec![XtreamStreamRow {
+            stream_id: "1".into(),
+            name: "A".into(),
+            icon: String::new(),
+            category_id: "110".into(),
+            container_ext: "ts".into(),
+            epg_channel_id: String::new(),
+            kind: "live".into(),
+        }];
+        let cats = merge_orphan_categories(vec![], &streams);
+        assert_eq!(cats[0].id, "110");
+        assert_eq!(cats[0].name, "Channels");
+    }
+
+    #[test]
+    fn merges_uncategorized_bucket() {
+        let streams = vec![
+            XtreamStreamRow {
+                stream_id: "1".into(),
+                name: "A".into(),
+                icon: String::new(),
+                category_id: "110".into(),
+                container_ext: "ts".into(),
+                epg_channel_id: String::new(),
+                kind: "live".into(),
+            },
+            XtreamStreamRow {
+                stream_id: "2".into(),
+                name: "B".into(),
+                icon: String::new(),
+                category_id: String::new(),
+                container_ext: "ts".into(),
+                epg_channel_id: String::new(),
+                kind: "live".into(),
+            },
+        ];
+        let cats = merge_orphan_categories(vec![], &streams);
+        assert_eq!(cats.len(), 2);
+        assert_eq!(cats[1].id, UNCATEGORIZED_ID);
     }
 }

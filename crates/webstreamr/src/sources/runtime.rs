@@ -29,15 +29,26 @@ pub struct SourceDef {
     pub use_only_with_max_urls_found: Option<i32>,
 }
 
+/// Bases aligned with WebStreamrMBG `src/source` (2026-07).
+/// Legacy Forja-only sources (`rgshows`, `streamkiste`, `vegamovies`) kept.
 pub const ALL_SOURCES: &[SourceDef] = &[
     SourceDef {
-        id: "vidsrc",
-        label: "VidSrc",
+        id: "4khdhub",
+        label: "4KHDHub",
         content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["multi"],
-        base_url: "https://vsembed.su",
+        country_codes: &["multi", "hi", "ta", "te"],
+        base_url: "https://4khdhub.link",
         priority: 0,
-        use_only_with_max_urls_found: Some(0),
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "hdhub4u",
+        label: "HDHub4u",
+        content_types: &[MediaType::Movie, MediaType::Series],
+        country_codes: &["multi", "gu", "hi", "ml", "pa", "ta", "te"],
+        base_url: "https://new1.hdhub4u.limo",
+        priority: 0,
+        use_only_with_max_urls_found: None,
     },
     SourceDef {
         id: "vixsrc",
@@ -46,6 +57,33 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         country_codes: &["multi"],
         base_url: "https://vixsrc.to",
         priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "vidsrc",
+        label: "VidSrc",
+        content_types: &[MediaType::Movie, MediaType::Series],
+        country_codes: &["multi"],
+        base_url: "https://vidsrcme.ru",
+        priority: 0,
+        use_only_with_max_urls_found: Some(0),
+    },
+    SourceDef {
+        id: "vidzee",
+        label: "VidZee",
+        content_types: &[MediaType::Movie, MediaType::Series],
+        country_codes: &["multi"],
+        base_url: "https://player.vidzee.wtf",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "moviebox",
+        label: "MovieBox",
+        content_types: &[MediaType::Movie, MediaType::Series],
+        country_codes: &["multi"],
+        base_url: "https://moviebox.ph",
+        priority: -1,
         use_only_with_max_urls_found: None,
     },
     SourceDef {
@@ -58,56 +96,11 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         use_only_with_max_urls_found: None,
     },
     SourceDef {
-        id: "meinecloud",
-        label: "MeineCloud",
-        content_types: &[MediaType::Movie],
-        country_codes: &["de"],
-        base_url: "https://meinecloud.click",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "verhdlink",
-        label: "VerHdLink",
-        content_types: &[MediaType::Movie],
-        country_codes: &["es", "mx"],
-        base_url: "https://verhdlink.cam",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "megakino",
-        label: "MegaKino",
-        content_types: &[MediaType::Movie],
-        country_codes: &["de"],
-        base_url: "https://megakino1.to",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "homecine",
-        label: "HomeCine",
+        id: "kokoshka",
+        label: "Kokoshka",
         content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["es", "mx"],
-        base_url: "https://www3.homecine.to",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "mostraguarda",
-        label: "MostraGuarda",
-        content_types: &[MediaType::Movie],
-        country_codes: &["it"],
-        base_url: "https://mostraguarda.stream",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "eurostreaming",
-        label: "Eurostreaming",
-        content_types: &[MediaType::Series],
-        country_codes: &["it"],
-        base_url: "https://eurostreaming.luxe",
+        country_codes: &["al"],
+        base_url: "https://kokoshka.digital",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -116,25 +109,7 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         label: "CineHDPlus",
         content_types: &[MediaType::Series],
         country_codes: &["es", "mx"],
-        base_url: "https://cinehdplus.gratis",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "streamkiste",
-        label: "StreamKiste",
-        content_types: &[MediaType::Series],
-        country_codes: &["de"],
-        base_url: "https://streamkiste.taxi",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "frenchcloud",
-        label: "FrenchCloud",
-        content_types: &[MediaType::Movie],
-        country_codes: &["fr"],
-        base_url: "https://frenchcloud.cam",
+        base_url: "https://cinehdplus.zone",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -148,11 +123,20 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         use_only_with_max_urls_found: None,
     },
     SourceDef {
-        id: "hdhub4u",
-        label: "HDHub4u",
+        id: "homecine",
+        label: "HomeCine",
         content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["multi", "gu", "hi", "ml", "pa", "ta", "te"],
-        base_url: "https://new5.hdhub4u.fo",
+        country_codes: &["es", "mx"],
+        base_url: "https://www3.homecine.to",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "verhdlink",
+        label: "VerHdLink",
+        content_types: &[MediaType::Movie],
+        country_codes: &["es", "mx"],
+        base_url: "https://verhdlink.cam",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -166,11 +150,47 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         use_only_with_max_urls_found: None,
     },
     SourceDef {
-        id: "movix",
-        label: "Movix",
+        id: "kinoger",
+        label: "KinoGer",
         content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["fr"],
-        base_url: "https://api.movix.site",
+        country_codes: &["de"],
+        base_url: "https://kinoger.com",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "megakino",
+        label: "MegaKino",
+        content_types: &[MediaType::Movie],
+        country_codes: &["de"],
+        base_url: "https://megakino2.biz",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "meinecloud",
+        label: "MeineCloud",
+        content_types: &[MediaType::Movie],
+        country_codes: &["de"],
+        base_url: "https://meinecloud.click",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "filmpalast",
+        label: "Filmpalast",
+        content_types: &[MediaType::Movie, MediaType::Series],
+        country_codes: &["de"],
+        base_url: "https://filmpalast.to",
+        priority: 1,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "streamkiste",
+        label: "StreamKiste",
+        content_types: &[MediaType::Series],
+        country_codes: &["de"],
+        base_url: "https://streamkiste.taxi",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -179,25 +199,43 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         label: "Frembed",
         content_types: &[MediaType::Movie, MediaType::Series],
         country_codes: &["fr"],
-        base_url: "https://frembed.work",
+        base_url: "https://frembed.cyou",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
     SourceDef {
-        id: "kokoshka",
-        label: "Kokoshka",
-        content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["al"],
-        base_url: "https://kokoshka.digital",
+        id: "frenchcloud",
+        label: "FrenchCloud",
+        content_types: &[MediaType::Movie],
+        country_codes: &["fr"],
+        base_url: "https://frenchcloud.cam",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
     SourceDef {
-        id: "4khdhub",
-        label: "4KHDHub",
+        id: "movix",
+        label: "Movix",
         content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["multi", "hi", "ta", "te"],
-        base_url: "https://4khdhub.dad",
+        country_codes: &["fr"],
+        base_url: "https://api.movix.cash",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "eurostreaming",
+        label: "Eurostreaming",
+        content_types: &[MediaType::Series],
+        country_codes: &["it"],
+        base_url: "https://eurostreaming.luxe",
+        priority: 0,
+        use_only_with_max_urls_found: None,
+    },
+    SourceDef {
+        id: "mostraguarda",
+        label: "MostraGuarda",
+        content_types: &[MediaType::Movie],
+        country_codes: &["it"],
+        base_url: "https://mostraguarda.stream",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -207,15 +245,6 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         content_types: &[MediaType::Movie, MediaType::Series],
         country_codes: &["multi", "hi", "en"],
         base_url: "https://vegamovies.market",
-        priority: 0,
-        use_only_with_max_urls_found: None,
-    },
-    SourceDef {
-        id: "kinoger",
-        label: "KinoGer",
-        content_types: &[MediaType::Movie, MediaType::Series],
-        country_codes: &["de"],
-        base_url: "https://kinoger.com",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -331,7 +360,9 @@ pub fn run_source(
 
     let base = resolved_base(source_id);
     let embeds = match source_id {
-        "vidsrc" | "vixsrc" | "rgshows" => resolve_source(source_id, &sr),
+        "vidsrc" | "vixsrc" | "rgshows" | "vidzee" => resolve_source(source_id, &sr),
+        "moviebox" => super::moviebox::run(&ids, &sr, tmdb_token),
+        "filmpalast" => super::filmpalast::run(&ids, &sr, tmdb_token),
         "meinecloud" => run_meinecloud(&ids, config),
         "verhdlink" | "frenchcloud" | "mostraguarda" => {
             run_imdb_movie_page(source_id, &ids, &base).unwrap_or_default()
@@ -782,8 +813,9 @@ fn find_kinoger_page(keyword: &str, year: i32) -> Option<String> {
 
 fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     let imdb = ids.imdb_id.as_deref()?;
+    // MBG: search.hdhub4u.glass (legacy pingora kept as comment)
     let search_url = format!(
-        "https://search.pingora.fyi/collections/post/documents/search?query_by=imdb_id&q={}",
+        "https://search.hdhub4u.glass/collections/post/documents/search?query_by=imdb_id&q={}",
         urlencoding_encode(imdb)
     );
     let resp = fetch_json(
@@ -1143,7 +1175,7 @@ mod tests {
     #[test]
     fn source_registry_has_vidsrc() {
         assert!(source_by_id("vidsrc").is_some());
-        assert_eq!(ALL_SOURCES.len(), 21);
+        assert_eq!(ALL_SOURCES.len(), 24);
     }
 
     #[test]
@@ -1159,7 +1191,7 @@ mod tests {
         };
         let embeds = resolve_source("vidsrc", &req);
         assert_eq!(embeds.len(), 1);
-        assert!(embeds[0].url.contains("vsembed.su"));
+        assert!(embeds[0].url.contains("vidsrcme.ru"));
         assert!(embeds[0].url.contains("tt0944947"));
     }
 }

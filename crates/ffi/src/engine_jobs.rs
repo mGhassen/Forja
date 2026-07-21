@@ -39,6 +39,7 @@ pub enum JobKind {
     ResolverEngineContinue = 11,
     LiveMatchesFetch = 12,
     IptvRedditCatalog = 13,
+    IptvXtream = 14,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -266,6 +267,15 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             })
             .await
             .map_err(|e| e.to_string())?
+        }
+        k if k == JobKind::IptvXtream as u32 => {
+            let req: RequestJsonPayload =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let request_json = req.request_json;
+            utils::engine_cancel::with_cancel(async {
+                Ok(iptv::xtream_client::request_json_async(&request_json).await)
+            })
+            .await
         }
         _ => Err(format!("unknown job kind {kind}")),
     }

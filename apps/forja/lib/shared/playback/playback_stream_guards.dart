@@ -73,6 +73,26 @@ bool isStreamUrlTokenExpired(
   return !(now ?? DateTime.now()).toUtc().isBefore(deadline);
 }
 
+/// Session-local loopback play endpoints (HLS strip proxy, torrent stream, …).
+///
+/// These are valid to open in the player but must not be written to catalog
+/// stream caches as if they were durable CDN URLs.
+bool isLocalLoopbackPlayUrl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) return false;
+  if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
+  final p = uri.path;
+  if (p.contains('/hls-proxy')) return true;
+  if (p.contains('/jellyfin-stream')) return true;
+  if (p.contains('/toky-proxy')) return true;
+  if (p.contains('/comic-proxy')) return true;
+  if (p.contains('/subtitlecat-translate')) return true;
+  if (p.startsWith('/proxy')) return true;
+  // librqbit HTTP piece server
+  if (p.contains('/torrents/') && p.contains('/stream/')) return true;
+  return false;
+}
+
 /// Placeholder / relative URLs must never ship in webstreaming session or disk cache.
 bool isUnplayableCachedStreamUrl(String url) {
   final u = url.trim();
@@ -82,11 +102,12 @@ bool isUnplayableCachedStreamUrl(String url) {
   if (lower.contains('demo-video')) return true;
   if (u.startsWith('/') && !u.startsWith('//')) return true;
   if (!u.contains('://')) return true;
-  // Loopback play URLs (111477 seek proxy, torrent localhost, …) are session-
-  // local — caching or scoring them as catalog streams marks "stream down"
-  // when the port dies, while a manual catalog-URL check still passes.
+  // Unknown loopback is session junk; known engine proxies / torrent streams
+  // are playable (hls-proxy strip=png, jellyfin, librqbit, …).
   final host = Uri.tryParse(u)?.host.toLowerCase() ?? '';
-  if (host == '127.0.0.1' || host == 'localhost') return true;
+  if (host == '127.0.0.1' || host == 'localhost') {
+    return !isLocalLoopbackPlayUrl(u);
+  }
   if (isStreamUrlTokenExpired(u)) return true;
   return false;
 }

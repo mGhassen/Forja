@@ -554,6 +554,20 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       );
     }
 
+    if (animeHlsNeedsPngStrip(openUrl)) {
+      final stripped = await applyAnimePngStripIfNeeded(
+        StreamSource(
+          url: openUrl,
+          title: source.title,
+          type: source.type,
+          headers: headers,
+        ),
+      );
+      openUrl = stripped.url;
+      headers = stripped.headers;
+      resolved = stripped;
+    }
+
     final ok = await probeStreamSourceUrl(openUrl, headers);
     if (!ok) return null;
     return (openUrl: openUrl, headers: headers, resolved: resolved);

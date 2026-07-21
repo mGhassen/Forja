@@ -230,7 +230,10 @@ class _BrowserViewState extends State<_BrowserView> {
       };
       s = s.where((x) {
         if (x.name.toLowerCase().contains(q)) return true;
-        final cn = catNameById[x.categoryId];
+        final key = x.categoryId.isEmpty
+            ? IptvCatalogOrphans.uncategorizedId
+            : x.categoryId;
+        final cn = catNameById[key];
         return cn != null && cn.contains(q);
       }).toList();
       // Optional narrow: tapping a hit-category while searching scopes results.
@@ -240,7 +243,9 @@ class _BrowserViewState extends State<_BrowserView> {
         final watched = ctrl.liveWatchedIds.toSet();
         s = s.where((x) => watched.contains(x.streamId)).toList();
       } else if (cat != null && cat.isNotEmpty) {
-        s = s.where((x) => x.categoryId == cat).toList();
+        s = s
+            .where((x) => IptvCatalogOrphans.streamMatchesCategory(x, cat))
+            .toList();
       }
     } else if (cat == IptvLiveCatalog.favoritesId) {
       s = s.where((x) => ctrl.isLiveFavorite(x.streamId)).toList();
@@ -251,7 +256,9 @@ class _BrowserViewState extends State<_BrowserView> {
           if (byId.containsKey(id)) byId[id]!,
       ];
     } else if (cat != null && cat.isNotEmpty) {
-      s = s.where((x) => x.categoryId == cat).toList();
+      s = s
+          .where((x) => IptvCatalogOrphans.streamMatchesCategory(x, cat))
+          .toList();
     }
 
     if (ctrl.activeSection == IptvSection.live &&

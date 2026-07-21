@@ -16,7 +16,9 @@ thiserror = { workspace = true }
 url = { workspace = true }
 tokio = { workspace = true }
 aes = { workspace = true }
+aes-gcm = { workspace = true }
 cbc = { workspace = true }
+sha2 = { workspace = true }
 hex = "0.4"
 base64 = { workspace = true }
 

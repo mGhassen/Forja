@@ -4,11 +4,11 @@
 
 ## What it is
 
-After WebStreamr [sources](webstreamr-sources.md) find embed pages, **extractors** turn host links into actual stream URLs (HLS, MP4, etc.). Forja ships 23 extractors. Some require MediaFlow Proxy (MFP) to bypass host protections.
+After WebStreamr [sources](webstreamr-sources.md) find embed pages, **extractors** turn host links into actual stream URLs (HLS, MP4, etc.). Forja ships 25 extractors. Some require MediaFlow Proxy (MFP) to bypass host protections.
 
 ## Built-in extractors
 
-StreamEmbed · SaveFiles · Dropload · SuperVideo · Vidora · FSST · VixSrc · KinoGer · YouTube · FileMoon* · HubDrive · HubCloud · RGShows · VidSrc · Mixdrop* · Streamtape* · Uqload* · DoodStream* · FileLions* · LuluStream* · Fastream* · Voe* · External
+StreamEmbed · SaveFiles · Dropload · SuperVideo · Vidora · FSST · VixSrc · KinoGer · YouTube · FileMoon* · HubDrive · HubCloud · RGShows · VidSrc · MovieBox · VidZee · Mixdrop* · Streamtape* · Uqload* · DoodStream* · FileLions* · LuluStream* · Fastream* · Voe* · External
 
 \* *Requires MFP — configure in [WebStreamr settings](webstreamr-settings.md)*
 

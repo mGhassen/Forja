@@ -222,7 +222,7 @@ abstract final class AnimePlaybackBridge {
       maxInFlight: 1,
     );
     if (hits.isEmpty) return null;
-    return hitsToStreamSources(hits);
+    return applyAnimePngStripAll(hitsToStreamSources(hits));
   }
 
   /// Expand every playable URL under each hit (Miruro multi-server).

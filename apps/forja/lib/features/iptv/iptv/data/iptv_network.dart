@@ -28,23 +28,53 @@ Future<String?> _engineHttpGet(
   }
 }
 
-Future<String> _engineParseXtreamCategories(String text) =>
-    runParseXtreamCategoriesJson(text);
-
-Future<String> _engineParseXtreamStreams(String text, String section) =>
-    runParseXtreamStreamsJson(text, section);
-
-Future<String> _engineParseXtreamSeriesEpisodes(String text) =>
-    runParseXtreamSeriesEpisodesJson(text);
-
 Future<String> _engineProbeStream(String url, int timeoutSecs) =>
     runIptvProbeStreamJson(url, timeoutSecs: timeoutSecs);
 
-/// Xtream-Codes player_api client. Login + categories + streams + episodes.
+Future<Map<String, dynamic>?> _xtreamRequest(
+  Map<String, dynamic> body,
+) async {
+  try {
+    final raw = await runIptvXtreamJson(jsonEncode(body));
+    final parsed = jsonDecode(raw);
+    if (parsed is! Map<String, dynamic>) return null;
+    if (parsed.containsKey('error')) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Xtream-Codes player_api client. Login + catalog + episodes via Rust.
 class IptvClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
   static String _enc(String s) => Uri.encodeComponent(s);
+
+  static String _sectionName(IptvSection kind) => switch (kind) {
+        IptvSection.live => 'live',
+        IptvSection.vod => 'vod',
+        IptvSection.series => 'series',
+      };
+
+  static Map<String, dynamic> _portalBody(
+    IptvPortal p, {
+    required String action,
+    required int timeoutSecs,
+    String? section,
+    String? categoryId,
+    String? seriesId,
+  }) =>
+      {
+        'action': action,
+        'url': p.url,
+        'username': p.username,
+        'password': p.password,
+        'timeout_secs': timeoutSecs,
+        if (section != null) 'section': section,
+        if (categoryId != null) 'category_id': categoryId,
+        if (seriesId != null) 'series_id': seriesId,
+      };
 
   static Future<String?> _httpGet(String url, {Duration? timeout}) =>
       _engineHttpGet(
@@ -58,21 +88,15 @@ class IptvClient {
 
   static Future<Map<String, dynamic>?> login(IptvPortal p,
       {Duration timeout = const Duration(seconds: 6)}) async {
-    final url =
-        '${p.url}/player_api.php?username=${_enc(p.username)}&password=${_enc(p.password)}';
-    final text = await _httpGet(url, timeout: timeout);
-    if (text == null) return null;
-    try {
-      final root = json.decode(text) as Map<String, dynamic>;
-      final info = (root['user_info'] as Map<String, dynamic>?) ?? root;
-      final auth = info['auth']?.toString();
-      final status = (info['status']?.toString() ?? '').toLowerCase();
-      final ok = auth == '1' || status == 'active' || root.containsKey('user_info');
-      if (!ok) return null;
-      return info;
-    } catch (_) {
-      return null;
-    }
+    final root = await _xtreamRequest(_portalBody(
+      p,
+      action: 'login',
+      timeoutSecs: timeout.inSeconds.clamp(1, 120),
+    ));
+    if (root == null) return null;
+    final info = root['user_info'];
+    if (info is! Map<String, dynamic>) return null;
+    return info;
   }
 
   static Future<VerifiedPortal?> verifyOrNull(IptvPortal p,
@@ -106,115 +130,96 @@ class IptvClient {
     }
   }
 
-  static Future<List<IptvCategory>> categories(
-      IptvPortal p, IptvSection kind) async {
-    final action = switch (kind) {
-      IptvSection.live => 'get_live_categories',
-      IptvSection.vod => 'get_vod_categories',
-      IptvSection.series => 'get_series_categories',
-    };
-    final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
-        '&password=${_enc(p.password)}&action=$action';
-    final text = await _httpGet(url, timeout: const Duration(seconds: 8));
-    if (text == null) return [];
-    final rows = await _parseCategoryRows(text);
-    return rows
-        .map(
-          (o) => IptvCategory(
-            id: o['id']?.toString() ?? '',
-            name: o['name']?.toString() ?? '',
-          ),
-        )
-        .toList();
+  /// Categories + streams for one shelf (orphans already merged in Rust).
+  static Future<({List<IptvCategory> categories, List<IptvStream> streams})>
+      catalog(IptvPortal p, IptvSection kind) async {
+    final root = await _xtreamRequest(_portalBody(
+      p,
+      action: 'catalog',
+      section: _sectionName(kind),
+      timeoutSecs: 30,
+    ));
+    if (root == null) {
+      return (categories: const <IptvCategory>[], streams: const <IptvStream>[]);
+    }
+    return (
+      categories: _mapCategories(root['categories']),
+      streams: _mapStreams(root['streams'], _sectionName(kind)),
+    );
   }
 
-  static Future<List<Map<String, dynamic>>> _parseCategoryRows(String text) async {
-    try {
-      final parsed = json.decode(await _engineParseXtreamCategories(text));
-      if (parsed is List) {
-        return parsed.map((e) => e as Map<String, dynamic>).toList();
-      }
-    } catch (_) {}
-    return const [];
+  static Future<List<IptvCategory>> categories(
+      IptvPortal p, IptvSection kind) async {
+    final snap = await catalog(p, kind);
+    return snap.categories;
   }
 
   static Future<List<IptvStream>> streams(
       IptvPortal p, IptvSection kind, String categoryId) async {
-    final action = switch (kind) {
-      IptvSection.live => 'get_live_streams',
-      IptvSection.vod => 'get_vod_streams',
-      IptvSection.series => 'get_series',
-    };
-    final base = '${p.url}/player_api.php?username=${_enc(p.username)}'
-        '&password=${_enc(p.password)}&action=$action';
-    final url = categoryId.isEmpty ? base : '$base&category_id=${_enc(categoryId)}';
-    final text = await _httpGet(url, timeout: const Duration(seconds: 15));
-    if (text == null) return [];
-    final sectionName = switch (kind) {
-      IptvSection.live => 'live',
-      IptvSection.vod => 'vod',
-      IptvSection.series => 'series',
-    };
-    final rows = await _parseStreamRows(text, sectionName);
-    return rows
-        .map(
-          (o) => IptvStream(
-            streamId: o['stream_id']?.toString() ?? '',
-            name: o['name']?.toString() ?? '',
-            icon: o['icon']?.toString() ?? '',
-            categoryId: o['category_id']?.toString() ?? '',
-            containerExt: o['container_ext']?.toString() ?? '',
-            epgChannelId: o['epg_channel_id']?.toString() ?? '',
-            kind: o['kind']?.toString() ?? sectionName,
+    final root = await _xtreamRequest(_portalBody(
+      p,
+      action: 'streams',
+      section: _sectionName(kind),
+      categoryId: categoryId,
+      timeoutSecs: 30,
+    ));
+    if (root == null) return const [];
+    return _mapStreams(root['streams'], _sectionName(kind));
+  }
+
+  static List<IptvCategory> _mapCategories(dynamic raw) {
+    if (raw is! List) return const [];
+    return [
+      for (final e in raw)
+        if (e is Map<String, dynamic>)
+          IptvCategory(
+            id: e['id']?.toString() ?? '',
+            name: e['name']?.toString() ?? '',
           ),
-        )
-        .toList();
+    ];
   }
 
-  static Future<List<Map<String, dynamic>>> _parseStreamRows(
-      String text, String section) async {
-    try {
-      final parsed =
-          json.decode(await _engineParseXtreamStreams(text, section));
-      if (parsed is List) {
-        return parsed.map((e) => e as Map<String, dynamic>).toList();
-      }
-    } catch (_) {}
-    return const [];
-  }
-
-  static Future<List<Map<String, dynamic>>> _parseSeriesEpisodeRows(
-      String text) async {
-    try {
-      final parsed =
-          json.decode(await _engineParseXtreamSeriesEpisodes(text));
-      if (parsed is List) {
-        return parsed.map((e) => e as Map<String, dynamic>).toList();
-      }
-    } catch (_) {}
-    return const [];
+  static List<IptvStream> _mapStreams(dynamic raw, String sectionName) {
+    if (raw is! List) return const [];
+    return [
+      for (final e in raw)
+        if (e is Map<String, dynamic>)
+          IptvStream(
+            streamId: e['stream_id']?.toString() ?? '',
+            name: e['name']?.toString() ?? '',
+            icon: e['icon']?.toString() ?? '',
+            categoryId: e['category_id']?.toString() ?? '',
+            containerExt: e['container_ext']?.toString() ?? '',
+            epgChannelId: e['epg_channel_id']?.toString() ?? '',
+            kind: e['kind']?.toString() ?? sectionName,
+          ),
+    ];
   }
 
   static Future<List<IptvEpisode>> seriesEpisodes(
       IptvPortal p, String seriesId) async {
-    final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
-        '&password=${_enc(p.password)}&action=get_series_info&series_id=${_enc(seriesId)}';
-    final text = await _httpGet(url, timeout: const Duration(seconds: 15));
-    if (text == null) return [];
-    final rows = await _parseSeriesEpisodeRows(text);
-    return rows
-        .map(
-          (o) => IptvEpisode(
-            id: o['id']?.toString() ?? '',
-            title: o['title']?.toString() ?? '',
-            containerExt: o['container_ext']?.toString() ?? '',
-            season: o['season'] as int? ?? 0,
-            episode: o['episode'] as int? ?? 0,
-            plot: o['plot']?.toString() ?? '',
-            image: o['image']?.toString() ?? '',
+    final root = await _xtreamRequest(_portalBody(
+      p,
+      action: 'series_episodes',
+      seriesId: seriesId,
+      timeoutSecs: 15,
+    ));
+    if (root == null) return const [];
+    final raw = root['episodes'];
+    if (raw is! List) return const [];
+    return [
+      for (final e in raw)
+        if (e is Map<String, dynamic>)
+          IptvEpisode(
+            id: e['id']?.toString() ?? '',
+            title: e['title']?.toString() ?? '',
+            containerExt: e['container_ext']?.toString() ?? '',
+            season: (e['season'] as num?)?.toInt() ?? 0,
+            episode: (e['episode'] as num?)?.toInt() ?? 0,
+            plot: e['plot']?.toString() ?? '',
+            image: e['image']?.toString() ?? '',
           ),
-        )
-        .toList();
+    ];
   }
 
   static String streamUrl(IptvPortal p, IptvStream s) {

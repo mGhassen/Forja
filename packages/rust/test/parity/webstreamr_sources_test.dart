@@ -31,7 +31,7 @@ void main() {
       'tmdb_id': 550,
       'media_type': 'movie',
     });
-    expect(rows[0]['url'], 'https://vsembed.su/embed/movie?tmdb=550');
+    expect(rows[0]['url'], 'https://vidsrcme.ru/embed/movie/550');
     expect(rows[0]['country_codes'], ['multi']);
   });
 
@@ -42,7 +42,7 @@ void main() {
       'season': 1,
       'episode': 1,
     });
-    expect(rows[0]['url'], 'https://vsembed.su/embed/tt0944947/1-1/');
+    expect(rows[0]['url'], 'https://vidsrcme.ru/embed/tv/tt0944947/1-1');
   });
 
   test('vixsrc source movie via FFI', () {

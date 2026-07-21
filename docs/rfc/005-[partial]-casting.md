@@ -37,7 +37,7 @@ enum CastTarget { airplay, chromecast }
 
 class CastingService {
   bool get isAirPlayAvailable;      // macOS, iOS
-  bool get isChromecastAvailable;   // Android, iOS
+  bool get isChromecastAvailable;   // Android, iOS, Windows
   Future<bool> castUrl({ url, target, headers, title });
   Future<void> stopCasting();
 }
@@ -50,7 +50,8 @@ class CastingService {
 | macOS | AVRoutePickerView | N/A |
 | iOS | AVPlayer route | Google Cast SDK |
 | Android | N/A | Google Cast SDK |
-| Windows/Linux | N/A | DLNA (v2+, optional) |
+| Windows | N/A | Cast button (stub; native TBD) |
+| Linux | N/A | DLNA (v2+, optional) |
 
 ## Architecture
 

@@ -11,7 +11,10 @@ class CastingService {
       !kIsWeb && (Platform.isMacOS || Platform.isIOS);
 
   bool get isChromecastAvailable =>
-      !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+      !kIsWeb &&
+      (Platform.isAndroid ||
+          Platform.isIOS ||
+          Platform.isWindows);
 
   /// v1.1: native platform channel implementation.
   Future<bool> castUrl({

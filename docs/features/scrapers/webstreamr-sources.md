@@ -1,36 +1,43 @@
 # WebStreamr sources
 
-> 21 built-in streaming sites, filtered by country and content type.
+> Built-in streaming sites (WebStreamrMBG-aligned), filtered by country and content type.
 
 ## What it is
 
-WebStreamr searches regional streaming sites for embed pages matching your movie or series (via TMDB ids). Each **source** is a specific site — VidSrc, Cuevana, MegaKino, HDHub4u, and others. Sources are enabled or disabled by **country** in WebStreamr Settings.
+WebStreamr searches regional streaming sites for embed pages matching your movie or series (via TMDB / IMDb ids). Each **source** is a specific site. Bases follow [WebStreamrMBG](https://github.com/newman2x/WebStreamrMBG) `src/source`. Sources are enabled or disabled by **country** in WebStreamr Settings.
 
 ## Built-in sources
 
 | Source | Regions | Movies | TV |
 |--------|---------|--------|-----|
-| VidSrc | multi | ✓ | ✓ |
-| VixSrc | multi | ✓ | ✓ |
-| RGShows | multi | ✓ | ✓ |
-| MeineCloud | DE | ✓ | |
-| VerHdLink | ES, MX | ✓ | |
-| MegaKino | DE | ✓ | |
-| HomeCine | ES, MX | ✓ | ✓ |
-| MostraGuarda | IT | ✓ | |
-| Eurostreaming | IT | | ✓ |
-| CineHDPlus | ES, MX | | ✓ |
-| StreamKiste | DE | | ✓ |
-| FrenchCloud | FR | ✓ | |
-| Cuevana | ES, MX | ✓ | ✓ |
-| HDHub4u | multi, IN langs | ✓ | ✓ |
-| Einschalten | DE | ✓ | |
-| Movix | FR | ✓ | ✓ |
-| Frembed | FR | ✓ | ✓ |
-| Kokoshka | AL | ✓ | ✓ |
 | 4KHDHub | multi, IN langs | ✓ | ✓ |
-| VegaMovies | multi, EN, HI | ✓ | ✓ |
+| HDHub4u | multi, IN langs | ✓ | ✓ |
+| VixSrc | multi | ✓ | ✓ |
+| VidSrc | multi | ✓ | ✓ |
+| VidZee | multi | ✓ | ✓ |
+| MovieBox | multi | ✓ | ✓ |
+| RGShows | multi | ✓ | ✓ |
+| Kokoshka | AL | ✓ | ✓ |
+| CineHDPlus | ES, MX | | ✓ |
+| Cuevana | ES, MX | ✓ | ✓ |
+| HomeCine | ES, MX | ✓ | ✓ |
+| VerHdLink | ES, MX | ✓ | |
+| Einschalten | DE | ✓ | |
 | KinoGer | DE | ✓ | ✓ |
+| MegaKino | DE | ✓ | |
+| MeineCloud | DE | ✓ | |
+| Filmpalast | DE | ✓ | ✓ |
+| StreamKiste | DE | | ✓ |
+| Frembed | FR | ✓ | ✓ |
+| FrenchCloud | FR | ✓ | |
+| Movix | FR | ✓ | ✓ |
+| Eurostreaming | IT | | ✓ |
+| MostraGuarda | IT | ✓ | |
+| VegaMovies | multi, EN, HI | ✓ | ✓ |
+
+`RGShows`, `StreamKiste`, and `VegaMovies` are Forja extras not in current MBG `createSources`.
+
+**Note:** WebStreamr **VidSrc** uses `vidsrcme.ru`. The separate **VSEmbed** server uses `vsembed.su` and is not this source.
 
 ## How to open it
 

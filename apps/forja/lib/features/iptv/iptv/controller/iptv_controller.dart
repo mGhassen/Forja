@@ -184,7 +184,10 @@ class IptvController extends ChangeNotifier
     };
     bool streamMatches(IptvStream x) {
       if (x.name.toLowerCase().contains(q)) return true;
-      final cn = catNameById[x.categoryId];
+      final key = x.categoryId.isEmpty
+          ? IptvCatalogOrphans.uncategorizedId
+          : x.categoryId;
+      final cn = catNameById[key];
       return cn != null && cn.contains(q);
     }
 
@@ -201,7 +204,11 @@ class IptvController extends ChangeNotifier
     var watchedHit = false;
     for (final x in streams) {
       if (!streamMatches(x)) continue;
-      matchingCatIds.add(x.categoryId);
+      matchingCatIds.add(
+        x.categoryId.isEmpty
+            ? IptvCatalogOrphans.uncategorizedId
+            : x.categoryId,
+      );
       if (liveFavoriteIds.contains(x.streamId)) favHit = true;
       if (liveWatchedIds.contains(x.streamId)) watchedHit = true;
     }

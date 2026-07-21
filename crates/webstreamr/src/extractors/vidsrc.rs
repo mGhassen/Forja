@@ -17,7 +17,7 @@ static MASTER_URLS_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 static VHOST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{v\d+\}").unwrap());
 
-/// Canonical embed host (site announcement: vsembed.ru → vsembed.su).
+/// VSEmbed standalone host — must NOT follow WebStreamr `vidsrc` (MBG uses vidsrcme.ru).
 const EMBED_HOST: &str = "https://vsembed.su";
 /// Fallback when CDN host cannot be parsed from the rcp iframe URL (legacy fixtures).
 const LEGACY_CDN_HOST: &str = "cloudnestra.com";
@@ -25,8 +25,7 @@ const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
 fn embed_host() -> String {
-    utils::provider_runtime::webstreamr_base("vidsrc")
-        .or_else(|| utils::provider_runtime::api_base("vidsrcEmbed"))
+    utils::provider_runtime::api_base("vidsrcEmbed")
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| EMBED_HOST.to_string())
 }

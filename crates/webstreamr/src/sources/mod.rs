@@ -42,6 +42,7 @@ pub fn resolve_source(source_id: &str, req: &SourceRequest) -> Vec<SourceEmbed> 
         "vidsrc" => vidsrc::resolve(req),
         "vixsrc" => vixsrc::resolve(req),
         "rgshows" => rgshows::resolve(req),
+        "vidzee" => vidzee::resolve(req),
         _ => Vec::new(),
     }
 }
@@ -145,6 +146,7 @@ mod cinehdplus;
 mod cuevana;
 mod einschalten;
 mod eurostreaming;
+mod filmpalast;
 mod fourkhdhub;
 mod frenchcloud;
 mod frembed;
@@ -155,6 +157,7 @@ mod kokoshka;
 mod megakino;
 mod meinecloud;
 mod mirrors;
+mod moviebox;
 mod movix;
 mod mostraguarda;
 mod rgshows;
@@ -166,10 +169,11 @@ mod runtime;
 pub use runtime::{run_source, source_by_id, ALL_SOURCES, SourceDef};
 
 mod vidsrc;
+mod vidzee;
 mod vixsrc;
 
 pub fn list_url_sources() -> &'static [&'static str] {
-    &["vidsrc", "vixsrc", "rgshows"]
+    &["vidsrc", "vixsrc", "rgshows", "vidzee"]
 }
 
 pub fn list_html_sources() -> &'static [&'static str] {
@@ -191,6 +195,8 @@ pub fn list_html_sources() -> &'static [&'static str] {
         "kokoshka",
         "4khdhub",
         "vegamovies",
+        "filmpalast",
+        "moviebox",
     ]
 }
 

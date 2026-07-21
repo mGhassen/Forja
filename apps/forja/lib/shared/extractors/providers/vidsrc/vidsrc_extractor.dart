@@ -15,10 +15,9 @@ class VidsrcExtractor {
     _resolveGeneration++;
   }
 
+  /// VSEmbed only — never WebStreamr `vidsrc` (MBG parity host is vidsrcme.ru).
   static String get _embedHost =>
-      ProviderRuntimeConfig.instance.webstreamrBase('vidsrc') ??
-      ProviderRuntimeConfig.instance.api('vidsrcEmbed') ??
-      'https://vsembed.su';
+      ProviderRuntimeConfig.instance.api('vidsrcEmbed') ?? 'https://vsembed.su';
 
   static String buildEmbedUrl({
     required String tmdbId,

@@ -5,3 +5,4 @@ pub mod reddit_catalog;
 pub mod region;
 pub mod stream_probe;
 pub mod xtream;
+pub mod xtream_client;

@@ -123,6 +123,19 @@ abstract final class IptvLiveCatalog {
       ];
 }
 
+/// Portal group ids synthesized by the Rust Xtream client when categories
+/// are missing. Host keeps the id constant for sidebar filtering.
+abstract final class IptvCatalogOrphans {
+  static const uncategorizedId = '__uncategorized__';
+
+  static bool isUncategorizedId(String id) => id == uncategorizedId;
+
+  static bool streamMatchesCategory(IptvStream stream, String categoryId) {
+    if (isUncategorizedId(categoryId)) return stream.categoryId.isEmpty;
+    return stream.categoryId == categoryId;
+  }
+}
+
 enum IptvSection { live, vod, series }
 
 /// Live catalog sort — playlist = API order; nameAsc/nameDesc by display name.

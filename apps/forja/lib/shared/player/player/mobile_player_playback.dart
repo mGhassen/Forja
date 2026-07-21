@@ -28,7 +28,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       triedUrls.add(source.url);
 
       if (isUnplayableCachedStreamUrl(source.url) &&
-          !isLocalTorrentStreamUrl(source.url)) {
+          !isLocalTorrentStreamUrl(source.url) &&
+          !isLocalLoopbackPlayUrl(source.url)) {
         debugPrint(
           '[Player] Skipping unplayable extract at index $i: ${source.url}',
         );
@@ -110,11 +111,29 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
 
+        if (animeHlsNeedsPngStrip(openUrl)) {
+          final stripped = await applyAnimePngStripIfNeeded(
+            StreamSource(
+              url: openUrl,
+              title: source.title,
+              type: source.type,
+              headers: source.headers ?? widget.headers,
+            ),
+          );
+          if (stripped.url != openUrl) {
+            openUrl = stripped.url;
+            source = stripped;
+            _s._currentSources![i] = stripped;
+          }
+        }
+
         // Fast-fail dead CDN/extract links for every provider before mpv open.
         final catalogUrl = source.url;
         if (!widget.streamsPrevalidated &&
             !isLocalTorrentStreamUrl(catalogUrl) &&
             !isLocalTorrentStreamUrl(openUrl) &&
+            !isLocalLoopbackPlayUrl(catalogUrl) &&
+            !isLocalLoopbackPlayUrl(openUrl) &&
             widget.magnetLink == null) {
           final reachable = await validateStreamSourceForCheck(
             providerId: _s._currentProvider,

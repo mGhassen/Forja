@@ -114,6 +114,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [090-[fixed]-…](fixed/090-[fixed]-details-resume-progress-missing.md) | Details Resume / progress missing | P1 | High | fixed | Complete · 5/5 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [091-[open]-…](091-[open]-simple-resolve-budgets-kill-webstreamr-embeds.md) | Simple resolve budgets kill WebStreamr + embeds | P1 | High | open | 2/2 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [092-[open]-…](092-[open]-windows-iptv-stream-freeze-after-20s.md) | Windows IPTV freezes after ~20s (no reconnect) | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [093-[open]-…](093-[open]-webstreamr-mbg-source-parity.md) | WebStreamr local scrape out of sync with MBG | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

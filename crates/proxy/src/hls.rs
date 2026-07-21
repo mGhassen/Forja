@@ -34,20 +34,36 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
             break;
         }
     }
-    let Some(start) = idx else {
-        return raw.to_vec();
-    };
-    for p in start..raw.len().saturating_sub(188) {
-        if raw[p] == 0x47 && raw[p + 188] == 0x47 {
-            return raw[p..].to_vec();
+    if let Some(start) = idx {
+        for p in start..raw.len().saturating_sub(188) {
+            if raw[p] == 0x47 && raw[p + 188] == 0x47 {
+                return raw[p..].to_vec();
+            }
+        }
+        for p in start..raw.len() {
+            if raw[p] == 0x47 {
+                return raw[p..].to_vec();
+            }
         }
     }
-    for p in start..raw.len() {
-        if raw[p] == 0x47 {
-            return raw[p..].to_vec();
-        }
+    // Megaplay / nekostream: fixed 252-byte PNG header before MPEG-TS.
+    if raw.len() > 252 + 188 && raw[252] == 0x47 && raw[252 + 188] == 0x47 {
+        return raw[252..].to_vec();
     }
     raw.to_vec()
+}
+
+/// True when bytes are a PNG that wraps MPEG-TS (Megaplay anti-scraper).
+#[allow(dead_code)] // used by unit tests; strip path inlines the same logic
+pub fn png_wraps_mpeg_ts(raw: &[u8]) -> bool {
+    if raw.len() < 16 {
+        return false;
+    }
+    if raw[0] != 0x89 || raw[1] != 0x50 || raw[2] != 0x4E || raw[3] != 0x47 {
+        return false;
+    }
+    let stripped = strip_png_wrapper(raw);
+    stripped.len() < raw.len() && !stripped.is_empty() && stripped[0] == 0x47
 }
 
 fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
@@ -263,5 +279,19 @@ mod tests {
         raw.push(0x47);
         let out = strip_png_wrapper(&raw);
         assert_eq!(out[0], 0x47);
+        assert!(png_wraps_mpeg_ts(&raw));
+    }
+
+    #[test]
+    fn strip_png_megaplay_offset_252() {
+        let mut raw = vec![0x89, 0x50, 0x4E, 0x47];
+        raw.extend(std::iter::repeat_n(0u8, 248));
+        raw.push(0x47);
+        raw.extend(std::iter::repeat_n(0u8, 187));
+        raw.push(0x47);
+        assert_eq!(raw.len(), 252 + 189);
+        let out = strip_png_wrapper(&raw);
+        assert_eq!(out[0], 0x47);
+        assert!(png_wraps_mpeg_ts(&raw));
     }
 }

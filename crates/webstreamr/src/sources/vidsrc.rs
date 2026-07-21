@@ -1,33 +1,35 @@
 use super::{SourceEmbed, SourceRequest};
 use crate::types::MediaType;
 
-const BASE_URL: &str = "https://vsembed.su";
+/// MBG WebStreamr VidSrc source host (not VSEmbed / vsembed.su).
+const BASE_URL: &str = "https://vidsrcme.ru";
 
 fn base_url() -> String {
     utils::provider_runtime::webstreamr_base("vidsrc")
-        .or_else(|| utils::provider_runtime::api_base("vidsrcEmbed"))
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| BASE_URL.to_string())
 }
 
+/// MBG shape: `/embed/movie/{id}` · `/embed/tv/{id}/{season}-{episode}` (IMDb preferred).
 pub fn resolve(req: &SourceRequest) -> Vec<SourceEmbed> {
-    let base = base_url();
-    let url = match (req.imdb_id.as_deref(), req.tmdb_id, &req.media_type) {
-        (Some(imdb), _, MediaType::Movie) => format!("{base}/embed/{imdb}/"),
-        (Some(imdb), _, MediaType::Series) => {
+    let base = base_url().trim_end_matches('/').to_string();
+    let id = req
+        .imdb_id
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .or_else(|| req.tmdb_id.map(|t| t.to_string()));
+    let Some(id) = id else {
+        return Vec::new();
+    };
+
+    let url = match &req.media_type {
+        MediaType::Movie => format!("{base}/embed/movie/{id}"),
+        MediaType::Series => {
             let season = req.season.unwrap_or(1);
             let episode = req.episode.unwrap_or(1);
-            format!("{base}/embed/{imdb}/{season}-{episode}/")
+            format!("{base}/embed/tv/{id}/{season}-{episode}")
         }
-        (_, Some(tmdb), MediaType::Movie) => {
-            format!("{base}/embed/movie?tmdb={tmdb}")
-        }
-        (_, Some(tmdb), MediaType::Series) => {
-            let season = req.season.unwrap_or(1);
-            let episode = req.episode.unwrap_or(1);
-            format!("{base}/embed/tv?tmdb={tmdb}&season={season}&episode={episode}")
-        }
-        _ => return Vec::new(),
     };
     vec![SourceEmbed {
         url,

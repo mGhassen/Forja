@@ -43,7 +43,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 - Switch **audio**, **subtitles**, and **quality** from dedicated bottom-bar buttons
 - Open **Settings** popup for auto selection, **Auto skip intro**, speed, aspect ratio, loop, and hardware decode — a drill-in list where each parameter opens its own second page with On/Off or value chips (same brand-green chrome as other floating menus). Subtitle style is reached from the **Subtitles** menu header (tune icon). On desktop torrent sessions, toggle **Torrent stats** (off by default) to show live download/peer info above the seek bar while controls are visible
 - Use picture-in-picture on Android and desktop
-- Tap **Cast** on supported platforms (AirPlay on macOS/iOS, Chromecast on Android/iOS). Native casting is not wired yet — the player shows a status message (e.g. “AirPlay is not available yet”) instead of failing silently
+- Tap **Cast** on supported platforms (AirPlay on macOS/iOS, Chromecast on Android/iOS/Windows). Native casting is not wired yet — the player shows a status message (e.g. “AirPlay is not available yet”) instead of failing silently
 - Skip intro/recap/credits when IntroDB has data (optional **Auto skip intro** in Settings → Playback or the player Settings menu for intro/recap)
 - Jump to next episode for TV content (optional **Auto next episode** — Settings or Episodes panel switch). Auto next only runs after a real watch reaches the end — a torrent that fails to start (or EOFs before video) does not skip ahead
 - Launch an external player instead of built-in (Settings)

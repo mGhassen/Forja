@@ -905,7 +905,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final urlToSourceKey = <String, String>{};
     final titleToSourceKey = <String, String>{};
 
-    void syncLiveHits(List<({AnimeEmbed embed, ExtractedMedia media})> all) {
+    Future<void> syncLiveHits(
+      List<({AnimeEmbed embed, ExtractedMedia media})> all,
+    ) async {
       if (_cancelled ||
           _resolverStopped ||
           _manualSwitchRequested ||
@@ -926,10 +928,19 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           StreamProviderProbeStatus.success,
         );
       }
-      sourcesListNotifier.value = _hitsToStreamSources(all);
+      final stripped = await applyAnimePngStripAll(_hitsToStreamSources(all));
+      if (_cancelled || _resolverStopped) return;
+      sourcesListNotifier.value = stripped;
+      final cache = <String, List<StreamSource>>{};
+      for (final hit in all) {
+        cache[hit.embed.panelKey] = await applyAnimePngStripAll(
+          _hitsToStreamSources([hit]),
+        );
+      }
+      if (_cancelled || _resolverStopped) return;
       providerSourcesCache.value = {
         ...providerSourcesCache.value,
-        ..._hitsToProviderCache(all),
+        ...cache,
       };
     }
 
@@ -1000,7 +1011,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         return;
       }
       if (playable.isNotEmpty) {
-        syncLiveHits(playable);
+        await syncLiveHits(playable);
         _activeEmbed = playable.first.embed;
         final usedSaved = !SourceEngine.isAuto(preferred) &&
             _preferredSourceKey != null &&
@@ -1139,7 +1150,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         };
 
     // Player "current" list = winner servers only. Other providers live in cache.
-    final rawSources = _hitsToStreamSources([winner]);
+    // Nekostream/Megaplay HLS: unwrap PNG-shelled MPEG-TS via local hls-proxy.
+    final rawSources = await applyAnimePngStripAll(_hitsToStreamSources([winner]));
     final sources = await PlaybackSelection.rankAndDedupe(
       sources: rawSources,
       providerId: winner.embed.sourceKey,
@@ -1160,7 +1172,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
-    final winnerHeaders = sources.first.headers!;
+    final winnerHeaders = Map<String, String>.from(
+      sources.first.headers ?? const {},
+    );
     final title =
         '${widget.anime.displayTitle} • Ep ${widget.episodeNumber} (${winner.embed.displayName})';
 

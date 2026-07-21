@@ -76,12 +76,13 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c._guideEpgCache.clear();
     notifyListeners();
     try {
-      final cats = await IptvClient.categories(p.portal, section);
-      final streams = await IptvClient.streams(p.portal, section, '');
+      final snap = await IptvClient.catalog(p.portal, section);
       // Shelf switched (or reloaded) while this request was in flight.
       if (loadId != _c._catalogLoadId) return;
       if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
 
+      final cats = snap.categories;
+      final streams = snap.streams;
       _c.categories = section == IptvSection.live
           ? IptvLiveCatalog.withPins(cats)
           : cats;

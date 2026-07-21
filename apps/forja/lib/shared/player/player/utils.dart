@@ -261,7 +261,8 @@ Future<String> openPlayerStream(
   );
   final isRemoteHttp = (openUrl.startsWith('http://') ||
           openUrl.startsWith('https://')) &&
-      !isLocalTorrentStreamUrl(openUrl);
+      !isLocalTorrentStreamUrl(openUrl) &&
+      !isLocalLoopbackPlayUrl(openUrl);
   await player.open(
     Media(openUrl, httpHeaders: isRemoteHttp ? hdrs : null),
   );
@@ -890,7 +891,79 @@ String formatDuration(Duration duration) {
   }
 }
 
-/// Known anti-scraper ad CDNs injected into anime HLS media playlists.
+/// Known hosts that serve Megaplay-style PNG-wrapped MPEG-TS (need hls-proxy strip).
+bool animeHlsNeedsPngStrip(String url) {
+  final u = url.toLowerCase();
+  if (u.contains('/hls-proxy')) return false;
+  return u.contains('nekostream') ||
+      u.contains('mewstream') ||
+      u.contains('vivibebe') ||
+      u.contains('ibyteimg') ||
+      u.contains('byteimg.com') ||
+      u.contains('lostproject') ||
+      u.contains('watching.onl') ||
+      u.contains('owocdn');
+}
+
+/// True when [bytes] are a PNG shell with MPEG-TS after IEND or offset 252.
+bool pngWrapsMpegTs(List<int> bytes) {
+  if (bytes.length < 16) return false;
+  if (bytes[0] != 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47) {
+    return false;
+  }
+  // IEND then TS sync
+  for (var i = 8; i < bytes.length - 4; i++) {
+    if (bytes[i] == 0x49 &&
+        bytes[i + 1] == 0x45 &&
+        bytes[i + 2] == 0x4E &&
+        bytes[i + 3] == 0x44) {
+      final start = i + 8;
+      for (var p = start; p < bytes.length - 188; p++) {
+        if (bytes[p] == 0x47 && bytes[p + 188] == 0x47) return true;
+      }
+      for (var p = start; p < bytes.length; p++) {
+        if (bytes[p] == 0x47) return true;
+      }
+      break;
+    }
+  }
+  return bytes.length > 252 + 188 &&
+      bytes[252] == 0x47 &&
+      bytes[252 + 188] == 0x47;
+}
+
+/// Route Megaplay/nekostream HLS through local `/hls-proxy?strip=png` so Exo/mpv
+/// get real MPEG-TS (browser player strips the PNG shell the same way).
+Future<StreamSource> applyAnimePngStripIfNeeded(StreamSource source) async {
+  final url = source.url.trim();
+  if (url.isEmpty || !url.contains('.m3u8') || !animeHlsNeedsPngStrip(url)) {
+    return source;
+  }
+  final ls = LocalServerService();
+  if (ls.port == 0) {
+    await ls.start();
+  }
+  if (ls.port == 0) return source;
+  final hdrs = Map<String, String>.from(source.headers ?? const {});
+  return StreamSource(
+    url: ls.getHlsProxyUrl(url, hdrs, stripMode: 'png'),
+    title: source.title,
+    type: source.type,
+    headers: null,
+  );
+}
+
+Future<List<StreamSource>> applyAnimePngStripAll(
+  List<StreamSource> sources,
+) async {
+  final out = <StreamSource>[];
+  for (final s in sources) {
+    out.add(await applyAnimePngStripIfNeeded(s));
+  }
+  return out;
+}
+
+/// Known anti-scraper CDN hosts — may still wrap real video (see [pngWrapsMpegTs]).
 bool _isAnimeHlsAdHost(String url) {
   final u = url.toLowerCase();
   return u.contains('ibyteimg.com') ||
@@ -909,6 +982,9 @@ String _joinPlaylistUri(String base, String uri) {
 
 /// Sample media segments — masters can be valid while every segment is a PNG ad.
 ///
+/// PNG shells that wrap MPEG-TS (Megaplay / nekostream) count as playable —
+/// open those via [applyAnimePngStripIfNeeded].
+///
 /// Runs in Dart (not only Rust) so a stale app-bundle `libffi` cannot let
 /// nekostream/vivibebe green-pass then fail at decode.
 Future<bool> hlsMediaSegmentsLookPlayable(
@@ -924,6 +1000,10 @@ Future<bool> hlsMediaSegmentsLookPlayable(
       timeoutSecs: 8,
     );
     if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
+
+    // Megaplay-family CDNs wrap MPEG-TS in PNG shells — segment sampling would
+    // false-reject. Master OK ⇒ playable via /hls-proxy?strip=png.
+    if (animeHlsNeedsPngStrip(playlistUrl)) return true;
 
     var mediaUrl = playlistUrl;
     var body = master.body;
@@ -961,21 +1041,14 @@ Future<bool> hlsMediaSegmentsLookPlayable(
     var checked = 0;
     var poisoned = 0;
     for (final seg in segs) {
-      if (_isAnimeHlsAdHost(seg)) {
-        checked++;
-        poisoned++;
-        continue;
-      }
       try {
         final res = await animeHttp(
           'GET',
           seg,
-          headers: {...headers, 'Range': 'bytes=0-15'},
+          headers: {...headers, 'Range': 'bytes=0-1023'},
           maxRetries: 0,
           timeoutSecs: 8,
         );
-        // CloudStream leaf `page-N.html` returns 403 when the JWT/IP is stale —
-        // count auth failures, don't fail-open as "network blip".
         if (res.status == 401 || res.status == 403 || res.status == 404) {
           checked++;
           poisoned++;
@@ -983,8 +1056,23 @@ Future<bool> hlsMediaSegmentsLookPlayable(
         }
         if (res.status != 200 && res.status != 206) continue;
         checked++;
+
         final ct = (res.headers['content-type'] ?? '').toLowerCase();
-        if (_isAnimeHlsAdHost(res.finalUrl) || ct.startsWith('image/')) {
+        final maybeWrapped = _isAnimeHlsAdHost(res.finalUrl) ||
+            _isAnimeHlsAdHost(seg) ||
+            ct.startsWith('image/');
+        if (maybeWrapped) {
+          try {
+            final sample = await animeHttpBytes(
+              seg,
+              headers: {...headers, 'Range': 'bytes=0-1023'},
+              timeoutSecs: 8,
+              maxRetries: 0,
+            );
+            if (sample.isNotEmpty && pngWrapsMpegTs(sample)) {
+              continue;
+            }
+          } catch (_) {}
           poisoned++;
         }
       } catch (_) {
@@ -992,7 +1080,6 @@ Future<bool> hlsMediaSegmentsLookPlayable(
       }
     }
     if (checked == 0) return true;
-    // Reject when ≥ half of sampled segments are ads/images/auth failures.
     return poisoned * 2 < checked;
   } catch (_) {
     return false;
