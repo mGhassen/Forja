@@ -140,12 +140,24 @@ fn slug_is_side_content(slug: &str) -> bool {
     MARKERS.iter().any(|m| slug.contains(m))
 }
 
+/// AniList formats that *are* side content — do not demote special/ova slugs.
+fn media_is_side_format(media_format: &str) -> bool {
+    matches!(
+        media_format.trim().to_ascii_uppercase().as_str(),
+        "SPECIAL" | "OVA" | "ONA" | "MOVIE" | "MUSIC" | "TV_SHORT"
+    )
+}
+
 /// Rank HTML search hits so exact title slugs are probed before movies.
-/// Higher is better. Side-content slugs are heavily demoted.
-fn slug_probe_score(slug: &str, title_tokens: &HashSet<String>) -> f64 {
+/// Higher is better. Side-content slugs are heavily demoted for TV series.
+fn slug_probe_score(slug: &str, title_tokens: &HashSet<String>, allow_side: bool) -> f64 {
     let tokens = slug_tokens(slug);
     if tokens.is_empty() || title_tokens.is_empty() {
-        return if slug_is_side_content(slug) { -1.0 } else { 0.0 };
+        return if !allow_side && slug_is_side_content(slug) {
+            -1.0
+        } else {
+            0.0
+        };
     }
     let mut score = jaccard(&tokens, title_tokens);
     // Prefer slugs whose token set is close to the title (not "road of naruto").
@@ -156,7 +168,7 @@ fn slug_probe_score(slug: &str, title_tokens: &HashSet<String>) -> f64 {
     if title_tokens.iter().all(|t| tokens.contains(t)) && tokens.len() <= title_tokens.len() + 1 {
         score += 0.25;
     }
-    if slug_is_side_content(slug) {
+    if !allow_side && slug_is_side_content(slug) {
         score -= 1.5;
     }
     score

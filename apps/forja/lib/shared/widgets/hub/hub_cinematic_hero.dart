@@ -8,6 +8,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/hero/desktop_selectable_title.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -699,18 +700,23 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           child: child,
         ),
       ),
-      child: Text(
-        slide.title,
+      child: KeyedSubtree(
         key: ValueKey(slide.id),
-        maxLines: compact ? 2 : 3,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: shellScaled(context, compact ? 28 : 40)
-              .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0),
-          fontWeight: FontWeight.w900,
-          height: 1.05,
-          letterSpacing: -0.5,
+        child: wrapDesktopSelectableTitle(
+          context,
+          Text(
+            slide.title,
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: shellScaled(context, compact ? 28 : 40)
+                  .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0),
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+              letterSpacing: -0.5,
+            ),
+          ),
         ),
       ),
     );

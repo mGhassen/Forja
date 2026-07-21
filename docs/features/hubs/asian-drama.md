@@ -24,6 +24,7 @@ Tap **Asian Drama** in the navigation bar.
 
 ## Tips
 
+- On **desktop**, drag-select hub and details hero titles to copy them
 - KissKH availability can vary by region and site status
 - Watch history is stored per drama in this hub
 - Forja currently uses only `kisskh.nl`. The compatible `.co`, `.ovh`, `.la`, and `.do` aliases are held disabled because automatic checks across them share the same client-IP rate limit

@@ -60,6 +60,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 
 ## Tips
 
+- On **desktop**, drag-select the stylized hero title to copy it (TMDB logo titles are images, not text)
 - Sort order for torrents is set in Settings → Sources
 - Enable only **Webstreaming** under Play sources if you want a single green **Play** / **Resume** without torrent/Stremio **Sources**
 
