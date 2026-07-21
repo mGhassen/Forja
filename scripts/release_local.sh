@@ -17,8 +17,35 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 APP_DIR="$ROOT/apps/forja"
 DIST="$ROOT/dist"
+# origin may not be gh's default when upstream also exists (PlayTorrio, etc.).
+GH_REPO=""
 
 die() { echo "error: $*" >&2; exit 1; }
+
+# Resolve owner/name from git remote "origin" for all gh calls.
+gh_repo() {
+  if [[ -n "$GH_REPO" ]]; then
+    echo "$GH_REPO"
+    return
+  fi
+  local url owner_repo
+  url="$(git remote get-url origin 2>/dev/null || true)"
+  [[ -n "$url" ]] || die "git remote origin not set"
+  owner_repo="$(
+    printf '%s\n' "$url" | sed -E \
+      -e 's#^git@github\.com:##' \
+      -e 's#^https://github\.com/##' \
+      -e 's#^ssh://git@github\.com/##' \
+      -e 's#\.git$##'
+  )"
+  [[ "$owner_repo" == */* ]] || die "cannot parse owner/repo from origin: $url"
+  GH_REPO="$owner_repo"
+  echo "$GH_REPO"
+}
+
+gh_r() {
+  gh -R "$(gh_repo)" "$@"
+}
 
 load_env() {
   local f="$ROOT/.env"
@@ -126,19 +153,20 @@ build_macos() {
 publish_github() {
   local ver="$1"
   local tag="v${ver}"
-  local dmg notes
+  local dmg notes repo
   dmg="$(dmg_path "$ver")"
   [[ -f "$dmg" ]] || die "missing $dmg — run build first"
+  repo="$(gh_repo)"
   notes="$(mktemp)"
   ./scripts/changelog_release_notes.sh "$ver" "$notes"
-  if gh release view "$tag" >/dev/null 2>&1; then
-    echo "==> Updating GitHub release $tag"
+  if gh_r release view "$tag" >/dev/null 2>&1; then
+    echo "==> Updating GitHub release $tag ($repo)"
     if grep -q '^### ' "$notes"; then
-      gh release edit "$tag" --title "Forja ${ver}" --notes-file "$notes"
+      gh_r release edit "$tag" --title "Forja ${ver}" --notes-file "$notes"
     fi
-    gh release upload "$tag" "$dmg" --clobber
+    gh_r release upload "$tag" "$dmg" --clobber
   else
-    echo "==> Creating GitHub release $tag"
+    echo "==> Creating GitHub release $tag ($repo)"
     local -a args=(
       "$tag"
       --title "Forja ${ver}"
@@ -153,10 +181,10 @@ publish_github() {
     else
       args+=(--generate-notes)
     fi
-    gh release create "${args[@]}"
+    gh_r release create "${args[@]}"
   fi
   rm -f "$notes"
-  echo "GitHub: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/tag/${tag}"
+  echo "GitHub: https://github.com/${repo}/releases/tag/${tag}"
 }
 
 publish_r2() {

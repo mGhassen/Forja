@@ -88,6 +88,7 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidsrcsbs" => 52,
             "111movies" => 54,
             "moviesapi" => 53,
+            "vidapi" => 51,
             "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
@@ -108,6 +109,7 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "vidsrcsbs" => 52,
             "111movies" => 54,
             "moviesapi" => 53,
+            "vidapi" => 51,
             "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
@@ -196,6 +198,8 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("111movies", SourceDomain::Series)
             | ("moviesapi", SourceDomain::Movies)
             | ("moviesapi", SourceDomain::Series)
+            | ("vidapi", SourceDomain::Movies)
+            | ("vidapi", SourceDomain::Series)
             | ("service111477", SourceDomain::Movies)
             | ("service111477", SourceDomain::Series)
             | ("webstreamr", SourceDomain::Movies)

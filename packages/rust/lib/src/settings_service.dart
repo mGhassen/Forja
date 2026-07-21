@@ -445,6 +445,7 @@ class SettingsService {
     'vidsrcsbs',
     '111movies',
     'moviesapi',
+    'vidapi',
     'service111477',
     'webstreamr',
   ];

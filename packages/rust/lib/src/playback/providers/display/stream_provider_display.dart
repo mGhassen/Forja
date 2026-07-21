@@ -22,6 +22,7 @@ class StreamProviderDisplay {
     'vidsrcsbs': 'VidSrc.sbs',
     '111movies': '111Movies',
     'moviesapi': 'MoviesAPI',
+    'vidapi': 'VidAPI',
     'service111477': '111477',
     'webstreamr': 'WebStreamr',
     'stremio_direct': 'Stremio Direct',

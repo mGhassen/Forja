@@ -133,6 +133,7 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
                      url.contains('player.vidlove.cc') ||
                      url.contains('vidsrc.sbs') ||
                      url.contains('moviesapi.to') ||
+                     url.contains('vidapi.xyz') ||
                      url.contains('anitaro.live') ||
                      url.contains('111movies.com') ||
                      url.contains('google.com')) {

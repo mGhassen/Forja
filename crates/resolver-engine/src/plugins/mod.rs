@@ -9,6 +9,7 @@ pub mod service111477;
 pub mod stremio_addon;
 pub mod torrentio;
 pub mod two_embed;
+pub mod vidapi;
 pub mod videasy;
 pub mod vidfast;
 pub mod vidlink;
@@ -45,6 +46,7 @@ pub fn built_in() -> Vec<Arc<dyn Provider>> {
         Arc::new(vidsrcwin::VidsrcwinProvider),
         Arc::new(movies111::Movies111Provider),
         Arc::new(moviesapi::MoviesapiProvider),
+        Arc::new(vidapi::VidapiProvider),
         Arc::new(nuvio::NuvioProvider),
         Arc::new(kisskh::KisskhProvider),
         Arc::new(torrentio::TorrentioProvider),

@@ -371,4 +371,5 @@ const _builtinProviderKeys = {
   'vidsrcsbs',
   '111movies',
   'moviesapi',
+  'vidapi',
 };

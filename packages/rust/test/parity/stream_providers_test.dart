@@ -67,6 +67,10 @@ void main() {
       movie: 'https://moviesapi.to/movie/$tmdbId',
       tv: 'https://moviesapi.to/tv/$tvId-$season-$episode',
     ),
+    'vidapi': (
+      movie: 'https://vidapi.xyz/embed/movie/$tmdbId',
+      tv: 'https://vidapi.xyz/embed/tv/$tvId/$season/$episode',
+    ),
   };
 
   for (final entry in providers.entries) {

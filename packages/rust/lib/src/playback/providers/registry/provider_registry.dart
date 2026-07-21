@@ -156,6 +156,13 @@ class ProviderRegistry {
       tvUrl: (id, s, e) => Engine.requireTvUrl('moviesapi', id, s, e),
     ),
     StreamProviderDef(
+      id: 'vidapi',
+      displayName: 'VidAPI',
+      kind: ProviderKind.template,
+      movieUrl: (id) => Engine.requireMovieUrl('vidapi', id),
+      tvUrl: (id, s, e) => Engine.requireTvUrl('vidapi', id, s, e),
+    ),
+    StreamProviderDef(
       id: 'service111477',
       displayName: '111477',
       kind: ProviderKind.api,

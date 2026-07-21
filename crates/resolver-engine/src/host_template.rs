@@ -63,6 +63,7 @@ mod tests {
             Box::new(crate::plugins::vidsrcwin::VidsrcwinProvider),
             Box::new(crate::plugins::movies111::Movies111Provider),
             Box::new(crate::plugins::moviesapi::MoviesapiProvider),
+            Box::new(crate::plugins::vidapi::VidapiProvider),
         ];
         let ids: std::collections::HashSet<&str> = plugins.iter().map(|p| p.id()).collect();
         for def in list_providers() {

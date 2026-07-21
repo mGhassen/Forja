@@ -115,6 +115,12 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
+            id: "vidapi".into(),
+            name: "VidAPI".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
             id: "videasy".into(),
             name: "Videasy".into(),
             has_movie_template: false,
@@ -158,6 +164,7 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
         "vidsrcwin" => Some(format!("https://video.moviepire.co/embed/movie/{tmdb_id}")),
         "111movies" => Some(format!("https://player.vidlove.cc/embed/movie/{tmdb_id}")),
         "moviesapi" => Some(format!("https://moviesapi.to/movie/{tmdb_id}")),
+        "vidapi" => Some(format!("https://vidapi.xyz/embed/movie/{tmdb_id}")),
         _ => None,
     }
 }
@@ -207,6 +214,9 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
         )),
         "moviesapi" => Some(format!(
             "https://moviesapi.to/tv/{tmdb_id}-{season}-{episode}"
+        )),
+        "vidapi" => Some(format!(
+            "https://vidapi.xyz/embed/tv/{tmdb_id}/{season}/{episode}"
         )),
         _ => None,
     }
@@ -325,6 +335,18 @@ mod tests {
         assert_eq!(
             build_tv_url("vidsrcwin", 94997, 1, 1),
             Some("https://video.moviepire.co/embed/tv/94997/1/1".into())
+        );
+    }
+
+    #[test]
+    fn vidapi_urls() {
+        assert_eq!(
+            build_movie_url("vidapi", 550),
+            Some("https://vidapi.xyz/embed/movie/550".into())
+        );
+        assert_eq!(
+            build_tv_url("vidapi", 1399, 2, 5),
+            Some("https://vidapi.xyz/embed/tv/1399/2/5".into())
         );
     }
 }

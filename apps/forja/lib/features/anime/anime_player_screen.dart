@@ -5,8 +5,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:forja/features/anime/anime_embed_player_screen.dart';
-import 'package:forja/features/anime/catalog/anime_browser_embed.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
@@ -443,8 +441,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   String? _pendingPrefTitle;
   /// Next/prev episode while player is open — pop player, then replace host.
   int? _handOffEpisode;
-  /// After native player exhausts, open this browser embed (Megaplay/VidNest).
-  AnimeBrowserEmbed? _pendingBrowserEmbed;
 
   @override
   void initState() {
@@ -603,46 +599,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       episode: widget.episodeNumber,
       category: _category,
     );
-  }
-
-  /// Last-resort: load the site’s own player (JS decrypt / PNG unwrap).
-  Future<bool> _openBrowserEmbedFallback({
-    AnimeBrowserEmbed? preferred,
-  }) async {
-    if (!mounted || _cancelled) return false;
-    await _ensureEmbedsReady();
-    if (!mounted || _cancelled) return false;
-    // Anikoto.cz watch page needs the catalog slug (not only Miruro bee).
-    if (_series == null || _series!.slug.trim().isEmpty) {
-      _series = await _service.resolveAnikoto(widget.anime);
-    }
-    if (!mounted || _cancelled) return false;
-    final candidates = <AnimeBrowserEmbed>[
-      if (preferred != null) preferred,
-      ...animeBrowserEmbedFallbacks(
-        embeds: _allEmbeds,
-        category: _category,
-        anikotoSlug: _series?.slug,
-        episode: widget.episodeNumber,
-      ),
-    ];
-    final seen = <String>{};
-    for (final emb in candidates) {
-      if (!seen.add(emb.url)) continue;
-      if (kDebugMode) {
-        debugPrint('[AnimePlayer] browser embed fallback → ${emb.url}');
-      }
-      _setPhase('Opening web player…');
-      _setStatusLine(emb.label);
-      await openAnimeEmbedPlayer(
-        context: context,
-        embed: emb,
-        title: widget.anime.displayTitle,
-        subtitle: 'Ep ${widget.episodeNumber}',
-      );
-      return true;
-    }
-    return false;
   }
 
   /// Probe CDN reachability before open / cache write (movie I43 style).
@@ -1068,31 +1024,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         return;
       }
 
-      // VidNest CDN dead: if this server was preferred/manual, open the public
-      // vidnest.fun player immediately (site JS works when API/CDN path dies).
-      // Auto keeps racing other natives; end fallback still prefers VidNest pages.
-      final vidnestDead = hits.where((h) => h.embed.server == 'vidnest');
-      final wantVidnestWeb = !SourceEngine.isAuto(preferred) &&
-          preferred.startsWith('vidnest:') &&
-          vidnestDead.any((h) => h.embed.sourceKey == preferred);
-      if (wantVidnestWeb) {
-        final page = animeBrowserEmbedFor(
-          vidnestDead.firstWhere((h) => h.embed.sourceKey == preferred).embed,
-        );
-        if (page != null) {
-          sourcesListNotifier.dispose();
-          providerSourcesCache.dispose();
-          _closeMiruroPipe();
-          if (await _openBrowserEmbedFallback(preferred: page)) {
-            if (mounted) {
-              final nav = Navigator.of(context, rootNavigator: true);
-              if (nav.canPop()) nav.pop();
-            }
-            return;
-          }
-        }
-      }
-
       // Extracted but CDN dead — skip these keys and try the next server.
       final deadKeys = <String>{};
       for (final h in hits) {
@@ -1117,28 +1048,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       return;
     }
 
-    // Race empty — prefer VidNest site player when that was the pinned server
-    // (AnimePahe API often 502 while https://vidnest.fun/animepahe/… still plays).
-    AnimeBrowserEmbed? vidnestPage;
-    if (!SourceEngine.isAuto(preferred) && preferred.startsWith('vidnest:')) {
-      for (final e in pair) {
-        if (e.sourceKey == preferred) {
-          vidnestPage = animeBrowserEmbedFor(e);
-          break;
-        }
-      }
-    }
-
     sourcesListNotifier.dispose();
     providerSourcesCache.dispose();
     _closeMiruroPipe();
-    if (await _openBrowserEmbedFallback(preferred: vidnestPage)) {
-      if (mounted) {
-        final nav = Navigator.of(context, rootNavigator: true);
-        if (nav.canPop()) nav.pop();
-      }
-      return;
-    }
     if (_autoRecheckUsed >= 1) {
       setState(() => _awaitingManualRecheck = true);
       _setPhase('Still searching…');
@@ -1249,25 +1161,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         settingsOrder: _providerOrder,
       ).rows.first.effectiveRank,
     );
-    if (winner.embed.sourceKey.contains('bee') &&
-        (_series == null || _series!.slug.trim().isEmpty)) {
-      _series = await _service.resolveAnikoto(widget.anime);
-      if (!mounted || _cancelled) return;
-    }
-    final browserFallbacks = animeBrowserEmbedFallbacks(
-      embeds: _allEmbeds,
-      category: _category,
-      anikotoSlug: _series?.slug,
-      episode: widget.episodeNumber,
-    );
-    _pendingBrowserEmbed =
-        animeBrowserEmbedFor(winner.embed) ??
-        (browserFallbacks.isEmpty ? null : browserFallbacks.first);
     if (sources.isEmpty) {
-      if (await _openBrowserEmbedFallback(preferred: _pendingBrowserEmbed)) {
-        if (mounted && navigator.canPop()) navigator.pop();
-        return;
-      }
       setState(() => _failedAll = true);
       return;
     }
@@ -1406,9 +1300,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       onAllSourcesExhausted: () {
         if (mounted) _fadeOutNotifier.value = false;
         unawaited(_dropAllStreamCaches());
-        // Flag for post-pop browser embed (Megaplay/VidNest site player).
-        _pendingBrowserEmbed ??= animeBrowserEmbedFor(winner.embed);
-        if (navigator.canPop()) navigator.pop('anime-native-exhausted');
+        if (navigator.canPop()) navigator.pop();
       },
       onReloadStreams: () async {
         await _dropAllStreamCaches();
@@ -1428,8 +1320,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     // Keep this route under the player for the whole session. Removing it on
     // fade/playback-start disposed Source cache notifiers and cancelled
     // onReloadStreams — dead-cache recovery and server taps broke.
-    final playerResult = await playerFuture;
-    final nativeExhausted = playerResult == 'anime-native-exhausted';
+    await playerFuture;
     // Cache resume that never confirmed playback left a dead URL on disk —
     // drop so the next Play re-resolves like green Play (movie I43).
     if (_launchedFromSavedOrCache) {
@@ -1446,7 +1337,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final handOff = _handOffEpisode;
     _handOffEpisode = null;
     if (handOff != null && mounted) {
-      _pendingBrowserEmbed = null;
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
           (_) => ShellScope.rehost(
@@ -1462,20 +1352,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       );
       return;
     }
-    if (nativeExhausted && mounted) {
-      final emb = _pendingBrowserEmbed;
-      _pendingBrowserEmbed = null;
-      if (emb != null) {
-        await openAnimeEmbedPlayer(
-          context: context,
-          embed: emb,
-          title: widget.anime.displayTitle,
-          subtitle: 'Ep ${widget.episodeNumber}',
-        );
-      }
-    } else {
-      _pendingBrowserEmbed = null;
-    }
     // Player closed — leave the loading shell and return to details.
     if (mounted && navigator.canPop()) {
       navigator.pop();
@@ -1490,16 +1366,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         detail: _statusLine.isNotEmpty ? _statusLine : null,
         primaryLabel: 'Try again',
         onPrimary: _retryResolve,
-        secondaryLabel: 'Web player',
-        onSecondary: () {
-          unawaited(() async {
-            if (await _openBrowserEmbedFallback()) {
-              if (mounted && Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
-            }
-          }());
-        },
+        secondaryLabel: 'Close',
+        onSecondary: () => Navigator.of(context).pop(),
       ),
     );
   }

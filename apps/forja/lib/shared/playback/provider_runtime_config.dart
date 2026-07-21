@@ -492,6 +492,10 @@ class ProviderRuntimeSnapshot {
             movie: 'https://moviesapi.to/movie/{tmdb}',
             tv: 'https://moviesapi.to/tv/{tmdb}-{season}-{episode}',
           ),
+          'vidapi': ProviderUrlTemplates(
+            movie: 'https://vidapi.xyz/embed/movie/{tmdb}',
+            tv: 'https://vidapi.xyz/embed/tv/{tmdb}/{season}/{episode}',
+          ),
         },
         apis: const {
           'vidnestApi': 'https://new.vidnest.fun',

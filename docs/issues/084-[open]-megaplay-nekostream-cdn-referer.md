@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **19 / 19** fix · **0 / 10** acceptance |
+| **Progress** | **20 / 20** fix · **2 / 10** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -38,6 +38,7 @@
 | 17 | I84-T17 | VidNest uses Anikoto `ani_id` when Forja AniList id is a duplicate | ✅ |
 | 18 | I84-T18 | Native AniKoto site Ajax (Vidstream/VidPlay/…) → MegaPlay/VidTube getSources race | ✅ |
 | 19 | I84-T19 | VidNest web-player first on fallback; manual VidNest CDN/API miss opens vidnest.fun immediately | ✅ |
+| 20 | I84-T20 | Remove anime Web player (`AnimeEmbedPlayerScreen` + browser-embed fallbacks) | ✅ |
 
 ---
 
@@ -49,12 +50,12 @@
 | 2 | I84-A02 | Probe with missing headers still forces megaplay Referer (unit covered; app smoke) | ⬜ |
 | 3 | I84-A03 | Manual: Anikoto miss still plays Megaplay via `/stream/ani/` | ⬜ |
 | 4 | I84-A04 | Manual: Anikoto miss — race has no Vidwish `/stream/ani/` candidate; Megaplay still plays | ⬜ |
-| 5 | I84-A05 | Manual: if native player exhausts Megaplay/nekostream, Web player embed opens and plays | ⬜ |
-| 6 | I84-A06 | Manual: AniKoto (bee) — native unwrap or anikoto.cz watch Web player plays (same as browser) | ⬜ |
-| 7 | I84-A07 | Manual: Dan Da Dan ep1 — Megaplay native via s-2 getSources OR anikoto.cz Web (not Megaplay 410 page) | ⬜ |
+| 5 | I84-A05 | Canceled — anime Web player removed (I84-T20) | ✅ |
+| 6 | I84-A06 | Manual: AniKoto (bee) — native unwrap plays (site Web player removed) | ⬜ |
+| 7 | I84-A07 | Manual: Dan Da Dan ep1 — Megaplay native via s-2 getSources (not Megaplay 410 page) | ⬜ |
 | 8 | I84-A08 | Manual: Dan Da Dan — VidNest HiAnime resolves with Anikoto-mapped AniList id | ⬜ |
 | 9 | I84-A09 | Manual: AniKoto provider race — native HLS from site Vidstream/VidPlay (no WebView required) | ⬜ |
-| 10 | I84-A10 | Manual: VidNest HiAnime/AnimePahe — CDN or API miss opens vidnest.fun web player and plays | ⬜ |
+| 10 | I84-A10 | Canceled — anime Web player removed (I84-T20) | ✅ |
 
 ---
 
@@ -64,7 +65,7 @@ Megaplay extract still works ([API](https://megaplay.buzz/api)). CDN host rotate
 
 Also: code assumed `/stream/ani/` always 404s and skipped Megaplay without Anikoto. That path is live again for **Megaplay** — emit it when no `episode_embed_id`, keep `/stream/s-2/` when Anikoto matches. **Vidwish** `/stream/ani/` stays a soft-404 / transport waste — only emit Vidwish when Anikoto provides an `s-2` id (I84-T08).
 
-**Playback (I84-T09–T19):** Nekostream segments are PNG-wrapped MPEG-TS (browser player strips them). Forja unwraps via `/hls-proxy?strip=png` and must not treat that loopback URL as unplayable. Miruro Bee (UI **AniKoto**) often returns Megaplay/Vidwish iframe URLs — unwrap those with `direct_embed` instead of dropping. Megaplay embed **HTML** may 410 while `getSources?id={s-2 catalog id}` still returns HLS — extract from the path id, always resolve Anikoto for Megaplay. Web fallback order prefers **vidnest.fun** public pages first (site JS still plays when API/CDN native dies), then Megaplay `/stream/s-2/…`, then **anikoto.cz** watch (I84-T19). Native **AniKoto** provider scrapes anikototv.to Ajax (Vidstream / VidPlay / …) → MegaPlay / VidTube getSources (I84-T18). VidNest should use Anikoto’s mapped `ani_id` when Forja’s AniList id is a duplicate entry.
+**Playback (I84-T09–T20):** Nekostream segments are PNG-wrapped MPEG-TS (browser player strips them). Forja unwraps via `/hls-proxy?strip=png` and must not treat that loopback URL as unplayable. Miruro Bee (UI **AniKoto**) often returns Megaplay/Vidwish iframe URLs — unwrap those with `direct_embed` instead of dropping. Megaplay embed **HTML** may 410 while `getSources?id={s-2 catalog id}` still returns HLS — extract from the path id, always resolve Anikoto for Megaplay. Native **AniKoto** provider scrapes anikototv.to Ajax (Vidstream / VidPlay / …) → MegaPlay / VidTube getSources (I84-T18). VidNest should use Anikoto’s mapped `ani_id` when Forja’s AniList id is a duplicate entry. Site WebView fallback (Megaplay / VidNest / anikoto.cz) was removed (I84-T20) — native fail returns to the resolve failure screen only.
 
 ## Related
 

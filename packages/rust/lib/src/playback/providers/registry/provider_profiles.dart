@@ -94,6 +94,10 @@ abstract final class ProviderProfiles {
       id: 'moviesapi',
       priority: {SourceDomain.movies: 53, SourceDomain.series: 53},
     ),
+    'vidapi': const ProviderProfile(
+      id: 'vidapi',
+      priority: {SourceDomain.movies: 51, SourceDomain.series: 51},
+    ),
     'service111477': const ProviderProfile(
       id: 'service111477',
       priority: {SourceDomain.movies: 85, SourceDomain.series: 85},
