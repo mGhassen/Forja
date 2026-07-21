@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
+import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -54,10 +55,12 @@ class PlayerPopupPanel {
   static bool get isShowing => _entry != null;
 
   static void dismiss() {
+    final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
     _completer?.complete();
     _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Rect? _anchorRectInOverlay(
@@ -115,6 +118,8 @@ class PlayerPopupPanel {
     }
 
     final tv = capturedConfig.inputPolicy.useFocusableMoodChips;
+    // Capture opener before dismiss / TV centering clears the anchor.
+    playerMenuCaptureReturnFocus(context);
     if (tv) {
       centered = true;
       anchorContext = null;
@@ -354,7 +359,7 @@ class PlayerPopupPanel {
   }
 }
 
-/// Ensures primary focus lands on the first menu control after open.
+/// After open: keep focus if a selected option already autofocused; else first control.
 class _TvMenuFocusOnOpen extends StatefulWidget {
   const _TvMenuFocusOnOpen({required this.child});
 
@@ -380,23 +385,26 @@ class _TvMenuFocusOnOpenState extends State<_TvMenuFocusOnOpen> {
   Widget build(BuildContext context) => widget.child;
 }
 
-class _TvPopupListFocusScope extends StatefulWidget {
-  const _TvPopupListFocusScope({required this.child});
+/// Lets the selected list row claim autofocus once; otherwise open falls back
+/// to the first focusable via [FocusScope.nextFocus].
+class PlayerPopupListFocusScope extends StatefulWidget {
+  const PlayerPopupListFocusScope({super.key, required this.child});
 
   final Widget child;
 
   static bool claimAutofocus(BuildContext context) {
     return context
-            .findAncestorStateOfType<_TvPopupListFocusScopeState>()
+            .findAncestorStateOfType<_PlayerPopupListFocusScopeState>()
             ?.claim() ??
         false;
   }
 
   @override
-  State<_TvPopupListFocusScope> createState() => _TvPopupListFocusScopeState();
+  State<PlayerPopupListFocusScope> createState() =>
+      _PlayerPopupListFocusScopeState();
 }
 
-class _TvPopupListFocusScopeState extends State<_TvPopupListFocusScope> {
+class _PlayerPopupListFocusScopeState extends State<PlayerPopupListFocusScope> {
   bool _claimed = false;
 
   bool claim() {
@@ -515,7 +523,7 @@ class _PanelShell extends StatelessWidget {
               ),
             ),
           ],
-          Flexible(child: _TvPopupListFocusScope(child: child)),
+          Flexible(child: PlayerPopupListFocusScope(child: child)),
         ],
       ),
     );
@@ -628,7 +636,7 @@ class PlayerPopupIconBox extends StatelessWidget {
 }
 
 /// Drill-in row: leading icon box, title + subtitle, value badge, chevron.
-class PlayerPopupNavRow extends StatelessWidget {
+class PlayerPopupNavRow extends StatefulWidget {
   const PlayerPopupNavRow({
     super.key,
     required this.icon,
@@ -649,9 +657,16 @@ class PlayerPopupNavRow extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
+  @override
+  State<PlayerPopupNavRow> createState() => _PlayerPopupNavRowState();
+}
+
+class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
+  bool _focused = false;
+
   bool get _valueActive {
-    if (selected) return true;
-    final v = value?.trim().toLowerCase();
+    if (widget.selected) return true;
+    final v = widget.value?.trim().toLowerCase();
     if (v == null || v.isEmpty) return false;
     return v == 'on' ||
         v == 'auto' ||
@@ -662,12 +677,25 @@ class PlayerPopupNavRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    // Opaque cardBg would cover FocusableControl's flat focus fill — paint
+    // the gray highlight on the row itself (same look as option chips).
+    final bg = widget.selected
+        ? PlayerPopupTokens.accentFill
+        : _focused
+        ? Colors.white.withValues(alpha: 0.08)
+        : PlayerPopupTokens.cardBg;
+    final border = widget.selected
+        ? PlayerPopupTokens.accentBorder
+        : _focused
+        ? Colors.white.withValues(alpha: 0.28)
+        : PlayerPopupTokens.border;
     final row = Material(
-      color: selected ? PlayerPopupTokens.accentFill : PlayerPopupTokens.cardBg,
+      color: bg,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        canRequestFocus: false,
+        onTap: tvFocus ? null : widget.onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
@@ -675,33 +703,29 @@ class PlayerPopupNavRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-            border: Border.all(
-              color: selected
-                  ? PlayerPopupTokens.accentBorder
-                  : PlayerPopupTokens.border,
-            ),
+            border: Border.all(color: border),
           ),
           child: Row(
             children: [
-              PlayerPopupIconBox(icon: icon, accent: selected),
+              PlayerPopupIconBox(icon: widget.icon, accent: widget.selected),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      widget.title,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (subtitle != null)
+                    if (widget.subtitle != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
-                          subtitle!,
+                          widget.subtitle!,
                           style: const TextStyle(
                             color: PlayerPopupTokens.muted,
                             fontSize: 11,
@@ -712,8 +736,8 @@ class PlayerPopupNavRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (value != null) ...[
-                PlayerPopupValueBadge(value!, accent: _valueActive),
+              if (widget.value != null) ...[
+                PlayerPopupValueBadge(widget.value!, accent: _valueActive),
                 const SizedBox(width: 6),
               ],
               const Icon(
@@ -727,13 +751,15 @@ class PlayerPopupNavRow extends StatelessWidget {
       ),
     );
 
-    if (!tvFocus || onTap == null) return row;
+    if (!tvFocus || widget.onTap == null) return row;
     return FocusableControl(
-      autoFocus: _TvPopupListFocusScope.claimAutofocus(context),
-      onTap: onTap,
+      autoFocus: PlayerPopupListFocusScope.claimAutofocus(context),
+      onTap: widget.onTap,
       borderRadius: PlayerPopupTokens.cardRadius,
-      showFocusBorder: true,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onFocusChange: (focused) => setState(() => _focused = focused),
       child: row,
     );
   }
@@ -794,7 +820,8 @@ class PlayerPopupOptionChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        canRequestFocus: false,
+        onTap: tvFocus ? null : onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         hoverColor: selected
             ? Colors.black.withValues(alpha: 0.06)
@@ -831,9 +858,12 @@ class PlayerPopupOptionChip extends StatelessWidget {
 
     if (!tvFocus || onTap == null) return chip;
     return FocusableControl(
-      autoFocus: _TvPopupListFocusScope.claimAutofocus(context),
+      // Prefer the current value; else first chip claims via fallback nextFocus.
+      autoFocus:
+          selected && PlayerPopupListFocusScope.claimAutofocus(context),
       onTap: onTap,
       borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
       showFocusBorder: true,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: chip,
@@ -927,7 +957,8 @@ class PlayerPopupListTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        canRequestFocus: false,
+        onTap: tvFocus ? null : onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
@@ -1054,9 +1085,12 @@ class PlayerPopupListTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: FocusableControl(
-        autoFocus: _TvPopupListFocusScope.claimAutofocus(context),
+        // Prefer the current value; else first row claims via fallback nextFocus.
+        autoFocus:
+            selected && PlayerPopupListFocusScope.claimAutofocus(context),
         onTap: onTap,
         borderRadius: PlayerPopupTokens.chipRadius,
+        scaleOnFocus: 1.0,
         showFocusBorder: true,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
         child: tile,

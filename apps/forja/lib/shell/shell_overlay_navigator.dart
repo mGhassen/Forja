@@ -145,10 +145,12 @@ bool shellOverlayCanPop() {
   return overlay?.canPop() ?? false;
 }
 
+/// Pop the top overlay route. Uses [NavigatorState.pop] (not maybePop) so
+/// TV [PopScope] on shell routes cannot swallow intentional dismiss.
 void maybePopShellOverlay<T extends Object?>([T? result]) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay?.canPop() ?? false) {
-    overlay!.maybePop(result);
+    overlay!.pop(result);
   }
 }
 

@@ -198,6 +198,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     focusNode: _s._nextTrailerFocus,
                     onTap: _s._playNextTrailer,
                     borderRadius: 8,
+                    scaleOnFocus: 1.0,
+                    showFocusBorder: true,
                     child: button,
                   ),
                 )
@@ -205,6 +207,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
+                    canRequestFocus: false,
                     onTap: _s._playNextTrailer,
                     borderRadius: BorderRadius.circular(8),
                     child: button,
@@ -307,121 +310,137 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           child: child,
         );
 
-    return Row(
-      children: [
-        ordered(
-          3,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            focusNode: _s._playFocus,
-            icon: _s._showReplayControl
-                ? Icons.replay_rounded
-                : _s._playing
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
-            tooltip: _s._showReplayControl
-                ? 'Replay'
-                : _s._playing
-                    ? 'Pause'
-                    : 'Play',
-            onPressed: () {
-              if (!_s._ready) return;
-              unawaited(_s._togglePlayPause());
-            },
-          ),
-        ),
-        const SizedBox(width: 2),
-        ordered(
-          4,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: Icons.replay_10_rounded,
-            tooltip: 'Back 10s',
-            onPressed: () {
-              if (!_s._ready) return;
-              unawaited(_s._skip(-10));
-            },
-          ),
-        ),
-        const SizedBox(width: 2),
-        ordered(
-          5,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: Icons.forward_10_rounded,
-            tooltip: 'Forward 10s',
-            onPressed: () {
-              if (!_s._ready) return;
-              unawaited(_s._skip(10));
-            },
-          ),
-        ),
-        const SizedBox(width: 2),
-        ordered(
-          6,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: _s._muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-            tooltip: 'Mute',
-            onPressed: () {
-              if (!_s._ready) return;
-              unawaited(_s._toggleMute());
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
-        ordered(
-          7,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: Icons.audiotrack_rounded,
-            tooltip: 'Audio',
-            onPressedWithContext: _s._showAudioMenu,
-          ),
-        ),
-        const SizedBox(width: 2),
-        ordered(
-          8,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: Icons.subtitles_outlined,
-            tooltip: 'Subtitles',
-            onPressedWithContext: _s._showSubtitleMenu,
-          ),
-        ),
-        const SizedBox(width: 2),
-        ordered(
-          9,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: Icons.hd_outlined,
-            tooltip: 'Quality',
-            onPressedWithContext: _s._showQualityMenu,
-          ),
-        ),
-        const SizedBox(width: 2),
-        ordered(
-          10,
-          PlayerFlatIconButton(
-            tvFocusable: true,
-            icon: Icons.speed_rounded,
-            tooltip: 'Playback speed',
-            onPressedWithContext: _s._showSpeedMenu,
-          ),
-        ),
-        if (!_s._ready) ...[
-          const SizedBox(width: 8),
-          ExcludeFocus(
-            child: Text(
-              'Loading…',
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary,
-                fontSize: 13,
+    // Match desktop: transport cluster left, track menus right.
+    return SizedBox(
+      width: double.infinity,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ordered(
+                3,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _s._playFocus,
+                  icon: _s._showReplayControl
+                      ? Icons.replay_rounded
+                      : _s._playing
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                  tooltip: _s._showReplayControl
+                      ? 'Replay'
+                      : _s._playing
+                          ? 'Pause'
+                          : 'Play',
+                  onPressed: () {
+                    if (!_s._ready) return;
+                    unawaited(_s._togglePlayPause());
+                  },
+                ),
               ),
-            ),
+              const SizedBox(width: 2),
+              ordered(
+                4,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.replay_10_rounded,
+                  tooltip: 'Back 10s',
+                  onPressed: () {
+                    if (!_s._ready) return;
+                    unawaited(_s._skip(-10));
+                  },
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                5,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.forward_10_rounded,
+                  tooltip: 'Forward 10s',
+                  onPressed: () {
+                    if (!_s._ready) return;
+                    unawaited(_s._skip(10));
+                  },
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                6,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: _s._muted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  tooltip: 'Mute',
+                  onPressed: () {
+                    if (!_s._ready) return;
+                    unawaited(_s._toggleMute());
+                  },
+                ),
+              ),
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ordered(
+                7,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.audiotrack_rounded,
+                  tooltip: 'Audio',
+                  onPressedWithContext: _s._showAudioMenu,
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                8,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.subtitles_outlined,
+                  tooltip: 'Subtitles',
+                  onPressedWithContext: _s._showSubtitleMenu,
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                9,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.hd_outlined,
+                  tooltip: 'Quality',
+                  onPressedWithContext: _s._showQualityMenu,
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                10,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  icon: Icons.speed_rounded,
+                  tooltip: 'Playback speed',
+                  onPressedWithContext: _s._showSpeedMenu,
+                ),
+              ),
+              if (!_s._ready) ...[
+                const SizedBox(width: 8),
+                ExcludeFocus(
+                  child: Text(
+                    'Loading…',
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
-      ],
+      ),
     );
   }
 

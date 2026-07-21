@@ -19,7 +19,10 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             fit: StackFit.expand,
             children: [
               // ── 1. Video ─────────────────────────────────────────────────
-              Video(
+              // Positioned.fill: loose Stack children can get a zero-sized
+              // surface on Android (Impeller/Skia sibling composite).
+              Positioned.fill(
+                child: Video(
                   controller: _s._controller,
                   controls: NoVideoControls,
                   fit: _s._videoFit,
@@ -28,6 +31,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                     visible: false,
                   ),
                 ),
+              ),
 
                 // ── 1b. Custom subtitle overlay ─────────────────────────────
                 // Auto-scales relative to the rendered window height so
@@ -343,24 +347,9 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                           ? (anchorContext) =>
                               unawaited(_s._showPlayerMenu(anchorContext))
                           : null,
-                      showCast:
-                          CastingService.instance.isAirPlayAvailable ||
-                          CastingService.instance.isChromecastAvailable,
-                      onCast: () {
-                        showPlayerCastPicker(
-                          context,
-                          streamUrl: _s._currentUrl,
-                          title: widget.title,
-                          headers: widget.headers,
-                          statusController: _s._statusController,
-                        );
-                        _s._startHideTimer();
-                      },
-                      showPip: PipService.instance.isSupported,
-                      onPip: () async {
-                        await PipService.instance.enter();
-                        _s._startHideTimer();
-                      },
+                      // Cast / PiP are phone/desktop chrome — hide on ATV.
+                      showCast: false,
+                      showPip: false,
                     ),
                   ),
                 )
@@ -548,7 +537,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                                           position: position,
                                           bufferedPosition: buffered,
                                           tvFocusable: true,
-                                          tvFocusUpNode: _s._backFocus,
+                                          onTvFocusUp: _s._focusUpFromSeekbar,
                                           onSeek: (t) => unawaited(_s._seekTo(t)),
                                         ),
                                       )
@@ -718,6 +707,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
               label: _s._activeSkipLabel!,
               onPressed: _s._performSkip,
               tvFocusable: true,
+              focusNode: _s._skipChipFocus,
             ),
           ),
         ),
@@ -735,6 +725,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
               trailingIcon: Icons.arrow_forward_rounded,
               onPressed: _s._nextEpisode,
               tvFocusable: true,
+              focusNode: _s._nextEpChipFocus,
             ),
           ),
         ),

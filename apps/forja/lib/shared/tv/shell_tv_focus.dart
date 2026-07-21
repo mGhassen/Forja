@@ -128,7 +128,24 @@ class ShellTvLinearFocusScope extends InheritedWidget {
   bool updateShouldNotify(covariant ShellTvLinearFocusScope oldWidget) => false;
 }
 
-/// Linear D-pad inside [ShellTvLinearFocusScope] — traps at first/last item.
+/// Opt out of [ShellTvLinearFocusScope] for panels with an explicit D-pad graph
+/// (e.g. episode list ↔ season / search).
+class ShellTvDisableLinearFocus extends InheritedWidget {
+  const ShellTvDisableLinearFocus({super.key, required super.child});
+
+  static bool activeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<ShellTvDisableLinearFocus>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(covariant ShellTvDisableLinearFocus oldWidget) =>
+      false;
+}
+
+/// D-pad inside [ShellTvLinearFocusScope] — reading order, no wrap.
+///
+/// ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop] so the first
+/// item never jumps to the last (and last never wraps to first).
 KeyEventResult shellTvLinearMenuArrows({
   required BuildContext context,
   required KeyEvent event,
@@ -137,19 +154,30 @@ KeyEventResult shellTvLinearMenuArrows({
   if (!ShellTvLinearFocusScope.activeOf(context)) {
     return KeyEventResult.ignored;
   }
+  if (ShellTvDisableLinearFocus.activeOf(context)) {
+    return KeyEventResult.ignored;
+  }
   final key = event.logicalKey;
+  final backward = key == LogicalKeyboardKey.arrowUp ||
+      key == LogicalKeyboardKey.arrowLeft;
+  final forward = key == LogicalKeyboardKey.arrowDown ||
+      key == LogicalKeyboardKey.arrowRight;
+  if (!backward && !forward) return KeyEventResult.ignored;
+
   final scope = FocusScope.of(context);
-  if (key == LogicalKeyboardKey.arrowUp ||
-      key == LogicalKeyboardKey.arrowLeft) {
-    scope.previousFocus();
-    return KeyEventResult.handled;
+  // Default closedLoop makes previousFocus on the first node land on the last.
+  final edge = scope.traversalEdgeBehavior;
+  scope.traversalEdgeBehavior = TraversalEdgeBehavior.stop;
+  try {
+    if (backward) {
+      scope.previousFocus();
+    } else {
+      scope.nextFocus();
+    }
+  } finally {
+    scope.traversalEdgeBehavior = edge;
   }
-  if (key == LogicalKeyboardKey.arrowDown ||
-      key == LogicalKeyboardKey.arrowRight) {
-    scope.nextFocus();
-    return KeyEventResult.handled;
-  }
-  return KeyEventResult.ignored;
+  return KeyEventResult.handled;
 }
 
 /// Coordinator-first D-pad arrows for catalog rows — traps horizontal edges.

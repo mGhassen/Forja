@@ -34,10 +34,12 @@ class PlayerSourcesPanel {
     DomainStreamProviderResolver.cancelAllPending(
       cancelEngineJobs: cancelEngine,
     );
+    final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
     _completer?.complete();
     _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Future<void> show({
@@ -55,6 +57,7 @@ class PlayerSourcesPanel {
     required Future<void> Function(Map<String, dynamic> stream)
     onStremioSelected,
   }) {
+    playerMenuCaptureReturnFocus(context);
     dismiss();
     PlayerPopupPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();

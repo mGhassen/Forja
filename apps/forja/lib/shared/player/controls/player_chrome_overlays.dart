@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
@@ -10,6 +11,7 @@ import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 
+export 'player_menu_return_focus.dart';
 export 'player_seek_scrub_cancel.dart';
 
 /// True when player chrome should use centered TV dialogs (not side panels).
@@ -157,6 +159,8 @@ class _TvPanelFocusOnOpenState extends State<_TvPanelFocusOnOpen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Episode panel (and similar) own initial focus — don't steal to first chip.
+      if (ShellTvDisableLinearFocus.activeOf(context)) return;
       final scope = FocusScope.of(context);
       if (scope.focusedChild != null) return;
       scope.nextFocus();
@@ -211,4 +215,5 @@ bool playerChromeOverlayBlocksSeek() {
 }
 
 /// True while a menu/panel owns the remote — do not steal focus back to Play.
-bool playerChromeOverlayBlocksFocusClaim() => playerChromeOverlayBlocksSeek();
+bool playerChromeOverlayBlocksFocusClaim() =>
+    playerChromeOverlayBlocksSeek() || playerChromeHasPendingReturnFocus();

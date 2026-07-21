@@ -391,6 +391,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         );
       }
       return TvPlayerScreen(
+        key: ValueKey('mk_tv_${_builtInEngine.name}'),
         mediaPath: widget.streamUrl,
         title: widget.title,
         audioUrl: widget.audioUrl,
@@ -423,6 +424,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         sourcesListNotifier: widget.sourcesListNotifier,
         providerSourcesCache: widget.providerSourcesCache,
         providerProbesNotifier: widget.providerProbesNotifier,
+        builtInEngine: _builtInEngine,
+        onSwitchPlayer: _switchPlayer,
       );
     }
 

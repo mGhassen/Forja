@@ -57,31 +57,19 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
     final fg = _active ? Colors.white : _idle;
     final fillAlpha = _active ? 0.10 : 0.0;
 
+    // Full hit box must stay hittable — Align+smaller child made most of the
+    // target miss with GestureDetector's default deferToChild behavior.
     final body = SizedBox(
       width: resolvedHit,
       height: resolvedHit,
-      child: Align(
-        alignment: widget.iconAlignment,
-        child: SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: fillAlpha),
-                ),
-                child: SizedBox(
-                  width: resolvedHit,
-                  height: resolvedHit,
-                ),
-              ),
-              Icon(widget.icon, size: widget.size, color: fg),
-            ],
-          ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: fillAlpha),
+        ),
+        child: Align(
+          alignment: widget.iconAlignment,
+          child: Icon(widget.icon, size: widget.size, color: fg),
         ),
       ),
     );
@@ -90,7 +78,7 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
       context: context,
       onTap: widget.onTap,
       borderRadius: resolvedHit / 2,
-      scaleOnFocus: 1.08,
+      scaleOnFocus: 1.0,
       suppressInkHover: true,
       focusNode: widget.focusNode,
       onFocusChange: (focused) => setState(() => _focused = focused),

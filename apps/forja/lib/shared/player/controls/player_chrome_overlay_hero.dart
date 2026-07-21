@@ -262,7 +262,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         focusNode: widget.focusNode,
         onTap: widget.onPressed,
         borderRadius: widget.size / 2,
-        scaleOnFocus: 1.06,
+        scaleOnFocus: 1.0,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: (hovered) {
           if (hovered) playerChromeCancelSeekScrubs();

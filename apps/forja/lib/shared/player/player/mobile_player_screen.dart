@@ -194,6 +194,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
+  final FocusNode _skipChipFocus = FocusNode(debugLabel: 'player-skip-chip');
+  final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'player-next-ep-chip');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   Movie? _heroMovie;
   String? _episodeOverview;
@@ -398,6 +400,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     _playFocus.dispose();
     _backFocus.dispose();
+    _skipChipFocus.dispose();
+    _nextEpChipFocus.dispose();
     _tvKeyFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();

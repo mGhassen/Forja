@@ -18,4 +18,6 @@ FLAGS="_ --disable-gpu --disable-gpu-rasterization"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/apps/forja"
-exec flutter run -d "$DEVICE" "$@"
+# --no-enable-impeller: media_kit video surface is black+audio under Impeller on ATV.
+# (ForjaApplication also forces this for leanback; flag keeps flutter-run consistent.)
+exec flutter run -d "$DEVICE" --no-enable-impeller "$@"

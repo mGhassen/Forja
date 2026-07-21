@@ -86,7 +86,6 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     widget.providerProbesNotifier?.addListener(_s._onLiveSourcesUpdated);
     widget.providerProbesNotifier?.addListener(_s._onProbeScoringChanged);
     if (widget.tvRemoteEnabled) {
-      _s._hwDecMode = _HwDecMode.software;
       WidgetsBinding.instance.addPostFrameCallback((_) => _s._claimPlayFocus());
     }
 
@@ -123,9 +122,10 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     // the widget tree is still building.
     WakelockPlus.enable();
 
-    // Android MediaKit fallback: software-friendly decode (user chose MediaKit
-    // over ExoPlayer in Settings).
-    if (Platform.isAndroid) {
+    // Phone MediaKit: software-friendly decode (some MediaCodec paths flake).
+    // ATV MediaKit: keep MediaCodec HW — Impeller is disabled in
+    // ForjaApplication so the SurfaceProducer shows frames (not audio-only).
+    if (Platform.isAndroid && !widget.tvRemoteEnabled) {
       _s._androidMediaKitSafeMode = true;
       _s._hwDecMode = _HwDecMode.software;
     }
@@ -145,20 +145,19 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       ),
     );
 
-    // androidAttachSurfaceAfterVideoParameters: false fixes a blank-screen
-    // race condition on some Android devices where the surface is attached
-    // before mpv has negotiated video dimensions.
-    // ATV emulators often lack a working GLES stack — HW decode + GPU
-    // surface fails with EGL_BAD_ATTRIBUTE right after the first frame.
+    // ATV: vo=gpu needs an EGL context — ATV emulators die with
+    // EGL_BAD_ATTRIBUTE (audio OK, black frame). mediacodec_embed paints
+    // MediaCodec straight into the Flutter Surface (no mpv GL).
+    final tvMediaKit = widget.tvRemoteEnabled;
     _s._controller = VideoController(
       _s._player,
       configuration: VideoControllerConfiguration(
+        vo: tvMediaKit ? 'mediacodec_embed' : null,
         enableHardwareAcceleration:
-            !widget.tvRemoteEnabled && !_s._androidMediaKitSafeMode,
-        hwdec: (widget.tvRemoteEnabled || _s._androidMediaKitSafeMode)
-            ? 'no'
-            : null,
-        androidAttachSurfaceAfterVideoParameters: false,
+            tvMediaKit || !_s._androidMediaKitSafeMode,
+        hwdec: tvMediaKit
+            ? 'mediacodec'
+            : (_s._androidMediaKitSafeMode ? 'no' : null),
       ),
     );
 
@@ -496,7 +495,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   Future<void> _exitPlayer() async {
     if (_s._exitInProgress) return;
     if (dismissAnyPlayerChromeOverlay()) {
-      if (widget.tvRemoteEnabled) _s._claimPlayFocus();
+      // Opener chrome button is refocused by playerMenuRestoreReturnFocus.
       return;
     }
     _s._exitInProgress = true;

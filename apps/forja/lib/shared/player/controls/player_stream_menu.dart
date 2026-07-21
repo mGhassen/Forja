@@ -55,10 +55,12 @@ class PlayerStreamMenu {
   static bool get isShowing => _entry != null;
 
   static void dismiss() {
+    final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
     _completer?.complete();
     _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Widget? reloadTrailing({
@@ -129,6 +131,7 @@ class PlayerStreamMenu {
       return;
     }
 
+    playerMenuCaptureReturnFocus(context);
     dismiss();
     PlayerPopupPanel.dismiss();
     PlayerEpisodePanel.dismiss();

@@ -12,7 +12,7 @@ Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android
 
 While watching (built-in player): **Player** control in the playback bar → pick an external app.
 
-While already handed off: **Change player** on the handoff screen.
+While already handed off: **Change player** on the handoff screen → **Choose player** list (built-in engines + installed apps). On **Android TV**, ↑/↓ walks that list; **OK** selects.
 
 ## What you can do
 

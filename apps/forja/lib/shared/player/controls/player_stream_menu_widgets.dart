@@ -88,7 +88,9 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: widget.onTap,
+          // Outer FocusableControl owns TV focus — InkWell must not.
+          canRequestFocus: false,
+          onTap: tvFocus ? null : widget.onTap,
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: Padding(
@@ -142,6 +144,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
                                   ? Material(
                                       color: Colors.transparent,
                                       child: InkWell(
+                                        canRequestFocus: false,
                                         onTap: widget.isReloading
                                             ? null
                                             : widget.onReload,
@@ -201,6 +204,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 8,
+      scaleOnFocus: 1.0,
       showFocusBorder: true,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -279,6 +283,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          canRequestFocus: false,
           onTap: tvFocus ? null : widget.onCheck,
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
@@ -330,6 +335,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                       ? Material(
                           color: Colors.transparent,
                           child: InkWell(
+                            canRequestFocus: false,
                             onTap: trailingTap,
                             borderRadius: BorderRadius.circular(4),
                             hoverColor: Colors.white.withValues(alpha: 0.08),
@@ -358,6 +364,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
         }
       },
       borderRadius: 8,
+      scaleOnFocus: 1.0,
       showFocusBorder: true,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onFocusChange: (focused) => setState(() => _focused = focused),

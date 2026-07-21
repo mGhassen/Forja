@@ -122,6 +122,7 @@ Widget shellFocusableTap({
   ValueChanged<bool>? onFocusChange,
   ValueChanged<bool>? onHoverChange,
   FocusNode? focusNode,
+  bool autoFocus = false,
   int? listIndex,
   bool navLeftAlways = false,
   int? gridIndex,
@@ -132,6 +133,7 @@ Widget shellFocusableTap({
   ShellTvZone? tvZone,
   ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
   bool showFocusBorder = false,
+  bool showFocusFill = true,
   bool suppressInkHover = false,
 }) {
   final policy =
@@ -160,6 +162,8 @@ Widget shellFocusableTap({
       borderRadius: borderRadius,
       scaleOnFocus: scaleOnFocus,
       showFocusBorder: showFocusBorder,
+      showFocusFill: showFocusFill,
+      autoFocus: autoFocus,
       onLeftEdge: resolvedLeftEdge,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,

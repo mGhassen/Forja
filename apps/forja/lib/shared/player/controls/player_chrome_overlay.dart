@@ -153,7 +153,9 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
       color: _backgroundColor,
       shape: shape,
       child: InkWell(
-        onTap: onTap,
+        // FocusableControl owns TV focus — InkWell must not take D-pad stops.
+        canRequestFocus: false,
+        onTap: widget.tvFocusable ? null : onTap,
         hoverColor: Colors.transparent,
         splashColor: Colors.white.withValues(alpha: 0.08),
         customBorder: shape,
@@ -188,7 +190,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
             focusNode: widget.focusNode,
             onTap: onTap,
             borderRadius: borderRadius,
-            scaleOnFocus: 1.06,
+            scaleOnFocus: 1.0,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
@@ -281,7 +283,8 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
       ),
       shape: shape,
       child: InkWell(
-        onTap: onTap,
+        canRequestFocus: false,
+        onTap: widget.tvFocusable ? null : onTap,
         customBorder: shape,
         borderRadius: BorderRadius.circular(8),
         hoverColor: Colors.transparent,
@@ -335,7 +338,7 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             focusNode: widget.focusNode,
             onTap: onTap,
             borderRadius: 8,
-            scaleOnFocus: 1.04,
+            scaleOnFocus: 1.0,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
@@ -445,7 +448,7 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
         focusNode: widget.focusNode,
         onTap: widget.onPressed,
         borderRadius: 8,
-        scaleOnFocus: 1.04,
+        scaleOnFocus: 1.0,
         onFocusChange: (focused) => setState(() => _focused = focused),
         child: body,
       );
@@ -458,6 +461,7 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          canRequestFocus: false,
           onTap: widget.onPressed,
           borderRadius: BorderRadius.circular(8),
           hoverColor: ForjaShellColors.inkHover,

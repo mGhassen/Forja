@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
@@ -55,6 +56,19 @@ class PlayerSubtitleMenu {
     BuildContext? anchorContext,
   }) async {
     final current = player.state.track.subtitle;
+    final active = await resolveActiveSubtitleTrack(player);
+    final selectedSubtitleId = selectedExternalSubUrl == null
+        ? (active?.id ?? current.id)
+        : null;
+    // In-stream tracks only — skip Off/auto and http URI tracks (online picker).
+    final embedded = player.state.tracks.subtitle
+        .where(
+          (t) =>
+              t.id != 'no' &&
+              t.id != 'auto' &&
+              !t.id.startsWith('http'),
+        )
+        .toList();
     final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
 
     void turnOffSubtitles() {
@@ -111,6 +125,28 @@ class PlayerSubtitleMenu {
                 backgroundColor: Colors.white10,
               ),
             ),
+          for (var i = 0; i < embedded.length; i++) ...[
+            if (i != 0) const SizedBox(height: 8),
+            PlayerPopupOptionChip(
+              label: formatPlayerTrackLabel(
+                id: embedded[i].id,
+                title: embedded[i].title,
+                language: embedded[i].language,
+              ),
+              selected:
+                  selectedExternalSubUrl == null &&
+                  embedded[i].id == selectedSubtitleId,
+              expanded: true,
+              onTap: () {
+                onSubtitleSelected?.call();
+                player.setSubtitleTrack(embedded[i]);
+                updateSubVisibility(embedded[i]);
+                onExternalUrlChanged(null);
+                PlayerPopupPanel.dismiss();
+              },
+            ),
+          ],
+          if (embedded.isNotEmpty) const SizedBox(height: 10),
           PlayerPopupNavRow(
             icon: Icons.upload_file_rounded,
             title: 'Load from file',

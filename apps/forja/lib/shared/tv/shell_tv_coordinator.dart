@@ -627,9 +627,13 @@ abstract final class ShellTvFocusCoordinator {
   }) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;
-    final next = right ? currentIndex + 1 : currentIndex - 1;
-    if (next < 0 || next >= handle.itemCount) return false;
-    return focusRowItem(tabId, rowId, next);
+    final step = right ? 1 : -1;
+    var next = currentIndex + step;
+    while (next >= 0 && next < handle.itemCount) {
+      if (focusRowItem(tabId, rowId, next)) return true;
+      next += step;
+    }
+    return false;
   }
 
   static bool moveInGrid({

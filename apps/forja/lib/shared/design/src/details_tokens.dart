@@ -9,8 +9,10 @@ abstract final class DetailsTokens {
   /// Extra pull-up for movie details body (cast/trailers) — not used for TV episodes.
   static const double heroBodyOverlap = 120;
 
-  /// Backdrop extends this far below the hero chrome so seasons sit on the image.
-  static const double episodeBackdropBleed = 260;
+  /// Backdrop band reserved for seasons + episodes under the hero chrome.
+  /// Tall enough for season posters + episode cards so the rail does not
+  /// overflow upward and cover the hero image.
+  static const double episodeBackdropBleed = 500;
   static const double episodeSectionTopPadding = 8;
   static const double episodeSectionBottomPadding = 12;
   static const double heroContentTopInset = 88;
@@ -62,10 +64,10 @@ abstract final class DetailsTokens {
   /// Cinematic hero band (~82% viewport) — see media-details feature doc.
   static const double heroViewportFraction = 0.82;
 
-  /// TV uses the same hero chrome height; [episodeBackdropBleed] carries the image lower.
-  static const double heroWithEpisodesFraction = 0.82;
+  /// Floor for title/actions when the episode rail claims [episodeBackdropBleed].
+  static const double heroWithEpisodesMinFraction = 0.42;
 
-  /// Full on-screen backdrop band (~82% viewport) — title/actions + optional TV bleed.
+  /// Full on-screen backdrop band — title/actions + optional TV bleed.
   static double heroBackdropBand(
     BuildContext context, {
     double? viewportHeight,
@@ -75,9 +77,15 @@ abstract final class DetailsTokens {
     final resolved = height.isFinite && height > 0
         ? height
         : MediaQuery.sizeOf(context).height;
-    final fraction =
-        showEpisodeRail ? heroWithEpisodesFraction : heroViewportFraction;
-    return resolved * fraction;
+    if (!showEpisodeRail) {
+      return resolved * heroViewportFraction;
+    }
+    // Chrome uses the viewport above the rail band so seasons/episodes sit
+    // at the bottom of the first screen instead of mid-hero.
+    return (resolved - episodeBackdropBleed).clamp(
+      resolved * heroWithEpisodesMinFraction,
+      resolved * heroViewportFraction,
+    );
   }
 
   /// Hero chrome height for media details — prefer [viewportHeight] from a [LayoutBuilder].

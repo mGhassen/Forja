@@ -152,27 +152,31 @@ void showPlayerSettingsMenu({
     anchorContext: anchorContext,
     width: 340,
     maxHeight: 560,
-    child: ListView.separated(
+    // Column (not ListView) — same as audio/quality so TV linear D-pad
+    // walks every row without scrollable focus gaps.
+    child: Padding(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-      shrinkWrap: true,
-      itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final entry = entries[i];
-        return PlayerPopupNavRow(
-          icon: entry.icon,
-          title: entry.title,
-          subtitle: entry.subtitle,
-          value: entry.value,
-          onTap: () => _openPlayerSettingsPage(
-            context: context,
-            anchorContext: anchorContext,
-            rootTitle: title,
-            buildEntries: buildEntries,
-            index: i,
-          ),
-        );
-      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < entries.length; i++) ...[
+            if (i != 0) const SizedBox(height: 8),
+            PlayerPopupNavRow(
+              icon: entries[i].icon,
+              title: entries[i].title,
+              subtitle: entries[i].subtitle,
+              value: entries[i].value,
+              onTap: () => _openPlayerSettingsPage(
+                context: context,
+                anchorContext: anchorContext,
+                rootTitle: title,
+                buildEntries: buildEntries,
+                index: i,
+              ),
+            ),
+          ],
+        ],
+      ),
     ),
   );
 }

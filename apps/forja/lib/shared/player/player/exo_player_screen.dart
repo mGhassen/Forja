@@ -692,7 +692,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   Future<void> _exit() async {
     if (_exitInProgress || _disposed) return;
     if (dismissAnyPlayerChromeOverlay()) {
-      if (_isTv) _claimPlayFocus();
+      // Opener chrome button is refocused by playerMenuRestoreReturnFocus.
       return;
     }
     _exitInProgress = true;

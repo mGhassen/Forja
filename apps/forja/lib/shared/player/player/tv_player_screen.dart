@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
@@ -40,6 +41,8 @@ class TvPlayerScreen extends StatelessWidget {
     this.sourcesListNotifier,
     this.providerSourcesCache,
     this.providerProbesNotifier,
+    this.builtInEngine = BuiltInPlayerEngine.mediaKit,
+    this.onSwitchPlayer,
   });
 
   final String mediaPath;
@@ -74,6 +77,8 @@ class TvPlayerScreen extends StatelessWidget {
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
   final ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache;
   final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
+  final BuiltInPlayerEngine builtInEngine;
+  final PlayerSwitchHandler? onSwitchPlayer;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +115,8 @@ class TvPlayerScreen extends StatelessWidget {
       sourcesListNotifier: sourcesListNotifier,
       providerSourcesCache: providerSourcesCache,
       providerProbesNotifier: providerProbesNotifier,
+      builtInEngine: builtInEngine,
+      onSwitchPlayer: onSwitchPlayer,
       tvRemoteEnabled: true,
     );
   }

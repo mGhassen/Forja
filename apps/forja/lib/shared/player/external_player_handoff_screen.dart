@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
@@ -70,11 +72,15 @@ class _ExternalPlayerHandoffScreenState
             Positioned(
               top: isDesktop ? 12 : 4,
               left: 12,
-              child: ShellBackIconButton(
-                icon: Icons.chevron_left_rounded,
-                size: 28,
-                tooltip: 'Back',
-                onTap: () => Navigator.of(context).pop(),
+              // Picker owns its FocusScope — keep Back out of the D-pad walk.
+              child: ExcludeFocus(
+                excluding: _pickingPlayer,
+                child: ShellBackIconButton(
+                  icon: Icons.chevron_left_rounded,
+                  size: 28,
+                  tooltip: 'Back',
+                  onTap: () => Navigator.of(context).pop(),
+                ),
               ),
             ),
             Center(
@@ -265,7 +271,8 @@ class _PlayerPickerBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -284,38 +291,88 @@ class _PlayerPickerBody extends StatelessWidget {
                   ),
                 ),
               ),
-              ForjaCloseButton.compact(
-                color: ForjaShellColors.textSecondary,
-                onTap: onCancel,
+              // Order 0: ↑ from first list row lands here (exit).
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(0),
+                child: ForjaCloseButton.compact(
+                  color: ForjaShellColors.textSecondary,
+                  onTap: onCancel,
+                ),
               ),
             ],
           ),
         ),
         const Divider(height: 1, color: ForjaShellColors.borderSubtle),
-        PlayerAppMenu.buildPickerList(
-          usingBuiltIn: false,
-          builtInEngine: builtInEngine,
-          externalPlayerName: playerName,
-          physics: const NeverScrollableScrollPhysics(),
-          onSelect: ({builtInEngine, externalPlayer}) async {
-            onCancel();
-            await onSelectPlayer(
-              builtInEngine: builtInEngine,
-              externalPlayer: externalPlayer,
-            );
-          },
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(1),
+          child: PlayerAppMenu.buildPickerList(
+            usingBuiltIn: false,
+            builtInEngine: builtInEngine,
+            externalPlayerName: playerName,
+            physics: const NeverScrollableScrollPhysics(),
+            onSelect: ({builtInEngine, externalPlayer}) async {
+              onCancel();
+              await onSelectPlayer(
+                builtInEngine: builtInEngine,
+                externalPlayer: externalPlayer,
+              );
+            },
+          ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: _HandoffActionRow(
-            icon: Icons.close_rounded,
-            label: 'Cancel',
-            onTap: onCancel,
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(2),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: _HandoffActionRow(
+              icon: Icons.close_rounded,
+              label: 'Cancel',
+              onTap: onCancel,
+            ),
           ),
         ),
       ],
     );
+    if (!tv) return body;
+    // Ordered walk: Close(0) → engines/apps(1) → Cancel(2); no wrap to last.
+    return FocusScope(
+      debugLabel: 'handoff-choose-player',
+      autofocus: true,
+      child: ShellTvLinearFocusScope(
+        child: FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: PlayerPopupListFocusScope(
+            child: _TvPickerFocusOnOpen(child: body),
+          ),
+        ),
+      ),
+    );
   }
+}
+
+/// Lands primary focus on the first picker control after open.
+class _TvPickerFocusOnOpen extends StatefulWidget {
+  const _TvPickerFocusOnOpen({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TvPickerFocusOnOpen> createState() => _TvPickerFocusOnOpenState();
+}
+
+class _TvPickerFocusOnOpenState extends State<_TvPickerFocusOnOpen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scope = FocusScope.of(context);
+      if (scope.focusedChild != null) return;
+      scope.nextFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _LiveStatusBadge extends StatelessWidget {

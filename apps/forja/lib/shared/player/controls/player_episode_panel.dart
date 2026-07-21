@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -9,8 +10,14 @@ import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
+
+const _kEpisodeTvTabId = 'player';
+const _kEpisodeTvListRowId = 'episode-list';
 
 /// Right-side sliding panel for TV season / episode picking in the player.
 class PlayerEpisodePanel {
@@ -20,10 +27,12 @@ class PlayerEpisodePanel {
   static bool get isShowing => _entry != null;
 
   static void dismiss() {
+    final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
     _completer?.complete();
     _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Future<void> show({
@@ -33,6 +42,7 @@ class PlayerEpisodePanel {
     required int currentEpisode,
     required Future<void> Function(int season, int episode) onEpisodeSelected,
   }) {
+    playerMenuCaptureReturnFocus(context);
     dismiss();
     playerChromeCancelSeekScrubs();
 
@@ -133,6 +143,10 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   final _tmdb = TmdbService();
   final _settings = SettingsService();
   final _scrollController = ScrollController();
+  final FocusNode _seasonFocus = FocusNode(debugLabel: 'ep-panel-season');
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'ep-panel-search');
+  final FocusNode _autoNextFocus = FocusNode(debugLabel: 'ep-panel-autonext');
+  final FocusNode _closeFocus = FocusNode(debugLabel: 'ep-panel-close');
 
   int? _seasonCount;
   late int _selectedSeason;
@@ -142,6 +156,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   int _episodeChunk = 0;
   bool _autoNextEpisode = true;
   String _searchQuery = '';
+  bool _didInitialEpisodeFocus = false;
 
   List<int> get _episodeNumbers => _episodes
       .map((ep) => ep['episode_number'] as int? ?? 0)
@@ -196,8 +211,68 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
 
   @override
   void dispose() {
+    shellTvUnregisterRow(
+      tabId: _kEpisodeTvTabId,
+      rowId: _kEpisodeTvListRowId,
+    );
+    _seasonFocus.dispose();
+    _searchFocus.dispose();
+    _autoNextFocus.dispose();
+    _closeFocus.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  bool get _tvFocus =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  void _focusEpisodeList({int? preferIndex}) {
+    if (!_tvFocus) return;
+    final list = _visibleEpisodes;
+    if (list.isEmpty) return;
+    var index = preferIndex;
+    if (index == null) {
+      index = list.indexWhere(
+        (ep) =>
+            _selectedSeason == widget.currentSeason &&
+            (ep['episode_number'] as int? ?? 0) == widget.currentEpisode,
+      );
+    }
+    if (index < 0) index = 0;
+    var tries = 0;
+    void attempt() {
+      if (!mounted) return;
+      final node = ShellTvFocusCoordinator.itemNode(
+        _kEpisodeTvTabId,
+        _kEpisodeTvListRowId,
+        index!,
+      );
+      if (node != null && node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+      if (tries++ < 10) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  void _focusTopBarFromList() {
+    if (!_tvFocus) return;
+    if ((_seasonCount ?? 0) > 1 && _seasonFocus.canRequestFocus) {
+      _seasonFocus.requestFocus();
+      return;
+    }
+    if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
+  }
+
+  void _scheduleInitialEpisodeFocus() {
+    if (_didInitialEpisodeFocus || !_tvFocus) return;
+    _didInitialEpisodeFocus = true;
+    _scrollToCurrent();
+    _focusEpisodeList();
   }
 
   Future<void> _load() async {
@@ -233,7 +308,10 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
       _episodeChunk = chunk;
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scheduleInitialEpisodeFocus();
+    });
     unawaited(_hydrateEpisodeProgress(episodes));
   }
 
@@ -334,8 +412,20 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   Widget build(BuildContext context) {
     final showRange = !_loading && showEpisodeRangeBar(_episodeNumbers);
     final showSeason = (_seasonCount ?? 0) > 1;
+    final tv = _tvFocus;
+    final visible = _visibleEpisodes;
+    if (tv && !_loading && visible.isNotEmpty) {
+      shellTvRegisterRow(
+        tabId: _kEpisodeTvTabId,
+        rowId: _kEpisodeTvListRowId,
+        sortOrder: 1,
+        itemCount: visible.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _focusTopBarFromList,
+      );
+    }
 
-    return Column(
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _EpisodePanelTopBar(
@@ -344,6 +434,13 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                   seasonCount: _seasonCount!,
                   selectedSeason: _selectedSeason,
                   onSelected: _selectSeason,
+                  focusNode: _seasonFocus,
+                  onRightEdge: () {
+                    if (_searchFocus.canRequestFocus) {
+                      _searchFocus.requestFocus();
+                    }
+                  },
+                  onDownEdge: _focusEpisodeList,
                 )
               : null,
           searchQuery: _searchQuery,
@@ -351,6 +448,35 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
           autoNext: _autoNextEpisode,
           onAutoNextChanged: (v) => unawaited(_setAutoNext(v)),
           onClose: widget.onClose,
+          searchFocusNode: _searchFocus,
+          autoNextFocusNode: _autoNextFocus,
+          closeFocusNode: _closeFocus,
+          onSearchLeftEdge: showSeason
+              ? () {
+                  if (_seasonFocus.canRequestFocus) {
+                    _seasonFocus.requestFocus();
+                  }
+                }
+              : null,
+          onSearchRightEdge: () {
+            if (_autoNextFocus.canRequestFocus) {
+              _autoNextFocus.requestFocus();
+            }
+          },
+          onSearchDownEdge: _focusEpisodeList,
+          onAutoNextLeftEdge: () {
+            if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
+          },
+          onAutoNextRightEdge: () {
+            if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+          },
+          onAutoNextDownEdge: _focusEpisodeList,
+          onCloseLeftEdge: () {
+            if (_autoNextFocus.canRequestFocus) {
+              _autoNextFocus.requestFocus();
+            }
+          },
+          onCloseDownEdge: _focusEpisodeList,
         ),
         if (showRange) ...[
           const SizedBox(height: 8),
@@ -371,7 +497,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                     strokeWidth: 2,
                   ),
                 )
-              : _visibleEpisodes.isEmpty
+              : visible.isEmpty
                   ? Center(
                       child: Text(
                         _searchQuery.trim().isEmpty
@@ -385,10 +511,10 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                   : ListView.separated(
                       controller: _scrollController,
                       padding: const EdgeInsets.only(top: 4, bottom: 8),
-                      itemCount: _visibleEpisodes.length,
+                      itemCount: visible.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 2),
                       itemBuilder: (_, i) {
-                        final ep = _visibleEpisodes[i];
+                        final ep = visible[i];
                         final num = ep['episode_number'] as int? ?? 0;
                         final name =
                             ep['name']?.toString() ?? 'Episode $num';
@@ -417,6 +543,9 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                           selected: selected,
                           positionMs: pos,
                           durationMs: dur,
+                          tvItemIndex: i,
+                          onUpEdge: i == 0 ? _focusTopBarFromList : null,
+                          onDownEdge: i == visible.length - 1 ? () {} : null,
                           onTap: airDate.notShippedYet
                               ? null
                               : () => _selectEpisode(_selectedSeason, num),
@@ -426,6 +555,9 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
         ),
       ],
     );
+
+    if (!tv) return body;
+    return ShellTvDisableLinearFocus(child: body);
   }
 }
 
@@ -434,11 +566,17 @@ class _SeasonDropdown extends StatelessWidget {
     required this.seasonCount,
     required this.selectedSeason,
     required this.onSelected,
+    this.focusNode,
+    this.onRightEdge,
+    this.onDownEdge,
   });
 
   final int seasonCount;
   final int selectedSeason;
   final ValueChanged<int> onSelected;
+  final FocusNode? focusNode;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -502,8 +640,11 @@ class _SeasonDropdown extends StatelessWidget {
               borderRadius: borderRadius,
             ),
             child: InkWell(
+              canRequestFocus: false,
               borderRadius: borderRadius,
-              onTap: toggle,
+              onTap: ShellScope.inputPolicyOf(context).useFocusableMoodChips
+                  ? null
+                  : toggle,
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
@@ -525,8 +666,12 @@ class _SeasonDropdown extends StatelessWidget {
         return shellFocusableTap(
           context: context,
           onTap: toggle,
+          focusNode: focusNode,
           borderRadius: radius,
+          scaleOnFocus: 1.0,
           showFocusBorder: true,
+          onRightEdge: onRightEdge,
+          onDownEdge: onDownEdge,
           child: trigger,
         );
       },
@@ -542,10 +687,12 @@ class PlayerHubEpisodePanel {
   static bool get isShowing => _entry != null;
 
   static void dismiss() {
+    final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
     _completer?.complete();
     _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Future<void> show({
@@ -556,6 +703,7 @@ class PlayerHubEpisodePanel {
     String? fallbackBackdropPath,
     String? fallbackPosterPath,
   }) {
+    playerMenuCaptureReturnFocus(context);
     dismiss();
     playerChromeCancelSeekScrubs();
 
@@ -654,9 +802,13 @@ class _HubEpisodePanelBody extends StatefulWidget {
 class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   final _settings = SettingsService();
   final _scrollController = ScrollController();
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'hub-ep-search');
+  final FocusNode _autoNextFocus = FocusNode(debugLabel: 'hub-ep-autonext');
+  final FocusNode _closeFocus = FocusNode(debugLabel: 'hub-ep-close');
   int _episodeChunk = 0;
   bool _autoNextEpisode = true;
   String _searchQuery = '';
+  bool _didInitialEpisodeFocus = false;
 
   List<int> get _episodeNumbers => widget.episodes
       .map((e) => e.number is int ? e.number as int : e.number.toInt())
@@ -696,7 +848,10 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     _episodeChunk = _chunkIndexForEpisode(widget.currentEpisode);
     _autoNextEpisode = SettingsService.autoNextEpisodeNotifier.value;
     unawaited(_loadAutoNext());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scheduleInitialEpisodeFocus();
+    });
   }
 
   Future<void> _loadAutoNext() async {
@@ -708,6 +863,48 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   Future<void> _setAutoNext(bool value) async {
     setState(() => _autoNextEpisode = value);
     await _settings.setAutoNextEpisode(value);
+  }
+
+  bool get _tvFocus =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  void _focusEpisodeList({int? preferIndex}) {
+    if (!_tvFocus) return;
+    final list = _visibleEpisodes;
+    if (list.isEmpty) return;
+    var index = preferIndex ??
+        list.indexWhere((e) => e.number == widget.currentEpisode);
+    if (index < 0) index = 0;
+    var tries = 0;
+    void attempt() {
+      if (!mounted) return;
+      final node = ShellTvFocusCoordinator.itemNode(
+        _kEpisodeTvTabId,
+        _kEpisodeTvListRowId,
+        index,
+      );
+      if (node != null && node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+      if (tries++ < 10) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  void _focusTopBarFromList() {
+    if (!_tvFocus) return;
+    if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
+  }
+
+  void _scheduleInitialEpisodeFocus() {
+    if (_didInitialEpisodeFocus) return;
+    _didInitialEpisodeFocus = true;
+    _scrollToCurrent();
+    _focusEpisodeList();
   }
 
   @override
@@ -723,6 +920,13 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
 
   @override
   void dispose() {
+    shellTvUnregisterRow(
+      tabId: _kEpisodeTvTabId,
+      rowId: _kEpisodeTvListRowId,
+    );
+    _searchFocus.dispose();
+    _autoNextFocus.dispose();
+    _closeFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -772,8 +976,20 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   @override
   Widget build(BuildContext context) {
     final showRange = showEpisodeRangeBar(_episodeNumbers);
+    final tv = _tvFocus;
+    final visible = _visibleEpisodes;
+    if (tv && visible.isNotEmpty) {
+      shellTvRegisterRow(
+        tabId: _kEpisodeTvTabId,
+        rowId: _kEpisodeTvListRowId,
+        sortOrder: 1,
+        itemCount: visible.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _focusTopBarFromList,
+      );
+    }
 
-    return Column(
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _EpisodePanelTopBar(
@@ -782,6 +998,28 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
           autoNext: _autoNextEpisode,
           onAutoNextChanged: (v) => unawaited(_setAutoNext(v)),
           onClose: widget.onClose,
+          searchFocusNode: _searchFocus,
+          autoNextFocusNode: _autoNextFocus,
+          closeFocusNode: _closeFocus,
+          onSearchRightEdge: () {
+            if (_autoNextFocus.canRequestFocus) {
+              _autoNextFocus.requestFocus();
+            }
+          },
+          onSearchDownEdge: _focusEpisodeList,
+          onAutoNextLeftEdge: () {
+            if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
+          },
+          onAutoNextRightEdge: () {
+            if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+          },
+          onAutoNextDownEdge: _focusEpisodeList,
+          onCloseLeftEdge: () {
+            if (_autoNextFocus.canRequestFocus) {
+              _autoNextFocus.requestFocus();
+            }
+          },
+          onCloseDownEdge: _focusEpisodeList,
         ),
         if (showRange) ...[
           const SizedBox(height: 8),
@@ -804,7 +1042,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                     ),
                   ),
                 )
-              : _visibleEpisodes.isEmpty
+              : visible.isEmpty
                   ? Center(
                       child: Text(
                         _searchQuery.trim().isEmpty
@@ -818,38 +1056,45 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                   : ListView.separated(
                       controller: _scrollController,
                       padding: const EdgeInsets.only(top: 4, bottom: 8),
-                      itemCount: _visibleEpisodes.length,
+                      itemCount: visible.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 2),
                       itemBuilder: (_, i) {
-                        final ep = _visibleEpisodes[i];
-                    final selected = ep.number == widget.currentEpisode;
-                    final airDate = EpisodeAirDateInfo(
-                      label: ep.airDateLabel,
-                      notShippedYet: ep.notShippedYet,
-                    );
-                    return _EpisodeRow(
-                      episodeNumber: ep.number is int
-                          ? ep.number as int
-                          : ep.number.toInt(),
-                      episodeBadge: 'E${ep.displayNumber}',
-                      title: ep.title,
-                      overview: ep.overview ?? '',
-                      runtime: ep.runtimeMinutes,
-                      dateLabel: airDate.label,
-                      dateNotShippedYet: airDate.notShippedYet,
-                      fallbackBackdropPath: widget.fallbackBackdropPath,
-                      fallbackPosterPath: widget.fallbackPosterPath,
-                      thumbnail: ep.thumbnailUrl,
-                      selected: selected,
-                      positionMs: ep.positionMs,
-                      durationMs: ep.durationMs,
-                      onTap: airDate.notShippedYet ? null : () => _select(ep),
-                    );
-                  },
-                ),
+                        final ep = visible[i];
+                        final selected = ep.number == widget.currentEpisode;
+                        final airDate = EpisodeAirDateInfo(
+                          label: ep.airDateLabel,
+                          notShippedYet: ep.notShippedYet,
+                        );
+                        return _EpisodeRow(
+                          episodeNumber: ep.number is int
+                              ? ep.number as int
+                              : ep.number.toInt(),
+                          episodeBadge: 'E${ep.displayNumber}',
+                          title: ep.title,
+                          overview: ep.overview ?? '',
+                          runtime: ep.runtimeMinutes,
+                          dateLabel: airDate.label,
+                          dateNotShippedYet: airDate.notShippedYet,
+                          fallbackBackdropPath: widget.fallbackBackdropPath,
+                          fallbackPosterPath: widget.fallbackPosterPath,
+                          thumbnail: ep.thumbnailUrl,
+                          selected: selected,
+                          positionMs: ep.positionMs,
+                          durationMs: ep.durationMs,
+                          tvItemIndex: i,
+                          onUpEdge: i == 0 ? _focusTopBarFromList : null,
+                          onDownEdge: i == visible.length - 1 ? () {} : null,
+                          onTap:
+                              airDate.notShippedYet ? null : () => _select(ep),
+                        );
+                      },
+                    ),
         ),
       ],
     );
+
+    if (!tv) return body;
+    return ShellTvDisableLinearFocus(child: body);
   }
 }
 
@@ -869,6 +1114,9 @@ class _EpisodeRow extends StatelessWidget {
     required this.durationMs,
     this.onTap,
     this.episodeBadge,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final int episodeNumber;
@@ -885,6 +1133,9 @@ class _EpisodeRow extends StatelessWidget {
   final int positionMs;
   final int durationMs;
   final VoidCallback? onTap;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   static const _thumbRadius = 6.0;
   static const _thumbWidth = 184.0;
@@ -896,6 +1147,7 @@ class _EpisodeRow extends StatelessWidget {
     final showProgress =
         WatchProgressBar.isResumable(positionMs, durationMs);
 
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final tile = Material(
       color: selected
           ? Colors.white.withValues(alpha: 0.1)
@@ -903,7 +1155,8 @@ class _EpisodeRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        canRequestFocus: false,
+        onTap: tvFocus ? null : onTap,
         borderRadius: BorderRadius.circular(10),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
@@ -1040,16 +1293,23 @@ class _EpisodeRow extends StatelessWidget {
       ),
     );
 
-    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips ||
-        onTap == null) {
+    if (!tvFocus || onTap == null) {
       return tile;
     }
     return shellFocusableTap(
       context: context,
       onTap: onTap,
       borderRadius: 10,
+      scaleOnFocus: 1.0,
       showFocusBorder: true,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      listIndex: tvItemIndex,
+      tvTabId: _kEpisodeTvTabId,
+      tvRowId: _kEpisodeTvListRowId,
+      tvItemIndex: tvItemIndex,
+      tvZone: ShellTvZone.row,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
       child: tile,
     );
   }
@@ -1151,6 +1411,17 @@ class _EpisodePanelTopBar extends StatelessWidget {
     required this.autoNext,
     required this.onAutoNextChanged,
     required this.onClose,
+    this.searchFocusNode,
+    this.autoNextFocusNode,
+    this.closeFocusNode,
+    this.onSearchLeftEdge,
+    this.onSearchRightEdge,
+    this.onSearchDownEdge,
+    this.onAutoNextLeftEdge,
+    this.onAutoNextRightEdge,
+    this.onAutoNextDownEdge,
+    this.onCloseLeftEdge,
+    this.onCloseDownEdge,
   });
 
   final Widget? season;
@@ -1159,6 +1430,17 @@ class _EpisodePanelTopBar extends StatelessWidget {
   final bool autoNext;
   final ValueChanged<bool> onAutoNextChanged;
   final VoidCallback onClose;
+  final FocusNode? searchFocusNode;
+  final FocusNode? autoNextFocusNode;
+  final FocusNode? closeFocusNode;
+  final VoidCallback? onSearchLeftEdge;
+  final VoidCallback? onSearchRightEdge;
+  final VoidCallback? onSearchDownEdge;
+  final VoidCallback? onAutoNextLeftEdge;
+  final VoidCallback? onAutoNextRightEdge;
+  final VoidCallback? onAutoNextDownEdge;
+  final VoidCallback? onCloseLeftEdge;
+  final VoidCallback? onCloseDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -1174,10 +1456,23 @@ class _EpisodePanelTopBar extends StatelessWidget {
             onSearchChanged: onSearchChanged,
             autoNext: autoNext,
             onAutoNextChanged: onAutoNextChanged,
+            searchFocusNode: searchFocusNode,
+            autoNextFocusNode: autoNextFocusNode,
+            onSearchLeftEdge: onSearchLeftEdge,
+            onSearchRightEdge: onSearchRightEdge,
+            onSearchDownEdge: onSearchDownEdge,
+            onAutoNextLeftEdge: onAutoNextLeftEdge,
+            onAutoNextRightEdge: onAutoNextRightEdge,
+            onAutoNextDownEdge: onAutoNextDownEdge,
           ),
         ),
         const SizedBox(width: 10),
-        _EpisodePanelCloseButton(onClose: onClose),
+        _EpisodePanelCloseButton(
+          onClose: onClose,
+          focusNode: closeFocusNode,
+          onLeftEdge: onCloseLeftEdge,
+          onDownEdge: onCloseDownEdge,
+        ),
       ],
     );
   }
@@ -1189,12 +1484,28 @@ class _EpisodeSearchAutoNextBar extends StatefulWidget {
     required this.onSearchChanged,
     required this.autoNext,
     required this.onAutoNextChanged,
+    this.searchFocusNode,
+    this.autoNextFocusNode,
+    this.onSearchLeftEdge,
+    this.onSearchRightEdge,
+    this.onSearchDownEdge,
+    this.onAutoNextLeftEdge,
+    this.onAutoNextRightEdge,
+    this.onAutoNextDownEdge,
   });
 
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final bool autoNext;
   final ValueChanged<bool> onAutoNextChanged;
+  final FocusNode? searchFocusNode;
+  final FocusNode? autoNextFocusNode;
+  final VoidCallback? onSearchLeftEdge;
+  final VoidCallback? onSearchRightEdge;
+  final VoidCallback? onSearchDownEdge;
+  final VoidCallback? onAutoNextLeftEdge;
+  final VoidCallback? onAutoNextRightEdge;
+  final VoidCallback? onAutoNextDownEdge;
 
   @override
   State<_EpisodeSearchAutoNextBar> createState() =>
@@ -1203,13 +1514,18 @@ class _EpisodeSearchAutoNextBar extends StatefulWidget {
 
 class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
   late final TextEditingController _controller;
-  late final FocusNode _focusNode;
+  FocusNode? _ownedSearchFocus;
+
+  FocusNode get _searchFocus =>
+      widget.searchFocusNode ?? _ownedSearchFocus!;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.searchQuery);
-    _focusNode = FocusNode();
+    if (widget.searchFocusNode == null) {
+      _ownedSearchFocus = FocusNode(debugLabel: 'ep-panel-search-owned');
+    }
   }
 
   @override
@@ -1223,14 +1539,73 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
   @override
   void dispose() {
     _controller.dispose();
-    _focusNode.dispose();
+    _ownedSearchFocus?.dispose();
     super.dispose();
+  }
+
+  KeyEventResult _onSearchKey(FocusNode node, KeyEvent event) {
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      widget.onSearchLeftEdge?.call();
+      return widget.onSearchLeftEdge != null
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      widget.onSearchRightEdge?.call();
+      return widget.onSearchRightEdge != null
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      widget.onSearchDownEdge?.call();
+      return widget.onSearchDownEdge != null
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
     const radius = 22.0;
     final secondary = ForjaShellColors.cinematic.textSecondary;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final fieldDecoration = InputDecoration(
+      hintText: 'Search',
+      hintStyle: TextStyle(
+        color: secondary.withValues(alpha: 0.75),
+        fontSize: 13,
+      ),
+      border: InputBorder.none,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+    );
+    final fieldStyle = TextStyle(
+      color: ForjaShellColors.cinematic.textPrimary,
+      fontSize: 13,
+    );
+
+    final searchField = tv
+        ? TvBrowseTextField(
+            controller: _controller,
+            focusNode: _searchFocus,
+            onChanged: widget.onSearchChanged,
+            decoration: fieldDecoration,
+            style: fieldStyle,
+            onKeyEvent: _onSearchKey,
+          )
+        : TextField(
+            controller: _controller,
+            focusNode: _searchFocus,
+            onChanged: widget.onSearchChanged,
+            style: fieldStyle,
+            decoration: fieldDecoration,
+          );
 
     return Container(
       height: 40,
@@ -1248,33 +1623,14 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                 children: [
                   Icon(Icons.search_rounded, size: 18, color: secondary),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      onChanged: widget.onSearchChanged,
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textPrimary,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search',
-                        hintStyle: TextStyle(
-                          color: secondary.withValues(alpha: 0.75),
-                          fontSize: 13,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                    ),
-                  ),
+                  Expanded(child: searchField),
                   if (widget.searchQuery.isNotEmpty)
-                    ForjaCloseButton.compact(
-                      tooltip: null,
-                      color: secondary,
-                      onTap: () => widget.onSearchChanged(''),
+                    ExcludeFocus(
+                      child: ForjaCloseButton.compact(
+                        tooltip: null,
+                        color: secondary,
+                        onTap: () => widget.onSearchChanged(''),
+                      ),
                     ),
                 ],
               ),
@@ -1290,20 +1646,34 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Tooltip(
-                  message: 'Auto next episode',
-                  child: Icon(
-                    Icons.skip_next_rounded,
-                    size: 20,
-                    color: secondary,
+                if (tv)
+                  _EpisodeAutoNextFocus(
+                    focusNode: widget.autoNextFocusNode!,
+                    autoNext: widget.autoNext,
+                    onChanged: widget.onAutoNextChanged,
+                    onLeftEdge: widget.onAutoNextLeftEdge,
+                    onRightEdge: widget.onAutoNextRightEdge,
+                    onDownEdge: widget.onAutoNextDownEdge,
+                    iconColor: secondary,
+                  )
+                else ...[
+                  ExcludeFocus(
+                    child: Tooltip(
+                      message: 'Auto next episode',
+                      child: Icon(
+                        Icons.skip_next_rounded,
+                        size: 20,
+                        color: secondary,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                ForjaSwitch(
-                  value: widget.autoNext,
-                  onChanged: widget.onAutoNextChanged,
-                  scale: ForjaSwitch.settingsScale,
-                ),
+                  const SizedBox(width: 4),
+                  ForjaSwitch(
+                    value: widget.autoNext,
+                    onChanged: widget.onAutoNextChanged,
+                    scale: ForjaSwitch.settingsScale,
+                  ),
+                ],
               ],
             ),
           ),
@@ -1313,29 +1683,125 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
   }
 }
 
-class _EpisodePanelCloseButton extends StatelessWidget {
-  const _EpisodePanelCloseButton({required this.onClose});
+/// TV auto-next: no gray focus fill — icon tints green; switch overlay killed.
+class _EpisodeAutoNextFocus extends StatelessWidget {
+  const _EpisodeAutoNextFocus({
+    required this.focusNode,
+    required this.autoNext,
+    required this.onChanged,
+    required this.iconColor,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onDownEdge,
+  });
 
-  final VoidCallback onClose;
+  final FocusNode focusNode;
+  final bool autoNext;
+  final ValueChanged<bool> onChanged;
+  final Color iconColor;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
+    return FocusableControl(
+      focusNode: focusNode,
+      onTap: () => onChanged(!autoNext),
+      borderRadius: 16,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
+      onDownEdge: onDownEdge,
+      child: ListenableBuilder(
+        listenable: focusNode,
+        builder: (context, _) {
+          final focused = focusNode.hasFocus;
+          final accent = focused
+              ? ForjaShellColors.brandGreen
+              : iconColor;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.skip_next_rounded, size: 20, color: accent),
+              const SizedBox(width: 4),
+              Theme(
+                data: Theme.of(context).copyWith(
+                  switchTheme: forjaSwitchThemeData.copyWith(
+                    overlayColor:
+                        const WidgetStatePropertyAll(Colors.transparent),
+                  ),
+                ),
+                child: ExcludeFocus(
+                  child: IgnorePointer(
+                    child: ForjaSwitch(
+                      value: autoNext,
+                      onChanged: onChanged,
+                      scale: ForjaSwitch.settingsScale,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _EpisodePanelCloseButton extends StatelessWidget {
+  const _EpisodePanelCloseButton({
+    required this.onClose,
+    this.focusNode,
+    this.onLeftEdge,
+    this.onDownEdge,
+  });
+
+  final VoidCallback onClose;
+  final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    final face = SizedBox(
+      width: 40,
+      height: 40,
+      child: Icon(
+        Icons.close_rounded,
+        size: 20,
+        color: ForjaShellColors.cinematic.textSecondary,
+      ),
+    );
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return Material(
+        color: ForjaShellColors.sectionIconBg,
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onClose,
+          hoverColor: ForjaShellColors.inkHover,
+          child: face,
+        ),
+      );
+    }
     return Material(
       color: ForjaShellColors.sectionIconBg,
       borderRadius: BorderRadius.circular(10),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
+      child: shellFocusableTap(
+        context: context,
         onTap: onClose,
-        hoverColor: ForjaShellColors.inkHover,
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(
-            Icons.close_rounded,
-            size: 20,
-            color: ForjaShellColors.cinematic.textSecondary,
-          ),
-        ),
+        focusNode: focusNode,
+        borderRadius: 10,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        onLeftEdge: onLeftEdge,
+        onDownEdge: onDownEdge,
+        child: face,
       ),
     );
   }

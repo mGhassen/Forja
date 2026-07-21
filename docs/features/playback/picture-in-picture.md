@@ -12,7 +12,7 @@ Forja supports picture-in-picture in the **movie player** and the **IPTV player*
 
 ## How to open it
 
-Use the **PiP** button in the player top-right (movie player or IPTV), next to **Player**. Availability is platform-gated (Android, Windows, macOS).
+Use the **PiP** button in the player top-right (movie player or IPTV), next to **Player**. Availability is platform-gated (Android phone/tablet, Windows, macOS). **Android TV** does not show Cast or PiP — only **Player**.
 
 ## What you can do
 
@@ -25,7 +25,7 @@ Use the **PiP** button in the player top-right (movie player or IPTV), next to *
 
 - PiP availability depends on Android version and OEM behavior
 - Desktop PiP is Forja’s own compact window (not Apple/Windows system media PiP) — required because playback uses media_kit/mpv
-- Linux and iOS do not show the PiP button
+- Linux, iOS, and Android TV do not show the PiP button
 - Controls and channel guide hide while IPTV PiP is active
 
 ## Related

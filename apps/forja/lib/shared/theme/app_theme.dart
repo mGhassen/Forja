@@ -163,6 +163,9 @@ class FocusableControl extends StatefulWidget {
   final ShellTvEnsureVisibleMode ensureVisibleMode;
   final bool showFocusBorder;
 
+  /// Flat focus (scale ≤ 1): when false, only the thin border — no gray fill.
+  final bool showFocusFill;
+
   const FocusableControl({
     super.key,
     required this.child,
@@ -171,6 +174,7 @@ class FocusableControl extends StatefulWidget {
     this.borderRadius = 12.0,
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.showFocusBorder = false,
+    this.showFocusFill = true,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -385,6 +389,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         },
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
           child: _buildFocusedChild(context),
         ),
@@ -393,7 +398,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   }
 
   Widget _buildFocusedChild(BuildContext context) {
-    final bleed = widget.showFocusBorder
+    // Flat menus (scale 1.0): gray fill + thin border. Catalog cards keep
+    // the white focus ring + lift scale.
+    final flatMenuFocus =
+        widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
+    final bleed = widget.showFocusBorder && !flatMenuFocus
         ? shellMovieCardFocusBleed(context, scaleOnFocus: widget.scaleOnFocus)
         : 0.0;
 
@@ -402,25 +411,42 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       builder: (context, child) {
         Widget content = child!;
         if (widget.showFocusBorder && _isFocused) {
-          content = Stack(
-            clipBehavior: Clip.none,
-            fit: StackFit.passthrough,
-            children: [
-              content,
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(widget.borderRadius),
-                      border: Border.all(color: Colors.white, width: 1.5),
+          if (flatMenuFocus) {
+            content = DecoratedBox(
+              decoration: BoxDecoration(
+                color: widget.showFocusFill
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.28),
+                  width: 1,
+                ),
+              ),
+              child: content,
+            );
+          } else {
+            content = Stack(
+              clipBehavior: Clip.none,
+              fit: StackFit.passthrough,
+              children: [
+                content,
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(widget.borderRadius),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
+              ],
+            );
+          }
         }
+        if (flatMenuFocus) return content;
         return Transform.scale(
           scale: _scale.value,
           alignment: Alignment.center,

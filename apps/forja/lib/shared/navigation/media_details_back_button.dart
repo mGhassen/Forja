@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 
@@ -19,6 +20,14 @@ class MediaDetailsBackButton extends StatelessWidget {
     return top + 10;
   }
 
+  static void popDetails(BuildContext context) {
+    if (shellOverlayCanPop()) {
+      maybePopShellOverlay();
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Positioned(
@@ -30,7 +39,7 @@ class MediaDetailsBackButton extends StatelessWidget {
         iconAlignment: Alignment.centerLeft,
         tooltip: 'Back',
         focusNode: focusNode,
-        onTap: onPressed ?? () => Navigator.maybePop(context),
+        onTap: onPressed ?? () => popDetails(context),
       ),
     );
   }

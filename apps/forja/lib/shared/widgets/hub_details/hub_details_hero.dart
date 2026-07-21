@@ -414,97 +414,110 @@ class _HubHeroMainColumn extends StatelessWidget {
       }
     }
 
-    return ClipRect(
-      child: SizedBox(
-        width: maxContentWidth,
-        height: bounded ? maxHeight : null,
-        child: Column(
+    final metaColumn = <Widget>[
+      SizedBox(
+        height: titleHeight,
+        child: Align(
+          alignment: Alignment.bottomLeft,
+          child: HubHeroTitle(title: title),
+        ),
+      ),
+      if (showSubtitle) ...[
+        const SizedBox(height: 6),
+        Text(
+          subtitle!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.62),
+          ),
+        ),
+      ],
+      if (showGenres) ...[
+        const SizedBox(height: 10),
+        Text(
+          genres.take(4).join(' • '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.78),
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
+      const SizedBox(height: 14),
+      HubHeroMetaLine(
+        parts: metaParts,
+        rating: rating,
+        singleLine: bounded,
+      ),
+      if (showOverview) ...[
+        const SizedBox(height: _overviewGap),
+        SizedBox(
+          height: bounded
+              ? (maxHeight! -
+                      _usedHeight(
+                        showSubtitle: showSubtitle,
+                        showGenres: showGenres,
+                        showOverview: false,
+                        showProgress: showProgress,
+                        singleLineMeta: bounded,
+                        titleHeight: titleHeight,
+                      ) -
+                      _overviewGap)
+                  .clamp(48.0, _overviewSlotHeight)
+              : _overviewSlotHeight,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: HeroOverviewText(
+              overview: overview,
+              maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+              shrinkWrap: !bounded,
+              style: _overviewStyle,
+            ),
+          ),
+        ),
+      ],
+      if (showProgress) ...[
+        const SizedBox(height: 14),
+        SizedBox(
+          width: 220,
+          child: WatchProgressBar(
+            positionMs: positionMs!,
+            durationMs: durationMs!,
+          ),
+        ),
+      ],
+    ];
+
+    return SizedBox(
+      width: maxContentWidth,
+      height: bounded ? maxHeight : null,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          SizedBox(
-            height: titleHeight,
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: HubHeroTitle(title: title),
-            ),
-          ),
-          if (showSubtitle) ...[
-            const SizedBox(height: 6),
-            Text(
-              subtitle!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.62),
-              ),
-            ),
-          ],
-          if (showGenres) ...[
-            const SizedBox(height: 10),
-            Text(
-              genres.take(4).join(' • '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.78),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          HubHeroMetaLine(
-            parts: metaParts,
-            rating: rating,
-            singleLine: bounded,
-          ),
-          if (showOverview) ...[
-            const SizedBox(height: _overviewGap),
-            SizedBox(
-              height: bounded
-                  ? (maxHeight! -
-                          _usedHeight(
-                            showSubtitle: showSubtitle,
-                            showGenres: showGenres,
-                            showOverview: false,
-                            showProgress: showProgress,
-                            singleLineMeta: bounded,
-                            titleHeight: titleHeight,
-                          ) -
-                          _overviewGap)
-                      .clamp(48.0, _overviewSlotHeight)
-                  : _overviewSlotHeight,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: HeroOverviewText(
-                  overview: overview,
-                  maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-                  shrinkWrap: !bounded,
-                  style: _overviewStyle,
+          if (bounded)
+            Expanded(
+              child: ClipRect(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: metaColumn,
                 ),
               ),
-            ),
-          ],
+            )
+          else
+            ...metaColumn,
           if (actionRow != null) ...[
             const SizedBox(height: _actionGap),
             DetailsHeroActionRowFit(child: actionRow!),
           ],
-          if (showProgress) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: 220,
-              child: WatchProgressBar(
-                positionMs: positionMs!,
-                durationMs: durationMs!,
-              ),
-            ),
-          ],
         ],
-      ),
       ),
     );
   }

@@ -21,10 +21,12 @@ class PlayerTorrentFilePanel {
   static bool get isShowing => _entry != null;
 
   static void dismiss() {
+    final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
     _completer?.complete();
     _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Future<void> show({
@@ -34,6 +36,7 @@ class PlayerTorrentFilePanel {
     required Future<void> Function(TorrentFileEntry file) onFileSelected,
     Uint8List? frozenFrame,
   }) {
+    playerMenuCaptureReturnFocus(context);
     dismiss();
     PlayerPopupPanel.dismiss();
     playerChromeCancelSeekScrubs();

@@ -118,6 +118,24 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
       _s._nearEndOfEpisode &&
       !_s._isLoadingNextEp;
 
+  bool get _showSkipChip =>
+      _s._activeSkipLabel != null && !_s._skipDismissed;
+
+  /// Progress bar ↑: Next Episode (closest) → Skip → top Back.
+  void _focusUpFromSeekbar() {
+    if (_showNextEpButton && _s._nextEpChipFocus.canRequestFocus) {
+      _s._nextEpChipFocus.requestFocus();
+      return;
+    }
+    if (_showSkipChip && _s._skipChipFocus.canRequestFocus) {
+      _s._skipChipFocus.requestFocus();
+      return;
+    }
+    if (_s._backFocus.canRequestFocus) {
+      _s._backFocus.requestFocus();
+    }
+  }
+
   void _beginEpisodeLoading({
     required String label,
     String status = 'Loading episode info…',

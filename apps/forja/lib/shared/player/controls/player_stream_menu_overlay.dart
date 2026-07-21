@@ -327,46 +327,27 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       children: [
         Material(
           color: Colors.transparent,
-          child: Builder(
-            builder: (context) {
-              final tvFocus =
-                  ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-              final header = _ServerMenuHeader(
-                label: presentation.label,
-                subtitle: subtitle,
-                status: status,
-                isLoaded: isLoaded,
-                isPlaying: isPlaying,
-                isReloading: isReloading,
-                showReload:
-                    (isLoaded || isReloading) && widget.providersEnabled,
-                categoryBadge: presentation.categoryBadge,
-                scoreScope: scoreScope,
-                providerId: providerId,
-                hideCategoryBadge: hideCategoryBadge,
-                onTap: canInteract
-                    ? () => _onServerRowTap(
-                          providerId: providerId,
-                          isLoaded: isLoaded,
-                        )
-                    : null,
-                onReload: widget.providersEnabled && isLoaded && !isReloading
-                    ? () => unawaited(_reloadServer(providerId))
-                    : null,
-              );
-              if (!tvFocus || !canInteract) return header;
-              return shellFocusableTap(
-                context: context,
-                onTap: () => _onServerRowTap(
-                  providerId: providerId,
-                  isLoaded: isLoaded,
-                ),
-                borderRadius: 8,
-                showFocusBorder: true,
-                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-                child: header,
-              );
-            },
+          child: _ServerMenuHeader(
+            label: presentation.label,
+            subtitle: subtitle,
+            status: status,
+            isLoaded: isLoaded,
+            isPlaying: isPlaying,
+            isReloading: isReloading,
+            showReload: (isLoaded || isReloading) && widget.providersEnabled,
+            categoryBadge: presentation.categoryBadge,
+            scoreScope: scoreScope,
+            providerId: providerId,
+            hideCategoryBadge: hideCategoryBadge,
+            onTap: canInteract
+                ? () => _onServerRowTap(
+                      providerId: providerId,
+                      isLoaded: isLoaded,
+                    )
+                : null,
+            onReload: widget.providersEnabled && isLoaded && !isReloading
+                ? () => unawaited(_reloadServer(providerId))
+                : null,
           ),
         ),
         if (isExpanded)

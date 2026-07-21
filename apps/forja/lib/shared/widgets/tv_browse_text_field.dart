@@ -133,6 +133,15 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
   Widget build(BuildContext context) {
     final showBrowsePlaceholder =
         _browseOnly && widget.focusNode.hasFocus && widget.controller.text.isEmpty;
+    // copyWith(hintText: null) keeps the old hint — empty string hides it.
+    final decoration = widget.decoration.copyWith(
+      hintText: showBrowsePlaceholder ? '' : widget.decoration.hintText,
+    );
+    final contentPad =
+        decoration.contentPadding?.resolve(Directionality.of(context));
+    final overlayLeft =
+        decoration.prefixIcon != null ? 48.0 : (contentPad?.left ?? 16.0);
+    final overlayRight = contentPad?.right ?? 16.0;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -147,17 +156,12 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
           onChanged: widget.onChanged,
           onSubmitted: widget.onSubmitted,
           style: widget.style,
-          decoration: widget.decoration.copyWith(
-            hintText: showBrowsePlaceholder ? null : widget.decoration.hintText,
-          ),
+          decoration: decoration,
         ),
         if (showBrowsePlaceholder && _placeholder.isNotEmpty)
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.only(
-                left: widget.decoration.prefixIcon != null ? 48 : 16,
-                right: 16,
-              ),
+              padding: EdgeInsets.only(left: overlayLeft, right: overlayRight),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: TvSearchBrowsePlaceholder(

@@ -1409,14 +1409,16 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     }
 
     // ── Decoding ─────────────────────────────────────────────────────────
-    // auto-safe on mobile: uses MediaCodec (Android) / VideoToolbox (iOS),
-    // whitelisted to formats each platform reliably supports.
-    // TV: full software path — GLES/EGL is unreliable on leanback emulators.
-    await safeSet('hwdec', _s._hwDecMode.mpvValue);
-    final mediaKitSafeMode =
-        widget.tvRemoteEnabled || _s._androidMediaKitSafeMode;
-    await safeSet('vd-lavc-dr', mediaKitSafeMode ? 'no' : 'yes');
-    if (mediaKitSafeMode && Platform.isAndroid) {
+    // Phone safe-mode: hwdec=no. ATV: keep mediacodec (matches VideoController
+    // vo=mediacodec_embed — do not overwrite with auto-safe/software).
+    if (widget.tvRemoteEnabled) {
+      await safeSet('hwdec', 'mediacodec');
+    } else {
+      await safeSet('hwdec', _s._hwDecMode.mpvValue);
+    }
+    final phoneSafeMode = _s._androidMediaKitSafeMode && !widget.tvRemoteEnabled;
+    await safeSet('vd-lavc-dr', phoneSafeMode ? 'no' : 'yes');
+    if (Platform.isAndroid && (widget.tvRemoteEnabled || phoneSafeMode)) {
       // OpenSLES misconfigures on some ATV images (0 frames delivered).
       await safeSet('ao', 'audiotrack');
     }

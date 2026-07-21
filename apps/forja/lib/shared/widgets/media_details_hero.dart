@@ -1151,12 +1151,14 @@ class _HeroMainColumn extends StatelessWidget {
     color: Color(0xB8FFFFFF),
   );
   static const _titleBlockHeight = 96.0;
+  static const _titleMinHeight = 32.0;
   static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;
   static const _metaBlockHeightWrapped = 48.0;
   static const _directorBlockHeight = 20.0;
   static const _providersBlockHeight = HeroWatchProvidersRow.rowHeight;
   static const _overviewGap = 14.0;
+  static const _overviewMinHeight = 48.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
 
@@ -1184,21 +1186,25 @@ class _HeroMainColumn extends StatelessWidget {
   double _metaHeight() =>
       _metaWraps ? _metaBlockHeightWrapped : _metaBlockHeight;
 
-  double _usedHeight({
+  double get _actionReserve =>
+      actionRow == null ? 0 : _actionGap + ShellTokens.shellButtonHeight;
+
+  /// Meta stack only — actions are reserved outside [Expanded].
+  double _metaUsedHeight({
     required bool showDirector,
     required bool showGenres,
     required bool showProviders,
     required bool showOverview,
     required bool showProgress,
+    required bool showMetaLine,
     required double titleHeight,
   }) {
     var used = titleHeight;
     if (showGenres) used += 10 + _genreBlockHeight;
-    used += 14 + _metaHeight();
+    if (showMetaLine) used += 14 + _metaHeight();
     if (showProviders) used += 10 + _providersBlockHeight;
     if (showDirector) used += 10 + _directorBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
-    if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
     if (showProgress) used += 14 + _progressBlockHeight;
     return used;
   }
@@ -1209,6 +1215,10 @@ class _HeroMainColumn extends StatelessWidget {
     final hasDirector = director != null && director.isNotEmpty;
     final bounded = maxHeight != null && maxHeight!.isFinite && maxHeight! > 0;
     final hasProgress = positionMs != null && durationMs != null;
+    // Actions are pinned below meta; budget the Expanded slot from what's left.
+    final metaBudget = bounded
+        ? (maxHeight! - _actionReserve).clamp(0.0, maxHeight!)
+        : null;
 
     var showDirector = hasDirector;
     var showGenres = movie.genres.isNotEmpty;
@@ -1216,187 +1226,194 @@ class _HeroMainColumn extends StatelessWidget {
         kShowHeroWatchProviders && watchProviders.isNotEmpty;
     var showOverview = movie.overview.isNotEmpty;
     var showProgress = hasProgress;
+    var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
-    if (bounded) {
-      if (_usedHeight(
+    if (metaBudget != null) {
+      final budget = metaBudget;
+      bool overBudget() =>
+          _metaUsedHeight(
             showDirector: showDirector,
             showGenres: showGenres,
             showProviders: showProviders,
             showOverview: showOverview,
             showProgress: showProgress,
+            showMetaLine: showMetaLine,
             titleHeight: titleHeight,
           ) >
-          maxHeight!) {
-        showDirector = false;
+          budget;
+
+      if (overBudget()) showDirector = false;
+      if (overBudget()) showOverview = false;
+      if (overBudget()) showProviders = false;
+      if (overBudget()) showGenres = false;
+      if (overBudget()) showProgress = false;
+      if (overBudget()) showMetaLine = false;
+      if (overBudget()) {
+        final rest = _metaUsedHeight(
+          showDirector: showDirector,
+          showGenres: showGenres,
+          showProviders: showProviders,
+          showOverview: showOverview,
+          showProgress: showProgress,
+          showMetaLine: showMetaLine,
+          titleHeight: 0,
+        );
+        titleHeight = (budget - rest).clamp(0.0, _titleBlockHeight);
+        if (titleHeight < _titleMinHeight) {
+          titleHeight = 0;
+          showDirector = false;
+          showGenres = false;
+          showProviders = false;
+          showOverview = false;
+          showProgress = false;
+          showMetaLine = false;
+        }
       }
-      if (_usedHeight(
-            showDirector: showDirector,
-            showGenres: showGenres,
-            showProviders: showProviders,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showOverview = false;
-      }
-      if (_usedHeight(
-            showDirector: showDirector,
-            showGenres: showGenres,
-            showProviders: showProviders,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showProviders = false;
-      }
-      if (_usedHeight(
-            showDirector: showDirector,
-            showGenres: showGenres,
-            showProviders: showProviders,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showGenres = false;
-      }
-      if (_usedHeight(
-            showDirector: showDirector,
-            showGenres: showGenres,
-            showProviders: showProviders,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showProgress = false;
-      }
-      if (_usedHeight(
-            showDirector: showDirector,
-            showGenres: showGenres,
-            showProviders: showProviders,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        titleHeight = (maxHeight! -
-                _usedHeight(
-                  showDirector: showDirector,
-                  showGenres: showGenres,
-                  showProviders: showProviders,
-                  showOverview: showOverview,
-                  showProgress: showProgress,
-                  titleHeight: 0,
-                ))
-            .clamp(48.0, _titleBlockHeight);
+      if (showOverview) {
+        final leftover = budget -
+            _metaUsedHeight(
+              showDirector: showDirector,
+              showGenres: showGenres,
+              showProviders: showProviders,
+              showOverview: false,
+              showProgress: showProgress,
+              showMetaLine: showMetaLine,
+              titleHeight: titleHeight,
+            ) -
+            _overviewGap;
+        if (leftover < _overviewMinHeight) showOverview = false;
       }
     }
 
-    return ClipRect(
-      child: SizedBox(
-        width: maxContentWidth,
-        height: bounded ? maxHeight : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: titleHeight,
+    final overviewHeight = !showOverview
+        ? 0.0
+        : metaBudget != null
+            ? (metaBudget -
+                    _metaUsedHeight(
+                      showDirector: showDirector,
+                      showGenres: showGenres,
+                      showProviders: showProviders,
+                      showOverview: false,
+                      showProgress: showProgress,
+                      showMetaLine: showMetaLine,
+                      titleHeight: titleHeight,
+                    ) -
+                    _overviewGap)
+                .clamp(0.0, _overviewSlotHeight)
+            : _overviewSlotHeight;
+
+    final metaColumn = <Widget>[
+      if (titleHeight > 0)
+        SizedBox(
+          height: titleHeight,
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: HeroTitle(
+                movie: movie,
+                logoUrl: logoUrl,
+                slotHeight: bounded ? titleHeight : null,
+              ),
+            ),
+          ),
+        ),
+      if (showGenres) ...[
+        const SizedBox(height: 10),
+        Text(
+          movie.genres.take(4).join(' • '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.78),
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
+      if (showMetaLine) ...[
+        const SizedBox(height: 14),
+        HeroMetaLine(
+          movie: movie,
+          certification: certification,
+          imdbRating: imdbRating,
+        ),
+      ],
+      if (showProviders) ...[
+        const SizedBox(height: 10),
+        HeroWatchProvidersRow(providers: watchProviders),
+      ],
+      if (showDirector) ...[
+        const SizedBox(height: 10),
+        Text(
+          'Director: $director',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.72),
+          ),
+        ),
+      ],
+      if (showOverview) ...[
+        const SizedBox(height: _overviewGap),
+        SizedBox(
+          height: overviewHeight,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: HeroOverviewText(
+              overview: movie.overview,
+              maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+              shrinkWrap: !bounded,
+              style: _overviewStyle,
+            ),
+          ),
+        ),
+      ],
+      if (showProgress) ...[
+        const SizedBox(height: 14),
+        SizedBox(
+          width: 280,
+          child: WatchProgressBar(
+            positionMs: positionMs!,
+            durationMs: durationMs!,
+          ),
+        ),
+      ],
+    ];
+
+    // Pin Play / Sources / icons below the clipped meta column so a tight
+    // series chrome (episode rail bleed) never clips hero actions out of the
+    // focus tree — D-pad left/right needs those nodes attached and focusable.
+    return SizedBox(
+      width: maxContentWidth,
+      height: bounded ? maxHeight : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          if (bounded)
+            Expanded(
               child: ClipRect(
                 child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: HeroTitle(
-                    movie: movie,
-                    logoUrl: logoUrl,
-                    slotHeight: bounded ? titleHeight : null,
+                  alignment: Alignment.topLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: metaColumn,
                   ),
                 ),
               ),
-            ),
-          if (showGenres) ...[
-            const SizedBox(height: 10),
-            Text(
-              movie.genres.take(4).join(' • '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.78),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          HeroMetaLine(
-            movie: movie,
-            certification: certification,
-            imdbRating: imdbRating,
-          ),
-          if (showProviders) ...[
-            const SizedBox(height: 10),
-            HeroWatchProvidersRow(providers: watchProviders),
-          ],
-          if (showDirector) ...[
-            const SizedBox(height: 10),
-            Text(
-              'Director: $director',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.72),
-              ),
-            ),
-          ],
-          if (showOverview) ...[
-            const SizedBox(height: _overviewGap),
-            SizedBox(
-              height: bounded
-                  ? (maxHeight! -
-                          _usedHeight(
-                            showDirector: showDirector,
-                            showGenres: showGenres,
-                            showProviders: showProviders,
-                            showOverview: false,
-                            showProgress: showProgress,
-                            titleHeight: titleHeight,
-                          ) -
-                          _overviewGap)
-                      .clamp(48.0, _overviewSlotHeight)
-                  : _overviewSlotHeight,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: HeroOverviewText(
-                  overview: movie.overview,
-                  maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-                  shrinkWrap: !bounded,
-                  style: _overviewStyle,
-                ),
-              ),
-            ),
-          ],
+            )
+          else
+            ...metaColumn,
           if (actionRow != null) ...[
             const SizedBox(height: _actionGap),
             DetailsHeroActionRowFit(child: actionRow!),
           ],
-          if (showProgress) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: 280,
-              child: WatchProgressBar(
-                positionMs: positionMs!,
-                durationMs: durationMs!,
-              ),
-            ),
-          ],
         ],
-      ),
       ),
     );
   }
