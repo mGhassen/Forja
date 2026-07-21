@@ -891,18 +891,48 @@ String formatDuration(Duration duration) {
   }
 }
 
+/// Catalog URL inside a local `/hls-proxy?url=…` play endpoint, if any.
+String? hlsProxyTargetUrl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) return null;
+  if (!uri.path.contains('/hls-proxy')) return null;
+  final target = uri.queryParameters['url']?.trim() ?? '';
+  return target.isEmpty ? null : target;
+}
+
+/// True when this play URL unwraps PNG-shelled MPEG-TS (`strip=png`).
+bool hlsProxyStripIsPng(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || !uri.path.contains('/hls-proxy')) return false;
+  return uri.queryParameters['strip'] == 'png';
+}
+
 /// Known hosts that serve Megaplay-style PNG-wrapped MPEG-TS (need hls-proxy strip).
+///
+/// Prefer [animeHlsNeedsPngStripFor] with a [sourceKey] — host lists live on
+/// each provider's [AnimePlaybackProfile] (RFC-039 / DB).
 bool animeHlsNeedsPngStrip(String url) {
-  final u = url.toLowerCase();
-  if (u.contains('/hls-proxy')) return false;
-  return u.contains('nekostream') ||
-      u.contains('mewstream') ||
-      u.contains('vivibebe') ||
-      u.contains('ibyteimg') ||
-      u.contains('byteimg.com') ||
-      u.contains('lostproject') ||
-      u.contains('watching.onl') ||
-      u.contains('owocdn');
+  return animeHlsNeedsPngStripFor(url, sourceKey: null);
+}
+
+/// PNG-strip decision for [sourceKey]'s profile; without a key, any profile
+/// that lists a matching needle (so open paths without a key still work).
+bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
+  final u = url.trim();
+  if (u.isEmpty) return false;
+  if (u.toLowerCase().contains('/hls-proxy')) {
+    final target = hlsProxyTargetUrl(u);
+    return target != null &&
+        animeHlsNeedsPngStripFor(target, sourceKey: sourceKey);
+  }
+  final cfg = ProviderRuntimeConfig.instance;
+  if (sourceKey != null && sourceKey.trim().isNotEmpty) {
+    return cfg.animePlaybackProfile(sourceKey).urlNeedsPngStrip(u);
+  }
+  for (final p in cfg.animePlaybackProfiles.values) {
+    if (p.urlNeedsPngStrip(u)) return true;
+  }
+  return false;
 }
 
 /// True when [bytes] are a PNG shell with MPEG-TS after IEND or offset 252.
@@ -934,9 +964,14 @@ bool pngWrapsMpegTs(List<int> bytes) {
 
 /// Route Megaplay/nekostream HLS through local `/hls-proxy?strip=png` so Exo/mpv
 /// get real MPEG-TS (browser player strips the PNG shell the same way).
-Future<StreamSource> applyAnimePngStripIfNeeded(StreamSource source) async {
+Future<StreamSource> applyAnimePngStripIfNeeded(
+  StreamSource source, {
+  String? sourceKey,
+}) async {
   final url = source.url.trim();
-  if (url.isEmpty || !url.contains('.m3u8') || !animeHlsNeedsPngStrip(url)) {
+  if (url.isEmpty || url.contains('/hls-proxy')) return source;
+  if (!url.contains('.m3u8') ||
+      !animeHlsNeedsPngStripFor(url, sourceKey: sourceKey)) {
     return source;
   }
   final ls = LocalServerService();
@@ -954,11 +989,12 @@ Future<StreamSource> applyAnimePngStripIfNeeded(StreamSource source) async {
 }
 
 Future<List<StreamSource>> applyAnimePngStripAll(
-  List<StreamSource> sources,
-) async {
+  List<StreamSource> sources, {
+  String? sourceKey,
+}) async {
   final out = <StreamSource>[];
   for (final s in sources) {
-    out.add(await applyAnimePngStripIfNeeded(s));
+    out.add(await applyAnimePngStripIfNeeded(s, sourceKey: sourceKey));
   }
   return out;
 }
@@ -989,8 +1025,9 @@ String _joinPlaylistUri(String base, String uri) {
 /// nekostream/vivibebe green-pass then fail at decode.
 Future<bool> hlsMediaSegmentsLookPlayable(
   String playlistUrl,
-  Map<String, String> headers,
-) async {
+  Map<String, String> headers, {
+  String? sourceKey,
+}) async {
   try {
     final master = await animeHttp(
       'GET',
@@ -1001,9 +1038,12 @@ Future<bool> hlsMediaSegmentsLookPlayable(
     );
     if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
 
-    // Megaplay-family CDNs wrap MPEG-TS in PNG shells — segment sampling would
-    // false-reject. Master OK ⇒ playable via /hls-proxy?strip=png.
-    if (animeHlsNeedsPngStrip(playlistUrl)) return true;
+    // Provider profile (or legacy host list) says PNG-strip — skip segment
+    // poison sample; master OK ⇒ playable via /hls-proxy?strip=png.
+    if (hlsProxyStripIsPng(playlistUrl) ||
+        animeHlsNeedsPngStripFor(playlistUrl, sourceKey: sourceKey)) {
+      return true;
+    }
 
     var mediaUrl = playlistUrl;
     var body = master.body;
@@ -1086,27 +1126,32 @@ Future<bool> hlsMediaSegmentsLookPlayable(
   }
 }
 
-/// Lightweight reachability check for stream menu reload.
-Future<bool> probeStreamSourceUrl(
-  String url,
-  Map<String, String>? headers,
+Future<bool> _probeHlsMasterOnly(
+  String catalog,
+  Map<String, String> hdrs,
 ) async {
-  final normalized = normalizePlaybackStreamUrl(url);
-  if (normalized.isEmpty) return false;
-  final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: normalized);
   try {
-    if (normalized.contains('.m3u8') ||
-        normalized.toLowerCase().contains('/api/proxy')) {
-      // Dart segment sample first — must not depend on app-bundle libffi freshness.
-      if (!await hlsMediaSegmentsLookPlayable(normalized, hdrs)) {
-        debugPrint('[Player] HLS media poison/ad segments — reject $normalized');
-        return false;
-      }
-      return true;
-    }
+    final master = await animeHttp(
+      'GET',
+      catalog,
+      headers: hdrs,
+      maxRetries: 0,
+      timeoutSecs: 8,
+    );
+    return master.status == 200 && master.body.contains('#EXTM3U');
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<bool> _probeHeadOrRange(
+  String catalog,
+  Map<String, String> hdrs,
+) async {
+  try {
     var res = await animeHttp(
       'HEAD',
-      normalized,
+      catalog,
       headers: hdrs,
       maxRetries: 0,
       timeoutSecs: 8,
@@ -1114,12 +1159,82 @@ Future<bool> probeStreamSourceUrl(
     if (res.status >= 200 && res.status < 400) return true;
     res = await animeHttp(
       'GET',
-      normalized,
+      catalog,
       headers: {...hdrs, 'Range': 'bytes=0-0'},
       maxRetries: 0,
       timeoutSecs: 8,
     );
     return res.status == 200 || res.status == 206;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Lightweight reachability check for stream menu reload.
+///
+/// Pass [sourceKey] for anime so probe mode comes from
+/// [ProviderRuntimeConfig.animePlaybackProfile] (DB / builtins) — not host
+/// heuristics.
+Future<bool> probeStreamSourceUrl(
+  String url,
+  Map<String, String>? headers, {
+  String? sourceKey,
+}) async {
+  final normalized = normalizePlaybackStreamUrl(url);
+  if (normalized.isEmpty) return false;
+  // Already on the PNG-strip play path — don't re-sample nested segments.
+  if (hlsProxyStripIsPng(normalized)) return true;
+  final catalog = hlsProxyTargetUrl(normalized) ?? normalized;
+  final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: catalog);
+
+  final key = sourceKey?.trim();
+  if (key != null && key.isNotEmpty) {
+    final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(key);
+    switch (profile.probe) {
+      case AnimeProbeMode.skip:
+        return true;
+      case AnimeProbeMode.masterOnly:
+        if (catalog.contains('.m3u8') ||
+            catalog.toLowerCase().contains('/api/proxy') ||
+            normalized.contains('/hls-proxy')) {
+          return _probeHlsMasterOnly(catalog, hdrs);
+        }
+        return _probeHeadOrRange(catalog, hdrs);
+      case AnimeProbeMode.headOrRange:
+        return _probeHeadOrRange(catalog, hdrs);
+      case AnimeProbeMode.segmentPoisonSample:
+        if (catalog.contains('.m3u8') ||
+            catalog.toLowerCase().contains('/api/proxy') ||
+            normalized.contains('/hls-proxy')) {
+          if (!await hlsMediaSegmentsLookPlayable(
+            catalog,
+            hdrs,
+            sourceKey: key,
+          )) {
+            debugPrint(
+              '[Player] HLS media poison/ad segments — reject $catalog '
+              '(sourceKey=$key)',
+            );
+            return false;
+          }
+          return true;
+        }
+        return _probeHeadOrRange(catalog, hdrs);
+    }
+  }
+
+  try {
+    if (catalog.contains('.m3u8') ||
+        catalog.toLowerCase().contains('/api/proxy') ||
+        normalized.contains('/hls-proxy')) {
+      // Legacy (no sourceKey): keep segment sample for movie/misc HLS.
+      if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
+        debugPrint('[Player] HLS media poison/ad segments — reject $catalog');
+        return false;
+      }
+      return true;
+    }
+    return _probeHeadOrRange(catalog, hdrs);
   } catch (_) {
     return false;
   }
@@ -1141,7 +1256,11 @@ Future<bool> validateStreamSourceForCheck({
     // Catalog hosts only — loopback is rejected by [isUnplayableCachedStreamUrl].
     return url.contains('://');
   }
-  return probeStreamSourceUrl(source.url, headers);
+  return probeStreamSourceUrl(
+    source.url,
+    headers,
+    sourceKey: providerId,
+  );
 }
 
 /// Index of [current] in a flat hub episode list, or null if not found.

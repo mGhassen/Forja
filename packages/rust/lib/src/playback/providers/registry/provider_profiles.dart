@@ -6,15 +6,16 @@ import '../../domain/source_domain.dart';
 abstract final class ProviderProfiles {
   /// Mirrors `AnimeStreamProviders.defaultOrder` in the host app.
   static const _animeOrder = <String>[
-    'miruro:bee',
+    'megaplay',
+    'anikoto',
+    'vidwish',
+    'vidnest:hianime',
+    'vidnest:animepahe',
     'allanime:Default',
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
-    'vidnest:hianime',
-    'vidnest:animepahe',
-    'megaplay',
-    'vidwish',
+    'miruro:bee',
     'miruro:zoro',
     'miruro:kiwi',
     'miruro:ally',

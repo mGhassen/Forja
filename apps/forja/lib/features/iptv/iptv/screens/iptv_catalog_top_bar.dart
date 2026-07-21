@@ -591,10 +591,19 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     final checking =
         portal != null && ctrl.isPortalHealthChecking(portal.key);
 
-    // Idle ~240; hover grows left (~+48 for seats). Compact stays icon-sized.
+    // Idle min keeps short names from pinching; hover grows for seats.
+    final minW = compact ? _kSearchCollapsed : 156.0;
     final maxW = compact
-        ? (revealSeats ? 96.0 : 44.0)
-        : (revealSeats ? 288.0 : 240.0);
+        ? (revealSeats ? 96.0 : _kSearchCollapsed)
+        : (revealSeats ? 300.0 : 260.0);
+    final chipRadius = BorderRadius.circular(_kShelfTabRadius);
+    final borderColor = tvFocused
+        ? ForjaShellColors.brandGreen
+        : !hasPortal
+            ? IptvShellStyle.accent.withValues(alpha: 0.65)
+            : Colors.white.withValues(alpha: showHighlight ? 0.28 : 0.10);
+    final borderW = tvFocused ? 1.5 : 1.0;
+    final side = BorderSide(color: borderColor, width: borderW);
 
     return Align(
       alignment: Alignment.centerRight,
@@ -608,9 +617,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         onDownEdge: _focusDownFromPortalTool,
         onLeftEdge: () =>
             iptvFocusRowItem('iptv-top-tools', _portalToolIndex - 1),
-        onRightEdge: selected
-            ? () => iptvFocusRowItem('portals', 0)
-            : null,
+        onRightEdge:
+            selected ? () => iptvFocusRowItem('portals', 0) : null,
         onFocusChange: (focused) {
           setState(() => _portalToolFocused = focused);
           final p = ctrl.activePortal;
@@ -631,31 +639,25 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
             ctrl.cancelPortalHealthCheck(p.key);
           }
         },
+        // Animate layout only. Lerping BoxDecoration border+radius together
+        // hits Flutter's assert (borderRadius requires uniform BorderSide.color).
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          height: _kShelfTabHeight,
-          constraints: BoxConstraints(maxWidth: maxW),
-          padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
+          height: _kSearchCollapsed,
+          constraints: BoxConstraints(minWidth: minW, maxWidth: maxW),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
           decoration: BoxDecoration(
             color: tvFocused
                 ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
                 : showHighlight
                     ? Colors.white.withValues(alpha: selected ? 0.14 : 0.10)
                     : Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(_kShelfTabRadius),
-            border: Border.all(
-              color: tvFocused
-                  ? ForjaShellColors.brandGreen
-                  : !hasPortal
-                      ? IptvShellStyle.accent.withValues(alpha: 0.65)
-                      : Colors.white
-                          .withValues(alpha: showHighlight ? 0.28 : 0.10),
-              width: tvFocused ? 1.5 : 1,
-            ),
+            borderRadius: chipRadius,
+            border: Border.fromBorderSide(side),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (portal != null)
                 ClipRect(
@@ -673,23 +675,29 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                     ),
                   ),
                 ),
-              portal != null
-                  ? _portalButtonStatusDot(
-                      checking: checking,
-                      health: health,
-                    )
-                  : Icon(
-                      Icons.add_link_rounded,
-                      size: 16,
-                      color: iptvFocusFg(
-                        IptvShellStyle.accent,
-                        active: active,
-                        tvFocused: tvFocused,
-                      ),
-                    ),
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: Center(
+                  child: portal != null
+                      ? _portalButtonStatusDot(
+                          checking: checking,
+                          health: health,
+                        )
+                      : Icon(
+                          Icons.add_link_rounded,
+                          size: 16,
+                          color: iptvFocusFg(
+                            IptvShellStyle.accent,
+                            active: active,
+                            tvFocused: tvFocused,
+                          ),
+                        ),
+                ),
+              ),
               if (!compact) ...[
-                const SizedBox(width: 7),
-                Flexible(
+                const SizedBox(width: 8),
+                Expanded(
                   child: Text(
                     _portalLabel,
                     maxLines: 1,
@@ -702,15 +710,16 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                       ),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
+                      height: 1,
                     ),
                   ),
                 ),
-                const SizedBox(width: 2),
+                const SizedBox(width: 6),
                 Icon(
                   selected
                       ? Icons.expand_less_rounded
                       : Icons.expand_more_rounded,
-                  size: 16,
+                  size: 18,
                   color: iptvFocusFg(
                     Colors.white60,
                     active: active,

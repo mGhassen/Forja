@@ -21,7 +21,10 @@ import 'anime_player_screen.dart';
 Future<T?> openAnimeDetails<T>(BuildContext context, AnimeCard anime) {
   return pushShellRoute<T>(
     context,
-    AppRouter.slideShellRoute((_) => AnimeDetailsScreen(anime: anime)),
+    AppRouter.slideShellRoute(
+      (_) => AnimeDetailsScreen(anime: anime),
+      settings: const RouteSettings(name: 'anime_details'),
+    ),
   );
 }
 
@@ -113,12 +116,24 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     });
 
     // Metadata + AniList episode rail (Anikoto only resolves on Play for Vidwish).
-    _service.getDetails(widget.anime.id).then((d) {
+    // TMDB backdrop for the hero (AniList banner fallback).
+    _service.getDetails(widget.anime.id).then((d) async {
+      final seeded = widget.anime.tmdbBackdropUrl == null
+          ? d
+          : d.copyWith(tmdbBackdropUrl: widget.anime.tmdbBackdropUrl);
+      final enriched = await _service.attachTmdbBackdrop(seeded);
       if (!mounted) return;
-      setState(() => _full = d);
+      setState(() => _full = enriched);
     }).catchError((e) {
       if (mounted && _full == null) setState(() => _error = 'Failed to load: $e');
     });
+
+    if (widget.anime.tmdbBackdropUrl == null) {
+      _service.attachTmdbBackdrop(widget.anime).then((enriched) {
+        if (!mounted || _full != null) return;
+        setState(() => _full = enriched);
+      });
+    }
 
     _service.getEpisodes(widget.anime).then((eps) {
       if (!mounted) return;
@@ -371,7 +386,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           HubDetailsHero(
-            backdropUrl: a.bannerOrCover,
+            backdropUrl: a.heroBackdrop,
             title: a.displayTitle,
             subtitle: a.titleNative.isNotEmpty && a.titleNative != a.displayTitle
                 ? a.titleNative

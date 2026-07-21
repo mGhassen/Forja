@@ -41,6 +41,11 @@ pub struct AnikotoEpisodeOut {
 #[derive(Debug, Clone, Serialize)]
 pub struct AnikotoSeriesOut {
     pub id: i64,
+    #[serde(default)]
+    pub slug: String,
+    /// AniList id from Anikoto (may differ from Forja catalog — duplicate entries).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ani_id: Option<i64>,
     pub episodes: Vec<AnikotoEpisodeOut>,
 }
 
@@ -168,7 +173,7 @@ fn id_from_slug(slug: &str) -> Option<i64> {
     cap.get(1)?.as_str().parse().ok()
 }
 
-fn series_from_json(anikoto_id: i64, j: &Value) -> AnikotoSeriesOut {
+fn series_from_json(anikoto_id: i64, j: &Value, slug: &str) -> AnikotoSeriesOut {
     let eps = j
         .pointer("/data/episodes")
         .and_then(|v| v.as_array())
@@ -188,15 +193,22 @@ fn series_from_json(anikoto_id: i64, j: &Value) -> AnikotoSeriesOut {
             })
         })
         .collect();
+    let ani_id = j
+        .pointer("/data/anime/ani_id")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<i64>().ok())
+        .filter(|&id| id > 0);
     AnikotoSeriesOut {
         id: anikoto_id,
+        slug: slug.to_string(),
+        ani_id,
         episodes,
     }
 }
 
-fn load_series(anikoto_id: i64) -> Result<AnikotoSeriesOut, String> {
+fn load_series(anikoto_id: i64, slug: &str) -> Result<AnikotoSeriesOut, String> {
     let j = anikoto_get(&format!("/series/{anikoto_id}"))?;
-    Ok(series_from_json(anikoto_id, &j))
+    Ok(series_from_json(anikoto_id, &j, slug))
 }
 
 fn slug_tokens(slug: &str) -> HashSet<String> {
@@ -219,7 +231,7 @@ fn episode_count_plausible(got: i32, expected: i32) -> bool {
     got >= (expected as f64 / 2.0).ceil() as i32
 }
 
-fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<i64> {
+fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<Candidate> {
     if cands.is_empty() {
         return None;
     }
@@ -233,10 +245,14 @@ fn pick_best_ani_id_match(cands: &mut [Candidate], expected: i32) -> Option<i64>
         if !episode_count_plausible(best.episodes, expected) {
             return None;
         }
-        Some(best.id)
+        Some(best.clone())
     } else {
         cands.sort_by(|a, b| b.episodes.cmp(&a.episodes));
-        episode_count_plausible(cands[0].episodes, expected).then_some(cands[0].id)
+        if episode_count_plausible(cands[0].episodes, expected) {
+            Some(cands[0].clone())
+        } else {
+            None
+        }
     }
 }
 
@@ -291,7 +307,7 @@ pub fn anikoto_resolve(
         let Ok(j) = anikoto_get(&format!("/series/{id}")) else {
             continue;
         };
-        let series = series_from_json(id, &j);
+        let series = series_from_json(id, &j, &slug);
         let ep_count = series.episodes.len() as i32;
         series_by_id.insert(id, series);
         let found_ani = j
@@ -300,7 +316,7 @@ pub fn anikoto_resolve(
             .unwrap_or("")
             .to_string();
         let cand = Candidate {
-            slug,
+            slug: slug.clone(),
             id,
             episodes: ep_count,
         };
@@ -314,11 +330,11 @@ pub fn anikoto_resolve(
         }
     }
 
-    if let Some(id) = pick_best_ani_id_match(&mut ani_id_matches, expected_episodes) {
-        if let Some(s) = series_by_id.remove(&id) {
+    if let Some(best) = pick_best_ani_id_match(&mut ani_id_matches, expected_episodes) {
+        if let Some(s) = series_by_id.remove(&best.id) {
             return Ok(Some(s));
         }
-        return Ok(Some(load_series(id)?));
+        return Ok(Some(load_series(best.id, &best.slug)?));
     }
 
     if !resolved.is_empty() && !title_tokens.is_empty() {
@@ -342,7 +358,7 @@ pub fn anikoto_resolve(
                 if let Some(s) = series_by_id.remove(&c.id) {
                     return Ok(Some(s));
                 }
-                return Ok(Some(load_series(c.id)?));
+                return Ok(Some(load_series(c.id, &c.slug)?));
             }
         }
     }
@@ -376,7 +392,10 @@ mod tests {
                 episodes: 26,
             },
         ];
-        assert_eq!(pick_best_ani_id_match(&mut cands, 26), Some(2));
+        assert_eq!(
+            pick_best_ani_id_match(&mut cands, 26).map(|c| c.id),
+            Some(2)
+        );
     }
 
     #[test]
@@ -403,7 +422,7 @@ mod tests {
                 episodes: 3,
             },
         ];
-        assert_eq!(pick_best_ani_id_match(&mut cands, 220), None);
+        assert!(pick_best_ani_id_match(&mut cands, 220).is_none());
     }
 
     #[test]

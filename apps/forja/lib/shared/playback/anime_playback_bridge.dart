@@ -222,7 +222,23 @@ abstract final class AnimePlaybackBridge {
       maxInFlight: 1,
     );
     if (hits.isEmpty) return null;
-    return applyAnimePngStripAll(hitsToStreamSources(hits));
+    return stripHitsPng(hits);
+  }
+
+  /// Apply each hit's [AnimeEmbed.sourceKey] PNG-strip profile.
+  static Future<List<StreamSource>> stripHitsPng(
+    List<AnimeResolvedHit> hits,
+  ) async {
+    final out = <StreamSource>[];
+    for (final h in hits) {
+      out.addAll(
+        await applyAnimePngStripAll(
+          hitsToStreamSources([h]),
+          sourceKey: h.embed.sourceKey,
+        ),
+      );
+    }
+    return out;
   }
 
   /// Expand every playable URL under each hit (Miruro multi-server).

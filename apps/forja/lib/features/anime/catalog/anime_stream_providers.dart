@@ -7,13 +7,17 @@ import 'package:rust/rust.dart';
 class AnimeStreamProviders {
   AnimeStreamProviders._();
 
+  /// All Miruro pipe keys we race (matches [miruroKnownProviders]).
+  static const List<String> miruroRaceProviders = miruroKnownProviders;
+
   /// Default try order — strongest / most reliable first.
   ///
   /// AnimeRealms was removed (upstream API gone — domain is a storefront).
   /// AllAnime `Uv-mp4` was removed (upstream no longer returns it).
-  /// Megaplay/Vidwish first: direct embed extract (no Miruro CF WebView).
+  /// Megaplay/Vidwish/native AniKoto first; Miruro pipes after AllAnime.
   static const List<String> defaultOrder = [
     'megaplay',
+    'anikoto',
     'vidwish',
     // VidNest — AniList-native HiAnime / AnimePahe
     'vidnest:hianime',
@@ -23,7 +27,7 @@ class AnimeStreamProviders {
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
-    // AniKoto (Miruro bee) + other Miruro pipes (CF WebView)
+    // Miruro CF WebView pipes
     'miruro:bee',
     'miruro:zoro',
     'miruro:kiwi',
@@ -46,11 +50,12 @@ class AnimeStreamProviders {
   static Map<String, String> get catalog {
     final out = <String, String>{
       'megaplay': 'Megaplay',
+      'anikoto': 'AniKoto',
       'vidwish': 'Vidwish',
       'watchhentai': 'WatchHentai',
       'hentaini': 'Hentaini',
     };
-    for (final p in miruroKnownProviders) {
+    for (final p in miruroRaceProviders) {
       out['miruro:$p'] = miruroUpstreamLabel(p);
     }
     for (final p in allAnimeKnownProviders) {

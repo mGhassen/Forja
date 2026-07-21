@@ -88,6 +88,8 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   final FocusNode _tvSearchFocus = FocusNode(debugLabel: 'hub-hero-search');
   Timer? _timer;
   int _index = 0;
+  /// Last PageView viewport width — resize invalidates pixel scroll offsets.
+  double? _pageViewportWidth;
   bool _tvHeroInitialFocusDone = false;
   bool _searchFocused = false;
   bool _searchHovered = false;
@@ -142,6 +144,15 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     });
   }
 
+  void _jumpToReal(int realIndex) {
+    if (!mounted || !_controller.hasClients) return;
+    final slides = widget.slides;
+    if (slides.isEmpty) return;
+    final target = _loopStart + (realIndex % slides.length);
+    if ((_controller.page?.round() ?? target) == target) return;
+    _controller.jumpToPage(target);
+  }
+
   void _onPageChanged(int pageIndex) {
     final slides = widget.slides;
     if (slides.isEmpty) return;
@@ -151,11 +162,12 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       setState(() => _index = realIndex);
     }
 
-    if (pageIndex <= 2 || pageIndex >= _loopLength - 3) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_controller.hasClients) return;
-        _controller.jumpToPage(_loopStart + realIndex);
-      });
+    // Huge fake itemCount + float scroll offsets assert once the page index
+    // drifts far from center (idle auto-advance) or the viewport resizes.
+    final target = _loopStart + realIndex;
+    final drifted = (pageIndex - target).abs() > count * 8;
+    if (drifted || pageIndex <= 2 || pageIndex >= _loopLength - 3) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToReal(realIndex));
     }
   }
 
@@ -401,6 +413,13 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             (_compact
                 ? ShellTokens.heroImageStartFractionCompact
                 : ShellTokens.heroImageStartFraction);
+        final pageW = (constraints.maxWidth - imageLeft).clamp(1.0, double.infinity);
+        final prevW = _pageViewportWidth;
+        if (prevW != null && (prevW - pageW).abs() > 0.5) {
+          final real = _index;
+          WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToReal(real));
+        }
+        _pageViewportWidth = pageW;
 
         return ClipRect(
           child: Stack(

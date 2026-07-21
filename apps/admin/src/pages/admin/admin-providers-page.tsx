@@ -13,6 +13,7 @@ import { adminDb } from '@/lib/admin-db'
 import {
   SUPPORTED_SCHEMA,
   type AnimeEmbedHost,
+  type AnimeProbeMode,
   type CdnRefererRule,
   type KvRow,
   type ProviderRuntimeConfig,
@@ -347,6 +348,9 @@ export function AdminProvidersPage() {
     cdn: (liveCfg?.cdnRefererRules ?? cfg.cdnRefererRules).length,
     miruro: (liveCfg?.anime.miruroOrigins ?? cfg.anime.miruroOrigins).length,
     kisskh: (liveCfg?.anime.kisskhMirrors ?? cfg.anime.kisskhMirrors).length,
+    animeProfiles: Object.keys(
+      liveCfg?.anime.playbackProfiles ?? cfg.anime.playbackProfiles,
+    ).length,
   }
 
   const save = useMutation({
@@ -434,7 +438,7 @@ export function AdminProvidersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Providers"
-        description="Hosts, URL templates, WebStreamr bases, anime mirrors, CDN Referer rules. App deep-merges over builtins (schema 1). Extract logic stays in the client."
+        description="Hosts, URL templates, WebStreamr bases, anime mirrors, per-sourceKey probe profiles, CDN Referer rules. App deep-merges over builtins (schema 1). Extract logic stays in the client."
         actions={
           <>
             {mode === 'json' ? (
@@ -501,6 +505,8 @@ export function AdminProvidersPage() {
         {counts.webstreamr} webstreamr
         <span className="mx-2 text-forja-border">·</span>
         {counts.cdn} cdn rules
+        <span className="text-forja-border">·</span>
+        {counts.animeProfiles} anime probes
         {row.data?.updated_at ? (
           <>
             <span className="mx-2 text-forja-border">·</span>
@@ -709,6 +715,152 @@ export function AdminProvidersPage() {
                 </label>
               </div>
             </div>
+          </Section>
+
+          <Section
+            title="Anime playback profiles"
+            hint="Per sourceKey probe mode + PNG-strip host needles (not generic host heuristics)."
+            action={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-forja-muted hover:text-forja-text"
+                onClick={() =>
+                  setCfg((c) => ({
+                    ...c,
+                    anime: {
+                      ...c.anime,
+                      playbackProfiles: {
+                        ...c.anime.playbackProfiles,
+                        'miruro:kiwi': {
+                          probe: 'masterOnly',
+                          pngStripHostContains: [],
+                        },
+                      },
+                    },
+                  }))
+                }
+              >
+                <Plus className="size-3.5" />
+                Add profile
+              </Button>
+            }
+          >
+            {Object.keys(cfg.anime.playbackProfiles).length === 0 ? (
+              <p className="text-sm text-forja-muted">
+                No profiles in this row — app builtins still apply offline.
+              </p>
+            ) : (
+              <DataTable
+                headers={['sourceKey', 'probe', 'pngStripHostContains', '']}
+                colSpan={4}
+              >
+                {Object.entries(cfg.anime.playbackProfiles).map(([id, p]) => (
+                  <tr
+                    key={id}
+                    className="border-t border-forja-border/40 hover:bg-white/2"
+                  >
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <CellInput
+                        value={id}
+                        onChange={(v) => {
+                          const next = v.trim()
+                          setCfg((c) => {
+                            const profiles = {
+                              ...c.anime.playbackProfiles,
+                            }
+                            const cur = profiles[id]
+                            delete profiles[id]
+                            if (next && cur) profiles[next] = cur
+                            return {
+                              ...c,
+                              anime: {
+                                ...c.anime,
+                                playbackProfiles: profiles,
+                              },
+                            }
+                          })
+                        }}
+                        placeholder="miruro:kiwi"
+                      />
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <select
+                        className="h-8 w-full rounded-md border border-forja-border bg-transparent px-2 text-sm"
+                        value={p.probe}
+                        onChange={(e) => {
+                          const probe = e.target.value as AnimeProbeMode
+                          setCfg((c) => ({
+                            ...c,
+                            anime: {
+                              ...c.anime,
+                              playbackProfiles: {
+                                ...c.anime.playbackProfiles,
+                                [id]: { ...p, probe },
+                              },
+                            },
+                          }))
+                        }}
+                      >
+                        <option value="masterOnly">masterOnly</option>
+                        <option value="segmentPoisonSample">
+                          segmentPoisonSample
+                        </option>
+                        <option value="headOrRange">headOrRange</option>
+                        <option value="skip">skip</option>
+                      </select>
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5')}>
+                      <CellInput
+                        value={listToCsv(p.pngStripHostContains)}
+                        onChange={(v) =>
+                          setCfg((c) => ({
+                            ...c,
+                            anime: {
+                              ...c.anime,
+                              playbackProfiles: {
+                                ...c.anime.playbackProfiles,
+                                [id]: {
+                                  ...p,
+                                  pngStripHostContains: csvToList(v),
+                                },
+                              },
+                            },
+                          }))
+                        }
+                        placeholder="nekostream, mewstream"
+                      />
+                    </td>
+                    <td className={cn(tdClassName, 'px-1 py-0.5 text-right')}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-forja-muted hover:text-red-400"
+                        onClick={() =>
+                          setCfg((c) => {
+                            const profiles = {
+                              ...c.anime.playbackProfiles,
+                            }
+                            delete profiles[id]
+                            return {
+                              ...c,
+                              anime: {
+                                ...c.anime,
+                                playbackProfiles: profiles,
+                              },
+                            }
+                          })
+                        }
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </DataTable>
+            )}
           </Section>
 
           <Section

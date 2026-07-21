@@ -351,6 +351,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     final pid = _s._currentProvider;
     if (pid == null) return;
     _markProviderLoadSucceeded(pid);
+    _s._statusController.remove('provider-$pid');
     _syncProbeStatus(pid, StreamProviderProbeStatus.success);
     _finalizeProbeStatusesAfterPlayback();
     // Score only via probe sync: +2 for finished success+streams, not the
@@ -554,7 +555,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       );
     }
 
-    if (animeHlsNeedsPngStrip(openUrl)) {
+    if (animeHlsNeedsPngStripFor(openUrl, sourceKey: pid)) {
       final stripped = await applyAnimePngStripIfNeeded(
         StreamSource(
           url: openUrl,
@@ -562,13 +563,18 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
           type: source.type,
           headers: headers,
         ),
+        sourceKey: pid,
       );
       openUrl = stripped.url;
       headers = stripped.headers;
       resolved = stripped;
     }
 
-    final ok = await probeStreamSourceUrl(openUrl, headers);
+    final ok = await probeStreamSourceUrl(
+      openUrl,
+      headers,
+      sourceKey: pid,
+    );
     if (!ok) return null;
     return (openUrl: openUrl, headers: headers, resolved: resolved);
   }

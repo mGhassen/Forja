@@ -267,7 +267,7 @@ Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
       id: -anime.id,
       title: anime.displayTitle,
       posterPath: anime.coverUrl,
-      backdropPath: anime.bannerOrCover,
+      backdropPath: anime.heroBackdrop,
       voteAverage: (anime.averageScore ?? 0) / 10.0,
       releaseDate: anime.seasonYear?.toString() ?? '',
       overview: anime.cleanDescription,
@@ -612,11 +612,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (!mounted || _cancelled) return false;
     await _ensureEmbedsReady();
     if (!mounted || _cancelled) return false;
+    // Anikoto.cz watch page needs the catalog slug (not only Miruro bee).
+    if (_series == null || _series!.slug.trim().isEmpty) {
+      _series = await _service.resolveAnikoto(widget.anime);
+    }
+    if (!mounted || _cancelled) return false;
     final candidates = <AnimeBrowserEmbed>[
       if (preferred != null) preferred,
       ...animeBrowserEmbedFallbacks(
         embeds: _allEmbeds,
         category: _category,
+        anikotoSlug: _series?.slug,
+        episode: widget.episodeNumber,
       ),
     ];
     final seen = <String>{};
@@ -639,7 +646,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   /// Probe CDN reachability before open / cache write (movie I43 style).
-  /// [AnimeService.probeStreamUrl] rewrites CDN Referer (nekostream → megaplay).
+  /// Mode is per [AnimeEmbed.sourceKey] via provider_runtime_config.
   Future<List<_AnimeResolvedHit>> _playableHits(
     List<_AnimeResolvedHit> hits,
   ) async {
@@ -647,7 +654,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final flags = await Future.wait(
       hits.map((h) {
         final headers = Map<String, String>.from(h.media.headers);
-        return _service.probeStreamUrl(h.media.url, headers);
+        return _service.probeStreamUrl(
+          h.media.url,
+          headers,
+          sourceKey: h.embed.sourceKey,
+        );
       }),
     );
     return [
@@ -965,13 +976,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           StreamProviderProbeStatus.success,
         );
       }
-      final stripped = await applyAnimePngStripAll(_hitsToStreamSources(all));
+      final stripped = await AnimePlaybackBridge.stripHitsPng(all);
       if (_cancelled || _resolverStopped) return;
       sourcesListNotifier.value = stripped;
       final cache = <String, List<StreamSource>>{};
       for (final hit in all) {
-        cache[hit.embed.panelKey] = await applyAnimePngStripAll(
-          _hitsToStreamSources([hit]),
+        cache[hit.embed.panelKey] = await AnimePlaybackBridge.stripHitsPng(
+          [hit],
         );
       }
       if (_cancelled || _resolverStopped) return;
@@ -1065,6 +1076,31 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         return;
       }
 
+      // VidNest CDN dead: if this server was preferred/manual, open the public
+      // vidnest.fun player immediately (site JS works when API/CDN path dies).
+      // Auto keeps racing other natives; end fallback still prefers VidNest pages.
+      final vidnestDead = hits.where((h) => h.embed.server == 'vidnest');
+      final wantVidnestWeb = !SourceEngine.isAuto(preferred) &&
+          preferred.startsWith('vidnest:') &&
+          vidnestDead.any((h) => h.embed.sourceKey == preferred);
+      if (wantVidnestWeb) {
+        final page = animeBrowserEmbedFor(
+          vidnestDead.firstWhere((h) => h.embed.sourceKey == preferred).embed,
+        );
+        if (page != null) {
+          sourcesListNotifier.dispose();
+          providerSourcesCache.dispose();
+          _closeMiruroPipe();
+          if (await _openBrowserEmbedFallback(preferred: page)) {
+            if (mounted) {
+              final nav = Navigator.of(context, rootNavigator: true);
+              if (nav.canPop()) nav.pop();
+            }
+            return;
+          }
+        }
+      }
+
       // Extracted but CDN dead — skip these keys and try the next server.
       final deadKeys = <String>{};
       for (final h in hits) {
@@ -1088,10 +1124,23 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       _closeMiruroPipe();
       return;
     }
+
+    // Race empty — prefer VidNest site player when that was the pinned server
+    // (AnimePahe API often 502 while https://vidnest.fun/animepahe/… still plays).
+    AnimeBrowserEmbed? vidnestPage;
+    if (!SourceEngine.isAuto(preferred) && preferred.startsWith('vidnest:')) {
+      for (final e in pair) {
+        if (e.sourceKey == preferred) {
+          vidnestPage = animeBrowserEmbedFor(e);
+          break;
+        }
+      }
+    }
+
     sourcesListNotifier.dispose();
     providerSourcesCache.dispose();
     _closeMiruroPipe();
-    if (await _openBrowserEmbedFallback()) {
+    if (await _openBrowserEmbedFallback(preferred: vidnestPage)) {
       if (mounted) {
         final nav = Navigator.of(context, rootNavigator: true);
         if (nav.canPop()) nav.pop();
@@ -1198,7 +1247,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     // Player "current" list = winner servers only. Other providers live in cache.
     // Nekostream/Megaplay HLS: unwrap PNG-shelled MPEG-TS via local hls-proxy.
-    final rawSources = await applyAnimePngStripAll(_hitsToStreamSources([winner]));
+    final rawSources = await AnimePlaybackBridge.stripHitsPng([winner]);
     final sources = await PlaybackSelection.rankAndDedupe(
       sources: rawSources,
       providerId: winner.embed.sourceKey,
@@ -1208,9 +1257,16 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         settingsOrder: _providerOrder,
       ).rows.first.effectiveRank,
     );
+    if (winner.embed.sourceKey.contains('bee') &&
+        (_series == null || _series!.slug.trim().isEmpty)) {
+      _series = await _service.resolveAnikoto(widget.anime);
+      if (!mounted || _cancelled) return;
+    }
     final browserFallbacks = animeBrowserEmbedFallbacks(
       embeds: _allEmbeds,
       category: _category,
+      anikotoSlug: _series?.slug,
+      episode: widget.episodeNumber,
     );
     _pendingBrowserEmbed =
         animeBrowserEmbedFor(winner.embed) ??
@@ -1436,7 +1492,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
   Widget _buildFailure(AppThemePreset _) {
     return ResolveFailureScaffold(
-      backdropUrl: widget.anime.bannerOrCover,
+      backdropUrl: widget.anime.heroBackdrop,
       failure: ResolveFailure(
         title: _messageNotifier.value,
         detail: _statusLine.isNotEmpty ? _statusLine : null,

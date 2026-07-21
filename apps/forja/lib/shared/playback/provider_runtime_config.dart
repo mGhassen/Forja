@@ -30,9 +30,37 @@ class ProviderRuntimeConfig {
   List<String> get miruroOrigins => _snap.miruroOrigins;
   List<String> get kisskhMirrors => _snap.kisskhMirrors;
   List<CdnRefererRule> get cdnRefererRules => _snap.cdnRefererRules;
+  Map<String, AnimePlaybackProfile> get animePlaybackProfiles =>
+      _snap.animePlaybackProfiles;
   Map<String, ProviderUrlTemplates> get templates => _snap.templates;
   Map<String, String> get apis => _snap.apis;
   Map<String, String> get webstreamr => _snap.webstreamr;
+
+  /// Per-[sourceKey] anime probe / PNG-strip policy (builtins ∪ remote).
+  /// Accepts panel ids like `miruro:kiwi:sub` and normalizes to `miruro:kiwi`.
+  AnimePlaybackProfile animePlaybackProfile(String sourceKey) {
+    final raw = sourceKey.trim();
+    if (raw.isEmpty) return AnimePlaybackProfile.fallback;
+    final candidates = <String>[
+      raw,
+      raw.toLowerCase(),
+      _stripAnimePanelSuffix(raw),
+      _stripAnimePanelSuffix(raw).toLowerCase(),
+    ];
+    for (final k in candidates) {
+      final hit = _snap.animePlaybackProfiles[k];
+      if (hit != null) return hit;
+    }
+    return AnimePlaybackProfile.fallback;
+  }
+
+  static String _stripAnimePanelSuffix(String key) {
+    final lower = key.toLowerCase();
+    if (lower.endsWith(':sub') || lower.endsWith(':dub')) {
+      return key.substring(0, key.length - 4);
+    }
+    return key;
+  }
 
   String? api(String key) {
     final v = _snap.apis[key]?.trim();
@@ -313,6 +341,76 @@ class CdnRefererRule {
       };
 }
 
+/// How Forja probes a resolved anime stream before open / cache.
+enum AnimeProbeMode {
+  /// GET playlist 200 + `#EXTM3U` — no segment sampling (AnimePahe / Miruro).
+  masterOnly,
+
+  /// Sample media segments for PNG ads vs PNG-wrapped TS (Megaplay family).
+  segmentPoisonSample,
+
+  /// HEAD / Range GET (AllAnime MP4, adult hosts).
+  headOrRange,
+
+  /// Trust extract; open and let the player fail over.
+  skip,
+}
+
+@immutable
+class AnimePlaybackProfile {
+  final AnimeProbeMode probe;
+  /// Host needles that need `/hls-proxy?strip=png` for this provider only.
+  final List<String> pngStripHostContains;
+
+  const AnimePlaybackProfile({
+    required this.probe,
+    this.pngStripHostContains = const [],
+  });
+
+  static const fallback = AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly);
+
+  bool urlNeedsPngStrip(String url) {
+    if (pngStripHostContains.isEmpty) return false;
+    final u = url.toLowerCase();
+    if (u.contains('/hls-proxy')) {
+      final target = Uri.tryParse(url)?.queryParameters['url'];
+      if (target != null && target.isNotEmpty) {
+        return urlNeedsPngStrip(Uri.decodeComponent(target));
+      }
+    }
+    return pngStripHostContains.any((h) => u.contains(h.toLowerCase()));
+  }
+
+  factory AnimePlaybackProfile.fromJson(Map<String, dynamic>? j) {
+    if (j == null) return fallback;
+    final probeRaw = (j['probe'] as String?)?.trim().toLowerCase() ?? '';
+    final probe = switch (probeRaw) {
+      'segmentpoisonsample' || 'segment_poison_sample' =>
+        AnimeProbeMode.segmentPoisonSample,
+      'headorrange' || 'head_or_range' => AnimeProbeMode.headOrRange,
+      'skip' => AnimeProbeMode.skip,
+      'masteronly' || 'master_only' => AnimeProbeMode.masterOnly,
+      _ => AnimeProbeMode.masterOnly,
+    };
+    final hosts = (j['pngStripHostContains'] as List?)
+            ?.map((e) => e.toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    return AnimePlaybackProfile(probe: probe, pngStripHostContains: hosts);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'probe': switch (probe) {
+          AnimeProbeMode.masterOnly => 'masterOnly',
+          AnimeProbeMode.segmentPoisonSample => 'segmentPoisonSample',
+          AnimeProbeMode.headOrRange => 'headOrRange',
+          AnimeProbeMode.skip => 'skip',
+        },
+        'pngStripHostContains': pngStripHostContains,
+      };
+}
+
 @immutable
 class ProviderRuntimeSnapshot {
   final int schema;
@@ -324,6 +422,7 @@ class ProviderRuntimeSnapshot {
   final List<String> miruroOrigins;
   final List<String> kisskhMirrors;
   final List<CdnRefererRule> cdnRefererRules;
+  final Map<String, AnimePlaybackProfile> animePlaybackProfiles;
 
   const ProviderRuntimeSnapshot({
     required this.schema,
@@ -335,6 +434,7 @@ class ProviderRuntimeSnapshot {
     required this.miruroOrigins,
     required this.kisskhMirrors,
     required this.cdnRefererRules,
+    required this.animePlaybackProfiles,
   });
 
   factory ProviderRuntimeSnapshot.builtins() => ProviderRuntimeSnapshot(
@@ -489,7 +589,74 @@ class ProviderRuntimeSnapshot {
             acceptRefererContains: ['allmanga'],
           ),
         ],
+        animePlaybackProfiles: _builtinAnimePlaybackProfiles,
       );
+
+  /// Every in-scope anime [sourceKey] — remote overlay merges by key.
+  static const Map<String, AnimePlaybackProfile> _builtinAnimePlaybackProfiles =
+      {
+    'megaplay': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStripHostContains: [
+        'nekostream',
+        'mewstream',
+        'vivibebe',
+        'ibyteimg',
+        'byteimg.com',
+        'lostproject',
+        'watching.onl',
+      ],
+    ),
+    'anikoto': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStripHostContains: [
+        'nekostream',
+        'mewstream',
+        'vivibebe',
+        'ibyteimg',
+        'byteimg.com',
+        'lostproject',
+        'vidtube',
+      ],
+    ),
+    'vidwish': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStripHostContains: ['watching.onl', 'vidwish'],
+    ),
+    'vidnest:hianime': AnimePlaybackProfile(
+      probe: AnimeProbeMode.masterOnly,
+    ),
+    'vidnest:animepahe': AnimePlaybackProfile(
+      probe: AnimeProbeMode.masterOnly,
+    ),
+    'allanime:Default': AnimePlaybackProfile(
+      probe: AnimeProbeMode.headOrRange,
+    ),
+    'allanime:Yt-mp4': AnimePlaybackProfile(
+      probe: AnimeProbeMode.headOrRange,
+    ),
+    'allanime:S-mp4': AnimePlaybackProfile(
+      probe: AnimeProbeMode.headOrRange,
+    ),
+    'allanime:Luf-Mp4': AnimePlaybackProfile(
+      probe: AnimeProbeMode.headOrRange,
+    ),
+    'miruro:bee': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:zoro': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:kiwi': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:ally': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:hop': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:bonk': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:moo': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:animedunya': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:arc': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:jet': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:bun': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:kuz': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'miruro:telli': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'watchhentai': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
+    'hentaini': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
+  };
 
   static ProviderRuntimeSnapshot? tryParse(Object? raw) {
     if (raw is! Map) return null;
@@ -557,6 +724,18 @@ class ProviderRuntimeSnapshot {
         webstreamr[e.key.toString()] = v;
       }
     }
+    final profiles = <String, AnimePlaybackProfile>{};
+    final rawProfiles =
+        (anime?['playbackProfiles'] as Map?)?.cast<String, dynamic>();
+    if (rawProfiles != null) {
+      for (final e in rawProfiles.entries) {
+        final id = e.key.toString().trim();
+        if (id.isEmpty || e.value is! Map) continue;
+        profiles[id] = AnimePlaybackProfile.fromJson(
+          (e.value as Map).cast<String, dynamic>(),
+        );
+      }
+    }
     return ProviderRuntimeSnapshot(
       schema: schema,
       templates: templates,
@@ -567,6 +746,7 @@ class ProviderRuntimeSnapshot {
       miruroOrigins: origins,
       kisskhMirrors: kisskh,
       cdnRefererRules: rules,
+      animePlaybackProfiles: profiles,
     );
   }
 
@@ -577,6 +757,8 @@ class ProviderRuntimeSnapshot {
     }
     final api = Map<String, String>.from(apis)..addAll(overlay.apis);
     final ws = Map<String, String>.from(webstreamr)..addAll(overlay.webstreamr);
+    final profiles = Map<String, AnimePlaybackProfile>.from(animePlaybackProfiles);
+    profiles.addAll(overlay.animePlaybackProfiles);
     return ProviderRuntimeSnapshot(
       schema: overlay.schema,
       templates: tpl,
@@ -596,6 +778,7 @@ class ProviderRuntimeSnapshot {
         builtins: cdnRefererRules,
         overlay: overlay.cdnRefererRules,
       ),
+      animePlaybackProfiles: profiles,
     );
   }
 
@@ -633,6 +816,10 @@ class ProviderRuntimeSnapshot {
           'vidwish': vidwish.toJson(),
           'miruroOrigins': miruroOrigins,
           'kisskhMirrors': kisskhMirrors,
+          'playbackProfiles': {
+            for (final e in animePlaybackProfiles.entries)
+              e.key: e.value.toJson(),
+          },
         },
         'cdnRefererRules': cdnRefererRules.map((r) => r.toJson()).toList(),
       };

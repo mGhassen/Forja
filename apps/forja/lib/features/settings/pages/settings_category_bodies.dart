@@ -25,6 +25,7 @@ import 'package:forja/features/settings/splash_preview_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
+import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -617,7 +618,10 @@ class SettingsAboutPageBody extends StatelessWidget {
         SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
         const SettingsGroup(
           label: 'Privacy',
-          children: [SettingsCrashReportingRow()],
+          children: [
+            SettingsCrashReportingRow(),
+            SettingsProductAnalyticsRow(),
+          ],
         ),
         if (showSplashPreview)
           SettingsGroup(
@@ -649,6 +653,26 @@ class SettingsAboutPageBody extends StatelessWidget {
                   try {
                     await Telemetry.sendTestException();
                     ForjaToast.success('Test event sent — check Sentry Issues');
+                  } catch (e) {
+                    ForjaToast.info('$e');
+                  }
+                },
+              ),
+              SettingsActionRow(
+                leading: const Icon(
+                  Icons.insights_outlined,
+                  color: ForjaShellColors.iconActive,
+                ),
+                title: 'Verify PostHog',
+                subtitle: Telemetry.isAnalyticsActive
+                    ? 'Send analytics_verify to your PostHog project'
+                    : 'Enable Product analytics first, then tap again',
+                onTap: () async {
+                  try {
+                    await ProductAnalytics.sendTestEvent();
+                    ForjaToast.success(
+                      'Test event sent — check PostHog → Activity',
+                    );
                   } catch (e) {
                     ForjaToast.info('$e');
                   }

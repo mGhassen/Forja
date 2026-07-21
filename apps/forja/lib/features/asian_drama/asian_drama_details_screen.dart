@@ -18,14 +18,20 @@ import 'asian_drama_player_screen.dart';
 Future<T?> openAsianDramaDetails<T>(BuildContext context, KdramaCard drama) {
   return pushShellRoute<T>(
     context,
-    AppRouter.slideShellRoute((_) => AsianDramaDetailsScreen(drama: drama)),
+    AppRouter.slideShellRoute(
+      (_) => AsianDramaDetailsScreen(drama: drama),
+      settings: const RouteSettings(name: 'asian_drama_details'),
+    ),
   );
 }
 
 Future<T?> replaceAsianDramaDetails<T>(BuildContext context, KdramaCard drama) {
   return pushReplacementShellRoute<T, void>(
     context,
-    AppRouter.slideShellRoute((_) => AsianDramaDetailsScreen(drama: drama)),
+    AppRouter.slideShellRoute(
+      (_) => AsianDramaDetailsScreen(drama: drama),
+      settings: const RouteSettings(name: 'asian_drama_details'),
+    ),
   );
 }
 

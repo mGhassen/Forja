@@ -5,6 +5,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/shared/services/app_update_download_storage.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
@@ -31,11 +32,12 @@ abstract final class SettingsDataCleaner {
     } catch (_) {}
   }
 
-  /// IPTV alive-channel snapshots + channel-scan hits.
+  /// IPTV alive-channel snapshots + channel-scan hits + catalog shelves.
   /// Keeps saved portals, portal favorites, and pinned channel streams.
   static Future<void> clearIptvPortalCaches() async {
     await IptvAliveStore.clearAll();
     await IptvChannelResultsStore.clearAll();
+    await IptvCatalogDiskStore.clearAll();
   }
 
   /// Poster disk cache + in-memory images + WebView extract caches.

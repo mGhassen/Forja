@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -48,6 +49,7 @@ class SyncDomainBridge {
     await IptvStore.clearLastPortalKey();
     await IptvAliveStore.clearAll();
     await IptvChannelResultsStore.clearAll();
+    await IptvCatalogDiskStore.clearAll();
     IptvStore.notifyListChanged();
   }
 

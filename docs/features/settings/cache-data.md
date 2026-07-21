@@ -16,7 +16,7 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 - **Stream cache** — saved webstreaming and anime stream URLs, torrent temp files, and seek buffers. Next Play re-resolves. Settings and continue watching stay.
 - **Images & WebView** — poster thumbnails and extractor WebView caches. Images re-download when needed.
-- **IPTV portal cache** (when the IPTV tab is visible) — saved live-channel health checks and channel scan results. Saved portals, favorites, and M3U playlists stay; next IPTV open re-checks.
+- **IPTV portal cache** (when the IPTV tab is visible) — saved Live/Movies/Series catalogs, live-channel health checks, and channel scan results. Saved portals, favorites, and M3U playlists stay; next IPTV open re-fetches catalogs and re-checks health.
 - **Downloaded updates** (desktop) — installer files saved by in-app update (`.dmg`, `.exe`, AppImage). Safe to remove after you install.
 
 ### Learned
@@ -33,7 +33,7 @@ Every action asks for confirmation and shows a toast when done. On **TV**, Cance
 ## Tips
 
 - Prefer **Stream cache** when Play opens a dead or stale URL.
-- Prefer **IPTV portal cache** when Live “alive” marks or channel scan hits look stale after a provider change.
+- Prefer **IPTV portal cache** when Live “alive” marks, channel scan hits, or the channel list look stale after a provider change (or use shelf **Reload** for one section).
 - Prefer **Provider scores** when Auto keeps favoring a flaky extractor after you fixed network / region.
 - Tokens, Stremio/Nuvio addons, My List, and Backup keys are never cleared here — settings also auto-persist locally (see [Backup & restore](backup-restore.md)); use that for device-to-device copy.
 

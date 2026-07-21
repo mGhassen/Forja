@@ -6,7 +6,7 @@ mod miruro;
 mod vidnest;
 mod watchhentai;
 
-use crate::resolve::{anikoto, direct_embed, probe};
+use crate::resolve::{anikoto, anikoto_site, direct_embed, probe};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -50,6 +50,8 @@ struct ExtractorRequest {
     url: String,
     #[serde(default)]
     headers: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    slug: String,
 }
 
 pub fn extractor_json(request_json: &str) -> String {
@@ -137,6 +139,12 @@ pub fn extractor_json(request_json: &str) -> String {
             req.expected_episodes,
         )
         .map(|series| json!({ "series": series })),
+        "anikoto_site_streams" => anikoto_site::anikoto_site_streams(
+            &req.slug,
+            episode,
+            &req.category,
+        )
+        .map(|streams| json!({ "streams": streams })),
         "direct_embed_extract" => direct_embed::direct_embed_extract(
             &req.embed_url,
             if req.referer.is_empty() {

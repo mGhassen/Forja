@@ -1255,12 +1255,27 @@ mixin _DesktopPlayerEpisodes
         _s._sourceMenuRevision.value++;
         return sources;
       }
-      _s._markProviderLoadFailed(providerId);
+      // Re-extract miss while this server is still playing must not paint it
+      // dead — live URL is still open in the player.
+      final playingSame = _s._playbackConfirmed &&
+          (_s._currentProvider == providerId ||
+              widget.activeProvider == providerId);
+      if (!playingSame) {
+        _s._markProviderLoadFailed(providerId);
+      } else {
+        _s._markProviderLoadSucceeded(providerId);
+        _s._syncProbeStatus(providerId, StreamProviderProbeStatus.success);
+      }
       _s._sourceMenuRevision.value++;
       return null;
     } catch (_) {
       if ((_s._providerLoadGens[providerId] ?? 0) == gen) {
-        _s._markProviderLoadFailed(providerId);
+        final playingSame = _s._playbackConfirmed &&
+            (_s._currentProvider == providerId ||
+                widget.activeProvider == providerId);
+        if (!playingSame) {
+          _s._markProviderLoadFailed(providerId);
+        }
         _s._sourceMenuRevision.value++;
       }
       return null;

@@ -24,6 +24,7 @@ import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -194,6 +195,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _touchTab(id);
     _enforceTabCap();
     _applyTabShellChrome(id);
+    unawaited(ProductAnalytics.screenTab(id));
     if (id == 'search') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -277,6 +279,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _mountedTabIds.add(tabId);
           _touchTab(tabId);
           _applyTabShellChrome(tabId);
+          unawaited(ProductAnalytics.screenTab(tabId));
         }
       } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);

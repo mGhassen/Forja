@@ -18,6 +18,17 @@ export type CdnRefererRule = {
   acceptRefererContains: string[]
 }
 
+export type AnimeProbeMode =
+  | 'masterOnly'
+  | 'segmentPoisonSample'
+  | 'headOrRange'
+  | 'skip'
+
+export type AnimePlaybackProfile = {
+  probe: AnimeProbeMode
+  pngStripHostContains: string[]
+}
+
 export type ProviderRuntimeConfig = {
   schema: number
   templates: Record<string, UrlTemplates>
@@ -28,6 +39,7 @@ export type ProviderRuntimeConfig = {
     vidwish: AnimeEmbedHost
     miruroOrigins: string[]
     kisskhMirrors: string[]
+    playbackProfiles: Record<string, AnimePlaybackProfile>
   }
   cdnRefererRules: CdnRefererRule[]
 }
@@ -50,6 +62,7 @@ export function emptyConfig(): ProviderRuntimeConfig {
       vidwish: emptyHost(),
       miruroOrigins: [],
       kisskhMirrors: [],
+      playbackProfiles: {},
     },
     cdnRefererRules: [],
   }
@@ -144,6 +157,30 @@ export function parseConfig(
     }
   }
 
+  const playbackProfiles: Record<string, AnimePlaybackProfile> = {}
+  const rawProfiles = asObject(animeObj.playbackProfiles)
+  if (rawProfiles) {
+    for (const [id, val] of Object.entries(rawProfiles)) {
+      const key = id.trim()
+      const o = asObject(val)
+      if (!key || !o) continue
+      const probeRaw = str(o.probe)
+      const probe: AnimeProbeMode =
+        probeRaw === 'segmentPoisonSample' ||
+        probeRaw === 'segment_poison_sample'
+          ? 'segmentPoisonSample'
+          : probeRaw === 'headOrRange' || probeRaw === 'head_or_range'
+            ? 'headOrRange'
+            : probeRaw === 'skip'
+              ? 'skip'
+              : 'masterOnly'
+      playbackProfiles[key] = {
+        probe,
+        pngStripHostContains: strList(o.pngStripHostContains),
+      }
+    }
+  }
+
   return {
     ok: true,
     value: {
@@ -156,6 +193,7 @@ export function parseConfig(
         vidwish: parseHost(animeObj.vidwish),
         miruroOrigins: strList(animeObj.miruroOrigins),
         kisskhMirrors: strList(animeObj.kisskhMirrors),
+        playbackProfiles,
       },
       cdnRefererRules,
     },
@@ -215,6 +253,23 @@ export function serializeConfig(cfg: ProviderRuntimeConfig): unknown {
       },
       miruroOrigins: cfg.anime.miruroOrigins.map((s) => s.trim()).filter(Boolean),
       kisskhMirrors: cfg.anime.kisskhMirrors.map((s) => s.trim()).filter(Boolean),
+      playbackProfiles: Object.fromEntries(
+        Object.entries(cfg.anime.playbackProfiles)
+          .map(([id, p]) => {
+            const key = id.trim()
+            if (!key) return null
+            return [
+              key,
+              {
+                probe: p.probe,
+                pngStripHostContains: p.pngStripHostContains
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              },
+            ] as const
+          })
+          .filter((e): e is readonly [string, AnimePlaybackProfile] => e != null),
+      ),
     },
     cdnRefererRules: cfg.cdnRefererRules
       .map((r) => ({

@@ -75,6 +75,9 @@ env:
   TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
   # Optional Sentry DSN for crash reporting (RFC-043).
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  # Optional PostHog product analytics (RFC-043).
+  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+  POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
 
 jobs:
   resolve_version:
@@ -228,7 +231,9 @@ jobs:
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
-            --dart-define=SENTRY_DSN="$SENTRY_DSN"
+            --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -275,7 +280,9 @@ jobs:
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
-            --dart-define=SENTRY_DSN="$SENTRY_DSN"
+            --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
 
       - name: Embed Rust in release output
         shell: bash
@@ -345,7 +352,9 @@ jobs:
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
-            --dart-define=SENTRY_DSN="$SENTRY_DSN"
+            --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
 
       - name: Embed Rust in release output
         run: ./scripts/embed_rust_in_release_output.sh linux
@@ -429,6 +438,8 @@ jobs:
             --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \

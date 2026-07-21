@@ -35,6 +35,7 @@ class IptvStore {
   static const _liveContentSortKey = 'pt_iptv_live_content_sort';
   static const _liveBrowseLayoutKey = 'pt_iptv_live_browse_layout';
   static const _playerVolumeKey = 'pt_iptv_player_volume';
+  static const _catalogStatsKey = 'pt_iptv_catalog_stats_v1';
 
   /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
   static final ValueNotifier<int> listRevision = ValueNotifier(0);
@@ -258,6 +259,49 @@ class IptvStore {
   static Future<void> savePlayerVolume(double volume) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_playerVolumeKey, volume.clamp(0.0, 100.0));
+  }
+
+  /// Cached catalog counts from the last successful Live/Movies/Series load.
+  static Future<Map<String, IptvCatalogLoadProgress>> loadCatalogStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_catalogStatsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      final out = <String, IptvCatalogLoadProgress>{};
+      for (final e in decoded.entries) {
+        final v = e.value;
+        if (v is! Map) continue;
+        out[e.key.toString()] = IptvCatalogLoadProgress.fromStatsJson(
+          Map<String, dynamic>.from(v),
+        );
+      }
+      return out;
+    } catch (e) {
+      debugPrint('IptvStore.loadCatalogStats failed: $e');
+      return {};
+    }
+  }
+
+  static Future<void> saveCatalogStats(
+    String portalKey,
+    IptvCatalogLoadProgress stats,
+  ) async {
+    if (portalKey.isEmpty || !stats.hasAnyCount) return;
+    final prefs = await SharedPreferences.getInstance();
+    Map<String, dynamic> root = {};
+    final raw = prefs.getString(_catalogStatsKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = json.decode(raw);
+        if (decoded is Map) {
+          root = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    root[portalKey] = stats.toStatsJson();
+    await prefs.setString(_catalogStatsKey, json.encode(root));
   }
 }
 

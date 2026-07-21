@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
+import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
@@ -120,14 +121,45 @@ class IptvController extends ChangeNotifier
   IptvStream? activeSeries;
 
   bool isLoading = false;
+  /// Shelf loads use [isLoading] spinner (one shelf at a time).
+  IptvCatalogLoadStyle catalogLoadStyle = IptvCatalogLoadStyle.none;
+  IptvCatalogLoadStep? catalogLoadStep;
+  IptvCatalogLoadProgress catalogLoadProgress = IptvCatalogLoadProgress.empty;
+  /// In-session catalog cache — static so tab eviction / new [IptvController]
+  /// does not force a re-fetch. Shelves are also persisted via
+  /// [IptvCatalogDiskStore] so app restart can skip network when warm.
+  static final Map<String, _CatalogSnap> _sharedCatalogCache = () {
+    final map = <String, _CatalogSnap>{};
+    IptvCatalogDiskStore.onClearAll = map.clear;
+    return map;
+  }();
+
+  /// Last successful catalog counts per portal (session; also prefs-backed).
+  static final Map<String, IptvCatalogLoadProgress> _sharedPortalCatalogStats =
+      {};
+
+  /// Drop session catalog snaps (disk clear is separate).
+  static void clearSharedCatalogCaches() {
+    _sharedCatalogCache.clear();
+  }
+
+  Map<String, _CatalogSnap> get _catalogCache => _sharedCatalogCache;
+
+  Map<String, IptvCatalogLoadProgress> get portalCatalogStats =>
+      _sharedPortalCatalogStats;
   List<IptvCategory> categories = const [];
   List<IptvStream> browserAllStreams = const [];
-  /// In-session catalog cache: `portalKey|section` → last successful fetch.
-  final Map<String, _CatalogSnap> _catalogCache = {};
   /// Bumped on every catalog open/reload so stale in-flight fetches are ignored.
   int _catalogLoadId = 0;
   List<IptvEpisode> episodes = const [];
   String? error;
+
+  /// True when the active shelf has at least one portal (non-synthetic) group.
+  bool get hasPortalCatalogGroups => categories.any(
+        (c) =>
+            c.id.isNotEmpty &&
+            !IptvLiveCatalog.isSyntheticId(c.id),
+      );
 
   String? browserSelectedCategoryId;
   String browserSearch = '';
@@ -506,7 +538,7 @@ class IptvController extends ChangeNotifier
   int? aliveCheckedAt;
   bool _aliveCancel = false;
 
-  /// Per-stream health for live tiles: true=alive, false=dead, absent=unknown.
+  /// Per-stream health for catalog tiles: true=alive, false=dead, absent=unknown.
   final Map<String, bool> streamHealth = {};
   final Set<String> _healthInFlight = {};
   final List<IptvStream> _healthQueue = [];
@@ -771,6 +803,7 @@ class IptvController extends ChangeNotifier
     _verifiedKeys
       ..clear()
       ..addAll(stored.map((v) => v.credKey));
+    await _loadCatalogStatsFromStore();
     await _restoreLastPortal();
   }
 
@@ -853,7 +886,8 @@ class IptvController extends ChangeNotifier
     ensurePortalHealth(p);
     await IptvStore.saveLastPortalKey(p.key);
     if (closePanel) closePortalPanel();
-    await openSection(IptvSection.live);
+    final section = await IptvStore.loadLastSection();
+    await openSection(section);
   }
 
   List<VerifiedPortal> _sortPortals(List<VerifiedPortal> list) {

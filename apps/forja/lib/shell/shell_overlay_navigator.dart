@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:forja/shared/telemetry/product_analytics.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 /// Navigator layered over [ShellBody] — media details and other in-shell routes.
 final GlobalKey<NavigatorState> shellOverlayNavigatorKey =
@@ -28,6 +33,7 @@ class _ShellOverlayObserver extends NavigatorObserver {
         _notify();
       }
     }
+
     animation.addStatusListener(listener);
   }
 
@@ -57,12 +63,16 @@ class ShellOverlayNavigator extends StatefulWidget {
 
 class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   late final _ShellOverlayObserver _observer;
+  late final PosthogObserver _posthogObserver;
   bool _overlayHasPage = false;
 
   @override
   void initState() {
     super.initState();
     _observer = _ShellOverlayObserver(_syncOverlayStack);
+    _posthogObserver = PosthogObserver(
+      nameExtractor: ProductAnalytics.routeScreenName,
+    );
   }
 
   void _syncOverlayStack() {
@@ -76,6 +86,12 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
     }
     if (hasPage != _overlayHasPage) {
       setState(() => _overlayHasPage = hasPage);
+      if (!hasPage) {
+        final tabId = ShellTvFocus.currentNavTabId;
+        if (tabId != null && tabId.isNotEmpty) {
+          unawaited(ProductAnalytics.screenTab(tabId));
+        }
+      }
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -86,6 +102,12 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
       }
       if (settled == _overlayHasPage) return;
       setState(() => _overlayHasPage = settled);
+      if (!settled) {
+        final tabId = ShellTvFocus.currentNavTabId;
+        if (tabId != null && tabId.isNotEmpty) {
+          unawaited(ProductAnalytics.screenTab(tabId));
+        }
+      }
     });
   }
 
@@ -97,7 +119,7 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
         excluding: !_overlayHasPage,
         child: Navigator(
           key: shellOverlayNavigatorKey,
-          observers: [_observer],
+          observers: [_observer, _posthogObserver],
           onGenerateInitialRoutes:
               (NavigatorState navigator, String initialRoute) {
             return [

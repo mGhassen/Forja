@@ -6,6 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/features/anime/catalog/anime_browser_embed.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/webview/forja_in_app_webview.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 const _kUa =
@@ -137,13 +138,16 @@ class _AnimeEmbedPlayerScreenState extends State<AnimeEmbedPlayerScreen> {
   bool _leftSurface = false;
   Timer? _loadingWatchdog;
   InAppWebViewController? _webViewController;
-  late final InAppWebViewInitialData _initialData;
+  InAppWebViewInitialData? _initialData;
+  URLRequest? _initialUrlRequest;
   late final InAppWebViewSettings _initialSettings;
   late final UnmodifiableListView<UserScript> _initialUserScripts;
   final FocusNode _backFocusNode = FocusNode(debugLabel: 'anime-embed-back');
 
   bool get _tvFocus =>
       ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+
+  bool get _mainFrame => widget.embed.loadInMainFrame;
 
   void _leaveSurfaceOnce() {
     if (_leftSurface) return;
@@ -165,13 +169,20 @@ class _AnimeEmbedPlayerScreenState extends State<AnimeEmbedPlayerScreen> {
         forMainFrameOnly: false,
       ),
     ]);
-    _initialData = InAppWebViewInitialData(
-      data: _wrapperHtml(widget.embed.url),
-      baseUrl: WebUri(referer),
-      historyUrl: WebUri(referer),
-      mimeType: 'text/html',
-      encoding: 'utf-8',
-    );
+    if (_mainFrame) {
+      _initialUrlRequest = URLRequest(
+        url: WebUri(widget.embed.url),
+        headers: {'Referer': referer},
+      );
+    } else {
+      _initialData = InAppWebViewInitialData(
+        data: _wrapperHtml(widget.embed.url),
+        baseUrl: WebUri(referer),
+        historyUrl: WebUri(referer),
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+      );
+    }
     _initialSettings = InAppWebViewSettings(
       userAgent: _kUa,
       domStorageEnabled: true,
@@ -235,150 +246,183 @@ class _AnimeEmbedPlayerScreenState extends State<AnimeEmbedPlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        body: Stack(
           children: [
-            SafeArea(
-              bottom: false,
-              child: Material(
-                color: const Color(0xFF141414),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        focusNode: _backFocusNode,
-                        tooltip: 'Back',
-                        onPressed: () => unawaited(_exit()),
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              sub != null && sub.isNotEmpty
-                                  ? '${widget.embed.label} · $sub'
-                                  : widget.embed.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.65),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.brandGreen
-                              .withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Web player',
-                          style: TextStyle(
-                            color: ForjaShellColors.brandGreen,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Material(
+                  color: const Color(0xFF141414),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      8,
+                      _chromeTopPadding(context),
+                      8,
+                      6,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          focusNode: _backFocusNode,
+                          tooltip: 'Back',
+                          onPressed: () => unawaited(_exit()),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
                           ),
                         ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                sub != null && sub.isNotEmpty
+                                    ? '${widget.embed.label} · $sub'
+                                    : widget.embed.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ForjaShellColors.brandGreen
+                                .withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Web player',
+                            style: TextStyle(
+                              color: ForjaShellColors.brandGreen,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ForjaInAppWebView(
+                        initialData: _initialData,
+                        initialUrlRequest: _initialUrlRequest,
+                        initialUserScripts: _initialUserScripts,
+                        initialSettings: _initialSettings,
+                        onWebViewCreated: (controller) {
+                          _webViewController = controller;
+                          controller.addJavaScriptHandler(
+                            handlerName: 'embedReady',
+                            callback: (_) => _clearLoading(),
+                          );
+                        },
+                        onLoadStop: (ctrl, _) async {
+                          if (_exiting) return;
+                          _clearLoading();
+                          try {
+                            await ctrl.evaluateJavascript(source: _kAutoplayJs);
+                          } catch (_) {}
+                        },
+                        shouldOverrideUrlLoading: (ctrl, action) async {
+                          final url = action.request.url?.toString() ?? '';
+                          if (url.isEmpty ||
+                              url.startsWith('about:') ||
+                              url.startsWith('data:') ||
+                              url.startsWith('blob:')) {
+                            return NavigationActionPolicy.ALLOW;
+                          }
+                          // Full watch pages (anikoto.cz) load third-party player
+                          // iframes + CDNs — do not host-restrict like Megaplay embeds.
+                          if (_mainFrame) {
+                            final scheme =
+                                Uri.tryParse(url)?.scheme.toLowerCase() ?? '';
+                            if (scheme == 'http' || scheme == 'https') {
+                              return NavigationActionPolicy.ALLOW;
+                            }
+                            return NavigationActionPolicy.CANCEL;
+                          }
+                          final host =
+                              Uri.tryParse(url)?.host.toLowerCase() ?? '';
+                          final allowed = <String>{
+                            Uri.tryParse(widget.embed.url)
+                                    ?.host
+                                    .toLowerCase() ??
+                                '',
+                            Uri.tryParse(widget.embed.referer)
+                                    ?.host
+                                    .toLowerCase() ??
+                                '',
+                            Uri.tryParse(widget.embed.origin)
+                                    ?.host
+                                    .toLowerCase() ??
+                                '',
+                          }.where((h) => h.isNotEmpty);
+                          for (final h in allowed) {
+                            if (host == h || host.endsWith('.$h')) {
+                              return NavigationActionPolicy.ALLOW;
+                            }
+                          }
+                          if (host.contains('nekostream') ||
+                              host.contains('mewstream') ||
+                              host.contains('vidnest') ||
+                              host.contains('megaplay') ||
+                              host.contains('vidwish') ||
+                              host.contains('ibyteimg') ||
+                              host.contains('watching.onl')) {
+                            return NavigationActionPolicy.ALLOW;
+                          }
+                          return NavigationActionPolicy.CANCEL;
+                        },
                       ),
+                      if (_loading)
+                        const ColoredBox(
+                          color: Colors.black54,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: ForjaShellColors.brandGreen,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ForjaInAppWebView(
-                    initialData: _initialData,
-                    initialUserScripts: _initialUserScripts,
-                    initialSettings: _initialSettings,
-                    onWebViewCreated: (controller) {
-                      _webViewController = controller;
-                      controller.addJavaScriptHandler(
-                        handlerName: 'embedReady',
-                        callback: (_) => _clearLoading(),
-                      );
-                    },
-                    onLoadStop: (ctrl, _) async {
-                      if (_exiting) return;
-                      _clearLoading();
-                      try {
-                        await ctrl.evaluateJavascript(source: _kAutoplayJs);
-                      } catch (_) {}
-                    },
-                    shouldOverrideUrlLoading: (ctrl, action) async {
-                      final url = action.request.url?.toString() ?? '';
-                      if (url.isEmpty ||
-                          url.startsWith('about:') ||
-                          url.startsWith('data:') ||
-                          url.startsWith('blob:')) {
-                        return NavigationActionPolicy.ALLOW;
-                      }
-                      final host =
-                          Uri.tryParse(url)?.host.toLowerCase() ?? '';
-                      final allowed = <String>{
-                        Uri.tryParse(widget.embed.url)?.host.toLowerCase() ??
-                            '',
-                        Uri.tryParse(widget.embed.referer)
-                                ?.host
-                                .toLowerCase() ??
-                            '',
-                        Uri.tryParse(widget.embed.origin)?.host.toLowerCase() ??
-                            '',
-                      }.where((h) => h.isNotEmpty);
-                      for (final h in allowed) {
-                        if (host == h || host.endsWith('.$h')) {
-                          return NavigationActionPolicy.ALLOW;
-                        }
-                      }
-                      if (host.contains('nekostream') ||
-                          host.contains('mewstream') ||
-                          host.contains('vidnest') ||
-                          host.contains('megaplay') ||
-                          host.contains('vidwish') ||
-                          host.contains('ibyteimg') ||
-                          host.contains('watching.onl')) {
-                        return NavigationActionPolicy.ALLOW;
-                      }
-                      return NavigationActionPolicy.CANCEL;
-                    },
-                  ),
-                  if (_loading)
-                    const ColoredBox(
-                      color: Colors.black54,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: ForjaShellColors.brandGreen,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            DesktopWindowChrome.overlayDragStrip(),
           ],
         ),
       ),
     );
+  }
+
+  /// Root-navigator route sits above [DesktopWindowChrome.wrapShell], so
+  /// [SafeArea] alone does not clear macOS traffic lights.
+  double _chromeTopPadding(BuildContext context) {
+    if (DesktopWindowChrome.isDesktop) {
+      return DesktopWindowChrome.topInset(context) + 6;
+    }
+    return MediaQuery.paddingOf(context).top + 6;
   }
 }

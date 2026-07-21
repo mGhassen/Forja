@@ -43,6 +43,8 @@ class SettingsService {
   static const String _simpleStreamingResolveKey =
       'simple_streaming_resolve_enabled';
   static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
+  static const String _productAnalyticsEnabledKey =
+      'product_analytics_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
@@ -366,6 +368,13 @@ class SettingsService {
   Future<void> setCrashReportingEnabled(bool enabled) async =>
       kvSetBool(_crashReportingEnabledKey, enabled);
 
+  /// Opt-in product analytics to PostHog (RFC-043). Default off.
+  Future<bool> isProductAnalyticsEnabled() async =>
+      kvGetBool(_productAnalyticsEnabledKey, fallback: false);
+
+  Future<void> setProductAnalyticsEnabled(bool enabled) async =>
+      kvSetBool(_productAnalyticsEnabledKey, enabled);
+
   static const String _streamProviderOrderKey = 'stream_provider_order';
   static const List<String> defaultStreamProviderOrder = <String>[
     'videasy',
@@ -432,6 +441,7 @@ class SettingsService {
   /// `AnimeStreamProviders.defaultOrder` in the host app.
   static const List<String> defaultAnimeProviderOrder = <String>[
     'megaplay',
+    'anikoto',
     'vidwish',
     'vidnest:hianime',
     'vidnest:animepahe',

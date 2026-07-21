@@ -13,8 +13,11 @@ const UA: &str = "VLC/3.0.20 LibVLC/3.0.20";
 #[derive(Debug, Deserialize)]
 struct XtreamRequest {
     action: String,
+    #[serde(default)]
     url: String,
+    #[serde(default)]
     username: String,
+    #[serde(default)]
     password: String,
     #[serde(default)]
     section: String,
@@ -24,6 +27,12 @@ struct XtreamRequest {
     series_id: String,
     #[serde(default)]
     timeout_secs: u64,
+    /// Host-side staged load: categories already fetched (for `merge`).
+    #[serde(default)]
+    categories: Vec<crate::xtream::ParsedCategory>,
+    /// Host-side staged load: streams already fetched (for `merge`).
+    #[serde(default)]
+    streams: Vec<crate::xtream::XtreamStreamRow>,
 }
 
 /// Sync entry for tests / blocking callers.
@@ -50,6 +59,15 @@ pub async fn request_json_async(request_json: &str) -> String {
 async fn handle(request_json: &str) -> Result<Value, String> {
     let req: XtreamRequest =
         serde_json::from_str(request_json).map_err(|e| format!("invalid request: {e}"))?;
+
+    if req.action == "merge" {
+        let cats = merge_orphan_categories(req.categories, &req.streams);
+        return Ok(json!({
+            "categories": cats,
+            "streams": req.streams,
+        }));
+    }
+
     let base = req.url.trim_end_matches('/').to_string();
     if base.is_empty() {
         return Err("empty url".into());
@@ -57,7 +75,7 @@ async fn handle(request_json: &str) -> Result<Value, String> {
     let timeout = Duration::from_secs(if req.timeout_secs == 0 {
         15
     } else {
-        req.timeout_secs.clamp(1, 120)
+        req.timeout_secs.clamp(1, 180)
     });
     let user = urlencoding::encode(&req.username);
     let pass = urlencoding::encode(&req.password);
@@ -66,6 +84,7 @@ async fn handle(request_json: &str) -> Result<Value, String> {
     match req.action.as_str() {
         "login" => login(&api, timeout).await,
         "catalog" => catalog(&api, &req.section, timeout).await,
+        "categories" => categories_only(&api, &req.section, timeout).await,
         "streams" => streams(&api, &req.section, &req.category_id, timeout).await,
         "series_episodes" => series_episodes(&api, &req.series_id, timeout).await,
         other => Err(format!("unknown action: {other}")),
@@ -119,6 +138,18 @@ async fn catalog(api: &str, section: &str, timeout: Duration) -> Result<Value, S
         "categories": cats,
         "streams": streams,
     }))
+}
+
+async fn categories_only(api: &str, section: &str, timeout: Duration) -> Result<Value, String> {
+    let section = parse_section(section).ok_or_else(|| "invalid_section".to_string())?;
+    let cat_action = match section {
+        XtreamSection::Live => "get_live_categories",
+        XtreamSection::Vod => "get_vod_categories",
+        XtreamSection::Series => "get_series_categories",
+    };
+    let body = http_get(&format!("{api}&action={cat_action}"), timeout).await?;
+    let cats = parse_categories_rows(&body).unwrap_or_default();
+    Ok(json!({ "categories": cats }))
 }
 
 async fn streams(

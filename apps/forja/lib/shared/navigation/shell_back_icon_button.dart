@@ -14,7 +14,6 @@ class ShellBackIconButton extends StatefulWidget {
     this.tooltip = 'Back',
     this.focusNode,
     this.idleColor,
-    this.iconAlignment = Alignment.center,
   });
 
   final IconData icon;
@@ -24,7 +23,6 @@ class ShellBackIconButton extends StatefulWidget {
   final String? tooltip;
   final FocusNode? focusNode;
   final Color? idleColor;
-  final Alignment iconAlignment;
 
   static Color defaultIdle(BuildContext context) =>
       Colors.white.withValues(alpha: 0.54);
@@ -67,8 +65,7 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
           shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: fillAlpha),
         ),
-        child: Align(
-          alignment: widget.iconAlignment,
+        child: Center(
           child: Icon(widget.icon, size: widget.size, color: fg),
         ),
       ),

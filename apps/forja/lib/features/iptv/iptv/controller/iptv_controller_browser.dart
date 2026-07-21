@@ -7,6 +7,179 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     unawaited(_c.selectPortal(p));
   }
 
+  bool _hasApiCategories(List<IptvCategory> cats) => cats.any(
+        (c) =>
+            c.id.isNotEmpty &&
+            !IptvLiveCatalog.isSyntheticId(c.id),
+      );
+
+  /// Empty Live with only Favorites pins = timed-out fetch cached as success.
+  bool _liveSnapIsStale(_CatalogSnap snap) =>
+      snap.streams.isEmpty && !_hasApiCategories(snap.categories);
+
+  void _pruneStaleLiveCache(String portalKey) {
+    final key = _catalogCacheKey(portalKey, IptvSection.live);
+    final snap = _c._catalogCache[key];
+    if (snap != null && _liveSnapIsStale(snap)) {
+      _c._catalogCache.remove(key);
+      unawaited(
+        IptvCatalogDiskStore.deleteShelf(portalKey, IptvSection.live),
+      );
+    }
+  }
+
+  bool _portalHasShelf(String portalKey, IptvSection section) =>
+      _c._catalogCache.containsKey(_catalogCacheKey(portalKey, section));
+
+  /// Pull missing shelves from disk into the session map (no network).
+  Future<void> _hydratePortalFromDisk(String portalKey) async {
+    if (portalKey.isEmpty) return;
+    for (final section in IptvSection.values) {
+      final cacheKey = _catalogCacheKey(portalKey, section);
+      if (_c._catalogCache.containsKey(cacheKey)) continue;
+      final disk = await IptvCatalogDiskStore.load(portalKey, section);
+      if (disk == null) continue;
+      final snap = _CatalogSnap(
+        categories: disk.categories,
+        streams: disk.streams,
+      );
+      if (section == IptvSection.live && _liveSnapIsStale(snap)) {
+        unawaited(IptvCatalogDiskStore.deleteShelf(portalKey, section));
+        continue;
+      }
+      _c._catalogCache[cacheKey] = snap;
+    }
+  }
+
+  void _putCatalogSnap(
+    String portalKey,
+    IptvSection section,
+    _CatalogSnap snap, {
+    bool persist = true,
+  }) {
+    _c._catalogCache[_catalogCacheKey(portalKey, section)] = snap;
+    if (!persist) return;
+    if (section == IptvSection.live && _liveSnapIsStale(snap)) return;
+    unawaited(
+      IptvCatalogDiskStore.save(
+        portalKey,
+        section,
+        snap.categories,
+        snap.streams,
+      ),
+    );
+  }
+
+  int _apiCategoryCount(List<IptvCategory> cats) => cats
+      .where(
+        (c) =>
+            c.id.isNotEmpty &&
+            !IptvLiveCatalog.isSyntheticId(c.id) &&
+            !IptvCatalogOrphans.isUncategorizedId(c.id),
+      )
+      .length;
+
+  IptvCatalogLoadProgress _progressFromCache(String portalKey) {
+    final live =
+        _c._catalogCache[_catalogCacheKey(portalKey, IptvSection.live)];
+    final vod = _c._catalogCache[_catalogCacheKey(portalKey, IptvSection.vod)];
+    final series =
+        _c._catalogCache[_catalogCacheKey(portalKey, IptvSection.series)];
+    var cats = 0;
+    if (live != null) cats += _apiCategoryCount(live.categories);
+    if (vod != null) cats += _apiCategoryCount(vod.categories);
+    if (series != null) cats += _apiCategoryCount(series.categories);
+    return IptvCatalogLoadProgress(
+      categoryCount: cats,
+      channelCount: live?.streams.length ?? 0,
+      movieCount: vod?.streams.length ?? 0,
+      seriesCount: series?.streams.length ?? 0,
+    );
+  }
+
+  IptvCatalogLoadProgress? catalogStatsFor(String? portalKey) {
+    if (portalKey == null || portalKey.isEmpty) return null;
+    return _c.portalCatalogStats[portalKey];
+  }
+
+  Future<void> _rememberCatalogStats(
+    String portalKey,
+    IptvCatalogLoadProgress progress,
+  ) async {
+    if (portalKey.isEmpty) return;
+    final prev = _c.portalCatalogStats[portalKey];
+    final hasLive = _portalHasShelf(portalKey, IptvSection.live);
+    final hasVod = _portalHasShelf(portalKey, IptvSection.vod);
+    final hasSeries = _portalHasShelf(portalKey, IptvSection.series);
+    final merged = IptvCatalogLoadProgress(
+      categoryCount: (hasLive && hasVod && hasSeries)
+          ? progress.categoryCount
+          : (progress.categoryCount > 0
+              ? progress.categoryCount
+              : (prev?.categoryCount ?? 0)),
+      channelCount:
+          hasLive ? progress.channelCount : (prev?.channelCount ?? 0),
+      movieCount: hasVod ? progress.movieCount : (prev?.movieCount ?? 0),
+      seriesCount:
+          hasSeries ? progress.seriesCount : (prev?.seriesCount ?? 0),
+      fraction: 1,
+      finished: true,
+    );
+    if (!merged.hasAnyCount) return;
+    _c.portalCatalogStats[portalKey] = merged;
+    notifyListeners();
+    await IptvStore.saveCatalogStats(portalKey, merged);
+  }
+
+  Future<void> _loadCatalogStatsFromStore() async {
+    final all = await IptvStore.loadCatalogStats();
+    if (all.isEmpty) return;
+    _c.portalCatalogStats.addAll(all);
+    notifyListeners();
+  }
+
+
+  void _applyCachedSnap(
+    VerifiedPortal p,
+    IptvSection section,
+    _CatalogSnap cached, {
+    required bool persistSection,
+  }) {
+    _c.activePortal = p;
+    _c.activeSection = section;
+    _c.view = IptvView.browser;
+    _c.isLoading = false;
+    _c.catalogLoadStyle = IptvCatalogLoadStyle.none;
+    _c.catalogLoadStep = null;
+    _c.catalogLoadProgress = IptvCatalogLoadProgress.empty;
+    _c.error = null;
+    _c.categories = _withoutAllCategory(cached.categories);
+    _c.browserAllStreams = cached.streams;
+    _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
+    _c.browserSearch = '';
+    _c.browserSearchOpen = false;
+    _c._browserSearchFilterActive = false;
+    _c._browserCategoryBeforeSearch = null;
+    _c._browserSearchCommittedCategoryId = null;
+    _c.streamHealth.clear();
+    _c._healthInFlight.clear();
+    _c._healthQueue.clear();
+    cancelAllLazyChecks();
+    _c._epgCache.clear();
+    _c._guideEpgCache.clear();
+    _c.liveOnly = false;
+    _c.aliveStreamIds = const {};
+    _c.aliveCheckedAt = null;
+    notifyListeners();
+    unawaited(
+      _hydrateLiveSectionPrefs(
+        portal: p,
+        section: section,
+        persistSection: persistSection,
+      ),
+    );
+  }
+
   Future<void> openSection(
     IptvSection section, {
     bool persistSection = true,
@@ -14,50 +187,30 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   }) async {
     final p = _c.activePortal;
     if (p == null) return;
-    final cacheKey = _catalogCacheKey(p.key, section);
-    // Invalidate any in-flight catalog fetch for a previous shelf click.
-    final loadId = ++_c._catalogLoadId;
 
+    final cacheKey = _catalogCacheKey(p.key, section);
     if (!force) {
-      final snap = _c._catalogCache[cacheKey];
-      if (snap != null) {
-        _c.activeSection = section;
-        _c.view = IptvView.browser;
-        _c.isLoading = false;
-        _c.error = null;
-        _c.categories = _withoutAllCategory(snap.categories);
-        _c.browserAllStreams = snap.streams;
-        _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
-        _c.browserSearch = '';
-        _c.browserSearchOpen = false;
-        _c._browserSearchFilterActive = false;
-        _c._browserCategoryBeforeSearch = null;
-        _c._browserSearchCommittedCategoryId = null;
-        _c.streamHealth.clear();
-        _c._healthInFlight.clear();
-        _c._healthQueue.clear();
-        cancelAllLazyChecks();
-        _c._epgCache.clear();
-        _c._guideEpgCache.clear();
-        _c.liveOnly = false;
-        _c.aliveStreamIds = const {};
-        _c.aliveCheckedAt = null;
-        notifyListeners();
-        unawaited(
-          _hydrateLiveSectionPrefs(
-            portal: p,
-            section: section,
-            persistSection: persistSection,
-          ),
-        );
-        return;
-      }
+      await _hydratePortalFromDisk(p.key);
+    }
+    _pruneStaleLiveCache(p.key);
+    final cached = _c._catalogCache[cacheKey];
+
+    // Hit session/disk cache → instant UI (this shelf only).
+    if (!force && cached != null) {
+      ++_c._catalogLoadId;
+      _applyCachedSnap(p, section, cached, persistSection: persistSection);
+      return;
     }
 
+    // Cache miss / Reload → fetch this shelf only (spinner).
+    final loadId = ++_c._catalogLoadId;
     _c.activeSection = section;
     _c.view = IptvView.browser;
     _c.isLoading = true;
     _c.error = null;
+    _c.catalogLoadStyle = IptvCatalogLoadStyle.none;
+    _c.catalogLoadStep = null;
+    _c.catalogLoadProgress = IptvCatalogLoadProgress.empty;
     _c.categories = const [];
     _c.browserAllStreams = const [];
     _c.browserSelectedCategoryId = null;
@@ -76,20 +229,28 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c._guideEpgCache.clear();
     notifyListeners();
     try {
-      final snap = await IptvClient.catalog(p.portal, section);
-      // Shelf switched (or reloaded) while this request was in flight.
-      if (loadId != _c._catalogLoadId) return;
-      if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
+      late final List<IptvCategory> cats;
+      late final List<IptvStream> streams;
 
-      final cats = snap.categories;
-      final streams = snap.streams;
+      final snap = await IptvClient.catalog(p.portal, section);
+      if (loadId != _c._catalogLoadId) return;
+      if (_c.activePortal?.key != p.key || _c.activeSection != section) {
+        return;
+      }
+      if (!snap.ok) {
+        _c.error = snap.error ?? 'Could not load catalog';
+        return;
+      }
+      cats = snap.categories;
+      streams = snap.streams;
+
       _c.categories = section == IptvSection.live
           ? IptvLiveCatalog.withPins(cats)
           : cats;
       _c.browserAllStreams = streams;
       _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
 
-      if (streams.isEmpty && cats.isEmpty) {
+      if (streams.isEmpty && cats.isEmpty && section == IptvSection.live) {
         _c.error = 'Could not load channels from portal';
       }
 
@@ -100,14 +261,14 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         if (_c.activePortal?.key != p.key || _c.activeSection != section) {
           return;
         }
-        final snap = await IptvAliveStore.load(key);
+        final aliveSnap = await IptvAliveStore.load(key);
         if (loadId != _c._catalogLoadId) return;
         if (_c.activePortal?.key != p.key || _c.activeSection != section) {
           return;
         }
-        if (snap != null) {
-          _c.aliveStreamIds = snap.aliveIds;
-          _c.aliveCheckedAt = snap.checkedAt;
+        if (aliveSnap != null) {
+          _c.aliveStreamIds = aliveSnap.aliveIds;
+          _c.aliveCheckedAt = aliveSnap.checkedAt;
           _seedHealthFromCache();
         }
         await _loadLiveChannelLists(key);
@@ -123,23 +284,35 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.liveCategoryOrderIds = const [];
       }
 
-      _c._catalogCache[cacheKey] = _CatalogSnap(
-        categories: _c.categories,
-        streams: _c.browserAllStreams,
+      _putCatalogSnap(
+        p.key,
+        section,
+        _CatalogSnap(
+          categories: _c.categories,
+          streams: _c.browserAllStreams,
+        ),
       );
+      await _rememberCatalogStats(p.key, _progressFromCache(p.key));
     } catch (e) {
       if (loadId != _c._catalogLoadId) return;
       if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
       _c.error = '$e';
     } finally {
-      if (loadId == _c._catalogLoadId) {
+      if (loadId == _c._catalogLoadId &&
+          _c.activePortal?.key == p.key &&
+          _c.activeSection == section) {
         _c.isLoading = false;
-        if (persistSection &&
-            _c.activePortal?.key == p.key &&
-            _c.activeSection == section) {
-          await IptvStore.saveLastSection(section);
-        }
+        _c.catalogLoadStyle = IptvCatalogLoadStyle.none;
+        _c.catalogLoadStep = null;
+        _c.catalogLoadProgress = IptvCatalogLoadProgress.empty;
         notifyListeners();
+        unawaited(
+          _hydrateLiveSectionPrefs(
+            portal: p,
+            section: section,
+            persistSection: persistSection,
+          ),
+        );
       }
     }
   }
@@ -167,10 +340,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   Future<void> _loadLiveChannelLists(String portalKey) async {
     final favs = await IptvLiveChannelListsStore.loadFavorites(portalKey);
     final watched = await IptvLiveChannelListsStore.loadWatched(portalKey);
-    final pinned =
-        await IptvLiveChannelListsStore.loadPinnedCategories(portalKey);
-    var order =
-        await IptvLiveChannelListsStore.loadCategoryOrder(portalKey);
+    final pinned = await IptvLiveChannelListsStore.loadPinnedCategories(
+      portalKey,
+    );
+    var order = await IptvLiveChannelListsStore.loadCategoryOrder(portalKey);
     // Migrate legacy pins → custom order once (pins stay as pin markers).
     if (order.isEmpty && pinned.isNotEmpty) {
       order = List<String>.from(pinned);
@@ -210,10 +383,13 @@ mixin _IptvControllerBrowser on ChangeNotifier {
             .where((c) => !IptvLiveCatalog.isPinnedId(c.id))
             .toList();
         _c.categories = IptvLiveCatalog.withPins(api);
-        final cacheKey = _catalogCacheKey(portal.key, section);
-        _c._catalogCache[cacheKey] = _CatalogSnap(
-          categories: _c.categories,
-          streams: _c.browserAllStreams,
+        _putCatalogSnap(
+          portal.key,
+          section,
+          _CatalogSnap(
+            categories: _c.categories,
+            streams: _c.browserAllStreams,
+          ),
         );
       }
     } else {
@@ -240,6 +416,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   void _invalidatePortalCatalogCache(String portalKey) {
     final prefix = '$portalKey|';
     _c._catalogCache.removeWhere((k, _) => k.startsWith(prefix));
+    unawaited(IptvCatalogDiskStore.deletePortal(portalKey));
   }
 
   void _seedHealthFromCache() {
@@ -251,8 +428,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   /// Queue a health probe after the card has stayed visible (debounced).
   void scheduleLazyCheck(IptvStream s) {
     final p = _c.activePortal;
-    if (p == null || _c.activeSection != IptvSection.live) return;
-    if (s.kind != 'live' || s.streamId.isEmpty) return;
+    if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
+    if (!_streamSupportsHealthProbe(s)) return;
     if (_c.streamHealth.containsKey(s.streamId)) return;
     if (_c._healthInFlight.contains(s.streamId)) return;
 
@@ -262,6 +439,15 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       lazyCheckStream(s);
     });
   }
+
+  static bool _sectionSupportsStreamHealth(IptvSection? section) =>
+      section == IptvSection.live ||
+      section == IptvSection.vod ||
+      section == IptvSection.series;
+
+  static bool _streamSupportsHealthProbe(IptvStream s) =>
+      (s.kind == 'live' || s.kind == 'vod' || s.kind == 'series') &&
+      s.streamId.isNotEmpty;
 
   void cancelLazyCheck(String streamId) {
     _c._healthDebounce[streamId]?.cancel();
@@ -281,11 +467,11 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _portalHealthDebounce.clear();
   }
 
-  /// Probe a single live stream — capped concurrency, called after debounce.
+  /// Probe a single catalog stream — capped concurrency, after debounce.
   void lazyCheckStream(IptvStream s) {
     final p = _c.activePortal;
-    if (p == null || _c.activeSection != IptvSection.live) return;
-    if (s.kind != 'live' || s.streamId.isEmpty) return;
+    if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
+    if (!_streamSupportsHealthProbe(s)) return;
     if (_c.streamHealth.containsKey(s.streamId)) return;
     if (_c._healthInFlight.contains(s.streamId)) return;
     if (_c._healthInFlight.length >= IptvController._maxLazyHealthChecks) {
@@ -297,15 +483,37 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     unawaited(_runLazyHealthCheck(s));
   }
 
+  /// Live/movie direct URL; series resolves first episode via get_series_info.
+  Future<String?> _resolveProbeUrl(IptvPortal portal, IptvStream s) async {
+    if (s.kind == 'live' || s.kind == 'vod') {
+      final url = IptvClient.streamUrl(portal, s);
+      return url.isEmpty ? null : url;
+    }
+    if (s.kind != 'series') return null;
+    final eps = await IptvClient.seriesEpisodes(portal, s.streamId);
+    for (final e in eps) {
+      if (e.id.isEmpty) continue;
+      final url = IptvClient.episodeUrl(portal, e);
+      if (url.isNotEmpty) return url;
+    }
+    return null;
+  }
+
   Future<void> _runLazyHealthCheck(IptvStream s) async {
     final p = _c.activePortal;
     if (p == null) return;
     _c._healthInFlight.add(s.streamId);
     try {
-      final url = IptvClient.streamUrl(p.portal, s);
+      final url = await _resolveProbeUrl(p.portal, s);
+      if (url == null || url.isEmpty) {
+        _c.streamHealth[s.streamId] = false;
+        notifyListeners();
+        return;
+      }
       final ok = await IptvAliveChecker.checkOne(url);
       _c.streamHealth[s.streamId] = ok;
-      if (ok) {
+      // Live-only filter / IptvAliveStore — never mix VOD/series IDs in.
+      if (ok && s.kind == 'live') {
         _c.aliveStreamIds = {..._c.aliveStreamIds, s.streamId};
       }
       notifyListeners();
@@ -342,6 +550,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   final Map<String, Timer> _portalHealthDebounce = {};
   final Map<String, Timer> _portalHealthExpiry = {};
   static const _portalHealthDelay = Duration(milliseconds: 350);
+
   /// Cached green/red for this long, then re-probe the active portal.
   static const _portalHealthTtl = Duration(minutes: 2);
 
@@ -497,7 +706,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     final p = _c.activePortal;
     if (p == null) return;
     _c.liveOnly = enabled;
-    await IptvAliveStore.saveLiveOnly(IptvAliveStore.portalKey(p.portal), enabled);
+    await IptvAliveStore.saveLiveOnly(
+      IptvAliveStore.portalKey(p.portal),
+      enabled,
+    );
     notifyListeners();
   }
 }

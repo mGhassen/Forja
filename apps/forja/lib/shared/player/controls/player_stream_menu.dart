@@ -661,6 +661,11 @@ class PlayerStreamMenu {
     if (loadingProviders.contains(providerId)) {
       return PlayerSourceStatus.checking;
     }
+    // Currently playing must win over stale load/probe fails (e.g. panel
+    // re-extract failed while mpv/Exo still has the old URL open).
+    if (isCurrent && playbackConfirmed) {
+      return PlayerSourceStatus.active;
+    }
     if (failedProviders.contains(providerId)) {
       return PlayerSourceStatus.failed;
     }
@@ -676,9 +681,6 @@ class PlayerStreamMenu {
     if (fromController == PlayerSourceStatus.ready) {
       return PlayerSourceStatus.ready;
     }
-    // Playing is still "up" — glyph treats active like ready (green).
-    // Transport ("Playing now" / pause) is separate from the status dot.
-    if (isCurrent && playbackConfirmed) return PlayerSourceStatus.active;
 
     for (final probe in probes) {
       if (probe.id != providerId) continue;

@@ -41,7 +41,8 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
   Future<void> _load() async {
     unawaited(_refreshHistory());
 
-    final spotlightFuture = _safeSection(_s._service.getSpotlight(), 'spotlight');
+    final spotlightFuture = _safeSection(_s._service.getSpotlight(), 'spotlight')
+        .then((list) => _s._service.attachTmdbBackdrops(list.take(5).toList()));
     final trendingFuture = _safeSection(_s._service.getTrending(), 'trending');
     final topAiringFuture = _safeSection(_s._service.getTopAiring(), 'top airing');
     final mostPopularFuture =
@@ -127,7 +128,10 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
   void _openSearch() {
     pushShellRoute(
       context,
-      AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
+      AppRouter.slideShellRoute(
+        (_) => const AnimeSearchScreen(),
+        settings: const RouteSettings(name: 'anime_search'),
+      ),
     );
   }
 

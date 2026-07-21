@@ -112,7 +112,10 @@ mixin _DesktopPlayerPlayback
         }
 
         // Megaplay/nekostream PNG-wrapped TS — unwrap via local hls-proxy.
-        if (animeHlsNeedsPngStrip(openUrl)) {
+        if (animeHlsNeedsPngStripFor(
+          openUrl,
+          sourceKey: _s._currentProvider,
+        )) {
           final stripped = await applyAnimePngStripIfNeeded(
             StreamSource(
               url: openUrl,
@@ -120,6 +123,7 @@ mixin _DesktopPlayerPlayback
               type: source.type,
               headers: source.headers ?? widget.headers,
             ),
+            sourceKey: _s._currentProvider,
           );
           if (stripped.url != openUrl) {
             openUrl = stripped.url;

@@ -91,6 +91,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   int _heroIndex = 0;
   final Map<int, String> _heroLogos = {};
   bool _heroHeightSyncScheduled = false;
+  double? _heroPageViewportWidth;
 
   @override
   void initState() {
@@ -274,6 +275,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     });
   }
 
+  void _jumpHeroToReal(int realIndex, int count) {
+    if (!mounted || !_heroController.hasClients || count <= 0) return;
+    final target = _heroLoopStart + (realIndex % count);
+    if ((_heroController.page?.round() ?? target) == target) return;
+    _heroController.jumpToPage(target);
+  }
+
   void _onHeroPageChanged(int pageIndex, List<Movie> movies) {
     if (movies.isEmpty) return;
     final count = movies.length;
@@ -282,11 +290,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       setState(() => _heroIndex = realIndex);
     }
 
-    if (pageIndex <= 2 || pageIndex >= _heroLoopLength - 3) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_heroController.hasClients) return;
-        _heroController.jumpToPage(_heroLoopStart + realIndex);
-      });
+    final target = _heroLoopStart + realIndex;
+    final drifted = (pageIndex - target).abs() > count * 8;
+    if (drifted || pageIndex <= 2 || pageIndex >= _heroLoopLength - 3) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _jumpHeroToReal(realIndex, count),
+      );
     }
   }
 
@@ -382,14 +391,29 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   }
 
   Widget _buildHeroBackdropCarousel(List<Movie> movies) {
-    return PageView.builder(
-      clipBehavior: Clip.hardEdge,
-      controller: _heroController,
-      itemCount: _heroLoopLength,
-      onPageChanged: (i) => _onHeroPageChanged(i, movies),
-      itemBuilder: (context, index) {
-        final movie = movies[index % movies.length];
-        return _buildHeroSlideBackdrop(movie, index);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pageW = constraints.maxWidth.clamp(1.0, double.infinity);
+        final prevW = _heroPageViewportWidth;
+        if (prevW != null && (prevW - pageW).abs() > 0.5 && movies.isNotEmpty) {
+          final real = _heroIndex;
+          final count = movies.length;
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _jumpHeroToReal(real, count),
+          );
+        }
+        _heroPageViewportWidth = pageW;
+
+        return PageView.builder(
+          clipBehavior: Clip.hardEdge,
+          controller: _heroController,
+          itemCount: _heroLoopLength,
+          onPageChanged: (i) => _onHeroPageChanged(i, movies),
+          itemBuilder: (context, index) {
+            final movie = movies[index % movies.length];
+            return _buildHeroSlideBackdrop(movie, index);
+          },
+        );
       },
     );
   }

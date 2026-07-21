@@ -82,6 +82,64 @@ void main() {
       expect(h['Referer'], 'https://megaplay.buzz/');
     });
 
+    test('merge overlays anime playbackProfiles by sourceKey', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'anime': {
+          'playbackProfiles': {
+            'miruro:kiwi': {
+              'probe': 'skip',
+              'pngStripHostContains': [],
+            },
+          },
+        },
+      });
+      expect(remote, isNotNull);
+      final merged =
+          ProviderRuntimeSnapshot.builtins().merged(remote!);
+      expect(
+        merged.animePlaybackProfiles['miruro:kiwi']!.probe,
+        AnimeProbeMode.skip,
+      );
+      expect(
+        merged.animePlaybackProfiles['megaplay']!.probe,
+        AnimeProbeMode.segmentPoisonSample,
+      );
+      expect(
+        ProviderRuntimeConfig.instance
+            .animePlaybackProfile('miruro:kiwi')
+            .probe,
+        AnimeProbeMode.masterOnly,
+      );
+      ProviderRuntimeConfig.instance.debugSetSnapshot(merged);
+      expect(
+        ProviderRuntimeConfig.instance
+            .animePlaybackProfile('miruro:kiwi')
+            .probe,
+        AnimeProbeMode.skip,
+      );
+      expect(
+        ProviderRuntimeConfig.instance
+            .animePlaybackProfile('miruro:kiwi:sub')
+            .probe,
+        AnimeProbeMode.skip,
+      );
+      expect(
+        animeHlsNeedsPngStripFor(
+          'https://vault-99.owocdn.top/x/uwu.m3u8',
+          sourceKey: 'miruro:kiwi',
+        ),
+        isFalse,
+      );
+      expect(
+        animeHlsNeedsPngStripFor(
+          'https://9hjkrt.nekostream.site/x/master.m3u8',
+          sourceKey: 'megaplay',
+        ),
+        isTrue,
+      );
+    });
+
     test('unsupported schema ignored', () {
       expect(
         ProviderRuntimeSnapshot.tryParse({'schema': 99, 'anime': {}}),

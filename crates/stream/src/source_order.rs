@@ -216,15 +216,16 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
 
 fn anime_order() -> &'static [&'static str] {
     &[
-        "miruro:bee",
+        "megaplay",
+        "anikoto",
+        "vidwish",
+        "vidnest:hianime",
+        "vidnest:animepahe",
         "allanime:Default",
         "allanime:Yt-mp4",
         "allanime:S-mp4",
         "allanime:Luf-Mp4",
-        "vidnest:hianime",
-        "vidnest:animepahe",
-        "megaplay",
-        "vidwish",
+        "miruro:bee",
         "miruro:zoro",
         "miruro:kiwi",
         "miruro:ally",
@@ -252,6 +253,7 @@ fn anime_score(id: &str) -> u32 {
         || id.starts_with("allanime:")
         || id.starts_with("vidnest:")
         || id == "megaplay"
+        || id == "anikoto"
         || id == "vidwish"
         || id == "watchhentai"
         || id == "hentaini"

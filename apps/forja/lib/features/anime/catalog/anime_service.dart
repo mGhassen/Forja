@@ -12,6 +12,8 @@ import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 class AnimeService {
+  static final Map<int, String> _tmdbBackdropByAnilistId = {};
+  static final TmdbApi _tmdb = TmdbApi();
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
     const maxAttempts = 3;
@@ -71,6 +73,78 @@ class AnimeService {
         perPage: 10,
         extraFilter: 'status_in: [RELEASING, FINISHED]',
       );
+
+  /// Prefer TMDB cinematic backdrops for heroes; AniList banner/cover stays fallback.
+  Future<List<AnimeCard>> attachTmdbBackdrops(List<AnimeCard> cards) async {
+    if (cards.isEmpty) return cards;
+    return Future.wait(cards.map(attachTmdbBackdrop));
+  }
+
+  Future<AnimeCard> attachTmdbBackdrop(AnimeCard card) async {
+    final cached = card.tmdbBackdropUrl ?? _tmdbBackdropByAnilistId[card.id];
+    if (cached != null && cached.isNotEmpty) {
+      return card.tmdbBackdropUrl == cached
+          ? card
+          : card.copyWith(tmdbBackdropUrl: cached);
+    }
+    final url = await resolveTmdbBackdrop(card);
+    if (url == null || url.isEmpty) return card;
+    _tmdbBackdropByAnilistId[card.id] = url;
+    return card.copyWith(tmdbBackdropUrl: url);
+  }
+
+  Future<String?> resolveTmdbBackdrop(AnimeCard card) async {
+    final query = card.titleEnglish.trim().isNotEmpty
+        ? card.titleEnglish.trim()
+        : card.titleRomaji.trim();
+    if (query.isEmpty) return null;
+    try {
+      final isMovie = (card.format ?? '').toUpperCase() == 'MOVIE';
+      var results = isMovie
+          ? await _tmdb.searchMovies(query)
+          : await _tmdb.searchTvShows(query);
+      if (results.isEmpty) {
+        results = isMovie
+            ? await _tmdb.searchTvShows(query)
+            : await _tmdb.searchMovies(query);
+      }
+      final best = _pickTmdbMatch(results, card.seasonYear);
+      if (best == null || best.backdropPath.isEmpty) return null;
+      return TmdbApi.getBackdropUrl(best.backdropPath);
+    } catch (e) {
+      debugPrint('[AnimeService] TMDB backdrop failed for ${card.id}: $e');
+      return null;
+    }
+  }
+
+  static Movie? _pickTmdbMatch(List<Movie> results, int? seasonYear) {
+    Movie? withBackdrop(Iterable<Movie> list) {
+      for (final m in list) {
+        if (m.backdropPath.isNotEmpty) return m;
+      }
+      return null;
+    }
+
+    int? yearOf(Movie m) {
+      if (m.releaseDate.length < 4) return null;
+      return int.tryParse(m.releaseDate.substring(0, 4));
+    }
+
+    if (seasonYear != null) {
+      final exact = withBackdrop(
+        results.where((m) => yearOf(m) == seasonYear),
+      );
+      if (exact != null) return exact;
+      final near = withBackdrop(
+        results.where((m) {
+          final y = yearOf(m);
+          return y != null && (y - seasonYear).abs() <= 1;
+        }),
+      );
+      if (near != null) return near;
+    }
+    return withBackdrop(results);
+  }
 
   Future<List<AnimeCard>> getTrending({int perPage = 20}) =>
       _list(sort: 'TRENDING_DESC', perPage: perPage);
@@ -335,10 +409,11 @@ class AnimeService {
     final expected = anime.episodes ?? 0;
     final cached = _anikotoCache[anime.id];
     if (cached != null) {
-      if (_anikotoEpisodeCountPlausible(cached.episodes.length, expected)) {
+      if (_anikotoEpisodeCountPlausible(cached.episodes.length, expected) &&
+          cached.slug.trim().isNotEmpty) {
         return cached;
       }
-      // Drop movie/OVA stub cached before AniList episode count was known.
+      // Drop movie/OVA stub or pre-slug cache entries.
       _anikotoCache.remove(anime.id);
     }
     AnikotoSeries? s;
@@ -354,6 +429,8 @@ class AnimeService {
           _anikotoEpisodeCountPlausible(data.episodes.length, expected)) {
         s = AnikotoSeries(
           id: data.id,
+          slug: data.slug,
+          aniId: data.aniId,
           episodes: data.episodes
               .map(
                 (e) => AnikotoEpisode(
@@ -381,7 +458,7 @@ class AnimeService {
 
   Future<List<AnimeEpisode>> getEpisodes(AnimeCard anime) async {
     // AniList only — never crawl Anikoto here (HTML probe spam / block risk).
-    // Playable Anikoto ids resolve lazily in the player when Vidwish needs them.
+    // Playable Anikoto ids resolve lazily in the player on Play.
     AnimeCard fresh = anime;
     final hasCount = (anime.episodes ?? 0) > 0 ||
         anime.nextAiringEpisode?['episode'] != null;
@@ -485,7 +562,8 @@ class AnimeService {
 
   /// Build Megaplay/Vidwish + Miruro/AllAnime/VidNest embeds for an episode.
   ///
-  /// Megaplay: Anikoto `s-2` when matched, else `/stream/ani/`.
+  /// Megaplay: Anikoto `s-2` when matched, else `/stream/ani/` (often 410 HTML;
+  /// extract still needs catalog id via Anikoto for getSources).
   /// Vidwish: only Anikoto `s-2` — `/stream/ani/` is dead on that host.
   List<AnimeEmbed> buildAllEmbeds({
     required int anilistId,
@@ -557,12 +635,22 @@ class AnimeService {
           ),
         ),
     ];
-    // Miruro fallback — emit one embed per known provider per category. The
-    // resolver fans them all out in parallel; whichever returns a stream
-    // first wins. The episodes lookup is cached inside MiruroExtractor so all
-    // parallel attempts share a single network round-trip.
+    // AniKoto site Ajax (Vidstream → MegaPlay, VidPlay → VidTube, …).
+    final slug = series?.slug.trim() ?? '';
+    if (slug.isNotEmpty) {
+      for (final cat in const ['sub', 'dub']) {
+        all.add(AnimeEmbed(
+          label: AnimeStreamProviders.displayName('anikoto'),
+          server: 'anikoto',
+          category: cat,
+          url: 'anikoto://watch/$slug/$episode/$cat',
+        ));
+      }
+    }
+    // Miruro pipes the user asked to keep: AniKoto / AnimePahe / AllManga / AnimeDao.
+    // (Other Miruro keys stay out of the default race.)
     for (final cat in const ['sub', 'dub']) {
-      for (final prov in miruroKnownProviders) {
+      for (final prov in AnimeStreamProviders.miruroRaceProviders) {
         all.add(AnimeEmbed(
           label: AnimeStreamProviders.displayName('miruro:$prov'),
           server: 'miruro',
@@ -590,14 +678,18 @@ class AnimeService {
       }
     }
     // AnimeRealms removed — upstream /api/watch is gone (see changelog).
-    // VidNest — AniList-native API (HiAnime + AnimePahe mirrors).
+    // VidNest — AniList-native API (HiAnime + AnimePahe mirrors). Prefer
+    // Anikoto's mapped ani_id when Forja's catalog id is a duplicate (e.g.
+    // Dan Da Dan 171018 vs Anikoto/VidNest 132029).
+    final vidnestAnilistId =
+        (series?.aniId != null && series!.aniId! > 0) ? series.aniId! : anilistId;
     for (final cat in const ['sub', 'dub']) {
       for (final prov in vidnestKnownProviders) {
         all.add(AnimeEmbed(
           label: AnimeStreamProviders.displayName('vidnest:$prov'),
           server: 'vidnest',
           category: cat,
-          url: 'vidnest://anilist/$anilistId/$episode/$cat/$prov',
+          url: 'vidnest://anilist/$vidnestAnilistId/$episode/$cat/$prov',
         ));
       }
     }
@@ -629,13 +721,17 @@ class AnimeService {
   /// Direct HTTP extractor for megaplay.buzz / vidwish.live embeds.
   ///
   /// Both providers expose the same internal API:
-  ///   1. GET /stream/s-2/{id}/{lang}     → HTML containing `data-id="..."`
-  ///   2. GET /stream/getSources?id={dataId} → JSON { sources:{file}, tracks:[] }
+  ///   1. Prefer catalog id from `/stream/s-2/{id}/{lang}` → getSources
+  ///   2. Else scrape HTML `data-id` (often missing — pages return 410)
+  ///   3. GET /stream/getSources?id={id} → JSON { sources:{file}, tracks:[] }
   /// Resolve one or more playable URLs for [embed]. Miruro may return several
   /// CDN mirrors per provider; other servers return at most one.
   Future<List<AnimeStreamResult>> extractDirectCandidates(AnimeEmbed embed) async {
     if (embed.server == 'miruro') {
       return _extractMiruroAll(embed);
+    }
+    if (embed.server == 'anikoto') {
+      return _extractAnikotoSite(embed);
     }
     final one = await extractDirect(embed);
     return one != null ? [one] : const [];
@@ -644,6 +740,10 @@ class AnimeService {
   Future<AnimeStreamResult?> extractDirect(AnimeEmbed embed) async {
     if (embed.server == 'miruro') {
       return _extractMiruro(embed);
+    }
+    if (embed.server == 'anikoto') {
+      final hits = await _extractAnikotoSite(embed);
+      return hits.isEmpty ? null : hits.first;
     }
     if (embed.server == 'allanime') {
       return _extractAllAnime(embed);
@@ -683,6 +783,23 @@ class AnimeService {
     } catch (e, st) {
       if (kDebugMode) debugPrint('[extractDirect] error: $e\n$st');
       return null;
+    }
+  }
+
+  Future<List<AnimeStreamResult>> _extractAnikotoSite(AnimeEmbed embed) async {
+    final m = RegExp(r'^anikoto://watch/([^/]+)/(\d+)/(sub|dub)$')
+        .firstMatch(embed.url.trim());
+    if (m == null) return const [];
+    try {
+      final rust = await anikotoSiteStreams(
+        slug: Uri.decodeComponent(m.group(1)!),
+        episode: int.parse(m.group(2)!),
+        category: m.group(3)!,
+      );
+      return rust.map(_extractorToAnimeResult).toList();
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[extractAnikotoSite] error: $e\n$st');
+      return const [];
     }
   }
 
@@ -875,23 +992,36 @@ class AnimeService {
     }
   }
 
-  /// Only Vidwish needs Anikoto `s-2` ids. Megaplay uses `/stream/ani/`.
-  /// Auto / empty / megaplay must not crawl Anikoto (probe spam / block risk).
+  /// Megaplay/Vidwish need Anikoto `s-2` catalog ids — embed HTML `/stream/ani/`
+  /// is often 410 while `getSources?id={embedId}` still works.
   static bool savedSourceNeedsAnikoto(String? sourceKey) {
-    return sourceKey == 'vidwish';
+    if (sourceKey == null || sourceKey.isEmpty || sourceKey == 'auto') {
+      return true;
+    }
+    final k = sourceKey.toLowerCase();
+    return k == 'megaplay' ||
+        k == 'anikoto' ||
+        k == 'vidwish' ||
+        k.startsWith('vidnest:') ||
+        k.contains('bee');
   }
 
   /// Lightweight reachability check before replaying cached stream URLs.
   ///
-  /// Uses [probeStreamSourceUrl] (CDN Referer rewrite + HLS media-segment
-  /// poison check) so nekostream masters that only serve PNG ads fail here.
+  /// Probe mode comes from [ProviderRuntimeConfig.animePlaybackProfile]
+  /// for [sourceKey] (DB / builtins).
   Future<bool> probeStreamUrl(
     String url,
-    Map<String, String> headers,
-  ) async {
+    Map<String, String> headers, {
+    String? sourceKey,
+  }) async {
     if (url.isEmpty) return false;
     try {
-      return await probeStreamSourceUrl(url, headers);
+      return await probeStreamSourceUrl(
+        url,
+        headers,
+        sourceKey: sourceKey,
+      );
     } catch (_) {
       return false;
     }
@@ -907,7 +1037,13 @@ class AnimeService {
       if (url.isEmpty) continue;
       final headers =
           (media['headers'] as Map?)?.cast<String, String>() ?? const {};
-      if (await probeStreamUrl(url, headers)) return true;
+      final embed = entry['embed'] as Map?;
+      final sourceKey = embed?['sourceKey'] as String? ??
+          embed?['source_key'] as String? ??
+          media['provider'] as String?;
+      if (await probeStreamUrl(url, headers, sourceKey: sourceKey)) {
+        return true;
+      }
     }
     return false;
   }
@@ -1160,6 +1296,8 @@ class AnimeCard {
   final String? coverExtraLarge;
   final String? coverColor;
   final String? bannerImage;
+  /// TMDB w1280 backdrop when resolved; heroes prefer this over AniList art.
+  final String? tmdbBackdropUrl;
   final String? format;
   final String? status;
   final int? episodes;
@@ -1179,6 +1317,7 @@ class AnimeCard {
       titleEnglish.isNotEmpty ? titleEnglish : (titleRomaji.isNotEmpty ? titleRomaji : titleNative);
   String get coverUrl => coverExtraLarge ?? coverLarge ?? '';
   String get bannerOrCover => bannerImage ?? coverUrl;
+  String get heroBackdrop => tmdbBackdropUrl ?? bannerOrCover;
   String get cleanDescription => (description ?? '')
       .replaceAll(RegExp(r'<br\s*/?>'), '\n')
       .replaceAll(RegExp(r'<[^>]+>'), '')
@@ -1193,6 +1332,7 @@ class AnimeCard {
     this.coverExtraLarge,
     this.coverColor,
     this.bannerImage,
+    this.tmdbBackdropUrl,
     this.format,
     this.status,
     this.episodes,
@@ -1208,6 +1348,58 @@ class AnimeCard {
     this.isAdult = false,
     this.streamingEpisodes = const [],
   });
+
+  AnimeCard copyWith({
+    int? id,
+    String? titleEnglish,
+    String? titleRomaji,
+    String? titleNative,
+    String? coverLarge,
+    String? coverExtraLarge,
+    String? coverColor,
+    String? bannerImage,
+    String? tmdbBackdropUrl,
+    String? format,
+    String? status,
+    int? episodes,
+    int? duration,
+    int? averageScore,
+    int? popularity,
+    String? description,
+    List<String>? genres,
+    Map<String, int?>? nextAiringEpisode,
+    int? seasonYear,
+    String? season,
+    String? mainStudio,
+    bool? isAdult,
+    List<Map<String, String>>? streamingEpisodes,
+  }) {
+    return AnimeCard(
+      id: id ?? this.id,
+      titleEnglish: titleEnglish ?? this.titleEnglish,
+      titleRomaji: titleRomaji ?? this.titleRomaji,
+      titleNative: titleNative ?? this.titleNative,
+      coverLarge: coverLarge ?? this.coverLarge,
+      coverExtraLarge: coverExtraLarge ?? this.coverExtraLarge,
+      coverColor: coverColor ?? this.coverColor,
+      bannerImage: bannerImage ?? this.bannerImage,
+      tmdbBackdropUrl: tmdbBackdropUrl ?? this.tmdbBackdropUrl,
+      format: format ?? this.format,
+      status: status ?? this.status,
+      episodes: episodes ?? this.episodes,
+      duration: duration ?? this.duration,
+      averageScore: averageScore ?? this.averageScore,
+      popularity: popularity ?? this.popularity,
+      description: description ?? this.description,
+      genres: genres ?? this.genres,
+      nextAiringEpisode: nextAiringEpisode ?? this.nextAiringEpisode,
+      seasonYear: seasonYear ?? this.seasonYear,
+      season: season ?? this.season,
+      mainStudio: mainStudio ?? this.mainStudio,
+      isAdult: isAdult ?? this.isAdult,
+      streamingEpisodes: streamingEpisodes ?? this.streamingEpisodes,
+    );
+  }
 
   factory AnimeCard.fromJson(Map<String, dynamic> json) {
     final title = (json['title'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -1234,6 +1426,7 @@ class AnimeCard {
       coverExtraLarge: cover['extraLarge'] as String?,
       coverColor: cover['color'] as String?,
       bannerImage: json['bannerImage'] as String?,
+      tmdbBackdropUrl: json['tmdbBackdropUrl'] as String?,
       format: json['format'] as String?,
       status: json['status'] as String?,
       episodes: json['episodes'] as int?,
@@ -1262,6 +1455,7 @@ class AnimeCard {
         'title': {'english': titleEnglish, 'romaji': titleRomaji, 'native': titleNative},
         'coverImage': {'large': coverLarge, 'extraLarge': coverExtraLarge, 'color': coverColor},
         'bannerImage': bannerImage,
+        if (tmdbBackdropUrl != null) 'tmdbBackdropUrl': tmdbBackdropUrl,
         'format': format,
         'status': status,
         'episodes': episodes,
@@ -1325,6 +1519,8 @@ class AnimeEmbed {
   /// Stable id for saved stream preference (e.g. `megaplay`, `miruro:zoro`).
   String get sourceKey {
     switch (server) {
+      case 'anikoto':
+        return 'anikoto';
       case 'miruro':
         final uri = Uri.parse(url.replaceFirst('miruro://', 'https://'));
         final prov = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
@@ -1400,8 +1596,16 @@ class AnimeTrack {
 
 class AnikotoSeries {
   final int id;
+  final String slug;
+  /// AniList id from Anikoto (may differ from Forja catalog).
+  final int? aniId;
   final List<AnikotoEpisode> episodes;
-  const AnikotoSeries({required this.id, required this.episodes});
+  const AnikotoSeries({
+    required this.id,
+    this.slug = '',
+    this.aniId,
+    required this.episodes,
+  });
 }
 
 class AnikotoEpisode {

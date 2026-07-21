@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-/// Thin crash / event facade (RFC-043). No-ops unless opted in + DSN present.
+import 'product_analytics.dart';
+import 'telemetry_scrub.dart';
+
+/// Crash (Sentry) + product analytics (PostHog) facade (RFC-043).
 abstract final class Telemetry {
   /// Forja Flutter project DSN (public ingest). Override via `--dart-define=SENTRY_DSN=…`.
   static const String dsn = String.fromEnvironment(
@@ -13,39 +16,43 @@ abstract final class Telemetry {
         'https://c66602b941b166e5d5504774ab68c3fd@o4511773703143424.ingest.de.sentry.io/4511773713170512',
   );
 
-  static bool _active = false;
+  static bool _crashActive = false;
   static bool _hooksInstalled = false;
 
   static bool get isConfigured => dsn.isNotEmpty;
 
-  static bool get isActive => _active;
+  static bool get isActive => _crashActive;
 
-  /// Call after [Engine.init] so the opt-in preference is readable.
+  static bool get isAnalyticsConfigured => ProductAnalytics.isConfigured;
+
+  static bool get isAnalyticsActive => ProductAnalytics.isActive;
+
+  /// Call after [Engine.init] so opt-in prefs are readable.
   static Future<void> ensureInitialized() async {
-    final enabled = await SettingsService().isCrashReportingEnabled();
-    if (enabled) {
-      await _start();
-    } else {
-      await _stop();
-    }
+    await Future.wait([
+      _ensureCrash(),
+      ProductAnalytics.ensureInitialized(),
+    ]);
   }
 
-  /// Toggle from Settings. Persists via [SettingsService] first.
   static Future<void> setEnabled(bool enabled) async {
     await SettingsService().setCrashReportingEnabled(enabled);
     if (enabled) {
-      await _start();
+      await _startCrash();
     } else {
-      await _stop();
+      await _stopCrash();
     }
   }
+
+  static Future<void> setAnalyticsEnabled(bool enabled) =>
+      ProductAnalytics.setEnabled(enabled);
 
   static Future<void> captureError(
     Object error, {
     StackTrace? stackTrace,
     String? hint,
   }) async {
-    if (!_active) return;
+    if (!_crashActive) return;
     await Sentry.captureException(
       error,
       stackTrace: stackTrace,
@@ -55,7 +62,7 @@ abstract final class Telemetry {
 
   /// Debug / QA: throw a known exception so Sentry receives a test event.
   static Future<void> sendTestException() async {
-    if (!_active) {
+    if (!_crashActive) {
       throw StateError('Crash reporting is off — enable it in Settings first');
     }
     await captureError(
@@ -65,33 +72,35 @@ abstract final class Telemetry {
     );
   }
 
+  /// Allowlisted product event → PostHog (not Sentry).
+  static Future<void> track(
+    String name, {
+    Map<String, Object?>? properties,
+  }) =>
+      ProductAnalytics.track(name, properties: properties);
+
   static Future<void> captureEvent(
     String name, {
     Map<String, Object?>? data,
-  }) async {
-    if (!_active) return;
-    if (!_allowedEvents.contains(name)) return;
-    await Sentry.captureMessage(
-      name,
-      withScope: (scope) {
-        if (data != null) {
-          for (final e in data.entries) {
-            if (e.value != null) {
-              scope.setTag(e.key, e.value.toString());
-            }
-          }
-        }
-      },
-    );
+  }) =>
+      track(name, properties: data);
+
+  static Future<void> _ensureCrash() async {
+    final enabled = await SettingsService().isCrashReportingEnabled();
+    if (enabled) {
+      await _startCrash();
+    } else {
+      await _stopCrash();
+    }
   }
 
-  static Future<void> _start() async {
+  static Future<void> _startCrash() async {
     if (!isConfigured) {
       debugPrint('[Telemetry] Crash reporting on but SENTRY_DSN empty — no-op');
-      _active = false;
+      _crashActive = false;
       return;
     }
-    if (_active) return;
+    if (_crashActive) return;
 
     await SentryFlutter.init((options) {
       options.dsn = dsn;
@@ -103,14 +112,13 @@ abstract final class Telemetry {
     });
 
     _installHooks();
-    _active = true;
-    unawaited(captureEvent('app_start'));
+    _crashActive = true;
   }
 
-  static Future<void> _stop() async {
-    if (!_active) return;
+  static Future<void> _stopCrash() async {
+    if (!_crashActive) return;
     await Sentry.close();
-    _active = false;
+    _crashActive = false;
   }
 
   static void _installHooks() {
@@ -119,7 +127,7 @@ abstract final class Telemetry {
 
     final previous = FlutterError.onError;
     FlutterError.onError = (details) {
-      if (_active) {
+      if (_crashActive) {
         Sentry.captureException(
           details.exception,
           stackTrace: details.stack,
@@ -129,20 +137,12 @@ abstract final class Telemetry {
     };
 
     PlatformDispatcher.instance.onError = (error, stack) {
-      if (_active) {
+      if (_crashActive) {
         Sentry.captureException(error, stackTrace: stack);
       }
       return false;
     };
   }
-
-  static const Set<String> _allowedEvents = {
-    'app_start',
-    'resolve_failed',
-    'player_open_failed',
-    'provider_timeout',
-    'update_check',
-  };
 }
 
 /// Visible for tests — redact stream URLs, magnets, tokens.
@@ -152,9 +152,7 @@ SentryEvent? scrubEvent(SentryEvent event, Hint hint) {
   if (exceptions != null) {
     scrubbedExceptions = [
       for (final ex in exceptions)
-        ex.value == null
-            ? ex
-            : ex.copyWith(value: scrubText(ex.value!)),
+        ex.value == null ? ex : ex.copyWith(value: scrubText(ex.value!)),
     ];
   }
 
@@ -172,7 +170,7 @@ SentryEvent? scrubEvent(SentryEvent event, Hint hint) {
   if (event.request != null) {
     final req = event.request!;
     final headers = Map<String, String>.from(req.headers);
-    headers.removeWhere((k, _) => _sensitiveHeader(k));
+    headers.removeWhere((k, _) => sensitiveHeader(k));
     scrubbedRequest = req.copyWith(
       url: req.url == null ? null : scrubUrl(req.url!),
       headers: headers,
@@ -197,68 +195,14 @@ Breadcrumb? scrubBreadcrumb(Breadcrumb? breadcrumb, Hint hint) {
       if (v is String) {
         data[key] = scrubText(v);
       }
-      if (_sensitiveHeader(key) || _sensitiveKey(key)) {
+      if (sensitiveHeader(key) || sensitiveKey(key)) {
         data[key] = '[redacted]';
       }
     }
   }
   return breadcrumb.copyWith(
-    message: breadcrumb.message == null
-        ? null
-        : scrubText(breadcrumb.message!),
+    message:
+        breadcrumb.message == null ? null : scrubText(breadcrumb.message!),
     data: data,
   );
-}
-
-String scrubText(String input) {
-  var out = input;
-  out = out.replaceAllMapped(
-    RegExp(r'''magnet:\?[^\s"']+''', caseSensitive: false),
-    (_) => 'magnet:[redacted]',
-  );
-  out = out.replaceAllMapped(
-    RegExp(r'''https?://[^\s"']+''', caseSensitive: false),
-    (m) => scrubUrl(m.group(0)!),
-  );
-  out = out.replaceAllMapped(
-    RegExp(
-      r'(authorization|cookie|token|api[_-]?key|password|jwt)\s*[:=]\s*\S.*',
-      caseSensitive: false,
-    ),
-    (m) => '${m.group(1)}:[redacted]',
-  );
-  out = out.replaceAllMapped(
-    RegExp(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'),
-    (_) => '[jwt-redacted]',
-  );
-  return out;
-}
-
-String scrubUrl(String url) {
-  final uri = Uri.tryParse(url);
-  if (uri == null) return '[url-redacted]';
-  // Keep scheme + host only — drop path/query (often tokens / stream keys).
-  if (uri.hasScheme && uri.host.isNotEmpty) {
-    return '${uri.scheme}://${uri.host}/[redacted]';
-  }
-  return '[url-redacted]';
-}
-
-bool _sensitiveHeader(String key) {
-  final k = key.toLowerCase();
-  return k == 'authorization' ||
-      k == 'cookie' ||
-      k == 'set-cookie' ||
-      k == 'x-api-key' ||
-      k.contains('token');
-}
-
-bool _sensitiveKey(String key) {
-  final k = key.toLowerCase();
-  return k.contains('token') ||
-      k.contains('password') ||
-      k.contains('secret') ||
-      k.contains('cookie') ||
-      k.contains('magnet') ||
-      k.contains('url');
 }

@@ -1,5 +1,9 @@
 part of 'iptv_pt_screen.dart';
 
+/// Live/Movies probe direct URLs; Series probes the first episode.
+bool _streamHealthEnabled(IptvStream s) =>
+    s.kind == 'live' || s.kind == 'vod' || s.kind == 'series';
+
 class _StreamThumbPlayHint extends StatelessWidget {
   const _StreamThumbPlayHint({required this.active});
 
@@ -75,7 +79,7 @@ class _StreamCardState extends State<_StreamCard> {
   }
 
   void _syncLiveProbe(bool active) {
-    if (widget.stream.kind != 'live') return;
+    if (!_streamHealthEnabled(widget.stream)) return;
     if (active) {
       widget.ctrl.scheduleLazyCheck(widget.stream);
     } else {
@@ -91,7 +95,7 @@ class _StreamCardState extends State<_StreamCard> {
   }
 
   Color _borderColor(bool active, bool? health) {
-    if (widget.stream.kind != 'live' || health == null) {
+    if (!_streamHealthEnabled(widget.stream) || health == null) {
       return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
     if (health) {
@@ -116,7 +120,7 @@ class _StreamCardState extends State<_StreamCard> {
     return ListenableBuilder(
       listenable: widget.ctrl,
       builder: (_, _) {
-        final health = widget.stream.kind == 'live'
+        final health = _streamHealthEnabled(widget.stream)
             ? widget.ctrl.healthFor(widget.stream.streamId)
             : null;
         final active = _active(context);
@@ -162,7 +166,7 @@ class _StreamCardState extends State<_StreamCard> {
           );
         }
 
-        if (widget.stream.kind != 'live') return card;
+        if (!_streamHealthEnabled(widget.stream)) return card;
 
         return _LiveHealthProbe(
           stream: widget.stream,
@@ -453,7 +457,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
   }
 
   void _syncLiveProbe(bool active) {
-    if (widget.stream.kind != 'live') return;
+    if (!_streamHealthEnabled(widget.stream)) return;
     if (active) {
       widget.ctrl.scheduleLazyCheck(widget.stream);
     } else {
@@ -469,7 +473,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
   }
 
   Color _borderColor(bool active, bool? health) {
-    if (widget.stream.kind != 'live' || health == null) {
+    if (!_streamHealthEnabled(widget.stream) || health == null) {
       return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
     return health
@@ -482,7 +486,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
     return ListenableBuilder(
       listenable: widget.ctrl,
       builder: (_, _) {
-        final health = widget.stream.kind == 'live'
+        final health = _streamHealthEnabled(widget.stream)
             ? widget.ctrl.healthFor(widget.stream.streamId)
             : null;
         final active = _active(context);
@@ -614,7 +618,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
           ),
         );
 
-        if (widget.stream.kind != 'live') return tile;
+        if (!_streamHealthEnabled(widget.stream)) return tile;
         return _LiveHealthProbe(
           stream: widget.stream,
           ctrl: widget.ctrl,
@@ -652,7 +656,7 @@ class _LiveHealthProbe extends StatelessWidget {
     }
 
     return VisibilityDetector(
-      key: Key('live-${stream.streamId}'),
+      key: Key('health-${stream.kind}-${stream.streamId}'),
       onVisibilityChanged: (info) {
         if (info.visibleFraction >= 0.4) {
           ctrl.scheduleLazyCheck(stream);

@@ -1,10 +1,12 @@
 pub(crate) mod anikoto;
+pub(crate) mod anikoto_site;
 pub(crate) mod direct_embed;
 pub(crate) mod probe;
 
 use serde::Deserialize;
 use serde_json::json;
 
+pub use anikoto_site::anikoto_site_streams;
 pub use direct_embed::direct_embed_extract;
 pub use probe::probe_stream_url;
 
@@ -27,6 +29,12 @@ struct ResolveRequest {
     url: String,
     #[serde(default)]
     headers: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    slug: String,
+    #[serde(default)]
+    episode: i32,
+    #[serde(default)]
+    category: String,
 }
 
 pub fn resolve_json(request_json: &str) -> String {
@@ -43,6 +51,8 @@ pub fn resolve_json(request_json: &str) -> String {
             req.expected_episodes,
         )
         .map(|series| json!({ "series": series })),
+        "anikoto_site_streams" => anikoto_site_streams(&req.slug, req.episode, &req.category)
+            .map(|streams| json!({ "streams": streams })),
         "direct_embed_extract" => direct_embed_extract(
             &req.embed_url,
             if req.referer.is_empty() {

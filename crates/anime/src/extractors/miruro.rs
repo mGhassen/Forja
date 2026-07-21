@@ -401,6 +401,38 @@ fn is_playable_miruro_stream(url: &str, stream_type: &str) -> bool {
     looks_direct
 }
 
+/// Megaplay / Vidwish-style player pages returned as Miruro "iframe" streams.
+/// Same path anikoto.cz uses in the browser — extract HLS via getSources.
+fn is_megaplay_family_embed(url: &str) -> bool {
+    let u = url.to_ascii_lowercase();
+    if !u.starts_with("http") {
+        return false;
+    }
+    u.contains("megaplay")
+        || u.contains("vidwish")
+        || u.contains("/stream/s-")
+        || u.contains("/stream/ani/")
+}
+
+fn try_unwrap_embed_iframe(url: &str, referer: &str) -> Option<StreamResultOut> {
+    let u = url.to_ascii_lowercase();
+    let candidate = is_megaplay_family_embed(url)
+        || u.contains("/embed")
+        || u.contains("/stream/");
+    if !candidate {
+        return None;
+    }
+    match crate::resolve::direct_embed::direct_embed_extract(url, Some(referer)) {
+        Ok(Some(mut s)) => {
+            if s.referer.is_empty() {
+                s.referer = format!("{}/", referer.trim_end_matches('/'));
+            }
+            Some(s)
+        }
+        _ => None,
+    }
+}
+
 pub fn miruro_resolve(
     anilist_id: i64,
     episode: i32,
@@ -512,6 +544,23 @@ pub fn miruro_resolve(
             .and_then(|v| v.as_str())
             .unwrap_or("");
         if !is_playable_miruro_stream(url, stream_type) {
+            // AniKoto (and siblings) often return megaplay iframe embeds — same
+            // pages that play on anikoto.cz. Unwrap to HLS instead of dropping.
+            if let Some(extracted) = try_unwrap_embed_iframe(url, &base) {
+                stream_index += 1;
+                let mut tracks_out = extracted.tracks;
+                if tracks_out.is_empty() {
+                    tracks_out = tracks.clone();
+                }
+                out.push(StreamResultOut {
+                    url: extracted.url,
+                    referer: extracted.referer,
+                    origin: extracted.origin,
+                    tracks: tracks_out,
+                    provider: provider.to_string(),
+                    stream_label: Some(stream_server_label(&raw, stream_index)),
+                });
+            }
             continue;
         }
         stream_index += 1;
@@ -592,6 +641,9 @@ mod tests {
         assert!(!is_playable_miruro_stream(
             "https://vidwish.live/embed/abc",
             "hls"
+        ));
+        assert!(is_megaplay_family_embed(
+            "https://megaplay.buzz/stream/s-2/1/sub"
         ));
     }
 

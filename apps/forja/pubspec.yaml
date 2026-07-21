@@ -81,6 +81,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   passkeys: ^2.22.0
   sentry_flutter: ^9.25.0
+  posthog_flutter: ^5.32.1
 
 dev_dependencies:
   flutter_test:

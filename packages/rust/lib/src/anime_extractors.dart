@@ -319,13 +319,23 @@ class AnikotoEpisodeData {
 
 class AnikotoSeriesData {
   final int id;
+  final String slug;
+  /// AniList id Anikoto mapped (may differ from Forja's catalog id).
+  final int? aniId;
   final List<AnikotoEpisodeData> episodes;
 
-  const AnikotoSeriesData({required this.id, required this.episodes});
+  const AnikotoSeriesData({
+    required this.id,
+    this.slug = '',
+    this.aniId,
+    required this.episodes,
+  });
 
   factory AnikotoSeriesData.fromJson(Map<String, dynamic> j) =>
       AnikotoSeriesData(
         id: (j['id'] as num?)?.toInt() ?? 0,
+        slug: (j['slug'] ?? '').toString(),
+        aniId: (j['ani_id'] as num?)?.toInt(),
         episodes: ((j['episodes'] as List?) ?? const [])
             .whereType<Map>()
             .map((e) => AnikotoEpisodeData.fromJson(e.cast<String, dynamic>()))
@@ -363,6 +373,26 @@ Future<AnimeExtractorStreamResult?> directEmbedExtract({
   final result = decoded['result'];
   if (result is! Map) return null;
   return AnimeExtractorStreamResult.fromJson(result.cast<String, dynamic>());
+}
+
+/// Anikoto.tv watch Ajax → MegaPlay / VidTube getSources (native HLS).
+Future<List<AnimeExtractorStreamResult>> anikotoSiteStreams({
+  required String slug,
+  required int episode,
+  required String category,
+}) async {
+  final decoded = await animeExtractorRequest({
+    'action': 'anikoto_site_streams',
+    'slug': slug,
+    'episode': episode,
+    'category': category,
+  });
+  final raw = decoded['streams'];
+  if (raw is! List) return const [];
+  return raw
+      .whereType<Map>()
+      .map((e) => AnimeExtractorStreamResult.fromJson(e.cast<String, dynamic>()))
+      .toList();
 }
 
 Future<bool> probeStreamUrlRust(

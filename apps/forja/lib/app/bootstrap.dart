@@ -39,7 +39,9 @@ import 'package:forja/shared/catalog/tmdb_user_region.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
 
@@ -324,6 +326,9 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           title: widget.title,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.themeData,
+          navigatorObservers: [
+            PosthogObserver(nameExtractor: ProductAnalytics.routeScreenName),
+          ],
           home: const DesktopStartupGate(splash: SplashScreen()),
           builder: (context, child) {
             Widget content = ShellScopeBuilder(
@@ -348,6 +353,8 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
             );
           },
         );
+        // PostHog replay root (no-op on desktop; required on Android/iOS).
+        app = PostHogWidget(child: app);
         if (_isDesktop) {
           app = ExcludeSemantics(child: app);
         }

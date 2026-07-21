@@ -143,7 +143,7 @@ class KenBurnsBackdrop extends StatefulWidget {
   State<KenBurnsBackdrop> createState() => _KenBurnsBackdropState();
 }
 
-class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerProviderStateMixin {
+class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<Alignment> _alignAnimation;

@@ -16,7 +16,7 @@ class AppRouter {
 
   /// [RouteSettings.name] for [openPlayer] — used to replace an existing
   /// player instead of stacking two [PlayerScreen] routes on macOS.
-  static const playerRouteName = 'forja/player';
+  static const playerRouteName = 'player';
 
   static Route<T> slideRoute<T>(
     WidgetBuilder builder, {
@@ -33,8 +33,12 @@ class AppRouter {
   }
 
   /// Shell overlay routes — blocks TV system-back from bypassing the coordinator.
-  static Route<T> slideShellRoute<T>(WidgetBuilder builder) {
+  static Route<T> slideShellRoute<T>(
+    WidgetBuilder builder, {
+    RouteSettings? settings,
+  }) {
     return PageRouteBuilder<T>(
+      settings: settings,
       opaque: true,
       pageBuilder: (context, animation, secondaryAnimation) {
         return _tvBackGuardPage(builder(context));
@@ -121,6 +125,7 @@ class AppRouter {
           startPosition: startPosition,
           autoPlay: autoPlay,
         ),
+        settings: const RouteSettings(name: 'media_details'),
       ),
     );
   }
@@ -167,7 +172,10 @@ class AppRouter {
   static Future<T?> openSearch<T>(BuildContext context) {
     return pushShellRoute<T>(
       context,
-      slideShellRoute((_) => const SearchScreen(overlay: true)),
+      slideShellRoute(
+        (_) => const SearchScreen(overlay: true),
+        settings: const RouteSettings(name: 'search_overlay'),
+      ),
     );
   }
 
@@ -190,6 +198,7 @@ class AppRouter {
             languageCode: languageCode,
           ),
         ),
+        settings: const RouteSettings(name: 'trailer'),
       ),
     );
   }

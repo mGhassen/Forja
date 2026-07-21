@@ -84,6 +84,10 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- PostHog manual init (RFC-043) — do not AUTO_INIT before opt-in. -->
+        <meta-data
+            android:name="com.posthog.posthog.AUTO_INIT"
+            android:value="false" />
     </application>
     <queries>
         <intent>

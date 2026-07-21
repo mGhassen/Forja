@@ -76,14 +76,14 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 iconColor: const Color(0xFF34D399),
                 title: 'IPTV portal cache',
                 subtitle:
-                    'Saved live-channel health checks and channel scan results. '
-                    'Portals and favorites stay; next open re-checks.',
+                    'Catalogs, alive checks, and channel scans. '
+                    'Portals and favorites stay; next open re-fetches.',
                 onTap: () => _run(
                   kind: _ClearBusy.iptvPortals,
                   title: 'Clear IPTV portal cache?',
                   body:
-                      'Clears cached alive-channel checks and channel scan hits '
-                      'for all IPTV portals on this device.\n\n'
+                      'Clears saved catalogs, alive-channel checks, and channel '
+                      'scan hits for all IPTV portals on this device.\n\n'
                       'Saved portals, favorites, and M3U playlists are not affected.',
                   confirmLabel: 'Clear',
                   success: 'IPTV portal cache cleared',

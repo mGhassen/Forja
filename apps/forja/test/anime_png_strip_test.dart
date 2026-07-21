@@ -22,16 +22,37 @@ void main() {
       );
     });
 
-    test('plain CDN and already-proxied skip', () {
+    test('plain CDN, owocdn (AnimePahe), and unrelated proxy skip', () {
       expect(
         animeHlsNeedsPngStrip('https://cdn.example/video.m3u8'),
         isFalse,
       );
       expect(
         animeHlsNeedsPngStrip(
-          'http://127.0.0.1:1234/hls-proxy?url=https%3A%2F%2Fx.m3u8',
+          'https://vault-99.owocdn.top/stream/99/02/abc/uwu.m3u8',
         ),
         isFalse,
+      );
+      expect(
+        animeHlsNeedsPngStrip(
+          'http://127.0.0.1:1234/hls-proxy?url=https%3A%2F%2Fcdn.example%2Fx.m3u8',
+        ),
+        isFalse,
+      );
+    });
+
+    test('proxy of nekostream still needs strip', () {
+      expect(
+        animeHlsNeedsPngStrip(
+          'http://127.0.0.1:1/hls-proxy?url=https%3A%2F%2F9hjkrt.nekostream.site%2Fx%2Fmaster.m3u8&strip=png',
+        ),
+        isTrue,
+      );
+      expect(
+        hlsProxyStripIsPng(
+          'http://127.0.0.1:1/hls-proxy?url=https%3A%2F%2Fx.m3u8&strip=png',
+        ),
+        isTrue,
       );
     });
   });

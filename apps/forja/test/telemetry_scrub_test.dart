@@ -1,5 +1,8 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
+import 'package:forja/shared/telemetry/telemetry_scrub.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() {
@@ -69,10 +72,40 @@ void main() {
   group('Telemetry gate', () {
     test('inactive without init', () {
       expect(Telemetry.isActive, isFalse);
+      expect(Telemetry.isAnalyticsActive, isFalse);
     });
 
     test('captureError no-ops when inactive', () async {
       await Telemetry.captureError(StateError('https://leak.example/x'));
+    });
+
+    test('track no-ops when analytics inactive', () async {
+      await Telemetry.track('app_start');
+    });
+  });
+
+  group('routeScreenName', () {
+    test('skips root and unnamed', () {
+      expect(
+        ProductAnalytics.routeScreenName(const RouteSettings(name: '/')),
+        isNull,
+      );
+      expect(ProductAnalytics.routeScreenName(const RouteSettings()), isNull);
+    });
+
+    test('maps player and keeps details', () {
+      expect(
+        ProductAnalytics.routeScreenName(
+          const RouteSettings(name: 'player'),
+        ),
+        'player',
+      );
+      expect(
+        ProductAnalytics.routeScreenName(
+          const RouteSettings(name: 'media_details'),
+        ),
+        'media_details',
+      );
     });
   });
 }

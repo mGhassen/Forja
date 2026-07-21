@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6/6** components · **10/10** acceptance |
-| **Current slice** | Shipped — admin Providers editor + full registry overlay |
+| **Progress** | **Complete · 7/7** components · **12/12** acceptance |
+| **Current slice** | Shipped — anime per-sourceKey playback profiles in DB |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 4 | R39-C04 | Admin JSON editor for the config row (`apps/admin` Providers) | ✅ |
 | 5 | R39-C05 | Full registry: `templates.*` + `apis.*` + KissKh mirrors; push overlay to Rust FFI | ✅ |
 | 6 | R39-C06 | WebStreamr `webstreamr.*` bases in overlay (in-scope playback) | ✅ |
+| 7 | R39-C07 | `anime.playbackProfiles` per sourceKey (probe mode + PNG-strip hosts) | ✅ |
 
 ---
 
@@ -52,9 +53,18 @@
 
 ---
 
+## Acceptance (anime playback profiles)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R39-A11 | Every in-scope anime `sourceKey` has a builtin + DB-mergeable `playbackProfiles` entry | ✅ |
+| 2 | R39-A12 | Anime probe uses `sourceKey` profile (`masterOnly` / `segmentPoisonSample` / `headOrRange` / `skip`) — not generic host heuristics | ✅ |
+
+---
+
 ## Summary
 
-Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without shipping an app build. **Extract logic** (decrypt, CF pipe, sniff) stays in Rust/Dart plugins.
+Ops can retarget **hosts, path templates, mirrors, CDN Referer rules, and per-anime-sourceKey probe/PNG-strip profiles** without shipping an app build. **Extract logic** (decrypt, CF pipe, sniff) stays in Rust/Dart plugins.
 
 ### Contract (schema 1)
 
@@ -85,7 +95,17 @@ Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without s
     },
     "vidwish": { "...": "same shape" },
     "miruroOrigins": ["https://www.miruro.tv", "..."],
-    "kisskhMirrors": ["https://kisskh.co", "..."]
+    "kisskhMirrors": ["https://kisskh.co", "..."],
+    "playbackProfiles": {
+      "megaplay": {
+        "probe": "segmentPoisonSample",
+        "pngStripHostContains": ["nekostream", "mewstream"]
+      },
+      "miruro:kiwi": {
+        "probe": "masterOnly",
+        "pngStripHostContains": []
+      }
+    }
   },
   "cdnRefererRules": [
     {
@@ -96,6 +116,8 @@ Ops can retarget **hosts, path templates, mirrors, CDN Referer rules** without s
   ]
 }
 ```
+
+`playbackProfiles` probe values: `masterOnly` · `segmentPoisonSample` · `headOrRange` · `skip`.
 
 Unknown schema → ignore remote, keep builtins. Partial remote objects deep-merge over builtins.
 

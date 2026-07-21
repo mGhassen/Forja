@@ -34,20 +34,55 @@ Future<String> _engineProbeStream(String url, int timeoutSecs) =>
 Future<Map<String, dynamic>?> _xtreamRequest(
   Map<String, dynamic> body,
 ) async {
+  final raw = await _xtreamRequestRaw(body);
+  if (raw == null || raw.containsKey('error')) return null;
+  return raw;
+}
+
+/// Full engine JSON including `{error: …}` — used when empty vs failure matters.
+Future<Map<String, dynamic>?> _xtreamRequestRaw(
+  Map<String, dynamic> body,
+) async {
   try {
     final raw = await runIptvXtreamJson(jsonEncode(body));
     final parsed = jsonDecode(raw);
     if (parsed is! Map<String, dynamic>) return null;
-    if (parsed.containsKey('error')) return null;
     return parsed;
   } catch (_) {
     return null;
   }
 }
 
+/// Result of a shelf catalog fetch (Live / Movies / Series).
+class IptvCatalogFetch {
+  const IptvCatalogFetch({
+    required this.categories,
+    required this.streams,
+    this.error,
+  });
+
+  final List<IptvCategory> categories;
+  final List<IptvStream> streams;
+  final String? error;
+
+  bool get ok => error == null;
+
+  static const emptyOk = IptvCatalogFetch(
+    categories: [],
+    streams: [],
+  );
+}
+
 /// Xtream-Codes player_api client. Login + catalog + episodes via Rust.
 class IptvClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
+
+  /// Large Live lineups (20k+ streams) need headroom for download + parse.
+  static int _catalogTimeoutSecs(IptvSection kind) => switch (kind) {
+        IptvSection.live => 90,
+        IptvSection.vod => 60,
+        IptvSection.series => 60,
+      };
 
   static String _enc(String s) => Uri.encodeComponent(s);
 
@@ -131,18 +166,31 @@ class IptvClient {
   }
 
   /// Categories + streams for one shelf (orphans already merged in Rust).
-  static Future<({List<IptvCategory> categories, List<IptvStream> streams})>
-      catalog(IptvPortal p, IptvSection kind) async {
-    final root = await _xtreamRequest(_portalBody(
+  static Future<IptvCatalogFetch> catalog(
+    IptvPortal p,
+    IptvSection kind,
+  ) async {
+    final root = await _xtreamRequestRaw(_portalBody(
       p,
       action: 'catalog',
       section: _sectionName(kind),
-      timeoutSecs: 30,
+      timeoutSecs: _catalogTimeoutSecs(kind),
     ));
     if (root == null) {
-      return (categories: const <IptvCategory>[], streams: const <IptvStream>[]);
+      return const IptvCatalogFetch(
+        categories: [],
+        streams: [],
+        error: 'Catalog request failed',
+      );
     }
-    return (
+    if (root['error'] != null) {
+      return IptvCatalogFetch(
+        categories: const [],
+        streams: const [],
+        error: root['error'].toString(),
+      );
+    }
+    return IptvCatalogFetch(
       categories: _mapCategories(root['categories']),
       streams: _mapStreams(root['streams'], _sectionName(kind)),
     );
@@ -150,8 +198,14 @@ class IptvClient {
 
   static Future<List<IptvCategory>> categories(
       IptvPortal p, IptvSection kind) async {
-    final snap = await catalog(p, kind);
-    return snap.categories;
+    final root = await _xtreamRequest(_portalBody(
+      p,
+      action: 'categories',
+      section: _sectionName(kind),
+      timeoutSecs: 20,
+    ));
+    if (root == null) return const [];
+    return _mapCategories(root['categories']);
   }
 
   static Future<List<IptvStream>> streams(
@@ -161,10 +215,37 @@ class IptvClient {
       action: 'streams',
       section: _sectionName(kind),
       categoryId: categoryId,
-      timeoutSecs: 30,
+      timeoutSecs: _catalogTimeoutSecs(kind),
     ));
     if (root == null) return const [];
     return _mapStreams(root['streams'], _sectionName(kind));
+  }
+
+  /// Merge portal categories with stream orphan ids (Rust normalize).
+  static Future<List<IptvCategory>> mergeOrphanCategories(
+    List<IptvCategory> categories,
+    List<IptvStream> streams,
+  ) async {
+    final root = await _xtreamRequest({
+      'action': 'merge',
+      'categories': [
+        for (final c in categories) {'id': c.id, 'name': c.name},
+      ],
+      'streams': [
+        for (final s in streams)
+          {
+            'stream_id': s.streamId,
+            'name': s.name,
+            'icon': s.icon,
+            'category_id': s.categoryId,
+            'container_ext': s.containerExt,
+            'epg_channel_id': s.epgChannelId,
+            'kind': s.kind,
+          },
+      ],
+    });
+    if (root == null) return categories;
+    return _mapCategories(root['categories']);
   }
 
   static List<IptvCategory> _mapCategories(dynamic raw) {

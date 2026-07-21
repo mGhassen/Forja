@@ -36,7 +36,6 @@ class MediaDetailsBackButton extends StatelessWidget {
       child: ShellBackIconButton(
         icon: Icons.chevron_left_rounded,
         size: 28,
-        iconAlignment: Alignment.centerLeft,
         tooltip: 'Back',
         focusNode: focusNode,
         onTap: onPressed ?? () => popDetails(context),

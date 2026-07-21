@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
+import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:rust/rust.dart';
@@ -124,6 +125,65 @@ class _SettingsCrashReportingRowState extends State<SettingsCrashReportingRow> {
       ForjaToast.success('Crash reporting on');
     } else if (!value) {
       ForjaToast.success('Crash reporting off');
+    }
+  }
+}
+
+/// Opt-in PostHog product analytics (RFC-043).
+class SettingsProductAnalyticsRow extends StatefulWidget {
+  const SettingsProductAnalyticsRow({super.key});
+
+  @override
+  State<SettingsProductAnalyticsRow> createState() =>
+      _SettingsProductAnalyticsRowState();
+}
+
+class _SettingsProductAnalyticsRowState
+    extends State<SettingsProductAnalyticsRow> {
+  bool _enabled = false;
+  bool _loaded = false;
+  final SettingsService _settings = SettingsService();
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final enabled = await _settings.isProductAnalyticsEnabled();
+    if (!mounted) return;
+    setState(() {
+      _enabled = enabled;
+      _loaded = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    return SettingsToggleRow(
+      title: 'Product analytics',
+      subtitle: ProductAnalytics.isConfigured
+          ? 'Anonymous usage events + session replay (text/images masked). Off by default.'
+          : 'Unavailable in this build (no PostHog API key). Preference still saved.',
+      value: _enabled,
+      onChanged: _setEnabled,
+    );
+  }
+
+  Future<void> _setEnabled(bool value) async {
+    setState(() => _enabled = value);
+    await Telemetry.setAnalyticsEnabled(value);
+    if (!mounted) return;
+    if (value && !ProductAnalytics.isConfigured) {
+      ForjaToast.info(
+        'Analytics will activate once this build includes a PostHog API key.',
+      );
+    } else if (value && ProductAnalytics.isActive) {
+      ForjaToast.success('Product analytics on');
+    } else if (!value) {
+      ForjaToast.success('Product analytics off');
     }
   }
 }

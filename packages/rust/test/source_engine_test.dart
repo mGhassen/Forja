@@ -14,13 +14,13 @@ void main() {
     test('auto excludes cross-domain providers', () {
       final ordered = SourceEngine.orderProviderIds(
         domain: SourceDomain.anime,
-        candidateIds: ['videasy', 'miruro:bee', 'kisskh', 'vidlink'],
+        candidateIds: ['videasy', 'megaplay', 'kisskh', 'vidlink'],
       );
-      expect(ordered, contains('miruro:bee'));
+      expect(ordered, contains('megaplay'));
       expect(ordered, isNot(contains('kisskh')));
       expect(ordered, isNot(contains('videasy')));
       expect(ordered, isNot(contains('vidlink')));
-      expect(ordered.first, 'miruro:bee');
+      expect(ordered.first, 'megaplay');
     });
 
     test('settings baseline with bounded domain adjustment for movies', () {
@@ -64,7 +64,7 @@ void main() {
     test('preferred pin rejects unsupported domain', () {
       final ordered = SourceEngine.orderProviderIds(
         domain: SourceDomain.anime,
-        candidateIds: ['videasy', 'miruro:bee'],
+        candidateIds: ['videasy', 'megaplay'],
         preferred: 'videasy',
       );
       expect(ordered, isEmpty);
@@ -91,8 +91,8 @@ void main() {
     test('order preview rows expose score breakdown', () {
       final result = SourceEngine.orderProviders(
         domain: SourceDomain.anime,
-        candidateIds: ['miruro:bee'],
-        settingsOrder: ['miruro:bee'],
+        candidateIds: ['megaplay'],
+        settingsOrder: ['megaplay'],
       );
       expect(result.rows.single.domainScore, greaterThan(0));
       expect(result.rows.single.maxDisplacement, maxProviderDisplacement);

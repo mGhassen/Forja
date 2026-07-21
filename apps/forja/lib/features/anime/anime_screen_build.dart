@@ -9,25 +9,28 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
   List<HubHeroSlide> _heroSlides(List<AnimeCard> spotlight) {
     return spotlight
         .map(
-          (a) => HubHeroSlide(
-            id: '${a.id}',
-            title: a.displayTitle,
-            imageUrl: a.bannerOrCover,
-            overview: a.cleanDescription,
-            rating: (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : null,
-            year: a.seasonYear?.toString(),
-            badge: a.format,
-            genres: a.genres,
-            // AniList banners are ultrawide (~1900×400); cover on the tall
-            // page-bleed hero crops to a tight zoom — fit width shows the scene.
-            // Portrait cover fallback stays on cover.
-            imageFit: a.bannerImage != null ? BoxFit.fitWidth : BoxFit.cover,
-            imageAlignment: a.bannerImage != null
-                ? Alignment.center
-                : Alignment.centerRight,
-            onPlay: () => _s._openDetails(a),
-            onDetails: () => _s._openDetails(a),
-          ),
+          (a) {
+            final useTmdb = a.tmdbBackdropUrl != null;
+            final useAniBanner = !useTmdb && a.bannerImage != null;
+            return HubHeroSlide(
+              id: '${a.id}',
+              title: a.displayTitle,
+              imageUrl: a.heroBackdrop,
+              overview: a.cleanDescription,
+              rating: (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : null,
+              year: a.seasonYear?.toString(),
+              badge: a.format,
+              genres: a.genres,
+              // TMDB backdrops are cinematic 16:9. AniList banners are
+              // ultrawide (~1900×400) — fit width so the tall page-bleed
+              // hero does not crop to a tight zoom.
+              imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
+              imageAlignment:
+                  useAniBanner ? Alignment.center : Alignment.centerRight,
+              onPlay: () => _s._openDetails(a),
+              onDetails: () => _s._openDetails(a),
+            );
+          },
         )
         .toList();
   }

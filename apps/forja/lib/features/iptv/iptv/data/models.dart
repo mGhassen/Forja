@@ -138,6 +138,87 @@ abstract final class IptvCatalogOrphans {
 
 enum IptvSection { live, vod, series }
 
+/// How the browser shows catalog fetch progress.
+enum IptvCatalogLoadStyle {
+  /// Idle / cache hit applied instantly. Reload uses [IptvController.isLoading] spinner.
+  none,
+
+  /// Cold portal/shelf load — progress bar + live counts.
+  verbose,
+}
+
+/// Active step while [IptvCatalogLoadStyle.verbose] is showing.
+enum IptvCatalogLoadStep {
+  categories,
+  channels,
+  movies,
+  series,
+  finished,
+}
+
+/// Live counts shown on the catalog loading panel.
+class IptvCatalogLoadProgress {
+  const IptvCatalogLoadProgress({
+    this.categoryCount = 0,
+    this.channelCount = 0,
+    this.movieCount = 0,
+    this.seriesCount = 0,
+    this.fraction = 0,
+    this.finished = false,
+  });
+
+  final int categoryCount;
+  final int channelCount;
+  final int movieCount;
+  final int seriesCount;
+
+  /// 0–1 overall progress.
+  final double fraction;
+  final bool finished;
+
+  static const empty = IptvCatalogLoadProgress();
+
+  Map<String, dynamic> toStatsJson() => {
+        'categories': categoryCount,
+        'channels': channelCount,
+        'movies': movieCount,
+        'series': seriesCount,
+      };
+
+  factory IptvCatalogLoadProgress.fromStatsJson(Map<String, dynamic> json) =>
+      IptvCatalogLoadProgress(
+        categoryCount: (json['categories'] as num?)?.toInt() ?? 0,
+        channelCount: (json['channels'] as num?)?.toInt() ?? 0,
+        movieCount: (json['movies'] as num?)?.toInt() ?? 0,
+        seriesCount: (json['series'] as num?)?.toInt() ?? 0,
+        fraction: 1,
+        finished: true,
+      );
+
+  bool get hasAnyCount =>
+      categoryCount > 0 ||
+      channelCount > 0 ||
+      movieCount > 0 ||
+      seriesCount > 0;
+
+  IptvCatalogLoadProgress copyWith({
+    int? categoryCount,
+    int? channelCount,
+    int? movieCount,
+    int? seriesCount,
+    double? fraction,
+    bool? finished,
+  }) =>
+      IptvCatalogLoadProgress(
+        categoryCount: categoryCount ?? this.categoryCount,
+        channelCount: channelCount ?? this.channelCount,
+        movieCount: movieCount ?? this.movieCount,
+        seriesCount: seriesCount ?? this.seriesCount,
+        fraction: fraction ?? this.fraction,
+        finished: finished ?? this.finished,
+      );
+}
+
 /// Live catalog sort — playlist = API order; nameAsc/nameDesc by display name.
 enum IptvCatalogSort {
   playlist,

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 
 void main() {
   group('Megaplay AniList embeds', () {
@@ -20,11 +21,42 @@ void main() {
       );
       expect(
         AnimeService.savedSourceNeedsAnikoto('megaplay'),
-        isFalse,
+        isTrue,
       );
-      expect(AnimeService.savedSourceNeedsAnikoto(null), isFalse);
-      expect(AnimeService.savedSourceNeedsAnikoto(''), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto(null), isTrue);
+      expect(AnimeService.savedSourceNeedsAnikoto(''), isTrue);
       expect(AnimeService.savedSourceNeedsAnikoto('vidwish'), isTrue);
+      expect(AnimeService.savedSourceNeedsAnikoto('allanime:Yt-mp4'), isFalse);
+    });
+
+    test('VidNest uses Anikoto ani_id when catalog id differs', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 171018,
+        episode: 1,
+        series: const AnikotoSeries(
+          id: 4,
+          aniId: 132029,
+          episodes: [
+            AnikotoEpisode(
+              id: 1,
+              number: 1,
+              title: 'Ep 1',
+              embedId: '128368',
+            ),
+          ],
+        ),
+      );
+      final nest = embeds.where((e) => e.server == 'vidnest').toList();
+      expect(nest, isNotEmpty);
+      expect(
+        nest.every((e) => e.url.contains('vidnest://anilist/132029/')),
+        isTrue,
+      );
+      final mega = embeds.where((e) => e.server == 'megaplay').toList();
+      expect(
+        mega.every((e) => e.url.contains('/stream/s-2/128368/')),
+        isTrue,
+      );
     });
 
     test('without Anikoto skips Vidwish (ani path dead on that host)', () {
@@ -61,6 +93,57 @@ void main() {
       expect(
         wish.every((e) => e.url.contains('/stream/s-2/136197/')),
         isTrue,
+      );
+    });
+    test('with Anikoto slug emits anikoto://watch embeds', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 171018,
+        episode: 1,
+        series: const AnikotoSeries(
+          id: 4,
+          slug: 'dandadan-lzcmw',
+          aniId: 132029,
+          episodes: [
+            AnikotoEpisode(
+              id: 1,
+              number: 1,
+              title: 'Ep 1',
+              embedId: '128368',
+            ),
+          ],
+        ),
+      );
+      final site = embeds.where((e) => e.server == 'anikoto').toList();
+      expect(site.length, 2);
+      expect(
+        site.every((e) => e.url.contains('anikoto://watch/dandadan-lzcmw/1/')),
+        isTrue,
+      );
+      expect(site.first.sourceKey, 'anikoto');
+    });
+
+    test('emits Miruro AnimeDao / AllManga / AnimePahe / AniKoto', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 171018,
+        episode: 1,
+      );
+      final miruro = embeds.where((e) => e.server == 'miruro').toList();
+      final keys = miruro.map((e) => e.sourceKey).toSet();
+      expect(
+        keys,
+        containsAll([
+          'miruro:bee',
+          'miruro:kiwi',
+          'miruro:ally',
+          'miruro:bonk',
+          'miruro:zoro',
+          'miruro:hop',
+        ]),
+      );
+      expect(keys.length, AnimeStreamProviders.miruroRaceProviders.length);
+      expect(
+        miruro.map((e) => e.label).toSet(),
+        containsAll(['AniKoto', 'AnimePahe', 'AllManga', 'AnimeDao', 'HiAnime']),
       );
     });
   });

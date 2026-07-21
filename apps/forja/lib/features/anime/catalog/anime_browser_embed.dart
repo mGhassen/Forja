@@ -10,12 +10,17 @@ class AnimeBrowserEmbed {
     required this.label,
     required this.referer,
     required this.origin,
+    this.loadInMainFrame = false,
   });
 
   final String url;
   final String label;
   final String referer;
   final String origin;
+
+  /// Sites with `X-Frame-Options: SAMEORIGIN` (e.g. anikoto.cz) cannot sit in
+  /// our iframe wrapper — navigate the WebView to [url] directly.
+  final bool loadInMainFrame;
 }
 
 /// Resolve a top-level / iframe player URL from [embed], or null if none.
@@ -26,6 +31,9 @@ AnimeBrowserEmbed? animeBrowserEmbedFor(AnimeEmbed embed) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return null;
     }
+    // Megaplay/Vidwish `/stream/ani/` HTML is often a hard 410 shell while
+    // getSources still works natively — do not open that dead page in WebView.
+    if (url.contains('/stream/ani/')) return null;
     final origin = Uri.tryParse(url)?.origin ??
         (server == 'vidwish'
             ? 'https://vidwish.live'
@@ -59,23 +67,44 @@ AnimeBrowserEmbed? animeBrowserEmbedFor(AnimeEmbed embed) {
   return null;
 }
 
-/// Prefer Megaplay, then Vidwish, then VidNest pages for [category].
+/// Prefer VidNest public pages first (site JS decrypt + play), then Megaplay
+/// `/stream/s-2/…`, Vidwish, then Anikoto.cz. Megaplay `/stream/ani/` omitted.
 List<AnimeBrowserEmbed> animeBrowserEmbedFallbacks({
   required List<AnimeEmbed> embeds,
   required String category,
+  String? anikotoSlug,
+  int? episode,
 }) {
   final cat = category.trim().toLowerCase();
   final ordered = <AnimeEmbed>[
+    ...embeds.where((e) => e.server == 'vidnest' && e.category == cat),
     ...embeds.where((e) => e.server == 'megaplay' && e.category == cat),
     ...embeds.where((e) => e.server == 'vidwish' && e.category == cat),
-    ...embeds.where((e) => e.server == 'vidnest' && e.category == cat),
   ];
   final out = <AnimeBrowserEmbed>[];
   final seen = <String>{};
-  for (final e in ordered) {
-    final b = animeBrowserEmbedFor(e);
-    if (b == null || !seen.add(b.url)) continue;
+
+  AnimeBrowserEmbed? anikotoPage;
+  final slug = anikotoSlug?.trim() ?? '';
+  final ep = episode ?? 0;
+  if (slug.isNotEmpty && ep > 0) {
+    anikotoPage = AnimeBrowserEmbed(
+      url: 'https://anikoto.cz/watch/$slug/ep-$ep',
+      label: 'AniKoto',
+      referer: 'https://anikoto.cz/',
+      origin: 'https://anikoto.cz',
+      loadInMainFrame: true,
+    );
+  }
+
+  void add(AnimeBrowserEmbed? b) {
+    if (b == null || !seen.add(b.url)) return;
     out.add(b);
   }
+
+  for (final e in ordered) {
+    add(animeBrowserEmbedFor(e));
+  }
+  add(anikotoPage);
   return out;
 }
