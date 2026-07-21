@@ -151,11 +151,28 @@ void main() {
       expect(h['Origin'], 'https://megaplay.buzz');
     });
 
+    test('forces megaplay Referer for kotocdn anime CDN when missing', () {
+      const url =
+          'https://megap.kotocdn.site/abc/def/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
     test('rewrites nekostream self-Referer to megaplay', () {
       const url =
           'https://9hjkrt.nekostream.site/abc/def/master.m3u8';
       final h = resolvePlaybackHttpHeaders({
         'Referer': 'https://9hjkrt.nekostream.site/',
+      }, streamUrl: url);
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('rewrites kotocdn self-Referer to megaplay', () {
+      const url = 'https://megap.kotocdn.site/abc/def/master.m3u8';
+      final h = resolvePlaybackHttpHeaders({
+        'Referer': 'https://megap.kotocdn.site/',
       }, streamUrl: url);
       expect(h['Referer'], 'https://megaplay.buzz/');
       expect(h['Origin'], 'https://megaplay.buzz');

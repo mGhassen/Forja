@@ -3,10 +3,16 @@ import 'package:forja/shared/player/player/utils.dart';
 
 void main() {
   group('animeHlsNeedsPngStrip', () {
-    test('nekostream / mewstream / ibyteimg need strip', () {
+    test('nekostream / kotocdn / mewstream / ibyteimg need strip', () {
       expect(
         animeHlsNeedsPngStrip(
           'https://9hjkrt.nekostream.site/abc/master.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        animeHlsNeedsPngStrip(
+          'https://megap.kotocdn.site/abc/master.m3u8',
         ),
         isTrue,
       );

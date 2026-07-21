@@ -140,6 +140,43 @@ void main() {
       );
     });
 
+    test('remote megaplay pngStrip list keeps builtin kotocdn', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'anime': {
+          'playbackProfiles': {
+            'megaplay': {
+              'probe': 'segmentPoisonSample',
+              'pngStripHostContains': [
+                'nekostream',
+                'mewstream',
+                'vivibebe',
+                'ibyteimg',
+                'byteimg.com',
+                'lostproject',
+                'watching.onl',
+              ],
+            },
+          },
+        },
+      });
+      expect(remote, isNotNull);
+      final merged =
+          ProviderRuntimeSnapshot.builtins().merged(remote!);
+      ProviderRuntimeConfig.instance.debugSetSnapshot(merged);
+      expect(
+        merged.animePlaybackProfiles['megaplay']!.pngStripHostContains,
+        contains('kotocdn'),
+      );
+      expect(
+        animeHlsNeedsPngStripFor(
+          'https://megap.kotocdn.site/x/master.m3u8',
+          sourceKey: 'megaplay',
+        ),
+        isTrue,
+      );
+    });
+
     test('unsupported schema ignored', () {
       expect(
         ProviderRuntimeSnapshot.tryParse({'schema': 99, 'anime': {}}),

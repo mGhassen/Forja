@@ -69,7 +69,6 @@ private func registerExternalPlayerChannel(_ controller: FlutterViewController) 
       return
     }
 
-    let appURL = URL(fileURLWithPath: appPath, isDirectory: true)
     guard FileManager.default.fileExists(atPath: appPath) else {
       result(
         FlutterError(

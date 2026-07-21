@@ -13,6 +13,7 @@ import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:rust/rust.dart';
 import 'asian_drama_player_screen.dart';
 
 Future<T?> openAsianDramaDetails<T>(BuildContext context, KdramaCard drama) {
@@ -46,12 +47,14 @@ class AsianDramaDetailsScreen extends StatefulWidget {
 
 class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   final KissKhService _service = KissKhService();
+  final EpisodeWatchedService _episodeWatchedService = EpisodeWatchedService();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'asian-drama-details-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'asian-drama-details-back');
   bool _detailsHeroInitialFocusDone = false;
   KdramaDetails? _details;
   Map<String, dynamic>? _progress;
+  Set<String> _watchedEpisodes = {};
   bool _loading = true;
   String? _error;
   int _selectedEpisode = 1;
@@ -61,6 +64,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     super.initState();
     KissKhService.watchHistoryRevision.addListener(_onHistoryChanged);
     _load();
+    _loadWatchedEpisodes();
   }
 
   @override
@@ -187,6 +191,24 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   Future<void> _clearProgress() async {
     await _service.removeFromHistory(widget.drama.id);
     if (mounted) setState(() => _progress = null);
+  }
+
+  Future<void> _loadWatchedEpisodes() async {
+    final set = await _episodeWatchedService.getWatchedSet(
+      widget.drama.id,
+      catalog: EpisodeWatchedService.catalogKisskh,
+    );
+    if (mounted) setState(() => _watchedEpisodes = set);
+  }
+
+  Future<void> _toggleEpisodeWatched(int season, int episode) async {
+    await _episodeWatchedService.toggle(
+      widget.drama.id,
+      season,
+      episode,
+      catalog: EpisodeWatchedService.catalogKisskh,
+    );
+    await _loadWatchedEpisodes();
   }
 
   List<String> _metaParts(KdramaDetails det) {
@@ -325,7 +347,8 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               selectedEpisode: _selectedEpisode,
               isLoadingSeason: false,
               seasonData: null,
-              watchedEpisodes: const {},
+              watchedEpisodes: _watchedEpisodes,
+              watchedCatalog: EpisodeWatchedService.catalogKisskh,
               fallbackPosterPath: det.cover,
               customEpisodesBySeason: _episodeMaps(det),
               episodeProgress: _episodeProgressMap(),
@@ -337,7 +360,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                 setState(() => _selectedEpisode = ep);
                 _playSelected();
               },
-              onToggleWatched: (_, _) {},
+              onToggleWatched: _toggleEpisodeWatched,
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',
               tvEpisodeRowId: 'episodes',

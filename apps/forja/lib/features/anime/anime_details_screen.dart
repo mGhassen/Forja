@@ -38,6 +38,7 @@ class AnimeDetailsScreen extends StatefulWidget {
 
 class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   final AnimeService _service = AnimeService();
+  final EpisodeWatchedService _episodeWatchedService = EpisodeWatchedService();
   final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'anime-details-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'anime-details-back');
@@ -48,6 +49,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   bool _episodesLoading = true;
   List<AnimeCard> _related = [];
   Map<String, dynamic>? _progress;
+  Set<String> _watchedEpisodes = {};
   String? _error;
 
   String _category = 'sub';
@@ -58,6 +60,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     super.initState();
     SettingsService.animeTitleLanguageNotifier.addListener(_onTitleLanguage);
     _load();
+    _loadWatchedEpisodes();
   }
 
   @override
@@ -207,6 +210,24 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     if (mounted) setState(() => _progress = null);
   }
 
+  Future<void> _loadWatchedEpisodes() async {
+    final set = await _episodeWatchedService.getWatchedSet(
+      widget.anime.id,
+      catalog: EpisodeWatchedService.catalogAnilist,
+    );
+    if (mounted) setState(() => _watchedEpisodes = set);
+  }
+
+  Future<void> _toggleEpisodeWatched(int season, int episode) async {
+    await _episodeWatchedService.toggle(
+      widget.anime.id,
+      season,
+      episode,
+      catalog: EpisodeWatchedService.catalogAnilist,
+    );
+    await _loadWatchedEpisodes();
+  }
+
   List<String> _metaParts(AnimeCard a) {
     return [
       if (a.format != null && a.format!.isNotEmpty) a.format!,
@@ -354,7 +375,8 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               selectedEpisode: _selectedEpisode,
               isLoadingSeason: _episodesLoading,
               seasonData: null,
-              watchedEpisodes: const {},
+              watchedEpisodes: _watchedEpisodes,
+              watchedCatalog: EpisodeWatchedService.catalogAnilist,
               fallbackPosterPath: a.coverUrl,
               customEpisodesBySeason: _episodeMaps(),
               episodeProgress: _episodeProgressMap(),
@@ -366,7 +388,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                 setState(() => _selectedEpisode = ep);
                 _playSelected();
               },
-              onToggleWatched: (_, _) {},
+              onToggleWatched: _toggleEpisodeWatched,
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',
               tvEpisodeRowId: 'episodes',

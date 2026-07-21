@@ -137,8 +137,8 @@ fn scrape_data_id(embed_url: &str, referer: &str) -> Result<Option<String>, Stri
     Ok(Some(data_id.to_string()))
 }
 
-/// CDN hosts rotate (nekostream, mewstream, …). Self-origin / scrape Referer
-/// → 403; force the embed family host used by the player header rewrite.
+/// CDN hosts rotate (nekostream, kotocdn, mewstream, …). Self-origin / scrape
+/// Referer → 403; force the embed family host used by the player header rewrite.
 fn stream_playback_headers(file: &str, embed_origin: &str) -> (String, String) {
     let host = file
         .strip_prefix("https://")
@@ -148,6 +148,7 @@ fn stream_playback_headers(file: &str, embed_origin: &str) -> (String, String) {
         .to_lowercase();
     if host.contains("mewstream")
         || host.contains("nekostream")
+        || host.contains("kotocdn")
         || host.contains("lostproject")
         || host.contains("megaplay")
     {
@@ -184,6 +185,16 @@ mod tests {
     fn nekostream_file_forces_megaplay_referer() {
         let (r, o) = stream_playback_headers(
             "https://9hjkrt.nekostream.site/a/b/master.m3u8",
+            "https://megaplay.buzz",
+        );
+        assert!(r.contains("megaplay.buzz"));
+        assert!(o.contains("megaplay.buzz"));
+    }
+
+    #[test]
+    fn kotocdn_file_forces_megaplay_referer() {
+        let (r, o) = stream_playback_headers(
+            "https://megap.kotocdn.site/a/b/master.m3u8",
             "https://megaplay.buzz",
         );
         assert!(r.contains("megaplay.buzz"));

@@ -37,6 +37,9 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     this.seasonPosters = const {},
     this.episodeProgress = const {},
     this.customEpisodesBySeason,
+    /// When set (`anilist` / `kisskh`), watched keys are `{catalog}_{id}_S…_E…`.
+    /// Null keeps TMDB keys `{id}_S…_E…`.
+    this.watchedCatalog,
     this.tvTabId,
     this.tvSeasonRowId,
     this.tvEpisodeRowId,
@@ -51,6 +54,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final bool isLoadingSeason;
   final Map<String, dynamic>? seasonData;
   final Set<String> watchedEpisodes;
+  final String? watchedCatalog;
   final String fallbackPosterPath;
   final SeasonSelectCallback onSeasonSelected;
   final EpisodeSelectCallback onEpisodeSelected;
@@ -208,7 +212,11 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   }
 
   bool _watchedKey(int season, int episode) {
-    return widget.watchedEpisodes.contains('${widget.tmdbId}_S${season}_E$episode');
+    final catalog = widget.watchedCatalog;
+    final key = (catalog == null || catalog.isEmpty)
+        ? '${widget.tmdbId}_S${season}_E$episode'
+        : '${catalog}_${widget.tmdbId}_S${season}_E$episode';
+    return widget.watchedEpisodes.contains(key);
   }
 
   void _scrollToSelectedSeason() {

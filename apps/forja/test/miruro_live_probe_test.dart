@@ -23,6 +23,7 @@ String _classifyCdn(String url) {
   final u = url.toLowerCase();
   if (u.contains('owocdn') || u.contains('kwik')) return 'owocdn/kwik';
   if (u.contains('nekostream') ||
+      u.contains('kotocdn') ||
       u.contains('mewstream') ||
       u.contains('megaplay') ||
       u.contains('ibyteimg') ||

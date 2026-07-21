@@ -26,7 +26,7 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 ### Watch data (destructive)
 
 - **Continue watching** — empties Home, Anime, Asian Drama, and Anime Arabic resume rows on this device. Trakt / Simkl cloud history is not deleted.
-- **Watched episode marks** — clears local episode checkmarks only. Cloud trackers may restore marks after sync.
+- **Watched episode marks** — clears local episode checkmarks (TMDB TV, Anime, Asian Drama) on this device. Trakt / Simkl may restore TMDB marks after sync; Anime / Asian Drama marks are local-only.
 
 Every action asks for confirmation and shows a toast when done. On **TV**, Cancel / Confirm are D-pad focusable (destructive actions land on Cancel).
 

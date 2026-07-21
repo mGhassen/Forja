@@ -409,6 +409,22 @@ class AnimePlaybackProfile {
         },
         'pngStripHostContains': pngStripHostContains,
       };
+
+  /// Overlay wins [probe]; PNG-strip host needles are unioned so incomplete
+  /// remote lists cannot drop builtin CDN rotations (kotocdn, …).
+  AnimePlaybackProfile merged(AnimePlaybackProfile overlay) {
+    final hosts = <String>[];
+    final seen = <String>{};
+    for (final h in [...pngStripHostContains, ...overlay.pngStripHostContains]) {
+      final k = h.toLowerCase();
+      if (k.isEmpty || !seen.add(k)) continue;
+      hosts.add(h);
+    }
+    return AnimePlaybackProfile(
+      probe: overlay.probe,
+      pngStripHostContains: hosts,
+    );
+  }
 }
 
 @immutable
@@ -573,6 +589,7 @@ class ProviderRuntimeSnapshot {
             hostContains: [
               'mewstream',
               'nekostream',
+              'kotocdn',
               'lostproject',
               'megaplay',
             ],
@@ -603,6 +620,7 @@ class ProviderRuntimeSnapshot {
       probe: AnimeProbeMode.segmentPoisonSample,
       pngStripHostContains: [
         'nekostream',
+        'kotocdn',
         'mewstream',
         'vivibebe',
         'ibyteimg',
@@ -615,6 +633,7 @@ class ProviderRuntimeSnapshot {
       probe: AnimeProbeMode.segmentPoisonSample,
       pngStripHostContains: [
         'nekostream',
+        'kotocdn',
         'mewstream',
         'vivibebe',
         'ibyteimg',
@@ -762,7 +781,10 @@ class ProviderRuntimeSnapshot {
     final api = Map<String, String>.from(apis)..addAll(overlay.apis);
     final ws = Map<String, String>.from(webstreamr)..addAll(overlay.webstreamr);
     final profiles = Map<String, AnimePlaybackProfile>.from(animePlaybackProfiles);
-    profiles.addAll(overlay.animePlaybackProfiles);
+    for (final e in overlay.animePlaybackProfiles.entries) {
+      final base = profiles[e.key];
+      profiles[e.key] = base == null ? e.value : base.merged(e.value);
+    }
     return ProviderRuntimeSnapshot(
       schema: overlay.schema,
       templates: tpl,

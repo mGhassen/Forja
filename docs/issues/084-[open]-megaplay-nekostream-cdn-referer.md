@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **20 / 20** fix · **2 / 10** acceptance |
+| **Progress** | **22 / 22** fix · **2 / 10** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,8 @@
 | 18 | I84-T18 | Native AniKoto site Ajax (Vidstream/VidPlay/…) → MegaPlay/VidTube getSources race | ✅ |
 | 19 | I84-T19 | VidNest web-player first on fallback; manual VidNest CDN/API miss opens vidnest.fun immediately | ✅ |
 | 20 | I84-T20 | Remove anime Web player (`AnimeEmbedPlayerScreen` + browser-embed fallbacks) | ✅ |
+| 21 | I84-T21 | Treat `kotocdn` as Megaplay CDN (Dart builtins + Rust headers + PNG strip + runtime migration) | ✅ |
+| 22 | I84-T22 | Merge anime `pngStripHostContains` as union — remote lists must not drop builtin CDN needles | ✅ |
 
 ---
 
@@ -61,7 +63,7 @@
 
 ## Summary
 
-Megaplay extract still works ([API](https://megaplay.buzz/api)). CDN host rotated to `*.nekostream.site`. Without `Referer: https://megaplay.buzz/` the master returns **403**. Forja only rewrote `mewstream.buzz` / `lostproject` / `*megaplay*` hosts, so dropped headers derived a self-Referer → probe/play fail. `enma.lol` (scrape Referer) is also rejected by nekostream — must not count as a valid Megaplay-family playback Referer.
+Megaplay extract still works ([API](https://megaplay.buzz/api)). CDN host rotated `mewstream` → `nekostream` → `kotocdn` (`megap.kotocdn.site`). Without `Referer: https://megaplay.buzz/` the master returns **403**. Forja only rewrote known CDN needles, so dropped headers derived a self-Referer → probe/play fail. `enma.lol` (scrape Referer) is also rejected — must not count as a valid Megaplay-family playback Referer. **I84-T21** adds `kotocdn` to the host list (symptom); real fix is sourceKey/stamp-first Referer so CDN renames need no allowlist chase.
 
 Also: code assumed `/stream/ani/` always 404s and skipped Megaplay without Anikoto. That path is live again for **Megaplay** — emit it when no `episode_embed_id`, keep `/stream/s-2/` when Anikoto matches. **Vidwish** `/stream/ani/` stays a soft-404 / transport waste — only emit Vidwish when Anikoto provides an `s-2` id (I84-T08).
 
