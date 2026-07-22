@@ -8,6 +8,7 @@ mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
   ) async {
     if (!mounted) return false;
     var cancelled = false;
+    var closingOurselves = false;
     showDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -15,7 +16,9 @@ mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
       builder: (ctx) => PopScope(
         canPop: true,
         onPopInvokedWithResult: (didPop, _) {
-          if (didPop) cancelled = true;
+          // Imperative pop in [finally] also invokes this — don't treat that
+          // as user cancel or play never continues after a successful resolve.
+          if (didPop && !closingOurselves) cancelled = true;
         },
         child: _LiveCancellableLoadingDialog(
           message: message,
@@ -27,6 +30,7 @@ mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
       await action();
     } finally {
       if (mounted && !cancelled) {
+        closingOurselves = true;
         final nav = Navigator.of(context, rootNavigator: true);
         if (nav.canPop()) nav.pop();
       }

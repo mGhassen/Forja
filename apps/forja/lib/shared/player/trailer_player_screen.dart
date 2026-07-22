@@ -93,7 +93,6 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
-    ShellBus.notifyShellChromeChanged();
     _currentIndex = widget.initialIndex;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     if (!DesktopWindowChrome.isDesktop) {
@@ -109,7 +108,6 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   void dispose() {
     _hideTimer?.cancel();
     ShellBus.leavePlayerSurface();
-    ShellBus.notifyShellChromeChanged();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _backFocus.dispose();
     _playFocus.dispose();

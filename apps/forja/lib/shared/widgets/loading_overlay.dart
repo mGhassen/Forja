@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -12,7 +14,9 @@ const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 Future<T?> showLoadingOverlayDialog<T>(
   BuildContext context, {
   required WidgetBuilder builder,
-  bool useRootNavigator = false,
+  /// Same navigator as [AppRouter.openPlayer] so Back cannot leave a loading
+  /// dialog stranded on the shell overlay under a root player route.
+  bool useRootNavigator = true,
 }) {
   return showDialog<T>(
     context: context,
@@ -24,27 +28,31 @@ Future<T?> showLoadingOverlayDialog<T>(
   );
 }
 
+void _removeLoadingOverlayRoute(
+  NavigatorState navigator,
+  Route<dynamic>? route,
+) {
+  if (!navigator.mounted) return;
+  if (route != null) {
+    if (!route.isActive) return;
+    navigator.removeRoute(route);
+    return;
+  }
+  if (navigator.canPop()) navigator.pop();
+}
+
 /// Removes the loading dialog without popping whatever route was pushed above it.
 ///
-/// Safe to call twice (cancel + async cleanup) and while the navigator is
-/// mid-build/transition — mutates on the next frame and no-ops if already gone.
+/// Safe to call twice (cancel + async cleanup). Tries synchronously, then
+/// retries on the next frame if the navigator was locked mid-transition.
 void dismissLoadingOverlayRoute(BuildContext loadingDialogContext) {
   if (!loadingDialogContext.mounted) return;
   final navigator = Navigator.of(loadingDialogContext);
   final route = ModalRoute.of(loadingDialogContext);
-  if (route != null && !route.isActive) return;
-
-  void dismiss() {
-    if (!navigator.mounted) return;
-    if (route != null) {
-      if (!route.isActive) return;
-      navigator.removeRoute(route);
-      return;
-    }
-    if (navigator.canPop()) navigator.pop();
-  }
-
-  WidgetsBinding.instance.addPostFrameCallback((_) => dismiss());
+  _removeLoadingOverlayRoute(navigator, route);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _removeLoadingOverlayRoute(navigator, route);
+  });
 }
 
 /// Dispose overlay notifiers after [dismissLoadingOverlayRoute]'s post-frame
@@ -62,8 +70,9 @@ void disposeLoadingOverlayNotifiers(Iterable<ChangeNotifier> notifiers) {
 
 /// Fades the loading overlay out while the player route fades in underneath.
 ///
-/// Dismisses the loading route as soon as either the fade finishes **or** the
-/// player closes — so Escape before playback never lands on a stuck overlay.
+/// Captures the loading [Route] before [openPlayer] and strips it from under
+/// the player (fade end + player close). Player Back alone never pops this
+/// dialog — leaving it mounted is what stranded users on the loading screen.
 Future<T?> crossfadeLoadingOverlayToPlayer<T>({
   required BuildContext loadingDialogContext,
   ValueNotifier<bool>? fadeOutNotifier,
@@ -72,13 +81,29 @@ Future<T?> crossfadeLoadingOverlayToPlayer<T>({
 }) async {
   if (beforeFade != null) await beforeFade();
   fadeOutNotifier?.value = true;
+
+  if (!loadingDialogContext.mounted) {
+    return openPlayer();
+  }
+  // Capture before the player push — dialog context can unmount after remove.
+  final navigator = Navigator.of(loadingDialogContext);
+  final route = ModalRoute.of(loadingDialogContext);
+
+  void dismiss() => _removeLoadingOverlayRoute(navigator, route);
+
   final playerFuture = openPlayer();
-  await Future.any<void>([
-    Future<void>.delayed(loadingOverlayFadeOutDuration),
-    playerFuture.then<void>((_) {}),
-  ]);
-  dismissLoadingOverlayRoute(loadingDialogContext);
-  return playerFuture;
+  // Do not keep loading under the player for the whole session — Back only
+  // pops the player, so a leftover dialog is what the user lands on.
+  WidgetsBinding.instance.addPostFrameCallback((_) => dismiss());
+  unawaited(
+    Future<void>.delayed(loadingOverlayFadeOutDuration).then((_) => dismiss()),
+  );
+
+  try {
+    return await playerFuture;
+  } finally {
+    dismiss();
+  }
 }
 
 class LoadingOverlay extends StatefulWidget {
