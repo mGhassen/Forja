@@ -10,6 +10,16 @@ type Block =
 
 const PREFIX_RE = /^\*\*(Add|Change|Fix|Remove):\*\*\s*/i
 
+const PLATFORM_LABELS: Record<
+  'windows' | 'macos' | 'linux' | 'android_tv',
+  string
+> = {
+  windows: 'Windows',
+  macos: 'macOS',
+  linux: 'Linux',
+  android_tv: 'Android TV',
+}
+
 function isGithubOnlyLine(trimmed: string): boolean {
   const plain = trimmed.replace(/\*\*/g, '').trim()
   if (/^Full Changelog:\s*\S+/i.test(plain)) return true
@@ -88,10 +98,13 @@ export function ReleaseNotes({
   markdown,
   className,
   emptyLabel = 'No release notes for this version.',
+  platforms,
 }: {
   markdown: string
   className?: string
   emptyLabel?: string
+  /** Platforms that shipped installers in this version (shown under the title). */
+  platforms?: Array<'windows' | 'macos' | 'linux' | 'android_tv'>
 }) {
   const blocks = parseBlocks(markdown)
 
@@ -118,12 +131,23 @@ export function ReleaseNotes({
       {blocks.map((b, i) => {
         if (b.type === 'h1') {
           return (
-            <h3
-              key={i}
-              className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl"
-            >
-              {b.text}
-            </h3>
+            <div key={i} className="space-y-3">
+              <h3 className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
+                {b.text}
+              </h3>
+              {platforms && platforms.length > 0 ? (
+                <ul className="flex flex-wrap gap-2" aria-label="Platforms in this release">
+                  {platforms.map((id) => (
+                    <li
+                      key={id}
+                      className="rounded-full border border-[rgba(237,230,218,0.16)] px-3 py-1 font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-[rgba(237,230,218,0.62)]"
+                    >
+                      {PLATFORM_LABELS[id]}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           )
         }
         if (b.type === 'h2') {

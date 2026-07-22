@@ -33,6 +33,8 @@ export type ReleaseWithAssets = Release & {
   notesByVersion?: Record<string, string>
   /** Latest version per showcase platform id. */
   platformVersions?: Record<string, string>
+  /** Platforms that shipped installers in this release version. */
+  platforms?: ShowcasePlatformId[]
 }
 
 export type ShowcasePlatformId = 'windows' | 'macos' | 'linux' | 'android_tv'
@@ -122,7 +124,11 @@ export function hasChangelogBullets(raw: string | null | undefined): boolean {
   return cleaned.split('\n').some((line) => /^[-*]\s+/.test(line.trim()))
 }
 
-function fromR2Changelog(version: string, markdown: string): ReleaseWithAssets {
+function fromR2Changelog(
+  version: string,
+  markdown: string,
+  platforms: ShowcasePlatformId[] = [],
+): ReleaseWithAssets {
   return {
     id: `r2-${version}`,
     tag: `v${version}`,
@@ -133,18 +139,23 @@ function fromR2Changelog(version: string, markdown: string): ReleaseWithAssets {
     source: 'r2',
     synced_at: new Date().toISOString(),
     assets: [],
+    platforms,
   }
 }
 
 async function fetchR2ChangelogNotes(): Promise<Record<string, string>> {
+  const archive = await fetchR2ChangelogArchiveClient()
+  return archive.notes
+}
+
+async function fetchR2ChangelogArchiveClient(): Promise<R2ChangelogArchive> {
   const res = await fetch('/api/changelog', {
     headers: { Accept: 'application/json' },
   })
   if (!res.ok) {
     throw new Error(`changelog API ${res.status}`)
   }
-  const archive = (await res.json()) as R2ChangelogArchive
-  return archive.notes ?? {}
+  return (await res.json()) as R2ChangelogArchive
 }
 
 async function fetchLatestReleaseFromApi(): Promise<ReleaseWithAssets | null> {
@@ -156,15 +167,36 @@ async function fetchLatestReleaseFromApi(): Promise<ReleaseWithAssets | null> {
   }
   const release = (await res.json()) as R2LatestRelease | null
   if (!release?.version || !release.assets?.length) return null
+
+  const assets = release.assets.map((asset) => {
+    const platform = asset.platform || detectPlatformFromFilename(asset.name)
+    // Filename semver wins — top-level release.version is the max across platforms.
+    const version =
+      versionFromFilename(asset.name) ||
+      asset.version ||
+      release.platformVersions?.[platform] ||
+      release.version
+    return {
+      ...asset,
+      platform,
+      version,
+    }
+  })
+
+  const platformVersions: Record<string, string> = {
+    ...(release.platformVersions ?? {}),
+  }
+  for (const asset of assets) {
+    if (!asset.version || !asset.platform) continue
+    if (platformVersions[asset.platform]) continue
+    platformVersions[asset.platform] = asset.version
+  }
+
   return {
     ...release,
     notesByVersion: release.notesByVersion ?? {},
-    platformVersions: release.platformVersions ?? {},
-    assets: release.assets.map((asset) => ({
-      ...asset,
-      platform: asset.platform || detectPlatformFromFilename(asset.name),
-      version: asset.version || release.version,
-    })),
+    platformVersions,
+    assets,
   }
 }
 
@@ -172,12 +204,24 @@ async function fetchLatestReleaseFromApi(): Promise<ReleaseWithAssets | null> {
  * Changelog entries from R2 `changelog/` (via /api/changelog).
  */
 export function mergeChangelogReleases(
-  r2Notes: Record<string, string>,
+  archive: Pick<R2ChangelogArchive, 'notes' | 'platformsByVersion'>,
 ): ReleaseWithAssets[] {
-  return Object.entries(r2Notes)
-    .map(([version, markdown]) => fromR2Changelog(version, markdown))
+  return Object.entries(archive.notes)
+    .map(([version, markdown]) =>
+      fromR2Changelog(
+        version,
+        markdown,
+        (archive.platformsByVersion?.[version] ?? []) as ShowcasePlatformId[],
+      ),
+    )
     .sort((a, b) => compareSemverDesc(a.version, b.version))
     .slice(0, CHANGELOG_MENU_LIMIT)
+}
+
+/** Semver embedded in installer filenames (`Forja-1.2.365-windows-setup.exe`). */
+export function versionFromFilename(name: string): string | null {
+  const match = name.match(/(?:^|[^0-9])(\d+\.\d+\.\d+)(?:[^0-9]|$)/)
+  return match?.[1] ?? null
 }
 
 /**
@@ -200,9 +244,21 @@ export function useAllReleases() {
   return useQuery({
     queryKey: ['releases', 'changelog'],
     queryFn: async (): Promise<ReleaseWithAssets[]> => {
-      const r2Notes = await fetchR2ChangelogNotes()
-      return mergeChangelogReleases(r2Notes)
+      const archive = await fetchR2ChangelogArchiveClient()
+      return mergeChangelogReleases({
+        notes: archive.notes ?? {},
+        platformsByVersion: archive.platformsByVersion ?? {},
+      })
     },
+    staleTime: 60_000,
+  })
+}
+
+/** Raw version → markdown map from the permanent changelog archive. */
+export function useChangelogNotes() {
+  return useQuery({
+    queryKey: ['releases', 'changelog-notes'],
+    queryFn: fetchR2ChangelogNotes,
     staleTime: 60_000,
   })
 }
@@ -273,24 +329,42 @@ export function primaryDownloadsByPlatform(
   return out
 }
 
-/** Version string for a showcase platform from merged latest release. */
+/**
+ * Version for a showcase platform.
+ * Installer filename semver is authoritative (matches the file you download).
+ * Manifest `platforms` map is next; never use the global max version.
+ */
 export function versionForPlatform(
   release: ReleaseWithAssets | null | undefined,
   platformId: ShowcasePlatformId,
 ): string | null {
-  const fromMap = release?.platformVersions?.[platformId]
-  if (fromMap) return fromMap
   const platform = SHOWCASE_PLATFORMS.find((p) => p.id === platformId)
   if (!platform) return null
-  return primaryAssetForPlatform(release?.assets, platform)?.version ?? null
+  const asset = primaryAssetForPlatform(release?.assets, platform)
+  const fromName = asset ? versionFromFilename(asset.name) : null
+  if (fromName) return fromName
+
+  const fromMap = release?.platformVersions?.[platformId]?.trim()
+  if (fromMap) return fromMap.replace(/^v/, '')
+
+  return asset?.version?.replace(/^v/, '') ?? null
 }
 
-/** Changelog markdown for a showcase platform's latest version. */
+/**
+ * Changelog markdown for a showcase platform's latest version.
+ * Falls back to the permanent changelog archive when the latest-release
+ * payload only includes notes for the max version.
+ */
 export function notesForPlatform(
   release: ReleaseWithAssets | null | undefined,
   platformId: ShowcasePlatformId,
+  archiveNotes?: Record<string, string> | null,
 ): string | null {
   const version = versionForPlatform(release, platformId)
   if (!version) return null
-  return release?.notesByVersion?.[version] ?? null
+  return (
+    release?.notesByVersion?.[version] ??
+    archiveNotes?.[version] ??
+    null
+  )
 }

@@ -12,7 +12,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), load from file, then online languages with track counts; drill into a language for specific files
+- Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), load from file, then online languages with track counts; drill into a language for specific files. Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
 - Change appearance (size, color, font, opacity)
 - Adjust sync delay if dialogue is early/late

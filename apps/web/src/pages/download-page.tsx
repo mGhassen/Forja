@@ -10,6 +10,7 @@ import {
   assetsForPlatform,
   notesForPlatform,
   primaryDownloadsByPlatform,
+  useChangelogNotes,
   useLatestRelease,
   versionForPlatform,
   type ShowcasePlatform,
@@ -279,6 +280,7 @@ function PlatformPicker({
 
 export function DownloadPage() {
   const { data, isLoading, isError, error } = useLatestRelease()
+  const { data: archiveNotes } = useChangelogNotes()
   const [selectedId, setSelectedId] = useState<ShowcasePlatformId>('windows')
 
   useEffect(() => {
@@ -309,10 +311,10 @@ export function DownloadPage() {
   const notesById = useMemo(() => {
     const map = {} as Record<ShowcasePlatformId, string | null>
     for (const p of SHOWCASE_PLATFORMS) {
-      map[p.id] = notesForPlatform(data, p.id)
+      map[p.id] = notesForPlatform(data, p.id, archiveNotes)
     }
     return map
-  }, [data])
+  }, [data, archiveNotes])
 
   return (
     <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">

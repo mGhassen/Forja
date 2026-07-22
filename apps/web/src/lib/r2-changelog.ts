@@ -3,11 +3,25 @@
  * Browser uses /api/changelog (same-origin) — CDN has no CORS for the portal.
  */
 
+import { detectPlatformFromFilename } from '@/lib/r2-latest-release'
+
 export const CHANGELOG_FETCH_LIMIT = 20
+
+/** Ordered showcase platform ids for release tags. */
+export const CHANGELOG_PLATFORM_ORDER = [
+  'windows',
+  'macos',
+  'linux',
+  'android_tv',
+] as const
+
+export type ChangelogPlatformId = (typeof CHANGELOG_PLATFORM_ORDER)[number]
 
 export type R2ChangelogArchive = {
   versions: string[]
   notes: Record<string, string>
+  /** Platforms that shipped installers in each version (from `v{ver}/manifest.json`). */
+  platformsByVersion: Record<string, ChangelogPlatformId[]>
 }
 
 function cdnBase(): string | null {
@@ -18,6 +32,44 @@ function cdnBase(): string | null {
   ).trim()
   if (!raw) return null
   return raw.replace(/\/$/, '')
+}
+
+function orderPlatforms(ids: Iterable<string>): ChangelogPlatformId[] {
+  const set = new Set(ids)
+  return CHANGELOG_PLATFORM_ORDER.filter((id) => set.has(id))
+}
+
+async function platformsFromVersionManifest(
+  base: string,
+  version: string,
+): Promise<ChangelogPlatformId[]> {
+  const ver = version.replace(/^v/, '')
+  const res = await fetch(`${base}/v${ver}/manifest.json`, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'forja-web',
+    },
+  })
+  if (!res.ok) return []
+
+  const decoded = (await res.json()) as {
+    assets?: unknown
+    platforms?: Record<string, unknown>
+  }
+
+  if (decoded.platforms && typeof decoded.platforms === 'object') {
+    return orderPlatforms(Object.keys(decoded.platforms))
+  }
+
+  const assets = Array.isArray(decoded.assets) ? decoded.assets : []
+  const found = new Set<string>()
+  for (const name of assets) {
+    if (typeof name !== 'string' || !name.trim()) continue
+    const platform = detectPlatformFromFilename(name)
+    if (platform === 'other' || platform === 'ios') continue
+    found.add(platform)
+  }
+  return orderPlatforms(found)
 }
 
 export async function fetchR2ChangelogArchive(
@@ -46,22 +98,30 @@ export async function fetchR2ChangelogArchive(
     .slice(0, limit)
 
   const notes: Record<string, string> = {}
+  const platformsByVersion: Record<string, ChangelogPlatformId[]> = {}
+
   await Promise.all(
     versions.map(async (version) => {
-      const res = await fetch(`${base}/changelog/${version}.md`, {
-        headers: {
-          Accept: 'text/markdown, text/plain, */*',
-          'User-Agent': 'forja-web',
-        },
-      })
-      if (!res.ok) return
-      const body = (await res.text()).trim()
-      if (body) notes[version] = body
+      const [notesRes, platforms] = await Promise.all([
+        fetch(`${base}/changelog/${version}.md`, {
+          headers: {
+            Accept: 'text/markdown, text/plain, */*',
+            'User-Agent': 'forja-web',
+          },
+        }),
+        platformsFromVersionManifest(base, version),
+      ])
+      if (notesRes.ok) {
+        const body = (await notesRes.text()).trim()
+        if (body) notes[version] = body
+      }
+      if (platforms.length) platformsByVersion[version] = platforms
     }),
   )
 
   return {
     versions: versions.filter((v) => notes[v]),
     notes,
+    platformsByVersion,
   }
 }

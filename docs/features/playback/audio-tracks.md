@@ -15,7 +15,7 @@ Many streams include multiple audio tracks (languages, commentary, Atmos). Forja
 
 - Set preferred audio language (or None for default)
 - Toggle "avoid unsupported audio" to skip problematic codecs
-- Manually select any available track in the player
+- Manually select any available track in the player — languages show in their native script (e.g. हिन्दी, Español, 日本語)
 
 ## Tips
 

@@ -1,119 +1,415 @@
-/// Maps short ISO-639 language codes (and a few common variants) to a
-/// human-readable display name. Used by the subtitle picker to render
-/// language "folders".
+/// Maps ISO-639 codes (and common English aliases) to native endonyms.
+/// Used by audio/subtitle pickers so each language renders in its own script.
 const Map<String, String> _kLanguageNames = {
+  // English
   'en': 'English',
-  'es': 'Spanish',
-  'fr': 'French',
-  'de': 'German',
-  'it': 'Italian',
-  'pt': 'Portuguese',
-  'pt-br': 'Portuguese (Brazil)',
-  'ru': 'Russian',
-  'ja': 'Japanese',
-  'ko': 'Korean',
-  'zh': 'Chinese',
-  'zh-cn': 'Chinese (Simplified)',
-  'zh-tw': 'Chinese (Traditional)',
-  'ar': 'Arabic',
-  'tr': 'Turkish',
-  'pl': 'Polish',
-  'nl': 'Dutch',
-  'sv': 'Swedish',
-  'da': 'Danish',
-  'no': 'Norwegian',
-  'nb': 'Norwegian Bokmål',
-  'nn': 'Norwegian Nynorsk',
-  'fi': 'Finnish',
-  'cs': 'Czech',
-  'el': 'Greek',
-  'he': 'Hebrew',
-  'iw': 'Hebrew',
-  'hi': 'Hindi',
-  'id': 'Indonesian',
-  'in': 'Indonesian',
-  'vi': 'Vietnamese',
-  'th': 'Thai',
-  'ro': 'Romanian',
-  'hu': 'Hungarian',
-  'uk': 'Ukrainian',
-  'bg': 'Bulgarian',
-  'hr': 'Croatian',
-  'sr': 'Serbian',
-  'sk': 'Slovak',
-  'sl': 'Slovenian',
-  'et': 'Estonian',
-  'lv': 'Latvian',
-  'lt': 'Lithuanian',
-  'ms': 'Malay',
-  'fa': 'Persian',
-  'bn': 'Bengali',
-  'ta': 'Tamil',
-  'te': 'Telugu',
-  'ur': 'Urdu',
-  'jv': 'Javanese',
-  'jw': 'Javanese',
-  'ca': 'Catalan',
-  'eu': 'Basque',
-  'gl': 'Galician',
-  'sq': 'Albanian',
-  'mk': 'Macedonian',
-  'bs': 'Bosnian',
-  'is': 'Icelandic',
-  'mt': 'Maltese',
-  'ga': 'Irish',
-  'cy': 'Welsh',
+  'eng': 'English',
+  'english': 'English',
+  // Spanish
+  'es': 'Español',
+  'spa': 'Español',
+  'esp': 'Español',
+  'spanish': 'Español',
+  'español': 'Español',
+  'espanol': 'Español',
+  // French
+  'fr': 'Français',
+  'fra': 'Français',
+  'fre': 'Français',
+  'french': 'Français',
+  'francais': 'Français',
+  'français': 'Français',
+  // German
+  'de': 'Deutsch',
+  'deu': 'Deutsch',
+  'ger': 'Deutsch',
+  'german': 'Deutsch',
+  'deutsch': 'Deutsch',
+  // Italian
+  'it': 'Italiano',
+  'ita': 'Italiano',
+  'italian': 'Italiano',
+  'italiano': 'Italiano',
+  // Portuguese
+  'pt': 'Português',
+  'por': 'Português',
+  'portuguese': 'Português',
+  'português': 'Português',
+  'portugues': 'Português',
+  'pt-br': 'Português (Brasil)',
+  'pt-pt': 'Português (Portugal)',
+  // Russian
+  'ru': 'Русский',
+  'rus': 'Русский',
+  'russian': 'Русский',
+  // Japanese
+  'ja': '日本語',
+  'jpn': '日本語',
+  'jap': '日本語',
+  'japanese': '日本語',
+  // Korean
+  'ko': '한국어',
+  'kor': '한국어',
+  'korean': '한국어',
+  // Chinese
+  'zh': '中文',
+  'zho': '中文',
+  'chi': '中文',
+  'chinese': '中文',
+  'zh-cn': '中文（简体）',
+  'zh-hans': '中文（简体）',
+  'chs': '中文（简体）',
+  'zh-tw': '中文（繁體）',
+  'zh-hant': '中文（繁體）',
+  'zh-hk': '中文（繁體）',
+  'cht': '中文（繁體）',
+  // Arabic
+  'ar': 'العربية',
+  'ara': 'العربية',
+  'arabic': 'العربية',
+  // Turkish
+  'tr': 'Türkçe',
+  'tur': 'Türkçe',
+  'turkish': 'Türkçe',
+  'turkce': 'Türkçe',
+  'türkçe': 'Türkçe',
+  // Polish
+  'pl': 'Polski',
+  'pol': 'Polski',
+  'polish': 'Polski',
+  // Dutch
+  'nl': 'Nederlands',
+  'nld': 'Nederlands',
+  'dut': 'Nederlands',
+  'dutch': 'Nederlands',
+  // Swedish
+  'sv': 'Svenska',
+  'swe': 'Svenska',
+  'swedish': 'Svenska',
+  // Danish
+  'da': 'Dansk',
+  'dan': 'Dansk',
+  'danish': 'Dansk',
+  // Norwegian
+  'no': 'Norsk',
+  'nor': 'Norsk',
+  'norwegian': 'Norsk',
+  'nb': 'Norsk Bokmål',
+  'nob': 'Norsk Bokmål',
+  'nn': 'Norsk Nynorsk',
+  'nno': 'Norsk Nynorsk',
+  // Finnish
+  'fi': 'Suomi',
+  'fin': 'Suomi',
+  'finnish': 'Suomi',
+  // Czech
+  'cs': 'Čeština',
+  'ces': 'Čeština',
+  'cze': 'Čeština',
+  'czech': 'Čeština',
+  // Greek
+  'el': 'Ελληνικά',
+  'ell': 'Ελληνικά',
+  'gre': 'Ελληνικά',
+  'greek': 'Ελληνικά',
+  // Hebrew
+  'he': 'עברית',
+  'heb': 'עברית',
+  'iw': 'עברית',
+  'hebrew': 'עברית',
+  // Hindi
+  'hi': 'हिन्दी',
+  'hin': 'हिन्दी',
+  'hindi': 'हिन्दी',
+  // Indonesian
+  'id': 'Bahasa Indonesia',
+  'ind': 'Bahasa Indonesia',
+  'in': 'Bahasa Indonesia',
+  'indonesian': 'Bahasa Indonesia',
+  // Vietnamese
+  'vi': 'Tiếng Việt',
+  'vie': 'Tiếng Việt',
+  'vietnamese': 'Tiếng Việt',
+  // Thai
+  'th': 'ไทย',
+  'tha': 'ไทย',
+  'thai': 'ไทย',
+  // Romanian
+  'ro': 'Română',
+  'ron': 'Română',
+  'rum': 'Română',
+  'romanian': 'Română',
+  // Hungarian
+  'hu': 'Magyar',
+  'hun': 'Magyar',
+  'hungarian': 'Magyar',
+  // Ukrainian
+  'uk': 'Українська',
+  'ukr': 'Українська',
+  'ukrainian': 'Українська',
+  // Bulgarian
+  'bg': 'Български',
+  'bul': 'Български',
+  'bulgarian': 'Български',
+  // Croatian
+  'hr': 'Hrvatski',
+  'hrv': 'Hrvatski',
+  'croatian': 'Hrvatski',
+  // Serbian
+  'sr': 'Српски',
+  'srp': 'Српски',
+  'serbian': 'Српски',
+  // Slovak
+  'sk': 'Slovenčina',
+  'slk': 'Slovenčina',
+  'slovak': 'Slovenčina',
+  // Slovenian
+  'sl': 'Slovenščina',
+  'slv': 'Slovenščina',
+  'slovenian': 'Slovenščina',
+  // Estonian
+  'et': 'Eesti',
+  'est': 'Eesti',
+  'estonian': 'Eesti',
+  // Latvian
+  'lv': 'Latviešu',
+  'lav': 'Latviešu',
+  'latvian': 'Latviešu',
+  // Lithuanian
+  'lt': 'Lietuvių',
+  'lit': 'Lietuvių',
+  'lithuanian': 'Lietuvių',
+  // Malay
+  'ms': 'Bahasa Melayu',
+  'msa': 'Bahasa Melayu',
+  'may': 'Bahasa Melayu',
+  'malay': 'Bahasa Melayu',
+  // Persian
+  'fa': 'فارسی',
+  'fas': 'فارسی',
+  'per': 'فارسی',
+  'persian': 'فارسی',
+  'farsi': 'فارسی',
+  // Bengali
+  'bn': 'বাংলা',
+  'ben': 'বাংলা',
+  'bengali': 'বাংলা',
+  // Tamil
+  'ta': 'தமிழ்',
+  'tam': 'தமிழ்',
+  'tamil': 'தமிழ்',
+  // Telugu
+  'te': 'తెలుగు',
+  'tel': 'తెలుగు',
+  'telugu': 'తెలుగు',
+  // Urdu
+  'ur': 'اردو',
+  'urd': 'اردو',
+  'urdu': 'اردو',
+  // Javanese
+  'jv': 'Basa Jawa',
+  'jav': 'Basa Jawa',
+  'jw': 'Basa Jawa',
+  'javanese': 'Basa Jawa',
+  // Catalan
+  'ca': 'Català',
+  'cat': 'Català',
+  'catalan': 'Català',
+  // Basque
+  'eu': 'Euskara',
+  'eus': 'Euskara',
+  'basque': 'Euskara',
+  // Galician
+  'gl': 'Galego',
+  'glg': 'Galego',
+  'galician': 'Galego',
+  // Albanian
+  'sq': 'Shqip',
+  'sqi': 'Shqip',
+  'alb': 'Shqip',
+  'albanian': 'Shqip',
+  // Macedonian
+  'mk': 'Македонски',
+  'mkd': 'Македонски',
+  'mac': 'Македонски',
+  'macedonian': 'Македонски',
+  // Bosnian
+  'bs': 'Bosanski',
+  'bos': 'Bosanski',
+  'bosnian': 'Bosanski',
+  // Icelandic
+  'is': 'Íslenska',
+  'isl': 'Íslenska',
+  'ice': 'Íslenska',
+  'icelandic': 'Íslenska',
+  // Maltese
+  'mt': 'Malti',
+  'mlt': 'Malti',
+  'maltese': 'Malti',
+  // Irish
+  'ga': 'Gaeilge',
+  'gle': 'Gaeilge',
+  'irish': 'Gaeilge',
+  // Welsh
+  'cy': 'Cymraeg',
+  'cym': 'Cymraeg',
+  'welsh': 'Cymraeg',
+  // Afrikaans
   'af': 'Afrikaans',
-  'sw': 'Swahili',
+  'afr': 'Afrikaans',
+  'afrikaans': 'Afrikaans',
+  // Swahili
+  'sw': 'Kiswahili',
+  'swa': 'Kiswahili',
+  'swahili': 'Kiswahili',
+  // Filipino / Tagalog
   'fil': 'Filipino',
   'tl': 'Tagalog',
-  'my': 'Burmese',
-  'km': 'Khmer',
-  'lo': 'Lao',
-  'mn': 'Mongolian',
-  'ne': 'Nepali',
-  'si': 'Sinhala',
-  'am': 'Amharic',
-  'az': 'Azerbaijani',
-  'be': 'Belarusian',
-  'ka': 'Georgian',
-  'hy': 'Armenian',
-  'kk': 'Kazakh',
-  'uz': 'Uzbek',
-  'ky': 'Kyrgyz',
-  'tg': 'Tajik',
-  'tk': 'Turkmen',
-  'pa': 'Punjabi',
-  'gu': 'Gujarati',
-  'kn': 'Kannada',
-  'ml': 'Malayalam',
-  'mr': 'Marathi',
-  'or': 'Odia',
-  'as': 'Assamese',
-  'ps': 'Pashto',
-  'sd': 'Sindhi',
-  'ku': 'Kurdish',
-  'yi': 'Yiddish',
-  'la': 'Latin',
+  'tgl': 'Tagalog',
+  'tagalog': 'Tagalog',
+  'filipino': 'Filipino',
+  // Burmese
+  'my': 'မြန်မာ',
+  'mya': 'မြန်မာ',
+  'bur': 'မြန်မာ',
+  'burmese': 'မြန်မာ',
+  // Khmer
+  'km': 'ខ្មែរ',
+  'khm': 'ខ្មែរ',
+  'khmer': 'ខ្មែរ',
+  // Lao
+  'lo': 'ລາວ',
+  'lao': 'ລາວ',
+  // Mongolian
+  'mn': 'Монгол',
+  'mon': 'Монгол',
+  'mongolian': 'Монгол',
+  // Nepali
+  'ne': 'नेपाली',
+  'nep': 'नेपाली',
+  'nepali': 'नेपाली',
+  // Sinhala
+  'si': 'සිංහල',
+  'sin': 'සිංහල',
+  'sinhala': 'සිංහල',
+  // Amharic
+  'am': 'አማርኛ',
+  'amh': 'አማርኛ',
+  'amharic': 'አማርኛ',
+  // Azerbaijani
+  'az': 'Azərbaycan',
+  'aze': 'Azərbaycan',
+  'azerbaijani': 'Azərbaycan',
+  // Belarusian
+  'be': 'Беларуская',
+  'bel': 'Беларуская',
+  'belarusian': 'Беларуская',
+  // Georgian
+  'ka': 'ქართული',
+  'kat': 'ქართული',
+  'geo': 'ქართული',
+  'georgian': 'ქართული',
+  // Armenian
+  'hy': 'Հայերեն',
+  'hye': 'Հայերեն',
+  'arm': 'Հայերեն',
+  'armenian': 'Հայերեն',
+  // Kazakh
+  'kk': 'Қазақ',
+  'kaz': 'Қазақ',
+  'kazakh': 'Қазақ',
+  // Uzbek
+  'uz': 'Oʻzbek',
+  'uzb': 'Oʻzbek',
+  'uzbek': 'Oʻzbek',
+  // Kyrgyz
+  'ky': 'Кыргызча',
+  'kir': 'Кыргызча',
+  'kyrgyz': 'Кыргызча',
+  // Tajik
+  'tg': 'Тоҷикӣ',
+  'tgk': 'Тоҷикӣ',
+  'tajik': 'Тоҷикӣ',
+  // Turkmen
+  'tk': 'Türkmen',
+  'tuk': 'Türkmen',
+  'turkmen': 'Türkmen',
+  // Punjabi
+  'pa': 'ਪੰਜਾਬੀ',
+  'pan': 'ਪੰਜਾਬੀ',
+  'punjabi': 'ਪੰਜਾਬੀ',
+  // Gujarati
+  'gu': 'ગુજરાતી',
+  'guj': 'ગુજરાતી',
+  'gujarati': 'ગુજરાતੀ',
+  // Kannada
+  'kn': 'ಕನ್ನಡ',
+  'kan': 'ಕನ್ನಡ',
+  'kannada': 'ಕನ್ನಡ',
+  // Malayalam
+  'ml': 'മലയാളം',
+  'mal': 'മലയാളം',
+  'malayalam': 'മലയാളം',
+  // Marathi
+  'mr': 'मराठी',
+  'mar': 'मराठी',
+  'marathi': 'मराठी',
+  // Odia
+  'or': 'ଓଡ଼ିଆ',
+  'ori': 'ଓଡ଼ିଆ',
+  'odia': 'ଓଡ଼ିଆ',
+  // Assamese
+  'as': 'অসমীয়া',
+  'asm': 'অসমীয়া',
+  'assamese': 'অসমীয়া',
+  // Pashto
+  'ps': 'پښتو',
+  'pus': 'پښتو',
+  'pashto': 'پښتو',
+  // Sindhi
+  'sd': 'سنڌي',
+  'snd': 'سنڌي',
+  'sindhi': 'سنڌي',
+  // Kurdish
+  'ku': 'Kurdî',
+  'kur': 'Kurdî',
+  'kurdish': 'Kurdî',
+  // Yiddish
+  'yi': 'ייִדיש',
+  'yid': 'ייִדיש',
+  'yiddish': 'ייִדיש',
+  // Latin / constructed
+  'la': 'Latina',
+  'lat': 'Latina',
+  'latin': 'Latina',
   'eo': 'Esperanto',
+  'epo': 'Esperanto',
+  'esperanto': 'Esperanto',
+  // Unknown
   'und': 'Unknown',
+  'unknown': 'Unknown',
 };
 
-/// Returns a human-readable language name for the given code/string.
-/// Falls back to a Title-Cased version of the input, or 'Unknown' if empty.
-String languageDisplayName(String? code) {
-  if (code == null || code.trim().isEmpty) return 'Unknown';
+/// Lookup only — returns null when [code] is not a known language token.
+String? languageEndonym(String? code) {
+  if (code == null || code.trim().isEmpty) return null;
   final c = code.trim().toLowerCase();
   final hit = _kLanguageNames[c];
   if (hit != null) return hit;
-  // Try base before region (e.g. en-US -> en)
   final dash = c.indexOf(RegExp(r'[-_]'));
   if (dash > 0) {
-    final base = c.substring(0, dash);
-    final hit2 = _kLanguageNames[base];
+    final hit2 = _kLanguageNames[c.substring(0, dash)];
     if (hit2 != null) return hit2;
   }
-  // Capitalize first letter of each word as fallback
+  return null;
+}
+
+/// Returns the native endonym for the given code/string.
+/// Falls back to a Title-Cased version of the input, or 'Unknown' if empty.
+String languageDisplayName(String? code) {
+  if (code == null || code.trim().isEmpty) return 'Unknown';
+  final hit = languageEndonym(code);
+  if (hit != null) return hit;
   return code
       .split(RegExp(r'[\s_-]+'))
       .where((p) => p.isNotEmpty)

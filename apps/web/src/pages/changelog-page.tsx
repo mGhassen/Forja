@@ -199,6 +199,7 @@ export function ChangelogPage() {
               <div className="mt-8">
                 <ReleaseNotes
                   markdown={notes || selected.body || ''}
+                  platforms={selected.platforms}
                   className="max-h-none overflow-visible text-base sm:text-[17px]"
                   emptyLabel="No detailed notes were published for this release."
                 />

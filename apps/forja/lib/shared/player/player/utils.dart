@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
@@ -902,16 +903,30 @@ String? playbackQualityDetail(PlayerState state) {
   return '$w × $h';
 }
 
+/// Label for audio/subtitle chips — language endonym when known
+/// (हिन्दी, தமிழ், English…), else raw title / Track id.
 String formatPlayerTrackLabel({
   required String id,
   String? title,
   String? language,
 }) {
+  final fromLang = languageEndonym(language);
+  if (fromLang != null && fromLang != 'Unknown') return fromLang;
+
   final trimmedTitle = title?.trim();
-  if (trimmedTitle != null && trimmedTitle.isNotEmpty) return trimmedTitle;
+  if (trimmedTitle != null && trimmedTitle.isNotEmpty) {
+    final fromTitle = languageEndonym(trimmedTitle);
+    if (fromTitle != null && fromTitle != 'Unknown') return fromTitle;
+    // "English 5.1" / "Hindi [Forced]" → first token
+    final first = trimmedTitle.split(RegExp(r'[\s\[\(,/·]+')).first;
+    final fromFirst = languageEndonym(first);
+    if (fromFirst != null && fromFirst != 'Unknown') return fromFirst;
+    return trimmedTitle;
+  }
+
   final trimmedLanguage = language?.trim();
   if (trimmedLanguage != null && trimmedLanguage.isNotEmpty) {
-    return trimmedLanguage;
+    return languageDisplayName(trimmedLanguage);
   }
   return 'Track $id';
 }
