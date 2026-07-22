@@ -1063,8 +1063,37 @@ class StreamExtractor {
       });
       observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
 
+      // Sniff must never leak audio over the real player (manual Check / Auto).
+      const muteMedia = (el) => {
+        if (!el) return;
+        try { el.muted = true; el.volume = 0; el.setAttribute('muted', ''); } catch (e) {}
+      };
+      const muteAllMedia = () => {
+        try {
+          document.querySelectorAll('video,audio').forEach(muteMedia);
+        } catch (e) {}
+      };
+      if (!window.__ptMuteGuard) {
+        window.__ptMuteGuard = true;
+        document.addEventListener('play', function (e) {
+          const t = e.target;
+          if (!t || (t.tagName !== 'VIDEO' && t.tagName !== 'AUDIO')) return;
+          muteMedia(t);
+        }, true);
+        new MutationObserver((mutations) => {
+          mutations.forEach((m) => {
+            m.addedNodes.forEach((node) => {
+              if (!node || node.nodeType !== 1) return;
+              if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') muteMedia(node);
+              if (node.querySelectorAll) node.querySelectorAll('video,audio').forEach(muteMedia);
+            });
+          });
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      }
+
       const originalPlay = HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play = function() {
+        muteMedia(this);
         if (this.src) log('MEDIA_PLAY', this.src);
         return originalPlay.apply(this, arguments);
       };
@@ -1232,7 +1261,9 @@ class StreamExtractor {
           });
         });
         clickServerChips();
+        muteAllMedia();
         document.querySelectorAll('video').forEach((v) => {
+          muteMedia(v);
           if (v.paused) v.play().catch(() => v.click());
           if (v.src) log('VIDEO_SRC', v.src);
         });

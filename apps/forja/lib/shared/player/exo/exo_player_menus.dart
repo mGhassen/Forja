@@ -104,14 +104,17 @@ abstract final class ExoPlayerMenus {
           spacing: 8,
           runSpacing: 8,
           children: [
-            PlayerPopupOptionChip(
-              label: 'Auto',
-              selected: tracks.videoAuto,
-              onTap: () async {
-                PlayerPopupPanel.dismiss();
-                await onSelect(null);
-              },
-            ),
+            // While Auto/ABR is active, hide Auto and highlight the playing
+            // track. Auto reappears once a fixed quality is locked.
+            if (!tracks.videoAuto)
+              PlayerPopupOptionChip(
+                label: 'Auto',
+                selected: false,
+                onTap: () async {
+                  PlayerPopupPanel.dismiss();
+                  await onSelect(null);
+                },
+              ),
             if (tracks.video.isEmpty && !tracks.videoAuto)
               const Text(
                 'None available',
@@ -121,9 +124,11 @@ abstract final class ExoPlayerMenus {
               for (final t in tracks.video)
                 PlayerPopupOptionChip(
                   label: t.label,
-                  selected: !tracks.videoAuto && t.selected,
+                  selected: t.selected,
                   onTap: () async {
                     PlayerPopupPanel.dismiss();
+                    // Lock even if this track is the Auto pick.
+                    if (!tracks.videoAuto && t.selected) return;
                     await onSelect(t.id);
                   },
                 ),

@@ -192,9 +192,6 @@ class PlayerSubtitleMenu {
                   (s) => s['url'] == selectedExternalSubUrl,
                 );
                 return PlayerPopupNavRow(
-                  icon: hasSelected
-                      ? Icons.check_circle_rounded
-                      : Icons.translate_rounded,
                   title: languageDisplayName(key),
                   value: '${list.length}',
                   selected: hasSelected,

@@ -49,6 +49,9 @@ class PlayerQualityMenu {
     }
 
     final qualityAuto = isHlsQualityAuto(currentQualityUrl, masterUrl);
+    final active = qualityAuto
+        ? matchActiveHlsVariant(qualities, playerState)
+        : null;
 
     PlayerPopupPanel.show(
       context: context,
@@ -62,16 +65,30 @@ class PlayerQualityMenu {
         child: Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: qualities.map((q) {
+          // While Auto/ABR is active, hide Auto and highlight the variant
+          // currently playing. Auto reappears once a fixed quality is locked.
+          children: qualities
+              .where((q) => !q.isAuto || !qualityAuto)
+              .map((q) {
             final selected = q.isAuto
-                ? qualityAuto
-                : (!qualityAuto && q.url == currentQualityUrl);
+                ? false
+                : (qualityAuto
+                    ? (active != null &&
+                        (active.url == q.url || active.label == q.label))
+                    : q.url == currentQualityUrl);
             return PlayerPopupOptionChip(
               label: q.isAuto ? 'Auto' : q.label,
               selected: selected,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
-                if (!selected) await onSelect(q);
+                if (q.isAuto) {
+                  if (qualityAuto) return;
+                  await onSelect(q);
+                  return;
+                }
+                // Lock even if this variant is the Auto pick (selected visually).
+                if (!qualityAuto && q.url == currentQualityUrl) return;
+                await onSelect(q);
               },
             );
           }).toList(),

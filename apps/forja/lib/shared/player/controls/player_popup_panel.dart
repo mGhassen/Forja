@@ -635,11 +635,11 @@ class PlayerPopupIconBox extends StatelessWidget {
   }
 }
 
-/// Drill-in row: leading icon box, title + subtitle, value badge, chevron.
+/// Drill-in row: optional leading icon box, title + subtitle, value badge, chevron.
 class PlayerPopupNavRow extends StatefulWidget {
   const PlayerPopupNavRow({
     super.key,
-    required this.icon,
+    this.icon,
     required this.title,
     this.subtitle,
     this.value,
@@ -647,7 +647,7 @@ class PlayerPopupNavRow extends StatefulWidget {
     this.onTap,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String title;
   final String? subtitle;
   final String? value;
@@ -707,8 +707,13 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
           ),
           child: Row(
             children: [
-              PlayerPopupIconBox(icon: widget.icon, accent: widget.selected),
-              const SizedBox(width: 10),
+              if (widget.icon != null) ...[
+                PlayerPopupIconBox(
+                  icon: widget.icon!,
+                  accent: widget.selected,
+                ),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
