@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **11 / 11** unit acceptance · **0 / 3** manual |
-| **Current slice** | auto PNG strip is content-only (plain HLS stays direct) — Megaplay manual smoke open |
+| **Progress** | **9 / 9** components · **13 / 13** unit acceptance · **0 / 3** manual |
+| **Current slice** | Host providers (Videasy) use same identity + first-hit open — Megaplay manual smoke open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -63,6 +63,15 @@
 |--:|----|-------------|--------|
 | 1 | R44-A13 | Unit: `pngStrip: auto` + plain segment keeps catalog `.m3u8` (host needles do not force proxy) | ✅ |
 | 2 | R44-A14 | Unit: `pngStrip: auto` + PNG-wrapped segment → `/hls-proxy?strip=png` | ✅ |
+
+---
+
+## Acceptance (host providers — Videasy)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R44-A15 | Unit: `providerId=videasy` forces `player.videasy.to` Referer (ban CDN self) | ✅ |
+| 2 | R44-A16 | Videasy first mirror hit returns after ≤3s grace (no collect-all on hung Neon) | ✅ |
 
 ---
 

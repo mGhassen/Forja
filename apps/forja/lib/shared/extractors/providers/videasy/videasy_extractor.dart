@@ -33,9 +33,12 @@ class VideasyExtractor {
       ProviderRuntimeConfig.instance.api('videasyPlayerOrigin') ??
       _playerOriginDefault;
   // Fail hung mirrors fast — neon2/m4uhd often stall with 0 bytes while cdn
-  // (Yoru) answers in ~100ms. A long timeout here prevents ever reaching cdn.
+  // (Yoru) answers in ~100ms.
   static const _fetchTimeout = Duration(seconds: 12);
   static const _slowFetchTimeout = Duration(seconds: 18);
+  // After first mirror hit, keep collecting siblings briefly then play.
+  // Do NOT bump [_generation] on grace (that discarded hits — issue 071).
+  static const _postFirstHitGrace = Duration(seconds: 2);
   // Keep short enough that HostProviderAdapter can fall back to sniffing
   // player.videasy.to when wings mirrors CF-block / timeout.
   static const _defaultExtractTimeout = Duration(seconds: 45);
@@ -370,7 +373,8 @@ class VideasyExtractor {
       final res = await _get(uri, gen: gen);
       if (res.statusCode != 200) {
         onLog('[Videasy] seed -> ${res.statusCode}');
-        return null;
+        // Keep last good seed — 429 mid-fanout must not kill remaining probes.
+        return _seedCache[tmdbId]?.seed;
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final seed = data['seed']?.toString().trim();
@@ -389,8 +393,8 @@ class VideasyExtractor {
 
   static void _invalidateSeed(String tmdbId) => _seedCache.remove(tmdbId);
 
-  /// Probe every mirror with bounded in-flight. Collect all hits — no
-  /// post-first-hit grace abort that drops siblings still in flight.
+  /// Probe mirrors in parallel. First hit starts a short grace, then we return
+  /// what we have — dead/hung siblings must not block play (web parity).
   Future<ExtractedMedia?> _collectProviders({
     required _VideasyDecryptHost crypto,
     required String tmdbId,
@@ -402,8 +406,11 @@ class VideasyExtractor {
     var nextIndex = 0;
     var inFlight = 0;
     final done = Completer<void>();
+    Timer? grace;
 
     void finish() {
+      grace?.cancel();
+      grace = null;
       if (done.isCompleted) return;
       done.complete();
     }
@@ -417,6 +424,13 @@ class VideasyExtractor {
       if (nextIndex >= jobs.length && inFlight == 0) finish();
     }
 
+    void onFirstHitScheduleGrace() {
+      if (grace != null || done.isCompleted) return;
+      // Stop queueing more mirrors — keep in-flight, then cut after grace.
+      nextIndex = jobs.length;
+      grace = Timer(_postFirstHitGrace, finish);
+    }
+
     void pump() {
       while (!cancelled() &&
           !done.isCompleted &&
@@ -427,8 +441,9 @@ class VideasyExtractor {
         _probeProvider(crypto: crypto, tmdbId: tmdbId, job: job, gen: gen)
             .then((hit) {
               inFlight--;
-              if (hit != null) {
+              if (hit != null && !done.isCompleted) {
                 hits.add(hit);
+                onFirstHitScheduleGrace();
               }
               pump();
               maybeFinish();
@@ -445,6 +460,7 @@ class VideasyExtractor {
 
     pump();
     await done.future;
+    grace?.cancel();
 
     if (hits.isEmpty) {
       if (!cancelled()) onLog('[Videasy] No sources from any mirror');
@@ -597,6 +613,8 @@ class VideasyExtractor {
         title: '$displayName · $quality',
         type: type,
         headers: _playbackHeaders,
+        providerId: 'videasy',
+        catalogUrl: url,
       );
       sources.add(source);
       if (isDash) {
@@ -655,8 +673,12 @@ class VideasyExtractor {
       Uri.encodeComponent(title);
 
   @visibleForTesting
-  static List<String> mirrorEndpointsForTest() =>
-      [for (final m in _mirrors) m.endpoint];
+  static List<String> mirrorEndpointsForTest() => [
+    for (final m in _mirrors) m.endpoint,
+  ];
+
+  @visibleForTesting
+  static Duration get postFirstHitGraceForTest => _postFirstHitGrace;
 
   @visibleForTesting
   static Map<String, String> sourcesQueryForTest({

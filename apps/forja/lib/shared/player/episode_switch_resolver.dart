@@ -320,6 +320,9 @@ Future<EpisodeSwitchResult?> _episodeFromSourcesJson(
           headers: m['headers'] is Map
               ? Map<String, String>.from(m['headers'] as Map)
               : null,
+          providerId: (m['providerId'] ?? m['provider_id'])?.toString() ??
+              providerKey,
+          catalogUrl: m['catalogUrl']?.toString(),
         ),
       )
       .where((s) => s.url.isNotEmpty)

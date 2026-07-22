@@ -253,6 +253,17 @@ void main() {
       expect(h['Origin'], 'https://allmanga.to');
     });
 
+    test('RFC-044: providerId videasy forces player.videasy.to Referer', () {
+      const url = 'https://cdn-rotate.example/v/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://cdn-rotate.example/'},
+        streamUrl: url,
+        providerId: 'videasy',
+      );
+      expect(h['Referer'], 'https://player.videasy.to/');
+      expect(h['Origin'], 'https://player.videasy.to');
+    });
+
     test('forces megaplay Referer for watching.onl anime CDN', () {
       const url =
           'https://fxpy7.watching.onl/anime/abc/master.m3u8';

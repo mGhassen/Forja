@@ -56,6 +56,10 @@ void main() {
     expect(VideasyExtractor.mirrorEndpointsForTest().first, 'cdn');
   });
 
+  test('post-first-hit grace is short (web parity, no dead-mirror block)', () {
+    expect(VideasyExtractor.postFirstHitGraceForTest.inSeconds, lessThanOrEqualTo(3));
+  });
+
   test('tv sources query uses cdn path with season fields', () {
     final uri = Uri.https(
       'api.wingsdatabase.com',

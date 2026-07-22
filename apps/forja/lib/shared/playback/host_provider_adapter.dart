@@ -87,6 +87,7 @@ abstract final class HostProviderAdapter {
           url: result.url,
           sources: result.sources,
           headers: result.headers,
+          providerId: providerId,
         );
       }
       // Dart HTTP to wingsdatabase often CF-blocks/timeouts while the live
@@ -111,6 +112,7 @@ abstract final class HostProviderAdapter {
         url: sniffed.url,
         sources: sniffed.sources,
         headers: sniffed.headers,
+        providerId: providerId,
       );
     }
 
@@ -127,6 +129,7 @@ abstract final class HostProviderAdapter {
           url: result.url,
           sources: result.sources,
           headers: result.headers,
+          providerId: providerId,
         );
       }
       // API empty — fall through to embed WebView sniff.
@@ -151,6 +154,7 @@ abstract final class HostProviderAdapter {
         url: sniffed.url,
         sources: sniffed.sources,
         headers: sniffed.headers,
+        providerId: providerId,
       );
     }
 
@@ -165,61 +169,64 @@ abstract final class HostProviderAdapter {
 
       // Parse CFG.servers and sniff every nested mirror (bounded parallel).
       // Show all responsive streams — no first-hit early return.
-      final discovered = await VidsrcsbsExtractor(onLog: debugPrint)
-          .discoverServers(embedUrl: outerEmbed, isCancelled: cancelled);
+      final discovered = await VidsrcsbsExtractor(
+        onLog: debugPrint,
+      ).discoverServers(embedUrl: outerEmbed, isCancelled: cancelled);
       if (discovered.isNotEmpty) {
-        final batches = await mapBoundedParallel<VidsrcsbsServer, List<StreamSource>>(
-          items: discovered,
-          concurrency: _webviewSniffConcurrency,
-          isCancelled: cancelled,
-          work: (server, _) async {
-            if (cancelled()) return null;
-            final nested = server.resolveUrl(
-              isMovie: !isTv,
-              tmdbId: movie.id.toString(),
-              season: isTv ? season : null,
-              episode: isTv ? episode : null,
-            );
-            if (nested.isEmpty || !nested.startsWith('http')) return null;
-            debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
-            final extractor = StreamExtractor();
-            _parallelExtractors.add(extractor);
-            try {
-              final sniffed = await extractor.extract(
-                nested,
-                profile: vidsrcsbsNestedExtractProfile,
-                referer: outerEmbed,
-                isCancelled: cancelled,
-                providerId: 'vidsrcsbs',
-              );
-              if (sniffed == null || sniffed.url.isEmpty) return null;
-              final titled = sniffed.sources
-                      ?.map(
-                        (s) => StreamSource(
-                          url: s.url,
-                          title: s.title == 'Stream' || s.title.isEmpty
-                              ? server.name
-                              : '${server.name} · ${s.title}',
-                          type: s.type,
-                          headers: s.headers,
+        final batches =
+            await mapBoundedParallel<VidsrcsbsServer, List<StreamSource>>(
+              items: discovered,
+              concurrency: _webviewSniffConcurrency,
+              isCancelled: cancelled,
+              work: (server, _) async {
+                if (cancelled()) return null;
+                final nested = server.resolveUrl(
+                  isMovie: !isTv,
+                  tmdbId: movie.id.toString(),
+                  season: isTv ? season : null,
+                  episode: isTv ? episode : null,
+                );
+                if (nested.isEmpty || !nested.startsWith('http')) return null;
+                debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
+                final extractor = StreamExtractor();
+                _parallelExtractors.add(extractor);
+                try {
+                  final sniffed = await extractor.extract(
+                    nested,
+                    profile: vidsrcsbsNestedExtractProfile,
+                    referer: outerEmbed,
+                    isCancelled: cancelled,
+                    providerId: 'vidsrcsbs',
+                  );
+                  if (sniffed == null || sniffed.url.isEmpty) return null;
+                  final titled =
+                      sniffed.sources
+                          ?.map(
+                            (s) => StreamSource(
+                              url: s.url,
+                              title: s.title == 'Stream' || s.title.isEmpty
+                                  ? server.name
+                                  : '${server.name} · ${s.title}',
+                              type: s.type,
+                              headers: s.headers,
+                            ),
+                          )
+                          .toList() ??
+                      [
+                        StreamSource(
+                          url: sniffed.url,
+                          title: server.name,
+                          type: _typeFromUrl(sniffed.url),
+                          headers: sniffed.headers,
                         ),
-                      )
-                      .toList() ??
-                  [
-                    StreamSource(
-                      url: sniffed.url,
-                      title: server.name,
-                      type: _typeFromUrl(sniffed.url),
-                      headers: sniffed.headers,
-                    ),
-                  ];
-              return titled;
-            } finally {
-              _parallelExtractors.remove(extractor);
-              unawaited(extractor.dispose());
-            }
-          },
-        );
+                      ];
+                  return titled;
+                } finally {
+                  _parallelExtractors.remove(extractor);
+                  unawaited(extractor.dispose());
+                }
+              },
+            );
         final allSources = <StreamSource>[
           for (final batch in batches) ...batch,
         ];
@@ -232,6 +239,7 @@ abstract final class HostProviderAdapter {
             url: allSources.first.url,
             sources: allSources,
             headers: allSources.first.headers,
+            providerId: providerId,
           );
         }
       }
@@ -250,6 +258,7 @@ abstract final class HostProviderAdapter {
         url: outer.url,
         sources: outer.sources,
         headers: outer.headers,
+        providerId: providerId,
       );
     }
 
@@ -298,6 +307,7 @@ abstract final class HostProviderAdapter {
         url: result.url,
         sources: result.sources,
         headers: result.headers,
+        providerId: providerId,
       );
     }
 
@@ -324,6 +334,7 @@ abstract final class HostProviderAdapter {
       url: result.url,
       sources: result.sources,
       headers: result.headers,
+      providerId: providerId,
     );
   }
 
@@ -358,6 +369,7 @@ abstract final class HostProviderAdapter {
     required String url,
     List<StreamSource>? sources,
     Map<String, String>? headers,
+    String? providerId,
   }) {
     if (sources != null && sources.isNotEmpty) {
       final playable = sources
@@ -367,16 +379,20 @@ abstract final class HostProviderAdapter {
         return '[]';
       }
       return jsonEncode(
-        playable
-            .map(
-              (s) => {
-                'url': s.url,
-                'title': s.title,
-                'container': s.type,
-                if (s.headers != null) 'headers': s.headers,
-              },
-            )
-            .toList(),
+        playable.map((s) {
+          final pid = (s.providerId != null && s.providerId!.isNotEmpty)
+              ? s.providerId
+              : providerId;
+          final catalog = s.catalogUrl;
+          return {
+            'url': s.url,
+            'title': s.title,
+            'container': s.type,
+            if (s.headers != null) 'headers': s.headers,
+            if (pid != null && pid.isNotEmpty) 'providerId': pid,
+            if (catalog != null && catalog.isNotEmpty) 'catalogUrl': catalog,
+          };
+        }).toList(),
       );
     }
     if (isUnplayableCachedStreamUrl(url)) {
@@ -388,6 +404,8 @@ abstract final class HostProviderAdapter {
         'title': 'Primary',
         'container': _typeFromUrl(url),
         if (headers != null) 'headers': headers,
+        if (providerId != null && providerId.isNotEmpty)
+          'providerId': providerId,
       },
     ]);
   }

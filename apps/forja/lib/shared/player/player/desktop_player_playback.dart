@@ -142,7 +142,7 @@ mixin _DesktopPlayerPlayback
             !isLocalLoopbackPlayUrl(openUrl) &&
             widget.magnetLink == null) {
           final reachable = await validateStreamSourceForCheck(
-            providerId: _s._currentProvider,
+            providerId: source.providerId ?? _s._currentProvider,
             source: source,
             headers: source.headers ?? widget.headers,
           );

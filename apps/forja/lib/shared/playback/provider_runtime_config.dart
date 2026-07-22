@@ -73,6 +73,18 @@ class ProviderRuntimeConfig {
       return _httpsOrigin(megaplay.host, fallback: 'megaplay.buzz');
     }
 
+    // Videasy / wings CDN — same as the browser player origin.
+    if (key == 'videasy' || key.startsWith('videasy/')) {
+      final raw = (apis['videasyPlayerOrigin'] ?? 'https://player.videasy.to')
+          .trim();
+      final host = raw
+          .replaceFirst(RegExp(r'^https?://'), '')
+          .split('/')
+          .first
+          .trim();
+      return _httpsOrigin(host, fallback: 'player.videasy.to');
+    }
+
     // AllAnime / AllManga MP4 CDN (fast4speed, …).
     if (key.startsWith('allanime:')) {
       final raw = (apis['allanimeReferer'] ?? 'https://allmanga.to').trim();
@@ -128,7 +140,7 @@ class ProviderRuntimeConfig {
         key.startsWith('vidnest:');
   }
 
-  /// Ban inventing Referer from the CDN host (anime + KissKh identity).
+  /// Ban inventing Referer from the CDN host when we have a provider policy.
   bool bansCdnSelfReferer(String? providerId) {
     if (playbackPolicyFor(providerId) != null) return true;
     return isAnimeProviderId(providerId);

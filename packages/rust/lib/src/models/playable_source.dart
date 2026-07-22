@@ -84,8 +84,12 @@ class PlayableSource {
       audio: audio,
       headers: headers,
       subtitles: subtitles,
-      providerId: json['provider_id']?.toString() ?? '',
-      providerRank: (json['provider_rank'] as num?)?.toInt() ?? 0,
+      providerId: json['provider_id']?.toString() ??
+          json['providerId']?.toString() ??
+          '',
+      providerRank: (json['provider_rank'] as num?)?.toInt() ??
+          (json['providerRank'] as num?)?.toInt() ??
+          0,
       latencyMs: (json['latency_ms'] as num?)?.toInt(),
       requiresProxy: json['requires_proxy'] == true,
       embedKind: json['embed_kind']?.toString(),
@@ -125,6 +129,7 @@ class PlayableSource {
         title: title,
         type: _containerToLegacyType(container),
         headers: headers.isEmpty ? null : headers,
+        providerId: providerId.isEmpty ? null : providerId,
       );
 
   static String _containerToLegacyType(String container) {
@@ -329,7 +334,9 @@ List<PlayableSource> normalizeLegacyStreamSources({
             'title': s.title,
             'type': s.type,
             if (s.headers != null) 'headers': s.headers,
-            'provider_id': providerId,
+            'provider_id': (s.providerId != null && s.providerId!.isNotEmpty)
+                ? s.providerId
+                : providerId,
             'provider_rank': providerRank,
           },
         )
