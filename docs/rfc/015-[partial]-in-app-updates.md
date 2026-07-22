@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) |
-| **Current slice** | R2 `changelog/` archive + dialog reads CDN notes; hosted smoke A37 / A45 |
+| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) |
+| **Current slice** | Per-platform `latest/` merge shipped; hosted smoke A37 / A45 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -144,9 +144,20 @@
 
 ---
 
+## Acceptance (per-platform latest)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A46 | R2 upload merges `latest/` by platform — partial release replaces only that platform’s installers; never wipes others | ✅ |
+| 2 | R15-A47 | `latest/manifest.json` carries `platforms.{id}.{version,assets}`; prune keeps any version still referenced as a platform latest | ✅ |
+| 3 | R15-A48 | Web `/download` shows each platform’s own latest version + that version’s changelog notes | ✅ |
+| 4 | R15-A49 | `AppUpdaterService` compares against this device’s platform entry in `platforms` (not a single global max version) | ✅ |
+
+---
+
 ## Summary
 
-Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — version + installer filenames only), then downloads the platform installer from the versioned R2 path. Changelog bodies for the dialog come from the permanent R2 `changelog/` archive (`index.json` + `{version}.md`), with GitHub Releases as fallback; the UI lists up to 16 versions since the installed build and links to the portal `/changelog`.
+Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per-platform** latest installers), then downloads the platform installer from the versioned R2 path. A macOS-only release updates only the macOS entry and leaves Windows/Linux/Android TV latest files in place. Changelog bodies for the dialog come from the permanent R2 `changelog/` archive (`index.json` + `{version}.md`), with GitHub Releases as fallback; the UI lists up to 16 versions since the installed build and links to the portal `/changelog`. The download page shows each platform’s own version and notes.
 
 ## Goals
 
@@ -179,12 +190,38 @@ Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — versi
 └───────────────┬─────────────────────────┬───────────────┘
                 │                         │
         Cloudflare R2                 GitHub Releases
-  latest/manifest.json              (notes fallback only)
+  latest/manifest.json              (per-platform latest; notes via changelog/)
   vX.Y.Z/{installer}
   changelog/{version}.md  (kept forever)
   changelog/index.json
 ```
 
+### Per-platform `latest/manifest.json`
+
+```json
+{
+  "published_at": "2026-07-21T23:42:43Z",
+  "platforms": {
+    "macos": {
+      "version": "1.2.406",
+      "published_at": "2026-07-21T23:42:43Z",
+      "assets": ["Forja-1.2.406-macos-arm64.dmg"]
+    },
+    "windows": {
+      "version": "1.2.400",
+      "published_at": "2026-07-01T12:00:00Z",
+      "assets": ["Forja-1.2.400-windows-setup.exe"]
+    }
+  },
+  "version": "1.2.406",
+  "assets": [
+    "Forja-1.2.406-macos-arm64.dmg",
+    "Forja-1.2.400-windows-setup.exe"
+  ]
+}
+```
+
+Top-level `version` / `assets` remain for older clients; web + updater prefer `platforms`.
 
 ## Update manifest (GitHub Releases)
 

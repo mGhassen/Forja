@@ -13,9 +13,20 @@ Optional env:
 Objects:
   v{version}/{filename}
   latest/{filename}
-  latest/manifest.json   — app updater discovery (version + asset filenames only)
+  latest/manifest.json   — per-platform latest (partial releases merge; do not wipe others)
   changelog/{version}.md — frozen release notes (kept forever; never pruned)
   changelog/index.json   — version list for the in-app update dialog
+
+Manifest shape (latest/manifest.json):
+  {
+    "published_at": "…",
+    "platforms": {
+      "macos": { "version": "1.2.406", "published_at": "…", "assets": ["…dmg"] },
+      "windows": { "version": "1.2.400", "published_at": "…", "assets": ["…exe"] }
+    },
+    "version": "1.2.406",   # max across platforms (legacy clients)
+    "assets": ["…"]         # flat union (legacy clients)
+  }
 """
 
 from __future__ import annotations
@@ -177,6 +188,187 @@ def put_object(
         body=body,
         unsigned_payload=True,
     )
+
+
+def get_object_bytes(
+    *,
+    endpoint: str,
+    bucket: str,
+    key: str,
+    access_key: str,
+    secret_key: str,
+) -> bytes | None:
+    """Return object body, or None on 404."""
+    encoded_key = "/".join(urllib.parse.quote(p, safe="") for p in key.split("/"))
+    canonical_uri = f"/{bucket}/{encoded_key}"
+    host = endpoint.removeprefix("https://").removeprefix("http://")
+    headers = aws_v4_headers(
+        method="GET",
+        host=host,
+        canonical_uri=canonical_uri,
+        query="",
+        access_key=access_key,
+        secret_key=secret_key,
+        extra_headers={},
+        body=b"",
+    )
+    url = f"{endpoint}{canonical_uri}"
+    req = urllib.request.Request(url, method="GET", headers=headers)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        err = e.read().decode("utf-8", errors="replace")
+        die(f"R2 GET {canonical_uri} failed HTTP {e.code}: {err}")
+        return None
+
+
+def detect_platform(name: str) -> str | None:
+    """Map installer filename → showcase platform id (or None if unknown)."""
+    lower = name.lower()
+    if "windows" in lower or lower.endswith(".exe") or lower.endswith(".msi"):
+        return "windows"
+    if "macos" in lower or "darwin" in lower or lower.endswith(".dmg"):
+        return "macos"
+    if (
+        "linux" in lower
+        or lower.endswith(".appimage")
+        or lower.endswith(".deb")
+        or lower.endswith(".rpm")
+    ):
+        return "linux"
+    if (
+        "android-tv" in lower
+        or "android_tv" in lower
+        or "androidtv" in lower
+        or lower.endswith(".apk")
+        or "android" in lower
+    ):
+        return "android_tv"
+    return None
+
+
+def platforms_from_filenames(
+    filenames: list[str],
+    *,
+    version: str,
+    published_at: str,
+) -> dict[str, dict]:
+    """Group filenames into a platforms map for one release version."""
+    by_platform: dict[str, list[str]] = {}
+    for name in filenames:
+        platform = detect_platform(name)
+        if platform is None:
+            print(f"::warning::Skipping unrecognized asset (no platform): {name}")
+            continue
+        by_platform.setdefault(platform, []).append(name)
+    return {
+        platform: {
+            "version": version,
+            "published_at": published_at,
+            "assets": names,
+        }
+        for platform, names in sorted(by_platform.items())
+    }
+
+
+def merge_platform_manifest(
+    existing: dict | None,
+    incoming: dict[str, dict],
+    *,
+    published_at: str,
+) -> dict:
+    """
+    Merge incoming platform entries into existing latest manifest.
+    Incoming platforms replace prior entries; other platforms are kept.
+    """
+    platforms: dict[str, dict] = {}
+    if isinstance(existing, dict):
+        raw = existing.get("platforms")
+        if isinstance(raw, dict):
+            for key, entry in raw.items():
+                if not isinstance(key, str) or not isinstance(entry, dict):
+                    continue
+                ver = entry.get("version")
+                assets = entry.get("assets")
+                if not isinstance(ver, str) or not ver.strip():
+                    continue
+                if not isinstance(assets, list) or not assets:
+                    continue
+                names = [a for a in assets if isinstance(a, str) and a.strip()]
+                if not names:
+                    continue
+                platforms[key] = {
+                    "version": ver.strip().lstrip("v"),
+                    "published_at": (
+                        entry.get("published_at")
+                        if isinstance(entry.get("published_at"), str)
+                        else existing.get("published_at")
+                    ),
+                    "assets": names,
+                }
+        elif isinstance(existing.get("assets"), list) and existing.get("version"):
+            # Legacy flat manifest → one synthetic entry set (all assets same version).
+            legacy_ver = str(existing["version"]).strip().lstrip("v")
+            legacy_names = [
+                a for a in existing["assets"] if isinstance(a, str) and a.strip()
+            ]
+            platforms.update(
+                platforms_from_filenames(
+                    legacy_names,
+                    version=legacy_ver,
+                    published_at=(
+                        existing.get("published_at")
+                        if isinstance(existing.get("published_at"), str)
+                        else published_at
+                    ),
+                )
+            )
+
+    platforms.update(incoming)
+
+    flat_assets: list[str] = []
+    max_version = ""
+    for entry in platforms.values():
+        flat_assets.extend(entry["assets"])
+        ver = entry["version"]
+        if not max_version or semver_key(ver) > semver_key(max_version):
+            max_version = ver
+
+    return {
+        "published_at": published_at,
+        "platforms": platforms,
+        "version": max_version,
+        "assets": flat_assets,
+    }
+
+
+def stale_latest_keys(
+    *,
+    all_keys: list[str],
+    merged_assets: list[str],
+    replaced_platforms: set[str],
+) -> list[str]:
+    """
+    latest/ files to delete after a partial upload.
+    Only drop files belonging to platforms we just replaced, and only if they
+    are no longer in the merged asset list. Never wipe other platforms.
+    """
+    keep = {f"latest/{n}" for n in merged_assets} | {"latest/manifest.json"}
+    stale: list[str] = []
+    for key in all_keys:
+        if not key.startswith("latest/") or key in keep:
+            continue
+        name = key[len("latest/") :]
+        if name == "manifest.json":
+            continue
+        platform = detect_platform(name)
+        if platform is None or platform not in replaced_platforms:
+            continue
+        stale.append(key)
+    return stale
 
 
 _RELEASED_MD = re.compile(r"^(\d+\.\d+\.\d+)-\[released\]\.md$")
@@ -420,40 +612,66 @@ def main() -> None:
         latest_names.append(path.name)
         uploaded += 1
 
-    # Manifest is version + installer filenames only (notes live under changelog/).
     published_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    manifest = {
+    incoming_platforms = platforms_from_filenames(
+        latest_names,
+        version=version,
+        published_at=published_at,
+    )
+    if not incoming_platforms:
+        die("No assets mapped to a known platform (windows/macos/linux/android_tv).")
+
+    existing_raw = get_object_bytes(
+        endpoint=endpoint,
+        bucket=bucket,
+        key="latest/manifest.json",
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    existing_manifest: dict | None = None
+    if existing_raw:
+        try:
+            decoded = json.loads(existing_raw.decode("utf-8"))
+            if isinstance(decoded, dict):
+                existing_manifest = decoded
+        except json.JSONDecodeError:
+            print("::warning::Existing latest/manifest.json is not valid JSON; replacing.")
+
+    merged = merge_platform_manifest(
+        existing_manifest,
+        incoming_platforms,
+        published_at=published_at,
+    )
+
+    # Versioned tree: this release only. latest/: merged per-platform view.
+    version_manifest = {
         "version": version,
         "published_at": published_at,
         "assets": latest_names,
+        "platforms": incoming_platforms,
     }
-    manifest_bytes = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-        tmp.write(manifest_bytes)
-        tmp_path = Path(tmp.name)
-    try:
-        print(f"Uploading latest/manifest.json → s3://{bucket}/latest/manifest.json")
-        put_object(
-            endpoint=endpoint,
-            bucket=bucket,
-            key="latest/manifest.json",
-            path=tmp_path,
-            access_key=access_key,
-            secret_key=secret_key,
-            content_type="application/json; charset=utf-8",
-        )
-        print(f"  mirror → s3://{bucket}/{prefix}/manifest.json")
-        put_object(
-            endpoint=endpoint,
-            bucket=bucket,
-            key=f"{prefix}/manifest.json",
-            path=tmp_path,
-            access_key=access_key,
-            secret_key=secret_key,
-            content_type="application/json; charset=utf-8",
-        )
-    finally:
-        tmp_path.unlink(missing_ok=True)
+
+    def write_manifest(key: str, payload: dict) -> None:
+        body = (json.dumps(payload, indent=2) + "\n").encode("utf-8")
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+            tmp.write(body)
+            tmp_path = Path(tmp.name)
+        try:
+            print(f"Uploading {key} → s3://{bucket}/{key}")
+            put_object(
+                endpoint=endpoint,
+                bucket=bucket,
+                key=key,
+                path=tmp_path,
+                access_key=access_key,
+                secret_key=secret_key,
+                content_type="application/json; charset=utf-8",
+            )
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    write_manifest("latest/manifest.json", merged)
+    write_manifest(f"{prefix}/manifest.json", version_manifest)
 
     # Permanent notes archive — never pruned with installer retention.
     upload_changelog_archive(
@@ -464,26 +682,31 @@ def main() -> None:
     )
 
     print(
-        f"Uploaded {uploaded} release asset(s) + manifest to R2 "
-        f"({bucket}/{prefix}/ + latest/)."
+        f"Uploaded {uploaded} release asset(s) + merged latest/manifest "
+        f"({bucket}/{prefix}/ + latest/). Platforms: "
+        + ", ".join(
+            f"{p}@{e['version']}" for p, e in sorted(merged["platforms"].items())
+        )
     )
 
-    # Drop stale objects under latest/ that are not part of this release.
-    # Never touch changelog/ here — that prefix is a permanent archive.
+    # Drop superseded installers only for platforms this run replaced.
+    # Never wipe other platforms' latest/ files. Never touch changelog/.
     all_keys = list_keys(
         endpoint=endpoint,
         bucket=bucket,
         access_key=access_key,
         secret_key=secret_key,
     )
-    latest_keep = {f"latest/{n}" for n in latest_names} | {"latest/manifest.json"}
-    stale_latest = [
-        k
-        for k in all_keys
-        if k.startswith("latest/") and k not in latest_keep
-    ]
+    stale_latest = stale_latest_keys(
+        all_keys=all_keys,
+        merged_assets=merged["assets"],
+        replaced_platforms=set(incoming_platforms),
+    )
     if stale_latest:
-        print(f"Removing {len(stale_latest)} stale latest/ object(s)…")
+        print(
+            f"Removing {len(stale_latest)} superseded latest/ object(s) "
+            f"for {', '.join(sorted(incoming_platforms))}…"
+        )
         delete_keys(
             endpoint=endpoint,
             bucket=bucket,
@@ -508,9 +731,19 @@ def main() -> None:
         print("No version prefixes found; nothing to prune.")
         return
 
-    keep_set = set(versions[:keep])
+    # Never prune a version still serving as any platform's latest.
+    referenced = {
+        f"v{entry['version'].lstrip('v')}"
+        for entry in merged["platforms"].values()
+    }
+    keep_set = set(versions[:keep]) | referenced
     drop = [v for v in versions if v not in keep_set]
-    print(f"Keeping: {', '.join(versions[:keep])}")
+    print(f"Keeping (window): {', '.join(versions[:keep])}")
+    if referenced - set(versions[:keep]):
+        print(
+            "Keeping (platform latest): "
+            + ", ".join(sorted(referenced - set(versions[:keep])))
+        )
     if not drop:
         print("Nothing older than retention window.")
         return

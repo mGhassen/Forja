@@ -3,11 +3,11 @@
 /// Pass at run/build time: `--dart-define=RELEASE_CDN_URL=https://…`
 ///
 /// In-app updates:
-/// - Discovery: `{RELEASE_CDN_URL}/latest/manifest.json`
+/// - Discovery: `{RELEASE_CDN_URL}/latest/manifest.json` (per-platform `platforms` map)
 /// - Installer: `{RELEASE_CDN_URL}/v{version}/{filename}`
 /// - Notes: `{RELEASE_CDN_URL}/changelog/index.json` + `changelog/{version}.md`
 ///
-/// `latest/{installer}` is for the website download buttons only.
+/// `latest/{installer}` is the site download CTA path (merged per platform).
 /// `changelog/` is a permanent archive (not pruned with installer retention).
 class ReleaseStorageUrls {
   ReleaseStorageUrls._();

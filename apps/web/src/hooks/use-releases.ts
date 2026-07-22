@@ -9,6 +9,8 @@ export type ReleaseAsset = {
   id: string
   release_id: string
   platform: string
+  /** Semver of the release that published this asset (per-platform latest). */
+  version?: string
   name: string
   download_url: string
   size_bytes: number | null
@@ -25,7 +27,13 @@ export type Release = {
   synced_at: string
 }
 
-export type ReleaseWithAssets = Release & { assets: ReleaseAsset[] }
+export type ReleaseWithAssets = Release & {
+  assets: ReleaseAsset[]
+  /** Changelog markdown keyed by version (download page uses selected platform). */
+  notesByVersion?: Record<string, string>
+  /** Latest version per showcase platform id. */
+  platformVersions?: Record<string, string>
+}
 
 export type ShowcasePlatformId = 'windows' | 'macos' | 'linux' | 'android_tv'
 
@@ -150,9 +158,12 @@ async function fetchLatestReleaseFromApi(): Promise<ReleaseWithAssets | null> {
   if (!release?.version || !release.assets?.length) return null
   return {
     ...release,
+    notesByVersion: release.notesByVersion ?? {},
+    platformVersions: release.platformVersions ?? {},
     assets: release.assets.map((asset) => ({
       ...asset,
       platform: asset.platform || detectPlatformFromFilename(asset.name),
+      version: asset.version || release.version,
     })),
   }
 }
@@ -260,4 +271,26 @@ export function primaryDownloadsByPlatform(
     out[p.id] = primaryAssetForPlatform(assets, p)
   }
   return out
+}
+
+/** Version string for a showcase platform from merged latest release. */
+export function versionForPlatform(
+  release: ReleaseWithAssets | null | undefined,
+  platformId: ShowcasePlatformId,
+): string | null {
+  const fromMap = release?.platformVersions?.[platformId]
+  if (fromMap) return fromMap
+  const platform = SHOWCASE_PLATFORMS.find((p) => p.id === platformId)
+  if (!platform) return null
+  return primaryAssetForPlatform(release?.assets, platform)?.version ?? null
+}
+
+/** Changelog markdown for a showcase platform's latest version. */
+export function notesForPlatform(
+  release: ReleaseWithAssets | null | undefined,
+  platformId: ShowcasePlatformId,
+): string | null {
+  const version = versionForPlatform(release, platformId)
+  if (!version) return null
+  return release?.notesByVersion?.[version] ?? null
 }

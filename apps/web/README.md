@@ -61,7 +61,7 @@ Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE
 |------|--------|
 | `/` | Public landing |
 | `/iptv` | IPTV player story — live playlists & controls |
-| `/download` | Public — latest installers from R2 `latest/manifest.json` |
+| `/download` | Public — per-platform latest installers from R2 `latest/manifest.json` |
 | `/changelog` | Public — release notes from R2 `changelog/` |
 | `/terms` | Terms of use |
 | `/dmca` | DMCA / copyright notice |

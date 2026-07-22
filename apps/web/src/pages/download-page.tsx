@@ -8,8 +8,10 @@ import { SiteHeader } from '@/components/site-header'
 import {
   SHOWCASE_PLATFORMS,
   assetsForPlatform,
+  notesForPlatform,
   primaryDownloadsByPlatform,
   useLatestRelease,
+  versionForPlatform,
   type ShowcasePlatform,
   type ShowcasePlatformId,
 } from '@/hooks/use-releases'
@@ -98,20 +100,22 @@ function PlatformPicker({
   onSelect,
   assetsById,
   primaryById,
-  version,
-  notes,
+  versionById,
+  notesById,
 }: {
   platforms: ShowcasePlatform[]
   selectedId: ShowcasePlatformId
   onSelect: (id: ShowcasePlatformId) => void
   assetsById: Record<ShowcasePlatformId, ReleaseAsset[]>
   primaryById: Record<ShowcasePlatformId, ReleaseAsset | null>
-  version: string | null
-  notes: string | null
+  versionById: Record<ShowcasePlatformId, string | null>
+  notesById: Record<ShowcasePlatformId, string | null>
 }) {
   const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
   const assets = assetsById[selected.id] ?? []
   const primary = primaryById[selected.id] ?? assets[0] ?? null
+  const version = versionById[selected.id] ?? null
+  const notes = notesById[selected.id] ?? null
   const releaseTitle = releaseTitleFromNotes(notes, version)
 
   return (
@@ -294,6 +298,22 @@ export function DownloadPage() {
     [data?.assets],
   )
 
+  const versionById = useMemo(() => {
+    const map = {} as Record<ShowcasePlatformId, string | null>
+    for (const p of SHOWCASE_PLATFORMS) {
+      map[p.id] = versionForPlatform(data, p.id)
+    }
+    return map
+  }, [data])
+
+  const notesById = useMemo(() => {
+    const map = {} as Record<ShowcasePlatformId, string | null>
+    for (const p of SHOWCASE_PLATFORMS) {
+      map[p.id] = notesForPlatform(data, p.id)
+    }
+    return map
+  }, [data])
+
   return (
     <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
       <PageAtmosphere recipe="download" />
@@ -369,8 +389,8 @@ export function DownloadPage() {
               onSelect={setSelectedId}
               assetsById={assetsById}
               primaryById={primaryById}
-              version={data?.version ?? null}
-              notes={data?.body ?? null}
+              versionById={versionById}
+              notesById={notesById}
             />
           </div>
         </Reveal>

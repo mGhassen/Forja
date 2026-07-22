@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/services/app_updater_manifest.dart';
 import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:forja/shared/services/release_storage_urls.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
@@ -13,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// In-app updates.
 ///
 /// Discovery + download: Cloudflare R2 (`latest/manifest.json`, `v{ver}/{file}`).
+/// Manifest is per-platform — a macOS-only release does not wipe Windows/Linux/TV.
 /// Changelog bodies: R2 `changelog/` (permanent); GitHub Releases as fallback.
 class AppUpdaterService {
   static const String githubRepo = 'mGhassen/Forja';
@@ -73,37 +75,40 @@ class AppUpdaterService {
     final decoded = json.decode(response.body);
     if (decoded is! Map<String, dynamic>) return null;
 
-    final version = (decoded['version'] as String?)?.trim();
-    if (version == null || version.isEmpty) return null;
+    final key = AppUpdaterManifest.platformKey(
+      isWindows: Platform.isWindows,
+      isMacOS: Platform.isMacOS,
+      isLinux: Platform.isLinux,
+      isAndroid: Platform.isAndroid,
+    );
+    if (key == null) return null;
 
-    if (!AppUpdaterReleaseNotes.isNewerVersion(currentVersion, version)) {
+    final target = AppUpdaterManifest.resolve(
+      manifest: decoded,
+      platformKey: key,
+    );
+    if (target == null) return null;
+
+    if (!AppUpdaterManifest.isUpdateAvailable(
+      currentVersion: currentVersion,
+      target: target,
+    )) {
       return null;
     }
 
-    final assetsRaw = decoded['assets'];
-    if (assetsRaw is! List) return null;
-    final assets = <String>[
-      for (final a in assetsRaw)
-        if (a is String && a.isNotEmpty) a,
-    ];
-    if (assets.isEmpty) return null;
-
-    final downloadUrl = _pickInstallerUrl(version, assets);
+    final downloadUrl = _pickInstallerUrl(target.version, target.assets);
     if (downloadUrl == null || downloadUrl.isEmpty) return null;
 
-    final publishedRaw = decoded['published_at'] as String?;
-    final publishedAt = publishedRaw != null
-        ? DateTime.tryParse(publishedRaw) ?? DateTime.now()
-        : DateTime.now();
+    final publishedAt = target.publishedAt ?? DateTime.now();
 
     final changelogs = await _fetchChangelogs(
       currentVersion: currentVersion,
-      latestVersion: version,
+      latestVersion: target.version,
     );
 
     return UpdateInfo(
       currentVersion: currentVersion,
-      latestVersion: version,
+      latestVersion: target.version,
       downloadUrl: downloadUrl,
       changelogs: changelogs,
       fullChangelogUrl: fullChangelogUrl(),
