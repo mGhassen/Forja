@@ -36,7 +36,6 @@ export type ProviderRuntimeConfig = {
   webstreamr: Record<string, string>
   anime: {
     megaplay: AnimeEmbedHost
-    vidwish: AnimeEmbedHost
     miruroOrigins: string[]
     kisskhMirrors: string[]
     playbackProfiles: Record<string, AnimePlaybackProfile>
@@ -59,7 +58,6 @@ export function emptyConfig(): ProviderRuntimeConfig {
     webstreamr: {},
     anime: {
       megaplay: emptyHost(),
-      vidwish: emptyHost(),
       miruroOrigins: [],
       kisskhMirrors: [],
       playbackProfiles: {},
@@ -163,7 +161,7 @@ export function parseConfig(
     for (const [id, val] of Object.entries(rawProfiles)) {
       const key = id.trim()
       const o = asObject(val)
-      if (!key || !o) continue
+      if (!key || !o || key === 'vidwish') continue
       const probeRaw = str(o.probe)
       const probe: AnimeProbeMode =
         probeRaw === 'segmentPoisonSample' ||
@@ -190,7 +188,6 @@ export function parseConfig(
       webstreamr,
       anime: {
         megaplay: parseHost(animeObj.megaplay),
-        vidwish: parseHost(animeObj.vidwish),
         miruroOrigins: strList(animeObj.miruroOrigins),
         kisskhMirrors: strList(animeObj.kisskhMirrors),
         playbackProfiles,
@@ -245,19 +242,13 @@ export function serializeConfig(cfg: ProviderRuntimeConfig): unknown {
         pathAnilist: cfg.anime.megaplay.pathAnilist.trim(),
         scrapeReferer: cfg.anime.megaplay.scrapeReferer.trim(),
       },
-      vidwish: {
-        host: cfg.anime.vidwish.host.trim(),
-        pathCatalog: cfg.anime.vidwish.pathCatalog.trim(),
-        pathAnilist: cfg.anime.vidwish.pathAnilist.trim(),
-        scrapeReferer: cfg.anime.vidwish.scrapeReferer.trim(),
-      },
       miruroOrigins: cfg.anime.miruroOrigins.map((s) => s.trim()).filter(Boolean),
       kisskhMirrors: cfg.anime.kisskhMirrors.map((s) => s.trim()).filter(Boolean),
       playbackProfiles: Object.fromEntries(
         Object.entries(cfg.anime.playbackProfiles)
           .map(([id, p]) => {
             const key = id.trim()
-            if (!key) return null
+            if (!key || key === 'vidwish') return null
             return [
               key,
               {

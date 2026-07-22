@@ -660,16 +660,6 @@ export function AdminProvidersPage() {
                   }))
                 }
               />
-              <EmbedHostFields
-                title="Vidwish"
-                value={cfg.anime.vidwish}
-                onChange={(vidwish) =>
-                  setCfg((c) => ({
-                    ...c,
-                    anime: { ...c.anime, vidwish },
-                  }))
-                }
-              />
               <div className="grid gap-6 sm:grid-cols-2">
                 <label className="block space-y-1">
                   <Label className="text-[11px] text-forja-muted">

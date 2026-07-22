@@ -496,7 +496,6 @@ class SettingsService {
   static const List<String> defaultAnimeProviderOrder = <String>[
     'megaplay',
     'anikoto',
-    'vidwish',
     'vidnest:hianime',
     'vidnest:animepahe',
     'allanime:Default',
@@ -560,6 +559,16 @@ class SettingsService {
     if (_listEquals(saved, _legacyAnimeProviderOrder)) {
       await setAnimeProviderOrder(defaultAnimeProviderOrder);
       return List<String>.from(defaultAnimeProviderOrder);
+    }
+    // Vidwish aliased megaplay.buzz — drop from saved Tries lists.
+    final cleaned = [
+      for (final k in saved)
+        if (k != 'vidwish') k,
+    ];
+    if (cleaned.length != saved.length) {
+      final merged = mergeProviderOrder(cleaned, defaultAnimeProviderOrder);
+      await setAnimeProviderOrder(merged);
+      return merged;
     }
     return mergeProviderOrder(saved, defaultAnimeProviderOrder);
   }

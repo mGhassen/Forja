@@ -283,6 +283,7 @@ class ExternalPlayerService {
     Map<String, String>? headers,
     BuildContext? context,
     String? playerName,
+    String? providerId,
   }) async {
     final selectedName = playerName ?? await SettingsService().getExternalPlayer();
     if (selectedName == 'Built-in Player') return false;
@@ -306,6 +307,7 @@ class ExternalPlayerService {
     final resolvedHeaders = resolvePlaybackHttpHeaders(
       headers,
       streamUrl: normalizedUrl,
+      providerId: providerId,
     );
 
     final target = await _resolveLaunchTarget(

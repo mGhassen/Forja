@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **22 / 22** fix · **2 / 10** acceptance |
+| **Progress** | **29 / 29** fix · **3 / 11** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -41,6 +41,13 @@
 | 20 | I84-T20 | Remove anime Web player (`AnimeEmbedPlayerScreen` + browser-embed fallbacks) | ✅ |
 | 21 | I84-T21 | Treat `kotocdn` as Megaplay CDN (Dart builtins + Rust headers + PNG strip + runtime migration) | ✅ |
 | 22 | I84-T22 | Merge anime `pngStripHostContains` as union — remote lists must not drop builtin CDN needles | ✅ |
+| 23 | I84-T23 | RFC-044: `StreamSource.providerId` + cache persist identity | ✅ |
+| 24 | I84-T24 | RFC-044: Rust extract stamps from embed origin (no CDN host list) | ✅ |
+| 25 | I84-T25 | RFC-044: Dart `resolvePlaybackHttpHeaders(providerId:)` policy | ✅ |
+| 26 | I84-T26 | RFC-044: `pngStrip` auto/force/never (content sample) | ✅ |
+| 27 | I84-T27 | RFC-044: runtime migration + Rust overlay host read | ✅ |
+| 28 | I84-T28 | RFC-044: anime opens with `providerId` ignore CDN host chase | ✅ |
+| 29 | I84-T29 | Drop Vidwish alias (`vidwish.live` → megaplay.buzz): no embed emit, no Tries row, runtime/admin/CDN fold into Megaplay | ✅ |
 
 ---
 
@@ -58,18 +65,20 @@
 | 8 | I84-A08 | Manual: Dan Da Dan — VidNest HiAnime resolves with Anikoto-mapped AniList id | ⬜ |
 | 9 | I84-A09 | Manual: AniKoto provider race — native HLS from site Vidstream/VidPlay (no WebView required) | ⬜ |
 | 10 | I84-A10 | Canceled — anime Web player removed (I84-T20) | ✅ |
+| 11 | I84-A11 | Unit: race never emits `vidwish`; watching.onl CDN → megaplay Referer; legacy pin remaps | ✅ |
 
 ---
 
 ## Summary
 
-Megaplay extract still works ([API](https://megaplay.buzz/api)). CDN host rotated `mewstream` → `nekostream` → `kotocdn` (`megap.kotocdn.site`). Without `Referer: https://megaplay.buzz/` the master returns **403**. Forja only rewrote known CDN needles, so dropped headers derived a self-Referer → probe/play fail. `enma.lol` (scrape Referer) is also rejected — must not count as a valid Megaplay-family playback Referer. **I84-T21** adds `kotocdn` to the host list (symptom); real fix is sourceKey/stamp-first Referer so CDN renames need no allowlist chase.
+Megaplay extract still works ([API](https://megaplay.buzz/api)). CDN host rotated `mewstream` → `nekostream` → `kotocdn` (`megap.kotocdn.site`). Without `Referer: https://megaplay.buzz/` the master returns **403**. Forja only rewrote known CDN needles, so dropped headers derived a self-Referer → probe/play fail. `enma.lol` (scrape Referer) is also rejected — must not count as a valid Megaplay-family playback Referer. **I84-T21** adds `kotocdn` to the host list (symptom). **I84-T23–T28 / [RFC-044](../rfc/044-[open]-provider-identity-playback.md)** stamp and recover Referer by provider identity and decide PNG-strip from content so CDN renames need no allowlist chase.
 
-Also: code assumed `/stream/ani/` always 404s and skipped Megaplay without Anikoto. That path is live again for **Megaplay** — emit it when no `episode_embed_id`, keep `/stream/s-2/` when Anikoto matches. **Vidwish** `/stream/ani/` stays a soft-404 / transport waste — only emit Vidwish when Anikoto provides an `s-2` id (I84-T08).
+Also: code assumed `/stream/ani/` always 404s and skipped Megaplay without Anikoto. That path is live again for **Megaplay** — emit it when no `episode_embed_id`, keep `/stream/s-2/` when Anikoto matches. **I84-T08** historically skipped Vidwish without `s-2`; **I84-T29** retires Vidwish entirely (`vidwish.live` redirects to `megaplay.buzz` — same stack).
 
 **Playback (I84-T09–T20):** Nekostream segments are PNG-wrapped MPEG-TS (browser player strips them). Forja unwraps via `/hls-proxy?strip=png` and must not treat that loopback URL as unplayable. Miruro Bee (UI **AniKoto**) often returns Megaplay/Vidwish iframe URLs — unwrap those with `direct_embed` instead of dropping. Megaplay embed **HTML** may 410 while `getSources?id={s-2 catalog id}` still returns HLS — extract from the path id, always resolve Anikoto for Megaplay. Native **AniKoto** provider scrapes anikototv.to Ajax (Vidstream / VidPlay / …) → MegaPlay / VidTube getSources (I84-T18). VidNest should use Anikoto’s mapped `ani_id` when Forja’s AniList id is a duplicate entry. Site WebView fallback (Megaplay / VidNest / anikoto.cz) was removed (I84-T20) — native fail returns to the resolve failure screen only.
 
 ## Related
 
 - [080](080-[open]-miruro-cf-pipe-webview-unlock.md) — Miruro CF pipe (separate)
+- [RFC-044](../rfc/044-[open]-provider-identity-playback.md) — provider-identity playback
 - [anime hub](../features/hubs/anime.md)

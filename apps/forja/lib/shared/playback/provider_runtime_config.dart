@@ -26,7 +26,6 @@ class ProviderRuntimeConfig {
   ProviderRuntimeSnapshot get snapshot => _snap;
 
   AnimeEmbedHostConfig get megaplay => _snap.megaplay;
-  AnimeEmbedHostConfig get vidwish => _snap.vidwish;
   List<String> get miruroOrigins => _snap.miruroOrigins;
   List<String> get kisskhMirrors => _snap.kisskhMirrors;
   List<CdnRefererRule> get cdnRefererRules => _snap.cdnRefererRules;
@@ -41,17 +40,98 @@ class ProviderRuntimeConfig {
   AnimePlaybackProfile animePlaybackProfile(String sourceKey) {
     final raw = sourceKey.trim();
     if (raw.isEmpty) return AnimePlaybackProfile.fallback;
+    final base = _stripAnimePanelSuffix(raw).toLowerCase();
+    // Retired alias — same stack as Megaplay.
+    if (base == 'vidwish') {
+      return animePlaybackProfile('megaplay');
+    }
     final candidates = <String>[
       raw,
       raw.toLowerCase(),
       _stripAnimePanelSuffix(raw),
-      _stripAnimePanelSuffix(raw).toLowerCase(),
+      base,
     ];
     for (final k in candidates) {
       final hit = _snap.animePlaybackProfiles[k];
       if (hit != null) return hit;
     }
     return AnimePlaybackProfile.fallback;
+  }
+
+  /// Stable playback Referer/Origin for [providerId] (RFC-044). Null = no force.
+  ({String referer, String origin})? playbackPolicyFor(String? providerId) {
+    final key = _stripAnimePanelSuffix(providerId?.trim() ?? '').toLowerCase();
+    if (key.isEmpty) return null;
+
+    // MegaPlay family (CDN rotates; Referer stays megaplay host).
+    // Legacy `vidwish` is an alias (R44-C07).
+    if (key == 'megaplay' ||
+        key == 'vidwish' ||
+        key == 'anikoto' ||
+        key == 'miruro:bee' ||
+        key == 'vidnest:hianime') {
+      return _httpsOrigin(megaplay.host, fallback: 'megaplay.buzz');
+    }
+
+    // AllAnime / AllManga MP4 CDN (fast4speed, …).
+    if (key.startsWith('allanime:')) {
+      final raw = (apis['allanimeReferer'] ?? 'https://allmanga.to').trim();
+      final host = raw
+          .replaceFirst(RegExp(r'^https?://'), '')
+          .split('/')
+          .first
+          .trim();
+      return _httpsOrigin(host, fallback: 'allmanga.to');
+    }
+
+    // KissKh mirrors + rotating streamingcdn / cdnvideo hosts.
+    if (key == 'kisskh' || key.startsWith('kisskh.')) {
+      final mirror = kisskhMirrors.isNotEmpty
+          ? kisskhMirrors.first
+          : 'https://kisskh.co';
+      final host = mirror
+          .trim()
+          .replaceFirst(RegExp(r'^https?://'), '')
+          .split('/')
+          .first
+          .trim();
+      return _httpsOrigin(host, fallback: 'kisskh.co');
+    }
+
+    return null;
+  }
+
+  static ({String referer, String origin})? _httpsOrigin(
+    String host, {
+    required String fallback,
+  }) {
+    var h = host.trim();
+    h = h.replaceFirst(RegExp(r'^https?://'), '');
+    h = h.split('/').first.trim();
+    if (h.isEmpty) h = fallback;
+    return (referer: 'https://$h/', origin: 'https://$h');
+  }
+
+  /// True when [providerId] is an in-scope anime stream source (ban self-Referer).
+  bool isAnimeProviderId(String? providerId) {
+    final key = _stripAnimePanelSuffix(providerId?.trim() ?? '').toLowerCase();
+    if (key.isEmpty) return false;
+    if (key == 'megaplay' ||
+        key == 'vidwish' ||
+        key == 'anikoto' ||
+        key == 'watchhentai' ||
+        key == 'hentaini') {
+      return true;
+    }
+    return key.startsWith('miruro:') ||
+        key.startsWith('allanime:') ||
+        key.startsWith('vidnest:');
+  }
+
+  /// Ban inventing Referer from the CDN host (anime + KissKh identity).
+  bool bansCdnSelfReferer(String? providerId) {
+    if (playbackPolicyFor(providerId) != null) return true;
+    return isAnimeProviderId(providerId);
   }
 
   static String _stripAnimePanelSuffix(String key) {
@@ -356,20 +436,43 @@ enum AnimeProbeMode {
   skip,
 }
 
+/// PNG-shell unwrap policy (RFC-044) — content-driven, not CDN hostname lists.
+enum AnimePngStripMode {
+  /// Sample a media segment; strip only when bytes wrap MPEG-TS.
+  auto,
+
+  /// Always route HLS through `/hls-proxy?strip=png`.
+  force,
+
+  /// Never strip (normal HLS — AnimePahe / owocdn).
+  never,
+}
+
 @immutable
 class AnimePlaybackProfile {
   final AnimeProbeMode probe;
-  /// Host needles that need `/hls-proxy?strip=png` for this provider only.
+  final AnimePngStripMode pngStrip;
+
+  /// Legacy remote needles (RFC-039). Ignored for strip decisions when [pngStrip]
+  /// is set; kept for merge compat with older DB rows.
   final List<String> pngStripHostContains;
 
   const AnimePlaybackProfile({
     required this.probe,
+    this.pngStrip = AnimePngStripMode.never,
     this.pngStripHostContains = const [],
   });
 
   static const fallback = AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly);
 
+  /// Sync hint only — [force] always; [auto]/[never] need [applyAnimePngStripIfNeeded].
   bool urlNeedsPngStrip(String url) {
+    if (pngStrip == AnimePngStripMode.never) return false;
+    if (pngStrip == AnimePngStripMode.force) {
+      final u = url.toLowerCase();
+      return u.contains('.m3u8') || u.contains('/hls-proxy');
+    }
+    // auto: legacy host hint (optional fast-path); content sample decides for real.
     if (pngStripHostContains.isEmpty) return false;
     final u = url.toLowerCase();
     if (u.contains('/hls-proxy')) {
@@ -397,7 +500,19 @@ class AnimePlaybackProfile {
             .where((s) => s.isNotEmpty)
             .toList() ??
         const <String>[];
-    return AnimePlaybackProfile(probe: probe, pngStripHostContains: hosts);
+    final stripRaw = (j['pngStrip'] as String?)?.trim().toLowerCase() ?? '';
+    final pngStrip = switch (stripRaw) {
+      'auto' => AnimePngStripMode.auto,
+      'force' => AnimePngStripMode.force,
+      'never' => AnimePngStripMode.never,
+      // Legacy: non-empty host list → auto; empty → never.
+      _ => hosts.isNotEmpty ? AnimePngStripMode.auto : AnimePngStripMode.never,
+    };
+    return AnimePlaybackProfile(
+      probe: probe,
+      pngStrip: pngStrip,
+      pngStripHostContains: hosts,
+    );
   }
 
   Map<String, dynamic> toJson() => {
@@ -407,11 +522,16 @@ class AnimePlaybackProfile {
           AnimeProbeMode.headOrRange => 'headOrRange',
           AnimeProbeMode.skip => 'skip',
         },
-        'pngStripHostContains': pngStripHostContains,
+        'pngStrip': switch (pngStrip) {
+          AnimePngStripMode.auto => 'auto',
+          AnimePngStripMode.force => 'force',
+          AnimePngStripMode.never => 'never',
+        },
+        if (pngStripHostContains.isNotEmpty)
+          'pngStripHostContains': pngStripHostContains,
       };
 
-  /// Overlay wins [probe]; PNG-strip host needles are unioned so incomplete
-  /// remote lists cannot drop builtin CDN rotations (kotocdn, …).
+  /// Overlay wins [probe] + [pngStrip]; legacy host needles are unioned.
   AnimePlaybackProfile merged(AnimePlaybackProfile overlay) {
     final hosts = <String>[];
     final seen = <String>{};
@@ -422,6 +542,7 @@ class AnimePlaybackProfile {
     }
     return AnimePlaybackProfile(
       probe: overlay.probe,
+      pngStrip: overlay.pngStrip,
       pngStripHostContains: hosts,
     );
   }
@@ -434,7 +555,6 @@ class ProviderRuntimeSnapshot {
   final Map<String, String> apis;
   final Map<String, String> webstreamr;
   final AnimeEmbedHostConfig megaplay;
-  final AnimeEmbedHostConfig vidwish;
   final List<String> miruroOrigins;
   final List<String> kisskhMirrors;
   final List<CdnRefererRule> cdnRefererRules;
@@ -446,7 +566,6 @@ class ProviderRuntimeSnapshot {
     required this.apis,
     required this.webstreamr,
     required this.megaplay,
-    required this.vidwish,
     required this.miruroOrigins,
     required this.kisskhMirrors,
     required this.cdnRefererRules,
@@ -565,12 +684,6 @@ class ProviderRuntimeSnapshot {
           pathAnilist: '/stream/ani/{anilistId}/{ep}/{lang}',
           scrapeReferer: 'https://www.enma.lol/',
         ),
-        vidwish: const AnimeEmbedHostConfig(
-          host: 'vidwish.live',
-          pathCatalog: '/stream/s-2/{embedId}/{lang}',
-          pathAnilist: '/stream/ani/{anilistId}/{ep}/{lang}',
-          scrapeReferer: 'https://www.enma.lol/',
-        ),
         miruroOrigins: const [
           'https://www.miruro.tv',
           'https://www.miruro.to',
@@ -584,6 +697,8 @@ class ProviderRuntimeSnapshot {
           'https://kisskh.la',
           'https://kisskh.do',
         ],
+        // Legacy host→Referer fallback when providerId is unknown (RFC-044).
+        // Anime opens with providerId use playbackPolicyFor and ignore these.
         cdnRefererRules: const [
           CdnRefererRule(
             hostContains: [
@@ -592,16 +707,12 @@ class ProviderRuntimeSnapshot {
               'kotocdn',
               'lostproject',
               'megaplay',
+              'watching.onl',
+              'vidwish',
             ],
             referer: 'https://megaplay.buzz/',
             origin: 'https://megaplay.buzz',
             acceptRefererContains: ['megaplay'],
-          ),
-          CdnRefererRule(
-            hostContains: ['watching.onl', 'vidwish'],
-            referer: 'https://vidwish.live/',
-            origin: 'https://vidwish.live',
-            acceptRefererContains: ['vidwish'],
           ),
           CdnRefererRule(
             hostContains: ['fast4speed'],
@@ -618,36 +729,19 @@ class ProviderRuntimeSnapshot {
       {
     'megaplay': AnimePlaybackProfile(
       probe: AnimeProbeMode.segmentPoisonSample,
-      pngStripHostContains: [
-        'nekostream',
-        'kotocdn',
-        'mewstream',
-        'vivibebe',
-        'ibyteimg',
-        'byteimg.com',
-        'lostproject',
-        'watching.onl',
-      ],
+      pngStrip: AnimePngStripMode.auto,
     ),
     'anikoto': AnimePlaybackProfile(
       probe: AnimeProbeMode.segmentPoisonSample,
-      pngStripHostContains: [
-        'nekostream',
-        'kotocdn',
-        'mewstream',
-        'vivibebe',
-        'ibyteimg',
-        'byteimg.com',
-        'lostproject',
-        'vidtube',
-      ],
+      pngStrip: AnimePngStripMode.auto,
     ),
-    'vidwish': AnimePlaybackProfile(
+    'miruro:bee': AnimePlaybackProfile(
       probe: AnimeProbeMode.segmentPoisonSample,
-      pngStripHostContains: ['watching.onl', 'vidwish'],
+      pngStrip: AnimePngStripMode.auto,
     ),
     'vidnest:hianime': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.auto,
     ),
     'vidnest:animepahe': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
@@ -664,7 +758,6 @@ class ProviderRuntimeSnapshot {
     'allanime:Luf-Mp4': AnimePlaybackProfile(
       probe: AnimeProbeMode.headOrRange,
     ),
-    'miruro:bee': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
     'miruro:zoro': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
     'miruro:kiwi': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
     'miruro:ally': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
@@ -691,10 +784,6 @@ class ProviderRuntimeSnapshot {
     final megaplay = AnimeEmbedHostConfig.fromJson(
       (anime?['megaplay'] as Map?)?.cast<String, dynamic>(),
       builtins.megaplay,
-    );
-    final vidwish = AnimeEmbedHostConfig.fromJson(
-      (anime?['vidwish'] as Map?)?.cast<String, dynamic>(),
-      builtins.vidwish,
     );
     final origins = (anime?['miruroOrigins'] as List?)
             ?.map((e) => e.toString().trim())
@@ -759,13 +848,14 @@ class ProviderRuntimeSnapshot {
         );
       }
     }
+    // Ignore retired anime.vidwish overlay — host redirects to megaplay.
+    profiles.remove('vidwish');
     return ProviderRuntimeSnapshot(
       schema: schema,
       templates: templates,
       apis: apis,
       webstreamr: webstreamr,
       megaplay: megaplay,
-      vidwish: vidwish,
       miruroOrigins: origins,
       kisskhMirrors: kisskh,
       cdnRefererRules: rules,
@@ -782,16 +872,17 @@ class ProviderRuntimeSnapshot {
     final ws = Map<String, String>.from(webstreamr)..addAll(overlay.webstreamr);
     final profiles = Map<String, AnimePlaybackProfile>.from(animePlaybackProfiles);
     for (final e in overlay.animePlaybackProfiles.entries) {
+      if (e.key == 'vidwish') continue;
       final base = profiles[e.key];
       profiles[e.key] = base == null ? e.value : base.merged(e.value);
     }
+    profiles.remove('vidwish');
     return ProviderRuntimeSnapshot(
       schema: overlay.schema,
       templates: tpl,
       apis: api,
       webstreamr: ws,
       megaplay: megaplay.merged(overlay.megaplay),
-      vidwish: vidwish.merged(overlay.vidwish),
       miruroOrigins: overlay.miruroOrigins.isNotEmpty
           ? overlay.miruroOrigins
           : miruroOrigins,
@@ -839,7 +930,6 @@ class ProviderRuntimeSnapshot {
         'webstreamr': webstreamr,
         'anime': {
           'megaplay': megaplay.toJson(),
-          'vidwish': vidwish.toJson(),
           'miruroOrigins': miruroOrigins,
           'kisskhMirrors': kisskhMirrors,
           'playbackProfiles': {

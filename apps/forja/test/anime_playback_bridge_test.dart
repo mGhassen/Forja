@@ -89,14 +89,14 @@ void main() {
           url: 'https://megaplay.buzz/stream/s-2/abc/sub',
         ),
         AnimeEmbed(
-          label: 'Vidwish',
-          server: 'vidwish',
+          label: 'AniKoto',
+          server: 'anikoto',
           category: 'sub',
-          url: 'https://vidwish.live/stream/s-2/abc/sub',
+          url: 'anikoto://watch/slug/1/sub',
         ),
       ];
       final map = AnimePlaybackBridge.embedsToProviders(embeds);
-      expect(map.keys, containsAll(['megaplay', 'vidwish']));
+      expect(map.keys, containsAll(['megaplay', 'anikoto']));
       expect(map.keys, isNot(contains('embed_0')));
     });
   });
@@ -105,9 +105,9 @@ void main() {
     test('strict megaplay pin resolves when candidate uses sourceKey', () {
       final order = SourceEngine.orderProviders(
         domain: SourceDomain.anime,
-        candidateIds: ['megaplay', 'vidwish'],
+        candidateIds: ['megaplay', 'anikoto'],
         preferred: 'megaplay',
-        settingsOrder: ['megaplay', 'vidwish'],
+        settingsOrder: ['megaplay', 'anikoto'],
       );
       expect(order.orderedIds, ['megaplay']);
     });
@@ -115,8 +115,8 @@ void main() {
     test('auto mode keeps real anime provider keys', () {
       final order = SourceEngine.orderProviders(
         domain: SourceDomain.anime,
-        candidateIds: ['megaplay', 'vidwish', 'miruro:bee'],
-        settingsOrder: ['megaplay', 'vidwish', 'miruro:bee'],
+        candidateIds: ['megaplay', 'anikoto', 'miruro:bee'],
+        settingsOrder: ['megaplay', 'anikoto', 'miruro:bee'],
       );
       expect(order.orderedIds, isNotEmpty);
       expect(order.orderedIds, contains('megaplay'));

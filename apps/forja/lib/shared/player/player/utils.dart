@@ -29,12 +29,14 @@ String normalizePlaybackStreamUrl(String url) {
 
 /// Headers for every network open: extractor headers + guaranteed browser UA.
 ///
-/// Do **not** comma-join into mpv `http-header-fields` — UA values contain
-/// commas (`KHTML, like Gecko`) and that corrupts the list. Pass the map to
+/// Prefer [providerId] (RFC-044) over CDN hostname matching. Do **not**
+/// comma-join into mpv `http-header-fields` — UA values contain commas
+/// (`KHTML, like Gecko`) and that corrupts the list. Pass the map to
 /// [Media.httpHeaders] so media_kit sets a proper NODE_ARRAY on load.
 Map<String, String> resolvePlaybackHttpHeaders(
   Map<String, String>? headers, {
   String? streamUrl,
+  String? providerId,
 }) {
   final out = <String, String>{};
   if (headers != null) {
@@ -59,12 +61,26 @@ Map<String, String> resolvePlaybackHttpHeaders(
     (ua != null && ua.isNotEmpty) ? ua : kDefaultStreamUserAgent,
   );
 
+  final cfg = ProviderRuntimeConfig.instance;
+  final pid = providerId?.trim();
+  final policy = cfg.playbackPolicyFor(pid);
+  final banSelf = cfg.bansCdnSelfReferer(pid);
+  final catalogForMatch = streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
+      ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
+      : streamUrl;
+
   final referer = take('Referer', 'referer');
   if (referer != null && referer.isNotEmpty) {
     putCanonical('Referer', 'referer', referer);
-  } else if (streamUrl != null &&
+  } else if (policy != null) {
+    // RFC-044: recover from provider identity — never invent CDN self-Referer.
+    putCanonical('Referer', 'referer', policy.referer);
+    putCanonical('Origin', 'origin', policy.origin);
+  } else if (!banSelf &&
+      streamUrl != null &&
       streamUrl.isNotEmpty &&
-      !isLocalTorrentStreamUrl(streamUrl)) {
+      !isLocalTorrentStreamUrl(streamUrl) &&
+      !isLocalLoopbackPlayUrl(streamUrl)) {
     final uri = Uri.tryParse(streamUrl);
     if (uri != null &&
         (uri.isScheme('http') || uri.isScheme('https')) &&
@@ -73,9 +89,33 @@ Map<String, String> resolvePlaybackHttpHeaders(
     }
   }
 
-  // KissKh CDN (cdnvideo*.shop, etc.) rejects self-origin Referer. Cached
-  // sources sometimes lose headers — never derive Referer from the CDN host.
-  if (streamUrl != null && _isKissKhCdnStream(streamUrl)) {
+  // Provider policy: force when missing, self-CDN, or scrape (enma) Referer.
+  if (policy != null) {
+    final ref = take('Referer', 'referer') ?? '';
+    final refHost = Uri.tryParse(ref)?.host.toLowerCase() ?? ref.toLowerCase();
+    final streamHost =
+        Uri.tryParse(catalogForMatch ?? '')?.host.toLowerCase() ?? '';
+    final selfCdn = streamHost.isNotEmpty &&
+        refHost.isNotEmpty &&
+        (refHost == streamHost ||
+            refHost.contains(streamHost) ||
+            streamHost.contains(refHost));
+    final scrapeLeak = refHost.contains('enma');
+    final policyHost =
+        Uri.tryParse(policy.referer)?.host.toLowerCase() ?? '';
+    final familyOk = _refererMatchesPolicyFamily(refHost, policyHost);
+    final accepted =
+        ref.isNotEmpty && !selfCdn && !scrapeLeak && familyOk;
+    if (!accepted) {
+      putCanonical('Referer', 'referer', policy.referer);
+      putCanonical('Origin', 'origin', policy.origin);
+    }
+  }
+
+  // Legacy KissKh CDN sniff — only when provider identity is unknown.
+  if (policy == null &&
+      streamUrl != null &&
+      _isKissKhCdnStream(streamUrl)) {
     final ref = take('Referer', 'referer') ?? '';
     if (ref.isEmpty || _isKissKhCdnStream(ref) || !ref.contains('kisskh')) {
       putCanonical('Referer', 'referer', 'https://kisskh.co/');
@@ -104,10 +144,10 @@ Map<String, String> resolvePlaybackHttpHeaders(
     out.remove('origin');
   }
 
-  // Anime CDN Referer rules — remote overlay (RFC-039) over builtins.
-  if (streamUrl != null) {
-    for (final rule in ProviderRuntimeConfig.instance.cdnRefererRules) {
-      if (!rule.matchesStreamUrl(streamUrl)) continue;
+  // Legacy CDN host rules — only when provider identity is unknown (RFC-044).
+  if (policy == null && catalogForMatch != null) {
+    for (final rule in cfg.cdnRefererRules) {
+      if (!rule.matchesStreamUrl(catalogForMatch)) continue;
       final ref = take('Referer', 'referer') ?? '';
       if (ref.isEmpty || !rule.refererAccepted(ref)) {
         if (rule.referer.isNotEmpty) {
@@ -146,6 +186,28 @@ bool _isKissKhCdnStream(String url) {
       host.contains('kisskh');
 }
 
+/// Accept any host in the same provider family as [policyHost].
+bool _refererMatchesPolicyFamily(String refHost, String policyHost) {
+  if (refHost.isEmpty || policyHost.isEmpty) return false;
+  if (refHost.contains(policyHost) || policyHost.contains(refHost)) {
+    return true;
+  }
+  if (policyHost.contains('megaplay') && refHost.contains('megaplay')) {
+    return true;
+  }
+  if (policyHost.contains('vidwish') && refHost.contains('vidwish')) {
+    return true;
+  }
+  if ((policyHost.contains('allmanga') || policyHost.contains('allanime')) &&
+      (refHost.contains('allmanga') || refHost.contains('allanime'))) {
+    return true;
+  }
+  if (policyHost.contains('kisskh') && refHost.contains('kisskh')) {
+    return true;
+  }
+  return false;
+}
+
 /// Tokenized Vidsrc CloudStream playlist — segments reject Referer/Origin.
 bool _isVidsrcCloudStreamPl(String url) {
   final uri = Uri.tryParse(url.trim());
@@ -173,11 +235,16 @@ Future<void> applyMediaHttpHeaders(
   Player player,
   Map<String, String>? headers, {
   String? streamUrl,
+  String? providerId,
   bool alreadyResolved = false,
 }) async {
   final resolved = alreadyResolved
       ? Map<String, String>.from(headers ?? const {})
-      : resolvePlaybackHttpHeaders(headers, streamUrl: streamUrl);
+      : resolvePlaybackHttpHeaders(
+          headers,
+          streamUrl: streamUrl,
+          providerId: providerId,
+        );
   if (player.platform is! NativePlayer) return;
   final native = player.platform as NativePlayer;
 
@@ -245,6 +312,7 @@ Future<String> openPlayerStream(
   Player player, {
   required String url,
   Map<String, String>? headers,
+  String? providerId,
 }) async {
   final openUrl = normalizePlaybackStreamUrl(url);
   if (isTorrentStreamUrl(openUrl)) {
@@ -252,7 +320,11 @@ Future<String> openPlayerStream(
       'Cannot open magnet/torrent URL directly — resolve to a stream first',
     );
   }
-  final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: openUrl);
+  final hdrs = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: openUrl,
+    providerId: providerId,
+  );
   await applyMediaHttpHeaders(
     player,
     hdrs,
@@ -532,6 +604,15 @@ bool isMidEpisodePlayback(int positionMs, int durationMs) {
   return positionMs >= 30 * 1000 && positionMs <= durationMs - 90 * 1000;
 }
 
+/// Age of the current source open only (ignores session mid / first confirm).
+Duration openPlaybackAge({
+  required DateTime? openConfirmedAt,
+  DateTime? now,
+}) {
+  if (openConfirmedAt == null) return Duration.zero;
+  return (now ?? DateTime.now()).difference(openConfirmedAt);
+}
+
 /// Confirmed-playback age used for natural-end / persist guards.
 ///
 /// When the user already watched the episode body this session, prefer the
@@ -547,8 +628,41 @@ Duration confirmedPlaybackAge({
   if (hadMidPlayback && sessionFirstConfirmedAt != null) {
     return n.difference(sessionFirstConfirmedAt);
   }
-  if (openConfirmedAt == null) return Duration.zero;
-  return n.difference(openConfirmedAt);
+  return openPlaybackAge(openConfirmedAt: openConfirmedAt, now: n);
+}
+
+/// Whether `completed` should count as a real finish (pin EOF / auto-next).
+///
+/// Session mid from a prior source must not make a dead CDN open look finished.
+/// Early-EOF grace always uses [openConfirmedFor]; credits source-switches still
+/// qualify once this open survives the grace and the UI is already at EOF.
+bool shouldAcceptNaturalPlaybackEnd({
+  required PlayerState state,
+  required Duration openConfirmedFor,
+  required bool openHadMidPlayback,
+  required bool sessionHadMidPlayback,
+  required Duration uiPosition,
+  required Duration uiDuration,
+}) {
+  if (isNaturalPlaybackEnd(
+    state,
+    confirmedFor: openConfirmedFor,
+    hadMidPlayback: openHadMidPlayback,
+  )) {
+    return true;
+  }
+  final pinDur = uiDuration > Duration.zero ? uiDuration : state.duration;
+  if (!shouldPinSeekBarAtEof(uiPosition: uiPosition, duration: pinDur)) {
+    return false;
+  }
+  if (!sessionHadMidPlayback) return false;
+  // Dead CDN after a mid session jumps to EOF in seconds — still abortive.
+  if (openConfirmedFor < kMinConfirmedPlaybackForNaturalEnd) return false;
+  return isNaturalPlaybackEnd(
+    state,
+    confirmedFor: openConfirmedFor,
+    hadMidPlayback: true,
+  );
 }
 
 bool isNaturalPlaybackEnd(
@@ -915,8 +1029,10 @@ bool animeHlsNeedsPngStrip(String url) {
   return animeHlsNeedsPngStripFor(url, sourceKey: null);
 }
 
-/// PNG-strip decision for [sourceKey]'s profile; without a key, any profile
-/// that lists a matching needle (so open paths without a key still work).
+/// Whether [applyAnimePngStripIfNeeded] should run for [url] / [sourceKey].
+///
+/// [AnimePngStripMode.auto] returns true for HLS so apply can content-sample
+/// (RFC-044). Host needles alone no longer gate strip.
 bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
   final u = url.trim();
   if (u.isEmpty) return false;
@@ -927,8 +1043,15 @@ bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
   }
   final cfg = ProviderRuntimeConfig.instance;
   if (sourceKey != null && sourceKey.trim().isNotEmpty) {
-    return cfg.animePlaybackProfile(sourceKey).urlNeedsPngStrip(u);
+    final p = cfg.animePlaybackProfile(sourceKey);
+    if (p.pngStrip == AnimePngStripMode.never) return false;
+    if (p.pngStrip == AnimePngStripMode.force ||
+        p.pngStrip == AnimePngStripMode.auto) {
+      return u.contains('.m3u8');
+    }
+    return p.urlNeedsPngStrip(u);
   }
+  // No key: only legacy host needles / force profiles that match the URL.
   for (final p in cfg.animePlaybackProfiles.values) {
     if (p.urlNeedsPngStrip(u)) return true;
   }
@@ -962,30 +1085,112 @@ bool pngWrapsMpegTs(List<int> bytes) {
       bytes[252 + 188] == 0x47;
 }
 
-/// Route Megaplay/nekostream HLS through local `/hls-proxy?strip=png` so Exo/mpv
-/// get real MPEG-TS (browser player strips the PNG shell the same way).
+/// Route PNG-wrapped HLS through local `/hls-proxy?strip=png` (RFC-044).
+///
+/// [AnimePngStripMode.force] always proxies; [AnimePngStripMode.auto] samples a
+/// media segment and strips only when [pngWrapsMpegTs]; [never] is a no-op.
 Future<StreamSource> applyAnimePngStripIfNeeded(
   StreamSource source, {
   String? sourceKey,
 }) async {
   final url = source.url.trim();
   if (url.isEmpty || url.contains('/hls-proxy')) return source;
-  if (!url.contains('.m3u8') ||
-      !animeHlsNeedsPngStripFor(url, sourceKey: sourceKey)) {
-    return source;
+  if (!url.contains('.m3u8')) return source;
+
+  final pid = source.providerId?.trim().isNotEmpty == true
+      ? source.providerId
+      : sourceKey;
+  final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(pid ?? '');
+  final mode = profile.pngStrip;
+  if (mode == AnimePngStripMode.never) return source;
+
+  var shouldStrip = mode == AnimePngStripMode.force;
+  if (mode == AnimePngStripMode.auto) {
+    // Legacy host hint (fast path) or content sample.
+    shouldStrip = profile.urlNeedsPngStrip(url) ||
+        await _animeHlsSegmentLooksPngWrapped(
+          url,
+          resolvePlaybackHttpHeaders(
+            source.headers,
+            streamUrl: url,
+            providerId: pid,
+          ),
+        );
   }
+  if (!shouldStrip) return source;
+
   final ls = LocalServerService();
   if (ls.port == 0) {
     await ls.start();
   }
   if (ls.port == 0) return source;
-  final hdrs = Map<String, String>.from(source.headers ?? const {});
+  final hdrs = resolvePlaybackHttpHeaders(
+    source.headers,
+    streamUrl: url,
+    providerId: pid,
+  );
   return StreamSource(
     url: ls.getHlsProxyUrl(url, hdrs, stripMode: 'png'),
     title: source.title,
     type: source.type,
     headers: null,
+    providerId: pid,
+    catalogUrl: source.catalogUrl ?? url,
   );
+}
+
+/// True when the first playable media segment is a PNG shell wrapping MPEG-TS.
+Future<bool> _animeHlsSegmentLooksPngWrapped(
+  String playlistUrl,
+  Map<String, String> headers,
+) async {
+  try {
+    final master = await animeHttp(
+      'GET',
+      playlistUrl,
+      headers: headers,
+      maxRetries: 0,
+      timeoutSecs: 8,
+    );
+    if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
+    var mediaPlaylistUrl = playlistUrl;
+    final masterLines = master.body.split('\n');
+    for (final line in masterLines) {
+      final t = line.trim();
+      if (t.isEmpty || t.startsWith('#')) continue;
+      if (t.contains('.m3u8')) {
+        mediaPlaylistUrl = _joinPlaylistUri(playlistUrl, t);
+        break;
+      }
+    }
+    String body = master.body;
+    if (mediaPlaylistUrl != playlistUrl) {
+      final media = await animeHttp(
+        'GET',
+        mediaPlaylistUrl,
+        headers: headers,
+        maxRetries: 0,
+        timeoutSecs: 8,
+      );
+      if (media.status != 200) return false;
+      body = media.body;
+    }
+    for (final line in body.split('\n')) {
+      final t = line.trim();
+      if (t.isEmpty || t.startsWith('#')) continue;
+      if (_isAnimeHlsAdHost(t)) continue;
+      final segUrl = _joinPlaylistUri(mediaPlaylistUrl, t);
+      final sample = await animeHttpBytes(
+        segUrl,
+        headers: {...headers, 'Range': 'bytes=0-2047'},
+        timeoutSecs: 8,
+        maxRetries: 0,
+      );
+      if (sample.isEmpty) continue;
+      return pngWrapsMpegTs(sample);
+    }
+  } catch (_) {}
+  return false;
 }
 
 Future<List<StreamSource>> applyAnimePngStripAll(
@@ -1185,9 +1390,13 @@ Future<bool> probeStreamSourceUrl(
   // Already on the PNG-strip play path — don't re-sample nested segments.
   if (hlsProxyStripIsPng(normalized)) return true;
   final catalog = hlsProxyTargetUrl(normalized) ?? normalized;
-  final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: catalog);
-
   final key = sourceKey?.trim();
+  final hdrs = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: catalog,
+    providerId: key,
+  );
+
   if (key != null && key.isNotEmpty) {
     final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(key);
     switch (profile.probe) {

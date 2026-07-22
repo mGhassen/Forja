@@ -111,7 +111,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | `AnimeRealmsExtractor` | 206 | `anime/extractors/animerealms` | HTML/JSON parse | — | ✅ |
 | `HentainiExtractor` | 307 | `anime/extractors/hentaini` | HTML parse | — | ✅ |
 | `WatchHentaiExtractor` | 351 | `anime/extractors/watchhentai` | HTML parse | — | ✅ |
-| `AnimeService` (stream race slice) | ~280 of 1321 | `anime/resolve` | Anikoto resolve, megaplay/vidwish extract, stream probe | Watch-history prefs, embed build, stream race UX | ✅ |
+| `AnimeService` (stream race slice) | ~280 of 1321 | `anime/resolve` | Anikoto resolve, megaplay extract, stream probe | Watch-history prefs, embed build, stream race UX | ✅ |
 | `KissKhService` | 571 | `kisskh` | JSON API browse/details/episode list parse | `KissKhExtractor` (C3) | ✅ |
 
 **After P0:** `AnimeService` shrinks to orchestration (history, SUB/DUB prefs, calling engine jobs). `resolver-engine` already has `kisskh` host-required plugin — metadata port unblocks cleaner split.

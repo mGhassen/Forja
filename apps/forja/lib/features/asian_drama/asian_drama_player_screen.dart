@@ -11,6 +11,7 @@ import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -434,9 +435,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         return;
       }
       _applyProbeStatus(activeHost, StreamProviderProbeStatus.success);
-      final sources = stream.toSources(
-        label: KissKhService.mirrorLabel(activeHost),
-      );
+      final sources = _kissKhSources(stream, activeHost);
       _providerSourcesCache.value = {activeHost: sources};
       await _launchPlayer(stream, activeHost);
     } catch (e) {
@@ -452,10 +451,32 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     }
   }
 
-  Future<void> _launchPlayer(KissKhStream stream, String activeMirror) async {
-    final sources = stream.toSources(
+  List<StreamSource> _kissKhSources(KissKhStream stream, String activeMirror) {
+    final pid =
+        activeMirror.trim().isNotEmpty ? activeMirror.trim() : 'kisskh';
+    final raw = stream.toSources(
       label: KissKhService.mirrorLabel(activeMirror),
+      providerId: pid,
     );
+    final hdrs = resolvePlaybackHttpHeaders(
+      raw.first.headers,
+      streamUrl: raw.first.url,
+      providerId: pid,
+    );
+    return [
+      StreamSource(
+        url: raw.first.url,
+        title: raw.first.title,
+        type: raw.first.type,
+        headers: hdrs,
+        providerId: pid,
+        catalogUrl: raw.first.catalogUrl ?? raw.first.url,
+      ),
+    ];
+  }
+
+  Future<void> _launchPlayer(KissKhStream stream, String activeMirror) async {
+    final sources = _kissKhSources(stream, activeMirror);
     final subs = stream.subtitles;
 
     final drama = _resolvedDrama ?? widget.drama;

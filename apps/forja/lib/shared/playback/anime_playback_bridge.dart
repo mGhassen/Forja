@@ -143,6 +143,7 @@ abstract final class AnimePlaybackBridge {
       final headers = resolvePlaybackHttpHeaders(
         rawHdrs.isEmpty ? null : rawHdrs,
         streamUrl: rankedSources.first.url,
+        providerId: embed.sourceKey,
       );
       scored.add((
         embed: embed,
@@ -249,6 +250,7 @@ abstract final class AnimePlaybackBridge {
       if (multi != null && multi.isNotEmpty) {
         for (final s in multi) {
           if (s.url.trim().isEmpty) continue;
+          final pid = s.providerId ?? h.embed.sourceKey;
           final headers = resolvePlaybackHttpHeaders(
             s.headers != null && s.headers!.isNotEmpty
                 ? Map<String, String>.from(s.headers!)
@@ -256,6 +258,7 @@ abstract final class AnimePlaybackBridge {
                     ? null
                     : Map<String, String>.from(h.media.headers)),
             streamUrl: s.url,
+            providerId: pid,
           );
           if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
             final origin = h.embed.refererOrigin;
@@ -272,13 +275,17 @@ abstract final class AnimePlaybackBridge {
                 ? s.type
                 : (s.url.contains('.m3u8') ? 'hls' : 'video'),
             headers: headers,
+            providerId: pid,
+            catalogUrl: s.catalogUrl ?? s.url,
           ));
         }
         continue;
       }
+      final pid = h.embed.sourceKey;
       final headers = resolvePlaybackHttpHeaders(
         h.media.headers.isEmpty ? null : Map<String, String>.from(h.media.headers),
         streamUrl: h.media.url,
+        providerId: pid,
       );
       if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
         final origin = h.embed.refererOrigin;
@@ -292,6 +299,8 @@ abstract final class AnimePlaybackBridge {
         title: 'Stream',
         type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
         headers: headers,
+        providerId: pid,
+        catalogUrl: h.media.url,
       ));
     }
     return sources;

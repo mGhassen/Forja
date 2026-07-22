@@ -105,7 +105,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [081-[fixed]-…](fixed/081-[fixed]-macos-quit-mpv-demux-sigsegv.md) | macOS quit mpv demux SIGSEGV | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [082-[open]-…](082-[open]-multi-server-collect-all.md) | Multi-server must show every mirror | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [083-[open]-…](083-[open]-anime-first-hit-no-background-scan.md) | Anime first playable wins (no background scan) | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 22/22 · A 2/10 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 29/29 · A 3/11 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [085-[open]-…](085-[open]-desktop-involuntary-signout-dumps-login.md) | Session loss → login + wipe (no Guest portal leak) | P1 | High | open | 5/5 · A 0/2 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
 | [086-[fixed]-…](fixed/086-[fixed]-provider-score-running-total-floor.md) | Provider score re-sum buried ups under Auto fails | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [087-[open]-…](087-[open]-update-dialog-empty-changelogs.md) | Update dialog empty notes (R2 changelog archive) | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |

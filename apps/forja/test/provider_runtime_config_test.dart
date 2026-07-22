@@ -140,22 +140,14 @@ void main() {
       );
     });
 
-    test('remote megaplay pngStrip list keeps builtin kotocdn', () {
+    test('remote megaplay pngStrip auto without host needles', () {
       final remote = ProviderRuntimeSnapshot.tryParse({
         'schema': 1,
         'anime': {
           'playbackProfiles': {
             'megaplay': {
               'probe': 'segmentPoisonSample',
-              'pngStripHostContains': [
-                'nekostream',
-                'mewstream',
-                'vivibebe',
-                'ibyteimg',
-                'byteimg.com',
-                'lostproject',
-                'watching.onl',
-              ],
+              'pngStrip': 'auto',
             },
           },
         },
@@ -165,15 +157,19 @@ void main() {
           ProviderRuntimeSnapshot.builtins().merged(remote!);
       ProviderRuntimeConfig.instance.debugSetSnapshot(merged);
       expect(
-        merged.animePlaybackProfiles['megaplay']!.pngStripHostContains,
-        contains('kotocdn'),
+        merged.animePlaybackProfiles['megaplay']!.pngStrip,
+        AnimePngStripMode.auto,
       );
       expect(
         animeHlsNeedsPngStripFor(
-          'https://megap.kotocdn.site/x/master.m3u8',
+          'https://brand-new-cdn.example/x/master.m3u8',
           sourceKey: 'megaplay',
         ),
         isTrue,
+      );
+      expect(
+        ProviderRuntimeConfig.instance.playbackPolicyFor('megaplay')?.referer,
+        contains('megaplay'),
       );
     });
 

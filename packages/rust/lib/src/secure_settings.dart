@@ -1,25 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import 'forja_platform_secure_store.dart';
 import 'kv.dart';
 
 /// Platform Keychain/Keystore for credentials.
 ///
 /// Non-secret configuration belongs in Rust KV (`forja_engine_store.json`).
-/// Never write secrets into that file; never fall back to plaintext **writes**
-/// when secure storage fails on a real device — report and leave the caller's
-/// write incomplete. Reads may still surface legacy SharedPreferences values
-/// until migration into Keychain succeeds. MissingPluginException (unit tests)
-/// is soft-skipped.
+/// Never write secrets into that file. On macOS ad-hoc (non-sandbox) builds,
+/// [ForjaPlatformSecureStore] intentionally uses a prefs vault instead of the
+/// login Keychain (avoids a password dialog on every update). MissingPluginException
+/// (unit tests) is soft-skipped on reads.
 abstract final class SecureSettings {
-  // macOS release is non-sandboxed — Data Protection Keychain returns -34018.
-  static const FlutterSecureStorage _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    mOptions: MacOsOptions(useDataProtectionKeyChain: false),
-  );
-
   /// Debrid
   static const rdAccessToken = 'rd_access_token';
   static const rdRefreshToken = 'rd_refresh_token';
@@ -60,79 +52,35 @@ abstract final class SecureSettings {
     iptvPortalPasswords,
   };
 
-  static Future<String?> read(String key) async {
-    try {
-      final v = await _secure.read(key: key);
-      if (v != null && v.isNotEmpty) return v;
-    } on MissingPluginException {
-      // Unit tests / no plugin — fall through to prefs legacy.
-    } catch (e) {
-      debugPrint('[SecureSettings] read failed ($key): $e');
-      // Keychain can fail on macOS without keychain-access-groups (-34018).
-      // Fall through to prefs so Settings can still load unmigrated secrets.
-    }
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final legacy = prefs.getString(key);
-      if (legacy != null && legacy.isNotEmpty) return legacy;
-    } catch (_) {}
-    return null;
-  }
+  static Future<String?> read(String key) => ForjaPlatformSecureStore.read(key);
 
-  static Future<void> write(String key, String value) async {
-    try {
-      await _secure.write(key: key, value: value);
-    } on MissingPluginException {
-      debugPrint('[SecureSettings] write skipped — no secure plugin ($key)');
-      rethrow;
-    } catch (e) {
-      debugPrint('[SecureSettings] write failed ($key): $e');
-      rethrow;
-    }
-  }
+  static Future<void> write(String key, String value) =>
+      ForjaPlatformSecureStore.write(key, value);
 
-  static Future<void> delete(String key) async {
-    try {
-      await _secure.delete(key: key);
-    } on MissingPluginException {
-      return;
-    } catch (e) {
-      debugPrint('[SecureSettings] delete failed ($key): $e');
-      rethrow;
-    }
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(key);
-    } catch (_) {}
-  }
+  static Future<void> delete(String key) => ForjaPlatformSecureStore.delete(key);
 
   /// Copy [key] from SharedPreferences → secure storage, then remove prefs.
   ///
-  /// Returns `false` when a secret still sits in prefs and Keychain write
-  /// failed (e.g. macOS `-34018` missing entitlement). Callers should retry
-  /// later and must not crash the UI.
+  /// Returns `false` when a secret still sits in prefs and the platform write
+  /// failed. Callers should retry later and must not crash the UI.
   static Future<bool> migrateFromPrefs(String key) async {
     try {
       String? existing;
       try {
-        existing = await _secure.read(key: key);
+        existing = await ForjaPlatformSecureStore.read(key);
       } catch (e) {
-        final prefs = await SharedPreferences.getInstance();
-        final legacy = prefs.getString(key);
-        if (legacy == null || legacy.isEmpty) return true;
         debugPrint('[SecureSettings] migrateFromPrefs failed ($key): $e');
         return false;
       }
+      // [read] already surfaces prefs vault / legacy prefs. If we got a value
+      // from Keychain, drop plaintext leftovers; if only prefs remain, write
+      // through the platform store (no-op for non-sandbox prefs vault).
       if (existing != null && existing.isNotEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(key);
+        // Re-write so non-sandbox vault keys get the `forja_secure_` prefix and
+        // sandboxed builds land in DP Keychain, then strip unprefixed prefs.
+        await ForjaPlatformSecureStore.write(key, existing);
         return true;
       }
-      final prefs = await SharedPreferences.getInstance();
-      final legacy = prefs.getString(key);
-      if (legacy == null || legacy.isEmpty) return true;
-      await _secure.write(key: key, value: legacy);
-      await prefs.remove(key);
       return true;
     } on MissingPluginException {
       return true;
@@ -149,7 +97,7 @@ abstract final class SecureSettings {
     try {
       String? existing;
       try {
-        existing = await _secure.read(key: key);
+        existing = await ForjaPlatformSecureStore.read(key);
       } catch (e) {
         final legacy = await kvGetString(key);
         if (legacy == null || legacy.isEmpty) return true;
@@ -162,7 +110,7 @@ abstract final class SecureSettings {
       }
       final legacy = await kvGetString(key);
       if (legacy == null || legacy.isEmpty) return true;
-      await _secure.write(key: key, value: legacy);
+      await ForjaPlatformSecureStore.write(key, legacy);
       await kvSetString(key, '');
       return true;
     } on MissingPluginException {

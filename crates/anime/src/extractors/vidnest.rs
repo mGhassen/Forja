@@ -87,28 +87,20 @@ fn playback_headers(url: &str) -> (String, String) {
         .or_else(|| url.strip_prefix("http://"))
         .and_then(|rest| rest.split('/').next())
         .unwrap_or("");
+    // MovieBox CDN rejects any Referer (issue 055).
     if host.contains("hakunaymatata.com") {
         return (String::new(), String::new());
     }
-    // mewstream / nekostream / kotocdn / lostproject rotate; CDN rejects self + enma.
-    if host.contains("mewstream.buzz")
-        || host.contains("nekostream")
-        || host.contains("kotocdn")
-        || host.contains("lostproject.club")
-        || host.contains("megaplay")
-    {
-        return (
-            "https://megaplay.buzz/".into(),
-            "https://megaplay.buzz".into(),
-        );
-    }
-    if host.contains("watching.onl") || host.contains("vidwish") {
-        return (
-            "https://vidwish.live/".into(),
-            "https://vidwish.live".into(),
-        );
-    }
-    (format!("{EMBED_ORIGIN}/"), EMBED_ORIGIN.to_string())
+    // RFC-044: stamp Megaplay family origin (runtime host) — not CDN hostname.
+    let host = utils::provider_runtime::anime_string("megaplay/host")
+        .unwrap_or_else(|| "megaplay.buzz".into());
+    let host = host
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_end_matches('/');
+    let host = if host.is_empty() { "megaplay.buzz" } else { host };
+    (format!("https://{host}/"), format!("https://{host}"))
 }
 
 pub fn vidnest_streams(
@@ -194,17 +186,8 @@ mod tests {
     }
 
     #[test]
-    fn playback_headers_mewstream_uses_megaplay_referer() {
-        let (r, o) = playback_headers("https://cdn.mewstream.buzz/anime/x/master.m3u8");
-        assert!(r.contains("megaplay"));
-        assert!(o.contains("megaplay"));
-    }
-
-    #[test]
-    fn playback_headers_nekostream_uses_megaplay_referer() {
-        let (r, o) = playback_headers(
-            "https://9hjkrt.nekostream.site/abc/def/master.m3u8",
-        );
+    fn playback_headers_arbitrary_cdn_uses_megaplay_referer() {
+        let (r, o) = playback_headers("https://brand-new-cdn.example/x/master.m3u8");
         assert!(r.contains("megaplay"));
         assert!(o.contains("megaplay"));
     }

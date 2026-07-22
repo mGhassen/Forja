@@ -3,14 +3,14 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:media_kit/media_kit.dart';
 
 void main() {
-  group('isNaturalPlaybackEnd', () {
-    PlayerState state({required int posMs, required int durMs}) {
-      return PlayerState().copyWith(
-        position: Duration(milliseconds: posMs),
-        duration: Duration(milliseconds: durMs),
-      );
-    }
+  PlayerState state({required int posMs, required int durMs}) {
+    return PlayerState().copyWith(
+      position: Duration(milliseconds: posMs),
+      duration: Duration(milliseconds: durMs),
+    );
+  }
 
+  group('isNaturalPlaybackEnd', () {
     test('false for tiny probe durations (torrent false completed)', () {
       // dur=500ms + pos=0 → old formula `0 >= 500-1000` was true.
       expect(
@@ -212,6 +212,50 @@ void main() {
           hadMidPlayback: true,
         ),
         isFalse,
+      );
+    });
+  });
+
+  group('shouldAcceptNaturalPlaybackEnd', () {
+    test('rejects dead CDN open after prior session mid', () {
+      expect(
+        shouldAcceptNaturalPlaybackEnd(
+          state: state(posMs: 3_600_000, durMs: 3_600_000),
+          openConfirmedFor: const Duration(seconds: 3),
+          openHadMidPlayback: false,
+          sessionHadMidPlayback: true,
+          uiPosition: const Duration(minutes: 60),
+          uiDuration: const Duration(minutes: 60),
+        ),
+        isFalse,
+      );
+    });
+
+    test('accepts same-open finish after mid + grace', () {
+      expect(
+        shouldAcceptNaturalPlaybackEnd(
+          state: state(posMs: 3_599_500, durMs: 3_600_000),
+          openConfirmedFor: const Duration(minutes: 20),
+          openHadMidPlayback: true,
+          sessionHadMidPlayback: true,
+          uiPosition: const Duration(milliseconds: 3_599_500),
+          uiDuration: const Duration(milliseconds: 3_600_000),
+        ),
+        isTrue,
+      );
+    });
+
+    test('accepts credits re-open only after open grace + UI at EOF', () {
+      expect(
+        shouldAcceptNaturalPlaybackEnd(
+          state: state(posMs: 3_599_500, durMs: 3_600_000),
+          openConfirmedFor: const Duration(seconds: 50),
+          openHadMidPlayback: false,
+          sessionHadMidPlayback: true,
+          uiPosition: const Duration(milliseconds: 3_599_500),
+          uiDuration: const Duration(milliseconds: 3_600_000),
+        ),
+        isTrue,
       );
     });
   });

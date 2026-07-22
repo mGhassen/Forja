@@ -263,7 +263,7 @@ class StreamExtractor {
     //  2) Wrapped: load a tiny HTML page via `loadData` whose baseUrl is
     //     `wrapperBase`. We then iframe `url` inside it. The iframe
     //     receives `document.referrer = wrapperBase`, defeating
-    //     embed providers that block direct loads (megaplay/vidwish).
+    //     embed providers that block direct loads (megaplay).
     if (wrapperBase != null) {
       _headlessWebView = ForjaHeadlessInAppWebView(
         initialData: InAppWebViewInitialData(
@@ -490,7 +490,7 @@ class StreamExtractor {
     // Minimal page: full-bleed iframe with autoplay + fullscreen perms.
     // Because we load this via `loadData(baseUrl: …)`, the iframe's
     // `document.referrer` and `window.parent.location.origin` reflect the
-    // base URL (e.g. https://www.enma.lol/), which is what megaplay/vidwish
+    // base URL (e.g. https://www.enma.lol/), which is what megaplay
     // gate on. No HTML-escaping needed: the URL was built by us.
     return '''<!doctype html>
 <html><head>

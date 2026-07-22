@@ -168,6 +168,7 @@ mixin _DesktopPlayerPlayback
           _s._player,
           url: openUrl,
           headers: srcHeaders,
+          providerId: source.providerId ?? _s._currentProvider,
         );
         if (_fallbackAborted(runGen)) return false;
         _s._player.setVolume(_s._volumeNotifier.value);
@@ -463,6 +464,7 @@ mixin _DesktopPlayerPlayback
               _s._player,
               url: openUrl,
               headers: widget.headers,
+              providerId: _s._currentProvider,
             );
             if (_fallbackAborted(initGen)) return;
             _s._player.setVolume(_s._volumeNotifier.value);
@@ -1069,21 +1071,21 @@ mixin _DesktopPlayerPlayback
           shownPos >= shownDur - const Duration(seconds: 2)) {
         return;
       }
-      final confirmedFor = confirmedPlaybackAge(
+      final openAge = openPlaybackAge(
         openConfirmedAt: _s._playbackConfirmedAt,
-        sessionFirstConfirmedAt: _s._sessionFirstConfirmedAt,
-        hadMidPlayback: _s._hadMidPlayback,
       );
       final effectiveDurMs = shownDur.inMilliseconds > 0
           ? shownDur.inMilliseconds
           : _s._player.state.duration.inMilliseconds;
       // Dead CDN: demux jumps to duration within the early-EOF grace — do not
       // paint a fake "finished" bar the user then cannot scrub off.
+      // Use this-open age/mid only — session mid from a prior source must not
+      // disable suppress on a fresh fail-open.
       if (shouldSuppressEarlyEofSeekBarPosition(
         positionMs: pos.inMilliseconds,
         durationMs: effectiveDurMs,
-        confirmedFor: confirmedFor,
-        hadMidPlayback: _s._hadMidPlayback,
+        confirmedFor: openAge,
+        hadMidPlayback: _s._openHadMidPlayback,
       )) {
         return;
       }
@@ -1100,10 +1102,12 @@ mixin _DesktopPlayerPlayback
       _s._positionNotifier.value = pos;
 
       final dur = _s._durationNotifier.value;
-      if (!_s._hadMidPlayback &&
-          isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
-        _s._hadMidPlayback = true;
-        _s._abortiveCompletedLatched = false;
+      if (isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
+        if (!_s._openHadMidPlayback) _s._openHadMidPlayback = true;
+        if (!_s._hadMidPlayback) {
+          _s._hadMidPlayback = true;
+          _s._abortiveCompletedLatched = false;
+        }
       }
 
       // Near-end detection for next episode button (clears if seeked back /
@@ -1272,18 +1276,19 @@ mixin _DesktopPlayerPlayback
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
       if (_s._abortiveCompletedLatched) return;
-      final confirmedFor = confirmedPlaybackAge(
+      final openAge = openPlaybackAge(
         openConfirmedAt: _s._playbackConfirmedAt,
-        sessionFirstConfirmedAt: _s._sessionFirstConfirmedAt,
-        hadMidPlayback: _s._hadMidPlayback,
       );
-      if (isNaturalPlaybackEnd(
-        _s._player.state,
-        confirmedFor: confirmedFor,
-        hadMidPlayback: _s._hadMidPlayback,
+      final dur = _s._player.state.duration;
+      final pinDur = dur > Duration.zero ? dur : _s._durationNotifier.value;
+      if (shouldAcceptNaturalPlaybackEnd(
+        state: _s._player.state,
+        openConfirmedFor: openAge,
+        openHadMidPlayback: _s._openHadMidPlayback,
+        sessionHadMidPlayback: _s._hadMidPlayback,
+        uiPosition: _s._positionNotifier.value,
+        uiDuration: pinDur,
       )) {
-        final dur = _s._player.state.duration;
-        final pinDur = dur > Duration.zero ? dur : _s._durationNotifier.value;
         // Scrub-back race: keep-open re-emits completed while mpv pos is still
         // 0/end — do not yank the bar back to EOF after the user left the end.
         if (!shouldPinSeekBarAtEof(
@@ -1315,11 +1320,19 @@ mixin _DesktopPlayerPlayback
       _s._abortiveCompletedLatched = true;
       debugPrint(
         '[Player] Ignoring abortive completed '
-        '(confirmedFor=${confirmedFor.inSeconds}s '
-        'mid=${_s._hadMidPlayback})',
+        '(openFor=${openAge.inSeconds}s '
+        'openMid=${_s._openHadMidPlayback} sessionMid=${_s._hadMidPlayback})',
       );
-      // Fake early EOF jumped demux to duration — don't leave a "finished" bar.
-      if (!_s._hadMidPlayback) {
+      // Failed / early EOF — never leave a pinned "finished" seek bar.
+      if (shouldPinSeekBarAtEof(
+            uiPosition: _s._positionNotifier.value,
+            duration: pinDur,
+          ) ||
+          shouldPinSeekBarAtEof(
+            uiPosition: _s._player.state.position,
+            duration: pinDur,
+          ) ||
+          !_s._openHadMidPlayback) {
         _s._positionNotifier.value = Duration.zero;
       }
       if (mounted) setState(() => _s._showControls = true);
@@ -1504,6 +1517,10 @@ mixin _DesktopPlayerPlayback
     final hdrs = resolvePlaybackHttpHeaders(
       widget.headers,
       streamUrl: widget.mediaPath,
+      providerId: _s._currentProvider ??
+          (_s._currentSources?.isNotEmpty == true
+              ? _s._currentSources!.first.providerId
+              : null),
     );
     await applyMediaHttpHeaders(
       _s._player,

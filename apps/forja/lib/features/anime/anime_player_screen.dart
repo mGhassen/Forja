@@ -87,12 +87,14 @@ List<Map<String, dynamic>> _hitsToJson(List<_AnimeResolvedHit> hits) {
             'server': h.embed.server,
             'category': h.embed.category,
             'url': h.embed.url,
+            'sourceKey': h.embed.sourceKey,
           },
           'media': {
             'url': h.media.url,
             if (h.media.audioUrl != null) 'audioUrl': h.media.audioUrl,
             'headers': h.media.headers,
             if (h.media.provider != null) 'provider': h.media.provider,
+            'providerId': h.embed.sourceKey,
             if (h.media.sources != null)
               'sources': h.media.sources!
                   .map(
@@ -101,6 +103,8 @@ List<Map<String, dynamic>> _hitsToJson(List<_AnimeResolvedHit> hits) {
                       'title': s.title,
                       'type': s.type,
                       if (s.headers != null) 'headers': s.headers,
+                      'providerId': s.providerId ?? h.embed.sourceKey,
+                      if (s.catalogUrl != null) 'catalogUrl': s.catalogUrl,
                     },
                   )
                   .toList(),
@@ -124,6 +128,18 @@ List<_AnimeResolvedHit>? _hitsFromJson(List<Map<String, dynamic>>? raw) {
     final headers = (mediaMap['headers'] as Map?)?.cast<String, String>() ?? {};
     final sourcesRaw = mediaMap['sources'] as List?;
     List<StreamSource>? sources;
+    final embed = AnimeEmbed(
+      label: embedMap['label'] as String? ?? '',
+      server: embedMap['server'] as String? ?? '',
+      category: embedMap['category'] as String? ?? 'sub',
+      url: embedMap['url'] as String? ?? '',
+    );
+    final providerId = (embedMap['sourceKey'] as String?)?.trim().isNotEmpty ==
+            true
+        ? (embedMap['sourceKey'] as String).trim()
+        : ((mediaMap['providerId'] as String?)?.trim().isNotEmpty == true
+            ? (mediaMap['providerId'] as String).trim()
+            : embed.sourceKey);
     if (sourcesRaw != null) {
       sources = sourcesRaw
           .map((s) {
@@ -133,18 +149,17 @@ List<_AnimeResolvedHit>? _hitsFromJson(List<Map<String, dynamic>>? raw) {
               title: m['title'] as String? ?? '',
               type: m['type'] as String? ?? 'video',
               headers: (m['headers'] as Map?)?.cast<String, String>(),
+              providerId: (m['providerId'] as String?)?.trim().isNotEmpty == true
+                  ? (m['providerId'] as String).trim()
+                  : providerId,
+              catalogUrl: (m['catalogUrl'] as String?)?.trim(),
             );
           })
           .where((s) => s.url.isNotEmpty)
           .toList();
     }
     out.add((
-      embed: AnimeEmbed(
-        label: embedMap['label'] as String? ?? '',
-        server: embedMap['server'] as String? ?? '',
-        category: embedMap['category'] as String? ?? 'sub',
-        url: embedMap['url'] as String? ?? '',
-      ),
+      embed: embed,
       media: ExtractedMedia(
         url: url,
         audioUrl: mediaMap['audioUrl'] as String?,

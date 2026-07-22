@@ -1,7 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 void main() {
+  setUp(() {
+    ProviderRuntimeConfig.instance.debugSetSnapshot(
+      ProviderRuntimeSnapshot.builtins(),
+    );
+  });
+
   group('normalizePlaybackStreamUrl', () {
     test('strips trailing slash after media extension', () {
       expect(
@@ -159,6 +166,38 @@ void main() {
       expect(h['Origin'], 'https://megaplay.buzz');
     });
 
+    test('RFC-044: providerId megaplay forces Referer on unknown CDN', () {
+      const url = 'https://brand-new-cdn.example/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'megaplay',
+      );
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('RFC-044: providerId bans self-Referer for anime', () {
+      const url = 'https://brand-new-cdn.example/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://brand-new-cdn.example/'},
+        streamUrl: url,
+        providerId: 'megaplay',
+      );
+      expect(h['Referer'], 'https://megaplay.buzz/');
+    });
+
+    test('RFC-044: anime providerId never invents CDN self-Referer', () {
+      const url = 'https://cdn.example/x.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'miruro:kiwi',
+      );
+      // No megaplay policy for kiwi — must not use cdn.example as Referer.
+      expect(h['Referer'], isNot('https://cdn.example/'));
+    });
+
     test('rewrites nekostream self-Referer to megaplay', () {
       const url =
           'https://9hjkrt.nekostream.site/abc/def/master.m3u8';
@@ -214,14 +253,58 @@ void main() {
       expect(h['Origin'], 'https://allmanga.to');
     });
 
-    test('forces vidwish Referer for watching.onl anime CDN', () {
+    test('forces megaplay Referer for watching.onl anime CDN', () {
       const url =
           'https://fxpy7.watching.onl/anime/abc/master.m3u8';
       final h = resolvePlaybackHttpHeaders({
         'Referer': 'https://vidnest.fun/',
       }, streamUrl: url);
-      expect(h['Referer'], 'https://vidwish.live/');
-      expect(h['Origin'], 'https://vidwish.live');
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
+    test('RFC-044: providerId allanime forces allmanga Referer on unknown CDN',
+        () {
+      const url = 'https://cdn-rotate.example/v/1.mp4';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'allanime:allmanga',
+      );
+      expect(h['Referer'], 'https://allmanga.to/');
+      expect(h['Origin'], 'https://allmanga.to');
+    });
+
+    test('RFC-044: providerId allanime bans CDN self-Referer', () {
+      const url = 'https://tools.fast4speed.rsvp/media9/videos/x';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://tools.fast4speed.rsvp/'},
+        streamUrl: url,
+        providerId: 'allanime:yt-mp4',
+      );
+      expect(h['Referer'], 'https://allmanga.to/');
+    });
+
+    test('RFC-044: providerId kisskh forces kisskh Referer on streamingcdn',
+        () {
+      const url = 'https://streamingcdn123.site/hls/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://streamingcdn123.site/'},
+        streamUrl: url,
+        providerId: 'kisskh.co',
+      );
+      expect(h['Referer'], 'https://kisskh.co/');
+      expect(h['Origin'], 'https://kisskh.co');
+    });
+
+    test('RFC-044: legacy vidwish providerId aliases megaplay Referer', () {
+      const url = 'https://fxpy7.watching.onl/anime/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'vidwish',
+      );
+      expect(h['Referer'], 'https://megaplay.buzz/');
     });
   });
 }

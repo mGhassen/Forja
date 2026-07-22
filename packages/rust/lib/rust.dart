@@ -4,6 +4,8 @@ export 'src/platform_defaults.dart';
 export 'src/built_in_player_engine.dart';
 export 'src/settings_service.dart';
 export 'src/secure_settings.dart';
+export 'src/forja_platform_secure_store.dart';
+
 export 'src/watch_history_service.dart';
 export 'src/watch_history_resume.dart';
 export 'src/engine.dart';

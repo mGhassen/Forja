@@ -246,6 +246,7 @@ class DomainStreamProviderResolver {
           url: direct.url,
           referer: direct.referer,
           origin: direct.origin,
+          providerId: embed.sourceKey,
         );
         final title = (direct.streamLabel?.isNotEmpty == true)
             ? direct.streamLabel!
@@ -257,6 +258,8 @@ class DomainStreamProviderResolver {
           title: title,
           type: direct.url.contains('.m3u8') ? 'hls' : 'video',
           headers: headers,
+          providerId: embed.sourceKey,
+          catalogUrl: direct.url,
         ));
         for (final track in direct.tracks) {
           subtitles.add({
@@ -304,11 +307,27 @@ class DomainStreamProviderResolver {
       final label = KissKhService.mirrorLabel(
         stream.mirrorHost.isNotEmpty ? stream.mirrorHost : key,
       );
-      final sources = stream.toSources(label: label);
-      return StreamProviderResolveResult(
+      final pid = key.trim().isNotEmpty ? key.trim() : 'kisskh';
+      final sources = stream.toSources(label: label, providerId: pid);
+      final hdrs = resolvePlaybackHttpHeaders(
+        sources.first.headers,
         streamUrl: sources.first.url,
-        headers: sources.first.headers,
-        sources: sources,
+        providerId: pid,
+      );
+      final stamped = [
+        StreamSource(
+          url: sources.first.url,
+          title: sources.first.title,
+          type: sources.first.type,
+          headers: hdrs,
+          providerId: pid,
+          catalogUrl: sources.first.catalogUrl ?? sources.first.url,
+        ),
+      ];
+      return StreamProviderResolveResult(
+        streamUrl: stamped.first.url,
+        headers: hdrs,
+        sources: stamped,
         subtitles: stream.subtitles,
       );
     } catch (e, st) {
@@ -337,12 +356,13 @@ bool _isKissKhProvider(String key) {
   return id == 'kisskh' || KissKhService.isMirrorHost(id);
 }
 
-/// Build anime stream headers — omit empty Referer/Origin, then apply CDN rules
-/// via [resolvePlaybackHttpHeaders] (mewstream → megaplay, etc.).
+/// Build anime stream headers — omit empty Referer/Origin, then apply
+/// provider-identity policy via [resolvePlaybackHttpHeaders] (RFC-044).
 Map<String, String> _animePlaybackHeaders({
   required String url,
   required String referer,
   required String origin,
+  String? providerId,
 }) {
   final raw = <String, String>{
     'User-Agent':
@@ -353,5 +373,9 @@ Map<String, String> _animePlaybackHeaders({
   final o = origin.trim();
   if (r.isNotEmpty) raw['Referer'] = r;
   if (o.isNotEmpty) raw['Origin'] = o;
-  return resolvePlaybackHttpHeaders(raw, streamUrl: url);
+  return resolvePlaybackHttpHeaders(
+    raw,
+    streamUrl: url,
+    providerId: providerId,
+  );
 }

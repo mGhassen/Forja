@@ -39,10 +39,8 @@ class ForjaSupabase {
       // Same project key as apps/web VITE_SUPABASE_PUBLISHABLE_KEY.
       publishableKey: publishableKey,
       authOptions: FlutterAuthClientOptions(
-        // Desktop/mobile: OS secure store. macOS release uses login keychain
-        // (see ForjaSecureLocalStorage) — Data Protection Keychain breaks
-        // non-sandbox / Developer ID builds (-34018).
-        // Web builds keep SharedPreferences / localStorage defaults.
+        // Desktop/mobile: ForjaPlatformSecureStore (DP Keychain when sandboxed;
+        // prefs vault on ad-hoc macOS). Web keeps plugin defaults.
         localStorage: localStorage,
       ),
     );

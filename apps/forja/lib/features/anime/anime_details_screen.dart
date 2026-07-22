@@ -124,7 +124,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       _episodesLoading = true;
     });
 
-    // Metadata + AniList episode rail (Anikoto only resolves on Play for Vidwish).
+    // Metadata + AniList episode rail (Anikoto resolves on Play for Megaplay).
     // TMDB backdrop for the hero (AniList banner fallback).
     _service.getDetails(widget.anime.id).then((d) async {
       final seeded = widget.anime.tmdbBackdropUrl == null

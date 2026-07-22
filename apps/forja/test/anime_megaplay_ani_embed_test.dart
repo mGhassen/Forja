@@ -25,7 +25,6 @@ void main() {
       );
       expect(AnimeService.savedSourceNeedsAnikoto(null), isTrue);
       expect(AnimeService.savedSourceNeedsAnikoto(''), isTrue);
-      expect(AnimeService.savedSourceNeedsAnikoto('vidwish'), isTrue);
       expect(AnimeService.savedSourceNeedsAnikoto('allanime:Yt-mp4'), isFalse);
     });
 
@@ -59,12 +58,25 @@ void main() {
       );
     });
 
-    test('without Anikoto skips Vidwish (ani path dead on that host)', () {
+    test('never emits retired Vidwish alias', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 5114,
         episode: 1,
+        series: const AnikotoSeries(
+          id: 1,
+          episodes: [
+            AnikotoEpisode(
+              id: 1,
+              number: 1,
+              title: 'Ep 1',
+              embedId: '136197',
+            ),
+          ],
+        ),
       );
       expect(embeds.where((e) => e.server == 'vidwish'), isEmpty);
+      expect(AnimeStreamProviders.defaultOrder, isNot(contains('vidwish')));
+      expect(AnimeStreamProviders.catalog.containsKey('vidwish'), isFalse);
     });
 
     test('with Anikoto embed id prefers /stream/s-2/', () {
@@ -86,12 +98,6 @@ void main() {
       final mega = embeds.where((e) => e.server == 'megaplay').toList();
       expect(
         mega.every((e) => e.url.contains('/stream/s-2/136197/')),
-        isTrue,
-      );
-      final wish = embeds.where((e) => e.server == 'vidwish').toList();
-      expect(wish, isNotEmpty);
-      expect(
-        wish.every((e) => e.url.contains('/stream/s-2/136197/')),
         isTrue,
       );
     });

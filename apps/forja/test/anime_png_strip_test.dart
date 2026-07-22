@@ -1,56 +1,61 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 void main() {
-  group('animeHlsNeedsPngStrip', () {
-    test('nekostream / kotocdn / mewstream / ibyteimg need strip', () {
+  setUp(() {
+    ProviderRuntimeConfig.instance.debugSetSnapshot(
+      ProviderRuntimeSnapshot.builtins(),
+    );
+  });
+
+  group('animeHlsNeedsPngStripFor (RFC-044)', () {
+    test('megaplay auto strips HLS without CDN host needle', () {
       expect(
-        animeHlsNeedsPngStrip(
-          'https://9hjkrt.nekostream.site/abc/master.m3u8',
+        animeHlsNeedsPngStripFor(
+          'https://brand-new-cdn.example/abc/master.m3u8',
+          sourceKey: 'megaplay',
         ),
         isTrue,
       );
       expect(
-        animeHlsNeedsPngStrip(
+        animeHlsNeedsPngStripFor(
           'https://megap.kotocdn.site/abc/master.m3u8',
-        ),
-        isTrue,
-      );
-      expect(
-        animeHlsNeedsPngStrip('https://cdn.mewstream.buzz/x/master.m3u8'),
-        isTrue,
-      );
-      expect(
-        animeHlsNeedsPngStrip(
-          'https://p16-ad-sg.ibyteimg.com/obj/ad-site-i18n/abc',
+          sourceKey: 'megaplay',
         ),
         isTrue,
       );
     });
 
-    test('plain CDN, owocdn (AnimePahe), and unrelated proxy skip', () {
+    test('animepahe never strips', () {
+      expect(
+        animeHlsNeedsPngStripFor(
+          'https://vault-99.owocdn.top/stream/99/02/abc/uwu.m3u8',
+          sourceKey: 'vidnest:animepahe',
+        ),
+        isFalse,
+      );
+      expect(
+        animeHlsNeedsPngStripFor(
+          'https://vault-99.owocdn.top/stream/99/02/abc/uwu.m3u8',
+          sourceKey: 'miruro:kiwi',
+        ),
+        isFalse,
+      );
+    });
+
+    test('plain CDN without sourceKey skips', () {
       expect(
         animeHlsNeedsPngStrip('https://cdn.example/video.m3u8'),
         isFalse,
       );
-      expect(
-        animeHlsNeedsPngStrip(
-          'https://vault-99.owocdn.top/stream/99/02/abc/uwu.m3u8',
-        ),
-        isFalse,
-      );
-      expect(
-        animeHlsNeedsPngStrip(
-          'http://127.0.0.1:1234/hls-proxy?url=https%3A%2F%2Fcdn.example%2Fx.m3u8',
-        ),
-        isFalse,
-      );
     });
 
-    test('proxy of nekostream still needs strip', () {
+    test('proxy of megaplay HLS still needs strip', () {
       expect(
-        animeHlsNeedsPngStrip(
-          'http://127.0.0.1:1/hls-proxy?url=https%3A%2F%2F9hjkrt.nekostream.site%2Fx%2Fmaster.m3u8&strip=png',
+        animeHlsNeedsPngStripFor(
+          'http://127.0.0.1:1/hls-proxy?url=https%3A%2F%2Fbrand-new.example%2Fx%2Fmaster.m3u8&strip=png',
+          sourceKey: 'megaplay',
         ),
         isTrue,
       );

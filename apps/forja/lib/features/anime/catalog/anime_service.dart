@@ -1,4 +1,4 @@
-// Anime backend — AniList GraphQL for metadata, megaplay/vidwish for streams.
+// Anime backend — AniList GraphQL for metadata, Megaplay for streams.
 // Parallel race: Anikoto HD-1/HD-2 + Forja stream servers + AllAnime fallbacks.
 
 import 'dart:convert';
@@ -539,21 +539,17 @@ class AnimeService {
     return out;
   }
 
-  // ─── Stream embed URLs (Megaplay / Vidwish) ────────────────────
+  // ─── Stream embed URLs (Megaplay) ──────────────────────────────
   // Paths/hosts from [ProviderRuntimeConfig] (RFC-039); builtins match
   // megaplay.buzz/api (s-2 catalog + /stream/ani/ AniList).
 
-  String _embed({
-    required String server, // 'megaplay' | 'vidwish'
+  String _megaplayEmbed({
     required int anilistId,
     required int episode,
     required String category,
     String? embedId, // anikoto episode_embed_id
   }) {
-    final cfg = server == 'vidwish'
-        ? ProviderRuntimeConfig.instance.vidwish
-        : ProviderRuntimeConfig.instance.megaplay;
-    return cfg.buildUrl(
+    return ProviderRuntimeConfig.instance.megaplay.buildUrl(
       anilistId: anilistId,
       episode: episode,
       lang: category,
@@ -561,11 +557,10 @@ class AnimeService {
     );
   }
 
-  /// Build Megaplay/Vidwish + Miruro/AllAnime/VidNest embeds for an episode.
+  /// Build Megaplay + Miruro/AllAnime/VidNest embeds for an episode.
   ///
   /// Megaplay: Anikoto `s-2` when matched, else `/stream/ani/` (often 410 HTML;
   /// extract still needs catalog id via Anikoto for getSources).
-  /// Vidwish: only Anikoto `s-2` — `/stream/ani/` is dead on that host.
   List<AnimeEmbed> buildAllEmbeds({
     required int anilistId,
     required int episode,
@@ -582,59 +577,30 @@ class AnimeService {
           .firstWhere((_) => true, orElse: () => null);
       embedId = ep?.embedId;
     }
-    final hasCatalogId = embedId != null && embedId.isNotEmpty;
 
     final all = <AnimeEmbed>[
       AnimeEmbed(
         label: AnimeStreamProviders.displayName('megaplay'),
         server: 'megaplay',
         category: 'sub',
-        url: _embed(
-          server: 'megaplay',
+        url: _megaplayEmbed(
           anilistId: anilistId,
           episode: episode,
           category: 'sub',
           embedId: embedId,
         ),
       ),
-      if (hasCatalogId)
-        AnimeEmbed(
-          label: AnimeStreamProviders.displayName('vidwish'),
-          server: 'vidwish',
-          category: 'sub',
-          url: _embed(
-            server: 'vidwish',
-            anilistId: anilistId,
-            episode: episode,
-            category: 'sub',
-            embedId: embedId,
-          ),
-        ),
       AnimeEmbed(
         label: AnimeStreamProviders.displayName('megaplay'),
         server: 'megaplay',
         category: 'dub',
-        url: _embed(
-          server: 'megaplay',
+        url: _megaplayEmbed(
           anilistId: anilistId,
           episode: episode,
           category: 'dub',
           embedId: embedId,
         ),
       ),
-      if (hasCatalogId)
-        AnimeEmbed(
-          label: AnimeStreamProviders.displayName('vidwish'),
-          server: 'vidwish',
-          category: 'dub',
-          url: _embed(
-            server: 'vidwish',
-            anilistId: anilistId,
-            episode: episode,
-            category: 'dub',
-            embedId: embedId,
-          ),
-        ),
     ];
     // AniKoto site Ajax (Vidstream → MegaPlay, VidPlay → VidTube, …).
     final slug = series?.slug.trim() ?? '';
@@ -714,14 +680,13 @@ class AnimeService {
     return all.where((e) => e.category == category).toList();
   }
 
-  /// Referer to spoof when extracting megaplay/vidwish embeds. They block
+  /// Referer to spoof when extracting Megaplay embeds. They block
   /// direct page loads — extraction only works when this header is present.
   static String get embedReferer =>
       ProviderRuntimeConfig.instance.megaplay.scrapeReferer;
 
-  /// Direct HTTP extractor for megaplay.buzz / vidwish.live embeds.
+  /// Direct HTTP extractor for megaplay.buzz embeds.
   ///
-  /// Both providers expose the same internal API:
   ///   1. Prefer catalog id from `/stream/s-2/{id}/{lang}` → getSources
   ///   2. Else scrape HTML `data-id` (often missing — pages return 410)
   ///   3. GET /stream/getSources?id={id} → JSON { sources:{file}, tracks:[] }
@@ -951,8 +916,10 @@ class AnimeService {
       if (_prefAnimeId(e) == animeId && e['cat'] == category) {
         final key = e['key'] as String?;
         if (key == null || key.isEmpty) return null;
+        // vidwish.live redirects to megaplay.buzz — alias retired.
+        final normalized = key == 'vidwish' ? 'megaplay' : key;
         return AnimeStreamPref(
-          sourceKey: key,
+          sourceKey: normalized,
           sourceTitle: e['title'] as String?,
         );
       }
@@ -993,7 +960,7 @@ class AnimeService {
     }
   }
 
-  /// Megaplay/Vidwish need Anikoto `s-2` catalog ids — embed HTML `/stream/ani/`
+  /// Megaplay needs Anikoto `s-2` catalog ids — embed HTML `/stream/ani/`
   /// is often 410 while `getSources?id={embedId}` still works.
   static bool savedSourceNeedsAnikoto(String? sourceKey) {
     if (sourceKey == null || sourceKey.isEmpty || sourceKey == 'auto') {
@@ -1002,7 +969,6 @@ class AnimeService {
     final k = sourceKey.toLowerCase();
     return k == 'megaplay' ||
         k == 'anikoto' ||
-        k == 'vidwish' ||
         k.startsWith('vidnest:') ||
         k.contains('bee');
   }
@@ -1546,7 +1512,7 @@ class AnimeStreamPref {
 
 class AnimeEmbed {
   final String label;     // real upstream name, e.g. Megaplay, HiAnime
-  final String server;    // 'megaplay' | 'vidwish'
+  final String server;    // 'megaplay' | 'anikoto' | 'miruro' | …
   final String category;  // 'sub' | 'dub'
   final String url;
 
@@ -1591,8 +1557,6 @@ class AnimeEmbed {
 
   String get refererOrigin {
     switch (server) {
-      case 'vidwish':
-        return 'https://${ProviderRuntimeConfig.instance.vidwish.host}';
       case 'miruro':
         final o = MiruroDomains.primary;
         return o.endsWith('/') ? o.substring(0, o.length - 1) : o;

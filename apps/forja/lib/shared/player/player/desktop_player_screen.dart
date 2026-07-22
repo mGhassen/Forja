@@ -280,6 +280,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   DateTime? _sessionFirstConfirmedAt;
   /// True once position was observed in the episode body this session.
   bool _hadMidPlayback = false;
+  /// Mid-body on the current source open only (resets on every re-open).
+  bool _openHadMidPlayback = false;
   /// Latch abortive EOF so repeating `completed` events do not spam / auto-next.
   bool _abortiveCompletedLatched = false;
   /// Wall-clock when the user scrubbed away from EOF (suppresses re-pin).
@@ -288,6 +290,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   void _resetEofSessionGuards() {
     _hadMidPlayback = false;
+    _openHadMidPlayback = false;
     _abortiveCompletedLatched = false;
     _sessionFirstConfirmedAt = null;
     _seekAwayFromEofAt = null;
@@ -295,13 +298,16 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   void _markPlaybackConfirmed(bool confirmed) {
     _playbackConfirmed = confirmed;
+    // Each open must re-earn mid / early-EOF grace — session mid alone must
+    // not paint a dead CDN as a finished episode.
+    _openHadMidPlayback = false;
     if (confirmed) {
       final now = DateTime.now();
       _playbackConfirmedAt = now;
       _sessionFirstConfirmedAt ??= now;
     } else {
-      // Keep mid / session-first across source switches so a late re-open
-      // near credits does not reset the natural-end grace window.
+      // Keep session mid / first-confirm across source switches for credits
+      // re-open; open mid stays cleared above.
       _playbackConfirmedAt = null;
     }
   }

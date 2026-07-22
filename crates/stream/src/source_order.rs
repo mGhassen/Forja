@@ -222,7 +222,6 @@ fn anime_order() -> &'static [&'static str] {
     &[
         "megaplay",
         "anikoto",
-        "vidwish",
         "vidnest:hianime",
         "vidnest:animepahe",
         "allanime:Default",
@@ -258,7 +257,6 @@ fn anime_score(id: &str) -> u32 {
         || id.starts_with("vidnest:")
         || id == "megaplay"
         || id == "anikoto"
-        || id == "vidwish"
         || id == "watchhentai"
         || id == "hentaini"
     {

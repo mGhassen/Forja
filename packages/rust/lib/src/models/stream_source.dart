@@ -4,11 +4,20 @@ class StreamSource {
   final String type;
   final Map<String, String>? headers;
 
+  /// Anime / provider identity (e.g. `megaplay`, `miruro:kiwi`). Used for
+  /// Referer policy and PNG-strip — not CDN hostname matching (RFC-044).
+  final String? providerId;
+
+  /// Pre-proxy catalog URL when [url] is a local `/hls-proxy` play endpoint.
+  final String? catalogUrl;
+
   StreamSource({
     required this.url,
     required this.title,
     required this.type,
     this.headers,
+    this.providerId,
+    this.catalogUrl,
   });
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
@@ -19,11 +28,15 @@ class StreamSource {
         (k, v) => MapEntry(k.toString(), v.toString()),
       );
     }
+    final pid = (json['providerId'] as String?)?.trim();
+    final catalog = (json['catalogUrl'] as String?)?.trim();
     return StreamSource(
       url: json['url'] ?? json['file'] ?? json['src'] ?? '',
       title: json['title'] ?? json['label'] ?? json['quality'] ?? 'Unknown',
       type: json['type'] ?? 'video',
       headers: headers,
+      providerId: (pid != null && pid.isNotEmpty) ? pid : null,
+      catalogUrl: (catalog != null && catalog.isNotEmpty) ? catalog : null,
     );
   }
 
@@ -32,7 +45,30 @@ class StreamSource {
         'title': title,
         'type': type,
         if (headers != null) 'headers': headers,
+        if (providerId != null && providerId!.isNotEmpty)
+          'providerId': providerId,
+        if (catalogUrl != null && catalogUrl!.isNotEmpty)
+          'catalogUrl': catalogUrl,
       };
+
+  StreamSource copyWith({
+    String? url,
+    String? title,
+    String? type,
+    Map<String, String>? headers,
+    String? providerId,
+    String? catalogUrl,
+    bool clearHeaders = false,
+  }) {
+    return StreamSource(
+      url: url ?? this.url,
+      title: title ?? this.title,
+      type: type ?? this.type,
+      headers: clearHeaders ? null : (headers ?? this.headers),
+      providerId: providerId ?? this.providerId,
+      catalogUrl: catalogUrl ?? this.catalogUrl,
+    );
+  }
 }
 
 int streamSourcePlayPriority(StreamSource source) {

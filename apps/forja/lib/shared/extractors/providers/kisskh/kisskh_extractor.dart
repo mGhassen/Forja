@@ -956,12 +956,20 @@ class KissKhExtractor {
 }
 
 extension KissKhStreamSources on KissKhStream {
-  List<StreamSource> toSources({String label = 'kisskh'}) => [
-    StreamSource(
-      url: url,
-      title: label,
-      type: type,
-      headers: Map<String, String>.from(headers),
-    ),
-  ];
+  List<StreamSource> toSources({
+    String label = 'kisskh',
+    String? providerId,
+  }) =>
+      [
+        StreamSource(
+          url: url,
+          title: label,
+          type: type,
+          headers: Map<String, String>.from(headers),
+          providerId: (providerId != null && providerId.trim().isNotEmpty)
+              ? providerId.trim()
+              : 'kisskh',
+          catalogUrl: url,
+        ),
+      ];
 }

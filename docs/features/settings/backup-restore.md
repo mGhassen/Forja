@@ -9,8 +9,8 @@
 | Layer | Holds |
 |-------|--------|
 | `forja_engine_store.json` (app support) | Non-secret settings: playback, provider order, Stremio/Nuvio addons, WebStreamr countries/filters, navbar, … |
-| Keychain / Keystore | Credentials: Trakt, Simkl, Debrid, Jackett/Prowlarr API keys, WebStreamr MFP password / TMDB token, **IPTV portal passwords**, … |
-| SharedPreferences (IPTV metadata) | Portal URL, username, labels, expiry, seats — **not** passwords once Keychain migration succeeds |
+| Keychain / Keystore (or macOS ad-hoc local vault) | Credentials: Trakt, Simkl, Debrid, Jackett/Prowlarr API keys, WebStreamr MFP password / TMDB token, **IPTV portal passwords**, … |
+| SharedPreferences (IPTV metadata) | Portal URL, username, labels, expiry, seats — **not** passwords once secure migration succeeds |
 
 Older SharedPreferences copies of those settings are imported once into that file and then removed — they are not a second source of truth.
 
@@ -32,7 +32,7 @@ Older SharedPreferences copies of those settings are imported once into that fil
 
 - Treat export files as sensitive — they contain API keys and tokens
 - CSV portal files contain passwords in plain text — keep them private
-- On this device, IPTV portal passwords are stored in Keychain / Keystore (not in the prefs portal list once migrated)
+- On this device, IPTV portal passwords use Keychain / Keystore (or the macOS ad-hoc local vault) — not the prefs portal list once migrated
 - Import is destructive to current settings — confirm before proceeding
 - Clearing **Stream cache** / **IPTV portal cache** does **not** clear settings or tokens
 - IPTV channel catalogs, My List, and continue-watching rows are not part of this settings file

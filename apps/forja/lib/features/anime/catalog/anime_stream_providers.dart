@@ -14,11 +14,10 @@ class AnimeStreamProviders {
   ///
   /// AnimeRealms was removed (upstream API gone — domain is a storefront).
   /// AllAnime `Uv-mp4` was removed (upstream no longer returns it).
-  /// Megaplay/Vidwish/native AniKoto first; Miruro pipes after AllAnime.
+  /// Megaplay / native AniKoto first; Miruro pipes after AllAnime.
   static const List<String> defaultOrder = [
     'megaplay',
     'anikoto',
-    'vidwish',
     // VidNest — AniList-native HiAnime / AnimePahe
     'vidnest:hianime',
     'vidnest:animepahe',
@@ -51,7 +50,6 @@ class AnimeStreamProviders {
     final out = <String, String>{
       'megaplay': 'Megaplay',
       'anikoto': 'AniKoto',
-      'vidwish': 'Vidwish',
       'watchhentai': 'WatchHentai',
       'hentaini': 'Hentaini',
     };

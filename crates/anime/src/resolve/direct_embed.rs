@@ -137,44 +137,48 @@ fn scrape_data_id(embed_url: &str, referer: &str) -> Result<Option<String>, Stri
     Ok(Some(data_id.to_string()))
 }
 
-/// CDN hosts rotate (nekostream, kotocdn, mewstream, …). Self-origin / scrape
-/// Referer → 403; force the embed family host used by the player header rewrite.
-fn stream_playback_headers(file: &str, embed_origin: &str) -> (String, String) {
-    let host = file
-        .strip_prefix("https://")
-        .or_else(|| file.strip_prefix("http://"))
-        .and_then(|rest| rest.split('/').next())
-        .unwrap_or("")
-        .to_lowercase();
-    if host.contains("mewstream")
-        || host.contains("nekostream")
-        || host.contains("kotocdn")
-        || host.contains("lostproject")
-        || host.contains("megaplay")
-    {
-        // VidTube embeds also land on nekostream — keep the embed origin Referer.
-        if embed_origin.to_lowercase().contains("vidtube") {
-            let o = embed_origin.trim_end_matches('/').to_string();
-            return (format!("{o}/"), o);
-        }
-        return (
-            "https://megaplay.buzz/".into(),
-            "https://megaplay.buzz".into(),
-        );
+fn family_origin(kind: &str) -> (String, String) {
+    let default = match kind {
+        "vidtube" => "vidtube.site",
+        _ => "megaplay.buzz",
+    };
+    let host = match kind {
+        "megaplay" => utils::provider_runtime::anime_string("megaplay/host"),
+        _ => None,
     }
-    if host.contains("watching.onl") || host.contains("vidwish") {
-        return (
-            "https://vidwish.live/".into(),
-            "https://vidwish.live".into(),
-        );
+    .unwrap_or_else(|| default.to_string());
+    let host = host
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_end_matches('/')
+        .to_string();
+    let host = if host.is_empty() {
+        default.to_string()
+    } else {
+        host
+    };
+    (format!("https://{host}/"), format!("https://{host}"))
+}
+
+/// Stamp playback Referer from the **embed origin** (RFC-044).
+///
+/// CDN hostnames rotate; never key off `file` host. VidTube / Megaplay
+/// embeds already carry the correct family origin from the extract URL.
+/// Legacy `vidwish.live` embeds alias to Megaplay (host redirects).
+fn stream_playback_headers(_file: &str, embed_origin: &str) -> (String, String) {
+    let o = embed_origin.trim().trim_end_matches('/').to_string();
+    if o.is_empty() {
+        return family_origin("megaplay");
     }
-    if host.contains("vidtube") {
-        return (
-            "https://vidtube.site/".into(),
-            "https://vidtube.site".into(),
-        );
+    let lower = o.to_lowercase();
+    if lower.contains("vidtube") {
+        return family_origin("vidtube");
     }
-    (format!("{embed_origin}/"), embed_origin.to_string())
+    if lower.contains("megaplay") || lower.contains("vidwish") {
+        return family_origin("megaplay");
+    }
+    (format!("{o}/"), o)
 }
 
 #[cfg(test)]
@@ -182,9 +186,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn nekostream_file_forces_megaplay_referer() {
+    fn arbitrary_cdn_uses_megaplay_embed_origin() {
         let (r, o) = stream_playback_headers(
-            "https://9hjkrt.nekostream.site/a/b/master.m3u8",
+            "https://totally-new-cdn.example/a/b/master.m3u8",
             "https://megaplay.buzz",
         );
         assert!(r.contains("megaplay.buzz"));
@@ -192,10 +196,30 @@ mod tests {
     }
 
     #[test]
-    fn kotocdn_file_forces_megaplay_referer() {
+    fn kotocdn_file_uses_megaplay_embed_origin() {
         let (r, o) = stream_playback_headers(
             "https://megap.kotocdn.site/a/b/master.m3u8",
             "https://megaplay.buzz",
+        );
+        assert!(r.contains("megaplay.buzz"));
+        assert!(o.contains("megaplay.buzz"));
+    }
+
+    #[test]
+    fn vidtube_embed_keeps_vidtube_origin() {
+        let (r, o) = stream_playback_headers(
+            "https://megap.kotocdn.site/a/b/master.m3u8",
+            "https://vidtube.site",
+        );
+        assert!(r.contains("vidtube.site"));
+        assert!(o.contains("vidtube.site"));
+    }
+
+    #[test]
+    fn legacy_vidwish_embed_aliases_megaplay_origin() {
+        let (r, o) = stream_playback_headers(
+            "https://fxpy7.watching.onl/anime/abc/master.m3u8",
+            "https://vidwish.live",
         );
         assert!(r.contains("megaplay.buzz"));
         assert!(o.contains("megaplay.buzz"));

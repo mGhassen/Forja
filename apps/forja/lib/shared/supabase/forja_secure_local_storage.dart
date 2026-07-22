@@ -1,22 +1,15 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Persists the Supabase session in the OS keychain / Keystore (desktop/mobile).
+/// Persists the Supabase session via [ForjaPlatformSecureStore].
 ///
-/// macOS **release** builds disable App Sandbox ([Release.entitlements]). The
-/// plugin default `useDataProtectionKeyChain: true` then fails with Keychain
-/// `-34018`; supabase_flutter swallows the write error and the next cold start
-/// looks signed out. Use the legacy login keychain on macOS instead.
+/// macOS: Data Protection Keychain when sandboxed; prefs vault for ad-hoc
+/// non-sandbox Release (avoids login-Keychain password dialogs on update).
 class ForjaSecureLocalStorage extends LocalStorage {
   ForjaSecureLocalStorage({required this.persistSessionKey});
 
   final String persistSessionKey;
-
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    mOptions: MacOsOptions(useDataProtectionKeyChain: false),
-  );
 
   @override
   Future<void> initialize() async {
@@ -32,7 +25,7 @@ class ForjaSecureLocalStorage extends LocalStorage {
   @override
   Future<String?> accessToken() async {
     try {
-      return await _storage.read(key: persistSessionKey);
+      return await ForjaPlatformSecureStore.read(persistSessionKey);
     } catch (e) {
       debugPrint('[Supabase] session read failed: $e');
       return null;
@@ -42,7 +35,7 @@ class ForjaSecureLocalStorage extends LocalStorage {
   @override
   Future<void> removePersistedSession() async {
     try {
-      await _storage.delete(key: persistSessionKey);
+      await ForjaPlatformSecureStore.delete(persistSessionKey);
     } catch (e) {
       debugPrint('[Supabase] session delete failed: $e');
       rethrow;
@@ -52,9 +45,9 @@ class ForjaSecureLocalStorage extends LocalStorage {
   @override
   Future<void> persistSession(String persistSessionString) async {
     try {
-      await _storage.write(
-        key: persistSessionKey,
-        value: persistSessionString,
+      await ForjaPlatformSecureStore.write(
+        persistSessionKey,
+        persistSessionString,
       );
     } catch (e) {
       debugPrint('[Supabase] session persist failed: $e');

@@ -8,7 +8,6 @@ abstract final class ProviderProfiles {
   static const _animeOrder = <String>[
     'megaplay',
     'anikoto',
-    'vidwish',
     'vidnest:hianime',
     'vidnest:animepahe',
     'allanime:Default',

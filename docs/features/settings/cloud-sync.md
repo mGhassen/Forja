@@ -96,8 +96,9 @@ Not synced — device-specific or sensitive:
   the app opens that profile’s **default menu** tab (the starred tab under
   **Settings → Features**), not the screen you were on before switching.
 - On desktop, a restored session goes straight to the boot splash (the session
-  is kept in the OS Keychain / Keystore across quit — including macOS release
-  builds). A new interactive sign-in opens **Who’s watching?** so you can
+  is kept across quit: Keychain/Keystore on sandboxed builds; a local vault on
+  ad-hoc macOS Release so updates do not re-ask for the login Keychain password).
+  A new interactive sign-in opens **Who’s watching?** so you can
   choose the device profile first. If the account has no profiles yet, you
   create one before continuing. Tapping a profile there selects it and
   continues into the logo boot splash (engines + catalog). Mid-session
