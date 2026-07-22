@@ -106,14 +106,16 @@ void main() {
       }
     });
 
-    test('vidlove rotates chips; vidfast does not', () {
+    test('vidlove rotates chips; vidfast loads direct + defers for HLS.js', () {
       final love = EmbedExtractProfiles.resolve('vidlove');
       final fast = EmbedExtractProfiles.resolve('vidfast');
       expect(love.rotateServerChips, isTrue);
       expect(love.serverChipLabels, contains('neta'));
       expect(love.forceDirect, isTrue);
       expect(fast.rotateServerChips, isFalse);
-      expect(fast.forceDirect, isFalse);
+      expect(fast.forceDirect, isTrue);
+      expect(fast.deferUntilStrongStream, isTrue);
+      expect(fast.acceptProxyPlaylistBodies, isTrue);
     });
 
     test('vidsrcsbs accepts proxy playlist bodies', () {

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix tasks · **0 / 4** acceptance |
+| **Progress** | **7 / 7** fix tasks · **1 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I82-T04 | Chip-rotate embeds (`rotateServerChips`): do not early-complete; keep collecting until timeout | ✅ |
 | 5 | I82-T05 | Feature doc + changelog + unit coverage for collect-all / order | ✅ |
 | 6 | I82-T06 | No background checks while playing: drop Source auto-probe; stop Auto sibling fill; cancel pending extracts on playback confirm | ✅ |
+| 7 | I82-T07 | VidSrc.sbs: first-hit + ≤3s grace then return (cancel leftover WebViews); dead mirrors must not block spinner | ✅ |
 
 ---
 
@@ -36,6 +37,7 @@
 | 2 | I82-A02 | VidNest / Videasy return every responsive server/mirror stream in one resolve | ⬜ |
 | 3 | I82-A03 | Chip-rotate providers keep multiple chip streams in `sources` when more than one emits during the sniff | ⬜ |
 | 4 | I82-A04 | Bounded concurrency (≤4 HTTP / ≤2 WebView) — no unbounded fan-out | ⬜ |
+| 5 | I82-A05 | Unit: VidSrc.sbs post-first-hit grace ≤3s (dead mirrors cannot hold resolve open) | ✅ |
 
 ---
 
@@ -43,7 +45,9 @@
 
 Multi-server hosts discover several mirrors, then Forja threw away everything after the first successful sniff (VidSrc.sbs), first API server (VidNest), or an 8s grace cutoff (Videasy). Chip-rotate WebView sniffs early-completed after one strong playlist.
 
-**Policy:** no preferred-server intelligence — check every listed server/mirror with bounded parallelism and show every stream that responds.
+**Original policy (I82-T01–T06):** check every listed server/mirror with bounded parallelism and show every stream that responds.
+
+**Latency correction (I82-T07):** full wait-for-all blocked play when one mirror hung (~22s sniff timeout). VidSrc.sbs now matches Videasy: first good mirror starts a short grace, then resolve returns and leftover WebViews cancel. Streams found during the grace still merge; dead mirrors after grace do not hold the spinner.
 
 ## Related
 

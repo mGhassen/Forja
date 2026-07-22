@@ -59,6 +59,11 @@ class ProviderRuntimeConfig {
   }
 
   /// Stable playback Referer/Origin for [providerId] (RFC-044). Null = no force.
+  /// Playback Referer/Origin from **provider identity**, not CDN hostname.
+  ///
+  /// Order: aliases that diverge from embed host → embed template / WebStreamr
+  /// base / known API origin. New template providers get policy automatically
+  /// when their URL is in [templates] (no per-CDN host chase).
   ({String referer, String origin})? playbackPolicyFor(String? providerId) {
     final key = _stripAnimePanelSuffix(providerId?.trim() ?? '').toLowerCase();
     if (key.isEmpty) return null;
@@ -77,28 +82,13 @@ class ProviderRuntimeConfig {
     if (key == 'videasy' || key.startsWith('videasy/')) {
       final raw = (apis['videasyPlayerOrigin'] ?? 'https://player.videasy.to')
           .trim();
-      final host = raw
-          .replaceFirst(RegExp(r'^https?://'), '')
-          .split('/')
-          .first
-          .trim();
-      return _httpsOrigin(host, fallback: 'player.videasy.to');
-    }
-
-    // Vidzee CDN (1shows.app, …) — 403 without player.vidzee.wtf Referer.
-    if (key == 'vidzee') {
-      return _httpsOrigin('player.vidzee.wtf', fallback: 'player.vidzee.wtf');
+      return _httpsOrigin(_hostOf(raw), fallback: 'player.videasy.to');
     }
 
     // AllAnime / AllManga MP4 CDN (fast4speed, …).
     if (key.startsWith('allanime:')) {
       final raw = (apis['allanimeReferer'] ?? 'https://allmanga.to').trim();
-      final host = raw
-          .replaceFirst(RegExp(r'^https?://'), '')
-          .split('/')
-          .first
-          .trim();
-      return _httpsOrigin(host, fallback: 'allmanga.to');
+      return _httpsOrigin(_hostOf(raw), fallback: 'allmanga.to');
     }
 
     // KissKh mirrors + rotating streamingcdn / cdnvideo hosts.
@@ -106,16 +96,74 @@ class ProviderRuntimeConfig {
       final mirror = kisskhMirrors.isNotEmpty
           ? kisskhMirrors.first
           : 'https://kisskh.co';
-      final host = mirror
-          .trim()
-          .replaceFirst(RegExp(r'^https?://'), '')
-          .split('/')
-          .first
-          .trim();
-      return _httpsOrigin(host, fallback: 'kisskh.co');
+      return _httpsOrigin(_hostOf(mirror), fallback: 'kisskh.co');
+    }
+
+    if (key == 'watchhentai') {
+      final raw =
+          (apis['watchhentaiOrigin'] ?? 'https://watchhentai.net').trim();
+      return _httpsOrigin(_hostOf(raw), fallback: 'watchhentai.net');
+    }
+    if (key == 'hentaini') {
+      final raw = (apis['hentainiSite'] ?? 'https://hentaini.com').trim();
+      return _httpsOrigin(_hostOf(raw), fallback: 'hentaini.com');
+    }
+
+    if (key.startsWith('miruro:')) {
+      final origin = miruroOrigins.isNotEmpty
+          ? miruroOrigins.first
+          : 'https://www.miruro.tv';
+      return _httpsOrigin(_hostOf(origin), fallback: 'www.miruro.tv');
+    }
+
+    // Template / WebStreamr / API embed host = open policy for that provider.
+    // Covers vidzee, vidfast, vidrock, vixsrc, … without hardcoding each id.
+    final templateKey = key.startsWith('vidnest:') ? 'vidnest' : key;
+    final fromEmbed = _policyFromEmbedHost(templateKey);
+    if (fromEmbed != null) return fromEmbed;
+
+    return null;
+  }
+
+  /// Prefer movie/tv template host, then WebStreamr base, then known API keys.
+  ({String referer, String origin})? _policyFromEmbedHost(String key) {
+    final tpl = templates[key];
+    if (tpl != null) {
+      for (final raw in [tpl.movie, tpl.tv]) {
+        final host = _hostOf(raw);
+        if (host.isNotEmpty) {
+          return _httpsOrigin(host, fallback: host);
+        }
+      }
+    }
+
+    final ws = webstreamr[key]?.trim();
+    if (ws != null && ws.isNotEmpty) {
+      final host = _hostOf(ws);
+      if (host.isNotEmpty) return _httpsOrigin(host, fallback: host);
+    }
+
+    for (final apiKey in [
+      '${key}Embed',
+      '${key}PlayerOrigin',
+      '${key}Base',
+      if (key == 'vidnest') 'vidnestEmbed',
+      if (key == 'vidsrc') 'vidsrcEmbed',
+      if (key == 'vixsrc') 'vixsrcBase',
+    ]) {
+      final raw = apis[apiKey]?.trim();
+      if (raw == null || raw.isEmpty) continue;
+      final host = _hostOf(raw);
+      if (host.isNotEmpty) return _httpsOrigin(host, fallback: host);
     }
 
     return null;
+  }
+
+  static String _hostOf(String raw) {
+    var h = raw.trim();
+    h = h.replaceFirst(RegExp(r'^https?://'), '');
+    return h.split('/').first.trim();
   }
 
   static ({String referer, String origin})? _httpsOrigin(

@@ -488,37 +488,31 @@ class _HubHeroMainColumn extends StatelessWidget {
     return SizedBox(
       width: maxContentWidth,
       height: bounded ? maxHeight : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          if (bounded)
-            Expanded(
-              child: ClipRect(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: metaColumn,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...metaColumn,
+              if (actionRow != null) ...[
+                const SizedBox(height: _actionGap),
+                DetailsHeroActionRowFit(child: actionRow!),
+              ],
+              if (showProgress) ...[
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: 220,
+                  child: WatchProgressBar(
+                    positionMs: positionMs!,
+                    durationMs: durationMs!,
+                  ),
                 ),
-              ),
-            )
-          else
-            ...metaColumn,
-          if (actionRow != null) ...[
-            const SizedBox(height: _actionGap),
-            DetailsHeroActionRowFit(child: actionRow!),
-          ],
-          if (showProgress) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: 220,
-              child: WatchProgressBar(
-                positionMs: positionMs!,
-                durationMs: durationMs!,
-              ),
-            ),
-          ],
-        ],
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

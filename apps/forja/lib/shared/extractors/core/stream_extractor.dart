@@ -404,6 +404,7 @@ class StreamExtractor {
           .replaceFirst('[FETCH_BODY]', '')
           .replaceFirst('[XHR]', '')
           .replaceFirst('[XHR_BODY]', '')
+          .replaceFirst('[HLS_SRC]', '')
           .replaceFirst('[POSTMESSAGE]', '')
           .replaceFirst('[ATTR_SRC]', '')
           .replaceFirst('[MUTATION_SRC]', '')
@@ -435,7 +436,9 @@ class StreamExtractor {
         return;
       }
       final fromBody =
-          fullMsg.contains('[FETCH_BODY]') || fullMsg.contains('[XHR_BODY]');
+          fullMsg.contains('[FETCH_BODY]') ||
+          fullMsg.contains('[XHR_BODY]') ||
+          fullMsg.contains('[HLS_SRC]');
       _processUrl(
         streamUrl,
         frameUrl ?? fallbackReferer,
@@ -611,7 +614,11 @@ class StreamExtractor {
         confirmedPlaylistBody &&
         _profile.acceptProxyPlaylistBodies &&
         _isEmbedProxyPlaylistUrl(rUrl);
-    if (!isPlayableStreamUrl(rUrl) && !proxyPlaylist) {
+    // Opaque same-origin playlist proxies: body already proved `#EXTM3U`
+    // (or HLS.js loadSource) even when the URL has no `.m3u8` suffix.
+    final confirmedHttpPlaylist =
+        confirmedPlaylistBody && _isHttpOrHttpsUrl(rUrl);
+    if (!isPlayableStreamUrl(rUrl) && !proxyPlaylist && !confirmedHttpPlaylist) {
       final lower = rUrl.toLowerCase();
       if (lower.contains('/api/proxy') ||
           lower.contains('/api/sources') ||
@@ -648,6 +655,7 @@ class StreamExtractor {
     if (_profile.deferUntilStrongStream) {
       final strong =
           isDeferredStrongStreamUrl(_capturedVideo!) ||
+          confirmedHttpPlaylist ||
           (_profile.acceptProxyPlaylistBodies &&
               _isEmbedProxyPlaylistUrl(_capturedVideo!));
       if (!strong) return;
@@ -677,6 +685,12 @@ class StreamExtractor {
     final lower = url.toLowerCase();
     return lower.contains('/api/proxy') &&
         (lower.contains('sig=') || lower.contains('1embed'));
+  }
+
+  static bool _isHttpOrHttpsUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return false;
+    return uri.isScheme('http') || uri.isScheme('https');
   }
 
   /// Prefer the canonical embed page as Referer when FRAME is the stream CDN.
@@ -977,36 +991,38 @@ class StreamExtractor {
 
       const originalFetch = window.fetch;
       window.fetch = async function(...args) {
-        const url = args[0] instanceof Request ? args[0].url : String(args[0]);
-        log('FETCH', url);
+        const raw = args[0] instanceof Request ? args[0].url : String(args[0]);
+        let absUrl = raw;
+        try { absUrl = new URL(raw, window.location.href).href; } catch (e) {}
+        log('FETCH', absUrl);
         const res = await originalFetch.apply(this, args);
-        if (typeof url === 'string') {
-          try {
-            const clone = res.clone();
-            const text = await clone.text();
-            const lowerUrl = url.toLowerCase();
-            const looksProxy = lowerUrl.includes('/api/proxy') ||
-              lowerUrl.includes('/api/sources') ||
-              lowerUrl.includes('/api/v1/stream') ||
-              lowerUrl.includes('proxy');
-            if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
-                (ACCEPT_PROXY_BODY && looksProxy)) {
-              if (text.trim().startsWith('#EXTM3U') && url.startsWith('http')) {
-                log('FETCH_BODY', url);
-              }
-              const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
-              if (matches) matches.forEach((u) => log('FETCH_BODY', u));
+        try {
+          const clone = res.clone();
+          const text = await clone.text();
+          const lowerUrl = absUrl.toLowerCase();
+          const looksProxy = lowerUrl.includes('/api/proxy') ||
+            lowerUrl.includes('/api/sources') ||
+            lowerUrl.includes('/api/v1/stream') ||
+            lowerUrl.includes('proxy');
+          if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
+              (ACCEPT_PROXY_BODY && looksProxy)) {
+            if (text.trim().startsWith('#EXTM3U') && absUrl.startsWith('http')) {
+              log('FETCH_BODY', absUrl);
             }
-          } catch (e) {}
-        }
+            const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
+            if (matches) matches.forEach((u) => log('FETCH_BODY', u));
+          }
+        } catch (e) {}
         return res;
       };
 
       const originalXHROpen = XMLHttpRequest.prototype.open;
       const originalXHRSend = XMLHttpRequest.prototype.send;
       XMLHttpRequest.prototype.open = function(method, url) {
-        this._pt_url = url;
-        log('XHR', url);
+        let abs = String(url || '');
+        try { abs = new URL(abs, window.location.href).href; } catch (e) {}
+        this._pt_url = abs;
+        log('XHR', abs);
         return originalXHROpen.apply(this, arguments);
       };
       XMLHttpRequest.prototype.send = function() {
@@ -1031,6 +1047,38 @@ class StreamExtractor {
         });
         return originalXHRSend.apply(this, arguments);
       };
+
+      // VidFast / MSE players: real playlist is Hls.loadSource(url), video.src is blob:.
+      const hookHlsProto = (H) => {
+        if (!H || !H.prototype || H.prototype.__pt_hls_hooked) return;
+        H.prototype.__pt_hls_hooked = true;
+        const origLoad = H.prototype.loadSource;
+        if (typeof origLoad !== 'function') return;
+        H.prototype.loadSource = function(url) {
+          try {
+            let abs = String(url || '');
+            try { abs = new URL(abs, window.location.href).href; } catch (e) {}
+            if (abs) log('HLS_SRC', abs);
+          } catch (e) {}
+          return origLoad.apply(this, arguments);
+        };
+      };
+      const hookHls = () => {
+        hookHlsProto(window.Hls);
+        hookHlsProto(window.hls);
+        hookHlsProto(window.Hlsjs);
+      };
+      hookHls();
+      setInterval(hookHls, 400);
+      try {
+        let _hls = window.Hls;
+        Object.defineProperty(window, 'Hls', {
+          configurable: true,
+          get() { return _hls; },
+          set(v) { _hls = v; hookHlsProto(v); }
+        });
+      } catch (e) {}
+
 
       const OriginalWorker = window.Worker;
       window.Worker = function(scriptURL, options) {

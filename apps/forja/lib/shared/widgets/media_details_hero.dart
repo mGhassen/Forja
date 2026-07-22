@@ -1202,7 +1202,7 @@ class _HeroMainColumn extends StatelessWidget {
     return reserved;
   }
 
-  /// Meta stack only — actions + progress are reserved outside [Expanded].
+  /// Meta stack only — actions + progress are reserved below in the column.
   double _metaUsedHeight({
     required bool showDirector,
     required bool showGenres,
@@ -1236,7 +1236,7 @@ class _HeroMainColumn extends StatelessWidget {
     var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
-    // Actions + progress are pinned below meta; budget Expanded from leftover.
+    // Actions + progress sit under synopsis; budget meta from leftover height.
     double? metaBudget;
     if (bounded) {
       metaBudget = (maxHeight! - _footerReserve(showProgress: showProgress))
@@ -1386,47 +1386,37 @@ class _HeroMainColumn extends StatelessWidget {
       ],
     ];
 
-    // Pin Play / Sources / icons (+ progress under them) below the clipped
-    // meta column so a tight series chrome (episode rail bleed) never clips
-    // hero actions out of the focus tree — D-pad left/right needs those
-    // nodes attached and focusable.
+    // Pack meta → actions → progress at the top. Footer height is reserved in
+    // the meta budget so tight series chrome (episode rail) never clips Play
+    // out of the focus tree.
     return SizedBox(
       width: maxContentWidth,
       height: bounded ? maxHeight : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          if (bounded)
-            Expanded(
-              child: ClipRect(
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: metaColumn,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...metaColumn,
+              if (actionRow != null) ...[
+                const SizedBox(height: _actionGap),
+                DetailsHeroActionRowFit(child: actionRow!),
+              ],
+              if (showProgress) ...[
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: 280,
+                  child: WatchProgressBar(
+                    positionMs: positionMs!,
+                    durationMs: durationMs!,
                   ),
                 ),
-              ),
-            )
-          else
-            ...metaColumn,
-          if (actionRow != null) ...[
-            const SizedBox(height: _actionGap),
-            DetailsHeroActionRowFit(child: actionRow!),
-          ],
-          if (showProgress) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: 280,
-              child: WatchProgressBar(
-                positionMs: positionMs!,
-                durationMs: durationMs!,
-              ),
-            ),
-          ],
-        ],
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -194,8 +194,44 @@ void main() {
         streamUrl: url,
         providerId: 'miruro:kiwi',
       );
-      // No megaplay policy for kiwi — must not use cdn.example as Referer.
-      expect(h['Referer'], isNot('https://cdn.example/'));
+      // Miruro panel → miruro site origin (not CDN host).
+      expect(h['Referer'], 'https://www.miruro.tv/');
+      expect(h['Origin'], 'https://www.miruro.tv');
+    });
+
+    test('RFC-044: template providerId derives Referer from embed host', () {
+      const url = 'https://brand-new-cdn.example/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://brand-new-cdn.example/'},
+        streamUrl: url,
+        providerId: 'vidfast',
+      );
+      expect(h['Referer'], 'https://vidfast.vc/');
+      expect(h['Origin'], 'https://vidfast.vc');
+    });
+
+    test('RFC-044: remote template overlay retargets identity Referer', () {
+      ProviderRuntimeConfig.instance.debugSetSnapshot(
+        ProviderRuntimeSnapshot.builtins().merged(
+          ProviderRuntimeSnapshot.tryParse({
+            'schema': 1,
+            'templates': {
+              'vidrock': {
+                'movie': 'https://ops-vidrock.test/movie/{tmdb}',
+                'tv': 'https://ops-vidrock.test/tv/{tmdb}/{season}/{episode}',
+              },
+            },
+          })!,
+        ),
+      );
+      const url = 'https://cdn-rotate.example/v.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'vidrock',
+      );
+      expect(h['Referer'], 'https://ops-vidrock.test/');
+      expect(h['Origin'], 'https://ops-vidrock.test');
     });
 
     test('rewrites nekostream self-Referer to megaplay', () {

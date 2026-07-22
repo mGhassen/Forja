@@ -36,8 +36,9 @@ class MediaDetailsCastSection extends StatefulWidget {
   static const double _avatarNameGap = 8;
   static const double _nameCharacterGap = 3;
 
+  // name: 13×1.2 → 16; character: 12×1.2 → 15 (ceil)
   static const double _rowHeight =
-      _avatarSize + _avatarNameGap + 16 + _nameCharacterGap + 14;
+      _avatarSize + _avatarNameGap + 16 + _nameCharacterGap + 15;
 
   @override
   State<MediaDetailsCastSection> createState() =>

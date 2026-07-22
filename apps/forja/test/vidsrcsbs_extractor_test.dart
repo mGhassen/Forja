@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/extractors/providers/vidsrcsbs/vidsrcsbs_extractor.dart';
+import 'package:forja/shared/playback/host_provider_adapter.dart';
 
 void main() {
   group('VidsrcsbsExtractor.parseServersHtml', () {
@@ -29,5 +30,12 @@ var CFG = {
         'https://1embed.cc/embed/tv/279323/1/1',
       );
     });
+  });
+
+  test('VidSrc.sbs post-first-hit grace is short (no dead-mirror spinner)', () {
+    expect(
+      HostProviderAdapter.vidsrcsbsPostFirstHitGraceForTest.inSeconds,
+      lessThanOrEqualTo(3),
+    );
   });
 }

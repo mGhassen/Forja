@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **13 / 13** unit acceptance · **0 / 3** manual |
-| **Current slice** | Host providers (Videasy) use same identity + first-hit open — Megaplay manual smoke open |
+| **Progress** | **10 / 10** components · **16 / 16** unit acceptance · **0 / 3** manual |
+| **Current slice** | Generic template identity — every embed host gets Referer from runtime templates |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -28,6 +28,7 @@
 | 7 | R44-C07 | Drop Vidwish as separate provider identity (alias → Megaplay) | ✅ |
 | 8 | R44-C08 | `playbackPolicyFor(allanime:*)` → AllManga Referer; ban CDN self-Referer | ✅ |
 | 9 | R44-C09 | KissKh `StreamSource.providerId` + `playbackPolicyFor(kisskh*)` before CDN sniff | ✅ |
+| 10 | R44-C10 | `playbackPolicyFor` derives embed origin from templates/WebStreamr/API for all host providers | ✅ |
 
 ---
 
@@ -75,11 +76,23 @@
 
 ---
 
+## Acceptance (generic template identity)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R44-A17 | Unit: any builtin template `providerId` (e.g. vidfast) forces embed-host Referer on unknown CDN | ✅ |
+| 2 | R44-A18 | Unit: remote template overlay retargets identity Referer without code change | ✅ |
+| 3 | R44-A19 | Host encode stamps `providerId` on Vidnest / VidSrc.sbs / Nuvio / 111477 sources | ✅ |
+
+---
+
 ## Summary
 
 CDN hostnames under MegaPlay rotate often. Gating Referer rewrite and PNG-strip on `hostContains` / `pngStripHostContains` forces endless allowlist updates and breaks when remote config overwrites builtins.
 
 **Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Decide PNG unwrap from **content** (`pngStrip: auto`) or explicit force/never — plain HLS stays a direct catalog open; only PNG-wrapped TS goes through `/hls-proxy?strip=png`. Host needles never force strip for `auto`. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
+
+**Generic host path (R44-C10):** for every template / WebStreamr / known-API provider, `playbackPolicyFor(id)` derives Referer from that provider’s **embed host** in runtime config. CDN rotations do not need a new code branch — only provider domain moves need Admin JSON / migration. Exceptions stay explicit (MegaPlay family, Videasy player origin, AllManga, KissKh mirrors, Miruro origins).
 
 Legacy `cdnRefererRules` remain for opens with **no** `providerId` only.
 
@@ -88,3 +101,4 @@ Legacy `cdnRefererRules` remain for opens with **no** `providerId` only.
 - [RFC-039](fixed/039-[fixed]-remote-provider-runtime-config.md)
 - [issue 084](../issues/084-[open]-megaplay-nekostream-cdn-referer.md)
 - [anime hub](../features/hubs/anime.md)
+- [stream providers](../features/sources/stream-providers.md)

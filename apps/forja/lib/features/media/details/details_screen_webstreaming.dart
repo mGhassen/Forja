@@ -22,10 +22,10 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
   }
 
   Future<void> _playWebstreamingFromDetails() async {
-    await _s._checkHistory();
-    await _hydrateWebstreamingFromCache();
-    if (!mounted) return;
-    await _startWebstreamingOnlyPlayback();
+    // Overlay first — cache probe can take hundreds of ms with no UI.
+    // Do not re-await watch history here: `_lastProgress` is already loaded in
+    // initState and kept fresh via historyStream.
+    await _startWebstreamingOnlyPlayback(hydrateCache: true);
   }
 
   String _webstreamingCacheKey() => WebstreamingStreamCache.cacheKeyFromProgress(
@@ -115,56 +115,176 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     return sources.first;
   }
 
-  Future<void> _startWebstreamingOnlyPlayback() async {
-    final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
-    if (_s._webstreamingStreams.isNotEmpty) {
-      final preferred = _preferredWebstreamingSource(_s._webstreamingStreams);
-      if (!isUnplayableCachedStreamUrl(preferred.url) &&
-          await probeStreamSourceUrl(preferred.url, preferred.headers)) {
-        if (!mounted) return;
-        await _playWebstreamingStream(
-          preferred,
-          startPosition: startPosition,
-        );
-        return;
-      }
-      // Stale in-memory extract (expired JWT / dead CDN) — drop and re-resolve.
-      await WebstreamingStreamCache.drop(_webstreamingCacheKey());
-      if (mounted) {
-        setState(() {
-          _s._webstreamingStreams = [];
-          _s._webstreamingActiveProviderId = null;
-        });
-      }
+  Future<void> _startWebstreamingOnlyPlayback({
+    bool hydrateCache = false,
+  }) async {
+    if (_s._isWebstreamingOnlyExtracting) return;
+
+    if (mounted) {
+      setState(() => _s._isWebstreamingOnlyExtracting = true);
+    } else {
+      _s._isWebstreamingOnlyExtracting = true;
+    }
+    _s._webstreamingOnlyExtractionCancelled = false;
+
+    final fadeOutNotifier = ValueNotifier(false);
+    final messageNotifier = ValueNotifier('Loading stream…');
+    BuildContext? loadingDialogContext;
+    var openedPlayer = false;
+    var handedToExtraction = false;
+
+    void dismissLoading() {
+      final ctx = loadingDialogContext;
+      loadingDialogContext = null;
+      if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
     }
 
-    final cached = await WebstreamingStreamCache.readLive(
-      _webstreamingCacheKey(),
-      probe: probeStreamSourceUrl,
+    showLoadingOverlayDialog(
+      context,
+      builder: (dialogContext) {
+        loadingDialogContext = dialogContext;
+        return LoadingOverlay(
+          movie: _s._movie,
+          messageNotifier: messageNotifier,
+          fadeOutNotifier: fadeOutNotifier,
+          onCancel: () {
+            _s._webstreamingOnlyExtractionCancelled = true;
+            dismissLoading();
+            if (mounted) {
+              setState(() => _s._isWebstreamingOnlyExtracting = false);
+            } else {
+              _s._isWebstreamingOnlyExtracting = false;
+            }
+          },
+        );
+      },
     );
-    if (cached != null && cached.sources.isNotEmpty) {
-      if (!mounted) return;
-      setState(() => _applyWebstreamingCacheHit(cached));
-      debugPrint(
-        '[DetailsScreen] webstreaming cache hit '
-        '${cached.providerId} (${cached.sources.length})',
-      );
-      await _playWebstreamingStream(
-        _preferredWebstreamingSource(cached.sources),
-        startPosition: startPosition,
-      );
+    // Let the loading route paint before cache / probe work.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || _s._webstreamingOnlyExtractionCancelled) {
+      dismissLoading();
+      fadeOutNotifier.dispose();
+      messageNotifier.dispose();
+      _s._isWebstreamingOnlyExtracting = false;
       return;
     }
 
-    if (await _tryResumeWebStreamFromWatchHistory(startPosition)) return;
+    try {
+      if (hydrateCache) {
+        await _hydrateWebstreamingFromCache();
+        if (!mounted || _s._webstreamingOnlyExtractionCancelled) return;
+      }
 
-    if (_s._isWebstreamingOnlyExtracting) return;
-    await _runWebstreamingOnlyExtraction(startPosition: startPosition);
+      final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
+
+      if (_s._webstreamingStreams.isNotEmpty) {
+        final preferred = _preferredWebstreamingSource(_s._webstreamingStreams);
+        // Hydrate probes sources.first; preferred may be a different saved URL.
+        final alreadyLive = hydrateCache &&
+            preferred.url == _s._webstreamingStreams.first.url;
+        final playable = !isUnplayableCachedStreamUrl(preferred.url) &&
+            (alreadyLive ||
+                await probeStreamSourceUrl(preferred.url, preferred.headers));
+        if (playable) {
+          if (!mounted || _s._webstreamingOnlyExtractionCancelled) return;
+          final ctx = loadingDialogContext;
+          if (ctx != null && ctx.mounted) {
+            openedPlayer = true;
+            await _playWebstreamingStream(
+              preferred,
+              startPosition: startPosition,
+              loadingDialogContext: ctx,
+              fadeOutNotifier: fadeOutNotifier,
+            );
+          } else {
+            await _playWebstreamingStream(
+              preferred,
+              startPosition: startPosition,
+            );
+          }
+          return;
+        }
+        // Stale in-memory extract (expired JWT / dead CDN) — drop and re-resolve.
+        await WebstreamingStreamCache.drop(_webstreamingCacheKey());
+        if (mounted) {
+          setState(() {
+            _s._webstreamingStreams = [];
+            _s._webstreamingActiveProviderId = null;
+          });
+        }
+      }
+
+      final cached = await WebstreamingStreamCache.readLive(
+        _webstreamingCacheKey(),
+        probe: probeStreamSourceUrl,
+      );
+      if (!mounted || _s._webstreamingOnlyExtractionCancelled) return;
+      if (cached != null && cached.sources.isNotEmpty) {
+        setState(() => _applyWebstreamingCacheHit(cached));
+        debugPrint(
+          '[DetailsScreen] webstreaming cache hit '
+          '${cached.providerId} (${cached.sources.length})',
+        );
+        final ctx = loadingDialogContext;
+        if (ctx != null && ctx.mounted) {
+          openedPlayer = true;
+          await _playWebstreamingStream(
+            _preferredWebstreamingSource(cached.sources),
+            startPosition: startPosition,
+            loadingDialogContext: ctx,
+            fadeOutNotifier: fadeOutNotifier,
+          );
+        } else {
+          await _playWebstreamingStream(
+            _preferredWebstreamingSource(cached.sources),
+            startPosition: startPosition,
+          );
+        }
+        return;
+      }
+
+      if (await _tryResumeWebStreamFromWatchHistory(
+        startPosition,
+        loadingDialogContext: loadingDialogContext,
+        fadeOutNotifier: fadeOutNotifier,
+        onOpenedPlayer: () => openedPlayer = true,
+      )) {
+        return;
+      }
+
+      // Cold extract owns its own overlay + extracting flag.
+      handedToExtraction = true;
+      dismissLoading();
+      fadeOutNotifier.dispose();
+      messageNotifier.dispose();
+      if (mounted) {
+        setState(() => _s._isWebstreamingOnlyExtracting = false);
+      } else {
+        _s._isWebstreamingOnlyExtracting = false;
+      }
+      await _runWebstreamingOnlyExtraction(startPosition: startPosition);
+    } finally {
+      if (!handedToExtraction) {
+        if (!openedPlayer) dismissLoading();
+        fadeOutNotifier.dispose();
+        messageNotifier.dispose();
+        if (mounted) {
+          setState(() => _s._isWebstreamingOnlyExtracting = false);
+        } else {
+          _s._isWebstreamingOnlyExtracting = false;
+        }
+      }
+    }
   }
 
   /// Last-resume layer: reopen the saved URL + provider from watch history
   /// without re-racing extractors (survives cache drops after built-in fail).
-  Future<bool> _tryResumeWebStreamFromWatchHistory(Duration? startPosition) async {
+  Future<bool> _tryResumeWebStreamFromWatchHistory(
+    Duration? startPosition, {
+    BuildContext? loadingDialogContext,
+    ValueNotifier<bool>? fadeOutNotifier,
+    VoidCallback? onOpenedPlayer,
+  }) async {
     final progress = _s._lastProgress;
     if (progress == null || progress['method'] != 'stream') return false;
     final savedUrl = progress['streamUrl'] as String?;
@@ -198,7 +318,18 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
       '[DetailsScreen] watch-history stream resume $sourceId '
       '(${startPosition?.inSeconds ?? 0}s)',
     );
-    await _playWebstreamingStream(source, startPosition: startPosition);
+    final ctx = loadingDialogContext;
+    if (ctx != null && ctx.mounted) {
+      onOpenedPlayer?.call();
+      await _playWebstreamingStream(
+        source,
+        startPosition: startPosition,
+        loadingDialogContext: ctx,
+        fadeOutNotifier: fadeOutNotifier,
+      );
+    } else {
+      await _playWebstreamingStream(source, startPosition: startPosition);
+    }
     return true;
   }
 
@@ -675,6 +806,8 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
   Future<void> _playWebstreamingStream(
     StreamSource source, {
     Duration? startPosition,
+    BuildContext? loadingDialogContext,
+    ValueNotifier<bool>? fadeOutNotifier,
   }) async {
     final isTv = _s._movie.mediaType == 'tv';
     final title = isTv
@@ -697,28 +830,41 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     // extracts from any provider are not reused on the next green Play.
     if (mounted && _s._sourcesPanelOpen) _s._closeSourcesPanel();
     try {
-      await AppRouter.openPlayer(
-        context,
-        streamUrl: source.url,
-        title: title,
-        headers: source.headers,
-        movie: _s._movie,
-        providers: _orderedWebstreamingProviders,
-        activeProvider: providerId,
-        selectedSeason: isTv ? _s._selectedSeason : null,
-        selectedEpisode: isTv ? _s._selectedEpisode : null,
-        startPosition: startPosition ?? widget.startPosition,
-        sources: resolvedSources,
-        providerSourcesCache: providerSourcesCache,
-        pinSource: true,
-        onSourcePinned: (sourceUrl, sourceTitle) =>
-            _rememberWebstreamingSelection(
-              sourceUrl,
-              sourceTitle,
-              providerSourcesCache,
-            ),
-        fadeTransition: true,
-      );
+      Future<void> openPlayer() {
+        return AppRouter.openPlayer(
+          context,
+          streamUrl: source.url,
+          title: title,
+          headers: source.headers,
+          movie: _s._movie,
+          providers: _orderedWebstreamingProviders,
+          activeProvider: providerId,
+          selectedSeason: isTv ? _s._selectedSeason : null,
+          selectedEpisode: isTv ? _s._selectedEpisode : null,
+          startPosition: startPosition ?? widget.startPosition,
+          sources: resolvedSources,
+          providerSourcesCache: providerSourcesCache,
+          pinSource: true,
+          onSourcePinned: (sourceUrl, sourceTitle) =>
+              _rememberWebstreamingSelection(
+                sourceUrl,
+                sourceTitle,
+                providerSourcesCache,
+              ),
+          fadeTransition: true,
+        );
+      }
+
+      final ctx = loadingDialogContext;
+      if (ctx != null && ctx.mounted) {
+        await crossfadeLoadingOverlayToPlayer(
+          loadingDialogContext: ctx,
+          fadeOutNotifier: fadeOutNotifier,
+          openPlayer: openPlayer,
+        );
+      } else {
+        await openPlayer();
+      }
     } finally {
       providerSourcesCache.dispose();
     }

@@ -148,7 +148,18 @@ class VidnestExtractor {
       for (final batch in batches) ...batch,
     ];
     if (allSources.isEmpty) return null;
-    final playable = dedupeStreamSources(allSources);
+    final playable = dedupeStreamSources(allSources)
+        .map(
+          (s) => StreamSource(
+            url: s.url,
+            title: s.title,
+            type: s.type,
+            headers: s.headers,
+            providerId: 'vidnest',
+            catalogUrl: s.catalogUrl ?? s.url,
+          ),
+        )
+        .toList();
     _log('${batches.length} server(s) → ${playable.length} source(s)');
     return ExtractedMedia(
       url: playable.first.url,

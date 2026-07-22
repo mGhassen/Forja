@@ -171,6 +171,18 @@ void main() {
         ProviderRuntimeConfig.instance.playbackPolicyFor('megaplay')?.referer,
         contains('megaplay'),
       );
+      expect(
+        ProviderRuntimeConfig.instance.playbackPolicyFor('vidfast')?.referer,
+        'https://vidfast.vc/',
+      );
+      expect(
+        ProviderRuntimeConfig.instance.playbackPolicyFor('vidzee')?.referer,
+        'https://player.vidzee.wtf/',
+      );
+      expect(
+        ProviderRuntimeConfig.instance.playbackPolicyFor('miruro:kiwi')?.referer,
+        'https://www.miruro.tv/',
+      );
     });
 
     test('unsupported schema ignored', () {

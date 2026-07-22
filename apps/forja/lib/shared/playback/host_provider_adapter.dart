@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
-import 'package:forja/shared/extractors/core/bounded_parallel.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
@@ -25,6 +24,13 @@ abstract final class HostProviderAdapter {
 
   /// Cap concurrent nested WebView sniffs (VidSrc.sbs mirrors, …).
   static const _webviewSniffConcurrency = 2;
+
+  /// After first VidSrc.sbs mirror hit, keep collecting siblings briefly then
+  /// return — dead mirrors must not block the spinner (Videasy parity).
+  static const _vidsrcsbsPostFirstHitGrace = Duration(seconds: 2);
+
+  static Duration get vidsrcsbsPostFirstHitGraceForTest =>
+      _vidsrcsbsPostFirstHitGrace;
 
   static Future<String?> resolveToSourcesJson({
     required String providerId,
@@ -56,17 +62,12 @@ abstract final class HostProviderAdapter {
       }
       if (cancelled() || hits.isEmpty) return null;
       final sources = Site111477Service.toStreamSources(hits);
-      return jsonEncode(
-        sources
-            .map(
-              (s) => {
-                'url': s.url,
-                'title': s.title,
-                'container': s.type,
-                if (s.headers != null) 'headers': s.headers,
-              },
-            )
-            .toList(),
+      if (sources.isEmpty) return null;
+      return _encodeResolveResult(
+        url: sources.first.url,
+        sources: sources,
+        headers: sources.first.headers,
+        providerId: providerId,
       );
     }
 
@@ -167,73 +168,25 @@ abstract final class HostProviderAdapter {
                 ? 'https://vidsrc.sbs/embed/tv/${movie.id}/$season/$episode'
                 : 'https://vidsrc.sbs/embed/movie/${movie.id}');
 
-      // Parse CFG.servers and sniff every nested mirror (bounded parallel).
-      // Show all responsive streams — no first-hit early return.
+      // Parse CFG.servers → sniff mirrors in parallel. First hit starts a short
+      // grace (Videasy parity) so dead mirrors cannot hold the spinner forever.
       final discovered = await VidsrcsbsExtractor(
         onLog: debugPrint,
       ).discoverServers(embedUrl: outerEmbed, isCancelled: cancelled);
       if (discovered.isNotEmpty) {
-        final batches =
-            await mapBoundedParallel<VidsrcsbsServer, List<StreamSource>>(
-              items: discovered,
-              concurrency: _webviewSniffConcurrency,
-              isCancelled: cancelled,
-              work: (server, _) async {
-                if (cancelled()) return null;
-                final nested = server.resolveUrl(
-                  isMovie: !isTv,
-                  tmdbId: movie.id.toString(),
-                  season: isTv ? season : null,
-                  episode: isTv ? episode : null,
-                );
-                if (nested.isEmpty || !nested.startsWith('http')) return null;
-                debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
-                final extractor = StreamExtractor();
-                _parallelExtractors.add(extractor);
-                try {
-                  final sniffed = await extractor.extract(
-                    nested,
-                    profile: vidsrcsbsNestedExtractProfile,
-                    referer: outerEmbed,
-                    isCancelled: cancelled,
-                    providerId: 'vidsrcsbs',
-                  );
-                  if (sniffed == null || sniffed.url.isEmpty) return null;
-                  final titled =
-                      sniffed.sources
-                          ?.map(
-                            (s) => StreamSource(
-                              url: s.url,
-                              title: s.title == 'Stream' || s.title.isEmpty
-                                  ? server.name
-                                  : '${server.name} · ${s.title}',
-                              type: s.type,
-                              headers: s.headers,
-                            ),
-                          )
-                          .toList() ??
-                      [
-                        StreamSource(
-                          url: sniffed.url,
-                          title: server.name,
-                          type: _typeFromUrl(sniffed.url),
-                          headers: sniffed.headers,
-                        ),
-                      ];
-                  return titled;
-                } finally {
-                  _parallelExtractors.remove(extractor);
-                  unawaited(extractor.dispose());
-                }
-              },
-            );
-        final allSources = <StreamSource>[
-          for (final batch in batches) ...batch,
-        ];
+        final allSources = await _sniffVidsrcsbsMirrorsFirstHit(
+          servers: discovered,
+          isMovie: !isTv,
+          tmdbId: movie.id.toString(),
+          season: isTv ? season : null,
+          episode: isTv ? episode : null,
+          outerEmbed: outerEmbed,
+          isCancelled: cancelled,
+        );
         if (allSources.isNotEmpty) {
           debugPrint(
-            '[vidsrcsbs] ${batches.length}/${discovered.length} mirror(s) → '
-            '${allSources.length} stream(s)',
+            '[vidsrcsbs] first-hit → ${allSources.length} stream(s) '
+            '(${discovered.length} mirror(s) listed)',
           );
           return _encodeResolveResult(
             url: allSources.first.url,
@@ -285,6 +238,7 @@ abstract final class HostProviderAdapter {
                 'title': r.title.isNotEmpty ? r.title : r.name,
                 'container': _typeFromUrl(r.url),
                 if (r.headers.isNotEmpty) 'headers': r.headers,
+                'providerId': providerId,
               },
             )
             .toList(),
@@ -363,6 +317,141 @@ abstract final class HostProviderAdapter {
       unawaited(extra.cancel());
     }
     unawaited(KissKhExtractor.cancelAllPending());
+  }
+
+  /// Sniff CFG mirrors with bounded concurrency. First successful mirror starts
+  /// a short grace, then we return what we have and cancel leftover WebViews.
+  static Future<List<StreamSource>> _sniffVidsrcsbsMirrorsFirstHit({
+    required List<VidsrcsbsServer> servers,
+    required bool isMovie,
+    required String tmdbId,
+    required int? season,
+    required int? episode,
+    required String outerEmbed,
+    required bool Function() isCancelled,
+  }) async {
+    if (servers.isEmpty) return const [];
+
+    final hits = <StreamSource>[];
+    final sessionExtractors = <StreamExtractor>[];
+    var nextIndex = 0;
+    var inFlight = 0;
+    final done = Completer<void>();
+    Timer? grace;
+
+    void finish() {
+      grace?.cancel();
+      grace = null;
+      if (done.isCompleted) return;
+      done.complete();
+    }
+
+    void maybeFinish() {
+      if (done.isCompleted) return;
+      if (isCancelled()) {
+        finish();
+        return;
+      }
+      if (nextIndex >= servers.length && inFlight == 0) finish();
+    }
+
+    void onFirstHitScheduleGrace() {
+      if (grace != null || done.isCompleted) return;
+      nextIndex = servers.length;
+      grace = Timer(_vidsrcsbsPostFirstHitGrace, () {
+        for (final e in List<StreamExtractor>.of(sessionExtractors)) {
+          unawaited(e.cancel());
+        }
+        finish();
+      });
+    }
+
+    Future<List<StreamSource>?> sniffOne(VidsrcsbsServer server) async {
+      if (isCancelled() || done.isCompleted) return null;
+      final nested = server.resolveUrl(
+        isMovie: isMovie,
+        tmdbId: tmdbId,
+        season: season,
+        episode: episode,
+      );
+      if (nested.isEmpty || !nested.startsWith('http')) return null;
+      debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
+      final extractor = StreamExtractor();
+      sessionExtractors.add(extractor);
+      _parallelExtractors.add(extractor);
+      try {
+        final sniffed = await extractor.extract(
+          nested,
+          profile: vidsrcsbsNestedExtractProfile,
+          referer: outerEmbed,
+          isCancelled: () => isCancelled() || done.isCompleted,
+          providerId: 'vidsrcsbs',
+        );
+        if (sniffed == null || sniffed.url.isEmpty) return null;
+        return sniffed.sources
+                ?.map(
+                  (s) => StreamSource(
+                    url: s.url,
+                    title: s.title == 'Stream' || s.title.isEmpty
+                        ? server.name
+                        : '${server.name} · ${s.title}',
+                    type: s.type,
+                    headers: s.headers,
+                    providerId: 'vidsrcsbs',
+                    catalogUrl: s.catalogUrl ?? s.url,
+                  ),
+                )
+                .toList() ??
+            [
+              StreamSource(
+                url: sniffed.url,
+                title: server.name,
+                type: _typeFromUrl(sniffed.url),
+                headers: sniffed.headers,
+                providerId: 'vidsrcsbs',
+                catalogUrl: sniffed.url,
+              ),
+            ];
+      } finally {
+        sessionExtractors.remove(extractor);
+        _parallelExtractors.remove(extractor);
+        unawaited(extractor.dispose());
+      }
+    }
+
+    void pump() {
+      while (!isCancelled() &&
+          !done.isCompleted &&
+          inFlight < _webviewSniffConcurrency &&
+          nextIndex < servers.length) {
+        final server = servers[nextIndex++];
+        inFlight++;
+        sniffOne(server)
+            .then((batch) {
+              inFlight--;
+              if (batch != null &&
+                  batch.isNotEmpty &&
+                  !done.isCompleted) {
+                hits.addAll(batch);
+                onFirstHitScheduleGrace();
+              }
+              pump();
+              maybeFinish();
+            })
+            .catchError((Object e, StackTrace st) {
+              debugPrint('[vidsrcsbs] sniff error: $e\n$st');
+              inFlight--;
+              pump();
+              maybeFinish();
+            });
+      }
+      maybeFinish();
+    }
+
+    pump();
+    await done.future;
+    grace?.cancel();
+    return hits;
   }
 
   static String _encodeResolveResult({
