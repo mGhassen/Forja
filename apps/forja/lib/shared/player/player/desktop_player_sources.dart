@@ -208,6 +208,18 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       providerId: _s._currentProvider ?? '',
     );
     if (_s._disposed || !mounted) return;
+    // Playing session: never clobber panel rows with a notifier list that
+    // lacks the active catalog identity (PNG-strip play URL ≠ catalog URL).
+    if (_s._playbackConfirmed &&
+        !merged.any(
+          (s) => streamSourceMatchesPlaying(
+            s,
+            playUrl: _s._currentUrl,
+            catalogUrl: _s._currentPlayingCatalogUrl,
+          ),
+        )) {
+      return;
+    }
     final prevLen = _s._currentSources?.length ?? 0;
     if (merged.length <= prevLen &&
         (_s._currentSources == null ||
@@ -231,18 +243,22 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   List<PlayerSourceStatus> _buildSourceStatuses() {
     final sources = _s._effectiveCurrentSources ?? const [];
     return List.generate(sources.length, (i) {
-      if (_s._checkingSourceIndices.contains(i)) {
-        return PlayerSourceStatus.checking;
-      }
       final source = sources[i];
       final isCurrent = _s._currentProvider == 'service111477'
           ? source.url == _s._current111477FileUrl
-          : source.url == _s._currentUrl ||
-              source.url == _s._currentPlayingCatalogUrl;
+          : streamSourceMatchesPlaying(
+                source,
+                playUrl: _s._currentUrl,
+                catalogUrl: _s._currentPlayingCatalogUrl,
+              ) ||
+              (_s._playbackConfirmed && sources.length == 1);
+      if (isCurrent && _s._playbackConfirmed) return PlayerSourceStatus.active;
+      if (_s._checkingSourceIndices.contains(i)) {
+        return PlayerSourceStatus.checking;
+      }
       if (isCurrent && !_s._playbackConfirmed && _s._isInitPlaybackRunning) {
         return PlayerSourceStatus.checking;
       }
-      if (isCurrent && _s._playbackConfirmed) return PlayerSourceStatus.active;
       if (_s._failedSourceIndices.contains(i)) return PlayerSourceStatus.failed;
       // Not URL-checked yet — gray until probe or play confirms.
       return PlayerSourceStatus.unchecked;
@@ -591,11 +607,21 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     final pid = providerId ?? _s._currentProvider ?? '';
     final affectsCurrent =
         providerId == null || providerId == _s._currentProvider;
-    _setUrlCheckStatus(source.url, PlayerSourceStatus.checking);
-    if (affectsCurrent) {
-      // Always probe — "already playing" can be a dead open that still looks
-      // confirmed until the next buffer stall.
-      _markSourceChecking(index);
+    final playingRow = _s._playbackConfirmed &&
+        affectsCurrent &&
+        streamSourceMatchesPlaying(
+          source,
+          playUrl: _s._currentUrl,
+          catalogUrl: _s._currentPlayingCatalogUrl,
+        );
+    // Playing row: keep active glyph — probe in background without Checking….
+    if (playingRow) {
+      _setUrlCheckStatus(source.url, PlayerSourceStatus.active);
+    } else {
+      _setUrlCheckStatus(source.url, PlayerSourceStatus.checking);
+      if (affectsCurrent) {
+        _markSourceChecking(index);
+      }
     }
 
     try {
@@ -606,7 +632,10 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       if (!mounted) return false;
 
       if (validated != null) {
-        _setUrlCheckStatus(source.url, PlayerSourceStatus.ready);
+        _setUrlCheckStatus(
+          source.url,
+          playingRow ? PlayerSourceStatus.active : PlayerSourceStatus.ready,
+        );
         if (affectsCurrent) {
           _s._failedSourceIndices.remove(index);
           _s._checkingSourceIndices.remove(index);
@@ -647,8 +676,11 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
 
     final isCurrent = _s._currentProvider == 'service111477'
         ? source.url == _s._current111477FileUrl
-        : source.url == _s._currentUrl ||
-            source.url == _s._currentPlayingCatalogUrl;
+        : streamSourceMatchesPlaying(
+            source,
+            playUrl: _s._currentUrl,
+            catalogUrl: _s._currentPlayingCatalogUrl,
+          );
     if (isCurrent && _s._sourcePinned && _s._playbackConfirmed) return;
 
     if (isCurrent && !_s._sourcePinned && _s._playbackConfirmed) {

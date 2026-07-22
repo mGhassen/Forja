@@ -36,9 +36,13 @@ class SyncDomainBridge {
   }
 
   /// Persist the current profile before changing the device-local selection.
+  ///
+  /// Cloud is master for IPTV — never push an empty local cache (that wiped
+  /// production assignments). Settings still push; portals only if local
+  /// inventory is non-empty.
   Future<void> prepareProfileSwitch() async {
     cancelPendingPushes();
-    await pushAllLocal();
+    await pushAllLocal(pushIptvIfLocalEmpty: false);
   }
 
   /// After sign-out / session loss: cancel pushes, reset synced domains, wipe
@@ -95,10 +99,9 @@ class SyncDomainBridge {
     }
 
     if (clearIptv) {
-      await IptvStore.save(const []);
-      await IptvStore.saveFavorites({});
-      // save() schedules a push — cancel so a mid-wipe timer cannot fire empty
-      // portals after a later re-auth race.
+      // Local cache only — never schedule a cloud push from a wipe.
+      await IptvStore.save(const [], scheduleSync: false);
+      await IptvStore.saveFavorites({}, scheduleSync: false);
       cancelPendingPushes();
     }
   }
@@ -107,7 +110,8 @@ class SyncDomainBridge {
   Future<void> seedNewProfileDefaults() async {
     cancelPendingPushes();
     await resetSyncedLocalToPlatformDefaults(clearIptv: true);
-    await pushAllLocal();
+    // New profile has no assignments yet — settings only; skip empty IPTV wipe.
+    await pushAllLocal(pushIptvIfLocalEmpty: false);
   }
 
   Future<void> pullAndMergeAll() async {
@@ -124,9 +128,9 @@ class SyncDomainBridge {
     }
     await _applyLeanPayload(remote);
     await _pullAndApplyUserIptvPortals();
-    // Empty `{}` insert left cloud hollow — backfill real defaults once.
+    // Empty `{}` insert left cloud hollow — backfill settings once (not IPTV).
     if (remote.isEmpty) {
-      await pushAllLocal();
+      await pushAllLocal(pushIptvIfLocalEmpty: false);
     }
   }
 
@@ -137,18 +141,35 @@ class SyncDomainBridge {
     return _pullAndApplyUserIptvPortals();
   }
 
-  Future<void> pushAllLocal() async {
+  /// Push lean settings + IPTV. Cloud is master for portals: an empty local
+  /// cache never deletes cloud assignments unless [allowEmptyIptvWipe] (user
+  /// deleted every portal). [pushIptvIfLocalEmpty] false skips IPTV entirely
+  /// when local is empty (profile switch / seed).
+  Future<void> pushAllLocal({
+    bool pushIptvIfLocalEmpty = true,
+    bool allowEmptyIptvWipe = false,
+  }) async {
     if (!SyncService.instance.isSignedIn) return;
     final payload = await _buildLeanPayload();
     await SyncService.instance.pushProfileSettings(payload);
-    await _pushUserIptvPortals();
+    await _pushUserIptvPortals(
+      pushIfLocalEmpty: pushIptvIfLocalEmpty,
+      allowEmptyWipe: allowEmptyIptvWipe,
+    );
+  }
+
+  /// User intentionally cleared every portal — sync empty assignments to cloud.
+  Future<void> pushEmptyIptvInventory() async {
+    if (!SyncService.instance.isSignedIn) return;
+    await _pushUserIptvPortals(pushIfLocalEmpty: true, allowEmptyWipe: true);
   }
 
   void schedulePush(String domain) {
     if (!SyncService.instance.isSignedIn) return;
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
-      unawaited(pushAllLocal());
+      // Debounced user edits — still refuse empty wipe (use pushEmptyIptvInventory).
+      unawaited(pushAllLocal(pushIptvIfLocalEmpty: false));
     });
   }
 
@@ -259,8 +280,26 @@ class SyncDomainBridge {
     }
   }
 
-  Future<void> _pushUserIptvPortals() async {
+  Future<void> _pushUserIptvPortals({
+    required bool pushIfLocalEmpty,
+    required bool allowEmptyWipe,
+  }) async {
     final portals = await IptvStore.load();
+    if (portals.isEmpty) {
+      if (!pushIfLocalEmpty) {
+        debugPrint('[Sync] skip IPTV push — empty local cache (cloud is master)');
+        return;
+      }
+      if (!allowEmptyWipe) {
+        debugPrint(
+          '[Sync] refuse empty IPTV replace — empty cache must not wipe cloud',
+        );
+        return;
+      }
+      await SyncService.instance.replaceUserIptvPortals(const []);
+      return;
+    }
+
     final favorites = await IptvStore.loadFavorites();
     final assignments =
         <({String portalId, String portalName, bool favorite})>[];
@@ -283,6 +322,12 @@ class SyncDomainBridge {
         portalName: portalName,
         favorite: favorites.contains(v.portal.key),
       ));
+    }
+
+    // Upserts failed entirely — do not delete cloud assignments.
+    if (assignments.isEmpty) {
+      debugPrint('[Sync] refuse IPTV replace — no portal ids resolved');
+      return;
     }
 
     await SyncService.instance.replaceUserIptvPortals(assignments);
@@ -326,8 +371,9 @@ class SyncDomainBridge {
         favoriteKeys.add(verified.portal.key);
       }
     }
-    await IptvStore.save(portals);
-    await IptvStore.saveFavorites(favoriteKeys);
+    // Cloud → local cache only; never schedule a push that could race-wipe.
+    await IptvStore.save(portals, scheduleSync: false);
+    await IptvStore.saveFavorites(favoriteKeys, scheduleSync: false);
     return true;
   }
 

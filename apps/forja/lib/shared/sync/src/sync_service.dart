@@ -871,6 +871,9 @@ class SyncService {
 
   /// Replace this profile's `user_iptv_portals` rows.
   /// [portalName] is the per-profile label.
+  ///
+  /// Callers must not pass `[]` unless the user intentionally cleared every
+  /// portal — empty local cache must never reach here (see SyncDomainBridge).
   Future<void> replaceUserIptvPortals(
     List<
       ({

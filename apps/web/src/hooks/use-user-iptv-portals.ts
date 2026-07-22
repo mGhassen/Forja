@@ -52,6 +52,12 @@ export function useUserIptvPortals() {
       }>,
     ) => {
       if (!user || !activeProfile) throw new Error('Select a profile first')
+      // Cloud is master — empty Save must not delete every assignment.
+      if (rows.length === 0) {
+        throw new Error(
+          'Refusing to save an empty portal list (would wipe cloud assignments). Delete portals individually or keep at least one.',
+        )
+      }
       const now = new Date().toISOString()
       const portalIds: string[] = []
       const assignments: Array<{

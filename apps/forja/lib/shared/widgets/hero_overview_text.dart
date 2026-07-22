@@ -53,6 +53,7 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
   }
 
   bool _needsTruncation(String text, double maxWidth, int maxLines) {
+    if (!maxWidth.isFinite || maxWidth <= 0) return false;
     final painter = TextPainter(
       text: TextSpan(text: text, style: widget.style),
       maxLines: maxLines,
@@ -61,7 +62,11 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
     return painter.didExceedMaxLines;
   }
 
-  int _maxLinesForHeight(double maxWidth, double maxHeight, {required bool reserveReadMore}) {
+  int _maxLinesForHeight(
+    double maxWidth,
+    double maxHeight, {
+    required bool reserveReadMore,
+  }) {
     final readMoreReserve = reserveReadMore
         ? _readMoreGap + _readMoreRowHeight(maxWidth)
         : 0.0;
@@ -89,8 +94,6 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
   }
 
   Widget _buildContent({
-    required double maxWidth,
-    required double? maxHeight,
     required int effectiveMaxLines,
     required bool needsTruncation,
   }) {
@@ -103,7 +106,7 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
             widget.overview,
             style: widget.style,
             maxLines: _expanded ? null : effectiveMaxLines,
-            overflow: _expanded ? null : TextOverflow.clip,
+            overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
           ),
           if (_expanded && widget.onReadMore == null) ...[
             const SizedBox(height: _readMoreGap),
@@ -144,17 +147,17 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
-        final bounded = !widget.shrinkWrap &&
-            constraints.hasBoundedHeight &&
-            constraints.maxHeight.isFinite;
-        final maxHeight = bounded ? constraints.maxHeight : null;
+        final heightBound =
+            constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
+        final fitSlot = !widget.shrinkWrap && heightBound;
+        final maxHeight = heightBound ? constraints.maxHeight : null;
 
         final preliminaryTruncation = _needsTruncation(
           widget.overview,
           maxWidth,
           widget.maxLines,
         );
-        final effectiveMaxLines = bounded && maxHeight != null
+        final effectiveMaxLines = fitSlot && maxHeight != null
             ? _maxLinesForHeight(
                 maxWidth,
                 maxHeight,
@@ -168,16 +171,16 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
         );
 
         final content = _buildContent(
-          maxWidth: maxWidth,
-          maxHeight: maxHeight,
           effectiveMaxLines: effectiveMaxLines,
           needsTruncation: needsTruncation,
         );
 
-        if (!bounded) return content;
+        // Parent fixed slots (details / home) must never yellow-strip — clip and
+        // scroll when expanded.
+        if (maxHeight == null) return content;
 
         return SizedBox(
-          width: maxWidth,
+          width: maxWidth.isFinite ? maxWidth : null,
           height: maxHeight,
           child: ClipRect(
             child: _expanded

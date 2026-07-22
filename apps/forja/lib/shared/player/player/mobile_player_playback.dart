@@ -111,42 +111,223 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
 
-        if (animeHlsNeedsPngStripFor(
-          openUrl,
-          sourceKey: _s._currentProvider,
-        )) {
-          final stripped = await applyAnimePngStripIfNeeded(
-            StreamSource(
-              url: openUrl,
-              title: source.title,
-              type: source.type,
-              headers: source.headers ?? widget.headers,
-            ),
-            sourceKey: _s._currentProvider,
-          );
-          if (stripped.url != openUrl) {
-            openUrl = stripped.url;
-            source = stripped;
-            _s._currentSources![i] = stripped;
-          }
-        }
-
-        // Fast-fail dead CDN/extract links for every provider before mpv open.
-        final catalogUrl = source.url;
-        if (!widget.streamsPrevalidated &&
-            !isLocalTorrentStreamUrl(catalogUrl) &&
+        final useMindTree = !PlayableSourceBridge.requiresProxy(
+              _s._playableSources,
+              i,
+              _s._currentProvider,
+            ) &&
             !isLocalTorrentStreamUrl(openUrl) &&
-            !isLocalLoopbackPlayUrl(catalogUrl) &&
-            !isLocalLoopbackPlayUrl(openUrl) &&
-            widget.magnetLink == null) {
-          final reachable = await validateStreamSourceForCheck(
-            providerId: source.providerId ?? _s._currentProvider,
-            source: source,
+            widget.magnetLink == null;
+
+        if (!useMindTree) {
+          final catalogUrl = source.url;
+          if (!widget.streamsPrevalidated &&
+              !isLocalTorrentStreamUrl(catalogUrl) &&
+              !isLocalTorrentStreamUrl(openUrl) &&
+              !isLocalLoopbackPlayUrl(catalogUrl) &&
+              !isLocalLoopbackPlayUrl(openUrl)) {
+            final reachable = await validateStreamSourceForCheck(
+              providerId: source.providerId ?? _s._currentProvider,
+              source: source,
+              headers: srcHeaders,
+            );
+            if (_fallbackAborted(runGen)) return false;
+            if (!reachable) {
+              debugPrint('[Player] Source $i failed reachability: $catalogUrl');
+              _s._statusController.upsert(
+                'source-$i',
+                source.title,
+                kind: StatusRouletteKind.failed,
+                dismissAfter: const Duration(milliseconds: 1200),
+              );
+              _s._markSourceFailed(i);
+              unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
+              _s._currentFallbackSourceIndex++;
+              continue;
+            }
+          }
+
+          await resetPlayerForOpen(_s._player);
+          openUrl = await openPlayerStream(
+            _s._player,
+            url: openUrl,
             headers: srcHeaders,
+            providerId: source.providerId ?? _s._currentProvider,
           );
           if (_fallbackAborted(runGen)) return false;
-          if (!reachable) {
-            debugPrint('[Player] Source $i failed reachability: $catalogUrl');
+          _s._player.setVolume(_s._volume);
+          final opened = await waitForMediaOpen(
+            _s._player,
+            streamUrl: openUrl,
+            timeout: isLocalTorrentStreamUrl(openUrl)
+                ? const Duration(seconds: 45)
+                : const Duration(seconds: 25),
+          );
+          if (_fallbackAborted(runGen)) return false;
+          if (!opened) {
+            debugPrint('[Player] Source $i failed to open: $openUrl');
+            await _s._player.stop();
+            _s._statusController.upsert(
+              'source-$i',
+              source.title,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 1200),
+            );
+            _s._markSourceFailed(i);
+            unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
+            _s._currentFallbackSourceIndex++;
+            continue;
+          }
+          final needsDuration =
+              sourceExpectsDuration(openUrl, type: source.type);
+          final decoded = await confirmOpenedStreamVideoDecode(
+            _s._player,
+            openUrl: openUrl,
+            headers: srcHeaders,
+            type: source.type,
+          );
+          if (_fallbackAborted(runGen)) return false;
+          if (!decoded) {
+            debugPrint('[Player] Source $i opened without video: $openUrl');
+            await _s._player.stop();
+            _s._statusController.upsert(
+              'source-$i',
+              source.title,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 1200),
+            );
+            _s._markSourceFailed(i);
+            unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
+            _s._currentFallbackSourceIndex++;
+            continue;
+          }
+          final hasDuration =
+              !needsDuration ||
+              await waitForSeekableDuration(
+                _s._player,
+                timeout: widget.tvRemoteEnabled
+                    ? const Duration(seconds: 15)
+                    : const Duration(seconds: 5),
+              );
+          if (_fallbackAborted(runGen)) return false;
+          if (!hasDuration) {
+            debugPrint('[Player] Source $i opened without duration: $openUrl');
+            await _s._player.stop();
+            _s._statusController.upsert(
+              'source-$i',
+              source.title,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 1200),
+            );
+            _s._markSourceFailed(i);
+            unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
+            _s._currentFallbackSourceIndex++;
+            continue;
+          }
+        } else {
+          final catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
+          if (!widget.streamsPrevalidated &&
+              !isLocalLoopbackPlayUrl(catalogUrl)) {
+            final reachable = await validateStreamSourceForCheck(
+              providerId: source.providerId ?? _s._currentProvider,
+              source: StreamSource(
+                url: catalogUrl,
+                title: source.title,
+                type: source.type,
+                headers: srcHeaders,
+                providerId: source.providerId,
+              ),
+              headers: srcHeaders,
+            );
+            if (_fallbackAborted(runGen)) return false;
+            if (!reachable) {
+              debugPrint('[Player] Source $i failed reachability: $catalogUrl');
+              _s._statusController.upsert(
+                'source-$i',
+                source.title,
+                kind: StatusRouletteKind.failed,
+                dismissAfter: const Duration(milliseconds: 1200),
+              );
+              _s._markSourceFailed(i);
+              unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
+              _s._currentFallbackSourceIndex++;
+              continue;
+            }
+          }
+
+          final tree = await StreamOpenMindTree.start(
+            catalogUrl: catalogUrl,
+            headers: srcHeaders,
+            providerId: source.providerId ?? _s._currentProvider,
+          );
+          var branchOk = false;
+          while (true) {
+            if (_fallbackAborted(runGen)) return false;
+            final step = await tree.next();
+            if (step == null) break;
+
+            await resetPlayerForOpen(_s._player);
+            openUrl = await openPlayerStream(
+              _s._player,
+              url: step.playUrl,
+              headers: step.headers,
+              providerId: source.providerId ?? _s._currentProvider,
+            );
+            if (_fallbackAborted(runGen)) return false;
+            _s._player.setVolume(_s._volume);
+            final opened = await waitForMediaOpen(
+              _s._player,
+              streamUrl: openUrl,
+              timeout: const Duration(seconds: 25),
+            );
+            if (_fallbackAborted(runGen)) return false;
+            if (!opened) {
+              debugPrint(
+                '[OpenMindTree] open fail ${step.label}: $openUrl',
+              );
+              await _s._player.stop();
+              tree.report(StreamOpenStepResult.openFailed);
+              continue;
+            }
+            final needsDuration =
+                sourceExpectsDuration(openUrl, type: source.type);
+            final decoded = await confirmOpenedStreamVideoDecode(
+              _s._player,
+              openUrl: openUrl,
+              headers: step.headers,
+              type: source.type,
+            );
+            if (_fallbackAborted(runGen)) return false;
+            if (!decoded) {
+              debugPrint(
+                '[OpenMindTree] decode fail ${step.label}: $openUrl',
+              );
+              await _s._player.stop();
+              tree.report(StreamOpenStepResult.decodeFailed);
+              continue;
+            }
+            final hasDuration =
+                !needsDuration ||
+                await waitForSeekableDuration(
+                  _s._player,
+                  timeout: widget.tvRemoteEnabled
+                      ? const Duration(seconds: 15)
+                      : const Duration(seconds: 5),
+                );
+            if (_fallbackAborted(runGen)) return false;
+            if (!hasDuration) {
+              await _s._player.stop();
+              tree.report(StreamOpenStepResult.decodeFailed);
+              continue;
+            }
+
+            tree.report(StreamOpenStepResult.success);
+            // Keep panel row on catalog URL — proxy is play-only (_currentUrl).
+            branchOk = true;
+            break;
+          }
+          if (!branchOk) {
+            debugPrint('[OpenMindTree] all branches failed source $i');
             _s._statusController.upsert(
               'source-$i',
               source.title,
@@ -160,82 +341,6 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
 
-        await resetPlayerForOpen(_s._player);
-        openUrl = await openPlayerStream(
-          _s._player,
-          url: openUrl,
-          headers: srcHeaders,
-          providerId: source.providerId ?? _s._currentProvider,
-        );
-        if (_fallbackAborted(runGen)) return false;
-        _s._player.setVolume(_s._volume);
-        final opened = await waitForMediaOpen(
-          _s._player,
-          streamUrl: openUrl,
-          timeout: isLocalTorrentStreamUrl(openUrl)
-              ? const Duration(seconds: 45)
-              : const Duration(seconds: 25),
-        );
-        if (_fallbackAborted(runGen)) return false;
-        if (!opened) {
-          debugPrint('[Player] Source $i failed to open: $openUrl');
-          await _s._player.stop();
-          _s._statusController.upsert(
-            'source-$i',
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(milliseconds: 1200),
-          );
-          _s._markSourceFailed(i);
-          unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
-          _s._currentFallbackSourceIndex++;
-          continue;
-        }
-        final needsDuration = sourceExpectsDuration(openUrl, type: source.type);
-        final decoded = await confirmOpenedStreamVideoDecode(
-          _s._player,
-          openUrl: openUrl,
-          headers: srcHeaders,
-          type: source.type,
-        );
-        if (_fallbackAborted(runGen)) return false;
-        if (!decoded) {
-          debugPrint('[Player] Source $i opened without video: $openUrl');
-          await _s._player.stop();
-          _s._statusController.upsert(
-            'source-$i',
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(milliseconds: 1200),
-          );
-          _s._markSourceFailed(i);
-          unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
-          _s._currentFallbackSourceIndex++;
-          continue;
-        }
-        final hasDuration =
-            !needsDuration ||
-            await waitForSeekableDuration(
-              _s._player,
-              timeout: widget.tvRemoteEnabled
-                  ? const Duration(seconds: 15)
-                  : const Duration(seconds: 5),
-            );
-        if (_fallbackAborted(runGen)) return false;
-        if (!hasDuration) {
-          debugPrint('[Player] Source $i opened without duration: $openUrl');
-          await _s._player.stop();
-          _s._statusController.upsert(
-            'source-$i',
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(milliseconds: 1200),
-          );
-          _s._markSourceFailed(i);
-          unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
-          _s._currentFallbackSourceIndex++;
-          continue;
-        }
         syncPlayerProgressNotifiers(
           _s._player,
           duration: _s._durationNotifier,
@@ -254,9 +359,14 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           _s._hasInitialSeek = true;
         }
         _s._detectHlsQualities(openUrl, srcHeaders);
+        final catalogIdentity = durableStreamCatalogUrl(
+          catalogUrl: source.catalogUrl,
+          sourceUrl: source.url,
+          playUrl: openUrl,
+        );
         setState(() {
           _s._currentUrl = openUrl;
-          _s._currentPlayingCatalogUrl = source.url;
+          _s._currentPlayingCatalogUrl = catalogIdentity ?? source.url;
           _s._markPlaybackConfirmed(true);
         });
         _s._statusController.complete();

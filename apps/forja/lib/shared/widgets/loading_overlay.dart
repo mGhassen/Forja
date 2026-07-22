@@ -47,6 +47,19 @@ void dismissLoadingOverlayRoute(BuildContext loadingDialogContext) {
   WidgetsBinding.instance.addPostFrameCallback((_) => dismiss());
 }
 
+/// Dispose overlay notifiers after [dismissLoadingOverlayRoute]'s post-frame
+/// remove + [LoadingOverlay.dispose] removeListener — never dispose while the
+/// dialog is still listening (red-screens as "used after being disposed").
+void disposeLoadingOverlayNotifiers(Iterable<ChangeNotifier> notifiers) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final n in notifiers) {
+        n.dispose();
+      }
+    });
+  });
+}
+
 /// Fades the loading overlay out while the player route fades in underneath.
 ///
 /// Dismisses the loading route as soon as either the fade finishes **or** the
@@ -277,8 +290,15 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   void _onMessageChanged() {
-    final next = widget.messageNotifier?.value;
-    if (next != null && next != _message && mounted) {
+    final notifier = widget.messageNotifier;
+    if (notifier == null) return;
+    late final String next;
+    try {
+      next = notifier.value;
+    } on FlutterError {
+      return;
+    }
+    if (next != _message && mounted) {
       setState(() => _message = next.toUpperCase());
     }
   }
@@ -320,12 +340,22 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     }
   }
 
+  void _safeRemoveListener(ChangeNotifier? notifier, VoidCallback listener) {
+    if (notifier == null) return;
+    // Owner may race dispose after dismiss; ChangeNotifier asserts in debug.
+    try {
+      notifier.removeListener(listener);
+    } on FlutterError {
+      // Already disposed.
+    }
+  }
+
   @override
   void dispose() {
-    widget.messageNotifier?.removeListener(_onMessageChanged);
-    widget.providerProbesNotifier?.removeListener(_onProbesChanged);
-    widget.fadeOutNotifier?.removeListener(_onFadeOutRequested);
-    widget.failureNotifier?.removeListener(_onFailureChanged);
+    _safeRemoveListener(widget.messageNotifier, _onMessageChanged);
+    _safeRemoveListener(widget.providerProbesNotifier, _onProbesChanged);
+    _safeRemoveListener(widget.fadeOutNotifier, _onFadeOutRequested);
+    _safeRemoveListener(widget.failureNotifier, _onFailureChanged);
     for (final n in _providerRowFocus) {
       n.dispose();
     }

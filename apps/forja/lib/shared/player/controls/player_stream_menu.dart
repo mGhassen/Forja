@@ -15,6 +15,7 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:rust/rust.dart';
 
 part 'player_stream_menu_overlay.dart';
@@ -202,15 +203,21 @@ class PlayerStreamMenu {
         for (final entry in ordered)
           Builder(
             builder: (_) {
-              final isCurrent = _isCurrentSource(entry.value, state);
+              final matched = _isCurrentSource(entry.value, state);
+              // Single-stream current server: that row is the playing one even
+              // if proxy/catalog identity briefly diverges.
+              final isCurrent = matched ||
+                  (useIndexedStatuses &&
+                      state.playbackConfirmed &&
+                      sources.length == 1);
               final isPlaying = isCurrent && state.playbackConfirmed;
               final url = entry.value.url;
               PlayerSourceStatus? status;
-              if (urlStatuses.containsKey(url)) {
-                status = urlStatuses[url];
-              } else if (isPlaying) {
-                // Playing implies the stream is up; green pause arrow marks "playing".
+              if (isPlaying) {
+                // Playing wins — never show Checking spinner on the active row.
                 status = PlayerSourceStatus.ready;
+              } else if (urlStatuses.containsKey(url)) {
+                status = urlStatuses[url];
               } else if (useIndexedStatuses && entry.key < statuses.length) {
                 final s = statuses[entry.key];
                 // Indexed `ready` is not a URL check — leave null (gray) until verified.
@@ -689,12 +696,11 @@ class PlayerStreamMenu {
     if (state.is111477) {
       return source.url == state.current111477FileUrl;
     }
-    final playUrl = state.currentUrl;
-    final catalogUrl = state.currentPlayingCatalogUrl;
-    return source.url == playUrl ||
-        (catalogUrl != null &&
-            catalogUrl.isNotEmpty &&
-            source.url == catalogUrl);
+    return streamSourceMatchesPlaying(
+      source,
+      playUrl: state.currentUrl,
+      catalogUrl: state.currentPlayingCatalogUrl,
+    );
   }
 
   static PlayerSourceStatus _resolveProviderStatus(
@@ -769,8 +775,15 @@ class PlayerStreamMenu {
   static String? _providerSubtitle({
     required int sourceCount,
     required bool isPlaying,
+    int? checkingOrdinal,
+    int? checkingTotal,
   }) {
     if (isPlaying) return 'Playing now';
+    if (checkingOrdinal != null &&
+        checkingTotal != null &&
+        checkingTotal > 1) {
+      return 'Checking $checkingOrdinal/$checkingTotal…';
+    }
     if (sourceCount > 0) {
       return '$sourceCount stream${sourceCount == 1 ? '' : 's'}';
     }

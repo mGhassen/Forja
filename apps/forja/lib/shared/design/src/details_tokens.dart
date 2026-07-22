@@ -13,6 +13,9 @@ abstract final class DetailsTokens {
   /// Tall enough for season posters + episode cards so the rail does not
   /// overflow upward and cover the hero image.
   static const double episodeBackdropBleed = 500;
+  /// Extra chrome above the rail so series/anime keep synopsis + Play.
+  /// Makes the hero stack slightly taller than the viewport (rows sit lower).
+  static const double episodeHeroChromeExtra = 100;
   static const double episodeSectionTopPadding = 8;
   static const double episodeSectionBottomPadding = 12;
   static const double heroContentTopInset = 88;
@@ -79,8 +82,9 @@ abstract final class DetailsTokens {
       return resolved * heroViewportFraction;
     }
     // Chrome uses the viewport above the rail band so seasons/episodes sit
-    // at the bottom of the first screen instead of mid-hero.
-    return (resolved - episodeBackdropBleed).clamp(
+    // near the bottom of the first screen instead of mid-hero. A small chrome
+    // boost keeps synopsis visible; the stack grows ~[episodeHeroChromeExtra].
+    return (resolved - episodeBackdropBleed + episodeHeroChromeExtra).clamp(
       resolved * heroWithEpisodesMinFraction,
       resolved * heroViewportFraction,
     );

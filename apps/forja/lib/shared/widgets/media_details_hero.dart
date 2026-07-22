@@ -1164,7 +1164,6 @@ class _HeroMainColumn extends StatelessWidget {
   static const _directorBlockHeight = 20.0;
   static const _providersBlockHeight = HeroWatchProvidersRow.rowHeight;
   static const _overviewGap = 14.0;
-  static const _overviewMinHeight = 48.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
 
@@ -1233,7 +1232,8 @@ class _HeroMainColumn extends StatelessWidget {
     var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
-    // Actions + progress sit under synopsis; budget meta from leftover height.
+    // Actions + progress under synopsis. Keep a fixed 3-line overview + Read
+    // More; drop secondary chrome before synopsis when the episode rail is tight.
     double? metaBudget;
     if (bounded) {
       metaBudget = (maxHeight! - _footerReserve(showProgress: showProgress))
@@ -1251,7 +1251,6 @@ class _HeroMainColumn extends StatelessWidget {
           metaBudget!;
 
       if (overBudget()) showDirector = false;
-      if (overBudget()) showOverview = false;
       if (overBudget()) showProviders = false;
       if (overBudget()) showGenres = false;
       if (overBudget()) showMetaLine = false;
@@ -1271,7 +1270,6 @@ class _HeroMainColumn extends StatelessWidget {
           showDirector = false;
           showGenres = false;
           showProviders = false;
-          showOverview = false;
           showMetaLine = false;
           if (showProgress) {
             showProgress = false;
@@ -1281,36 +1279,9 @@ class _HeroMainColumn extends StatelessWidget {
           }
         }
       }
-      if (showOverview) {
-        final leftover = metaBudget -
-            _metaUsedHeight(
-              showDirector: showDirector,
-              showGenres: showGenres,
-              showProviders: showProviders,
-              showOverview: false,
-              showMetaLine: showMetaLine,
-              titleHeight: titleHeight,
-            ) -
-            _overviewGap;
-        if (leftover < _overviewMinHeight) showOverview = false;
-      }
     }
 
-    final overviewHeight = !showOverview
-        ? 0.0
-        : metaBudget != null
-            ? (metaBudget -
-                    _metaUsedHeight(
-                      showDirector: showDirector,
-                      showGenres: showGenres,
-                      showProviders: showProviders,
-                      showOverview: false,
-                      showMetaLine: showMetaLine,
-                      titleHeight: titleHeight,
-                    ) -
-                    _overviewGap)
-                .clamp(0.0, _overviewSlotHeight)
-            : _overviewSlotHeight;
+    final overviewHeight = showOverview ? _overviewSlotHeight : 0.0;
 
     final metaColumn = <Widget>[
       if (titleHeight > 0)
@@ -1375,7 +1346,7 @@ class _HeroMainColumn extends StatelessWidget {
             child: HeroOverviewText(
               overview: movie.overview,
               maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-              shrinkWrap: !bounded,
+              shrinkWrap: false,
               style: _overviewStyle,
             ),
           ),

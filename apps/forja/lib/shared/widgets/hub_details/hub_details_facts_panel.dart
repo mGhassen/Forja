@@ -29,18 +29,6 @@ class HubDetailsFactsPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: Text(
-              'Production Info',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.92),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ),
           for (var i = 0; i < visible.length; i++) ...[
             if (i > 0)
               Divider(
@@ -51,7 +39,7 @@ class HubDetailsFactsPanel extends StatelessWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(
                 20,
-                10,
+                i == 0 ? 16 : 10,
                 20,
                 i == visible.length - 1 ? 16 : 10,
               ),

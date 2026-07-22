@@ -248,7 +248,13 @@ mixin _IptvControllerPortal on ChangeNotifier {
     }
     _c.selected.clear();
     _c.editMode = false;
-    await IptvStore.save(keep);
+    if (keep.isEmpty) {
+      // Intentional clear-all — sync empty to cloud (cache alone must not wipe).
+      await IptvStore.save(keep, scheduleSync: false);
+      await SyncDomainBridge.instance.pushEmptyIptvInventory();
+    } else {
+      await IptvStore.save(keep);
+    }
     notifyListeners();
   }
 

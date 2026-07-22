@@ -94,19 +94,15 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
         var videoAspect = 16 / 9;
         var viewAspect = w / h;
         var iframeW, iframeH;
-        // Cover the viewport at 16:9 without overscan zoom (overscan clipped
-        // captions and made the picture look larger than the screen).
+        // Contain — full frame visible, letterbox if needed. Never cover/overscan
+        // (that zoomed the picture past the window).
         if (viewAspect > videoAspect) {
-          iframeW = w;
-          iframeH = w / videoAspect;
-        } else {
           iframeH = h;
           iframeW = h * videoAspect;
+        } else {
+          iframeW = w;
+          iframeH = w / videoAspect;
         }
-        // Tiny bleed only — hides 1px YT edge chrome; skip when captions on.
-        var overscan = captionsVisible ? 1.0 : 1.02;
-        iframeW *= overscan;
-        iframeH *= overscan;
         iframe.style.position = 'absolute';
         iframe.style.left = '50%';
         iframe.style.top = '50%';
@@ -428,6 +424,36 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
       if (player) cropYoutubeChrome(player);
     });
 
+    // WKWebView / WebView2 eat Flutter gestures over the platform view —
+    // bridge pointer / double-click from the page instead.
+    var lastTapAt = 0;
+    var singleTapTimer = null;
+    var lastPointerAt = 0;
+    document.addEventListener('click', function(e) {
+      if (!window.flutter_inappwebview) return;
+      var now = Date.now();
+      if (now - lastTapAt < 320) {
+        lastTapAt = 0;
+        if (singleTapTimer) { clearTimeout(singleTapTimer); singleTapTimer = null; }
+        window.flutter_inappwebview.callHandler('trailerDoubleClick');
+        return;
+      }
+      lastTapAt = now;
+      if (singleTapTimer) clearTimeout(singleTapTimer);
+      singleTapTimer = setTimeout(function() {
+        singleTapTimer = null;
+        window.flutter_inappwebview.callHandler('trailerTap');
+      }, 320);
+    }, true);
+
+    document.addEventListener('mousemove', function() {
+      if (!window.flutter_inappwebview) return;
+      var now = Date.now();
+      if (now - lastPointerAt < 180) return;
+      lastPointerAt = now;
+      window.flutter_inappwebview.callHandler('trailerPointer');
+    }, true);
+
     document.addEventListener('keydown', function(e) {
       if (e.key !== 'Escape' || !window.flutter_inappwebview) return;
       e.preventDefault();
@@ -495,11 +521,12 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
     await _runJs('window.trailerSkip($seconds);');
   }
 
-  void _playNextTrailer() {
-    if (!_s._hasNextTrailer) return;
+  void _playTrailerAt(int index) {
+    if (index < 0 || index >= widget.trailers.length) return;
+    if (index == _s._currentIndex && !_s._ended) return;
     PlayerPopupPanel.dismiss();
     setState(() {
-      _s._currentIndex++;
+      _s._currentIndex = index;
       _s._controller = null;
       _s._playing = false;
       _s._ended = false;
@@ -510,8 +537,14 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
       _s._selectedQuality = 'auto';
       _s._position = Duration.zero;
       _s._duration = Duration.zero;
+      _s._showControls = true;
     });
     _s._claimPlayFocus();
+  }
+
+  void _playNextTrailer() {
+    if (!_s._hasNextTrailer) return;
+    _playTrailerAt(_s._currentIndex + 1);
   }
 
 }

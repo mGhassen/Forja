@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -66,6 +68,24 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
 
   bool get _showReplayControl => _ended && !_hasNextTrailer;
 
+  bool get _hasMoreTrailers => widget.trailers.length > 1;
+
+  /// Near end (≤15s) or finished — keep chrome up for More videos.
+  bool get _showNextTrailerChip {
+    if (!_hasMoreTrailers) return false;
+    if (_ended) return true;
+    if (_duration.inMilliseconds <= 0) return false;
+    return (_duration - _position).inSeconds <= 15;
+  }
+
+  MediaTrailer get _moreVideosPreview {
+    if (_hasNextTrailer) return widget.trailers[_currentIndex + 1];
+    for (var i = 0; i < widget.trailers.length; i++) {
+      if (i != _currentIndex) return widget.trailers[i];
+    }
+    return _trailer;
+  }
+
   bool get _supportsWindowFullscreen =>
       !kIsWeb && DesktopWindowChrome.isDesktop;
 
@@ -103,9 +123,21 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   void _startHideTimer() {
     _hideTimer?.cancel();
     // TV keeps chrome visible; next-trailer / menus need chrome up.
-    if (_tvFocus || _ended || PlayerPopupPanel.isShowing || !_playing) return;
+    if (_tvFocus ||
+        _ended ||
+        _showNextTrailerChip ||
+        PlayerPopupPanel.isShowing ||
+        !_playing) {
+      return;
+    }
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted || _tvFocus || _ended || PlayerPopupPanel.isShowing) return;
+      if (!mounted ||
+          _tvFocus ||
+          _ended ||
+          _showNextTrailerChip ||
+          PlayerPopupPanel.isShowing) {
+        return;
+      }
       setState(() => _showControls = false);
     });
   }
@@ -136,7 +168,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   }
 
   void _focusNextTrailerIfNeeded() {
-    if (!_tvFocus || !_ended || !_hasNextTrailer) return;
+    if (!_tvFocus || !_hasMoreTrailers || !_showNextTrailerChip) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_nextTrailerFocus.canRequestFocus) return;
       _nextTrailerFocus.requestFocus();

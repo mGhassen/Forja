@@ -141,7 +141,12 @@ class IptvStore {
     }
   }
 
-  static Future<void> save(List<VerifiedPortal> list) async {
+  /// Persist local IPTV cache. Cloud is master — [scheduleSync] only for real
+  /// user edits (add/edit/delete). Profile wipe / pull apply pass false.
+  static Future<void> save(
+    List<VerifiedPortal> list, {
+    bool scheduleSync = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final passwords = <String, String>{
       for (final v in list)
@@ -168,7 +173,7 @@ class IptvStore {
           .toList();
       await prefs.setString(_key, json.encode(arr));
     }
-    scheduleIptvSyncPush();
+    if (scheduleSync) scheduleIptvSyncPush();
   }
 
   static Future<Set<String>> loadFavorites() async {
@@ -177,10 +182,13 @@ class IptvStore {
     return list.toSet();
   }
 
-  static Future<void> saveFavorites(Set<String> keys) async {
+  static Future<void> saveFavorites(
+    Set<String> keys, {
+    bool scheduleSync = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_favKey, keys.toList());
-    scheduleIptvSyncPush();
+    if (scheduleSync) scheduleIptvSyncPush();
   }
 
   static Future<String?> loadLastPortalKey() async {

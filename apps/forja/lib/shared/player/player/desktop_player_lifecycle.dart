@@ -271,29 +271,57 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     // right panel — never invent a one-row "server" list for the layers picker.
     if (isCatalogSourcesMode(pid)) return;
 
-    final catalogUrl = _s._currentPlayingCatalogUrl;
+    final catalogUrl = durableStreamCatalogUrl(
+      catalogUrl: _s._currentPlayingCatalogUrl,
+      playUrl: playUrl,
+    );
     var sources = List<StreamSource>.from(
       _s._currentSources != null && _s._currentSources!.isNotEmpty
           ? _s._currentSources!
           : (_s._liveProviderSourcesCache.value[pid] ?? const <StreamSource>[]),
     );
+    // Drop session junk, but keep known loopback play URLs out of the panel
+    // by rewriting them to catalog identity below — never list proxy rows.
     sources.removeWhere((s) => isUnplayableCachedStreamUrl(s.url));
+    sources = [
+      for (final s in sources)
+        if (isLocalLoopbackPlayUrl(s.url))
+          StreamSource(
+            url: durableStreamCatalogUrl(
+                  catalogUrl: s.catalogUrl,
+                  sourceUrl: s.url,
+                  playUrl: s.url,
+                ) ??
+                s.url,
+            title: s.title,
+            type: s.type,
+            headers: s.headers,
+            providerId: s.providerId,
+            catalogUrl: s.catalogUrl,
+          )
+        else
+          s,
+    ];
+    sources.removeWhere(
+      (s) => s.url.isEmpty || isLocalLoopbackPlayUrl(s.url),
+    );
+    sources = dedupeStreamSources(sources);
 
     var matchIdx = sources.indexWhere(
-      (s) =>
-          s.url == playUrl ||
-          (catalogUrl != null &&
-              catalogUrl.isNotEmpty &&
-              s.url == catalogUrl),
+      (s) => streamSourceMatchesPlaying(
+        s,
+        playUrl: playUrl,
+        catalogUrl: catalogUrl,
+      ),
     );
 
     if (matchIdx < 0) {
+      final identity = catalogUrl;
+      if (identity == null || identity.isEmpty) return;
       final label = widget.providers != null
           ? PlayerProviderMenu.snackbarLabel(pid, widget.providers![pid])
           : StreamProviderDisplay.playerLabel(pid);
-      final identity =
-          (catalogUrl != null && catalogUrl.isNotEmpty) ? catalogUrl : playUrl;
-      final lower = playUrl.toLowerCase();
+      final lower = identity.toLowerCase();
       final playingRow = StreamSource(
         url: identity,
         title: label,
@@ -303,6 +331,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
                 ? 'dash'
                 : 'mp4',
         headers: widget.headers,
+        catalogUrl: identity,
       );
       // Append missing row — do not insert at front (panel order stays stable).
       sources = dedupeStreamSources([...sources, playingRow]);
@@ -311,10 +340,16 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     }
     if (matchIdx < 0 || matchIdx >= sources.length) return;
 
-    final playingUrl = sources[matchIdx].url;
+    final playingRow = sources[matchIdx];
+    final nextCatalog = durableStreamCatalogUrl(
+          catalogUrl: catalogUrl ?? playingRow.catalogUrl,
+          sourceUrl: playingRow.url,
+          playUrl: playUrl,
+        ) ??
+        playingRow.url;
     setState(() {
       _s._currentSources = sources;
-      _s._currentPlayingCatalogUrl = playingUrl;
+      _s._currentPlayingCatalogUrl = nextCatalog;
       _s._currentFallbackSourceIndex = matchIdx;
     });
     _s._cacheProviderSources(pid, sources);
@@ -349,16 +384,6 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
   void _syncCurrentSourceIndexFromPlayUrl() {
     final sources = _s._currentSources;
     if (sources == null || sources.isEmpty) return;
-    final catalogUrl = _s._currentPlayingCatalogUrl;
-    if (catalogUrl != null && catalogUrl.isNotEmpty) {
-      final catalogIdx = sources.indexWhere((s) => s.url == catalogUrl);
-      if (catalogIdx >= 0) {
-        _s._currentFallbackSourceIndex = catalogIdx;
-        return;
-      }
-    }
-    final playUrl = _s._currentUrl;
-    if (playUrl == null || playUrl.isEmpty) return;
     if (_s._currentProvider == 'service111477') {
       final fileUrl = _s._current111477FileUrl;
       if (fileUrl == null || fileUrl.isEmpty) return;
@@ -366,7 +391,13 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
       if (idx >= 0) _s._currentFallbackSourceIndex = idx;
       return;
     }
-    final idx = sources.indexWhere((s) => s.url == playUrl);
+    final idx = sources.indexWhere(
+      (s) => streamSourceMatchesPlaying(
+        s,
+        playUrl: _s._currentUrl,
+        catalogUrl: _s._currentPlayingCatalogUrl,
+      ),
+    );
     if (idx >= 0) {
       _s._currentFallbackSourceIndex = idx;
       return;

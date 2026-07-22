@@ -346,7 +346,8 @@ class _HubHeroMainColumn extends StatelessWidget {
     var titleHeight = _titleBlockHeight;
 
     if (bounded) {
-      if (_usedHeight(
+      bool overBudget() =>
+          _usedHeight(
             showSubtitle: showSubtitle,
             showGenres: showGenres,
             showOverview: showOverview,
@@ -354,51 +355,13 @@ class _HubHeroMainColumn extends StatelessWidget {
             singleLineMeta: true,
             titleHeight: titleHeight,
           ) >
-          maxHeight!) {
-        showOverview = false;
-      }
-      if (_usedHeight(
-            showSubtitle: showSubtitle,
-            showGenres: showGenres,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            singleLineMeta: true,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showGenres = false;
-      }
-      if (_usedHeight(
-            showSubtitle: showSubtitle,
-            showGenres: showGenres,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            singleLineMeta: true,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showSubtitle = false;
-      }
-      if (_usedHeight(
-            showSubtitle: showSubtitle,
-            showGenres: showGenres,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            singleLineMeta: true,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
-        showProgress = false;
-      }
-      if (_usedHeight(
-            showSubtitle: showSubtitle,
-            showGenres: showGenres,
-            showOverview: showOverview,
-            showProgress: showProgress,
-            singleLineMeta: true,
-            titleHeight: titleHeight,
-          ) >
-          maxHeight!) {
+          maxHeight!;
+
+      // Keep fixed 3-line synopsis + Read More; drop secondary chrome first.
+      if (overBudget()) showGenres = false;
+      if (overBudget()) showSubtitle = false;
+      if (overBudget()) showProgress = false;
+      if (overBudget()) {
         titleHeight = (maxHeight! -
                 _usedHeight(
                   showSubtitle: showSubtitle,
@@ -456,25 +419,13 @@ class _HubHeroMainColumn extends StatelessWidget {
       if (showOverview) ...[
         const SizedBox(height: _overviewGap),
         SizedBox(
-          height: bounded
-              ? (maxHeight! -
-                      _usedHeight(
-                        showSubtitle: showSubtitle,
-                        showGenres: showGenres,
-                        showOverview: false,
-                        showProgress: showProgress,
-                        singleLineMeta: bounded,
-                        titleHeight: titleHeight,
-                      ) -
-                      _overviewGap)
-                  .clamp(48.0, _overviewSlotHeight)
-              : _overviewSlotHeight,
+          height: _overviewSlotHeight,
           child: Align(
             alignment: Alignment.topLeft,
             child: HeroOverviewText(
               overview: overview,
               maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-              shrinkWrap: !bounded,
+              shrinkWrap: false,
               style: _overviewStyle,
             ),
           ),

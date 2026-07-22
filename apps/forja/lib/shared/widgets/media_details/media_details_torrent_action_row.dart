@@ -248,7 +248,7 @@ class _MediaDetailsTorrentActionRowState
           slots: [
             HeroPillIconSlot(
               icon: Icons.delete_outline_rounded,
-              tooltip: 'Clear progress',
+              tooltip: 'Clear progress & stream cache',
               onTap: widget.onClearProgress,
             ),
           ],

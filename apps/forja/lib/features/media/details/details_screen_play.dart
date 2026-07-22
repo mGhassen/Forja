@@ -295,9 +295,11 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
     );
 
     if (_s._streamCancelled) {
-      overlayMessage.dispose();
-      fadeOutNotifier.dispose();
-      failureNotifier.dispose();
+      disposeLoadingOverlayNotifiers([
+        overlayMessage,
+        fadeOutNotifier,
+        failureNotifier,
+      ]);
       return;
     }
 
@@ -350,9 +352,11 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
         Navigator.of(loadingDialogContext!).canPop()) {
       Navigator.of(loadingDialogContext!).pop();
     }
-    overlayMessage.dispose();
-    fadeOutNotifier.dispose();
-    failureNotifier.dispose();
+    disposeLoadingOverlayNotifiers([
+      overlayMessage,
+      fadeOutNotifier,
+      failureNotifier,
+    ]);
   }
 
   String _friendlyResolveDetail(String raw) {
@@ -468,9 +472,11 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
     void cleanupNotifiers() {
       if (cleanedUp) return;
       cleanedUp = true;
-      overlayMessage.dispose();
-      fadeOutNotifier.dispose();
-      failureNotifier.dispose();
+      disposeLoadingOverlayNotifiers([
+        overlayMessage,
+        fadeOutNotifier,
+        failureNotifier,
+      ]);
     }
 
     void popLoading() {

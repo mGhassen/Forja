@@ -207,6 +207,7 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 ## Tips
 
 - IPTV credentials live on shared `iptv_portals` rows with passwords encrypted at rest. Your per-profile **portal name** is only on `user_iptv_portals`.
+- **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud.
 - Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources) sync in full.
 - Portal **share codes** are a separate peer handoff (encrypted ciphertext on
   rentry) — they are not stored in your sync payload.

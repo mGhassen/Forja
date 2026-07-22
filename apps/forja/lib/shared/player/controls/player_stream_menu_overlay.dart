@@ -78,6 +78,10 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   final Set<String> _collapsedProviders = {};
   final Map<String, int> _loadGens = {};
   final Map<String, PlayerSourceStatus> _urlStatuses = {};
+  /// Server currently walking stream rows one-by-one after a multi-stream load.
+  String? _sequentialCheckProviderId;
+  int _sequentialCheckIndex = 0;
+  int _sequentialCheckTotal = 0;
   _StreamAudioFilter? _audioFilter;
 
   Set<String> get _failedProviders =>
@@ -205,6 +209,12 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
         _loadingProviders
           ..removeWhere((id) => id != providerId)
           ..add(providerId);
+        if (_sequentialCheckProviderId != null &&
+            _sequentialCheckProviderId != providerId) {
+          _sequentialCheckProviderId = null;
+          _sequentialCheckIndex = 0;
+          _sequentialCheckTotal = 0;
+        }
       });
     }
   }
@@ -248,11 +258,74 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       );
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
-      // Do not auto-probe every stream in the background while something is
-      // already playing — user taps a row to check or switch.
+      // Multi-stream servers: paint every row first, then probe one-by-one so
+      // the panel shows Checking… per stream (probe only — does not open audio).
+      if (sources != null && sources.length > 1) {
+        unawaited(_checkStreamsSequentially(
+          providerId: providerId,
+          sources: sources,
+          gen: gen,
+        ));
+      }
     } catch (_) {
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
+    }
+  }
+
+  Future<void> _checkStreamsSequentially({
+    required String providerId,
+    required List<StreamSource> sources,
+    required int gen,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _sequentialCheckProviderId = providerId;
+      _sequentialCheckTotal = sources.length;
+      _sequentialCheckIndex = 0;
+      _collapsedProviders.remove(providerId);
+    });
+
+    final state = widget.readState();
+    final playingCatalog = state.currentPlayingCatalogUrl;
+    final playingUrl = state.currentUrl;
+    final playingThisServer =
+        state.playbackConfirmed && state.currentProviderId == providerId;
+
+    for (var i = 0; i < sources.length; i++) {
+      if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+      final source = sources[i];
+      final url = source.url;
+      if (url.isEmpty) continue;
+
+      // Already playing this row — keep active, don't re-probe.
+      if (playingThisServer &&
+          streamSourceMatchesPlaying(
+            source,
+            playUrl: playingUrl,
+            catalogUrl: playingCatalog,
+          )) {
+        _setUrlStatus(url, PlayerSourceStatus.active);
+        continue;
+      }
+
+      setState(() => _sequentialCheckIndex = i);
+      _setUrlStatus(url, PlayerSourceStatus.checking);
+      final ok = await widget.onCheckSource(source, i, providerId);
+      if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+      _setUrlStatus(
+        url,
+        ok ? PlayerSourceStatus.ready : PlayerSourceStatus.failed,
+      );
+    }
+
+    if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+    if (_sequentialCheckProviderId == providerId) {
+      setState(() {
+        _sequentialCheckProviderId = null;
+        _sequentialCheckIndex = 0;
+        _sequentialCheckTotal = 0;
+      });
     }
   }
 
@@ -307,6 +380,12 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     final subtitle = PlayerStreamMenu._providerSubtitle(
       sourceCount: sectionSources.length,
       isPlaying: isPlaying,
+      checkingOrdinal: _sequentialCheckProviderId == providerId
+          ? _sequentialCheckIndex + 1
+          : null,
+      checkingTotal: _sequentialCheckProviderId == providerId
+          ? _sequentialCheckTotal
+          : null,
     );
     final canInteract = widget.providersEnabled && !isReloading;
     final scoreScope = PlayerStreamMenu.scoreScope(

@@ -3,6 +3,44 @@ part of 'trailer_player_screen.dart';
 mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
   _TrailerPlayerScreenState get _s => this as _TrailerPlayerScreenState;
 
+  Future<void> _showTrailersMenu(BuildContext anchorContext) async {
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) setState(() => _s._showControls = true);
+    final trailers = widget.trailers;
+    if (trailers.isEmpty) return;
+
+    if (!mounted) return;
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Trailers',
+      leadingIcon: Icons.video_library_outlined,
+      anchorContext: anchorContext,
+      maxHeight: 420,
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        itemCount: trailers.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 4),
+        itemBuilder: (context, index) {
+          final trailer = trailers[index];
+          final selected = index == _s._currentIndex;
+          final type = trailer.type.trim();
+          return PlayerPopupListTile(
+            label: trailer.name,
+            subtitle: type.isEmpty ? null : type,
+            badge: selected ? 'NOW' : '${index + 1}',
+            selected: selected,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              _s._playTrailerAt(index);
+            },
+          );
+        },
+      ),
+    );
+    if (mounted) _s._startHideTimer();
+  }
+
   Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
     if (!_s._ready) return;
     _s._hideTimer?.cancel();
@@ -19,47 +57,41 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.subtitles_outlined,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PlayerPopupOptionChip(
-              label: 'Off',
-              selected: activeCode == null,
-              expanded: true,
-              onTap: () async {
-                PlayerPopupPanel.dismiss();
-                await _s._runJs('window.trailerSetCaptionTrack(null);');
-              },
-            ),
-            if (tracks.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text(
-                  'No subtitles available for this trailer.',
-                  style: TextStyle(color: PlayerPopupTokens.muted, fontSize: 13),
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        children: [
+          PlayerPopupListTile(
+            label: 'Off',
+            selected: activeCode == null,
+            onTap: () async {
+              PlayerPopupPanel.dismiss();
+              await _s._runJs('window.trailerSetCaptionTrack(null);');
+            },
+          ),
+          if (tracks.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Text(
+                'No subtitles available for this trailer.',
+                style: TextStyle(color: PlayerPopupTokens.muted, fontSize: 13),
+              ),
+            )
+          else
+            for (final track in tracks)
+              PlayerPopupListTile(
+                label: _flaggedLabel(
+                  track['languageCode'] as String,
+                  track['languageName'] as String,
                 ),
-              )
-            else
-              for (final track in tracks) ...[
-                const SizedBox(height: 8),
-                PlayerPopupOptionChip(
-                  label: _flaggedLabel(
-                    track['languageCode'] as String,
-                    track['languageName'] as String,
-                  ),
-                  selected: activeCode == track['languageCode'],
-                  expanded: true,
-                  onTap: () async {
-                    PlayerPopupPanel.dismiss();
-                    final code = track['languageCode'] as String;
-                    await _s._runJs("window.trailerSetCaptionTrack('$code');");
-                  },
-                ),
-              ],
-          ],
-        ),
+                selected: activeCode == track['languageCode'],
+                onTap: () async {
+                  PlayerPopupPanel.dismiss();
+                  final code = track['languageCode'] as String;
+                  await _s._runJs("window.trailerSetCaptionTrack('$code');");
+                },
+              ),
+        ],
       ),
     );
     if (mounted) _s._startHideTimer();
@@ -79,32 +111,27 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.audiotrack_rounded,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: tracks.isEmpty
-            ? PlayerPopupOptionChip(
-                label: _flaggedLabel(widget.languageCode, _defaultAudioLabel()),
-                selected: true,
-                expanded: true,
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < tracks.length; i++) ...[
-                    if (i != 0) const SizedBox(height: 8),
-                    PlayerPopupOptionChip(
-                      label: tracks[i]['label'] as String,
-                      selected: tracks[i]['isActive'] as bool,
-                      expanded: true,
-                      onTap: () async {
-                        PlayerPopupPanel.dismiss();
-                        final id = tracks[i]['id'] as String;
-                        await _s._runJs("window.trailerSetAudioTrack('$id');");
-                      },
-                    ),
-                  ],
-                ],
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        children: [
+          if (tracks.isEmpty)
+            PlayerPopupListTile(
+              label: _flaggedLabel(widget.languageCode, _defaultAudioLabel()),
+              selected: true,
+            )
+          else
+            for (final track in tracks)
+              PlayerPopupListTile(
+                label: track['label'] as String,
+                selected: track['isActive'] as bool,
+                onTap: () async {
+                  PlayerPopupPanel.dismiss();
+                  final id = track['id'] as String;
+                  await _s._runJs("window.trailerSetAudioTrack('$id');");
+                },
               ),
+        ],
       ),
     );
     if (mounted) _s._startHideTimer();

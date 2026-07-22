@@ -75,37 +75,55 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                       final dur =
                           Duration(milliseconds: (durationSec * 1000).round());
                       if (_s._position == pos && _s._duration == dur) return;
+                      final wasNearEnd = _s._showNextTrailerChip;
                       setState(() {
                         _s._position = pos;
                         _s._duration = dur;
                       });
+                      if (!wasNearEnd && _s._showNextTrailerChip) {
+                        _s._hideTimer?.cancel();
+                        if (!_s._showControls) {
+                          setState(() => _s._showControls = true);
+                        }
+                        _s._focusNextTrailerIfNeeded();
+                      }
                     },
                   );
                   controller.addJavaScriptHandler(
                     handlerName: 'trailerEscape',
                     callback: (_) => unawaited(_s._exitTrailer()),
                   );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerDoubleClick',
+                    callback: (_) {
+                      if (!_s._supportsWindowFullscreen) return;
+                      unawaited(_s._toggleFullscreen());
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerTap',
+                    callback: (_) {
+                      if (_s._tvFocus) return;
+                      if (!mounted) return;
+                      if (_s._showControls) {
+                        setState(() => _s._showControls = false);
+                        _s._hideTimer?.cancel();
+                      } else {
+                        _s._onPointerActivity();
+                      }
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerPointer',
+                    callback: (_) {
+                      if (_s._tvFocus) return;
+                      _s._onPointerActivity();
+                    },
+                  );
                 },
               ),
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: tvFocus
-                      ? null
-                      : () {
-                          if (_s._showControls) {
-                            setState(() => _s._showControls = false);
-                            _s._hideTimer?.cancel();
-                          } else {
-                            _s._onPointerActivity();
-                          }
-                        },
-                  onDoubleTap: _s._supportsWindowFullscreen
-                      ? () => unawaited(_s._toggleFullscreen())
-                      : null,
-                  child: const SizedBox.expand(),
-                ),
-              ),
+              // Chrome sits above the WebView. Pointer/fullscreen come from JS
+              // (platform WebView steals Flutter gesture arena on desktop).
               DesktopWindowChrome.overlayDragStrip(),
               AnimatedOpacity(
                 opacity: (tvFocus || _s._showControls) ? 1.0 : 0.0,
@@ -156,27 +174,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
             child: PlayerOverlayGradient(isTop: true),
           ),
         ),
-        if (_s._ended && _s._hasNextTrailer)
-          Positioned(
-            bottom: 100,
-            right: 24,
-            child: tvFocus
-                ? FocusTraversalOrder(
-                    order: const NumericFocusOrder(11),
-                    child: PlayerFloatingChip(
-                      label: 'Next Trailer',
-                      trailingIcon: Icons.arrow_forward_rounded,
-                      tvFocusable: true,
-                      focusNode: _s._nextTrailerFocus,
-                      onPressed: _s._playNextTrailer,
-                    ),
-                  )
-                : PlayerFloatingChip(
-                    label: 'Next Trailer',
-                    trailingIcon: Icons.arrow_forward_rounded,
-                    onPressed: _s._playNextTrailer,
-                  ),
-          ),
         _buildBottomChrome(tvFocus: tvFocus),
       ],
     );
@@ -194,8 +191,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   }
 
   Widget _buildBottomChrome({required bool tvFocus}) {
-    final excludeFromTraversal = tvFocus && _s._ended && _s._hasNextTrailer;
-    final chrome = Positioned(
+    return Positioned(
       left: 0,
       right: 0,
       bottom: 0,
@@ -235,6 +231,18 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                if (_s._hasMoreTrailers) ...[
+                  const SizedBox(height: 14),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: tvFocus
+                        ? FocusTraversalOrder(
+                            order: const NumericFocusOrder(12),
+                            child: _buildMoreVideosButton(tvFocus: true),
+                          )
+                        : _buildMoreVideosButton(tvFocus: false),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 tvFocus
                     ? FocusTraversalOrder(
@@ -244,7 +252,9 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                           position: _s._position,
                           onSeek: _s._seek,
                           tvFocusable: true,
-                          tvFocusUpNode: _s._backFocus,
+                          tvFocusUpNode: _s._hasMoreTrailers
+                              ? _s._nextTrailerFocus
+                              : _s._backFocus,
                         ),
                       )
                     : CustomSeekbar(
@@ -272,9 +282,107 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         ),
       ),
     );
+  }
 
-    if (!excludeFromTraversal) return chrome;
-    return ExcludeFocus(child: chrome);
+  Widget _buildMoreVideosButton({required bool tvFocus}) {
+    final preview = _s._moreVideosPreview;
+    const thumbW = 168.0;
+    const thumbH = 94.0;
+
+    return Builder(
+      builder: (btnContext) {
+        final card = DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'More videos',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: thumbW,
+                    height: thumbH,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: preview.youtubeThumbnail,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) => ColoredBox(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            child: const Icon(
+                              Icons.movie_outlined,
+                              color: Colors.white38,
+                            ),
+                          ),
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.45),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Center(
+                          child: Icon(
+                            Icons.play_circle_fill_rounded,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        void open() => unawaited(_s._showTrailersMenu(btnContext));
+
+        if (tvFocus) {
+          return FocusableControl(
+            focusNode: _s._nextTrailerFocus,
+            onTap: open,
+            borderRadius: 10,
+            scaleOnFocus: 1.0,
+            showFocusBorder: true,
+            child: card,
+          );
+        }
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            canRequestFocus: false,
+            onTap: open,
+            borderRadius: BorderRadius.circular(10),
+            child: card,
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildVolumeControl({required bool tvFocus}) {

@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
+export 'package:forja/shared/playback/playback_stream_guards.dart'
+    show
+        durableStreamCatalogUrl,
+        hlsProxyTargetUrl,
+        streamSourceMatchesPlaying;
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/utils/language_display.dart';
@@ -1021,15 +1026,6 @@ String formatDuration(Duration duration) {
   }
 }
 
-/// Catalog URL inside a local `/hls-proxy?url=…` play endpoint, if any.
-String? hlsProxyTargetUrl(String url) {
-  final uri = Uri.tryParse(url.trim());
-  if (uri == null) return null;
-  if (!uri.path.contains('/hls-proxy')) return null;
-  final target = uri.queryParameters['url']?.trim() ?? '';
-  return target.isEmpty ? null : target;
-}
-
 /// True when this play URL unwraps PNG-shelled MPEG-TS (`strip=png`).
 bool hlsProxyStripIsPng(String url) {
   final uri = Uri.tryParse(url.trim());
@@ -1158,7 +1154,12 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
       : sourceKey;
   final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(pid ?? '');
   final mode = profile.pngStrip;
+  // `auto` is owned by [StreamOpenStrategy] at open time (try direct ↔ strip).
+  // This helper only materializes `force` (or legacy callers that pass a mock).
   if (mode == AnimePngStripMode.never) return source;
+  if (mode == AnimePngStripMode.auto && segmentLooksPngWrapped == null) {
+    return source;
+  }
 
   final hdrs = resolvePlaybackHttpHeaders(
     source.headers,
@@ -1206,6 +1207,16 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
     catalogUrl: source.catalogUrl ?? url,
   );
 }
+
+/// True when the first playable media segment is a PNG shell wrapping MPEG-TS
+/// (or a kotocdn-style Range decoy that implies wrap).
+///
+/// Used by [StreamOpenStrategy] sniff and [applyAnimePngStripIfNeeded].
+Future<bool> animeHlsSegmentLooksPngWrappedForStrategy(
+  String playlistUrl,
+  Map<String, String> headers,
+) =>
+    _animeHlsSegmentLooksPngWrapped(playlistUrl, headers);
 
 /// True when the first playable media segment is a PNG shell wrapping MPEG-TS.
 Future<bool> _animeHlsSegmentLooksPngWrapped(

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** components · **16 / 16** unit acceptance · **0 / 3** manual |
-| **Current slice** | Generic template identity — every embed host gets Referer from runtime templates |
+| **Progress** | **11 / 11** components · **21 / 21** unit · **0 / 3** manual |
+| **Current slice** | Open mind-tree middleware — branch on content + open outcome |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -29,6 +29,7 @@
 | 8 | R44-C08 | `playbackPolicyFor(allanime:*)` → AllManga Referer; ban CDN self-Referer | ✅ |
 | 9 | R44-C09 | KissKh `StreamSource.providerId` + `playbackPolicyFor(kisskh*)` before CDN sniff | ✅ |
 | 10 | R44-C10 | `playbackPolicyFor` derives embed origin from templates/WebStreamr/API for all host providers | ✅ |
+| 11 | R44-C11 | `StreamOpenMindTree` — fact/branch open middleware (not flat try-list) | ✅ |
 
 ---
 
@@ -86,11 +87,23 @@
 
 ---
 
+## Acceptance (open mind-tree)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R44-A20 | Unit: `pngShell` → `playPngStrip`; open fail → `playDirect` | ✅ |
+| 2 | R44-A21 | Unit: plain HLS → `playDirect`; fail → `playPngStrip` | ✅ |
+| 3 | R44-A22 | Unit: progressive / `never` → direct only | ✅ |
+| 4 | R44-A23 | Desktop+mobile player walks mind-tree per source (not one-shot strip guess) | ✅ |
+| 5 | R44-A24 | Panel keeps catalog row while play URL is `/hls-proxy` — no ghost proxy row / wipe on probe refresh (unit) | ✅ |
+
+---
+
 ## Summary
 
 CDN hostnames under MegaPlay rotate often. Gating Referer rewrite and PNG-strip on `hostContains` / `pngStripHostContains` forces endless allowlist updates and breaks when remote config overwrites builtins.
 
-**Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Decide PNG unwrap from **content** (`pngStrip: auto`) or explicit force/never — plain HLS stays a direct catalog open; only PNG-wrapped TS goes through `/hls-proxy?strip=png`. Host needles never force strip for `auto`. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
+**Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Open path uses **`StreamOpenMindTree`**: classify URL + sniff segment facts → one action → on open/decode fail **re-branch** (PNG→strip, plain HLS→direct then strip). Not a flat try-list. Not per-CDN host cases. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
 
 **Generic host path (R44-C10):** for every template / WebStreamr / known-API provider, `playbackPolicyFor(id)` derives Referer from that provider’s **embed host** in runtime config. CDN rotations do not need a new code branch — only provider domain moves need Admin JSON / migration. Exceptions stay explicit (MegaPlay family, Videasy player origin, AllManga, KissKh mirrors, Miruro origins).
 

@@ -134,9 +134,36 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
     final uniqueId = progress['uniqueId'] as String?;
     if (uniqueId == null || uniqueId.isEmpty) return;
     await WatchHistoryService().removeItem(uniqueId);
+
+    // Drop cached provider extract(s) for this title so Play re-resolves.
+    final isTv = _s._movie.mediaType == 'tv';
+    final keys = <String>{
+      WebstreamingStreamCache.cacheKeyFromProgress(
+        tmdbId: _s._movie.id,
+        mediaType: _s._movie.mediaType,
+        season: isTv ? _s._selectedSeason : null,
+        episode: isTv ? _s._selectedEpisode : null,
+      ),
+    };
+    if (isTv) {
+      keys.add(
+        WebstreamingStreamCache.cacheKeyFromProgress(
+          tmdbId: _s._movie.id,
+          mediaType: _s._movie.mediaType,
+          season: progress['season'] as int? ?? _s._selectedSeason,
+          episode: progress['episode'] as int? ?? _s._selectedEpisode,
+        ),
+      );
+    }
+    for (final key in keys) {
+      await WebstreamingStreamCache.drop(key);
+    }
+
     if (!mounted) return;
     setState(() {
       _s._lastProgress = null;
+      _s._webstreamingStreams = [];
+      _s._webstreamingActiveProviderId = null;
       if (_s._movie.mediaType == 'tv') {
         final season = progress['season'] as int? ?? _s._selectedSeason;
         final episode = progress['episode'] as int? ?? _s._selectedEpisode;

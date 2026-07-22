@@ -244,8 +244,21 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       (ep) => _episodeNumberAt(ep) == widget.selectedEpisode,
     );
     if (index < 0) return;
-    final target = (index * _episodeCardStride)
-        .clamp(0.0, _episodeScrollController.position.maxScrollExtent);
+    final position = _episodeScrollController.position;
+    final itemStart = index * _episodeCardStride;
+    final itemEnd = itemStart + _EpisodeCard.cardWidth;
+    final viewStart = position.pixels;
+    final viewEnd = viewStart + position.viewportDimension;
+    // Only scroll when the card is clipped; keep current offset otherwise.
+    double? target;
+    if (itemStart < viewStart) {
+      target = itemStart;
+    } else if (itemEnd > viewEnd) {
+      target = itemEnd - position.viewportDimension;
+    }
+    if (target == null) return;
+    target = target.clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 1) return;
     _episodeScrollController.animateTo(
       target,
       duration: const Duration(milliseconds: 220),

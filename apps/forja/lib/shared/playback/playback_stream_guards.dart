@@ -111,3 +111,59 @@ bool isUnplayableCachedStreamUrl(String url) {
   if (isStreamUrlTokenExpired(u)) return true;
   return false;
 }
+
+/// Catalog URL inside a local `/hls-proxy?url=…` play endpoint, if any.
+String? hlsProxyTargetUrl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) return null;
+  if (!uri.path.contains('/hls-proxy')) return null;
+  final target = uri.queryParameters['url']?.trim() ?? '';
+  return target.isEmpty ? null : target;
+}
+
+/// Durable catalog identity for Source panel / session cache — never loopback.
+String? durableStreamCatalogUrl({
+  String? catalogUrl,
+  String? sourceUrl,
+  String? playUrl,
+}) {
+  final play = playUrl?.trim();
+  for (final candidate in <String?>[
+    catalogUrl,
+    sourceUrl,
+    if (play != null && play.isNotEmpty) hlsProxyTargetUrl(play),
+    play,
+  ]) {
+    final u = candidate?.trim() ?? '';
+    if (u.isEmpty) continue;
+    final host = Uri.tryParse(u)?.host.toLowerCase() ?? '';
+    if (host == '127.0.0.1' || host == 'localhost') continue;
+    if (isLocalLoopbackPlayUrl(u)) continue;
+    return u;
+  }
+  return null;
+}
+
+/// Whether [source] is the row currently playing (catalog or play URL).
+bool streamSourceMatchesPlaying(
+  StreamSource source, {
+  String? playUrl,
+  String? catalogUrl,
+}) {
+  final play = playUrl?.trim() ?? '';
+  final catalog = catalogUrl?.trim() ?? '';
+  final url = source.url.trim();
+  final sourceCatalog = source.catalogUrl?.trim() ?? '';
+  final playTarget = play.isEmpty ? '' : (hlsProxyTargetUrl(play) ?? '');
+  final urlTarget = url.isEmpty ? '' : (hlsProxyTargetUrl(url) ?? '');
+
+  bool hit(String a, String b) => a.isNotEmpty && b.isNotEmpty && a == b;
+
+  // Direct / catalog identity.
+  if (hit(url, play) || hit(url, catalog)) return true;
+  if (hit(sourceCatalog, play) || hit(sourceCatalog, catalog)) return true;
+  // Proxy play URL ↔ catalog row (PNG-strip / hls-proxy).
+  if (hit(url, playTarget) || hit(sourceCatalog, playTarget)) return true;
+  if (hit(urlTarget, catalog) || hit(urlTarget, playTarget)) return true;
+  return false;
+}
