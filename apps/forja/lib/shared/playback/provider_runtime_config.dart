@@ -85,6 +85,11 @@ class ProviderRuntimeConfig {
       return _httpsOrigin(host, fallback: 'player.videasy.to');
     }
 
+    // Vidzee CDN (1shows.app, …) — 403 without player.vidzee.wtf Referer.
+    if (key == 'vidzee') {
+      return _httpsOrigin('player.vidzee.wtf', fallback: 'player.vidzee.wtf');
+    }
+
     // AllAnime / AllManga MP4 CDN (fast4speed, …).
     if (key.startsWith('allanime:')) {
       final raw = (apis['allanimeReferer'] ?? 'https://allmanga.to').trim();

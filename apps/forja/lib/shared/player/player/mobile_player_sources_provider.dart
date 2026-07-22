@@ -147,8 +147,12 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
         if (_s._fallbackAborted(gen)) return null;
         if (hit != null) {
           streamUrl = hit.streamUrl;
-          headers = hit.headers;
-          sources = hit.streamSources;
+          final srcs = hit.streamSources;
+          sources = srcs;
+          final firstHdrs = srcs.isNotEmpty ? srcs.first.headers : null;
+          headers = (firstHdrs != null && firstHdrs.isNotEmpty)
+              ? firstHdrs
+              : hit.headers;
         }
       }
 
@@ -163,8 +167,47 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
           _s._player,
           url: streamUrl,
           headers: headers,
+          providerId: newProvider,
         );
         if (_s._fallbackAborted(gen)) return null;
+
+        final opened = await waitForMediaOpen(
+          _s._player,
+          streamUrl: streamUrl,
+          timeout: const Duration(seconds: 25),
+        );
+        if (_s._fallbackAborted(gen)) return null;
+        if (!opened) {
+          if (mounted) {
+            _s._markProviderLoadFailed(newProvider);
+            _s._statusController.upsert(
+              'provider-$newProvider',
+              providerLabel,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(seconds: 2),
+            );
+          }
+          return null;
+        }
+        final decoded = await confirmOpenedStreamVideoDecode(
+          _s._player,
+          openUrl: streamUrl,
+          headers: headers,
+          type: sources?.first.type,
+        );
+        if (_s._fallbackAborted(gen)) return null;
+        if (!decoded) {
+          if (mounted) {
+            _s._markProviderLoadFailed(newProvider);
+            _s._statusController.upsert(
+              'provider-$newProvider',
+              providerLabel,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(seconds: 2),
+            );
+          }
+          return null;
+        }
 
         if (currentPos.inSeconds > 0) {
           await _s._player.seek(currentPos);

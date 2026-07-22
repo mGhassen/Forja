@@ -253,6 +253,17 @@ void main() {
       expect(h['Origin'], 'https://allmanga.to');
     });
 
+    test('RFC-044: providerId vidzee forces player.vidzee.wtf Referer', () {
+      const url = 'https://cdn1.1shows.app/e/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://cdn1.1shows.app/'},
+        streamUrl: url,
+        providerId: 'vidzee',
+      );
+      expect(h['Referer'], 'https://player.vidzee.wtf/');
+      expect(h['Origin'], 'https://player.vidzee.wtf');
+    });
+
     test('RFC-044: providerId videasy forces player.videasy.to Referer', () {
       const url = 'https://cdn-rotate.example/v/master.m3u8';
       final h = resolvePlaybackHttpHeaders(

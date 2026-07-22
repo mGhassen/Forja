@@ -935,7 +935,17 @@ class StreamExtractor {
           : lower.contains('720')
           ? '720p'
           : 'Stream';
-      return StreamSource(url: url, title: title, type: type, headers: headers);
+      return StreamSource(
+        url: url,
+        title: title,
+        type: type,
+        headers: headers,
+        providerId: _activeProviderId ??
+            (_profile.id != EmbedExtractProfiles.generic.id
+                ? _profile.id
+                : null),
+        catalogUrl: url,
+      );
     }).toList();
   }
 

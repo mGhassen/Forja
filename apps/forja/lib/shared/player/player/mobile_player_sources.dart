@@ -711,8 +711,49 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         _s._player,
         url: openUrl,
         headers: headers,
+        providerId: resolved.providerId ?? _s._currentProvider,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
+
+      final opened = await waitForMediaOpen(
+        _s._player,
+        streamUrl: openUrl,
+        timeout: const Duration(seconds: 25),
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!opened) {
+        _s._statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        _markSourceFailed(index);
+        unawaited(
+          _recordStreamPlayFailure(_s._currentProvider ?? ''),
+        );
+        return;
+      }
+      final decoded = await confirmOpenedStreamVideoDecode(
+        _s._player,
+        openUrl: openUrl,
+        headers: headers,
+        type: resolved.type,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!decoded) {
+        _s._statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        _markSourceFailed(index);
+        unawaited(
+          _recordStreamPlayFailure(_s._currentProvider ?? ''),
+        );
+        return;
+      }
 
       if (_s._currentProvider == 'service111477') {
         setState(() {

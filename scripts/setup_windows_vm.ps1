@@ -75,13 +75,44 @@ function Add-UserPath([string]$Dir) {
   $env:Path += ";$Dir"
 }
 
+function Refresh-EnvPath {
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+              [Environment]::GetEnvironmentVariable("Path", "User")
+  if (Test-Path "C:\ProgramData\chocolatey\bin") {
+    $env:Path = "C:\ProgramData\chocolatey\bin;" + $env:Path
+  }
+  if (Test-Path "C:\Program Files\Git\cmd") {
+    $env:Path = "C:\Program Files\Git\cmd;C:\Program Files\Git\bin;" + $env:Path
+  }
+  if (Test-Path "$env:USERPROFILE\.cargo\bin") {
+    $env:Path = "$env:USERPROFILE\.cargo\bin;" + $env:Path
+  }
+  if (Get-Command refreshenv -ErrorAction SilentlyContinue) {
+    refreshenv | Out-Null
+  }
+}
+
+function Get-GitExe {
+  $candidates = @(
+    (Get-Command git -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
+    "C:\Program Files\Git\cmd\git.exe",
+    "C:\Program Files\Git\bin\git.exe"
+  ) | Where-Object { $_ -and (Test-Path $_) }
+  if (-not $candidates) {
+    throw "git.exe not found. Close this shell, reopen as Admin, re-run the script."
+  }
+  return $candidates[0]
+}
+
 Assert-Admin
 Ensure-Chocolatey
+Refresh-EnvPath
 
 Write-Step "Core packages (git, innosetup, rustup)"
 Ensure-ChocoPackage -Name "git"
 Ensure-ChocoPackage -Name "innosetup"
 Ensure-ChocoPackage -Name "rustup.install"
+Refresh-EnvPath
 
 if (-not $SkipVs) {
   Write-Step "Visual Studio 2022 Build Tools (VC++ - long install)"
@@ -98,20 +129,21 @@ if (-not $SkipVs) {
   Write-Host "Skipping VS Build Tools (FORJA_SKIP_VS=1)"
 }
 
+Refresh-EnvPath
+
 Write-Step "Flutter stable -> $FlutterRoot"
+$git = Get-GitExe
 if (-not (Test-Path "$FlutterRoot\bin\flutter.bat")) {
   New-Item -ItemType Directory -Force -Path (Split-Path $FlutterRoot) | Out-Null
   if (Test-Path $FlutterRoot) { Remove-Item -Recurse -Force $FlutterRoot }
-  git clone https://github.com/flutter/flutter.git -b stable --depth 1 $FlutterRoot
+  & $git clone https://github.com/flutter/flutter.git -b stable --depth 1 $FlutterRoot
 } else {
   Write-Host "Flutter already at $FlutterRoot - running upgrade"
   & "$FlutterRoot\bin\flutter.bat" upgrade --force
 }
 Add-UserPath "$FlutterRoot\bin"
 Add-UserPath "$env:USERPROFILE\.cargo\bin"
-
-$env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
-            [Environment]::GetEnvironmentVariable("Path", "User")
+Refresh-EnvPath
 
 Write-Step "flutter config + doctor"
 & flutter config --enable-windows-desktop
