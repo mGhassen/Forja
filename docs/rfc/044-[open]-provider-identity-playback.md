@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **9 / 12** acceptance (unit) · **0 / 3** manual |
-| **Current slice** | AllManga + KissKh identity shipped — Megaplay manual smoke still open |
+| **Progress** | **9 / 9** components · **11 / 11** unit acceptance · **0 / 3** manual |
+| **Current slice** | auto PNG strip is content-only (plain HLS stays direct) — Megaplay manual smoke open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -57,11 +57,20 @@
 
 ---
 
+## Acceptance (plain HLS vs PNG-proxy)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R44-A13 | Unit: `pngStrip: auto` + plain segment keeps catalog `.m3u8` (host needles do not force proxy) | ✅ |
+| 2 | R44-A14 | Unit: `pngStrip: auto` + PNG-wrapped segment → `/hls-proxy?strip=png` | ✅ |
+
+---
+
 ## Summary
 
 CDN hostnames under MegaPlay rotate often. Gating Referer rewrite and PNG-strip on `hostContains` / `pngStripHostContains` forces endless allowlist updates and breaks when remote config overwrites builtins.
 
-**Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Decide PNG unwrap from **content** (`pngStrip: auto`) or explicit force/never. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
+**Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Decide PNG unwrap from **content** (`pngStrip: auto`) or explicit force/never — plain HLS stays a direct catalog open; only PNG-wrapped TS goes through `/hls-proxy?strip=png`. Host needles never force strip for `auto`. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
 
 Legacy `cdnRefererRules` remain for opens with **no** `providerId` only.
 

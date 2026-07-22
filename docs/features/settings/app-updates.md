@@ -33,7 +33,8 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - Crash reporting and product analytics stay off until you enable them; local builds without `SENTRY_DSN` / `POSTHOG_API_KEY` keep the toggles but send nothing
 - Enable **Record user sessions** in PostHog project settings for session replay
 - Published releases (CI): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
-- Local macOS release (build DMG → GitHub + R2, no Actions artifacts): `./scripts/release_local.sh` or `melos run release:local`
+- Local release (macOS DMG → GitHub + R2; Windows via Parallels when `FORJA_PRL_VM` is set): `./scripts/release_local.sh` or `melos run release:local`
+- First-time Windows VM toolchain (inside the guest, elevated PowerShell): `.\scripts\setup_windows_vm.ps1` — or from Mac: `./scripts/release_local.sh setup-windows`
 - Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Workflows write on this repo)
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI

@@ -465,7 +465,9 @@ class AnimePlaybackProfile {
 
   static const fallback = AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly);
 
-  /// Sync hint only — [force] always; [auto]/[never] need [applyAnimePngStripIfNeeded].
+  /// Sync hint only — [force] always; [auto] host needles are legacy fast-path
+  /// hints for callers. Strip decision for [auto] is content-sample only
+  /// ([applyAnimePngStripIfNeeded] / [animePngStripShouldProxy]).
   bool urlNeedsPngStrip(String url) {
     if (pngStrip == AnimePngStripMode.never) return false;
     if (pngStrip == AnimePngStripMode.force) {

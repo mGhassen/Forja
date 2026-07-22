@@ -23,9 +23,7 @@ Manifest shape (latest/manifest.json):
     "platforms": {
       "macos": { "version": "1.2.406", "published_at": "…", "assets": ["…dmg"] },
       "windows": { "version": "1.2.400", "published_at": "…", "assets": ["…exe"] }
-    },
-    "version": "1.2.406",   # max across platforms (legacy clients)
-    "assets": ["…"]         # flat union (legacy clients)
+    }
   }
 """
 
@@ -329,20 +327,20 @@ def merge_platform_manifest(
 
     platforms.update(incoming)
 
-    flat_assets: list[str] = []
-    max_version = ""
-    for entry in platforms.values():
-        flat_assets.extend(entry["assets"])
-        ver = entry["version"]
-        if not max_version or semver_key(ver) > semver_key(max_version):
-            max_version = ver
-
     return {
         "published_at": published_at,
         "platforms": platforms,
-        "version": max_version,
-        "assets": flat_assets,
     }
+
+
+def flat_assets_from_platforms(platforms: dict[str, dict]) -> list[str]:
+    out: list[str] = []
+    for entry in platforms.values():
+        assets = entry.get("assets")
+        if not isinstance(assets, list):
+            continue
+        out.extend(a for a in assets if isinstance(a, str) and a.strip())
+    return out
 
 
 def stale_latest_keys(
@@ -681,6 +679,7 @@ def main() -> None:
         secret_key=secret_key,
     )
 
+    merged_assets = flat_assets_from_platforms(merged["platforms"])
     print(
         f"Uploaded {uploaded} release asset(s) + merged latest/manifest "
         f"({bucket}/{prefix}/ + latest/). Platforms: "
@@ -699,7 +698,7 @@ def main() -> None:
     )
     stale_latest = stale_latest_keys(
         all_keys=all_keys,
-        merged_assets=merged["assets"],
+        merged_assets=merged_assets,
         replaced_platforms=set(incoming_platforms),
     )
     if stale_latest:

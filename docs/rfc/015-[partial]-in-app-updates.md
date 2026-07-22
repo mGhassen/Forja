@@ -212,16 +212,11 @@ Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per
       "published_at": "2026-07-01T12:00:00Z",
       "assets": ["Forja-1.2.400-windows-setup.exe"]
     }
-  },
-  "version": "1.2.406",
-  "assets": [
-    "Forja-1.2.406-macos-arm64.dmg",
-    "Forja-1.2.400-windows-setup.exe"
-  ]
+  }
 }
 ```
 
-Top-level `version` / `assets` remain for older clients; web + updater prefer `platforms`.
+`platforms` is the only source of truth on `latest/manifest.json`. Web + updater read per-platform entries; upload CI merges partial releases into this map.
 
 ## Update manifest (GitHub Releases)
 

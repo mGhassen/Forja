@@ -1,28 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Local macOS release → GitHub Release + Cloudflare R2 (no Actions artifacts).
+# Local release → GitHub Release + Cloudflare R2 (no Actions artifacts).
 #
 # Usage:
-#   ./scripts/release_local.sh                 # interactive menu
+#   ./scripts/release_local.sh                      # interactive menu
 #   ./scripts/release_local.sh bump [patch|minor|major]
-#   ./scripts/release_local.sh tag v1.2.404     # build + publish existing tag
-#   ./scripts/release_local.sh build v1.2.404   # DMG only
-#   ./scripts/release_local.sh publish v1.2.404 # upload dist/ → gh + R2
+#   ./scripts/release_local.sh tag v1.2.404          # macOS (+ Windows via Parallels if set)
+#   ./scripts/release_local.sh build v1.2.404        # macOS DMG only
+#   ./scripts/release_local.sh build-windows v1.2.404  # Windows via Parallels VM
+#   ./scripts/release_local.sh setup-windows         # print / run VM toolchain setup
+#   ./scripts/release_local.sh publish v1.2.404      # upload dist/ → gh + R2
 #
-# Requires: macOS, Flutter, Rust, gh, repo .env (SUPABASE_*, RELEASE_CDN_URL,
-# FORJA_WEB_URL, R2_*). Optional: TURNSTILE_SITE_KEY, SENTRY_DSN, POSTHOG_*.
+# Env:
+#   FORJA_PRL_VM=Windows 11          Parallels VM name (enables Windows build)
+#   FORJA_WIN_REPO=\\Mac\Forja       Windows path to this repo (default share name Forja)
+#   FORJA_PLATFORMS=macos,windows    platforms for tag/bump (default: macos; +windows if VM set)
+#   NONINTERACTIVE=1                 skip confirm prompts
+#
+# Requires (.env): SUPABASE_*, RELEASE_CDN_URL, FORJA_WEB_URL, R2_*
+# Optional: TURNSTILE_SITE_KEY, SENTRY_DSN, POSTHOG_*
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 APP_DIR="$ROOT/apps/forja"
 DIST="$ROOT/dist"
-# origin may not be gh's default when upstream also exists (PlayTorrio, etc.).
 GH_REPO=""
+PRL_VM="${FORJA_PRL_VM:-Windows 11}"
 
 die() { echo "error: $*" >&2; exit 1; }
 
-# Resolve owner/name from git remote "origin" for all gh calls.
 gh_repo() {
   if [[ -n "$GH_REPO" ]]; then
     echo "$GH_REPO"
@@ -64,7 +71,7 @@ require_cmd() {
 }
 
 require_darwin() {
-  [[ "$(uname -s)" == Darwin ]] || die "macOS build requires Darwin (got $(uname -s))"
+  [[ "$(uname -s)" == Darwin ]] || die "macOS host required (got $(uname -s))"
 }
 
 require_build_env() {
@@ -101,14 +108,11 @@ normalize_tag() {
 }
 
 version_from_tag() {
-  local tag="$1"
-  echo "${tag#v}"
+  echo "${1#v}"
 }
 
-dmg_path() {
-  local ver="$1"
-  echo "$DIST/Forja-${ver}-macos-arm64.dmg"
-}
+dmg_path() { echo "$DIST/Forja-${1}-macos-arm64.dmg"; }
+exe_path() { echo "$DIST/Forja-${1}-windows-setup.exe"; }
 
 confirm() {
   local prompt="${1:-Continue?}"
@@ -117,6 +121,63 @@ confirm() {
   fi
   read -r -p "$prompt [y/N]: " ans
   [[ "$ans" =~ ^[Yy]$ ]]
+}
+
+# Platforms for tag/bump: comma list macos,windows
+platforms() {
+  if [[ -n "${FORJA_PLATFORMS:-}" ]]; then
+    echo "$FORJA_PLATFORMS"
+    return
+  fi
+  if command -v prlctl >/dev/null 2>&1 && prlctl list -a 2>/dev/null | grep -q "$PRL_VM"; then
+    echo "macos,windows"
+  else
+    echo "macos"
+  fi
+}
+
+want_platform() {
+  local p="$1"
+  [[ ",$(platforms)," == *",$p,"* ]]
+}
+
+# Default: Parallels share named "Forja" → \\Mac\Forja (see Devices → Shared Folders).
+# Override with FORJA_WIN_REPO if your share name/path differs.
+win_repo_unc() {
+  if [[ -n "${FORJA_WIN_REPO:-}" ]]; then
+    echo "$FORJA_WIN_REPO"
+    return
+  fi
+  echo '\\\\Mac\\Forja'
+}
+
+# UNC → Git Bash path: \\Mac\Home\a\b → //Mac/Home/a/b
+win_repo_bash() {
+  local unc
+  unc="$(win_repo_unc)"
+  echo "$unc" | sed -e 's#^\\\\#//#' -e 's#\\#/#g'
+}
+
+prl_ensure_running() {
+  require_cmd prlctl
+  local status
+  status="$(prlctl list -a 2>/dev/null | awk -v n="$PRL_VM" '$0 ~ n {print $2; exit}')"
+  [[ -n "$status" ]] || die "Parallels VM not found: $PRL_VM (prlctl list -a)"
+  if [[ "$status" != "running" ]]; then
+    echo "==> Starting Parallels VM: $PRL_VM"
+    prlctl start "$PRL_VM"
+    # Wait for guest tools / exec
+    local i=0
+    while (( i < 60 )); do
+      if prlctl exec "$PRL_VM" --current-user cmd /c "echo ok" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 5
+      i=$((i + 1))
+    done
+    prlctl exec "$PRL_VM" --current-user cmd /c "echo ok" >/dev/null 2>&1 \
+      || die "VM started but prlctl exec failed — install Parallels Tools and sign in"
+  fi
 }
 
 build_macos() {
@@ -150,12 +211,48 @@ build_macos() {
   ls -lh "$dmg"
 }
 
+build_windows_prl() {
+  local ver="$1"
+  local bash_repo unc
+  require_darwin
+  require_cmd prlctl
+  prl_ensure_running
+  unc="$(win_repo_unc)"
+  bash_repo="$(win_repo_bash)"
+  echo "==> Windows build via Parallels ($PRL_VM)"
+  echo "    repo: $unc"
+  # Prefer Git Bash so existing .sh scripts run unchanged.
+  prlctl exec "$PRL_VM" --current-user \
+    "C:\\Program Files\\Git\\bin\\bash.exe" -lc \
+    "cd '$bash_repo' && ./scripts/build_windows_release.sh '$ver'" \
+    || die "Windows build failed — run scripts/setup_windows_vm.ps1 inside the VM first"
+  local exe
+  exe="$(exe_path "$ver")"
+  [[ -f "$exe" ]] || die "missing $exe after Parallels build (is the repo on a shared folder?)"
+  ls -lh "$exe"
+}
+
+collect_assets() {
+  local ver="$1"
+  local -a files=()
+  local f
+  for f in "$(dmg_path "$ver")" \
+           "$(exe_path "$ver")" \
+           "$DIST/Forja-${ver}-linux-x86_64.AppImage" \
+           "$DIST/Forja-${ver}-android-tv-arm64.apk" \
+           "$DIST/Forja-${ver}-android-tv-armeabi-v7a.apk"; do
+    [[ -f "$f" ]] && files+=("$f")
+  done
+  ((${#files[@]} > 0)) || die "no installers in dist/ for $ver"
+  printf '%s\n' "${files[@]}"
+}
+
 publish_github() {
   local ver="$1"
   local tag="v${ver}"
-  local dmg notes repo
-  dmg="$(dmg_path "$ver")"
-  [[ -f "$dmg" ]] || die "missing $dmg — run build first"
+  local notes repo
+  local -a assets=()
+  mapfile -t assets < <(collect_assets "$ver")
   repo="$(gh_repo)"
   notes="$(mktemp)"
   ./scripts/changelog_release_notes.sh "$ver" "$notes"
@@ -164,14 +261,14 @@ publish_github() {
     if grep -q '^### ' "$notes"; then
       gh_r release edit "$tag" --title "Forja ${ver}" --notes-file "$notes"
     fi
-    gh_r release upload "$tag" "$dmg" --clobber
+    gh_r release upload "$tag" "${assets[@]}" --clobber
   else
     echo "==> Creating GitHub release $tag ($repo)"
     local -a args=(
       "$tag"
       --title "Forja ${ver}"
       --verify-tag
-      "$dmg"
+      "${assets[@]}"
     )
     if [[ "${PRERELEASE:-}" == "1" ]]; then
       args+=(--prerelease)
@@ -185,30 +282,33 @@ publish_github() {
   fi
   rm -f "$notes"
   echo "GitHub: https://github.com/${repo}/releases/tag/${tag}"
+  printf '  asset: %s\n' "${assets[@]}"
 }
 
 publish_r2() {
   local ver="$1"
-  local flat
+  local flat f
   flat="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$flat'" RETURN
   mkdir -p "$flat"
-  local f
-  for f in "$DIST"/Forja-"${ver}"-macos-arm64.dmg \
-           "$DIST"/Forja-"${ver}"-windows-setup.exe \
-           "$DIST"/Forja-"${ver}"-linux-x86_64.AppImage \
-           "$DIST"/Forja-"${ver}"-android-tv-*.apk; do
-    [[ -e "$f" ]] || continue
+  while IFS= read -r f; do
     cp -f "$f" "$flat/"
-  done
-  if ! find "$flat" -type f | grep -q .; then
-    die "no installers in dist/ for $ver"
-  fi
+  done < <(collect_assets "$ver")
   echo "==> Upload to R2"
   export R2_BUCKET="${R2_BUCKET:-forja-releases}"
   export RELEASE_STORAGE_KEEP="${RELEASE_STORAGE_KEEP:-3}"
   ./scripts/upload_release_to_r2.sh "$ver" "$flat"
+}
+
+build_selected() {
+  local ver="$1"
+  if want_platform macos; then
+    build_macos "$ver"
+  fi
+  if want_platform windows; then
+    build_windows_prl "$ver"
+  fi
 }
 
 cmd_build() {
@@ -219,13 +319,50 @@ cmd_build() {
   build_macos "$ver"
 }
 
+cmd_build_windows() {
+  local tag ver
+  tag="$(normalize_tag "$1")"
+  ver="$(version_from_tag "$tag")"
+  echo "Build Windows installer for $tag via Parallels ($PRL_VM)"
+  confirm "Start Windows build in VM?" || die "aborted"
+  build_windows_prl "$ver"
+}
+
+cmd_setup_windows() {
+  require_darwin
+  local unc bash_repo
+  unc="$(win_repo_unc)"
+  bash_repo="$(win_repo_bash)"
+  echo "Windows VM toolchain setup"
+  echo "=========================="
+  echo "VM:   $PRL_VM"
+  echo "Repo: $unc"
+  echo
+  echo "1) In the VM: open elevated PowerShell"
+  echo "2) Run:"
+  echo "   Set-ExecutionPolicy Bypass -Scope Process -Force"
+  echo "   cd '$unc'"
+  echo "   .\\scripts\\setup_windows_vm.ps1"
+  echo
+  if command -v prlctl >/dev/null 2>&1; then
+    if confirm "Try launching setup via prlctl now? (still needs Admin inside guest)"; then
+      prl_ensure_running
+      prlctl exec "$PRL_VM" --current-user powershell \
+        -NoProfile -ExecutionPolicy Bypass \
+        -Command "Set-Location '$unc'; & '.\\scripts\\setup_windows_vm.ps1'" \
+        || echo "prlctl setup failed (elevate manually inside the VM)."
+    fi
+  fi
+}
+
 cmd_publish() {
   local tag ver
   tag="$(normalize_tag "$1")"
   ver="$(version_from_tag "$tag")"
   require_publish_env
   echo "Publish $tag → GitHub + R2"
-  confirm "Upload $(dmg_path "$ver") to GitHub + R2?" || die "aborted"
+  collect_assets "$ver" >/dev/null
+  confirm "Upload dist assets for $ver to GitHub + R2?" || die "aborted"
   publish_github "$ver"
   publish_r2 "$ver"
   echo "Done: $tag"
@@ -236,9 +373,9 @@ cmd_tag() {
   tag="$(normalize_tag "$1")"
   ver="$(version_from_tag "$tag")"
   require_publish_env
-  echo "Local release $tag (build macOS → GitHub + R2)"
+  echo "Local release $tag (platforms: $(platforms))"
   confirm "Build and publish $tag?" || die "aborted"
-  build_macos "$ver"
+  build_selected "$ver"
   publish_github "$ver"
   publish_r2 "$ver"
   echo "Done: $tag"
@@ -252,7 +389,9 @@ cmd_bump() {
   esac
   require_cmd git
   require_publish_env
-  require_build_env
+  if want_platform macos; then
+    require_build_env
+  fi
 
   if [[ -n "$(git status --porcelain)" ]]; then
     die "working tree dirty — commit or stash first"
@@ -260,7 +399,7 @@ cmd_bump() {
 
   local ver
   ver="$(./scripts/bump_version.sh "$bump")"
-  echo "Bumped pubspec → $ver"
+  echo "Bumped pubspec → $ver (platforms: $(platforms))"
   confirm "Freeze changelog, commit, tag v${ver}, push, then build + publish?" || {
     git checkout -- apps/forja/pubspec.yaml installer/windows/setup.iss
     die "aborted (pubspec restored)"
@@ -273,20 +412,23 @@ cmd_bump() {
   git push origin HEAD
   git push origin "v${ver}"
 
-  build_macos "$ver"
+  build_selected "$ver"
   publish_github "$ver"
   publish_r2 "$ver"
   echo "Done: v${ver}"
 }
 
 interactive_menu() {
-  echo "Forja local release (macOS → GitHub + R2)"
-  echo "========================================="
+  echo "Forja local release (GitHub + R2)"
+  echo "================================="
+  echo "Platforms: $(platforms)   VM: $PRL_VM"
   echo
   echo "  1) Release existing tag (build + publish)"
   echo "  2) Bump + release new version"
-  echo "  3) Build DMG only"
-  echo "  4) Publish dist/ only (gh + R2)"
+  echo "  3) Build macOS DMG only"
+  echo "  4) Build Windows via Parallels"
+  echo "  5) Setup Windows VM toolchain"
+  echo "  6) Publish dist/ only (gh + R2)"
   echo "  q) Quit"
   echo
   read -r -p "Choice: " choice
@@ -311,6 +453,11 @@ interactive_menu() {
       ;;
     4)
       read -r -p "Tag (e.g. v1.2.404): " tag
+      cmd_build_windows "$tag"
+      ;;
+    5) cmd_setup_windows ;;
+    6)
+      read -r -p "Tag (e.g. v1.2.404): " tag
       cmd_publish "$tag"
       ;;
     q|Q) exit 0 ;;
@@ -327,9 +474,11 @@ main() {
     bump) cmd_bump "${1:-patch}" ;;
     tag) cmd_tag "${1:?usage: release_local.sh tag vX.Y.Z}" ;;
     build) cmd_build "${1:?usage: release_local.sh build vX.Y.Z}" ;;
+    build-windows) cmd_build_windows "${1:?usage: release_local.sh build-windows vX.Y.Z}" ;;
+    setup-windows) cmd_setup_windows ;;
     publish) cmd_publish "${1:?usage: release_local.sh publish vX.Y.Z}" ;;
     -h|--help)
-      sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
       ;;
     *)
       die "unknown command: $cmd (try --help)"

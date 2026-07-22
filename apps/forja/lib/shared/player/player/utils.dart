@@ -1100,13 +1100,34 @@ bool pngWrapsMpegTs(List<int> bytes) {
       bytes[252 + 188] == 0x47;
 }
 
+/// Whether catalog HLS should open via `/hls-proxy?strip=png`.
+///
+/// [AnimePngStripMode.auto] is content-only — host needles never force strip.
+@visibleForTesting
+bool animePngStripShouldProxy({
+  required AnimePngStripMode mode,
+  required bool contentLooksWrapped,
+}) {
+  return switch (mode) {
+    AnimePngStripMode.never => false,
+    AnimePngStripMode.force => true,
+    AnimePngStripMode.auto => contentLooksWrapped,
+  };
+}
+
 /// Route PNG-wrapped HLS through local `/hls-proxy?strip=png` (RFC-044).
 ///
 /// [AnimePngStripMode.force] always proxies; [AnimePngStripMode.auto] samples a
 /// media segment and strips only when [pngWrapsMpegTs]; [never] is a no-op.
+/// Host needles do **not** force strip for [auto] — plain HLS stays direct.
 Future<StreamSource> applyAnimePngStripIfNeeded(
   StreamSource source, {
   String? sourceKey,
+  @visibleForTesting
+  Future<bool> Function(String url, Map<String, String> headers)?
+      segmentLooksPngWrapped,
+  @visibleForTesting
+  String Function(String url, Map<String, String> headers)? buildStripProxy,
 }) async {
   final url = source.url.trim();
   if (url.isEmpty || url.contains('/hls-proxy')) return source;
@@ -1119,33 +1140,37 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
   final mode = profile.pngStrip;
   if (mode == AnimePngStripMode.never) return source;
 
-  var shouldStrip = mode == AnimePngStripMode.force;
-  if (mode == AnimePngStripMode.auto) {
-    // Legacy host hint (fast path) or content sample.
-    shouldStrip = profile.urlNeedsPngStrip(url) ||
-        await _animeHlsSegmentLooksPngWrapped(
-          url,
-          resolvePlaybackHttpHeaders(
-            source.headers,
-            streamUrl: url,
-            providerId: pid,
-          ),
-        );
-  }
-  if (!shouldStrip) return source;
-
-  final ls = LocalServerService();
-  if (ls.port == 0) {
-    await ls.start();
-  }
-  if (ls.port == 0) return source;
   final hdrs = resolvePlaybackHttpHeaders(
     source.headers,
     streamUrl: url,
     providerId: pid,
   );
+  final looksWrapped = mode == AnimePngStripMode.auto
+      ? await (segmentLooksPngWrapped ?? _animeHlsSegmentLooksPngWrapped)(
+          url,
+          hdrs,
+        )
+      : false;
+  if (!animePngStripShouldProxy(
+    mode: mode,
+    contentLooksWrapped: looksWrapped,
+  )) {
+    return source;
+  }
+
+  late final String proxied;
+  if (buildStripProxy != null) {
+    proxied = buildStripProxy(url, hdrs);
+  } else {
+    final ls = LocalServerService();
+    if (ls.port == 0) {
+      await ls.start();
+    }
+    if (ls.port == 0) return source;
+    proxied = ls.getHlsProxyUrl(url, hdrs, stripMode: 'png');
+  }
   return StreamSource(
-    url: ls.getHlsProxyUrl(url, hdrs, stripMode: 'png'),
+    url: proxied,
     title: source.title,
     type: source.type,
     headers: null,

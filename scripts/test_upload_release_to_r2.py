@@ -57,10 +57,16 @@ class MergePlatformManifestTest(unittest.TestCase):
         )
         self.assertEqual(merged["platforms"]["macos"]["version"], "1.2.406")
         self.assertEqual(merged["platforms"]["windows"]["version"], "1.2.400")
-        self.assertEqual(merged["version"], "1.2.406")
-        self.assertIn("Forja-1.2.400-windows-setup.exe", merged["assets"])
-        self.assertIn("Forja-1.2.406-macos-arm64.dmg", merged["assets"])
-        self.assertNotIn("Forja-1.2.399-macos-arm64.dmg", merged["assets"])
+        self.assertNotIn("version", merged)
+        self.assertNotIn("assets", merged)
+        flat = [
+            a
+            for e in merged["platforms"].values()
+            for a in e["assets"]
+        ]
+        self.assertIn("Forja-1.2.400-windows-setup.exe", flat)
+        self.assertIn("Forja-1.2.406-macos-arm64.dmg", flat)
+        self.assertNotIn("Forja-1.2.399-macos-arm64.dmg", flat)
 
     def test_legacy_flat_manifest_promotes(self) -> None:
         existing = {
