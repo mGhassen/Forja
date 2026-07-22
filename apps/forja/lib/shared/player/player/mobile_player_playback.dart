@@ -1510,7 +1510,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       // 30 MiB back-buffer so backward seeks don't require a full rebuffer.
       await safeSet('demuxer-max-back-bytes', '30MiB');
 
-      await safeSet('hls-bitrate', 'no');
+      // Start HLS on the highest variant (same as IPTV). Manual Quality
+      // menu still locks a specific rung by opening that playlist URL.
+      await safeSet('hls-bitrate', 'max');
     }
 
     // We supply our own URL — no yt-dlp needed.

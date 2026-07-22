@@ -1496,8 +1496,9 @@ mixin _DesktopPlayerPlayback
       // How far back the demuxer keeps decoded data (for backward seeks).
       await safeSet('demuxer-max-back-bytes', '50MiB');
 
-      // Let mpv adapt HLS bitrate to network conditions (not locked to max).
-      await safeSet('hls-bitrate', 'no');
+      // Start HLS on the highest variant (same as IPTV). Manual Quality
+      // menu still locks a specific rung by opening that playlist URL.
+      await safeSet('hls-bitrate', 'max');
     }
 
     // Prevent yt-dlp from being invoked (we supply our own URL).
