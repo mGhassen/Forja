@@ -151,6 +151,37 @@ void main() {
         miruro.map((e) => e.label).toSet(),
         containsAll(['AniKoto', 'AnimePahe', 'AllManga', 'AnimeDao', 'HiAnime']),
       );
+      expect(
+        AnimeStreamProviders.defaultOrder,
+        contains('vidlink'),
+      );
+    });
+
+    test('VidLink uses MAL id when present', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 5114,
+        episode: 3,
+        malId: 20,
+      );
+      final vl = embeds.where((e) => e.server == 'vidlink').toList();
+      expect(vl.length, 2);
+      expect(
+        vl.every(
+          (e) => e.url ==
+              'https://vidlink.pro/anime/20/3/${e.category}?fallback=true',
+        ),
+        isTrue,
+      );
+      expect(vl.map((e) => e.sourceKey).toSet(), {'vidlink'});
+      expect(AnimeStreamProviders.catalog['vidlink'], 'VidLink');
+    });
+
+    test('VidLink omitted when MAL id missing', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 5114,
+        episode: 1,
+      );
+      expect(embeds.where((e) => e.server == 'vidlink'), isEmpty);
     });
   });
 }

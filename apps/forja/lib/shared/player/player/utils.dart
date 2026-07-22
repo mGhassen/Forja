@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
@@ -1073,12 +1074,19 @@ bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
   return false;
 }
 
+/// True when [bytes] start with a PNG signature.
+bool looksLikePng(List<int> bytes) {
+  return bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47;
+}
+
 /// True when [bytes] are a PNG shell with MPEG-TS after IEND or offset 252.
 bool pngWrapsMpegTs(List<int> bytes) {
   if (bytes.length < 16) return false;
-  if (bytes[0] != 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47) {
-    return false;
-  }
+  if (!looksLikePng(bytes)) return false;
   // IEND then TS sync
   for (var i = 8; i < bytes.length - 4; i++) {
     if (bytes[i] == 0x49 &&
@@ -1098,6 +1106,18 @@ bool pngWrapsMpegTs(List<int> bytes) {
   return bytes.length > 252 + 188 &&
       bytes[252] == 0x47 &&
       bytes[252 + 188] == 0x47;
+}
+
+/// Whether a Range/prefix sample means PNG-strip should run.
+///
+/// kotocdn (Megaplay) answers `Range: bytes=0-N` with a tiny ad PNG on
+/// `ibyteimg` while a full GET returns PNG-wrapped MPEG-TS. Treat that decoy
+/// as wrapped so we still open via `/hls-proxy?strip=png`.
+@visibleForTesting
+bool animeSegmentSampleLooksPngWrapped(List<int> sample) {
+  if (pngWrapsMpegTs(sample)) return true;
+  // Tiny PNG, no TS — Range decoy (real body is PNG+TS).
+  return looksLikePng(sample) && sample.length < 512;
 }
 
 /// Whether catalog HLS should open via `/hls-proxy?strip=png`.
@@ -1155,6 +1175,11 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
     mode: mode,
     contentLooksWrapped: looksWrapped,
   )) {
+    if (kDebugMode && mode == AnimePngStripMode.auto) {
+      debugPrint(
+        '[Player] PNG-strip skip (no wrap detected) $url key=${pid ?? ''}',
+      );
+    }
     return source;
   }
 
@@ -1168,6 +1193,9 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
     }
     if (ls.port == 0) return source;
     proxied = ls.getHlsProxyUrl(url, hdrs, stripMode: 'png');
+  }
+  if (kDebugMode) {
+    debugPrint('[Player] PNG-strip via hls-proxy key=${pid ?? ''} $url');
   }
   return StreamSource(
     url: proxied,
@@ -1227,7 +1255,16 @@ Future<bool> _animeHlsSegmentLooksPngWrapped(
         maxRetries: 0,
       );
       if (sample.isEmpty) continue;
-      return pngWrapsMpegTs(sample);
+      if (animeSegmentSampleLooksPngWrapped(sample)) {
+        if (kDebugMode &&
+            looksLikePng(sample) &&
+            !pngWrapsMpegTs(sample)) {
+          debugPrint(
+            '[Player] PNG Range decoy (${sample.length}B) — strip $segUrl',
+          );
+        }
+        return true;
+      }
     }
   } catch (_) {}
   return false;
@@ -1354,7 +1391,7 @@ Future<bool> hlsMediaSegmentsLookPlayable(
               timeoutSecs: 8,
               maxRetries: 0,
             );
-            if (sample.isNotEmpty && pngWrapsMpegTs(sample)) {
+            if (sample.isNotEmpty && animeSegmentSampleLooksPngWrapped(sample)) {
               continue;
             }
           } catch (_) {}

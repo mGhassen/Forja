@@ -184,6 +184,7 @@ class ProviderRuntimeConfig {
     if (key == 'megaplay' ||
         key == 'vidwish' ||
         key == 'anikoto' ||
+        key == 'vidlink' ||
         key == 'watchhentai' ||
         key == 'hentaini') {
       return true;

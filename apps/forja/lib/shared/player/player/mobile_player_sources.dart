@@ -123,20 +123,24 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     _notifySourceMenuChanged();
   }
 
-  bool _isCurrentSourceIndex(int index) {
-    final sources = _s._currentSources;
-    if (sources == null || index < 0 || index >= sources.length) return false;
-    final source = sources[index];
-    return _s._currentProvider == 'service111477'
-        ? source.url == _s._current111477FileUrl
-        : source.url == _s._currentUrl ||
-            source.url == _s._currentPlayingCatalogUrl;
+  Future<void> _dropTitleWebstreamingCache() async {
+    final movie = widget.movie;
+    if (movie == null || widget.magnetLink != null) return;
+    final key = WebstreamingStreamCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode,
+    );
+    await WebstreamingStreamCache.drop(key);
   }
 
   Future<void> _reloadStreamMenu() async {
     if (_s._isReloadingStreams.value) return;
     _s._isReloadingStreams.value = true;
     try {
+      // Manual reload — never revive session/disk URLs.
+      await _dropTitleWebstreamingCache();
       if (widget.onReloadStreams != null) {
         final fresh = await widget.onReloadStreams!();
         if (!mounted) return;
@@ -585,11 +589,8 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
         providerId == null || providerId == _s._currentProvider;
     _setUrlCheckStatus(source.url, PlayerSourceStatus.checking);
     if (affectsCurrent) {
-      if (_isCurrentSourceIndex(index) && _s._playbackConfirmed) {
-        _markSourceActive(index);
-        unawaited(_recordStreamCheckSuccess(pid));
-        return true;
-      }
+      // Always probe — "already playing" can be a dead open that still looks
+      // confirmed until the next buffer stall.
       _markSourceChecking(index);
     }
 

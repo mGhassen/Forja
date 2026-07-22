@@ -102,6 +102,35 @@ void main() {
     });
   });
 
+  group('animeSegmentSampleLooksPngWrapped', () {
+    test('kotocdn Range decoy tiny PNG implies strip', () {
+      // Real kotocdn Range → ibyteimg 1×1 PNG (~100B), not MPEG-TS.
+      final decoy = <int>[
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+        0, 0, 0, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        ...List.filled(80, 0),
+      ];
+      expect(pngWrapsMpegTs(decoy), isFalse);
+      expect(animeSegmentSampleLooksPngWrapped(decoy), isTrue);
+    });
+
+    test('real PNG+TS sample still implies strip', () {
+      final raw = <int>[
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0x49, 0x45, 0x4E, 0x44, 0, 0, 0, 0,
+        0x47,
+        ...List.filled(187, 0),
+        0x47,
+      ];
+      expect(animeSegmentSampleLooksPngWrapped(raw), isTrue);
+    });
+
+    test('non-PNG sample does not imply strip', () {
+      expect(animeSegmentSampleLooksPngWrapped([0x47, 0, 0, 0]), isFalse);
+    });
+  });
+
   group('animePngStripShouldProxy', () {
     test('auto is content-only', () {
       expect(

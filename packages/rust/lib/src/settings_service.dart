@@ -502,6 +502,7 @@ class SettingsService {
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
+    'vidlink',
     'miruro:bee',
     'miruro:zoro',
     'miruro:kiwi',

@@ -94,6 +94,8 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
         var videoAspect = 16 / 9;
         var viewAspect = w / h;
         var iframeW, iframeH;
+        // Cover the viewport at 16:9 without overscan zoom (overscan clipped
+        // captions and made the picture look larger than the screen).
         if (viewAspect > videoAspect) {
           iframeW = w;
           iframeH = w / videoAspect;
@@ -101,8 +103,8 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
           iframeH = h;
           iframeW = h * videoAspect;
         }
-        // Heavy overscan hides YouTube chrome but also clips bottom captions.
-        var overscan = captionsVisible ? 1.06 : 1.42;
+        // Tiny bleed only — hides 1px YT edge chrome; skip when captions on.
+        var overscan = captionsVisible ? 1.0 : 1.02;
         iframeW *= overscan;
         iframeH *= overscan;
         iframe.style.position = 'absolute';
@@ -114,9 +116,7 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
         iframe.style.maxHeight = 'none';
         iframe.style.border = '0';
         iframe.style.pointerEvents = 'none';
-        iframe.style.transform = captionsVisible
-          ? 'translate(-50%, -58%)'
-          : 'translate(-50%, -50%)';
+        iframe.style.transform = 'translate(-50%, -50%)';
         iframe.style.transformOrigin = 'center center';
       } catch (e) {}
     }
@@ -235,6 +235,7 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
             cropYoutubeChrome(e.target);
             setTimeout(function() { cropYoutubeChrome(e.target); }, 150);
             setTimeout(function() { cropYoutubeChrome(e.target); }, 600);
+            ensureCaptionsModule();
             try { e.target.playVideo(); } catch (err) {}
             startEndGuard(e.target);
             startProgressTimer();
@@ -294,6 +295,26 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
       if (!player) return;
       if (muted) player.mute();
       else player.unMute();
+    };
+
+    window.trailerSetVolume = function(volume) {
+      if (!player || typeof player.setVolume !== 'function') return;
+      var v = Math.max(0, Math.min(100, Number(volume) || 0));
+      try {
+        player.setVolume(v);
+        if (v <= 0) player.mute();
+        else player.unMute();
+      } catch (e) {}
+    };
+
+    window.trailerGetVolume = function() {
+      if (!player) return 100;
+      try {
+        if (player.isMuted && player.isMuted()) return 0;
+        return typeof player.getVolume === 'function' ? player.getVolume() : 100;
+      } catch (e) {
+        return 100;
+      }
     };
 
     window.trailerSeekTo = function(seconds) {
@@ -441,8 +462,26 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
 
   Future<void> _toggleMute() async {
     final next = !_s._muted;
-    setState(() => _s._muted = next);
-    await _runJs('window.trailerSetMuted(${next ? 'true' : 'false'});');
+    setState(() {
+      _s._muted = next;
+      if (next) {
+        if (_s._volume > 0) _s._volumeBeforeMute = _s._volume;
+        _s._volume = 0;
+      } else {
+        _s._volume = _s._volumeBeforeMute > 0 ? _s._volumeBeforeMute : 100;
+      }
+    });
+    await _runJs('window.trailerSetVolume(${_s._volume});');
+  }
+
+  Future<void> _setVolume(double volume) async {
+    final next = volume.clamp(0.0, 100.0);
+    setState(() {
+      _s._volume = next;
+      _s._muted = next <= 0;
+      if (next > 0) _s._volumeBeforeMute = next;
+    });
+    await _runJs('window.trailerSetVolume($next);');
   }
 
   Future<void> _seek(Duration position) async {
@@ -466,6 +505,9 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
       _s._ended = false;
       _s._ready = false;
       _s._muted = false;
+      _s._volume = 100;
+      _s._volumeBeforeMute = 100;
+      _s._selectedQuality = 'auto';
       _s._position = Duration.zero;
       _s._duration = Duration.zero;
     });

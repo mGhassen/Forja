@@ -17,8 +17,6 @@ abstract final class DetailsTokens {
   static const double episodeSectionBottomPadding = 12;
   static const double heroContentTopInset = 88;
 
-  /// Extra lift for the production-info panel so it clears the seasons/episodes rail.
-  static const double factsPanelEpisodeClearance = 150;
   static const double heroDescriptionWidthFraction = 0.40;
   static const double bodyTopSpacing = 36;
 

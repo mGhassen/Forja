@@ -51,9 +51,14 @@ pub fn direct_embed_extract(embed_url: &str, referer: Option<&str>) -> Result<Op
     ]);
 
     let Ok(api) = anime_get(&api_url, &api_headers, 15) else {
+        eprintln!("[direct_embed] getSources transport fail {api_url}");
         return Ok(None);
     };
     if api.status != 200 {
+        eprintln!(
+            "[direct_embed] getSources HTTP {} {api_url}",
+            api.status
+        );
         return Ok(None);
     }
 
@@ -63,6 +68,7 @@ pub fn direct_embed_extract(embed_url: &str, referer: Option<&str>) -> Result<Op
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if file.is_empty() {
+        eprintln!("[direct_embed] getSources empty file {api_url}");
         return Ok(None);
     }
 
@@ -120,14 +126,20 @@ fn scrape_data_id(embed_url: &str, referer: &str) -> Result<Option<String>, Stri
 
     // Transport / soft-404 / missing player → None (race tries next host).
     let Ok(page) = anime_get(embed_url, &page_headers, 15) else {
+        eprintln!("[direct_embed] scrape transport fail {embed_url}");
         return Ok(None);
     };
     if page.status != 200 {
+        eprintln!(
+            "[direct_embed] scrape HTTP {} {embed_url}",
+            page.status
+        );
         return Ok(None);
     }
 
     let re = Regex::new(r#"data-id\s*=\s*"(\d+)""#).map_err(|e| e.to_string())?;
     let Some(cap) = re.captures(&page.body) else {
+        eprintln!("[direct_embed] no data-id in HTML {embed_url}");
         return Ok(None);
     };
     let data_id = cap.get(1).map(|m| m.as_str()).unwrap_or("");

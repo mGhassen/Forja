@@ -827,9 +827,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                               durationMs: _durationMs,
                               availableWidth: constraints.maxWidth,
                               maxHeight: constraints.maxHeight,
-                              factsBottomClearance: showEpisodeRail
-                                  ? DetailsTokens.factsPanelEpisodeClearance
-                                  : 0,
                             ),
                             if (_showTrailer)
                               Positioned(
@@ -1032,7 +1029,6 @@ class _HeroLayout extends StatelessWidget {
     this.durationMs,
     this.availableWidth,
     this.maxHeight,
-    this.factsBottomClearance = 0,
   });
 
   final Movie movie;
@@ -1056,7 +1052,6 @@ class _HeroLayout extends StatelessWidget {
   final int? durationMs;
   final double? availableWidth;
   final double? maxHeight;
-  final double factsBottomClearance;
 
   @override
   Widget build(BuildContext context) {
@@ -1106,7 +1101,7 @@ class _HeroLayout extends StatelessWidget {
       width: double.infinity,
       height: maxHeight,
       child: Stack(
-        clipBehavior: Clip.hardEdge,
+        clipBehavior: Clip.none,
         children: [
           Align(
             alignment: Alignment.topLeft,
@@ -1119,16 +1114,18 @@ class _HeroLayout extends StatelessWidget {
           if (factsPanel.hasContent && maxHeight != null)
             Align(
               alignment: Alignment.bottomRight,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: factsBottomClearance),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: 300,
-                    maxHeight: (maxHeight! - factsBottomClearance)
-                        .clamp(0.0, double.infinity),
-                  ),
-                  child: SingleChildScrollView(
-                    child: factsPanel,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 300,
+                  maxHeight: maxHeight!,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    physics: const ClampingScrollPhysics(),
+                    children: [factsPanel],
                   ),
                 ),
               ),

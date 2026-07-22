@@ -45,6 +45,7 @@ class AnimeService {
 
   static const String _mediaFields = '''
     id
+    idMal
     title { romaji english native }
     synonyms
     coverImage { large extraLarge color }
@@ -557,10 +558,20 @@ class AnimeService {
     );
   }
 
-  /// Build Megaplay + Miruro/AllAnime/VidNest embeds for an episode.
+  /// VidLink anime embed — MAL id required (`vidlink.pro` docs).
+  String _vidlinkAnimeEmbed({
+    required int malId,
+    required int episode,
+    required String lang,
+  }) {
+    return 'https://vidlink.pro/anime/$malId/$episode/$lang?fallback=true';
+  }
+
+  /// Build Megaplay + Miruro/AllAnime/VidNest/VidLink embeds for an episode.
   ///
   /// Megaplay: Anikoto `s-2` when matched, else `/stream/ani/` (often 410 HTML;
   /// extract still needs catalog id via Anikoto for getSources).
+  /// VidLink: MAL id from AniList `idMal` — skipped when missing.
   List<AnimeEmbed> buildAllEmbeds({
     required int anilistId,
     required int episode,
@@ -568,6 +579,7 @@ class AnimeService {
     String? category, // null = all 4; else filtered pair
     List<String> animeTitles = const [],
     bool isAdult = false,
+    int? malId,
   }) {
     String? embedId;
     if (series != null) {
@@ -611,6 +623,18 @@ class AnimeService {
           server: 'anikoto',
           category: cat,
           url: 'anikoto://watch/$slug/$episode/$cat',
+        ));
+      }
+    }
+    // VidLink — MAL embed (same host sniff as movie/TV VidLink).
+    final mal = malId ?? 0;
+    if (mal > 0) {
+      for (final cat in const ['sub', 'dub']) {
+        all.add(AnimeEmbed(
+          label: AnimeStreamProviders.displayName('vidlink'),
+          server: 'vidlink',
+          category: cat,
+          url: _vidlinkAnimeEmbed(malId: mal, episode: episode, lang: cat),
         ));
       }
     }
@@ -1256,6 +1280,8 @@ class AnimeService {
 
 class AnimeCard {
   final int id;
+  /// MyAnimeList id from AniList (`idMal`) — required for VidLink anime embeds.
+  final int? idMal;
   final String titleEnglish;
   final String titleRomaji;
   final String titleNative;
@@ -1328,6 +1354,7 @@ class AnimeCard {
 
   const AnimeCard({
     required this.id,
+    this.idMal,
     required this.titleEnglish,
     required this.titleRomaji,
     required this.titleNative,
@@ -1355,6 +1382,7 @@ class AnimeCard {
 
   AnimeCard copyWith({
     int? id,
+    int? idMal,
     String? titleEnglish,
     String? titleRomaji,
     String? titleNative,
@@ -1381,6 +1409,7 @@ class AnimeCard {
   }) {
     return AnimeCard(
       id: id ?? this.id,
+      idMal: idMal ?? this.idMal,
       titleEnglish: titleEnglish ?? this.titleEnglish,
       titleRomaji: titleRomaji ?? this.titleRomaji,
       titleNative: titleNative ?? this.titleNative,
@@ -1427,8 +1456,13 @@ class AnimeCard {
         .map((e) => e.toString().trim())
         .where((s) => s.isNotEmpty)
         .toList();
+    final rawMal = json['idMal'];
+    final idMal = rawMal is int
+        ? rawMal
+        : (rawMal is num ? rawMal.toInt() : int.tryParse('$rawMal'));
     return AnimeCard(
       id: (json['id'] ?? 0) as int,
+      idMal: (idMal != null && idMal > 0) ? idMal : null,
       titleEnglish: (title['english'] ?? '') as String? ?? '',
       titleRomaji: (title['romaji'] ?? '') as String? ?? '',
       titleNative: (title['native'] ?? '') as String? ?? '',
@@ -1463,6 +1497,7 @@ class AnimeCard {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        if (idMal != null) 'idMal': idMal,
         'title': {'english': titleEnglish, 'romaji': titleRomaji, 'native': titleNative},
         'synonyms': synonyms,
         'coverImage': {'large': coverLarge, 'extraLarge': coverExtraLarge, 'color': coverColor},
@@ -1564,6 +1599,8 @@ class AnimeEmbed {
         return 'https://allmanga.to';
       case 'vidnest':
         return 'https://vidnest.fun';
+      case 'vidlink':
+        return 'https://vidlink.pro';
       case 'animerealms':
         return 'https://www.animerealms.org';
       case 'watchhentai':

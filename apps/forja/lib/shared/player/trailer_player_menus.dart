@@ -5,6 +5,8 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
 
   Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
     if (!_s._ready) return;
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) setState(() => _s._showControls = true);
     final tracksRaw = await _s._runJsJson('window.trailerGetCaptionTracks()');
     final active = await _s._runJsJson('window.trailerGetActiveCaption()');
     final tracks = _parseCaptionTracks(tracksRaw);
@@ -17,47 +19,56 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.subtitles_outlined,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-        children: [
-          PlayerPopupListTile(
-            label: 'Off',
-            selected: activeCode == null,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              await _s._runJs('window.trailerSetCaptionTrack(null);');
-            },
-          ),
-          if (tracks.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'No subtitles available for this trailer.',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-            )
-          else
-            ...tracks.map((track) {
-              final code = track['languageCode'] as String;
-              final name = track['languageName'] as String? ?? languageDisplayName(code);
-              return PlayerPopupListTile(
-                label: name,
-                badge: code.toUpperCase(),
-                selected: activeCode == code,
-                onTap: () async {
-                  PlayerPopupPanel.dismiss();
-                  await _s._runJs("window.trailerSetCaptionTrack('$code');");
-                },
-              );
-            }),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PlayerPopupOptionChip(
+              label: 'Off',
+              selected: activeCode == null,
+              expanded: true,
+              onTap: () async {
+                PlayerPopupPanel.dismiss();
+                await _s._runJs('window.trailerSetCaptionTrack(null);');
+              },
+            ),
+            if (tracks.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'No subtitles available for this trailer.',
+                  style: TextStyle(color: PlayerPopupTokens.muted, fontSize: 13),
+                ),
+              )
+            else
+              for (final track in tracks) ...[
+                const SizedBox(height: 8),
+                PlayerPopupOptionChip(
+                  label: _flaggedLabel(
+                    track['languageCode'] as String,
+                    track['languageName'] as String,
+                  ),
+                  selected: activeCode == track['languageCode'],
+                  expanded: true,
+                  onTap: () async {
+                    PlayerPopupPanel.dismiss();
+                    final code = track['languageCode'] as String;
+                    await _s._runJs("window.trailerSetCaptionTrack('$code');");
+                  },
+                ),
+              ],
+          ],
+        ),
       ),
     );
+    if (mounted) _s._startHideTimer();
   }
 
   Future<void> _showAudioMenu(BuildContext anchorContext) async {
     if (!_s._ready) return;
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) setState(() => _s._showControls = true);
     final tracksRaw = await _s._runJsJson('window.trailerGetAudioTracks()');
     final tracks = _parseAudioTracks(tracksRaw);
 
@@ -68,41 +79,46 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.audiotrack_rounded,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-        children: [
-          if (tracks.isEmpty)
-            PlayerPopupListTile(
-              label: _defaultAudioLabel(),
-              badge: _defaultAudioBadge(),
-              selected: true,
-            )
-          else
-            ...tracks.map((track) {
-              final id = track['id'] as String;
-              final label = track['label'] as String;
-              final selected = track['isActive'] as bool;
-              return PlayerPopupListTile(
-                label: label,
-                selected: selected,
-                onTap: () async {
-                  PlayerPopupPanel.dismiss();
-                  await _s._runJs("window.trailerSetAudioTrack('$id');");
-                },
-              );
-            }),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: tracks.isEmpty
+            ? PlayerPopupOptionChip(
+                label: _flaggedLabel(widget.languageCode, _defaultAudioLabel()),
+                selected: true,
+                expanded: true,
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < tracks.length; i++) ...[
+                    if (i != 0) const SizedBox(height: 8),
+                    PlayerPopupOptionChip(
+                      label: tracks[i]['label'] as String,
+                      selected: tracks[i]['isActive'] as bool,
+                      expanded: true,
+                      onTap: () async {
+                        PlayerPopupPanel.dismiss();
+                        final id = tracks[i]['id'] as String;
+                        await _s._runJs("window.trailerSetAudioTrack('$id');");
+                      },
+                    ),
+                  ],
+                ],
+              ),
       ),
     );
+    if (mounted) _s._startHideTimer();
   }
 
   Future<void> _showQualityMenu(BuildContext anchorContext) async {
     if (!_s._ready) return;
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) setState(() => _s._showControls = true);
     final currentRaw = await _s._runJsJson('window.trailerGetPlaybackQuality()');
     final levelsRaw = await _s._runJsJson('window.trailerGetAvailableQualityLevels()');
-    final current = currentRaw is String ? currentRaw : 'auto';
+    final playingQuality = currentRaw is String ? currentRaw : 'unknown';
     final levels = _parseQualityLevels(levelsRaw);
+    final qualityAuto = _s._selectedQuality == 'auto';
 
     if (!mounted) return;
     await PlayerPopupPanel.show(
@@ -111,37 +127,48 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.hd_outlined,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-        children: [
-          if (levels.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: levels.isEmpty
+            ? const Text(
                 'No quality options for this trailer.',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+                style: TextStyle(color: PlayerPopupTokens.muted, fontSize: 13),
+              )
+            : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                // While Auto is active, hide Auto and highlight the level
+                // currently playing (main-player quality menu parity).
+                children: levels
+                    .where((level) => level != 'auto' || !qualityAuto)
+                    .map((level) {
+                  final selected = level == 'auto'
+                      ? false
+                      : (qualityAuto
+                          ? level == playingQuality
+                          : level == _s._selectedQuality);
+                  return PlayerPopupOptionChip(
+                    label: _qualityLabel(level),
+                    selected: selected,
+                    onTap: () async {
+                      PlayerPopupPanel.dismiss();
+                      setState(() => _s._selectedQuality = level);
+                      await _s._runJs(
+                        "window.trailerSetPlaybackQuality('$level');",
+                      );
+                    },
+                  );
+                }).toList(),
               ),
-            )
-          else
-            ...levels.map((level) {
-              return PlayerPopupListTile(
-                label: _qualityLabel(level),
-                badge: level == 'auto' ? 'AUTO' : null,
-                selected: level == current,
-                onTap: () async {
-                  PlayerPopupPanel.dismiss();
-                  await _s._runJs("window.trailerSetPlaybackQuality('$level');");
-                },
-              );
-            }),
-        ],
       ),
     );
+    if (mounted) _s._startHideTimer();
   }
 
   Future<void> _showSpeedMenu(BuildContext anchorContext) async {
     if (!_s._ready) return;
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) setState(() => _s._showControls = true);
     final rateRaw = await _s._runJsJson('window.trailerGetPlaybackRate()');
     final ratesRaw = await _s._runJsJson('window.trailerGetAvailablePlaybackRates()');
     final currentRate = rateRaw is num ? rateRaw.toDouble() : 1.0;
@@ -154,22 +181,26 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.speed_rounded,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-        children: rates.map((rate) {
-          final selected = (rate - currentRate).abs() < 0.01;
-          return PlayerPopupListTile(
-            label: '${_formatRate(rate)}x',
-            selected: selected,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              await _s._runJs('window.trailerSetPlaybackRate($rate);');
-            },
-          );
-        }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: rates.map((rate) {
+            final selected = (rate - currentRate).abs() < 0.01;
+            return PlayerPopupOptionChip(
+              label: '${_formatRate(rate)}x',
+              selected: selected,
+              onTap: () async {
+                PlayerPopupPanel.dismiss();
+                await _s._runJs('window.trailerSetPlaybackRate($rate);');
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
+    if (mounted) _s._startHideTimer();
   }
 
   String _defaultAudioLabel() {
@@ -180,10 +211,21 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
     return 'Original';
   }
 
-  String? _defaultAudioBadge() {
-    final lang = widget.languageCode?.trim();
-    if (lang != null && lang.isNotEmpty) return lang.toUpperCase();
-    return null;
+  String _flaggedLabel(String? code, String name) {
+    final flag = _flagForLang(code);
+    if (flag.isEmpty) return name;
+    return '$flag  $name';
+  }
+
+  String _flagForLang(String? code) {
+    if (code == null || code.trim().isEmpty) return '';
+    final raw = code.trim().toLowerCase();
+    final direct = StreamProviderDisplay.flagForCountry(raw);
+    if (direct.isNotEmpty) return direct;
+    final base = raw.split(RegExp(r'[-_]')).first;
+    final fromBase = StreamProviderDisplay.flagForCountry(base);
+    if (fromBase.isNotEmpty) return fromBase;
+    return StreamProviderDisplay.flagsForText(raw);
   }
 
   List<Map<String, dynamic>> _parseCaptionTracks(dynamic raw) {
@@ -280,13 +322,19 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
     if (raw is! List) return const [];
     return raw
         .whereType<Map>()
-        .map((item) => {
-              'id': item['id']?.toString() ?? '',
-              'label': item['label']?.toString() ?? 'Unknown',
-              'isActive': item['isActive'] == true,
-            })
+        .map((item) {
+          final id = item['id']?.toString() ?? '';
+          final rawLabel = item['label']?.toString() ?? '';
+          final name = languageDisplayName(
+            rawLabel.isNotEmpty ? rawLabel : id,
+          );
+          return {
+            'id': id,
+            'label': _flaggedLabel(rawLabel.isNotEmpty ? rawLabel : id, name),
+            'isActive': item['isActive'] == true,
+          };
+        })
         .where((t) => (t['id'] as String).isNotEmpty)
         .toList();
   }
 }
-

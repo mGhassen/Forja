@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** acceptance (core) · **6 / 9** acceptance (expansion slice) |
-| **Current slice** | VidLove + VidSrc + VidSrc.sbs + VidAPI hosts shipped; retired SmashyStream + PrimeWire; in-player switch + remaining expansion not started |
+| **Progress** | **3 / 3** acceptance (core) · **7 / 10** acceptance (expansion slice) |
+| **Current slice** | VidLove + VidSrc + VidSrc.sbs + VidAPI hosts shipped; VidLink anime (MAL) shipped; retired SmashyStream + PrimeWire; in-player switch + remaining expansion not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -37,6 +37,7 @@
 | 7 | R04-A10 | Remove PrimeWire from registry, resolver, settings, and extraction | ✅ |
 | 8 | R04-A11 | VidSrc.win as a separate multi-server host provider; relabel the existing `vsembed.su` provider VSEmbed | ✅ |
 | 9 | R04-A12 | VidAPI as template embed (`vidapi.xyz/embed/movie|tv/…`, TMDB) | ✅ |
+| 10 | R04-A13 | VidLink anime embeds via AniList `idMal` (`vidlink.pro/anime/{mal}/{ep}/{sub\|dub}`) + WebView sniff | ✅ |
 
 ---
 
@@ -84,7 +85,7 @@ UI: Settings → Streaming providers (reorder + toggles)
 |----------|------|------|
 | Videasy | yes | yes |
 | Vidsrc | yes | yes |
-| VidLink | yes | yes |
+| VidLink | yes | yes (movies/TV + anime MAL) |
 | VixSrc | yes | yes |
 | Vidnest | yes | yes |
 | 111477 | yes | yes |

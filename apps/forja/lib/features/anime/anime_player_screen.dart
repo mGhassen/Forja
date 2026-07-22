@@ -667,6 +667,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       series: _series,
       animeTitles: widget.anime.resolveTitleCandidates(),
       isAdult: widget.anime.isAdult,
+      malId: widget.anime.idMal,
     );
   }
 
@@ -807,6 +808,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       series: _series,
       animeTitles: widget.anime.resolveTitleCandidates(),
       isAdult: widget.anime.isAdult,
+      malId: widget.anime.idMal,
     );
     if (kDebugMode && pref != null) {
       debugPrint(

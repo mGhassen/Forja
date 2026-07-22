@@ -4,9 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/extractors/embed_extract_profiles.dart';
+import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
 /// Domain-neutral playback resolve — shared by movies, anime, and Asian drama.
@@ -102,6 +105,16 @@ abstract final class DomainPlaybackResolve {
     for (final entry in providers.entries) {
       if (cancelled()) break;
       final key = entry.key;
+      final payload = entry.value;
+
+      // VidLink anime = same headless WebView sniff as movie/TV — skip on ATV.
+      if (payload is AnimeEmbed &&
+          payload.server == 'vidlink' &&
+          isAndroidTvHeadlessWebViewBlocked) {
+        onProgress?.call(key, 'skipped');
+        continue;
+      }
+
       onProgress?.call(key, 'trying');
       final result = await resolver.resolve(
         key: key,
@@ -202,6 +215,9 @@ class DomainStreamProviderResolver {
   final AnimeService _animeService;
   final KissKhExtractor _kissKhExtractor;
 
+  /// Shared sniff session — cancelled from [cancelAllPending] / leave-title.
+  static final StreamExtractor _vidlinkExtractor = StreamExtractor();
+
   Future<StreamProviderResolveResult?> resolve({
     required String key,
     required Movie movie,
@@ -234,6 +250,9 @@ class DomainStreamProviderResolver {
   ) async {
     if (cancelled()) return null;
     try {
+      if (embed.server == 'vidlink') {
+        return _resolveVidlinkAnime(embed, cancelled);
+      }
       final candidates = await _animeService.extractDirectCandidates(embed);
       if (cancelled() || candidates.isEmpty) return null;
       final sources = <StreamSource>[];
@@ -282,6 +301,59 @@ class DomainStreamProviderResolver {
       debugPrint('[DomainStreamProviderResolver] anime ${embed.displayName}: $e\n$st');
       return null;
     }
+  }
+
+  /// Same host sniff path as movie/TV VidLink (`EmbedExtractProfiles.vidlink`).
+  Future<StreamProviderResolveResult?> _resolveVidlinkAnime(
+    AnimeEmbed embed,
+    bool Function() cancelled,
+  ) async {
+    if (isAndroidTvHeadlessWebViewBlocked) return null;
+    final embedUrl = embed.url.trim();
+    if (embedUrl.isEmpty) return null;
+    final profile = EmbedExtractProfiles.resolve('vidlink');
+    final sniffed = await _vidlinkExtractor.extract(
+      embedUrl,
+      profile: profile,
+      referer: embedUrl,
+      isCancelled: cancelled,
+      providerId: 'vidlink',
+    );
+    if (cancelled() || sniffed == null || sniffed.url.isEmpty) return null;
+    final headers = resolvePlaybackHttpHeaders(
+      sniffed.headers,
+      streamUrl: sniffed.url,
+      providerId: 'vidlink',
+    );
+    final legacy = (sniffed.sources != null && sniffed.sources!.isNotEmpty)
+        ? sniffed.sources!
+        : [
+            StreamSource(
+              url: sniffed.url,
+              title: 'VidLink',
+              type: sniffed.url.contains('.m3u8') ? 'hls' : 'video',
+              headers: headers,
+              providerId: 'vidlink',
+              catalogUrl: embedUrl,
+            ),
+          ];
+    final stamped = [
+      for (final s in legacy)
+        StreamSource(
+          url: s.url,
+          title: s.title,
+          type: s.type,
+          headers: headers,
+          providerId: 'vidlink',
+          catalogUrl: s.catalogUrl ?? embedUrl,
+        ),
+    ];
+    return StreamProviderResolveResult(
+      streamUrl: stamped.first.url,
+      headers: headers,
+      sources: stamped,
+      subtitles: sniffed.externalSubtitles,
+    );
   }
 
   Future<StreamProviderResolveResult?> _resolveKissKh(
@@ -338,6 +410,7 @@ class DomainStreamProviderResolver {
 
   void cancelPending() {
     unawaited(_kissKhExtractor.cancel());
+    unawaited(_vidlinkExtractor.cancel());
     MiruroPipeSession.instance.cancelPending();
   }
 
@@ -348,6 +421,7 @@ class DomainStreamProviderResolver {
   static void cancelAllPending({bool cancelEngineJobs = true}) {
     PlaybackEngine.cancelAllPending(cancelEngineJobs: cancelEngineJobs);
     MiruroPipeSession.instance.cancelPending();
+    unawaited(_vidlinkExtractor.cancel());
   }
 }
 

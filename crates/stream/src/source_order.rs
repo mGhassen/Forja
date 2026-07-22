@@ -172,6 +172,7 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("videasy", SourceDomain::Series)
             | ("vidlink", SourceDomain::Movies)
             | ("vidlink", SourceDomain::Series)
+            | ("vidlink", SourceDomain::Anime)
             | ("vidsrc", SourceDomain::Movies)
             | ("vidsrc", SourceDomain::Series)
             | ("vidsrcwin", SourceDomain::Movies)
@@ -228,6 +229,7 @@ fn anime_order() -> &'static [&'static str] {
         "allanime:Yt-mp4",
         "allanime:S-mp4",
         "allanime:Luf-Mp4",
+        "vidlink",
         "miruro:bee",
         "miruro:zoro",
         "miruro:kiwi",
@@ -257,6 +259,7 @@ fn anime_score(id: &str) -> u32 {
         || id.starts_with("vidnest:")
         || id == "megaplay"
         || id == "anikoto"
+        || id == "vidlink"
         || id == "watchhentai"
         || id == "hentaini"
     {

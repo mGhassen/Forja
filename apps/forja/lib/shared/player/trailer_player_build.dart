@@ -3,80 +3,120 @@ part of 'trailer_player_screen.dart';
 mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   _TrailerPlayerScreenState get _s => this as _TrailerPlayerScreenState;
 
+  @override
   Widget build(BuildContext context) {
     final tvFocus = _s._tvFocus;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _s._exitTrailer();
+        unawaited(_s._exitTrailer());
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            ForjaInAppWebView(
-              key: ValueKey('trailer-player-${_s._trailer.key}'),
-              initialData: InAppWebViewInitialData(
-                data: _s._embedHtml(),
-                baseUrl: WebUri(kYoutubeEmbedOrigin),
+        body: MouseRegion(
+          onHover: tvFocus ? null : (_) => _s._onPointerActivity(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ForjaInAppWebView(
+                key: ValueKey('trailer-player-${_s._trailer.key}'),
+                initialData: InAppWebViewInitialData(
+                  data: _s._embedHtml(),
+                  baseUrl: WebUri(kYoutubeEmbedOrigin),
+                ),
+                initialSettings: InAppWebViewSettings(
+                  mediaPlaybackRequiresUserGesture: false,
+                  allowsInlineMediaPlayback: true,
+                  transparentBackground: false,
+                  disableVerticalScroll: true,
+                  disableHorizontalScroll: true,
+                  supportZoom: false,
+                ),
+                onWebViewCreated: (controller) {
+                  _s._controller = controller;
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerReady',
+                    callback: (_) {
+                      if (!mounted) return;
+                      setState(() => _s._ready = true);
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerState',
+                    callback: (args) {
+                      if (!mounted || args.length < 2) return;
+                      final playing = args[0] == true;
+                      final ended = args[1] == true;
+                      if (_s._playing == playing && _s._ended == ended) return;
+                      setState(() {
+                        _s._playing = playing;
+                        _s._ended = ended;
+                      });
+                      if (ended) {
+                        _s._hideTimer?.cancel();
+                        if (!_s._showControls) {
+                          setState(() => _s._showControls = true);
+                        }
+                        _s._focusNextTrailerIfNeeded();
+                      } else if (playing) {
+                        _s._startHideTimer();
+                      }
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerProgress',
+                    callback: (args) {
+                      if (!mounted || args.length < 2) return;
+                      final currentSec = (args[0] as num?)?.toDouble() ?? 0;
+                      final durationSec = (args[1] as num?)?.toDouble() ?? 0;
+                      final pos =
+                          Duration(milliseconds: (currentSec * 1000).round());
+                      final dur =
+                          Duration(milliseconds: (durationSec * 1000).round());
+                      if (_s._position == pos && _s._duration == dur) return;
+                      setState(() {
+                        _s._position = pos;
+                        _s._duration = dur;
+                      });
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'trailerEscape',
+                    callback: (_) => unawaited(_s._exitTrailer()),
+                  );
+                },
               ),
-              initialSettings: InAppWebViewSettings(
-                mediaPlaybackRequiresUserGesture: false,
-                allowsInlineMediaPlayback: true,
-                transparentBackground: false,
-                disableVerticalScroll: true,
-                disableHorizontalScroll: true,
-                supportZoom: false,
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: tvFocus
+                      ? null
+                      : () {
+                          if (_s._showControls) {
+                            setState(() => _s._showControls = false);
+                            _s._hideTimer?.cancel();
+                          } else {
+                            _s._onPointerActivity();
+                          }
+                        },
+                  onDoubleTap: _s._supportsWindowFullscreen
+                      ? () => unawaited(_s._toggleFullscreen())
+                      : null,
+                  child: const SizedBox.expand(),
+                ),
               ),
-              onWebViewCreated: (controller) {
-                _s._controller = controller;
-                controller.addJavaScriptHandler(
-                  handlerName: 'trailerReady',
-                  callback: (_) {
-                    if (!mounted) return;
-                    setState(() => _s._ready = true);
-                  },
-                );
-                controller.addJavaScriptHandler(
-                  handlerName: 'trailerState',
-                  callback: (args) {
-                    if (!mounted || args.length < 2) return;
-                    final playing = args[0] == true;
-                    final ended = args[1] == true;
-                    if (_s._playing == playing && _s._ended == ended) return;
-                    setState(() {
-                      _s._playing = playing;
-                      _s._ended = ended;
-                    });
-                    if (ended) _s._focusNextTrailerIfNeeded();
-                  },
-                );
-                controller.addJavaScriptHandler(
-                  handlerName: 'trailerProgress',
-                  callback: (args) {
-                    if (!mounted || args.length < 2) return;
-                    final currentSec = (args[0] as num?)?.toDouble() ?? 0;
-                    final durationSec = (args[1] as num?)?.toDouble() ?? 0;
-                    final pos = Duration(milliseconds: (currentSec * 1000).round());
-                    final dur = Duration(milliseconds: (durationSec * 1000).round());
-                    if (_s._position == pos && _s._duration == dur) return;
-                    setState(() {
-                      _s._position = pos;
-                      _s._duration = dur;
-                    });
-                  },
-                );
-                controller.addJavaScriptHandler(
-                  handlerName: 'trailerEscape',
-                  callback: (_) => _s._exitTrailer(),
-                );
-              },
-            ),
-            DesktopWindowChrome.overlayDragStrip(),
-            _buildChromeOverlay(tvFocus: tvFocus),
-          ],
+              DesktopWindowChrome.overlayDragStrip(),
+              AnimatedOpacity(
+                opacity: (tvFocus || _s._showControls) ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 220),
+                child: IgnorePointer(
+                  ignoring: !tvFocus && !_s._showControls,
+                  child: _buildChromeOverlay(tvFocus: tvFocus),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -99,13 +139,13 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     tooltip: 'Back',
                     tvFocusable: true,
                     focusNode: _s._backFocus,
-                    onPressed: _s._exitTrailer,
+                    onPressed: () => unawaited(_s._exitTrailer()),
                   ),
                 )
               : PlayerFlatIconButton(
                   icon: Icons.arrow_back_rounded,
                   tooltip: 'Back',
-                  onPressed: _s._exitTrailer,
+                  onPressed: () => unawaited(_s._exitTrailer()),
                 ),
         ),
         const Positioned(
@@ -116,7 +156,27 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
             child: PlayerOverlayGradient(isTop: true),
           ),
         ),
-        if (_s._ended && _s._hasNextTrailer) _buildUpNextOverlay(tvFocus: tvFocus),
+        if (_s._ended && _s._hasNextTrailer)
+          Positioned(
+            bottom: 100,
+            right: 24,
+            child: tvFocus
+                ? FocusTraversalOrder(
+                    order: const NumericFocusOrder(11),
+                    child: PlayerFloatingChip(
+                      label: 'Next Trailer',
+                      trailingIcon: Icons.arrow_forward_rounded,
+                      tvFocusable: true,
+                      focusNode: _s._nextTrailerFocus,
+                      onPressed: _s._playNextTrailer,
+                    ),
+                  )
+                : PlayerFloatingChip(
+                    label: 'Next Trailer',
+                    trailingIcon: Icons.arrow_forward_rounded,
+                    onPressed: _s._playNextTrailer,
+                  ),
+          ),
         _buildBottomChrome(tvFocus: tvFocus),
       ],
     );
@@ -128,93 +188,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),
           child: layers,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUpNextOverlay({required bool tvFocus}) {
-    final button = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Next Trailer',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(width: 8),
-          Icon(
-            Icons.arrow_forward_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-        ],
-      ),
-    );
-
-    return Positioned.fill(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Up next',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _s._nextTrailer!.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (tvFocus)
-                FocusTraversalOrder(
-                  order: const NumericFocusOrder(11),
-                  child: FocusableControl(
-                    focusNode: _s._nextTrailerFocus,
-                    onTap: _s._playNextTrailer,
-                    borderRadius: 8,
-                    scaleOnFocus: 1.0,
-                    showFocusBorder: true,
-                    child: button,
-                  ),
-                )
-              else
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    canRequestFocus: false,
-                    onTap: _s._playNextTrailer,
-                    borderRadius: BorderRadius.circular(8),
-                    child: button,
-                  ),
-                ),
-            ],
-          ),
         ),
       ),
     );
@@ -283,7 +256,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 if (tvFocus)
                   _buildTvTransportRow()
                 else
-                  _buildDesktopTransportRow(tvFocus: false),
+                  _buildDesktopTransportRow(),
                 if (tvFocus) ...[
                   const SizedBox(height: 6),
                   ExcludeFocus(
@@ -304,13 +277,39 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
     return ExcludeFocus(child: chrome);
   }
 
+  Widget _buildVolumeControl({required bool tvFocus}) {
+    if (tvFocus) {
+      return PlayerFlatIconButton(
+        tvFocusable: true,
+        icon: _s._muted || _s._volume <= 0
+            ? Icons.volume_off_rounded
+            : Icons.volume_up_rounded,
+        tooltip: 'Mute',
+        onPressed: () {
+          if (!_s._ready) return;
+          unawaited(_s._toggleMute());
+        },
+      );
+    }
+    return PlayerVolumeControl(
+      volume: _s._volume,
+      maxVolume: 100,
+      onVolumeChanged: (v) {
+        if (!_s._ready) return;
+        unawaited(_s._setVolume(v));
+      },
+      onInteraction: _s._onPointerActivity,
+      onDragStart: () => _s._hideTimer?.cancel(),
+      onDragEnd: _s._startHideTimer,
+    );
+  }
+
   Widget _buildTvTransportRow() {
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
           order: NumericFocusOrder(order.toDouble()),
           child: child,
         );
 
-    // Match desktop: transport cluster left, track menus right.
     return SizedBox(
       width: double.infinity,
       child: Row(
@@ -367,20 +366,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 ),
               ),
               const SizedBox(width: 2),
-              ordered(
-                6,
-                PlayerFlatIconButton(
-                  tvFocusable: true,
-                  icon: _s._muted
-                      ? Icons.volume_off_rounded
-                      : Icons.volume_up_rounded,
-                  tooltip: 'Mute',
-                  onPressed: () {
-                    if (!_s._ready) return;
-                    unawaited(_s._toggleMute());
-                  },
-                ),
-              ),
+              ordered(6, _buildVolumeControl(tvFocus: true)),
             ],
           ),
           Row(
@@ -444,14 +430,13 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
     );
   }
 
-  Widget _buildDesktopTransportRow({required bool tvFocus}) {
+  Widget _buildDesktopTransportRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: _s._showReplayControl
                   ? Icons.replay_rounded
                   : _s._playing
@@ -469,7 +454,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
             ),
             const SizedBox(width: 2),
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: Icons.replay_10_rounded,
               tooltip: 'Back 10s',
               onPressed: () {
@@ -479,7 +463,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
             ),
             const SizedBox(width: 2),
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: Icons.forward_10_rounded,
               tooltip: 'Forward 10s',
               onPressed: () {
@@ -487,18 +470,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 unawaited(_s._skip(10));
               },
             ),
-            const SizedBox(width: 2),
-            PlayerFlatIconButton(
-              tvFocusable: tvFocus,
-              icon: _s._muted
-                  ? Icons.volume_off_rounded
-                  : Icons.volume_up_rounded,
-              tooltip: 'Mute',
-              onPressed: () {
-                if (!_s._ready) return;
-                unawaited(_s._toggleMute());
-              },
-            ),
+            const SizedBox(width: 6),
+            _buildVolumeControl(tvFocus: false),
             const SizedBox(width: 8),
             PlayerTimeRange(
               position: _s._position,
@@ -509,32 +482,38 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         Row(
           children: [
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: Icons.audiotrack_rounded,
               tooltip: 'Audio',
               onPressedWithContext: _s._showAudioMenu,
             ),
             const SizedBox(width: 2),
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: Icons.subtitles_outlined,
               tooltip: 'Subtitles',
               onPressedWithContext: _s._showSubtitleMenu,
             ),
             const SizedBox(width: 2),
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: Icons.hd_outlined,
               tooltip: 'Quality',
               onPressedWithContext: _s._showQualityMenu,
             ),
             const SizedBox(width: 2),
             PlayerFlatIconButton(
-              tvFocusable: tvFocus,
               icon: Icons.speed_rounded,
               tooltip: 'Playback speed',
               onPressedWithContext: _s._showSpeedMenu,
             ),
+            if (_s._supportsWindowFullscreen) ...[
+              const SizedBox(width: 2),
+              PlayerFlatIconButton(
+                icon: _s._isFullscreen
+                    ? Icons.fullscreen_exit_rounded
+                    : Icons.fullscreen_rounded,
+                tooltip: 'Fullscreen',
+                onPressed: () => unawaited(_s._toggleFullscreen()),
+              ),
+            ],
             if (!_s._ready) ...[
               const SizedBox(width: 8),
               Text(
@@ -551,4 +530,3 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
     );
   }
 }
-

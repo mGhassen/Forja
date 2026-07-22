@@ -1238,16 +1238,14 @@ mixin _DesktopPlayerPlayback
       debugPrint('🔴 Player error: $err');
 
       if (!isFatalPlayerOpenError(err)) return;
-      if (_s._hasError || _s._isInitPlaybackRunning) {
-        if (_s._isInitPlaybackRunning) {
-          debugPrint(
-            '[Player] Ignoring stale error — _initPlayback already running',
-          );
-        }
-        return;
-      }
-      if (!_s._playbackConfirmed) {
-        debugPrint('[Player] Ignoring open error — probe handles open failure');
+      if (_s._hasError) return;
+      // Drop stale extract whenever open dies — probe hop must not leave
+      // session/disk URLs that look "ready" on the next Play/reload.
+      unawaited(_invalidateWebstreamingCacheForCurrent());
+      if (_s._isInitPlaybackRunning) {
+        debugPrint(
+          '[Player] Open failed during probe — hopping ($err)',
+        );
         return;
       }
       _s._markPlaybackConfirmed(false);
@@ -1263,7 +1261,6 @@ mixin _DesktopPlayerPlayback
         _s._errorMessage = 'Playback failed. Pick another server from Sources.';
       });
       _s._statusController.clear();
-      unawaited(_invalidateWebstreamingCacheForCurrent());
     });
 
     _s._logSub = _s._player.stream.log.listen((l) {

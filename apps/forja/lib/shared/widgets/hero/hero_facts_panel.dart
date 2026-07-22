@@ -150,34 +150,46 @@ class HeroFactsPanel extends StatelessWidget {
         (label: 'Revenue', value: _formatMoney(revenue)),
     ];
 
+    const radius = 12.0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Production Info',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.92),
-              letterSpacing: 0.2,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text(
+              'Production Info',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.92),
+                letterSpacing: 0.2,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
           for (var i = 0; i < rows.length; i++) ...[
             if (i > 0)
               Divider(
-                height: 20,
+                height: 1,
+                thickness: 1,
                 color: Colors.white.withValues(alpha: 0.1),
               ),
-            _HeroFactRow(label: rows[i].label, value: rows[i].value),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                10,
+                20,
+                i == rows.length - 1 ? 16 : 10,
+              ),
+              child: _HeroFactRow(label: rows[i].label, value: rows[i].value),
+            ),
           ],
         ],
       ),

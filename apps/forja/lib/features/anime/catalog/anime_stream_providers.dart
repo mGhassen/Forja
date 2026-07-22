@@ -14,7 +14,8 @@ class AnimeStreamProviders {
   ///
   /// AnimeRealms was removed (upstream API gone — domain is a storefront).
   /// AllAnime `Uv-mp4` was removed (upstream no longer returns it).
-  /// Megaplay / native AniKoto first; Miruro pipes after AllAnime.
+  /// Megaplay / native AniKoto first; VidLink (MAL WebView) after AllAnime;
+  /// Miruro pipes after that.
   static const List<String> defaultOrder = [
     'megaplay',
     'anikoto',
@@ -26,6 +27,8 @@ class AnimeStreamProviders {
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
+    // VidLink — MAL embed + WebView sniff (same host as movie/TV)
+    'vidlink',
     // Miruro CF WebView pipes
     'miruro:bee',
     'miruro:zoro',
@@ -50,6 +53,7 @@ class AnimeStreamProviders {
     final out = <String, String>{
       'megaplay': 'Megaplay',
       'anikoto': 'AniKoto',
+      'vidlink': 'VidLink',
       'watchhentai': 'WatchHentai',
       'hentaini': 'Hentaini',
     };

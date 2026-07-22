@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -9,11 +10,11 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
+import 'package:window_manager/window_manager.dart';
 
 part 'trailer_player_web.dart';
 part 'trailer_player_menus.dart';
@@ -45,8 +46,14 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   bool _ended = false;
   bool _muted = false;
   bool _ready = false;
+  bool _isFullscreen = false;
+  bool _showControls = true;
+  double _volume = 100;
+  double _volumeBeforeMute = 100;
+  String _selectedQuality = 'auto';
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  Timer? _hideTimer;
   final FocusNode _backFocus = FocusNode(debugLabel: 'trailer-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'trailer-play');
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
@@ -57,27 +64,55 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
 
   bool get _hasNextTrailer => _currentIndex < widget.trailers.length - 1;
 
-  MediaTrailer? get _nextTrailer =>
-      _hasNextTrailer ? widget.trailers[_currentIndex + 1] : null;
+  bool get _showReplayControl => _ended && !_hasNextTrailer;
 
-  bool get _showReplayControl => _ended && _hasNextTrailer;
+  bool get _supportsWindowFullscreen =>
+      !kIsWeb && DesktopWindowChrome.isDesktop;
 
   @override
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
+    ShellBus.notifyShellChromeChanged();
     _currentIndex = widget.initialIndex;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    if (!DesktopWindowChrome.isDesktop) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+    if (_supportsWindowFullscreen) {
+      unawaited(_syncFullscreenState());
+    }
+    _startHideTimer();
   }
 
   @override
   void dispose() {
+    _hideTimer?.cancel();
     ShellBus.leavePlayerSurface();
+    ShellBus.notifyShellChromeChanged();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _backFocus.dispose();
     _playFocus.dispose();
     _nextTrailerFocus.dispose();
+    if (!DesktopWindowChrome.isDesktop) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     super.dispose();
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    // TV keeps chrome visible; next-trailer / menus need chrome up.
+    if (_tvFocus || _ended || PlayerPopupPanel.isShowing || !_playing) return;
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted || _tvFocus || _ended || PlayerPopupPanel.isShowing) return;
+      setState(() => _showControls = false);
+    });
+  }
+
+  void _onPointerActivity() {
+    if (!_showControls) setState(() => _showControls = true);
+    _startHideTimer();
   }
 
   @override
@@ -108,11 +143,32 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     });
   }
 
-  void _exitTrailer() {
+  Future<void> _syncFullscreenState() async {
+    if (!_supportsWindowFullscreen) return;
+    final isFull = await windowManager.isFullScreen();
+    if (!mounted || isFull == _isFullscreen) return;
+    setState(() => _isFullscreen = isFull);
+  }
+
+  Future<void> _toggleFullscreen() async {
+    if (!_supportsWindowFullscreen) return;
+    final isFull = await windowManager.isFullScreen();
+    if (!isFull && await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    }
+    await windowManager.setFullScreen(!isFull);
+    if (mounted) setState(() => _isFullscreen = !isFull);
+  }
+
+  Future<void> _exitTrailer() async {
     if (PlayerPopupPanel.isShowing) {
       PlayerPopupPanel.dismiss();
       _claimPlayFocus();
       return;
+    }
+    if (_supportsWindowFullscreen && _isFullscreen) {
+      await windowManager.setFullScreen(false);
+      if (mounted) setState(() => _isFullscreen = false);
     }
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
@@ -122,7 +178,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     if (_tvFocus) return false;
     if (event is! KeyDownEvent) return false;
     if (event.logicalKey != LogicalKeyboardKey.escape) return false;
-    _exitTrailer();
+    unawaited(_exitTrailer());
     return true;
   }
 }

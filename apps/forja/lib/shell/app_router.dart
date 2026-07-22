@@ -188,8 +188,12 @@ class AppRouter {
   }) {
     final hostContext = context;
     return Navigator.of(context, rootNavigator: true).push<T>(
-      slideRoute(
-        (_) => ShellScope.rehost(
+      PageRouteBuilder<T>(
+        settings: const RouteSettings(name: 'trailer'),
+        opaque: true,
+        fullscreenDialog: true,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ShellScope.rehost(
           hostContext,
           TrailerPlayerScreen(
             trailers: trailers,
@@ -198,7 +202,9 @@ class AppRouter {
             languageCode: languageCode,
           ),
         ),
-        settings: const RouteSettings(name: 'trailer'),
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: _slideTransition,
       ),
     );
   }

@@ -14,6 +14,7 @@ abstract final class ProviderProfiles {
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
+    // vidlink is dual-domain (movies/series + anime) — see catalog entry below
     'miruro:bee',
     'miruro:zoro',
     'miruro:kiwi',
@@ -37,9 +38,14 @@ abstract final class ProviderProfiles {
       id: 'videasy',
       priority: {SourceDomain.movies: 95, SourceDomain.series: 90},
     ),
+    // Anime score 92 ≈ after AllAnime Luf, before Miruro (settings order wins).
     'vidlink': const ProviderProfile(
       id: 'vidlink',
-      priority: {SourceDomain.movies: 80, SourceDomain.series: 92},
+      priority: {
+        SourceDomain.movies: 80,
+        SourceDomain.series: 92,
+        SourceDomain.anime: 92,
+      },
     ),
     'vidsrc': const ProviderProfile(
       id: 'vidsrc',

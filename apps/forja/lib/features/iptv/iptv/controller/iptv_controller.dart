@@ -561,6 +561,7 @@ class IptvController extends ChangeNotifier
   static const guideHoursAhead = 24.0;
 
   bool _epgEnabled = true;
+  bool _disposed = false;
 
   IptvController() {
     _epgEnabled = SettingsService.iptvEpgEnabledNotifier.value;
@@ -571,9 +572,16 @@ class IptvController extends ChangeNotifier
     unawaited(_loadLiveBrowseLayoutPref());
   }
 
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
+  }
+
   Future<void> _loadLiveSortPrefs() async {
     final category = await IptvStore.loadLiveCategorySort();
     final content = await IptvStore.loadLiveContentSort();
+    if (_disposed) return;
     if (liveCategorySort == category && liveContentSort == content) return;
     liveCategorySort = category;
     liveContentSort = content;
@@ -582,6 +590,7 @@ class IptvController extends ChangeNotifier
 
   Future<void> _loadLiveBrowseLayoutPref() async {
     final layout = await IptvStore.loadLiveBrowseLayout();
+    if (_disposed) return;
     if (liveBrowseLayout == layout) return;
     liveBrowseLayout = layout;
     notifyListeners();
@@ -660,15 +669,19 @@ class IptvController extends ChangeNotifier
   }
 
   void _onStoreListRevision() {
+    if (_disposed) return;
     unawaited(_softReloadPortalsFromStore());
   }
 
   /// Pull portals/favorites from [IptvStore] after an external CSV import.
   Future<void> _softReloadPortalsFromStore() async {
     final stored = await IptvStore.load();
+    if (_disposed) return;
+    final favorites = await IptvStore.loadFavorites();
+    if (_disposed) return;
     _favoritePortals
       ..clear()
-      ..addAll(await IptvStore.loadFavorites());
+      ..addAll(favorites);
     final knownKeys = stored.map((v) => v.key).toSet();
     for (final key in _portalRecencyKeys.toList()) {
       if (!knownKeys.contains(key)) _portalRecencyKeys.remove(key);
@@ -688,6 +701,7 @@ class IptvController extends ChangeNotifier
       activePortal = null;
       activeSection = null;
       await IptvStore.clearLastPortalKey();
+      if (_disposed) return;
     } else if (active != null) {
       for (final v in verified) {
         if (v.key == active.key) {
@@ -955,6 +969,7 @@ class IptvController extends ChangeNotifier
   }
   @override
   void dispose() {
+    _disposed = true;
     SettingsService.iptvEpgEnabledNotifier
         .removeListener(_onEpgPrefChanged);
     IptvStore.listRevision.removeListener(_onStoreListRevision);

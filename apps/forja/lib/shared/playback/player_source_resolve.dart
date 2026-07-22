@@ -105,8 +105,8 @@ abstract final class PlayerSourceResolve {
     required int season,
     required int episode,
     bool Function()? isCancelled,
-    /// Server-panel reload: skip disk hit and drop a matching entry so the
-    /// next Play cannot revive the same stale URLs.
+    /// Manual reload / force-refresh: drop session+disk and re-extract.
+    /// Never read cache on this path — user asked for a fresh check.
     bool bypassDiskCache = false,
   }) async {
     final cacheKey = WebstreamingStreamCache.cacheKeyFromProgress(
@@ -115,37 +115,35 @@ abstract final class PlayerSourceResolve {
       season: season,
       episode: episode,
     );
-    final cached = bypassDiskCache
-        ? await WebstreamingStreamCache.read(cacheKey)
-        : await WebstreamingStreamCache.readLive(
-            cacheKey,
-            probe: probeStreamSourceUrl,
-          );
-    // Only reuse cache when it is for this exact provider. A different
-    // server's extract must resolve fresh.
-    if (!bypassDiskCache &&
-        cached != null &&
-        cached.sources.isNotEmpty &&
-        cached.providerId == providerId) {
-      final rank = providers.keys.toList().indexOf(cached.providerId);
-      final sources = await PlaybackSelection.rankLegacySources(
-        sources: cached.sources,
-        providerId: cached.providerId.isNotEmpty ? cached.providerId : providerId,
-        providerRank: rank >= 0 ? rank : 0,
-      );
-      final first = sources.first;
-      return PlaybackResolveHit(
-        providerId: cached.providerId.isNotEmpty ? cached.providerId : providerId,
-        providerRank: rank >= 0 ? rank : 0,
-        streamUrl: first.url,
-        headers: first.headers,
-        sources: sources,
-      );
-    }
-    if (bypassDiskCache &&
-        cached != null &&
-        cached.providerId == providerId) {
+    if (bypassDiskCache) {
       await WebstreamingStreamCache.drop(cacheKey);
+    } else {
+      final cached = await WebstreamingStreamCache.readLive(
+        cacheKey,
+        probe: probeStreamSourceUrl,
+      );
+      // Only reuse cache when it is for this exact provider. A different
+      // server's extract must resolve fresh.
+      if (cached != null &&
+          cached.sources.isNotEmpty &&
+          cached.providerId == providerId) {
+        final rank = providers.keys.toList().indexOf(cached.providerId);
+        final sources = await PlaybackSelection.rankLegacySources(
+          sources: cached.sources,
+          providerId:
+              cached.providerId.isNotEmpty ? cached.providerId : providerId,
+          providerRank: rank >= 0 ? rank : 0,
+        );
+        final first = sources.first;
+        return PlaybackResolveHit(
+          providerId:
+              cached.providerId.isNotEmpty ? cached.providerId : providerId,
+          providerRank: rank >= 0 ? rank : 0,
+          streamUrl: first.url,
+          headers: first.headers,
+          sources: sources,
+        );
+      }
     }
 
     final order = await _movieSettingsOrder(movie);

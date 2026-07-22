@@ -17,9 +17,9 @@ void main() {
         candidateIds: ['videasy', 'megaplay', 'kisskh', 'vidlink'],
       );
       expect(ordered, contains('megaplay'));
+      expect(ordered, contains('vidlink')); // dual-domain: movies/series + anime
       expect(ordered, isNot(contains('kisskh')));
       expect(ordered, isNot(contains('videasy')));
-      expect(ordered, isNot(contains('vidlink')));
       expect(ordered.first, 'megaplay');
     });
 
