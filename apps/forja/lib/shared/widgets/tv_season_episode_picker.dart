@@ -40,6 +40,10 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     /// When set (`anilist` / `kisskh`), watched keys are `{catalog}_{id}_S…_E…`.
     /// Null keeps TMDB keys `{id}_S…_E…`.
     this.watchedCatalog,
+    /// When set, watched / progress keys and [onToggleWatched] use this season
+    /// instead of [selectedSeason]. Anime franchise rails use `1` (each AniList
+    /// Media keeps its own id + historical `S1_E*` marks).
+    this.watchedSeasonForKeys,
     this.tvTabId,
     this.tvSeasonRowId,
     this.tvEpisodeRowId,
@@ -55,6 +59,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final Map<String, dynamic>? seasonData;
   final Set<String> watchedEpisodes;
   final String? watchedCatalog;
+  final int? watchedSeasonForKeys;
   final String fallbackPosterPath;
   final SeasonSelectCallback onSeasonSelected;
   final EpisodeSelectCallback onEpisodeSelected;
@@ -211,7 +216,11 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return episodes;
   }
 
-  bool _watchedKey(int season, int episode) {
+  int get _keysSeason =>
+      widget.watchedSeasonForKeys ?? widget.selectedSeason;
+
+  bool _watchedKey(int episode) {
+    final season = _keysSeason;
     final catalog = widget.watchedCatalog;
     final key = (catalog == null || catalog.isEmpty)
         ? '${widget.tmdbId}_S${season}_E$episode'
@@ -326,8 +335,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           ep['still_path'] ?? ep['thumbnail'],
           widget.fallbackPosterPath,
         );
-        final watched = _watchedKey(widget.selectedSeason, epNum);
-        final progKey = 'S${widget.selectedSeason}_E$epNum';
+        final watched = _watchedKey(epNum);
+        final progKey = 'S${_keysSeason}_E$epNum';
         final prog = widget.episodeProgress[progKey];
         final pos = prog?['position'] as int? ?? 0;
         final dur = prog?['duration'] as int? ??
@@ -410,7 +419,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                   if (focused) widget.onEpisodeFocused!(epNum);
                 },
           onToggleWatched: () =>
-              widget.onToggleWatched(widget.selectedSeason, epNum),
+              widget.onToggleWatched(_keysSeason, epNum),
           onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
           tvTabId: tabId,
           tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
@@ -1038,13 +1047,13 @@ class _ThumbBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: Colors.black.withValues(alpha: 0.88),
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),

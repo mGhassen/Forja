@@ -901,9 +901,10 @@ mixin _DesktopPlayerEpisodes
   }
 
   Future<void> _applyAutoSubtitle() async {
-    if (_s._disposed) return;
+    if (_s._disposed || !mounted) return;
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();
+    if (_s._disposed || !mounted) return;
     final embedded = _s._player.state.tracks.subtitle
         .where(
           (t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
@@ -917,6 +918,7 @@ mixin _DesktopPlayerEpisodes
       );
       if (track == null) return;
       await _s._player.setSubtitleTrack(track);
+      if (_s._disposed || !mounted) return;
       _s._updateSubVisibility(track);
       if (mounted) setState(() => _s._selectedExternalSubUrl = null);
       return;
@@ -927,6 +929,7 @@ mixin _DesktopPlayerEpisodes
     if (embedded.isEmpty) return;
     final track = embedded.first;
     await _s._player.setSubtitleTrack(track);
+    if (_s._disposed || !mounted) return;
     _s._updateSubVisibility(track);
     if (mounted) setState(() => _s._selectedExternalSubUrl = null);
   }

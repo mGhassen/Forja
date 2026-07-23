@@ -211,6 +211,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<PlayerLog>? _logSub;
+  /// Deferred track/subtitle auto-select — cancel on exit so it cannot
+  /// touch State after the route is gone.
+  Timer? _trackAutoSelectTimer;
   PlaybackRecovery? _playbackRecovery;
   bool _autoTracksAppliedForSource = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
@@ -235,6 +238,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// mpv renders it directly on the video frame, so the custom Flutter overlay is hidden.
   bool _isNativeSubtitle = false;
   String? _selectedExternalSubUrl;
+  /// Downloaded external subtitle file URIs keyed by source URL — reused when
+  /// mpv wipes the track on media open (auto-pick race).
+  final Map<String, String> _externalSubFileCache = {};
 
   // ── Provider switching ────────────────────────────────────────────────────
   String? _currentProvider;
@@ -306,6 +312,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       final now = DateTime.now();
       _playbackConfirmedAt = now;
       _sessionFirstConfirmedAt ??= now;
+      // Media open resets mpv subtitle — re-apply preferred after the wipe.
+      unawaited(_reapplyPreferredSubtitle());
     } else {
       // Keep session mid / first-confirm across source switches for credits
       // re-open; open mid stays cleared above.
@@ -372,10 +380,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
+    _trackAutoSelectTimer?.cancel();
+    _trackAutoSelectTimer = null;
     _pipSub?.cancel();
     _torrentStatsSub?.cancel();
+    PlayerSubtitleSettingsDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
+    playerMenuClearReturnFocus();
     // If we tear down while in PiP, restore window chrome so the next
     // screen doesn't inherit a tiny frameless 480x270 window.
     if (PipService.instance.isDesktopActive) {

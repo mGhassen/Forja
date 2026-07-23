@@ -109,7 +109,7 @@ void main() {
         ProviderRuntimeConfig.instance
             .animePlaybackProfile('miruro:kiwi')
             .probe,
-        AnimeProbeMode.masterOnly,
+        AnimeProbeMode.segmentPoisonSample,
       );
       ProviderRuntimeConfig.instance.debugSetSnapshot(merged);
       expect(

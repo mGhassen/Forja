@@ -661,13 +661,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       _series ??= await _service.resolveAnikoto(widget.anime);
     }
     if (!mounted || _cancelled) return;
+    final malId = await _service.resolveMalId(widget.anime.id);
+    if (!mounted || _cancelled) return;
     _allEmbeds = _service.buildAllEmbeds(
       anilistId: widget.anime.id,
       episode: widget.episodeNumber,
       series: _series,
       animeTitles: widget.anime.resolveTitleCandidates(),
       isAdult: widget.anime.isAdult,
-      malId: widget.anime.idMal,
+      malId: malId,
     );
   }
 
@@ -785,20 +787,30 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     if (AnimeService.savedSourceNeedsAnikoto(_preferredSourceKey)) {
       _setPhase('Looking up episode…');
-      _setStatusLine('Matching catalog…');
+      _setStatusLine('Matching AniKoto…');
       _series = await _service.resolveAnikoto(widget.anime);
       if (!mounted || _cancelled) return;
       if (_series == null) {
         debugPrint(
             '[AnimePlayer] Anikoto catalog miss for ${widget.anime.displayTitle} '
             '(anilist ${widget.anime.id})');
-        _setStatusLine('Catalog miss · trying fallbacks');
+        _setStatusLine('AniKoto miss · trying fallbacks');
       } else {
-        _setStatusLine('Catalog matched');
+        _setStatusLine('AniKoto matched');
       }
     } else if (kDebugMode) {
       debugPrint(
         '[AnimePlayer] skipping Anikoto — saved source $_preferredSourceKey',
+      );
+    }
+
+    _setStatusLine('Resolving MAL id…');
+    final malId = await _service.resolveMalId(widget.anime.id);
+    if (!mounted || _cancelled) return;
+    if (kDebugMode) {
+      debugPrint(
+        '[AnimePlayer] anilist=${widget.anime.id} mal=$malId '
+        '(anilist idMal=${widget.anime.idMal})',
       );
     }
 
@@ -808,7 +820,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       series: _series,
       animeTitles: widget.anime.resolveTitleCandidates(),
       isAdult: widget.anime.isAdult,
-      malId: widget.anime.idMal,
+      malId: malId,
     );
     if (kDebugMode && pref != null) {
       debugPrint(
@@ -1362,11 +1374,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final handOff = _handOffEpisode;
     _handOffEpisode = null;
     if (handOff != null && mounted) {
+      final existing = ShellScope.maybeOf(context);
+      final profile = existing?.profile ?? resolveShellProfile(context);
+      final config = existing?.config ?? shellPlatformConfigFor(profile);
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
-          (_) => ShellScope.rehost(
-            context,
-            AnimePlayerScreen(
+          (_) => ShellScope(
+            profile: profile,
+            config: config,
+            child: AnimePlayerScreen(
               anime: widget.anime,
               episodeNumber: handOff,
               category: _category,

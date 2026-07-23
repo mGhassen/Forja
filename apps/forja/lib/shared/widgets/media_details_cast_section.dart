@@ -122,7 +122,9 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                       ClipOval(
                         child: profilePath.isNotEmpty
                             ? CachedNetworkImage(
-                                imageUrl: TmdbApi.getProfileUrl(profilePath),
+                                imageUrl: profilePath.startsWith('http')
+                                    ? profilePath
+                                    : TmdbApi.getProfileUrl(profilePath),
                                 width: MediaDetailsCastSection._avatarSize,
                                 height: MediaDetailsCastSection._avatarSize,
                                 fit: BoxFit.cover,

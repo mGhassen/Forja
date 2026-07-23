@@ -50,7 +50,7 @@ Per profile:
 |---------|------------------|
 | **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled keys only — e.g. `iptvScrape` (Find Portals) and `dealPortal` (Deal from catalog pool). The app re-pulls flags/credits on IPTV open and when the app resumes. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
-| **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio, max quality |
+| **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio / subtitle, max quality, anime title language |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features** |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
 | **`profile_settings` → Nuvio** | Installed Nuvio scraper manifest URLs |
@@ -208,7 +208,8 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 
 - IPTV credentials live on shared `iptv_portals` rows with passwords encrypted at rest. Your per-profile **portal name** is only on `user_iptv_portals`.
 - **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud.
-- Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources) sync in full.
+- **Cloud is master for `profile_settings` too.** The device settings file is a cache of the active profile’s cloud row. Edits write the cache and push; wipe / pull / defaults never upload an empty or partial cache over Stremio, Nuvio, or navigation already in cloud.
+- Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources and preferred subtitle language) sync in full.
 - Portal **share codes** are a separate peer handoff (encrypted ciphertext on
   rentry) — they are not stored in your sync payload.
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.

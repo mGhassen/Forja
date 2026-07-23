@@ -11,6 +11,10 @@ import 'package:rust/rust.dart';
 
 /// Export/import between local stores and lean `profile_settings.payload`.
 ///
+/// **Cloud is master** for `profile_settings` and IPTV assignments. Local KV /
+/// `IptvStore` are caches — intentional UI edits write the cache then push;
+/// wipe / pull / defaults never push incomplete cache over cloud.
+///
 /// IPTV portals sync via `user_iptv_portals` / `iptv_portals` — never
 /// `profile_settings`. M3U playlists are device-local only.
 class SyncDomainBridge {
@@ -37,12 +41,17 @@ class SyncDomainBridge {
 
   /// Persist the current profile before changing the device-local selection.
   ///
-  /// Cloud is master for IPTV — never push an empty local cache (that wiped
-  /// production assignments). Settings still push; portals only if local
-  /// inventory is non-empty.
+  /// Flushes pending domain edits (incl. intentional empty Stremio/Nuvio wipe).
+  /// Cloud is master — never push an empty IPTV cache; never drop remote
+  /// connectedServices just because local export omitted them.
   Future<void> prepareProfileSwitch() async {
+    final pending = Set<String>.from(_pushTimers.keys);
     cancelPendingPushes();
-    await pushAllLocal(pushIptvIfLocalEmpty: false);
+    await pushAllLocal(
+      pushIptvIfLocalEmpty: false,
+      allowEmptyStremioWipe: pending.contains(_domainStremio),
+      allowEmptyNuvioWipe: pending.contains(_domainNuvio),
+    );
   }
 
   /// After sign-out / session loss: cancel pushes, reset synced domains, wipe
@@ -59,11 +68,14 @@ class SyncDomainBridge {
 
   /// Wipe synced local domains to platform defaults (no prior-profile bleed).
   ///
-  /// Local KV is device-global; every profile switch/create must reset before
-  /// applying that profile's cloud payload.
+  /// Local KV is a device-global **cache**; every profile switch/create must
+  /// reset before applying that profile's cloud payload. Never schedules a
+  /// cloud push — empty/default cache must not overwrite cloud.
   Future<void> resetSyncedLocalToPlatformDefaults({
     bool clearIptv = true,
   }) async {
+    // Cache-only wipe — cancel any debounced push that would upload defaults.
+    cancelPendingPushes();
     final defaults = PlatformDefaults.forProfile(
       SettingsService.platformProfile,
     );
@@ -73,6 +85,7 @@ class SyncDomainBridge {
       'play_source_nuvio_enabled': defaults.playSourceNuvio,
       'play_source_webstreaming_enabled': defaults.playSourceWebstreaming,
       'preferred_audio_lang': 'None',
+      'preferred_subtitle_lang': 'English',
       'avoid_unsupported_audio': true,
       'auto_next_episode': true,
       'auto_skip_intro': false,
@@ -102,7 +115,6 @@ class SyncDomainBridge {
       // Local cache only — never schedule a cloud push from a wipe.
       await IptvStore.save(const [], scheduleSync: false);
       await IptvStore.saveFavorites({}, scheduleSync: false);
-      cancelPendingPushes();
     }
   }
 
@@ -141,16 +153,25 @@ class SyncDomainBridge {
     return _pullAndApplyUserIptvPortals();
   }
 
-  /// Push lean settings + IPTV. Cloud is master for portals: an empty local
-  /// cache never deletes cloud assignments unless [allowEmptyIptvWipe] (user
-  /// deleted every portal). [pushIptvIfLocalEmpty] false skips IPTV entirely
-  /// when local is empty (profile switch / seed).
+  /// Push lean settings + IPTV. Cloud is master:
+  /// - Merges local cache into the existing cloud row (never replaces with a
+  ///   partial local export that drops remote keys).
+  /// - Empty local Stremio/Nuvio never deletes cloud unless
+  ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] (that domain's edit).
+  /// - Empty IPTV cache never deletes assignments unless [allowEmptyIptvWipe].
+  /// [pushIptvIfLocalEmpty] false skips IPTV entirely when local is empty
+  /// (profile switch / seed).
   Future<void> pushAllLocal({
     bool pushIptvIfLocalEmpty = true,
     bool allowEmptyIptvWipe = false,
+    bool allowEmptyStremioWipe = false,
+    bool allowEmptyNuvioWipe = false,
   }) async {
     if (!SyncService.instance.isSignedIn) return;
-    final payload = await _buildLeanPayload();
+    final payload = await _buildMergedCloudPayload(
+      allowEmptyStremioWipe: allowEmptyStremioWipe,
+      allowEmptyNuvioWipe: allowEmptyNuvioWipe,
+    );
     await SyncService.instance.pushProfileSettings(payload);
     await _pushUserIptvPortals(
       pushIfLocalEmpty: pushIptvIfLocalEmpty,
@@ -168,11 +189,19 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
-      // Debounced user edits — still refuse empty wipe (use pushEmptyIptvInventory).
-      unawaited(pushAllLocal(pushIptvIfLocalEmpty: false));
+      // Debounced user edits — empty connected wipe only for that domain.
+      unawaited(
+        pushAllLocal(
+          pushIptvIfLocalEmpty: false,
+          allowEmptyStremioWipe: domain == _domainStremio,
+          allowEmptyNuvioWipe: domain == _domainNuvio,
+        ),
+      );
     });
   }
 
+  /// Local cache export for domains we own. Omitted keys mean "unchanged on
+  /// cloud" — see [_buildMergedCloudPayload].
   Future<Map<String, dynamic>> _buildLeanPayload() async {
     final out = <String, dynamic>{};
 
@@ -192,6 +221,56 @@ class SyncDomainBridge {
     // Never write iptv into profile_settings — portals use user_iptv_portals;
     // M3U stays device-local.
     return out;
+  }
+
+  /// Cloud SoT: start from remote row, overlay intentional local cache.
+  Future<Map<String, dynamic>> _buildMergedCloudPayload({
+    required bool allowEmptyStremioWipe,
+    required bool allowEmptyNuvioWipe,
+  }) async {
+    final remote = await SyncService.instance.pullProfileSettings() ?? {};
+    final local = await _buildLeanPayload();
+    final next = Map<String, dynamic>.from(remote);
+
+    final playback = local['playback'];
+    if (playback is Map) {
+      next['playback'] = Map<String, dynamic>.from(playback);
+    }
+
+    final navigation = local['navigation'];
+    if (navigation is Map && navigation.isNotEmpty) {
+      next['navigation'] = Map<String, dynamic>.from(navigation);
+    }
+
+    final remoteConnected = remote['connectedServices'] is Map
+        ? Map<String, dynamic>.from(remote['connectedServices'] as Map)
+        : <String, dynamic>{};
+    final localConnected = local['connectedServices'] is Map
+        ? Map<String, dynamic>.from(local['connectedServices'] as Map)
+        : <String, dynamic>{};
+    final connected = Map<String, dynamic>.from(remoteConnected);
+
+    if (localConnected.containsKey('stremio')) {
+      connected['stremio'] = localConnected['stremio'];
+    } else if (allowEmptyStremioWipe) {
+      connected.remove('stremio');
+    }
+
+    if (localConnected.containsKey('nuvio')) {
+      connected['nuvio'] = localConnected['nuvio'];
+    } else if (allowEmptyNuvioWipe) {
+      connected.remove('nuvio');
+    }
+
+    if (connected.isNotEmpty) {
+      next['connectedServices'] = connected;
+    } else {
+      next.remove('connectedServices');
+    }
+
+    // Portals use user_iptv_portals; strip any legacy payload.iptv.
+    next.remove('iptv');
+    return next;
   }
 
   Future<void> _applyLeanPayload(Map<String, dynamic> payload) async {
@@ -389,6 +468,7 @@ class SyncDomainBridge {
       'simple_streaming_resolve_enabled': await _settings
           .isSimpleStreamingResolveEnabled(),
       'preferred_audio_lang': await _settings.getPreferredAudioLanguage(),
+      'preferred_subtitle_lang': await _settings.getPreferredSubtitleLanguage(),
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
       'auto_next_episode': await _settings.getAutoNextEpisode(),
       'auto_skip_intro': await _settings.getAutoSkipIntro(),
@@ -427,6 +507,11 @@ class SyncDomainBridge {
     if (payload.containsKey('preferred_audio_lang')) {
       await _settings.setPreferredAudioLanguage(
         payload['preferred_audio_lang'] as String,
+      );
+    }
+    if (payload.containsKey('preferred_subtitle_lang')) {
+      await _settings.setPreferredSubtitleLanguage(
+        payload['preferred_subtitle_lang'] as String,
       );
     }
     if (payload.containsKey('avoid_unsupported_audio')) {

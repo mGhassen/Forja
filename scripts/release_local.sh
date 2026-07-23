@@ -165,6 +165,22 @@ latest_tag() {
   git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -1
 }
 
+# Prefer newest tag on the pubspec major.minor arc (avoids stale v1.4.* leftovers).
+default_release_tag() {
+  local semver major minor arc
+  semver="$(grep '^version:' "$APP_DIR/pubspec.yaml" 2>/dev/null | sed 's/version: *//' | cut -d+ -f1 || true)"
+  if [[ "$semver" =~ ^([0-9]+)\.([0-9]+)\. ]]; then
+    major="${BASH_REMATCH[1]}"
+    minor="${BASH_REMATCH[2]}"
+    arc="$(git tag -l "v${major}.${minor}.*" --sort=-v:refname 2>/dev/null | head -1 || true)"
+    if [[ -n "$arc" ]]; then
+      echo "$arc"
+      return
+    fi
+  fi
+  latest_tag
+}
+
 list_tags() {
   local filter="${1:-}" tags
   fetch_tags
@@ -184,48 +200,73 @@ list_tags() {
 }
 
 pick_tag_interactive() {
+  # UI → stderr so `tag="$(pick_tag_interactive)"` only captures the tag.
   fetch_tags
-  local filter picked tags tag
-  echo
-  read -r -p "Filter tags (empty = all, e.g. 1.2): " filter
+  local filter picked tags tag default show_n=20 i
+  default="$(default_release_tag)"
+  [[ -n "$default" ]] || die "no v* tags found"
+
+  echo >&2
+  echo "  ${C_BOLD}latest${C_RESET}  ${C_GREEN}${default}${C_RESET}  ${C_DIM}(Enter)${C_RESET}" >&2
+  read -r -p "Filter (empty = recent ${show_n}, e.g. 1.2): " filter
+
   tags="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname)"
   if [[ -n "$filter" ]]; then
     tags="$(grep -i "$filter" <<<"$tags" || true)"
+  else
+    tags="$(
+      {
+        echo "$default"
+        # Prefer same major.minor arc as default, then fill with other recent tags.
+        arc="${default%.*}"
+        git tag -l "${arc}.*" --sort=-v:refname | grep -vxF "$default" || true
+        grep -vxF "$default" <<<"$tags" || true
+      } | awk 'NF && !seen[$0]++' | head -n "$show_n"
+    )"
   fi
   [[ -n "$tags" ]] || die "no tags match"
-  echo
-  local i=1
+  default="$(head -1 <<<"$tags")"
+
+  echo >&2
+  i=1
   while IFS= read -r t; do
-    printf "  ${C_DIM}%2d)${C_RESET} %s\n" "$i" "$t"
+    if (( i == 1 )); then
+      printf "  ${C_GREEN}%2d)${C_RESET} ${C_BOLD}%s${C_RESET}  ${C_DIM}← Enter${C_RESET}\n" "$i" "$t" >&2
+    else
+      printf "  ${C_DIM}%2d)${C_RESET} %s\n" "$i" "$t" >&2
+    fi
     i=$((i + 1))
   done <<<"$tags"
-  echo
-  read -r -p "Pick number or type tag: " picked
-  [[ -n "$picked" ]] || die "empty tag"
+  echo >&2
+  read -r -p "Pick number or type tag [${default}]: " picked
+  if [[ -z "$picked" ]]; then
+    printf '%s\n' "$default"
+    return
+  fi
   if [[ "$picked" =~ ^[0-9]+$ ]]; then
     tag="$(sed -n "${picked}p" <<<"$tags")"
     [[ -n "$tag" ]] || die "invalid number"
   else
     tag="$(normalize_tag "$picked")"
   fi
-  echo "$tag"
+  printf '%s\n' "$tag"
 }
 
 pick_bump() {
   if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
-    echo "${1:-patch}"
+    printf '%s\n' "${1:-patch}"
     return
   fi
-  echo
-  echo "Bump type:"
-  echo "  ${C_DIM}1)${C_RESET} patch   ${C_DIM}(default)${C_RESET}"
-  echo "  ${C_DIM}2)${C_RESET} minor"
-  echo "  ${C_DIM}3)${C_RESET} major"
+  echo >&2
+  echo "Bump type:" >&2
+  echo "  ${C_DIM}1)${C_RESET} patch   ${C_DIM}(default)${C_RESET}" >&2
+  echo "  ${C_DIM}2)${C_RESET} minor" >&2
+  echo "  ${C_DIM}3)${C_RESET} major" >&2
   read -r -p "Choice [1]: " bump_choice
   case "${bump_choice:-1}" in
-    1|patch) echo patch ;;
-    2|minor) echo minor ;;
-    3|major) echo major ;;
+    1|patch) printf '%s\n' patch ;;
+    2|minor) printf '%s\n' minor ;;
+    3|major) printf '%s\n' major ;;
     *) die "invalid bump" ;;
   esac
 }
@@ -658,7 +699,7 @@ cmd_bump() {
 interactive_menu() {
   local latest choice tag bump
   fetch_tags
-  latest="$(latest_tag)"
+  latest="$(default_release_tag)"
 
   echo
   echo "${C_BOLD}${C_CYAN}Forja local release${C_RESET}"

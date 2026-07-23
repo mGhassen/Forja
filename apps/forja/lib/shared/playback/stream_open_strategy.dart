@@ -163,6 +163,12 @@ class StreamOpenMindTree {
     }
     _tried.add(action);
     final step = await _materialize(action);
+    if (step == null) {
+      if (kDebugMode) {
+        debugPrint('[OpenMindTree] $action unavailable — exhausted');
+      }
+      return null;
+    }
     _current = step;
     if (kDebugMode) {
       debugPrint(
@@ -206,7 +212,7 @@ class StreamOpenMindTree {
       return _once(StreamOpenAction.playDirect);
     }
 
-    // force: strip first; on fail, direct.
+    // force: strip first; on fail, direct (false-sniff / proxy miss recovery).
     if (pngMode == AnimePngStripMode.force) {
       if (!_tried.contains(StreamOpenAction.playPngStrip)) {
         return StreamOpenAction.playPngStrip;
@@ -228,7 +234,7 @@ class StreamOpenMindTree {
     //        │ fail
     //        └─────────────► playPngStrip
     //
-    //   open/decode fail re-enters with openFailed fact set.
+    //   open/decode fail re-enters with openFailed / decodeFailed fact set.
     if (facts.contains(StreamOpenFact.pngShell)) {
       if (!_tried.contains(StreamOpenAction.playPngStrip)) {
         return StreamOpenAction.playPngStrip;
@@ -257,7 +263,7 @@ class StreamOpenMindTree {
   StreamOpenAction? _once(StreamOpenAction a) =>
       _tried.contains(a) ? null : a;
 
-  Future<StreamOpenStep> _materialize(StreamOpenAction action) async {
+  Future<StreamOpenStep?> _materialize(StreamOpenAction action) async {
     switch (action) {
       case StreamOpenAction.playDirect:
         return StreamOpenStep(
@@ -269,13 +275,17 @@ class StreamOpenMindTree {
         );
       case StreamOpenAction.playPngStrip:
         final proxied = await _pngStripUrl();
+        if (proxied == null || proxied.isEmpty) {
+          debugPrint(
+            '[OpenMindTree] playPngStrip aborted — local HLS proxy unavailable',
+          );
+          return null;
+        }
         return StreamOpenStep(
           action: action,
           catalogUrl: catalogUrl,
-          playUrl: proxied ?? catalogUrl,
-          headers: proxied == null
-              ? (_headers.isEmpty ? null : _headers)
-              : null,
+          playUrl: proxied,
+          headers: null,
           reason: _reasonFor(action),
         );
     }
@@ -307,6 +317,11 @@ class StreamOpenMindTree {
     }
     final ls = LocalServerService();
     if (ls.port == 0) await ls.start();
+    if (ls.port == 0) {
+      // One more attempt — boot warm can race the first anime open.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await ls.start();
+    }
     if (ls.port == 0) return null;
     return ls.getHlsProxyUrl(catalogUrl, _headers, stripMode: 'png');
   }

@@ -30,6 +30,16 @@ void main() {
       expect(await tree.next(), isNull);
     });
 
+    test('pngShell with no proxy → exhausted (no silent catalog open)', () async {
+      final tree = await StreamOpenMindTree.start(
+        catalogUrl: 'https://cdn.example/x/master.m3u8',
+        providerId: 'megaplay',
+        sniffFacts: () async => {StreamOpenFact.pngShell},
+        buildStripProxy: (_, __) => '',
+      );
+      expect(await tree.next(), isNull);
+    });
+
     test('plain HLS → direct first; openFailed → strip', () async {
       final tree = await StreamOpenMindTree.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',

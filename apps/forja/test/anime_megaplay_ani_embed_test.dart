@@ -6,29 +6,58 @@ void main() {
   group('Megaplay AniList embeds', () {
     final service = AnimeService();
 
-    test('without Anikoto uses /stream/ani/{anilist}/{ep}/{lang}', () {
+    test('uses /stream/ani/{anilist}/{ep}/{lang} — never Anikoto s-2', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 5114,
         episode: 1,
+        series: const AnikotoSeries(
+          id: 1,
+          slug: 'should-not-affect-megaplay',
+          aniId: 999,
+          episodes: [
+            AnikotoEpisode(
+              id: 1,
+              number: 1,
+              title: 'Ep 1',
+              embedId: '136197',
+            ),
+          ],
+        ),
       );
       final mega = embeds.where((e) => e.server == 'megaplay').toList();
       expect(mega, isNotEmpty);
       expect(
-        mega.every(
-          (e) => e.url.contains('/stream/ani/5114/1/'),
-        ),
+        mega.every((e) => e.url.contains('/stream/ani/5114/1/')),
         isTrue,
       );
-      expect(
-        AnimeService.savedSourceNeedsAnikoto('megaplay'),
-        isTrue,
-      );
-      expect(AnimeService.savedSourceNeedsAnikoto(null), isTrue);
-      expect(AnimeService.savedSourceNeedsAnikoto(''), isTrue);
+      expect(mega.any((e) => e.url.contains('/stream/s-2/')), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto('megaplay'), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto(null), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto(''), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto('auto'), isFalse);
+      expect(AnimeService.savedSourceNeedsAnikoto('anikoto'), isTrue);
+      expect(AnimeService.savedSourceNeedsAnikoto('vidnest:hianime'), isFalse);
       expect(AnimeService.savedSourceNeedsAnikoto('allanime:Yt-mp4'), isFalse);
     });
 
-    test('VidNest uses Anikoto ani_id when catalog id differs', () {
+    test('Megaplay also emits /stream/mal when malId set', () {
+      final embeds = service.buildAllEmbeds(
+        anilistId: 171018,
+        episode: 1,
+        malId: 57334,
+      );
+      final mega = embeds.where((e) => e.server == 'megaplay').toList();
+      expect(
+        mega.any((e) => e.url.contains('/stream/ani/171018/1/')),
+        isTrue,
+      );
+      expect(
+        mega.any((e) => e.url.contains('/stream/mal/57334/1/')),
+        isTrue,
+      );
+    });
+
+    test('VidNest always uses card AniList id — never Anikoto ani_id', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 171018,
         episode: 1,
@@ -48,13 +77,12 @@ void main() {
       final nest = embeds.where((e) => e.server == 'vidnest').toList();
       expect(nest, isNotEmpty);
       expect(
-        nest.every((e) => e.url.contains('vidnest://anilist/132029/')),
+        nest.every((e) => e.url.contains('vidnest://anilist/171018/')),
         isTrue,
       );
-      final mega = embeds.where((e) => e.server == 'megaplay').toList();
       expect(
-        mega.every((e) => e.url.contains('/stream/s-2/128368/')),
-        isTrue,
+        nest.any((e) => e.url.contains('vidnest://anilist/132029/')),
+        isFalse,
       );
     });
 
@@ -62,45 +90,12 @@ void main() {
       final embeds = service.buildAllEmbeds(
         anilistId: 5114,
         episode: 1,
-        series: const AnikotoSeries(
-          id: 1,
-          episodes: [
-            AnikotoEpisode(
-              id: 1,
-              number: 1,
-              title: 'Ep 1',
-              embedId: '136197',
-            ),
-          ],
-        ),
       );
       expect(embeds.where((e) => e.server == 'vidwish'), isEmpty);
       expect(AnimeStreamProviders.defaultOrder, isNot(contains('vidwish')));
       expect(AnimeStreamProviders.catalog.containsKey('vidwish'), isFalse);
     });
 
-    test('with Anikoto embed id prefers /stream/s-2/', () {
-      final embeds = service.buildAllEmbeds(
-        anilistId: 5114,
-        episode: 1,
-        series: const AnikotoSeries(
-          id: 1,
-          episodes: [
-            AnikotoEpisode(
-              id: 1,
-              number: 1,
-              title: 'Ep 1',
-              embedId: '136197',
-            ),
-          ],
-        ),
-      );
-      final mega = embeds.where((e) => e.server == 'megaplay').toList();
-      expect(
-        mega.every((e) => e.url.contains('/stream/s-2/136197/')),
-        isTrue,
-      );
-    });
     test('with Anikoto slug emits anikoto://watch embeds', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 171018,

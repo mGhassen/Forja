@@ -19,29 +19,43 @@ class WatchSeriesProgress extends StatelessWidget {
     if (total <= 0 || watched <= 0) return const SizedBox.shrink();
     final done = watched >= total;
     final pct = ((watched / total) * 100).round().clamp(0, 100);
-    final accent = ForjaShellColors.progressFill;
+    final accent = ForjaShellColors.brandGreen;
     final label = done
         ? 'Completed · $watched/$total'
         : '$watched of $total · $pct%';
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          done ? Icons.check_circle_rounded : Icons.playlist_add_check_rounded,
-          size: compact ? 13 : 14,
-          color: done ? accent : Colors.white.withValues(alpha: 0.7),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(compact ? 6 : 8),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 10,
+          vertical: compact ? 4 : 5,
         ),
-        SizedBox(width: compact ? 4 : 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.75),
-            fontSize: compact ? 11 : 12,
-            fontWeight: FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              done
+                  ? Icons.check_circle_rounded
+                  : Icons.playlist_add_check_rounded,
+              size: compact ? 14 : 15,
+              color: accent,
+            ),
+            SizedBox(width: compact ? 5 : 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.95),
+                fontSize: compact ? 11 : 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

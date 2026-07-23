@@ -333,29 +333,63 @@ class AnimeEmbedHostConfig {
   final String host;
   final String pathCatalog;
   final String pathAnilist;
+  final String pathMal;
   final String scrapeReferer;
 
   const AnimeEmbedHostConfig({
     required this.host,
     required this.pathCatalog,
     required this.pathAnilist,
+    required this.pathMal,
     required this.scrapeReferer,
   });
 
+  /// Megaplay AniList id path — card AniList Media id only (no catalog remap).
+  String buildAniUrl({
+    required int anilistId,
+    required int episode,
+    required String lang,
+  }) {
+    return _absoluteUrl(
+      pathAnilist
+          .replaceAll('{anilistId}', '$anilistId')
+          .replaceAll('{ep}', '$episode')
+          .replaceAll('{lang}', lang),
+    );
+  }
+
+  /// Megaplay MAL id path — MAL id from relations/Jikan, not AniList `idMal`.
+  String buildMalUrl({
+    required int malId,
+    required int episode,
+    required String lang,
+  }) {
+    return _absoluteUrl(
+      pathMal
+          .replaceAll('{malId}', '$malId')
+          .replaceAll('{ep}', '$episode')
+          .replaceAll('{lang}', lang),
+    );
+  }
+
+  /// Legacy Anikoto `s-2` catalog ids. Prefer [buildAniUrl] / [buildMalUrl].
   String buildUrl({
     required int anilistId,
     required int episode,
     required String lang,
     String? embedId,
   }) {
-    final path = (embedId != null && embedId.isNotEmpty)
-        ? pathCatalog
+    if (embedId != null && embedId.isNotEmpty) {
+      return _absoluteUrl(
+        pathCatalog
             .replaceAll('{embedId}', embedId)
-            .replaceAll('{lang}', lang)
-        : pathAnilist
-            .replaceAll('{anilistId}', '$anilistId')
-            .replaceAll('{ep}', '$episode')
-            .replaceAll('{lang}', lang);
+            .replaceAll('{lang}', lang),
+      );
+    }
+    return buildAniUrl(anilistId: anilistId, episode: episode, lang: lang);
+  }
+
+  String _absoluteUrl(String path) {
     final normalized = path.startsWith('/') ? path : '/$path';
     return 'https://$host$normalized${normalized.contains('?') ? '' : '?autoPlay=1'}';
   }
@@ -366,6 +400,7 @@ class AnimeEmbedHostConfig {
       host: o.host.isNotEmpty ? o.host : host,
       pathCatalog: o.pathCatalog.isNotEmpty ? o.pathCatalog : pathCatalog,
       pathAnilist: o.pathAnilist.isNotEmpty ? o.pathAnilist : pathAnilist,
+      pathMal: o.pathMal.isNotEmpty ? o.pathMal : pathMal,
       scrapeReferer:
           o.scrapeReferer.isNotEmpty ? o.scrapeReferer : scrapeReferer,
     );
@@ -386,6 +421,9 @@ class AnimeEmbedHostConfig {
       pathAnilist: (j['pathAnilist'] as String?)?.trim().isNotEmpty == true
           ? (j['pathAnilist'] as String).trim()
           : fallback.pathAnilist,
+      pathMal: (j['pathMal'] as String?)?.trim().isNotEmpty == true
+          ? (j['pathMal'] as String).trim()
+          : fallback.pathMal,
       scrapeReferer: (j['scrapeReferer'] as String?)?.trim().isNotEmpty == true
           ? (j['scrapeReferer'] as String).trim()
           : fallback.scrapeReferer,
@@ -396,6 +434,7 @@ class AnimeEmbedHostConfig {
         'host': host,
         'pathCatalog': pathCatalog,
         'pathAnilist': pathAnilist,
+        'pathMal': pathMal,
         'scrapeReferer': scrapeReferer,
       };
 }
@@ -750,6 +789,7 @@ class ProviderRuntimeSnapshot {
           host: 'megaplay.buzz',
           pathCatalog: '/stream/s-2/{embedId}/{lang}',
           pathAnilist: '/stream/ani/{anilistId}/{ep}/{lang}',
+          pathMal: '/stream/mal/{malId}/{ep}/{lang}',
           scrapeReferer: 'https://www.enma.lol/',
         ),
         miruroOrigins: const [
@@ -826,18 +866,44 @@ class ProviderRuntimeSnapshot {
     'allanime:Luf-Mp4': AnimePlaybackProfile(
       probe: AnimeProbeMode.headOrRange,
     ),
-    'miruro:zoro': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:kiwi': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:ally': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:hop': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:bonk': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:moo': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:animedunya': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:arc': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:jet': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:bun': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:kuz': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
-    'miruro:telli': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    // Miruro CDNs (vivibebe / etc.) often serve master-OK + PNG ad segments —
+    // sample media, don't trust the playlist alone.
+    'miruro:zoro': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:kiwi': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:ally': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:hop': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:bonk': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:moo': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:animedunya': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:arc': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:jet': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:bun': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:kuz': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
+    'miruro:telli': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+    ),
     'watchhentai': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
     'hentaini': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
   };

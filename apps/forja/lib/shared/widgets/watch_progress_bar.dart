@@ -38,7 +38,7 @@ class WatchProgressBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final accent = accentColor ?? ForjaShellColors.progressFill;
+    final accent = accentColor ?? ForjaShellColors.brandGreen;
     final finished = isFinished(positionMs, durationMs);
     final remaining = durationMs - positionMs;
     final label = finished ? 'Watched' : '${formatMinutes(remaining)} left';
@@ -71,9 +71,9 @@ class WatchProgressBar extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.75),
+                color: Colors.white.withValues(alpha: 0.92),
                 fontSize: compact ? 11 : 12,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

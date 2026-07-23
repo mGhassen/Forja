@@ -247,45 +247,50 @@ class AppRouter {
   }) {
     final routeBuilder = fadeTransition ? fadeRoute<T> : slideRoute<T>;
     const settings = RouteSettings(name: playerRouteName);
-    final hostContext = context;
+    // Capture shell tokens now — loading dialogs / hosts may unmount while the
+    // player route still rebuilds its pageBuilder.
+    final existing = ShellScope.maybeOf(context);
+    final profile = existing?.profile ?? resolveShellProfile(context);
+    final config = existing?.config ?? shellPlatformConfigFor(profile);
     final navigator = Navigator.of(context, rootNavigator: true);
     return navigator.pushAndRemoveUntil<T>(
       routeBuilder(
-        (_) => ShellScope.rehost(
-          hostContext,
-          PlayerScreen(
-          streamUrl: streamUrl,
-          audioUrl: audioUrl,
-          title: title,
-          magnetLink: magnetLink,
-          headers: headers,
-          movie: movie,
-          providers: providers,
-          activeProvider: activeProvider,
-          selectedSeason: selectedSeason,
-          selectedEpisode: selectedEpisode,
-          startPosition: startPosition,
-          sources: sources,
-          fileIndex: fileIndex,
-          externalSubtitles: externalSubtitles,
-          stremioId: stremioId,
-          stremioAddonBaseUrl: stremioAddonBaseUrl,
-          onNextEpisode: onNextEpisode,
-          hasNextEpisode: hasNextEpisode,
-          hubEpisodes: hubEpisodes,
-          hubEpisodeNumber: hubEpisodeNumber,
-          onHubEpisodeSelected: onHubEpisodeSelected,
-          episodeOverview: episodeOverview,
-          onSaveProgress: onSaveProgress,
-          onSourcePinned: onSourcePinned,
-          pinSource: pinSource,
-          streamsPrevalidated: streamsPrevalidated,
-          onPlaybackStarted: onPlaybackStarted,
-          onAllSourcesExhausted: onAllSourcesExhausted,
-          onReloadStreams: onReloadStreams,
-          sourcesListNotifier: sourcesListNotifier,
-          providerSourcesCache: providerSourcesCache,
-          providerProbesNotifier: providerProbesNotifier,
+        (_) => ShellScope(
+          profile: profile,
+          config: config,
+          child: PlayerScreen(
+            streamUrl: streamUrl,
+            audioUrl: audioUrl,
+            title: title,
+            magnetLink: magnetLink,
+            headers: headers,
+            movie: movie,
+            providers: providers,
+            activeProvider: activeProvider,
+            selectedSeason: selectedSeason,
+            selectedEpisode: selectedEpisode,
+            startPosition: startPosition,
+            sources: sources,
+            fileIndex: fileIndex,
+            externalSubtitles: externalSubtitles,
+            stremioId: stremioId,
+            stremioAddonBaseUrl: stremioAddonBaseUrl,
+            onNextEpisode: onNextEpisode,
+            hasNextEpisode: hasNextEpisode,
+            hubEpisodes: hubEpisodes,
+            hubEpisodeNumber: hubEpisodeNumber,
+            onHubEpisodeSelected: onHubEpisodeSelected,
+            episodeOverview: episodeOverview,
+            onSaveProgress: onSaveProgress,
+            onSourcePinned: onSourcePinned,
+            pinSource: pinSource,
+            streamsPrevalidated: streamsPrevalidated,
+            onPlaybackStarted: onPlaybackStarted,
+            onAllSourcesExhausted: onAllSourcesExhausted,
+            onReloadStreams: onReloadStreams,
+            sourcesListNotifier: sourcesListNotifier,
+            providerSourcesCache: providerSourcesCache,
+            providerProbesNotifier: providerProbesNotifier,
           ),
         ),
         settings: settings,

@@ -188,6 +188,7 @@ mixin _DesktopPlayerPlayback
             openUrl: openUrl,
             headers: srcHeaders,
             type: source.type,
+            providerId: source.providerId ?? _s._currentProvider,
           );
           if (_fallbackAborted(runGen)) return false;
           if (!decoded) {
@@ -293,6 +294,7 @@ mixin _DesktopPlayerPlayback
               openUrl: openUrl,
               headers: step.headers,
               type: source.type,
+              providerId: source.providerId ?? _s._currentProvider,
             );
             if (_fallbackAborted(runGen)) return false;
             if (!decoded) {
@@ -1448,35 +1450,47 @@ mixin _DesktopPlayerPlayback
       final hasAudio = tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
       if (!hasAudio) return;
       _s._autoTracksAppliedForSource = true;
-      Future.delayed(const Duration(milliseconds: 600), _applyTrackAutoSelect);
+      _s._trackAutoSelectTimer?.cancel();
+      _s._trackAutoSelectTimer = Timer(
+        const Duration(milliseconds: 600),
+        () {
+          _s._trackAutoSelectTimer = null;
+          unawaited(_applyTrackAutoSelect());
+        },
+      );
     });
   }
 
   Future<void> _applyTrackAutoSelect() async {
-    if (_s._disposed || _s._audioPinned) return;
+    if (_s._disposed || !mounted) return;
     try {
-      final settings = SettingsService();
-      final audioLang = await settings.getPreferredAudioLanguage();
-      final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
+      if (!_s._audioPinned) {
+        final settings = SettingsService();
+        final audioLang = await settings.getPreferredAudioLanguage();
+        final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
+        if (_s._disposed || !mounted) return;
 
-      final best = pickBestAudioTrack(
-        audioTracks: _s._player.state.tracks.audio,
-        preferredAudioLang: audioLang,
-        avoidUnsupportedAudio: avoidUnsupported,
-      );
-      if (best == null) return;
-
-      final current = _s._player.state.track.audio;
-      if (current.id == best.id && current.id != 'auto' && current.id != 'no') {
-        if (!_s._subtitlePinned) await _s._applyAutoSubtitle();
-        return;
+        final best = pickBestAudioTrack(
+          audioTracks: _s._player.state.tracks.audio,
+          preferredAudioLang: audioLang,
+          avoidUnsupportedAudio: avoidUnsupported,
+        );
+        if (best != null) {
+          final current = _s._player.state.track.audio;
+          if (current.id != best.id ||
+              current.id == 'auto' ||
+              current.id == 'no') {
+            await _s._player.setAudioTrack(best);
+            if (_s._disposed || !mounted) return;
+            debugPrint(
+              '[DesktopPlayer] auto audio → ${best.title ?? best.language ?? best.id}',
+            );
+          }
+        }
       }
-
-      await _s._player.setAudioTrack(best);
-      debugPrint(
-        '[DesktopPlayer] auto audio → ${best.title ?? best.language ?? best.id}',
-      );
-      if (!_s._subtitlePinned) await _s._applyAutoSubtitle();
+      // Preferred subtitles must re-apply after tracks settle — media open
+      // clears external URI tracks while the menu still shows them selected.
+      await _s._reapplyPreferredSubtitle();
     } catch (e) {
       debugPrint('[DesktopPlayer] track auto-select failed: $e');
     }
@@ -1497,6 +1511,7 @@ mixin _DesktopPlayerPlayback
   /// so the custom Flutter overlay hides itself. For SRT/VTT, sub-visibility is turned off
   /// so only the Flutter overlay draws text.
   void _updateSubVisibility(SubtitleTrack track) {
+    if (_s._disposed || !mounted) return;
     final codec = track.codec?.toLowerCase() ?? '';
     final isNativeCodec =
         codec.contains('ass') ||

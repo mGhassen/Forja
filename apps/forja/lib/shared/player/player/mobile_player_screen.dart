@@ -217,6 +217,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<PlayerLog>? _logSub;
+  /// Deferred track/subtitle auto-select — cancel on exit so it cannot
+  /// touch State after the route is gone.
+  Timer? _trackAutoSelectTimer;
   PlaybackRecovery? _playbackRecovery;
   StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
@@ -330,6 +333,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       final now = DateTime.now();
       _playbackConfirmedAt = now;
       _sessionFirstConfirmedAt ??= now;
+      // Media open resets mpv subtitle — re-apply preferred after the wipe.
+      unawaited(_reapplyPreferredSubtitle());
     } else {
       // Keep session mid / first-confirm across source switches for credits
       // re-open; open mid stays cleared above.
@@ -349,6 +354,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       );
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
+  /// Downloaded external subtitle file URIs keyed by source URL — reused when
+  /// mpv wipes the track on media open (auto-pick race).
+  final Map<String, String> _externalSubFileCache = {};
 
   // ── Feature State ─────────────────────────────────────────────────────────
   _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
@@ -413,8 +421,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _indicatorHideTimer?.cancel();
+    _trackAutoSelectTimer?.cancel();
+    _trackAutoSelectTimer = null;
+    PlayerSubtitleSettingsDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
+    playerMenuClearReturnFocus();
     _rippleController.dispose();
 
     _positionSub?.cancel();

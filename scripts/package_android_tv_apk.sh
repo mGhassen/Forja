@@ -20,7 +20,10 @@ OUT_V7A="$DIST/Forja-${VERSION}-android-tv-armeabi-v7a.apk"
 verify_libffi() {
   local apk="$1"
   local lib_path="$2"
-  if ! unzip -l "$apk" | grep -Fq "$lib_path"; then
+  local listing
+  # Avoid `unzip | grep -q` under pipefail — grep -q exits early → SIGPIPE → false failure.
+  listing="$(unzip -l "$apk")"
+  if ! grep -Fq "$lib_path" <<<"$listing"; then
     echo "error: $apk missing $lib_path" >&2
     exit 1
   fi

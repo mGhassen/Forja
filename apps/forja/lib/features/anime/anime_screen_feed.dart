@@ -38,12 +38,49 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
     }
   }
 
+  /// Spotlight / Top 10 / Trending share one AniList TRENDING_DESC page.
+  List<AnimeCard> _spotlightFromTrending(List<AnimeCard> trending) {
+    final filtered = trending.where((a) {
+      final s = (a.status ?? '').toUpperCase();
+      return s.isEmpty || s == 'RELEASING' || s == 'FINISHED';
+    }).take(10).toList();
+    if (filtered.isNotEmpty) return filtered;
+    return trending.take(10).toList();
+  }
+
+  /// Hero paints AniList art immediately; TMDB backdrops swap in later.
+  Future<void> _enrichSpotlightTmdb(
+    int gen,
+    Future<List<AnimeCard>> spotlightFuture,
+  ) async {
+    try {
+      final list = await spotlightFuture;
+      if (!mounted || gen != _s._loadGen || list.isEmpty) return;
+      final head = list.take(5).toList();
+      final enrichedHead = await _s._service.attachTmdbBackdrops(head);
+      if (!mounted || gen != _s._loadGen) return;
+      final byId = {for (final c in enrichedHead) c.id: c};
+      final merged = [
+        for (final c in list) byId[c.id] ?? c,
+      ];
+      setState(() => _s._spotlightFuture = Future.value(merged));
+    } catch (e) {
+      debugPrint('[AnimeScreen] spotlight TMDB enrich failed: $e');
+    }
+  }
+
   Future<void> _load() async {
+    final gen = ++_s._loadGen;
     unawaited(_refreshHistory());
 
-    final spotlightFuture = _safeSection(_s._service.getSpotlight(), 'spotlight')
-        .then((list) => _s._service.attachTmdbBackdrops(list.take(5).toList()));
-    final trendingFuture = _safeSection(_s._service.getTrending(), 'trending');
+    // One TRENDING_DESC query → spotlight / top10 / trending (was 3).
+    final trendingBase =
+        _safeSection(_s._service.getTrending(perPage: 20), 'trending');
+    final spotlightFuture =
+        trendingBase.then(_spotlightFromTrending);
+    final top10Future = trendingBase.then((list) => list.take(10).toList());
+    final trendingFuture = trendingBase;
+
     final topAiringFuture = _safeSection(_s._service.getTopAiring(), 'top airing');
     final mostPopularFuture =
         _safeSection(_s._service.getMostPopular(), 'most popular');
@@ -52,13 +89,12 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
     final topRatedFuture = _safeSection(_s._service.getTopRated(), 'top rated');
     final latestCompletedFuture =
         _safeSection(_s._service.getLatestCompleted(), 'latest completed');
-    final top10Future = _safeSection(_s._service.getTop10Today(), 'top 10');
     final recentEpisodesFuture =
         _safeSection(_s._service.getRecentEpisodes(), 'recent episodes');
+    final moodFuture = _loadMood(_s._selectedMood);
 
     setState(() {
       _s._error = null;
-      _s._moodFuture = null;
       _s._catalogResolved = false;
       _s._spotlightFuture = spotlightFuture;
       _s._trendingFuture = trendingFuture;
@@ -69,7 +105,10 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       _s._latestCompletedFuture = latestCompletedFuture;
       _s._top10Future = top10Future;
       _s._recentEpisodesFuture = recentEpisodesFuture;
+      _s._moodFuture = moodFuture;
     });
+
+    unawaited(_enrichSpotlightTmdb(gen, spotlightFuture));
 
     final results = await Future.wait([
       spotlightFuture,
@@ -82,7 +121,7 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       top10Future,
       recentEpisodesFuture,
     ]);
-    if (!mounted) return;
+    if (!mounted || gen != _s._loadGen) return;
 
     final hasCatalog = results
         .cast<List<AnimeCard>>()
@@ -90,8 +129,8 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
 
     setState(() {
       _s._catalogResolved = true;
-      _s._error = hasCatalog ? null : 'Failed to load anime — check your connection';
-      _s._moodFuture = _loadMood(_s._selectedMood);
+      _s._error =
+          hasCatalog ? null : 'Failed to load anime — check your connection';
     });
     if (hasCatalog) (this as ShellTabRefresh<AnimeScreen>).markShellTabFresh();
   }
@@ -146,7 +185,7 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
       Duration? startPosition;
-      // Same as movies: ≥85% finished → restart at 0 (not near-credits).
+      // Same as movies: ≥90% finished → restart at 0 (not near-credits).
       if (posMs > 5000 && isInProgressResume(posMs, durMs)) {
         final clamped = (durMs > 0 && posMs > durMs - 30000)
             ? (durMs - 30000)

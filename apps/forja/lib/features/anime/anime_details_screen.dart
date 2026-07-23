@@ -13,6 +13,8 @@ import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
+import 'package:forja/shared/widgets/media_details_cast_section.dart';
+import 'package:forja/shared/widgets/media_details_trailers_section.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/widgets/watch_series_progress.dart';
 import 'package:forja/shell/app_router.dart';
@@ -45,10 +47,19 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   final FocusNode _backFocus = FocusNode(debugLabel: 'anime-details-back');
   bool _detailsHeroInitialFocusDone = false;
 
+  /// AniList PREQUEL→SEQUEL spine (ordered). Empty until [getSeasons] returns.
+  List<AnimeCard> _seasons = [];
+  /// 1-based index into [_seasons] (matches [TvSeasonEpisodePicker]).
+  int _selectedSeason = 1;
+  int _loadGen = 0;
+
   AnimeCard? _full;
   List<AnimeEpisode> _episodes = [];
   bool _episodesLoading = true;
-  List<AnimeCard> _related = [];
+  List<AnimeRelation> _related = [];
+  List<Map<String, String>> _characters = [];
+  List<Map<String, String>> _staff = [];
+  List<AnimeCard> _recommendations = [];
   Map<String, dynamic>? _progress;
   Set<String> _watchedEpisodes = {};
   String? _error;
@@ -61,8 +72,8 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     super.initState();
     SettingsService.animeTitleLanguageNotifier.addListener(_onTitleLanguage);
     AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
+    _seasons = [widget.anime];
     _load();
-    _loadWatchedEpisodes();
   }
 
   @override
@@ -81,9 +92,19 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   void _onHistoryChanged() => _refreshProgress();
 
+  AnimeCard get _activeSeed {
+    if (_seasons.isEmpty) return widget.anime;
+    final i = (_selectedSeason - 1).clamp(0, _seasons.length - 1);
+    return _seasons[i];
+  }
+
+  AnimeCard get _data => _full ?? _activeSeed;
+
+  int get _activeId => _data.id;
+
   Future<void> _refreshProgress() async {
     try {
-      final p = await _service.getProgress(widget.anime.id);
+      final p = await _service.getProgress(_activeId);
       if (!mounted) return;
       setState(() {
         _progress = p;
@@ -136,56 +157,100 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     _backFocus.requestFocus();
   }
 
-  AnimeCard get _data => _full ?? widget.anime;
-
   Future<void> _load() async {
+    setState(() => _error = null);
+    _loadSeasonContent(_activeSeed);
+
+    _service.getSeasons(widget.anime.id).then((chain) {
+      if (!mounted || chain.isEmpty) return;
+      final idx = chain.indexWhere((s) => s.id == widget.anime.id);
+      setState(() {
+        _seasons = chain;
+        if (idx >= 0) _selectedSeason = idx + 1;
+      });
+    }).catchError((_) {});
+  }
+
+  void _onSeasonSelected(int season) {
+    if (season < 1 ||
+        season > _seasons.length ||
+        season == _selectedSeason) {
+      return;
+    }
     setState(() {
+      _selectedSeason = season;
+      _selectedEpisode = 1;
+      _full = null;
+      _progress = null;
+      _characters = [];
+      _staff = [];
+      _recommendations = [];
+      _related = [];
+      _watchedEpisodes = {};
       _error = null;
+    });
+    _loadSeasonContent(_seasons[season - 1]);
+  }
+
+  void _loadSeasonContent(AnimeCard seed) {
+    final gen = ++_loadGen;
+    setState(() {
       _episodes = [];
       _episodesLoading = true;
+      _characters = [];
+      _staff = [];
+      _recommendations = [];
+      _related = [];
     });
 
-    // Metadata + AniList episode rail (Anikoto resolves on Play for Megaplay).
-    // TMDB backdrop for the hero (AniList banner fallback).
-    _service.getDetails(widget.anime.id).then((d) async {
-      final seeded = widget.anime.tmdbBackdropUrl == null
+    // Episodes load only after details for this opened season (thumbs + count).
+    _service.getDetails(seed.id).then((d) async {
+      if (!mounted || gen != _loadGen) return;
+      final seeded = seed.tmdbBackdropUrl == null
           ? d
-          : d.copyWith(tmdbBackdropUrl: widget.anime.tmdbBackdropUrl);
+          : d.copyWith(tmdbBackdropUrl: seed.tmdbBackdropUrl);
       final enriched = await _service.attachTmdbBackdrop(seeded);
-      if (!mounted) return;
+      if (!mounted || gen != _loadGen) return;
       setState(() => _full = enriched);
+      _loadEpisodesForOpenedSeason(enriched, gen: gen);
     }).catchError((e) {
-      if (mounted && _full == null) setState(() => _error = 'Failed to load: $e');
+      if (mounted && gen == _loadGen && _full == null) {
+        setState(() {
+          _error = 'Failed to load: $e';
+          _episodesLoading = false;
+        });
+      }
     });
 
-    if (widget.anime.tmdbBackdropUrl == null) {
-      _service.attachTmdbBackdrop(widget.anime).then((enriched) {
-        if (!mounted || _full != null) return;
+    if (seed.tmdbBackdropUrl == null) {
+      _service.attachTmdbBackdrop(seed).then((enriched) {
+        if (!mounted || gen != _loadGen || _full != null) return;
         setState(() => _full = enriched);
       });
     }
 
-    _service.getEpisodes(widget.anime).then((eps) {
-      if (!mounted) return;
-      setState(() {
-        _episodes = eps;
-        _episodesLoading = false;
-        if (_episodes.isNotEmpty &&
-            !_episodes.any((e) => e.number == _selectedEpisode)) {
-          _selectedEpisode = _episodes.first.number;
-        }
-      });
-    }).catchError((_) {
-      if (mounted) setState(() => _episodesLoading = false);
-    });
-
-    _service.getRelations(widget.anime.id).then((r) {
-      if (!mounted) return;
+    _service.getRelations(seed.id).then((r) {
+      if (!mounted || gen != _loadGen) return;
       setState(() => _related = r);
     }).catchError((_) {});
 
-    _service.getProgress(widget.anime.id).then((p) {
-      if (!mounted) return;
+    _service.getCharacters(seed.id).then((c) {
+      if (!mounted || gen != _loadGen) return;
+      setState(() => _characters = c);
+    }).catchError((_) {});
+
+    _service.getStaff(seed.id).then((s) {
+      if (!mounted || gen != _loadGen) return;
+      setState(() => _staff = s);
+    }).catchError((_) {});
+
+    _service.getRecommendations(seed.id).then((r) {
+      if (!mounted || gen != _loadGen) return;
+      setState(() => _recommendations = r);
+    }).catchError((_) {});
+
+    _service.getProgress(seed.id).then((p) {
+      if (!mounted || gen != _loadGen) return;
       setState(() {
         _progress = p;
         final ep = (p?['episodeNumber'] as num?)?.toInt();
@@ -196,6 +261,26 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
         }
       });
     }).catchError((_) {});
+
+    _loadWatchedEpisodes(forId: seed.id, gen: gen);
+  }
+
+  void _loadEpisodesForOpenedSeason(AnimeCard details, {required int gen}) {
+    _service.getEpisodes(details).then((eps) {
+      if (!mounted || gen != _loadGen) return;
+      setState(() {
+        _episodes = eps;
+        _episodesLoading = false;
+        if (_episodes.isNotEmpty &&
+            !_episodes.any((e) => e.number == _selectedEpisode)) {
+          _selectedEpisode = _episodes.first.number;
+        }
+      });
+    }).catchError((_) {
+      if (mounted && gen == _loadGen) {
+        setState(() => _episodesLoading = false);
+      }
+    });
   }
 
   void _play(int epNumber, {Duration? startPosition}) {
@@ -230,21 +315,24 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   }
 
   Future<void> _clearProgress() async {
-    await _service.removeFromHistory(widget.anime.id);
+    await _service.removeFromHistory(_activeId);
     if (mounted) setState(() => _progress = null);
   }
 
-  Future<void> _loadWatchedEpisodes() async {
+  Future<void> _loadWatchedEpisodes({int? forId, int? gen}) async {
+    final id = forId ?? _activeId;
     final set = await _episodeWatchedService.getWatchedSet(
-      widget.anime.id,
+      id,
       catalog: EpisodeWatchedService.catalogAnilist,
     );
-    if (mounted) setState(() => _watchedEpisodes = set);
+    if (!mounted) return;
+    if (gen != null && gen != _loadGen) return;
+    setState(() => _watchedEpisodes = set);
   }
 
   Future<void> _toggleEpisodeWatched(int season, int episode) async {
     await _episodeWatchedService.toggle(
-      widget.anime.id,
+      _activeId,
       season,
       episode,
       catalog: EpisodeWatchedService.catalogAnilist,
@@ -288,7 +376,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   Map<int, List<Map<String, dynamic>>>? _episodeMaps() {
     if (_episodes.isEmpty) return null;
     return {
-      1: _episodes
+      _selectedSeason: _episodes
           .map(
             (e) => {
               'episode_number': e.number,
@@ -303,6 +391,15 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     };
   }
 
+  Map<int, String> _seasonPosters() {
+    final out = <int, String>{};
+    for (var i = 0; i < _seasons.length; i++) {
+      final url = _seasons[i].coverUrl;
+      if (url.isNotEmpty) out[i + 1] = url;
+    }
+    return out;
+  }
+
   Map<String, Map<String, dynamic>> _episodeProgressMap() {
     final p = _progress;
     if (p == null) return const {};
@@ -310,9 +407,16 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final pos = (p['positionMs'] as num?)?.toInt() ?? 0;
     final dur = (p['durationMs'] as num?)?.toInt() ?? 0;
     if (ep == null || ep <= 0) return const {};
+    // Watched / progress keys stay S1 per AniList Media (see watchedSeasonForKeys).
     return {
       'S1_E$ep': {'position': pos, 'duration': dur},
     };
+  }
+
+  List<AnimeRelation> get _relatedFiltered {
+    if (_related.isEmpty) return const [];
+    final seasonIds = _seasons.map((s) => s.id).toSet()..add(_activeId);
+    return _related.where((r) => !seasonIds.contains(r.anime.id)).toList();
   }
 
   String _statusLabel(String s) {
@@ -396,24 +500,45 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
     final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
-    final relatedOrder = showEpisodeRail ? 1 : 0;
+    final related = _relatedFiltered;
+    final trailers = [
+      if (_data.mediaTrailer != null) _data.mediaTrailer!,
+    ];
+    final showCharacters = _characters.isNotEmpty;
+    final showStaff = _staff.isNotEmpty;
+    final showTrailers = trailers.isNotEmpty;
+    final showRecs = _recommendations.isNotEmpty;
+    final showRelated = related.isNotEmpty;
+    final hasMetaRows =
+        showCharacters || showStaff || showTrailers || showRecs || showRelated;
+
+    var rowOrder = showEpisodeRail ? 1 : 0;
+    final relatedOrder = showRelated ? rowOrder++ : null;
+    final charactersOrder = showCharacters ? rowOrder++ : null;
+    final staffOrder = showStaff ? rowOrder++ : null;
+    final trailersOrder = showTrailers ? rowOrder++ : null;
+    final recsOrder = showRecs ? rowOrder : null;
+
+    final firstMetaFocusUp = showEpisodeRail ? null : heroFocusUp;
 
     final episodePicker = showEpisodeRail
         ? MediaDetailsBody.padContent(
             context,
             TvSeasonEpisodePicker(
               tmdbId: a.id,
-              seasonCount: 1,
-              selectedSeason: 1,
+              seasonCount: _seasons.length.clamp(1, 99),
+              selectedSeason: _selectedSeason,
               selectedEpisode: _selectedEpisode,
               isLoadingSeason: _episodesLoading,
               seasonData: null,
               watchedEpisodes: _watchedEpisodes,
               watchedCatalog: EpisodeWatchedService.catalogAnilist,
+              watchedSeasonForKeys: 1,
               fallbackPosterPath: a.coverUrl,
+              seasonPosters: _seasonPosters(),
               customEpisodesBySeason: _episodeMaps(),
               episodeProgress: _episodeProgressMap(),
-              onSeasonSelected: (_) {},
+              onSeasonSelected: _onSeasonSelected,
               onEpisodeSelected: (ep) {
                 setState(() => _selectedEpisode = ep);
               },
@@ -520,16 +645,75 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               ),
             ),
           ),
-          if (_related.isNotEmpty)
+          if (hasMetaRows)
             MediaDetailsBody(
               backgroundColor: AppTheme.bgDark,
+              bodyOverlap: 0,
+              topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildRelated(
-                    tvRowOrder: relatedOrder,
-                    tvFocusUp: showEpisodeRail ? null : heroFocusUp,
-                  ),
+                  if (showRelated)
+                    _buildRelated(
+                      items: related,
+                      tvRowOrder: relatedOrder!,
+                      tvFocusUp: firstMetaFocusUp,
+                    ),
+                  if (showCharacters) ...[
+                    if (showRelated)
+                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                    MediaDetailsCastSection(
+                      cast: _characters,
+                      title: 'Characters',
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: 'characters',
+                      tvRowOrder: charactersOrder!,
+                      tvFocusUp: showRelated ? null : firstMetaFocusUp,
+                    ),
+                  ],
+                  if (showStaff) ...[
+                    if (showRelated || showCharacters)
+                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                    MediaDetailsCastSection(
+                      cast: _staff,
+                      title: 'Staff',
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: 'staff',
+                      tvRowOrder: staffOrder!,
+                      tvFocusUp:
+                          (showRelated || showCharacters) ? null : firstMetaFocusUp,
+                    ),
+                  ],
+                  if (showTrailers) ...[
+                    if (showRelated || showCharacters || showStaff)
+                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                    MediaDetailsTrailersSection(
+                      trailers: trailers,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: 'trailers',
+                      tvRowOrder: trailersOrder!,
+                      tvFocusUp: (showRelated || showCharacters || showStaff)
+                          ? null
+                          : firstMetaFocusUp,
+                    ),
+                  ],
+                  if (showRecs) ...[
+                    if (showRelated ||
+                        showCharacters ||
+                        showStaff ||
+                        showTrailers)
+                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                    _buildRecommendations(
+                      items: _recommendations,
+                      tvRowOrder: recsOrder!,
+                      tvFocusUp: (showRelated ||
+                              showCharacters ||
+                              showStaff ||
+                              showTrailers)
+                          ? null
+                          : firstMetaFocusUp,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -551,13 +735,44 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>');
 
-  Widget _buildRelated({
+  Widget _buildRecommendations({
+    required List<AnimeCard> items,
     required int tvRowOrder,
     VoidCallback? tvFocusUp,
   }) {
     return HubCatalogSection<AnimeCard>(
       title: 'More Like This',
-      items: _related,
+      items: items,
+      embedded: true,
+      tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
+          ? MediaDetailsTv.tabId
+          : null,
+      tvRowId: 'recommendations',
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
+      cardBuilder: (context, a, index) => HubPosterCard(
+        imageUrl: a.coverUrl,
+        title: a.displayTitle,
+        subtitle: a.seasonYear?.toString(),
+        onTap: () => openAnimeDetails(context, a),
+        listIndex: index,
+        tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
+            ? MediaDetailsTv.tabId
+            : null,
+        tvRowId: 'recommendations',
+      ),
+    );
+  }
+
+  Widget _buildRelated({
+    required List<AnimeRelation> items,
+    required int tvRowOrder,
+    VoidCallback? tvFocusUp,
+  }) {
+    return HubCatalogSection<AnimeRelation>(
+      title: 'Related',
+      items: items,
+      embedded: true,
       tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
           ? MediaDetailsTv.tabId
           : null,
@@ -565,9 +780,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       tvRowOrder: tvRowOrder,
       tvFocusUp: tvFocusUp,
       cardBuilder: (context, r, index) => HubPosterCard(
-        imageUrl: r.coverUrl,
-        title: r.displayTitle,
-        onTap: () => openAnimeDetails(context, r),
+        imageUrl: r.anime.coverUrl,
+        title: r.anime.displayTitle,
+        subtitle: r.formatLabel,
+        badge: r.label,
+        onTap: () => openAnimeDetails(context, r.anime),
         listIndex: index,
         tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
             ? MediaDetailsTv.tabId

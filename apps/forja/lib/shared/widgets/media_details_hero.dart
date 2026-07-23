@@ -1174,7 +1174,7 @@ class _HeroMainColumn extends StatelessWidget {
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
-  static const _seriesProgressBlockHeight = 20.0;
+  static const _seriesProgressBlockHeight = 28.0;
 
   final Movie movie;
   final String? logoUrl;

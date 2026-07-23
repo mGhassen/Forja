@@ -14,6 +14,7 @@ class HubCatalogSection<T> extends StatefulWidget {
     this.future,
     this.items,
     this.compactTop = false,
+    this.embedded = false,
     this.showRank = false,
     this.tvTabId,
     this.tvRowId,
@@ -25,6 +26,8 @@ class HubCatalogSection<T> extends StatefulWidget {
   final Future<List<T>>? future;
   final List<T>? items;
   final bool compactTop;
+  /// Zero title-top pad — parent owns row gap (media details sections).
+  final bool embedded;
   final bool showRank;
   final String? tvTabId;
   final String? tvRowId;
@@ -36,12 +39,15 @@ class HubCatalogSection<T> extends StatefulWidget {
   static double sectionHeight(
     BuildContext context, {
     bool compactTop = false,
+    bool embedded = false,
   }) {
-    return shellCatalogSectionHeight(
-      context,
-      compactTop: compactTop,
-      cardHeight: HubPosterCard.cardHeight(context),
-    );
+    final titleTop = embedded
+        ? 0.0
+        : shellHomeSectionTitleTop(context, compact: compactTop);
+    return titleTop +
+        shellHomeSectionHeaderHeight(context) +
+        shellHomeSectionBottomGap(context) +
+        HubPosterCard.cardHeight(context);
   }
 
   @override
@@ -72,6 +78,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
   }
 
   double _sectionTitleTop(BuildContext context) {
+    if (widget.embedded) return 0;
     if (!widget.compactTop) return shellHomeSectionTitleTop(context);
     return shellSectionTitleTopCompact(context);
   }

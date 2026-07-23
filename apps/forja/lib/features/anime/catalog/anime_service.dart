@@ -13,6 +13,8 @@ import 'package:forja/shared/player/player/utils.dart';
 
 class AnimeService {
   static final Map<int, String> _tmdbBackdropByAnilistId = {};
+  /// AniList Media id → MAL id from relations + Jikan (not AniList `idMal`).
+  static final Map<int, int?> _malIdByAnilistId = {};
   static final TmdbApi _tmdb = TmdbApi();
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
@@ -43,6 +45,7 @@ class AnimeService {
     throw lastError ?? Exception('AniList query failed');
   }
 
+  /// Catalog / list cards — keep lean (no trailer / streamingEpisodes / cast).
   static const String _mediaFields = '''
     id
     idMal
@@ -65,6 +68,10 @@ class AnimeService {
     isAdult
     studios(isMain: true) { nodes { name } }
     nextAiringEpisode { episode airingAt timeUntilAiring }
+  ''';
+
+  /// Details-only extras (trailer + episode thumbs). Not on list queries.
+  static const String _detailsExtraFields = '''
     trailer { id site thumbnail }
     streamingEpisodes { title thumbnail url site }
   ''';
@@ -216,6 +223,7 @@ class AnimeService {
       query (\$id: Int) {
         Media(id: \$id, type: ANIME) {
           $_mediaFields
+          $_detailsExtraFields
         }
       }
     ''';
@@ -223,24 +231,206 @@ class AnimeService {
     return AnimeCard.fromJson(data['Media'] as Map<String, dynamic>);
   }
 
-  Future<List<AnimeCard>> getRelations(int anilistId) async {
+  /// MAIN + SUPPORTING characters (capped). Separate AniList call.
+  Future<List<Map<String, String>>> getCharacters(
+    int anilistId, {
+    int perPage = 12,
+  }) async {
     final q = '''
       query (\$id: Int) {
         Media(id: \$id, type: ANIME) {
-          relations { nodes { $_mediaFields } }
+          characters(sort: [ROLE, RELEVANCE, ID], perPage: $perPage) {
+            edges {
+              role
+              node {
+                name { full }
+                image { large }
+              }
+              voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+                name { full }
+              }
+            }
+          }
+        }
+      }
+    ''';
+    final data = await _query(q, {'id': anilistId});
+    final edges =
+        (data['Media']?['characters']?['edges'] as List?) ?? const [];
+    final out = <Map<String, String>>[];
+    for (final e in edges) {
+      if (e is! Map) continue;
+      final node = e['node'];
+      if (node is! Map) continue;
+      final name = (node['name']?['full'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final image = (node['image']?['large'] ?? '').toString().trim();
+      final role = (e['role'] ?? '').toString();
+      final vas = (e['voiceActors'] as List?) ?? const [];
+      String character = role == 'MAIN' ? 'Main' : 'Supporting';
+      if (vas.isNotEmpty && vas.first is Map) {
+        final va = (vas.first['name']?['full'] ?? '').toString().trim();
+        if (va.isNotEmpty) character = va;
+      }
+      out.add({
+        'name': name,
+        'character': character,
+        'profilePath': image,
+      });
+    }
+    return out;
+  }
+
+  /// Production staff (capped). Separate AniList call.
+  Future<List<Map<String, String>>> getStaff(
+    int anilistId, {
+    int perPage = 12,
+  }) async {
+    final q = '''
+      query (\$id: Int) {
+        Media(id: \$id, type: ANIME) {
+          staff(sort: [RELEVANCE, ID], perPage: $perPage) {
+            edges {
+              role
+              node {
+                name { full }
+                image { large }
+              }
+            }
+          }
+        }
+      }
+    ''';
+    final data = await _query(q, {'id': anilistId});
+    final edges = (data['Media']?['staff']?['edges'] as List?) ?? const [];
+    final out = <Map<String, String>>[];
+    for (final e in edges) {
+      if (e is! Map) continue;
+      final node = e['node'];
+      if (node is! Map) continue;
+      final name = (node['name']?['full'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final image = (node['image']?['large'] ?? '').toString().trim();
+      final role = (e['role'] ?? '').toString().trim();
+      out.add({
+        'name': name,
+        'character': role,
+        'profilePath': image,
+      });
+    }
+    return out;
+  }
+
+  /// AniList user recommendations (capped). Separate call — not franchise Related.
+  Future<List<AnimeCard>> getRecommendations(
+    int anilistId, {
+    int perPage = 12,
+  }) async {
+    final q = '''
+      query (\$id: Int) {
+        Media(id: \$id, type: ANIME) {
+          recommendations(sort: [RATING_DESC], perPage: $perPage) {
+            nodes {
+              mediaRecommendation {
+                $_mediaFields
+              }
+            }
+          }
+        }
+      }
+    ''';
+    final data = await _query(q, {'id': anilistId});
+    final nodes =
+        (data['Media']?['recommendations']?['nodes'] as List?) ?? const [];
+    final out = <AnimeCard>[];
+    final seen = <int>{anilistId};
+    for (final n in nodes) {
+      if (n is! Map) continue;
+      final rec = n['mediaRecommendation'];
+      if (rec is! Map) continue;
+      final card = AnimeCard.fromJson(Map<String, dynamic>.from(rec));
+      if (!seen.add(card.id)) continue;
+      out.add(card);
+    }
+    return out;
+  }
+
+  /// AniList relation edges with [relationType] preserved.
+  ///
+  /// Skips manga SOURCE / CHARACTER crossovers (noisy: Toriko, DBZ on One Piece).
+  /// Keeps films, specials, OVAs, spin-offs, alt versions, and leftover
+  /// PREQUEL/SEQUEL entries that are not on the TV season spine.
+  Future<List<AnimeRelation>> getRelations(int anilistId) async {
+    final q = '''
+      query (\$id: Int) {
+        Media(id: \$id, type: ANIME) {
+          relations {
+            edges {
+              relationType(version: 2)
+              node { $_mediaFields type }
+            }
+          }
         }
       }
     ''';
     const animeFormats = {
-      'TV', 'TV_SHORT', 'MOVIE', 'OVA', 'ONA', 'SPECIAL', 'MUSIC',
+      'TV', 'TV_SHORT', 'MOVIE', 'OVA', 'ONA', 'SPECIAL',
+    };
+    // Franchise material users open from details — not list noise.
+    const keepTypes = {
+      'SIDE_STORY',
+      'SUMMARY',
+      'ALTERNATIVE',
+      'SPIN_OFF',
+      'SEQUEL',
+      'PREQUEL',
+      'PARENT',
+      'OTHER',
+      'COMPILATION',
+      'CONTAINS',
+    };
+    const typeRank = {
+      'SIDE_STORY': 0,
+      'SUMMARY': 1,
+      'ALTERNATIVE': 2,
+      'SPIN_OFF': 3,
+      'SEQUEL': 4,
+      'PREQUEL': 5,
+      'PARENT': 6,
+      'COMPILATION': 7,
+      'CONTAINS': 8,
+      'OTHER': 9,
     };
     final data = await _query(q, {'id': anilistId});
-    final nodes = (data['Media']?['relations']?['nodes'] as List?) ?? [];
-    return nodes
-        .cast<Map<String, dynamic>>()
-        .where((n) => animeFormats.contains(n['format'] as String?))
-        .map(AnimeCard.fromJson)
-        .toList();
+    final edges = (data['Media']?['relations']?['edges'] as List?) ?? [];
+    final out = <AnimeRelation>[];
+    final seen = <int>{};
+    for (final e in edges) {
+      if (e is! Map) continue;
+      final type = (e['relationType'] ?? '').toString();
+      if (!keepTypes.contains(type)) continue;
+      final node = e['node'];
+      if (node is! Map) continue;
+      if ((node['type'] ?? 'ANIME').toString() != 'ANIME') continue;
+      final fmt = node['format'] as String?;
+      if (fmt == null || !animeFormats.contains(fmt)) continue;
+      final id = node['id'];
+      if (id is! int || !seen.add(id)) continue;
+      out.add(AnimeRelation(
+        relationType: type,
+        anime: AnimeCard.fromJson(Map<String, dynamic>.from(node)),
+      ));
+    }
+    out.sort((a, b) {
+      final ra = typeRank[a.relationType] ?? 99;
+      final rb = typeRank[b.relationType] ?? 99;
+      if (ra != rb) return ra.compareTo(rb);
+      final ya = a.anime.seasonYear ?? 0;
+      final yb = b.anime.seasonYear ?? 0;
+      if (ya != yb) return ya.compareTo(yb);
+      return a.anime.displayTitle.compareTo(b.anime.displayTitle);
+    });
+    return out;
   }
 
   /// Walk the PREQUEL/SEQUEL/PARENT/SIDE_STORY edge chain from this anime
@@ -263,7 +453,7 @@ class AnimeService {
           startDate { year month day }
           relations {
             edges {
-              relationType
+              relationType(version: 2)
               node {
                 id type format
                 title { romaji english }
@@ -306,9 +496,13 @@ class AnimeService {
         if (node is! Map) continue;
         if ((node['type'] ?? '') != 'ANIME') continue;
         final fmt = (node['format'] ?? '').toString();
-        // Only chain through TV / TV_SHORT / ONA — other formats are
-        // movies/specials that are usually side material, not next season.
+        // TV spine only for numbered seasons. ONA allowed when it is a real
+        // cour (Dungeon Meshi S2) — skip 1-ep ONA prequels (One Piece→MONSTERS).
         if (!{'TV', 'TV_SHORT', 'ONA'}.contains(fmt)) continue;
+        if (fmt == 'ONA') {
+          final eps = node['episodes'];
+          if (eps is int && eps <= 1) continue;
+        }
         final id = node['id'];
         if (id is int) return id;
       }
@@ -461,11 +655,11 @@ class AnimeService {
   Future<List<AnimeEpisode>> getEpisodes(AnimeCard anime) async {
     // AniList only — never crawl Anikoto here (HTML probe spam / block risk).
     // Playable Anikoto ids resolve lazily in the player on Play.
+    // streamingEpisodes live on details payloads only — pass getDetails result
+    // when thumbs matter; list cards synthesize without them.
     AnimeCard fresh = anime;
     final hasCount = (anime.episodes ?? 0) > 0 ||
         anime.nextAiringEpisode?['episode'] != null;
-    // List cards already carry the total — paint immediately. Only hit
-    // AniList when we have no count (details metadata loads separately).
     if (!hasCount) {
       try {
         fresh = await getDetails(anime.id);
@@ -540,23 +734,9 @@ class AnimeService {
     return out;
   }
 
-  // ─── Stream embed URLs (Megaplay) ──────────────────────────────
-  // Paths/hosts from [ProviderRuntimeConfig] (RFC-039); builtins match
-  // megaplay.buzz/api (s-2 catalog + /stream/ani/ AniList).
-
-  String _megaplayEmbed({
-    required int anilistId,
-    required int episode,
-    required String category,
-    String? embedId, // anikoto episode_embed_id
-  }) {
-    return ProviderRuntimeConfig.instance.megaplay.buildUrl(
-      anilistId: anilistId,
-      episode: episode,
-      lang: category,
-      embedId: embedId,
-    );
-  }
+  // ─── Stream embed URLs ─────────────────────────────────────────
+  // Megaplay: AniList + MAL id paths only (megaplay.buzz/api). Never
+  // Anikoto title→embedId — wrong show with no recovery signal.
 
   /// VidLink anime embed — MAL id required (`vidlink.pro` docs).
   String _vidlinkAnimeEmbed({
@@ -567,11 +747,92 @@ class AnimeService {
     return 'https://vidlink.pro/anime/$malId/$episode/$lang?fallback=true';
   }
 
+  /// MAL id for [anilistId] via ID relations + Jikan confirm.
+  ///
+  /// Does **not** use AniList GraphQL `idMal` (stale duplicates). Relations
+  /// DB maps AniList→MAL; Jikan confirms the id exists on MAL.
+  Future<int?> resolveMalId(int anilistId) async {
+    if (anilistId <= 0) return null;
+    if (_malIdByAnilistId.containsKey(anilistId)) {
+      return _malIdByAnilistId[anilistId];
+    }
+    try {
+      final mal = await _malIdFromRelations(anilistId);
+      if (mal == null || mal <= 0) {
+        _malIdByAnilistId[anilistId] = null;
+        return null;
+      }
+      final confirmed = await _confirmMalIdOnJikan(mal);
+      _malIdByAnilistId[anilistId] = confirmed;
+      return confirmed;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AnimeService] resolveMalId($anilistId) failed: $e');
+      }
+      _malIdByAnilistId[anilistId] = null;
+      return null;
+    }
+  }
+
+  Future<int?> _malIdFromRelations(int anilistId) async {
+    const urls = [
+      'https://relations.yuna.moe/api/v2/ids?source=anilist&id=',
+      'https://arm.haglund.dev/api/v2/ids?source=anilist&id=',
+    ];
+    for (final base in urls) {
+      try {
+        final res = await animeHttp(
+          'GET',
+          '$base$anilistId',
+          maxRetries: 0,
+          timeoutSecs: 10,
+        );
+        if (res.status != 200) continue;
+        final body = res.body.trim();
+        if (body.isEmpty || body == 'null') continue;
+        final j = jsonDecode(body);
+        if (j is! Map) continue;
+        final raw = j['myanimelist'];
+        final id = raw is int
+            ? raw
+            : raw is num
+                ? raw.toInt()
+                : int.tryParse('$raw');
+        if (id != null && id > 0) return id;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<int?> _confirmMalIdOnJikan(int malId) async {
+    final res = await animeHttp(
+      'GET',
+      'https://api.jikan.moe/v4/anime/$malId',
+      maxRetries: 0,
+      timeoutSecs: 10,
+    );
+    if (res.status != 200) return null;
+    final j = jsonDecode(res.body);
+    if (j is! Map) return null;
+    final data = j['data'];
+    if (data is! Map) return null;
+    final raw = data['mal_id'];
+    final id = raw is int
+        ? raw
+        : raw is num
+            ? raw.toInt()
+            : int.tryParse('$raw');
+    if (id == null || id <= 0) return null;
+    return id;
+  }
+
   /// Build Megaplay + Miruro/AllAnime/VidNest/VidLink embeds for an episode.
   ///
-  /// Megaplay: Anikoto `s-2` when matched, else `/stream/ani/` (often 410 HTML;
-  /// extract still needs catalog id via Anikoto for getSources).
-  /// VidLink: MAL id from AniList `idMal` — skipped when missing.
+  /// Megaplay: card AniList id → `/stream/ani/…`, plus MAL → `/stream/mal/…`
+  /// when [malId] is set (from [resolveMalId], not AniList `idMal`).
+  /// VidNest / Miruro: card AniList id only (no Anikoto remap).
+  /// VidLink: MAL id only.
+  /// AniKoto site: only when [series] has a slug (pinned Anikoto resolve).
   List<AnimeEmbed> buildAllEmbeds({
     required int anilistId,
     required int episode,
@@ -581,40 +842,36 @@ class AnimeService {
     bool isAdult = false,
     int? malId,
   }) {
-    String? embedId;
-    if (series != null) {
-      final ep = series.episodes
-          .where((e) => e.number == episode)
-          .cast<AnikotoEpisode?>()
-          .firstWhere((_) => true, orElse: () => null);
-      embedId = ep?.embedId;
-    }
-
+    final mega = ProviderRuntimeConfig.instance.megaplay;
     final all = <AnimeEmbed>[
-      AnimeEmbed(
-        label: AnimeStreamProviders.displayName('megaplay'),
-        server: 'megaplay',
-        category: 'sub',
-        url: _megaplayEmbed(
-          anilistId: anilistId,
-          episode: episode,
-          category: 'sub',
-          embedId: embedId,
+      for (final cat in const ['sub', 'dub'])
+        AnimeEmbed(
+          label: AnimeStreamProviders.displayName('megaplay'),
+          server: 'megaplay',
+          category: cat,
+          url: mega.buildAniUrl(
+            anilistId: anilistId,
+            episode: episode,
+            lang: cat,
+          ),
         ),
-      ),
-      AnimeEmbed(
-        label: AnimeStreamProviders.displayName('megaplay'),
-        server: 'megaplay',
-        category: 'dub',
-        url: _megaplayEmbed(
-          anilistId: anilistId,
-          episode: episode,
-          category: 'dub',
-          embedId: embedId,
-        ),
-      ),
     ];
-    // AniKoto site Ajax (Vidstream → MegaPlay, VidPlay → VidTube, …).
+    final mal = malId ?? 0;
+    if (mal > 0) {
+      for (final cat in const ['sub', 'dub']) {
+        all.add(AnimeEmbed(
+          label: AnimeStreamProviders.displayName('megaplay'),
+          server: 'megaplay',
+          category: cat,
+          url: mega.buildMalUrl(
+            malId: mal,
+            episode: episode,
+            lang: cat,
+          ),
+        ));
+      }
+    }
+    // AniKoto site Ajax — only when slug already resolved (pinned Anikoto).
     final slug = series?.slug.trim() ?? '';
     if (slug.isNotEmpty) {
       for (final cat in const ['sub', 'dub']) {
@@ -627,7 +884,6 @@ class AnimeService {
       }
     }
     // VidLink — MAL embed (same host sniff as movie/TV VidLink).
-    final mal = malId ?? 0;
     if (mal > 0) {
       for (final cat in const ['sub', 'dub']) {
         all.add(AnimeEmbed(
@@ -638,8 +894,7 @@ class AnimeService {
         ));
       }
     }
-    // Miruro pipes the user asked to keep: AniKoto / AnimePahe / AllManga / AnimeDao.
-    // (Other Miruro keys stay out of the default race.)
+    // Miruro — AniList id from the card only.
     for (final cat in const ['sub', 'dub']) {
       for (final prov in AnimeStreamProviders.miruroRaceProviders) {
         all.add(AnimeEmbed(
@@ -650,8 +905,7 @@ class AnimeService {
         ));
       }
     }
-    // AllAnime (allmanga.to) fallback — same parallel-race pattern. Only emit
-    // if at least one title was provided so the extractor can search.
+    // AllAnime (allmanga.to) — title search (no AniList/MAL key upstream).
     final titles = animeTitles
         .where((t) => t.trim().isNotEmpty)
         .map((t) => Uri.encodeComponent(t.trim()))
@@ -668,19 +922,14 @@ class AnimeService {
         }
       }
     }
-    // AnimeRealms removed — upstream /api/watch is gone (see changelog).
-    // VidNest — AniList-native API (HiAnime + AnimePahe mirrors). Prefer
-    // Anikoto's mapped ani_id when Forja's catalog id is a duplicate (e.g.
-    // Dan Da Dan 171018 vs Anikoto/VidNest 132029).
-    final vidnestAnilistId =
-        (series?.aniId != null && series!.aniId! > 0) ? series.aniId! : anilistId;
+    // VidNest — card AniList id only (never Anikoto ani_id remap).
     for (final cat in const ['sub', 'dub']) {
       for (final prov in vidnestKnownProviders) {
         all.add(AnimeEmbed(
           label: AnimeStreamProviders.displayName('vidnest:$prov'),
           server: 'vidnest',
           category: cat,
-          url: 'vidnest://anilist/$vidnestAnilistId/$episode/$cat/$prov',
+          url: 'vidnest://anilist/$anilistId/$episode/$cat/$prov',
         ));
       }
     }
@@ -984,17 +1233,14 @@ class AnimeService {
     }
   }
 
-  /// Megaplay needs Anikoto `s-2` catalog ids — embed HTML `/stream/ani/`
-  /// is often 410 while `getSources?id={embedId}` still works.
+  /// AniKoto site scrape needs a resolved slug — only when the user pinned
+  /// Anikoto. Auto / Megaplay / VidNest / Miruro use card AniList (or MAL)
+  /// ids and must not title-match Anikoto.
   static bool savedSourceNeedsAnikoto(String? sourceKey) {
     if (sourceKey == null || sourceKey.isEmpty || sourceKey == 'auto') {
-      return true;
+      return false;
     }
-    final k = sourceKey.toLowerCase();
-    return k == 'megaplay' ||
-        k == 'anikoto' ||
-        k.startsWith('vidnest:') ||
-        k.contains('bee');
+    return sourceKey.toLowerCase() == 'anikoto';
   }
 
   /// Lightweight reachability check before replaying cached stream URLs.
@@ -1278,9 +1524,69 @@ class AnimeService {
 //  Models
 // ════════════════════════════════════════════════════════════════════
 
+/// One AniList [Media.relations] edge — typed link to another anime.
+class AnimeRelation {
+  final String relationType;
+  final AnimeCard anime;
+
+  const AnimeRelation({
+    required this.relationType,
+    required this.anime,
+  });
+
+  /// Short label for poster badge (Side Story, Summary, Sequel…).
+  String get label {
+    switch (relationType) {
+      case 'SIDE_STORY':
+        return 'Side Story';
+      case 'SUMMARY':
+        return 'Summary';
+      case 'ALTERNATIVE':
+        return 'Alternative';
+      case 'SPIN_OFF':
+        return 'Spin-off';
+      case 'SEQUEL':
+        return 'Sequel';
+      case 'PREQUEL':
+        return 'Prequel';
+      case 'PARENT':
+        return 'Parent';
+      case 'COMPILATION':
+        return 'Compilation';
+      case 'CONTAINS':
+        return 'Contains';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return relationType.replaceAll('_', ' ');
+    }
+  }
+
+  String? get formatLabel {
+    final f = anime.format;
+    if (f == null || f.isEmpty) return null;
+    switch (f) {
+      case 'TV':
+      case 'TV_SHORT':
+        return 'TV';
+      case 'MOVIE':
+        return 'Movie';
+      case 'OVA':
+        return 'OVA';
+      case 'ONA':
+        return 'ONA';
+      case 'SPECIAL':
+        return 'Special';
+      default:
+        return f;
+    }
+  }
+}
+
 class AnimeCard {
   final int id;
-  /// MyAnimeList id from AniList (`idMal`) — required for VidLink anime embeds.
+  /// Optional MAL id from AniList GraphQL — display/legacy only.
+  /// Playback MAL ids come from [AnimeService.resolveMalId].
   final int? idMal;
   final String titleEnglish;
   final String titleRomaji;
@@ -1307,6 +1613,8 @@ class AnimeCard {
   final String? mainStudio;
   final bool isAdult;
   final List<Map<String, String>> streamingEpisodes;
+  /// YouTube id from AniList `trailer` (details payload only).
+  final String? trailerYoutubeId;
 
   /// UI title — Settings → Playback → Anime title language (default romaji).
   String get displayTitle {
@@ -1352,6 +1660,18 @@ class AnimeCard {
       .replaceAll(RegExp(r'<[^>]+>'), '')
       .trim();
 
+  MediaTrailer? get mediaTrailer {
+    final id = trailerYoutubeId?.trim();
+    if (id == null || id.isEmpty) return null;
+    return MediaTrailer(
+      key: id,
+      name: displayTitle.isEmpty ? 'Trailer' : displayTitle,
+      type: 'Trailer',
+      official: true,
+      site: 'YouTube',
+    );
+  }
+
   const AnimeCard({
     required this.id,
     this.idMal,
@@ -1378,6 +1698,7 @@ class AnimeCard {
     this.mainStudio,
     this.isAdult = false,
     this.streamingEpisodes = const [],
+    this.trailerYoutubeId,
   });
 
   AnimeCard copyWith({
@@ -1406,6 +1727,7 @@ class AnimeCard {
     String? mainStudio,
     bool? isAdult,
     List<Map<String, String>>? streamingEpisodes,
+    String? trailerYoutubeId,
   }) {
     return AnimeCard(
       id: id ?? this.id,
@@ -1433,6 +1755,7 @@ class AnimeCard {
       mainStudio: mainStudio ?? this.mainStudio,
       isAdult: isAdult ?? this.isAdult,
       streamingEpisodes: streamingEpisodes ?? this.streamingEpisodes,
+      trailerYoutubeId: trailerYoutubeId ?? this.trailerYoutubeId,
     );
   }
 
@@ -1460,6 +1783,13 @@ class AnimeCard {
     final idMal = rawMal is int
         ? rawMal
         : (rawMal is num ? rawMal.toInt() : int.tryParse('$rawMal'));
+    String? trailerYoutubeId;
+    final trailer = json['trailer'];
+    if (trailer is Map) {
+      final site = (trailer['site'] ?? '').toString().toLowerCase();
+      final tid = (trailer['id'] ?? '').toString().trim();
+      if (site == 'youtube' && tid.isNotEmpty) trailerYoutubeId = tid;
+    }
     return AnimeCard(
       id: (json['id'] ?? 0) as int,
       idMal: (idMal != null && idMal > 0) ? idMal : null,
@@ -1492,6 +1822,7 @@ class AnimeCard {
       mainStudio: studio,
       isAdult: (json['isAdult'] ?? false) as bool,
       streamingEpisodes: streamEps,
+      trailerYoutubeId: trailerYoutubeId,
     );
   }
 

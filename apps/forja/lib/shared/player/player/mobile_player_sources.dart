@@ -281,12 +281,17 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     for (final id in _s._providerLoadGens.keys.toList()) {
       _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
     }
+    _s._trackAutoSelectTimer?.cancel();
+    _s._trackAutoSelectTimer = null;
+    PlayerSubtitleSettingsDialog.dismissIfShowing();
     PlayerStreamMenu.dismiss();
     PlayerPopupPanel.dismiss();
     PlayerEpisodePanel.dismiss();
     PlayerHubEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
+    // Exit / failover must not restore focus onto chrome that is going away.
+    playerMenuClearReturnFocus();
     // Do not cancel Engine jobs — leaving the player must not abort a
     // torrentStream / magnet resolve started from details underneath.
     DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);

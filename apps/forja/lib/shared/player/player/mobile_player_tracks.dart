@@ -17,17 +17,36 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
     final isTranslated =
         s['translated'] == true || url.contains('/subtitlecat-translate');
 
+    Future<void> applyUri(String uri) async {
+      if (_s._disposed || !mounted) return;
+      final track = SubtitleTrack.uri(
+        uri,
+        title: s['display'],
+        language: s['language'],
+      );
+      await _s._player.setSubtitleTrack(track);
+      if (_s._disposed || !mounted) return;
+      _s._updateSubVisibility(track);
+      if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+    }
+
+    final cached = _s._externalSubFileCache[url];
+    if (cached != null) {
+      try {
+        await applyUri(cached);
+      } catch (e) {
+        debugPrint('[MobilePlayer] cached subtitle re-apply failed: $e');
+        _s._externalSubFileCache.remove(url);
+      }
+      if (_s._externalSubFileCache.containsKey(url)) return;
+    }
+
     // Already-local subtitle (e.g. kisskh decrypted) — feed straight to libmpv.
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
-        _s._player.setSubtitleTrack(
-          SubtitleTrack.uri(
-            url.startsWith('file://') ? url : Uri.file(url).toString(),
-            title: s['display'],
-            language: s['language'],
-          ),
-        );
-        if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+        final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
+        _s._externalSubFileCache[url] = uri;
+        await applyUri(uri);
       } catch (e) {
         if (!mounted) return;
         setState(() => _s._selectedExternalSubUrl = null);
@@ -84,16 +103,8 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
       );
       await file.writeAsBytes(res.bodyBytes);
       final uri = Uri.file(file.path).toString();
-      final track = SubtitleTrack.uri(
-        uri,
-        title: s['display'],
-        language: s['language'],
-      );
-      _s._player.setSubtitleTrack(track);
-      _s._updateSubVisibility(track);
-      if (mounted) {
-        setState(() => _s._selectedExternalSubUrl = url);
-      }
+      _s._externalSubFileCache[url] = uri;
+      await applyUri(uri);
     } catch (e) {
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = null);
@@ -160,37 +171,62 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
     }
   }
 
+  bool _playerHasActiveSubtitle() {
+    final id = _s._player.state.track.subtitle.id;
+    return id != 'no' && id != 'auto' && id.isNotEmpty;
+  }
+
+  bool _activeSubtitleMatchesPreferred(String preferred) {
+    final current = _s._player.state.track.subtitle;
+    if (!_playerHasActiveSubtitle()) return false;
+    for (final lang in subtitleLanguageCandidates(preferred)) {
+      if (matchesPreferredLanguage(
+        lang,
+        language: current.language,
+        title: current.title,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Re-apply after media open / track settle — mpv clears external URI tracks.
+  Future<void> _reapplyPreferredSubtitle() async {
+    if (_s._disposed || !mounted) return;
+    await _s._applyAutoSubtitle();
+    if (_s._disposed || !mounted) return;
+    await _maybeAutoPickExternalSubtitle(forcePlayerApply: true);
+  }
+
   /// Applies preferred subtitle language when external tracks arrive.
   /// Preferred first; English if that category is missing.
-  Future<void> _maybeAutoPickExternalSubtitle() async {
+  Future<void> _maybeAutoPickExternalSubtitle({
+    bool forcePlayerApply = false,
+  }) async {
     if (_s._disposed || !mounted) return;
 
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
+    if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
+
+    if (_activeSubtitleMatchesPreferred(preferred)) return;
 
     final preferredPick = pickExternalSubtitleForLanguage(
       preferred,
       _s._externalSubtitles,
     );
 
-    if (_s._selectedExternalSubUrl != null) {
+    final uiSelected = _s._selectedExternalSubUrl;
+    if (uiSelected != null &&
+        _playerHasActiveSubtitle() &&
+        !forcePlayerApply) {
       if (preferredPick == null) return;
-      if (_s._selectedExternalSubUrl == preferredPick['url']) return;
+      if (uiSelected == preferredPick['url']) return;
       debugPrint(
         '[MobilePlayer] auto subtitle → ${preferredPick['display'] ?? preferredPick['language']}',
       );
       await _loadOnlineSubtitle(preferredPick);
-      return;
-    }
-
-    final current = _s._player.state.track.subtitle;
-    if (current.id != 'no' &&
-        current.id != 'auto' &&
-        matchesPreferredLanguage(
-          preferred,
-          language: current.language,
-          title: current.title,
-        )) {
       return;
     }
 
@@ -202,10 +238,22 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
                 _s._externalSubtitles,
               ));
     if (pick == null) return;
+
+    Map<String, dynamic> toLoad = pick;
+    if (forcePlayerApply && uiSelected != null) {
+      for (final s in _s._externalSubtitles) {
+        if (s['url']?.toString() == uiSelected) {
+          toLoad = s;
+          break;
+        }
+      }
+    }
+
     debugPrint(
-      '[MobilePlayer] auto subtitle → ${pick['display'] ?? pick['language']}',
+      '[MobilePlayer] auto subtitle → ${toLoad['display'] ?? toLoad['language']}'
+      '${forcePlayerApply ? ' (re-apply)' : ''}',
     );
-    await _loadOnlineSubtitle(pick);
+    await _loadOnlineSubtitle(toLoad);
   }
 
   void _showSubtitlesMenu(BuildContext anchorContext) {

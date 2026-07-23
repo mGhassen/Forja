@@ -534,8 +534,8 @@ Future<bool> waitForVideoDecode(
 
 /// After [waitForMediaOpen], require a decoded frame for adaptive streams.
 ///
-/// When GPU decode stalls (seen on some Windows `auto-safe` setups), retry once
-/// with `hwdec=no` before failing over to the next source.
+/// Observe-only — no reopen, no `hwdec=no`. The open mind-tree owns the next
+/// branch; [PlaybackRecovery] owns live decoder failures after confirm.
 ///
 /// Set [force] for in-player Stremio/Nuvio switches: progressive HTTP can report
 /// duration/buffer while only audio demuxes — without a frame the UI stays black.
@@ -544,35 +544,14 @@ Future<bool> confirmOpenedStreamVideoDecode(
   required String openUrl,
   Map<String, String>? headers,
   String? type,
+  String? providerId,
   bool force = false,
 }) async {
   if (!force && !sourceRequiresVideoDecode(openUrl, type: type)) return true;
-  final openTimeout = isLocalTorrentStreamUrl(openUrl)
-      ? const Duration(seconds: 90)
-      : const Duration(seconds: 25);
-  final decodeTimeout = videoDecodeTimeoutForUrl(openUrl);
-
-  if (await waitForVideoDecode(player, timeout: decodeTimeout)) {
-    return true;
-  }
-
-  if (player.platform is! NativePlayer) return false;
-  debugPrint('[Player] hw decode miss — retry software: $openUrl');
-  await resetPlayerForOpen(player);
-  await (player.platform as NativePlayer).setProperty('hwdec', 'no');
-  final retryUrl = await openPlayerStream(
+  return waitForVideoDecode(
     player,
-    url: openUrl,
-    headers: headers,
+    timeout: videoDecodeTimeoutForUrl(openUrl),
   );
-  if (!await waitForMediaOpen(
-    player,
-    streamUrl: retryUrl,
-    timeout: openTimeout,
-  )) {
-    return false;
-  }
-  return waitForVideoDecode(player, timeout: decodeTimeout);
 }
 
 Future<bool> waitForSeekableDuration(
@@ -1318,9 +1297,8 @@ String _joinPlaylistUri(String base, String uri) {
 /// nekostream/vivibebe green-pass then fail at decode.
 Future<bool> hlsMediaSegmentsLookPlayable(
   String playlistUrl,
-  Map<String, String> headers, {
-  String? sourceKey,
-}) async {
+  Map<String, String> headers,
+) async {
   try {
     final master = await animeHttp(
       'GET',
@@ -1331,12 +1309,10 @@ Future<bool> hlsMediaSegmentsLookPlayable(
     );
     if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
 
-    // Provider profile (or legacy host list) says PNG-strip — skip segment
-    // poison sample; master OK ⇒ playable via /hls-proxy?strip=png.
-    if (hlsProxyStripIsPng(playlistUrl) ||
-        animeHlsNeedsPngStripFor(playlistUrl, sourceKey: sourceKey)) {
-      return true;
-    }
+    // Already on /hls-proxy?strip=png — nested sample is redundant.
+    // Do NOT skip sampling just because the profile has pngStrip auto/force:
+    // pure image ads (vivibebe → ibyteimg PNG) are not fixable by strip.
+    if (hlsProxyStripIsPng(playlistUrl)) return true;
 
     var mediaUrl = playlistUrl;
     var body = master.body;
@@ -1506,7 +1482,6 @@ Future<bool> probeStreamSourceUrl(
           if (!await hlsMediaSegmentsLookPlayable(
             catalog,
             hdrs,
-            sourceKey: key,
           )) {
             debugPrint(
               '[Player] HLS media poison/ad segments — reject $catalog '
