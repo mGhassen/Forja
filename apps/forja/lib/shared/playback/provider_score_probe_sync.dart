@@ -23,13 +23,18 @@ abstract final class ProviderScoreProbeSync {
     required bool streamsResolved,
   }) {
     return switch (status) {
-      // Full check done (e.g. anime embed success) — commit linked +2+2.
+      // Finished check: extract OK + stream OK → linked +2+2.
       StreamProviderProbeStatus.success
           when hasSources && streamsResolved =>
         'linked_up',
-      // Extract finished with streams; wait for player stream probe/play.
+      // Extract finished with streams; wait for CDN / player stream probe.
       StreamProviderProbeStatus.success when hasSources => 'await_streams',
       StreamProviderProbeStatus.success => 'down',
+      // Finished check: extract OK + all streams/CDN dead → linked +2−2.
+      StreamProviderProbeStatus.failed
+          when hasSources && streamsResolved =>
+        'linked_down',
+      // Abandoned mid-check (sources listed, stream outcome never finished).
       StreamProviderProbeStatus.failed when hasSources => 'skip',
       StreamProviderProbeStatus.failed => 'down',
       StreamProviderProbeStatus.trying => 'trying',
@@ -43,7 +48,7 @@ abstract final class ProviderScoreProbeSync {
     required String providerId,
     required StreamProviderProbeStatus status,
     bool hasSources = false,
-    /// When true, terminal success already includes a working stream (anime).
+    /// When true, the stream/CDN check finished (anime after `_playableHits`).
     bool streamsResolved = false,
   }) async {
     if (scope == null || providerId.isEmpty) return;
@@ -59,6 +64,8 @@ abstract final class ProviderScoreProbeSync {
     switch (action) {
       case 'linked_up':
         await ProviderScoreMemory.recordLinkedStreamsUp(scope, providerId);
+      case 'linked_down':
+        await ProviderScoreMemory.recordLinkedStreamsDown(scope, providerId);
       case 'down':
         await ProviderScoreMemory.recordServerFailure(scope, providerId);
       default:

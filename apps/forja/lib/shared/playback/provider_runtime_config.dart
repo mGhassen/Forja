@@ -843,9 +843,12 @@ class ProviderRuntimeSnapshot {
       probe: AnimeProbeMode.segmentPoisonSample,
       pngStrip: AnimePngStripMode.auto,
     ),
+    // Miruro: match v1.2.406 — masterOnly + never strip. Segment-poison +
+    // open-pipeline classify false-killed AnimePahe/AllManga/AnimeDao/AnimeGG
+    // (and forced miruro.tv Referer broke upstream CDNs).
     'miruro:bee': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
-      pngStrip: AnimePngStripMode.auto,
+      probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'vidnest:hianime': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
@@ -866,44 +869,53 @@ class ProviderRuntimeSnapshot {
     'allanime:Luf-Mp4': AnimePlaybackProfile(
       probe: AnimeProbeMode.headOrRange,
     ),
-    // Miruro HiAnime (zoro): vivibebe / PNG-ad masters — sample segments.
-    // AnimePahe / AllManga / AnimeDao / other plain HLS: masterOnly only
-    // (segmentPoisonSample false-killed them — 1.2.366).
     'miruro:zoro': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:kiwi': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:ally': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:hop': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:bonk': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:moo': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:animedunya': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:arc': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:jet': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:bun': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:kuz': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'miruro:telli': AnimePlaybackProfile(
       probe: AnimeProbeMode.masterOnly,
+      pngStrip: AnimePngStripMode.never,
     ),
     'watchhentai': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
     'hentaini': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
@@ -1038,31 +1050,19 @@ class ProviderRuntimeSnapshot {
     );
   }
 
-  /// Miruro plain-HLS pipes (not HiAnime zoro / AniKoto bee).
-  static const _miruroMasterOnlyKeys = <String>{
-    'miruro:kiwi',
-    'miruro:ally',
-    'miruro:hop',
-    'miruro:bonk',
-    'miruro:moo',
-    'miruro:animedunya',
-    'miruro:arc',
-    'miruro:jet',
-    'miruro:bun',
-    'miruro:kuz',
-    'miruro:telli',
-  };
-
+  /// v1.2.406 parity: every Miruro pipe is masterOnly + never strip.
   static void _clampStaleMiruroSegmentPoison(
     Map<String, AnimePlaybackProfile> profiles,
   ) {
-    for (final key in _miruroMasterOnlyKeys) {
-      final cur = profiles[key];
-      if (cur == null) continue;
-      if (cur.probe != AnimeProbeMode.segmentPoisonSample) continue;
-      profiles[key] = AnimePlaybackProfile(
+    for (final e in profiles.entries.toList()) {
+      if (!e.key.startsWith('miruro:')) continue;
+      final cur = e.value;
+      final needsProbe = cur.probe == AnimeProbeMode.segmentPoisonSample;
+      final needsStrip = cur.pngStrip != AnimePngStripMode.never;
+      if (!needsProbe && !needsStrip) continue;
+      profiles[e.key] = AnimePlaybackProfile(
         probe: AnimeProbeMode.masterOnly,
-        pngStrip: cur.pngStrip,
+        pngStrip: AnimePngStripMode.never,
         pngStripHostContains: cur.pngStripHostContains,
       );
     }

@@ -1270,6 +1270,39 @@ class AnimeService {
     }
   }
 
+  /// Drop sticky provider pin for [animeId] (+ optional [category]).
+  Future<void> clearPreferredSource({
+    required int animeId,
+    String? category,
+  }) async {
+    var list = await _loadSourcePrefs();
+    final before = list.length;
+    list.removeWhere((e) {
+      if (_prefAnimeId(e) != animeId) return false;
+      if (category == null) return true;
+      return e['cat'] == category;
+    });
+    if (list.length != before) {
+      await _persistSourcePrefs(list);
+    }
+  }
+
+  /// Drop stream URL cache + sticky source pin(s) for a show (trash / re-resolve).
+  Future<void> clearPlaybackCachesForShow({
+    required int animeId,
+    String? category,
+  }) async {
+    if (category != null) {
+      await dropCachedStreamsForShow(animeId: animeId, category: category);
+      await clearPreferredSource(animeId: animeId, category: category);
+      return;
+    }
+    for (final cat in const ['sub', 'dub']) {
+      await dropCachedStreamsForShow(animeId: animeId, category: cat);
+    }
+    await clearPreferredSource(animeId: animeId);
+  }
+
   /// AniKoto site scrape needs a resolved slug — only when the user pinned
   /// Anikoto. Auto / Megaplay / VidNest / Miruro use card AniList (or MAL)
   /// ids and must not title-match Anikoto.

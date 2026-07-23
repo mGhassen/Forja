@@ -111,8 +111,14 @@ Map<String, String> resolvePlaybackHttpHeaders(
     final policyHost =
         Uri.tryParse(policy.referer)?.host.toLowerCase() ?? '';
     final familyOk = _refererMatchesPolicyFamily(refHost, policyHost);
-    final accepted =
-        ref.isNotEmpty && !selfCdn && !scrapeLeak && familyOk;
+    // Miruro pipes ship upstream embed Referers (kwik / animepahe / …).
+    // Forcing miruro.tv (v1.2.406 regression) 403s owocdn segments.
+    final miruroPipe =
+        (pid ?? '').toLowerCase().startsWith('miruro:');
+    final accepted = ref.isNotEmpty &&
+        !selfCdn &&
+        !scrapeLeak &&
+        (familyOk || miruroPipe);
     if (!accepted) {
       putCanonical('Referer', 'referer', policy.referer);
       putCanonical('Origin', 'origin', policy.origin);

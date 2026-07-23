@@ -315,7 +315,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   }
 
   Future<void> _clearProgress() async {
-    await _service.removeFromHistory(_activeId);
+    final id = _activeId;
+    await _service.removeFromHistory(id);
+    // Match movies/TV trash: drop cached extracts + sticky provider pin so
+    // next Play re-resolves (not "Using saved source…").
+    await _service.clearPlaybackCachesForShow(animeId: id);
     if (mounted) setState(() => _progress = null);
   }
 
@@ -614,7 +618,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                       slots: [
                         HeroPillIconSlot(
                           icon: Icons.delete_outline_rounded,
-                          tooltip: 'Clear progress',
+                          tooltip: 'Clear progress & stream cache',
                           onTap: _clearProgress,
                         ),
                       ],

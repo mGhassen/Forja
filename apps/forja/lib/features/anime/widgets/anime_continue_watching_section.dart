@@ -10,6 +10,9 @@ class AnimeContinueWatchingSection extends StatefulWidget {
   final void Function(Map<String, dynamic> entry) onResume;
   final void Function(Map<String, dynamic> entry) onRemove;
   final void Function(AnimeCard anime) onOpenDetails;
+  final int tvRowOrder;
+  /// When null, ↑ uses the coordinator previous row (e.g. Trending under hero).
+  final VoidCallback? tvFocusUp;
 
   const AnimeContinueWatchingSection({
     super.key,
@@ -19,6 +22,8 @@ class AnimeContinueWatchingSection extends StatefulWidget {
     required this.onResume,
     required this.onRemove,
     required this.onOpenDetails,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   @override
@@ -105,12 +110,9 @@ class _AnimeContinueWatchingSectionState
               shellTvRegisterRow(
                 tabId: 'anime',
                 rowId: _rowId,
-                sortOrder: 0,
+                sortOrder: widget.tvRowOrder,
                 itemCount: widget.entries.length,
-                onFocusUp: () {
-                  ShellTvFocusCoordinator.revealHeroForTab('anime');
-                  ShellTvFocus.focusHomeHeroPlay();
-                },
+                onFocusUp: widget.tvFocusUp,
               );
               return FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),

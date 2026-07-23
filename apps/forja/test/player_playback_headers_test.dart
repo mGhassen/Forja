@@ -199,6 +199,17 @@ void main() {
       expect(h['Origin'], 'https://www.miruro.tv');
     });
 
+    test('Miruro keeps upstream extract Referer (not forced to miruro.tv)', () {
+      const url = 'https://vault-12.owocdn.top/stream/x/uwu.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://kwik.cx/e/abc', 'Origin': 'https://kwik.cx'},
+        streamUrl: url,
+        providerId: 'miruro:kiwi',
+      );
+      expect(h['Referer'], 'https://kwik.cx/e/abc');
+      expect(h['Origin'], 'https://kwik.cx');
+    });
+
     test('RFC-044: template providerId derives Referer from embed host', () {
       const url = 'https://brand-new-cdn.example/abc/master.m3u8';
       final h = resolvePlaybackHttpHeaders(

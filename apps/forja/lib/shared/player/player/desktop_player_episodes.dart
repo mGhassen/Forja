@@ -1312,6 +1312,13 @@ mixin _DesktopPlayerEpisodes
     _s._statusController.clear();
     _s._markPlaybackConfirmed(false);
 
+    // Chip label follows selection immediately (not only after open/decode).
+    if (mounted) {
+      setState(() => _s._currentProvider = newProvider);
+    } else {
+      _s._currentProvider = newProvider;
+    }
+
     final currentPos = _s._positionNotifier.value;
     final provider = widget.providers![newProvider];
     final providerLabel = PlayerProviderMenu.snackbarLabel(

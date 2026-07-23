@@ -47,6 +47,26 @@ void main() {
       expect(ProviderScoreMemory.streamVerdictFor(scope, 'animehost'), 2);
     });
 
+    test('CDN dead after extract commits linked +2−2', () async {
+      await ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: scope,
+        providerId: 'animedao',
+        status: StreamProviderProbeStatus.success,
+        hasSources: true,
+      );
+      expect(ProviderScoreMemory.scoreFor(scope, 'animedao'), 0);
+      await ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: scope,
+        providerId: 'animedao',
+        status: StreamProviderProbeStatus.failed,
+        hasSources: true,
+        streamsResolved: true,
+      );
+      expect(ProviderScoreMemory.serverVerdictFor(scope, 'animedao'), 2);
+      expect(ProviderScoreMemory.streamVerdictFor(scope, 'animedao'), -2);
+      expect(ProviderScoreMemory.scoreFor(scope, 'animedao'), 0);
+    });
+
     test('success without sources applies −2', () async {
       await ProviderScoreProbeSync.onProbeStatusChanged(
         scope: scope,

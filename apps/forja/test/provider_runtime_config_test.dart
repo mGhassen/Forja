@@ -82,14 +82,16 @@ void main() {
       expect(h['Referer'], 'https://megaplay.buzz/');
     });
 
-    test('builtin Miruro probes: poison only HiAnime + bee', () {
+    test('builtin Miruro probes: all masterOnly like v1.2.406', () {
       final b = ProviderRuntimeSnapshot.builtins().animePlaybackProfiles;
-      expect(b['miruro:zoro']!.probe, AnimeProbeMode.segmentPoisonSample);
-      expect(b['miruro:bee']!.probe, AnimeProbeMode.segmentPoisonSample);
+      expect(b['miruro:zoro']!.probe, AnimeProbeMode.masterOnly);
+      expect(b['miruro:bee']!.probe, AnimeProbeMode.masterOnly);
       expect(b['miruro:kiwi']!.probe, AnimeProbeMode.masterOnly);
       expect(b['miruro:ally']!.probe, AnimeProbeMode.masterOnly);
       expect(b['miruro:bonk']!.probe, AnimeProbeMode.masterOnly);
       expect(b['miruro:hop']!.probe, AnimeProbeMode.masterOnly);
+      expect(b['miruro:zoro']!.pngStrip, AnimePngStripMode.never);
+      expect(b['miruro:bee']!.pngStrip, AnimePngStripMode.never);
     });
 
     test('merge clamps stale remote Miruro segmentPoison to masterOnly', () {
@@ -102,37 +104,35 @@ void main() {
             'miruro:moo': {'probe': 'segmentPoisonSample'},
             'miruro:bonk': {'probe': 'segmentPoisonSample'},
             'miruro:zoro': {'probe': 'segmentPoisonSample'},
-            'miruro:bee': {'probe': 'segmentPoisonSample'},
+            'miruro:bee': {
+              'probe': 'segmentPoisonSample',
+              'pngStrip': 'auto',
+            },
           },
         },
       });
       expect(remote, isNotNull);
       final merged =
           ProviderRuntimeSnapshot.builtins().merged(remote!);
-      expect(
-        merged.animePlaybackProfiles['miruro:kiwi']!.probe,
-        AnimeProbeMode.masterOnly,
-      );
-      expect(
-        merged.animePlaybackProfiles['miruro:ally']!.probe,
-        AnimeProbeMode.masterOnly,
-      );
-      expect(
-        merged.animePlaybackProfiles['miruro:moo']!.probe,
-        AnimeProbeMode.masterOnly,
-      );
-      expect(
-        merged.animePlaybackProfiles['miruro:bonk']!.probe,
-        AnimeProbeMode.masterOnly,
-      );
-      expect(
-        merged.animePlaybackProfiles['miruro:zoro']!.probe,
-        AnimeProbeMode.segmentPoisonSample,
-      );
-      expect(
-        merged.animePlaybackProfiles['miruro:bee']!.probe,
-        AnimeProbeMode.segmentPoisonSample,
-      );
+      for (final k in [
+        'miruro:kiwi',
+        'miruro:ally',
+        'miruro:moo',
+        'miruro:bonk',
+        'miruro:zoro',
+        'miruro:bee',
+      ]) {
+        expect(
+          merged.animePlaybackProfiles[k]!.probe,
+          AnimeProbeMode.masterOnly,
+          reason: k,
+        );
+        expect(
+          merged.animePlaybackProfiles[k]!.pngStrip,
+          AnimePngStripMode.never,
+          reason: k,
+        );
+      }
     });
 
     test('merge overlays anime playbackProfiles by sourceKey', () {

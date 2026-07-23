@@ -523,6 +523,31 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _probeNotifier.value = next;
   }
 
+  ProviderScoreScope? get _animeScoreScope =>
+      ProviderScoreProbeSync.scopeFromPlayer(
+        movie: _hubMovieFromAnime(widget.anime),
+        providers: _animeProviderMap(_allEmbeds),
+        hubEpisodeNumber: widget.episodeNumber,
+      );
+
+  /// Score only when the CDN/stream check finished — not on extract alone.
+  void _scoreAnimeProbe({
+    required String panelKey,
+    required StreamProviderProbeStatus status,
+    bool hasSources = false,
+    bool streamsResolved = false,
+  }) {
+    unawaited(
+      ProviderScoreProbeSync.onProbeStatusChanged(
+        scope: _animeScoreScope,
+        providerId: panelKey,
+        status: status,
+        hasSources: hasSources,
+        streamsResolved: streamsResolved,
+      ),
+    );
+  }
+
   StreamProviderProbeStatus _probeStatusFromProgress(String status) {
     return switch (status) {
       'success' => StreamProviderProbeStatus.success,
@@ -571,19 +596,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
       _probeNotifier.value = probes;
       for (final panelKey in targets) {
-        unawaited(
-          ProviderScoreProbeSync.onProbeStatusChanged(
-            scope: ProviderScoreProbeSync.scopeFromPlayer(
-              movie: _hubMovieFromAnime(widget.anime),
-              providers: _animeProviderMap(_allEmbeds),
-              hubEpisodeNumber: widget.episodeNumber,
-            ),
-            providerId: panelKey,
-            status: nextStatus,
-            // Anime success = finished check with a working stream (linked +2+2).
-            hasSources: nextStatus == StreamProviderProbeStatus.success,
-            streamsResolved: nextStatus == StreamProviderProbeStatus.success,
-          ),
+        // Extract success → await CDN `_playableHits` (no +2+2 yet).
+        // Extract empty/fail → server −2 only.
+        _scoreAnimeProbe(
+          panelKey: panelKey,
+          status: nextStatus,
+          hasSources: nextStatus == StreamProviderProbeStatus.success,
         );
       }
       final current = _probeNotifier.value;
@@ -909,6 +927,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
             );
             return;
           }
+          for (final h in prefHits) {
+            _markProbeStatus(h.embed.panelKey, StreamProviderProbeStatus.failed);
+            _scoreAnimeProbe(
+              panelKey: h.embed.panelKey,
+              status: StreamProviderProbeStatus.failed,
+              hasSources: true,
+              streamsResolved: true,
+            );
+          }
         }
         if (kDebugMode) {
           debugPrint(
@@ -951,6 +978,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _markProbeStatus(
           h.embed.panelKey,
           StreamProviderProbeStatus.success,
+        );
+        _scoreAnimeProbe(
+          panelKey: h.embed.panelKey,
+          status: StreamProviderProbeStatus.success,
+          hasSources: true,
+          streamsResolved: true,
         );
       }
       final stripped = await AnimePlaybackBridge.stripHitsPng(all);
@@ -1058,6 +1091,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       for (final h in hits) {
         deadKeys.add(h.embed.sourceKey);
         _markProbeStatus(h.embed.panelKey, StreamProviderProbeStatus.failed);
+        // Extract OK + CDN dead → linked +2−2 (not stale +2+2).
+        _scoreAnimeProbe(
+          panelKey: h.embed.panelKey,
+          status: StreamProviderProbeStatus.failed,
+          hasSources: true,
+          streamsResolved: true,
+        );
       }
       if (kDebugMode) {
         debugPrint(
@@ -1249,6 +1289,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       _markProbeStatus(
         h.embed.panelKey,
         StreamProviderProbeStatus.success,
+      );
+      _scoreAnimeProbe(
+        panelKey: h.embed.panelKey,
+        status: StreamProviderProbeStatus.success,
+        hasSources: true,
+        streamsResolved: true,
       );
     }
     final ownsProviderCache = providerSourcesCache == null;

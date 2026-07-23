@@ -3,9 +3,22 @@ part of 'anime_screen.dart';
 mixin _AnimeScreenBuild on State<AnimeScreen> {
   _AnimeScreenState get _s => this as _AnimeScreenState;
 
-  int get _moodChipsOrder => _s._continueWatching.isNotEmpty ? 1 : 0;
-  int get _moodResultsOrder => _moodChipsOrder + 1;
-  int get _catalogRowBase => _moodResultsOrder + 1;
+  /// TV D-pad order must match visual stack.
+  /// Full hero: Trending (bleed) → Continue → vibe → catalog.
+  /// Narrow/mobile: Continue → vibe → Trending → catalog.
+  int _moodChipsOrder({required bool trendingOnHero}) {
+    var order = 0;
+    if (trendingOnHero) order += 1;
+    if (_s._continueWatching.isNotEmpty) order += 1;
+    return order;
+  }
+
+  int _moodResultsOrder({required bool trendingOnHero}) =>
+      _moodChipsOrder(trendingOnHero: trendingOnHero) + 1;
+
+  /// First catalog row after mood results (excludes hero-bleed Trending).
+  int _catalogRowBase({required bool trendingOnHero}) =>
+      _moodResultsOrder(trendingOnHero: trendingOnHero) + 1;
   List<HubHeroSlide> _heroSlides(List<AnimeCard> spotlight) {
     return spotlight
         .map(
@@ -72,6 +85,18 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
         final fullHero = hubIsFullCinematicHero(context);
         final usesShell = hubUsesShellLayout(context);
         final trendingOnHero = usesShell && fullHero;
+        final moodChipsOrder = _moodChipsOrder(trendingOnHero: trendingOnHero);
+        final moodResultsOrder =
+            _moodResultsOrder(trendingOnHero: trendingOnHero);
+        final catalogBase = _catalogRowBase(trendingOnHero: trendingOnHero);
+        // Bleed Trending owns 0; otherwise Trending is the first catalog row.
+        final trendingOrder = trendingOnHero ? 0 : catalogBase;
+        final catalogStart = trendingOnHero ? catalogBase : catalogBase + 1;
+        void focusHeroPlay() {
+          ShellTvFocusCoordinator.revealHeroForTab('anime');
+          ShellTvFocus.focusHomeHeroPlay();
+        }
+
         final trendingSection = trendingOnHero
             ? HubCatalogSection<AnimeCard>(
                 title: 'Trending Now',
@@ -79,11 +104,8 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                 compactTop: true,
                 tvTabId: 'anime',
                 tvRowId: 'trending',
-                tvRowOrder: _catalogRowBase + 0,
-                tvFocusUp: () {
-                  ShellTvFocusCoordinator.revealHeroForTab('anime');
-                  ShellTvFocus.focusHomeHeroPlay();
-                },
+                tvRowOrder: trendingOrder,
+                tvFocusUp: focusHeroPlay,
                 cardBuilder: (context, anime, index) => _animePosterCard(
                   anime,
                   listIndex: index,
@@ -132,7 +154,13 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                               ),
                               if (_s._continueWatching.isNotEmpty)
                                 hubRowSliver(context,
-                                  _buildContinueWatching(),
+                                  _buildContinueWatching(
+                                    tvRowOrder: trendingOnHero ? 1 : 0,
+                                    // Under bleed Trending: ↑ goes to Trending.
+                                    // Otherwise Continue is first → hero Play.
+                                    tvFocusUp:
+                                        trendingOnHero ? null : focusHeroPlay,
+                                  ),
                                   isFirstAfterHero: trendingSection == null,
                                 )
                               else if (!_s._historyResolved)
@@ -140,7 +168,14 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   homeContinueWatchingSkeleton(context),
                                   isFirstAfterHero: trendingSection == null,
                                 ),
-                              hubRowSliver(context,_buildMoodChips(), isFirstAfterHero: false),
+                              hubRowSliver(
+                                context,
+                                _buildMoodChips(
+                                  chipsOrder: moodChipsOrder,
+                                  resultsOrder: moodResultsOrder,
+                                ),
+                                isFirstAfterHero: false,
+                              ),
                               if (trendingSection == null)
                                 hubRowSliver(context,
                                   HubCatalogSection<AnimeCard>(
@@ -148,13 +183,8 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                     future: _s._trendingFuture,
                                     tvTabId: 'anime',
                                     tvRowId: 'trending',
-                                    tvRowOrder: _catalogRowBase + 0,
-                                    tvFocusUp: () {
-                                      ShellTvFocusCoordinator.revealHeroForTab(
-                                        'anime',
-                                      );
-                                      ShellTvFocus.focusHomeHeroPlay();
-                                    },
+                                    tvRowOrder: trendingOrder,
+                                    // Mood/Continue sit above — don't skip to hero.
                                     cardBuilder: (context, anime, index) =>
                                         _animePosterCard(
                                       anime,
@@ -170,7 +200,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   future: _s._topAiringFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-airing',
-                                  tvRowOrder: _catalogRowBase + 1,
+                                  tvRowOrder: catalogStart + 0,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -187,7 +217,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   showRank: true,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-10',
-                                  tvRowOrder: _catalogRowBase + 2,
+                                  tvRowOrder: catalogStart + 1,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -204,7 +234,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   future: _s._mostPopularFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'most-popular',
-                                  tvRowOrder: _catalogRowBase + 3,
+                                  tvRowOrder: catalogStart + 2,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -220,7 +250,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   future: _s._recentEpisodesFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'latest-eps',
-                                  tvRowOrder: _catalogRowBase + 4,
+                                  tvRowOrder: catalogStart + 3,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -236,7 +266,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   future: _s._topRatedFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-rated',
-                                  tvRowOrder: _catalogRowBase + 5,
+                                  tvRowOrder: catalogStart + 4,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -252,7 +282,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   future: _s._mostFavoriteFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'most-favorited',
-                                  tvRowOrder: _catalogRowBase + 6,
+                                  tvRowOrder: catalogStart + 5,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -268,7 +298,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                   future: _s._latestCompletedFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'recently-completed',
-                                  tvRowOrder: _catalogRowBase + 7,
+                                  tvRowOrder: catalogStart + 6,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -290,7 +320,10 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
   }
 
   // ─── Continue watching ─────────────────────────────────────────
-  Widget _buildContinueWatching() {
+  Widget _buildContinueWatching({
+    required int tvRowOrder,
+    VoidCallback? tvFocusUp,
+  }) {
     return AnimeContinueWatchingSection(
       entries: _s._continueWatching,
       scrollController: _s._cwScrollController,
@@ -298,11 +331,16 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
       onResume: _s._resumeWatch,
       onRemove: _s._removeFromHistory,
       onOpenDetails: _s._openDetails,
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
     );
   }
 
   // ─── Mood chips ────────────────────────────────────────────────
-  Widget _buildMoodChips() {
+  Widget _buildMoodChips({
+    required int chipsOrder,
+    required int resultsOrder,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,7 +360,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
               shellTvRegisterRow(
                 tabId: 'anime',
                 rowId: 'mood-chips',
-                sortOrder: _moodChipsOrder,
+                sortOrder: chipsOrder,
                 itemCount: _AnimeScreenState._moods.length,
               );
               return FocusTraversalGroup(
@@ -390,12 +428,12 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildMoodSection(),
+        _buildMoodSection(resultsOrder: resultsOrder),
       ],
     );
   }
 
-  Widget _buildMoodSection() {
+  Widget _buildMoodSection({required int resultsOrder}) {
     final future = _s._moodFuture;
     if (future == null) return const SizedBox.shrink();
 
@@ -435,7 +473,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
               shellTvRegisterRow(
                 tabId: 'anime',
                 rowId: 'mood-results',
-                sortOrder: _moodResultsOrder,
+                sortOrder: resultsOrder,
                 itemCount: list.length,
               );
               return FocusTraversalGroup(
