@@ -412,13 +412,13 @@ class ExternalPlayerService {
     return (url: url, headers: headers);
   }
 
-  /// Match built-in [applyMediaHttpHeaders] mpv network/HLS tuning.
+  /// Match built-in player mpv network/HLS tuning (fast open profile).
   static List<String> _mpvStreamArgs({required String prefix}) => [
         '${prefix}network-timeout=30',
         '${prefix}tls-verify=no',
-        '${prefix}hls-bitrate=max',
+        '${prefix}hls-bitrate=5000000',
         '${prefix}cache=yes',
-        '${prefix}demuxer-readahead-secs=120',
+        '${prefix}demuxer-readahead-secs=20',
         '${prefix}ytdl=no',
       ];
 

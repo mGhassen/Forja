@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'isolate_runner.dart';
 
 /// Rust-backed anime stream extractors (AllAnime, Miruro pipe, AnimeRealms, adult).
@@ -213,14 +214,29 @@ Future<MiruroRustResolve> miruroResolveWithCfFallback({
   }
   final streams = decoded['streams'];
   if (streams is! List) {
+    if (kDebugMode) {
+      debugPrint(
+        '[Miruro] $provider resolve: no streams list '
+        'cf=${decoded['cf_blocked'] == true}',
+      );
+    }
     return MiruroRustResolve(streams: const [], cfBlocked: decoded['cf_blocked'] == true);
   }
+  final parsed = streams
+      .whereType<Map>()
+      .map((e) => AnimeExtractorStreamResult.fromJson(e.cast<String, dynamic>()))
+      .toList();
+  if (kDebugMode) {
+    debugPrint(
+      '[Miruro] $provider resolve: ${parsed.length} stream(s) '
+      'cf=${decoded['cf_blocked'] == true}',
+    );
+  }
   return MiruroRustResolve(
-    streams: streams
-        .whereType<Map>()
-        .map((e) => AnimeExtractorStreamResult.fromJson(e.cast<String, dynamic>()))
-        .toList(),
-    cfBlocked: false,
+    streams: parsed,
+    // Keep CF flag when the list is empty so callers can distinguish
+    // "provider has no episode" vs "pipe still blocked".
+    cfBlocked: parsed.isEmpty && decoded['cf_blocked'] == true,
   );
 }
 

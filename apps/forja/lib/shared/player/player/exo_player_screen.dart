@@ -24,6 +24,7 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -781,6 +782,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     final nav = Navigator.of(context, rootNavigator: true);
     if (_routePopAllowed) {
       if (nav.canPop()) nav.pop();
+      dismissActiveLoadingOverlayRoute();
       return;
     }
     setState(() => _routePopAllowed = true);
@@ -788,6 +790,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       if (!mounted) return;
       final n = Navigator.of(context, rootNavigator: true);
       if (n.canPop()) n.pop();
+      dismissActiveLoadingOverlayRoute();
     });
   }
 

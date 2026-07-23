@@ -247,6 +247,17 @@ fn api_get_version(
         if let Ok(decoded) = decode_pipe_body(body, x_obf) {
             return Ok(Some(decoded));
         }
+        // WKWebView fetch often cannot read custom `x-obfuscated` (CORS /
+        // Headers opacity) even same-origin — body is still the cipher text.
+        // Try known obfuscation levels before falling back to CF-blocked HTTP.
+        let missing_obf = x_obf.map(str::trim).unwrap_or("").is_empty();
+        if missing_obf {
+            for level in ["2", "1"] {
+                if let Ok(decoded) = decode_pipe_body(body, Some(level)) {
+                    return Ok(Some(decoded));
+                }
+            }
+        }
     }
 
     // Network errors must not abort the whole resolve — Miruro sits behind CF and
@@ -618,6 +629,24 @@ mod tests {
         let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
         let out = deobfuscate(&b64, "2").unwrap();
         assert_eq!(out, plain);
+    }
+
+    #[test]
+    fn webview_body_decodes_without_x_obfuscated_header() {
+        // Simulates WKWebView fetch missing custom header (CORS opacity).
+        let plain = r#"{"streams":[{"url":"https://cdn.example/a.m3u8","type":"hls"}]}"#;
+        let mut data: Vec<u8> = plain.as_bytes().to_vec();
+        for (i, b) in data.iter_mut().enumerate() {
+            *b ^= PIPE_OBF_KEY[i % PIPE_OBF_KEY.len()];
+        }
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+        let decoded = decode_pipe_body(&b64, None);
+        assert!(decoded.is_err(), "plain JSON parse must fail on cipher");
+        let recovered = decode_pipe_body(&b64, Some("2")).unwrap();
+        assert_eq!(
+            recovered["streams"][0]["url"],
+            json!("https://cdn.example/a.m3u8")
+        );
     }
 
     #[test]

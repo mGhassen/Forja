@@ -1594,18 +1594,18 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       await safeSet('hr-seek', 'yes');
       await safeSet('hr-seek-framedrop', 'no');
     } else {
-      // 150 MiB forward cache (less than desktop's 300 MiB — spare mobile RAM).
+      // Fast first frame: short readahead + soft HLS ceiling. Mobile keeps
+      // a smaller RAM cache than desktop; Quality menu still locks a rung.
       await safeSet('cache', 'yes');
-      await safeSet('cache-secs', '120');
-      await safeSet('demuxer-max-bytes', '150MiB');
-      await safeSet('demuxer-readahead-secs', '120');
+      await safeSet('cache-secs', '45');
+      await safeSet('demuxer-max-bytes', '100MiB');
+      await safeSet('demuxer-readahead-secs', '20');
 
       // 30 MiB back-buffer so backward seeks don't require a full rebuffer.
       await safeSet('demuxer-max-back-bytes', '30MiB');
 
-      // Start HLS on the highest variant (same as IPTV). Manual Quality
-      // menu still locks a specific rung by opening that playlist URL.
-      await safeSet('hls-bitrate', 'max');
+      // Soft ceiling (~5 Mbps): avoid opening top rungs on slow CDNs.
+      await safeSet('hls-bitrate', '5000000');
     }
 
     // We supply our own URL — no yt-dlp needed.

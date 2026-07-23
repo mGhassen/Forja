@@ -549,6 +549,9 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     final nav = Navigator.of(context, rootNavigator: true);
     if (_s._routePopAllowed) {
       if (nav.canPop()) nav.pop(result);
+      // Same frame as player pop — strip anime/AD/movie loading host so Back
+      // never paints the resolve overlay (details stay on the shell overlay).
+      dismissActiveLoadingOverlayRoute();
       return;
     }
     setState(() => _s._routePopAllowed = true);
@@ -556,6 +559,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       if (!mounted) return;
       final n = Navigator.of(context, rootNavigator: true);
       if (n.canPop()) n.pop(result);
+      dismissActiveLoadingOverlayRoute();
     });
   }
 

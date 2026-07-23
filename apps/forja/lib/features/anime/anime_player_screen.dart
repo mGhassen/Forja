@@ -335,6 +335,7 @@ Future<T?> openAnimePlayer<T>(
           freshResolve: freshResolve,
         ),
       ),
+      settings: const RouteSettings(name: loadingOverlayRouteName),
     ),
   );
 }
@@ -456,6 +457,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   String? _pendingPrefTitle;
   /// Next/prev episode while player is open — pop player, then replace host.
   int? _handOffEpisode;
+  Route<dynamic>? _hostRoute;
 
   @override
   void initState() {
@@ -464,11 +466,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _messageNotifier = ValueNotifier('Looking up episode…');
     _fadeOutNotifier = ValueNotifier(false);
     _probeNotifier = ValueNotifier(const []);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _hostRoute = ModalRoute.of(context);
+      registerLoadingOverlayRoute(
+        Navigator.of(context, rootNavigator: true),
+        _hostRoute,
+      );
+    });
     _bootstrap();
   }
 
   @override
   void dispose() {
+    clearLoadingOverlayRouteRegistration(_hostRoute);
     _haltBackgroundResolve();
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
@@ -1217,6 +1228,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     if (!mounted || _cancelled) return;
     final navigator = Navigator.of(context, rootNavigator: true);
+    _hostRoute ??= ModalRoute.of(context);
+    registerLoadingOverlayRoute(navigator, _hostRoute);
 
     // Player "current" list = winner servers only. Other providers live in cache.
     // Nekostream/Megaplay HLS: unwrap PNG-shelled MPEG-TS via local hls-proxy.

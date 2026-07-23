@@ -11,6 +11,47 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 
+/// [RouteSettings.name] for stream-loading hosts/dialogs under the player.
+///
+/// Player Back pops the player then strips any registered route with this name
+/// in the same frame — otherwise Back lands on the loading screen (anime /
+/// Asian Drama hosts stay mounted for Source reload during playback).
+const loadingOverlayRouteName = 'loading_overlay';
+
+NavigatorState? _activeLoadingOverlayNavigator;
+Route<dynamic>? _activeLoadingOverlayRoute;
+
+/// Remember the stream-loading route so player exit can strip it without a
+/// visible flash (and without disposing it mid-playback).
+void registerLoadingOverlayRoute(
+  NavigatorState navigator,
+  Route<dynamic>? route,
+) {
+  if (route == null) return;
+  _activeLoadingOverlayNavigator = navigator;
+  _activeLoadingOverlayRoute = route;
+}
+
+/// Drop the registration when the loading route is dismissed on its own.
+void clearLoadingOverlayRouteRegistration(Route<dynamic>? route) {
+  if (route == null) return;
+  if (!identical(_activeLoadingOverlayRoute, route)) return;
+  _activeLoadingOverlayNavigator = null;
+  _activeLoadingOverlayRoute = null;
+}
+
+/// Remove a leftover loading route under/above the player (same-frame safe).
+///
+/// Call after popping [PlayerScreen] so Back returns to details, not loading.
+void dismissActiveLoadingOverlayRoute() {
+  final navigator = _activeLoadingOverlayNavigator;
+  final route = _activeLoadingOverlayRoute;
+  _activeLoadingOverlayNavigator = null;
+  _activeLoadingOverlayRoute = null;
+  if (navigator == null || route == null) return;
+  _removeLoadingOverlayRoute(navigator, route);
+}
+
 Future<T?> showLoadingOverlayDialog<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -24,7 +65,13 @@ Future<T?> showLoadingOverlayDialog<T>(
     useSafeArea: false,
     barrierDismissible: false,
     barrierColor: Colors.black,
-    builder: builder,
+    routeSettings: const RouteSettings(name: loadingOverlayRouteName),
+    builder: (dialogContext) {
+      final navigator = Navigator.of(dialogContext);
+      final route = ModalRoute.of(dialogContext);
+      registerLoadingOverlayRoute(navigator, route);
+      return builder(dialogContext);
+    },
   );
 }
 
@@ -34,8 +81,12 @@ void _removeLoadingOverlayRoute(
 ) {
   if (!navigator.mounted) return;
   if (route != null) {
-    if (!route.isActive) return;
+    if (!route.isActive) {
+      clearLoadingOverlayRouteRegistration(route);
+      return;
+    }
     navigator.removeRoute(route);
+    clearLoadingOverlayRouteRegistration(route);
     return;
   }
   if (navigator.canPop()) navigator.pop();
@@ -88,12 +139,14 @@ Future<T?> crossfadeLoadingOverlayToPlayer<T>({
   // Capture before the player push — dialog context can unmount after remove.
   final navigator = Navigator.of(loadingDialogContext);
   final route = ModalRoute.of(loadingDialogContext);
+  registerLoadingOverlayRoute(navigator, route);
 
   void dismiss() => _removeLoadingOverlayRoute(navigator, route);
 
   final playerFuture = openPlayer();
-  // Do not keep loading under the player for the whole session — Back only
-  // pops the player, so a leftover dialog is what the user lands on.
+  // Movies/TV: strip the dialog under the player during the fade. Anime /
+  // Asian Drama keep their host registered until player Back calls
+  // [dismissActiveLoadingOverlayRoute] (Source reload needs the host alive).
   WidgetsBinding.instance.addPostFrameCallback((_) => dismiss());
   unawaited(
     Future<void>.delayed(loadingOverlayFadeOutDuration).then((_) => dismiss()),

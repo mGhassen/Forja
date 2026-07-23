@@ -278,10 +278,21 @@ class MiruroPipeSession {
             },
           });
           const body = await r.text();
+          let xObf = '';
+          try {
+            xObf = r.headers.get('x-obfuscated')
+              || r.headers.get('X-Obfuscated')
+              || '';
+            if (!xObf) {
+              r.headers.forEach((v, k) => {
+                if (String(k).toLowerCase() === 'x-obfuscated') xObf = v;
+              });
+            }
+          } catch (_) {}
           return {
             status: r.status,
             body: body,
-            xObf: r.headers.get('x-obfuscated') || '',
+            xObf: xObf || '',
           };
         } catch (e) {
           return { status: 0, body: '', xObf: '', error: String(e) };

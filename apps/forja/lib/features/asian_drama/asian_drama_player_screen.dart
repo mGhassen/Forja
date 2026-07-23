@@ -89,6 +89,7 @@ Future<T?> openAsianDramaPlayer<T>(
           startPosition: startPosition,
         ),
       ),
+      settings: const RouteSettings(name: loadingOverlayRouteName),
     ),
   );
 }
@@ -131,6 +132,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   /// Next/prev while player is open — pop player, then replace this host.
   KdramaEpisode? _handOffEpisode;
   List<KdramaEpisode> _handOffEpisodes = const [];
+  Route<dynamic>? _hostRoute;
   KdramaCard? _resolvedDrama;
   KdramaEpisode? _resolvedEpisode;
   List<KdramaEpisode> _resolvedEpisodes = const [];
@@ -145,11 +147,20 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     _fadeOutNotifier = ValueNotifier(false);
     _probeNotifier = ValueNotifier(const []);
     _providerSourcesCache = ValueNotifier({});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _hostRoute = ModalRoute.of(context);
+      registerLoadingOverlayRoute(
+        Navigator.of(context, rootNavigator: true),
+        _hostRoute,
+      );
+    });
     _bootstrap();
   }
 
   @override
   void dispose() {
+    clearLoadingOverlayRouteRegistration(_hostRoute);
     _haltResolve();
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
@@ -517,6 +528,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
+    _hostRoute ??= ModalRoute.of(context);
+    registerLoadingOverlayRoute(navigator, _hostRoute);
 
     Future<void> goNext() async {
       var ep = nextFromList;

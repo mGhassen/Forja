@@ -111,6 +111,8 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
     final nav = Navigator.of(context);
     if (!nav.canPop()) return;
     nav.pop(_s._positionNotifier.value);
+    // Same frame — strip stream-loading host under the player (anime / AD).
+    dismissActiveLoadingOverlayRoute();
   }
 
   // ─────────────────────────────────────────────────────────────────────────

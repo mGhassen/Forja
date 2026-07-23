@@ -1576,19 +1576,20 @@ mixin _DesktopPlayerPlayback
       await safeSet('hr-seek', 'yes');
       await safeSet('hr-seek-framedrop', 'no');
     } else {
-      // Cache: 300 MB in memory, read 120 s ahead.
-      // This dramatically reduces rebuffering on variable-bitrate streams.
+      // Prefer a fast first frame over a huge cold prefetch. Mid-play
+      // stability still gets a solid forward window + RAM cache; Quality
+      // menu can lock a higher rung when the user wants top bitrate.
       await safeSet('cache', 'yes');
-      await safeSet('cache-secs', '120');
-      await safeSet('demuxer-max-bytes', '300MiB');
-      await safeSet('demuxer-readahead-secs', '120');
+      await safeSet('cache-secs', '60');
+      await safeSet('demuxer-max-bytes', '200MiB');
+      await safeSet('demuxer-readahead-secs', '20');
 
       // How far back the demuxer keeps decoded data (for backward seeks).
       await safeSet('demuxer-max-back-bytes', '50MiB');
 
-      // Start HLS on the highest variant (same as IPTV). Manual Quality
-      // menu still locks a specific rung by opening that playlist URL.
-      await safeSet('hls-bitrate', 'max');
+      // Soft ceiling (~5 Mbps): avoid opening 1080p/4K tops on slow CDNs.
+      // Manual Quality still locks a specific playlist URL.
+      await safeSet('hls-bitrate', '5000000');
     }
 
     // Prevent yt-dlp from being invoked (we supply our own URL).
