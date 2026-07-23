@@ -82,6 +82,59 @@ void main() {
       expect(h['Referer'], 'https://megaplay.buzz/');
     });
 
+    test('builtin Miruro probes: poison only HiAnime + bee', () {
+      final b = ProviderRuntimeSnapshot.builtins().animePlaybackProfiles;
+      expect(b['miruro:zoro']!.probe, AnimeProbeMode.segmentPoisonSample);
+      expect(b['miruro:bee']!.probe, AnimeProbeMode.segmentPoisonSample);
+      expect(b['miruro:kiwi']!.probe, AnimeProbeMode.masterOnly);
+      expect(b['miruro:ally']!.probe, AnimeProbeMode.masterOnly);
+      expect(b['miruro:bonk']!.probe, AnimeProbeMode.masterOnly);
+      expect(b['miruro:hop']!.probe, AnimeProbeMode.masterOnly);
+    });
+
+    test('merge clamps stale remote Miruro segmentPoison to masterOnly', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'anime': {
+          'playbackProfiles': {
+            'miruro:kiwi': {'probe': 'segmentPoisonSample'},
+            'miruro:ally': {'probe': 'segmentPoisonSample'},
+            'miruro:moo': {'probe': 'segmentPoisonSample'},
+            'miruro:bonk': {'probe': 'segmentPoisonSample'},
+            'miruro:zoro': {'probe': 'segmentPoisonSample'},
+            'miruro:bee': {'probe': 'segmentPoisonSample'},
+          },
+        },
+      });
+      expect(remote, isNotNull);
+      final merged =
+          ProviderRuntimeSnapshot.builtins().merged(remote!);
+      expect(
+        merged.animePlaybackProfiles['miruro:kiwi']!.probe,
+        AnimeProbeMode.masterOnly,
+      );
+      expect(
+        merged.animePlaybackProfiles['miruro:ally']!.probe,
+        AnimeProbeMode.masterOnly,
+      );
+      expect(
+        merged.animePlaybackProfiles['miruro:moo']!.probe,
+        AnimeProbeMode.masterOnly,
+      );
+      expect(
+        merged.animePlaybackProfiles['miruro:bonk']!.probe,
+        AnimeProbeMode.masterOnly,
+      );
+      expect(
+        merged.animePlaybackProfiles['miruro:zoro']!.probe,
+        AnimeProbeMode.segmentPoisonSample,
+      );
+      expect(
+        merged.animePlaybackProfiles['miruro:bee']!.probe,
+        AnimeProbeMode.segmentPoisonSample,
+      );
+    });
+
     test('merge overlays anime playbackProfiles by sourceKey', () {
       final remote = ProviderRuntimeSnapshot.tryParse({
         'schema': 1,
@@ -109,7 +162,7 @@ void main() {
         ProviderRuntimeConfig.instance
             .animePlaybackProfile('miruro:kiwi')
             .probe,
-        AnimeProbeMode.segmentPoisonSample,
+        AnimeProbeMode.masterOnly,
       );
       ProviderRuntimeConfig.instance.debugSetSnapshot(merged);
       expect(

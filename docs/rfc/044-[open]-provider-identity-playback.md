@@ -103,7 +103,7 @@
 
 CDN hostnames under MegaPlay rotate often. Gating Referer rewrite and PNG-strip on `hostContains` / `pngStripHostContains` forces endless allowlist updates and breaks when remote config overwrites builtins.
 
-**Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Open path uses **`StreamOpenMindTree`**: classify URL + sniff segment facts → one action → on open/decode fail **re-branch** (PNG→strip, plain HLS→direct then strip). Not a flat try-list. Not per-CDN host cases. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
+**Contract:** stamp and recover playback headers from **provider identity** (`sourceKey` / embed origin). Open branching for R44-C11 is **superseded** by [RFC-045](045-[open]-stream-open-pipeline.md) (`StreamOpenPipeline` stages 1–6). Identity + `pngStrip` auto rules from this RFC remain. Provider domain moves stay in `anime.megaplay.host` (RFC-039).
 
 **Generic host path (R44-C10):** for every template / WebStreamr / known-API provider, `playbackPolicyFor(id)` derives Referer from that provider’s **embed host** in runtime config. CDN rotations do not need a new code branch — only provider domain moves need Admin JSON / migration. Exceptions stay explicit (MegaPlay family, Videasy player origin, AllManga, KissKh mirrors, Miruro origins).
 

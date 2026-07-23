@@ -3,44 +3,6 @@ part of 'trailer_player_screen.dart';
 mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
   _TrailerPlayerScreenState get _s => this as _TrailerPlayerScreenState;
 
-  Future<void> _showTrailersMenu(BuildContext anchorContext) async {
-    _s._hideTimer?.cancel();
-    if (!_s._showControls) setState(() => _s._showControls = true);
-    final trailers = widget.trailers;
-    if (trailers.isEmpty) return;
-
-    if (!mounted) return;
-    await PlayerPopupPanel.show(
-      context: context,
-      title: 'Trailers',
-      leadingIcon: Icons.video_library_outlined,
-      anchorContext: anchorContext,
-      maxHeight: 420,
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-        itemCount: trailers.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 4),
-        itemBuilder: (context, index) {
-          final trailer = trailers[index];
-          final selected = index == _s._currentIndex;
-          final type = trailer.type.trim();
-          return PlayerPopupListTile(
-            label: trailer.name,
-            subtitle: type.isEmpty ? null : type,
-            badge: selected ? 'NOW' : '${index + 1}',
-            selected: selected,
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              _s._playTrailerAt(index);
-            },
-          );
-        },
-      ),
-    );
-    if (mounted) _s._startHideTimer();
-  }
-
   Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
     if (!_s._ready) return;
     _s._hideTimer?.cancel();

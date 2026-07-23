@@ -866,43 +866,44 @@ class ProviderRuntimeSnapshot {
     'allanime:Luf-Mp4': AnimePlaybackProfile(
       probe: AnimeProbeMode.headOrRange,
     ),
-    // Miruro CDNs (vivibebe / etc.) often serve master-OK + PNG ad segments —
-    // sample media, don't trust the playlist alone.
+    // Miruro HiAnime (zoro): vivibebe / PNG-ad masters — sample segments.
+    // AnimePahe / AllManga / AnimeDao / other plain HLS: masterOnly only
+    // (segmentPoisonSample false-killed them — 1.2.366).
     'miruro:zoro': AnimePlaybackProfile(
       probe: AnimeProbeMode.segmentPoisonSample,
     ),
     'miruro:kiwi': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:ally': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:hop': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:bonk': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:moo': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:animedunya': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:arc': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:jet': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:bun': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:kuz': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'miruro:telli': AnimePlaybackProfile(
-      probe: AnimeProbeMode.segmentPoisonSample,
+      probe: AnimeProbeMode.masterOnly,
     ),
     'watchhentai': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
     'hentaini': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
@@ -1011,6 +1012,10 @@ class ProviderRuntimeSnapshot {
       profiles[e.key] = base == null ? e.value : base.merged(e.value);
     }
     profiles.remove('vidwish');
+    // Stale remote (20260723010630) blanketed every Miruro pipe with
+    // segmentPoisonSample — false-kills AnimePahe/AllManga/AnimeDao/AnimeGG.
+    // Builtins + restore migration keep masterOnly; clamp until remote catches up.
+    _clampStaleMiruroSegmentPoison(profiles);
     return ProviderRuntimeSnapshot(
       schema: overlay.schema,
       templates: tpl,
@@ -1031,6 +1036,36 @@ class ProviderRuntimeSnapshot {
       ),
       animePlaybackProfiles: profiles,
     );
+  }
+
+  /// Miruro plain-HLS pipes (not HiAnime zoro / AniKoto bee).
+  static const _miruroMasterOnlyKeys = <String>{
+    'miruro:kiwi',
+    'miruro:ally',
+    'miruro:hop',
+    'miruro:bonk',
+    'miruro:moo',
+    'miruro:animedunya',
+    'miruro:arc',
+    'miruro:jet',
+    'miruro:bun',
+    'miruro:kuz',
+    'miruro:telli',
+  };
+
+  static void _clampStaleMiruroSegmentPoison(
+    Map<String, AnimePlaybackProfile> profiles,
+  ) {
+    for (final key in _miruroMasterOnlyKeys) {
+      final cur = profiles[key];
+      if (cur == null) continue;
+      if (cur.probe != AnimeProbeMode.segmentPoisonSample) continue;
+      profiles[key] = AnimePlaybackProfile(
+        probe: AnimeProbeMode.masterOnly,
+        pngStrip: cur.pngStrip,
+        pngStripHostContains: cur.pngStripHostContains,
+      );
+    }
   }
 
   /// Prefer [overlay] rules; keep [builtins] rules whose host needles are not

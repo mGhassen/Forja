@@ -534,7 +534,7 @@ Future<bool> waitForVideoDecode(
 
 /// After [waitForMediaOpen], require a decoded frame for adaptive streams.
 ///
-/// Observe-only — no reopen, no `hwdec=no`. The open mind-tree owns the next
+/// Observe-only — no reopen, no `hwdec=no`. The open pipeline owns the next
 /// branch; [PlaybackRecovery] owns live decoder failures after confirm.
 ///
 /// Set [force] for in-player Stremio/Nuvio switches: progressive HTTP can report

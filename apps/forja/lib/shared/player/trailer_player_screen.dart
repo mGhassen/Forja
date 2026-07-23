@@ -56,11 +56,16 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Timer? _hideTimer;
+  Timer? _autoNextTick;
+  int? _autoNextSecondsLeft;
   final FocusNode _backFocus = FocusNode(debugLabel: 'trailer-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'trailer-play');
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
   bool _tvFocus = false;
   bool _initialFocusClaimed = false;
+  late int _pickerIndex;
+
+  static const int _autoNextSeconds = 5;
 
   MediaTrailer get _trailer => widget.trailers[_currentIndex];
 
@@ -70,6 +75,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
 
   bool get _hasMoreTrailers => widget.trailers.length > 1;
 
+  bool get _autoNextActive => _autoNextSecondsLeft != null;
+
   /// Near end (≤15s) or finished — keep chrome up for More videos.
   bool get _showNextTrailerChip {
     if (!_hasMoreTrailers) return false;
@@ -78,12 +85,62 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     return (_duration - _position).inSeconds <= 15;
   }
 
-  MediaTrailer get _moreVideosPreview {
-    if (_hasNextTrailer) return widget.trailers[_currentIndex + 1];
-    for (var i = 0; i < widget.trailers.length; i++) {
-      if (i != _currentIndex) return widget.trailers[i];
+  MediaTrailer get _pickerTrailer => widget.trailers[_pickerIndex];
+
+  int _pickerIndexAfter(int playingIndex) {
+    final n = widget.trailers.length;
+    if (n <= 1) return playingIndex;
+    if (playingIndex < n - 1) return playingIndex + 1;
+    return 0;
+  }
+
+  void _cancelAutoNext({bool rebuild = true}) {
+    _autoNextTick?.cancel();
+    _autoNextTick = null;
+    if (_autoNextSecondsLeft == null) return;
+    if (rebuild && mounted) {
+      setState(() => _autoNextSecondsLeft = null);
+    } else {
+      _autoNextSecondsLeft = null;
     }
-    return _trailer;
+  }
+
+  void _maybeStartAutoNext() {
+    _cancelAutoNext(rebuild: false);
+    if (!_ended || !_hasNextTrailer) return;
+    final next = _currentIndex + 1;
+    setState(() {
+      _pickerIndex = next;
+      _autoNextSecondsLeft = _autoNextSeconds;
+      _showControls = true;
+    });
+    _focusNextTrailerIfNeeded();
+    _autoNextTick = Timer.periodic(const Duration(seconds: 1), (tick) {
+      if (!mounted) {
+        tick.cancel();
+        return;
+      }
+      final left = (_autoNextSecondsLeft ?? 1) - 1;
+      if (left <= 0) {
+        tick.cancel();
+        _autoNextTick = null;
+        _autoNextSecondsLeft = null;
+        _playTrailerAt(next);
+        return;
+      }
+      setState(() => _autoNextSecondsLeft = left);
+    });
+  }
+
+  void _shiftPicker(int delta) {
+    final n = widget.trailers.length;
+    if (n <= 1) return;
+    _cancelAutoNext();
+    var next = (_pickerIndex + delta) % n;
+    if (next < 0) next += n;
+    if (next == _pickerIndex) return;
+    setState(() => _pickerIndex = next);
+    _onPointerActivity();
   }
 
   bool get _supportsWindowFullscreen =>
@@ -94,6 +151,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     super.initState();
     ShellBus.enterPlayerSurface();
     _currentIndex = widget.initialIndex;
+    _pickerIndex = _pickerIndexAfter(_currentIndex);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     if (!DesktopWindowChrome.isDesktop) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -107,6 +165,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _cancelAutoNext(rebuild: false);
     ShellBus.leavePlayerSurface();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _backFocus.dispose();
@@ -123,6 +182,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     // TV keeps chrome visible; next-trailer / menus need chrome up.
     if (_tvFocus ||
         _ended ||
+        _autoNextActive ||
         _showNextTrailerChip ||
         PlayerPopupPanel.isShowing ||
         !_playing) {
@@ -132,6 +192,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
       if (!mounted ||
           _tvFocus ||
           _ended ||
+          _autoNextActive ||
           _showNextTrailerChip ||
           PlayerPopupPanel.isShowing) {
         return;

@@ -111,7 +111,8 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
 
-        final useMindTree = !PlayableSourceBridge.requiresProxy(
+        // RFC-045 open pipeline (identity → classify → technique → observe).
+        final useOpenPipeline = !PlayableSourceBridge.requiresProxy(
               _s._playableSources,
               i,
               _s._currentProvider,
@@ -119,7 +120,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             !isLocalTorrentStreamUrl(openUrl) &&
             widget.magnetLink == null;
 
-        if (!useMindTree) {
+        if (!useOpenPipeline) {
           final catalogUrl = source.url;
           if (!widget.streamsPrevalidated &&
               !isLocalTorrentStreamUrl(catalogUrl) &&
@@ -226,37 +227,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             continue;
           }
         } else {
+          // RFC-045: pipeline owns identity + classify — no separate probe.
           final catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
-          if (!widget.streamsPrevalidated &&
-              !isLocalLoopbackPlayUrl(catalogUrl)) {
-            final reachable = await validateStreamSourceForCheck(
-              providerId: source.providerId ?? _s._currentProvider,
-              source: StreamSource(
-                url: catalogUrl,
-                title: source.title,
-                type: source.type,
-                headers: srcHeaders,
-                providerId: source.providerId,
-              ),
-              headers: srcHeaders,
-            );
-            if (_fallbackAborted(runGen)) return false;
-            if (!reachable) {
-              debugPrint('[Player] Source $i failed reachability: $catalogUrl');
-              _s._statusController.upsert(
-                'source-$i',
-                source.title,
-                kind: StatusRouletteKind.failed,
-                dismissAfter: const Duration(milliseconds: 1200),
-              );
-              _s._markSourceFailed(i);
-              unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
-              _s._currentFallbackSourceIndex++;
-              continue;
-            }
-          }
-
-          final tree = await StreamOpenMindTree.start(
+          final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
             headers: srcHeaders,
             providerId: source.providerId ?? _s._currentProvider,
@@ -264,7 +237,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           var branchOk = false;
           while (true) {
             if (_fallbackAborted(runGen)) return false;
-            final step = await tree.next();
+            final step = await pipeline.next();
             if (step == null) break;
 
             await resetPlayerForOpen(_s._player);
@@ -284,10 +257,10 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             if (_fallbackAborted(runGen)) return false;
             if (!opened) {
               debugPrint(
-                '[OpenMindTree] open fail ${step.label}: $openUrl',
+                '[OpenPipeline] open fail ${step.label}: $openUrl',
               );
               await _s._player.stop();
-              tree.report(StreamOpenStepResult.openFailed);
+              pipeline.report(StreamOpenStepResult.openFailed);
               continue;
             }
             final needsDuration =
@@ -302,10 +275,10 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             if (_fallbackAborted(runGen)) return false;
             if (!decoded) {
               debugPrint(
-                '[OpenMindTree] decode fail ${step.label}: $openUrl',
+                '[OpenPipeline] decode fail ${step.label}: $openUrl',
               );
               await _s._player.stop();
-              tree.report(StreamOpenStepResult.decodeFailed);
+              pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
             }
             final hasDuration =
@@ -319,17 +292,17 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             if (_fallbackAborted(runGen)) return false;
             if (!hasDuration) {
               await _s._player.stop();
-              tree.report(StreamOpenStepResult.decodeFailed);
+              pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
             }
 
-            tree.report(StreamOpenStepResult.success);
+            pipeline.report(StreamOpenStepResult.success);
             // Keep panel row on catalog URL — proxy is play-only (_currentUrl).
             branchOk = true;
             break;
           }
           if (!branchOk) {
-            debugPrint('[OpenMindTree] all branches failed source $i');
+            debugPrint('[OpenPipeline] all branches failed source $i');
             _s._statusController.upsert(
               'source-$i',
               source.title,

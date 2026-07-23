@@ -65,6 +65,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [042-[open]-…](042-[open]-unified-auth-system.md) | Unified auth (web + Flutter) | v1.0.7 | open | 5/5 · 9/16 | [1.0.7](../backlog/1.0.7-[draft].md) |
 | [043-[open]-…](043-[open]-crash-reporting-sentry.md) | Crash reporting (Sentry) + product analytics (PostHog) | v1.0 | open | 4/4 · 8/8 · 6/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[open]-…](044-[open]-provider-identity-playback.md) | Provider-identity playback (end CDN host chase) | v1.0.1 | open | 11/11 · 21/21 unit · 0/3 manual | [1.0.1](../backlog/1.0.1-[open].md) |
+| [045-[open]-…](045-[open]-stream-open-pipeline.md) | Stream open pipeline middleware | v1.0.1 | open | 6/6 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 ## Related
 

@@ -478,6 +478,7 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
   }
 
   Future<void> _togglePlayPause() async {
+    _s._cancelAutoNext();
     if (_s._ended) {
       setState(() => _s._ended = false);
       await _runJs('window.trailerReplay && window.trailerReplay();');
@@ -512,12 +513,14 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
 
   Future<void> _seek(Duration position) async {
     if (!_s._ready) return;
+    _s._cancelAutoNext();
     if (_s._ended) setState(() => _s._ended = false);
     await _runJs('window.trailerSeekTo(${position.inMilliseconds / 1000});');
   }
 
   Future<void> _skip(int seconds) async {
     if (!_s._ready) return;
+    _s._cancelAutoNext();
     await _runJs('window.trailerSkip($seconds);');
   }
 
@@ -525,8 +528,11 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
     if (index < 0 || index >= widget.trailers.length) return;
     if (index == _s._currentIndex && !_s._ended) return;
     PlayerPopupPanel.dismiss();
+    _s._cancelAutoNext(rebuild: false);
     setState(() {
       _s._currentIndex = index;
+      _s._pickerIndex = _s._pickerIndexAfter(index);
+      _s._autoNextSecondsLeft = null;
       _s._controller = null;
       _s._playing = false;
       _s._ended = false;
@@ -540,11 +546,6 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
       _s._showControls = true;
     });
     _s._claimPlayFocus();
-  }
-
-  void _playNextTrailer() {
-    if (!_s._hasNextTrailer) return;
-    _playTrailerAt(_s._currentIndex + 1);
   }
 
 }

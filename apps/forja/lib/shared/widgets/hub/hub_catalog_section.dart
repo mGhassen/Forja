@@ -88,7 +88,10 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     _syncTvRow(list.length);
 
     final sectionTop = _sectionTitleTop(context);
-    final horizontalPad = shellHomeSectionHorizontalPadding(context);
+    // Parent MediaDetailsBody owns the column edge; Cast/Trailers use 0 pad
+    // when embedded — don't double-apply home insets.
+    final horizontalPad =
+        widget.embedded ? 0.0 : shellHomeSectionHorizontalPadding(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,7 +103,9 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
             horizontalPad,
             sectionTop,
             horizontalPad,
-            shellHomeSectionBottomGap(context),
+            widget.embedded
+                ? DetailsTokens.sectionTitleGap
+                : shellHomeSectionBottomGap(context),
           ),
         ),
         FocusTraversalGroup(

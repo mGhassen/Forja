@@ -433,17 +433,19 @@ class AnimeService {
     return out;
   }
 
-  /// Walk the PREQUEL/SEQUEL/PARENT/SIDE_STORY edge chain from this anime
-  /// to assemble the full ordered list of "seasons" (entries that share
-  /// continuity). AniList stores each season as a separate Media id, so
-  /// we follow PREQUEL edges to the root, then SEQUEL edges to the tip.
+  /// Walk PREQUEL/SEQUEL/PARENT continuity from this anime and return the
+  /// ordered TV season spine (AniList stores each cour as a separate Media).
   ///
-  /// PARENT is included because some franchises wire S2+ as PARENT->S1
-  /// rather than PREQUEL/SEQUEL. SIDE_STORY is excluded — those are
-  /// spin-offs, not numbered seasons.
+  /// Movies (and multi-ep ONA cours) are **walked as bridges** when they sit
+  /// between TV seasons (Youjo Senki S1 → Movie → S2) but are **not** emitted
+  /// into the season rail — films/specials stay under Related.
   ///
-  /// Result is ordered chronologically (root → latest) and ALWAYS includes
-  /// the input anime. Returns just the input if no chain neighbors exist.
+  /// 1-ep ONA prequels (One Piece → MONSTERS) are skipped entirely so they
+  /// never pollute the spine. SIDE_STORY is not walked.
+  ///
+  /// Result is ordered by start date (fallback: walk order) and always
+  /// includes the input when it is itself a season entry. Returns just the
+  /// input if no TV neighbors exist.
   Future<List<AnimeCard>> getSeasons(int anilistId) async {
     const q = r'''
       query ($id: Int) {
@@ -467,8 +469,6 @@ class AnimeService {
       }
     ''';
 
-    // Cache fetched nodes to avoid duplicate AniList queries when the
-    // chain branches (e.g. a special links to multiple sequels).
     final fetched = <int, Map<String, dynamic>>{};
 
     Future<Map<String, dynamic>?> fetch(int id) async {
@@ -486,71 +486,108 @@ class AnimeService {
       return null;
     }
 
-    int? neighbor(Map<String, dynamic> media, Set<String> wanted) {
+    bool canWalk(Map node) {
+      if ((node['type'] ?? '') != 'ANIME') return false;
+      final fmt = (node['format'] ?? '').toString();
+      if (fmt == 'TV' || fmt == 'TV_SHORT') return true;
+      // Bridge: film between TV cours (Youjo Senki).
+      if (fmt == 'MOVIE') return true;
+      // Multi-ep ONA cour (Dungeon Meshi S2) — not 1-ep specials.
+      if (fmt == 'ONA') {
+        final eps = node['episodes'];
+        return eps is! int || eps > 1;
+      }
+      return false;
+    }
+
+    bool isSeasonEntry(Map node) {
+      final fmt = (node['format'] ?? '').toString();
+      if (fmt == 'TV' || fmt == 'TV_SHORT') return true;
+      if (fmt == 'ONA') {
+        final eps = node['episodes'];
+        return eps is! int || eps > 1;
+      }
+      return false;
+    }
+
+    int startKey(Map node) {
+      final d = node['startDate'];
+      if (d is! Map) return 0;
+      final y = (d['year'] as num?)?.toInt() ?? 0;
+      final m = (d['month'] as num?)?.toInt() ?? 0;
+      final day = (d['day'] as num?)?.toInt() ?? 0;
+      return y * 10000 + m * 100 + day;
+    }
+
+    // Prefer TV neighbors over movie bridges when several PREQUEL/SEQUEL
+    // edges exist (Movie → S1 TV + Pasta ONA both PREQUEL).
+    int walkRank(Map node) {
+      final fmt = (node['format'] ?? '').toString();
+      if (fmt == 'TV' || fmt == 'TV_SHORT') return 0;
+      if (fmt == 'ONA') return 1;
+      if (fmt == 'MOVIE') return 2;
+      return 9;
+    }
+
+    List<int> walkNeighbors(Map<String, dynamic> media) {
+      const wanted = {'PREQUEL', 'SEQUEL', 'PARENT'};
       final edges = (media['relations']?['edges'] as List?) ?? const [];
+      final scored = <({int id, int rank})>[];
       for (final e in edges) {
         if (e is! Map) continue;
         final type = (e['relationType'] ?? '').toString();
         if (!wanted.contains(type)) continue;
         final node = e['node'];
         if (node is! Map) continue;
-        if ((node['type'] ?? '') != 'ANIME') continue;
-        final fmt = (node['format'] ?? '').toString();
-        // TV spine only for numbered seasons. ONA allowed when it is a real
-        // cour (Dungeon Meshi S2) — skip 1-ep ONA prequels (One Piece→MONSTERS).
-        if (!{'TV', 'TV_SHORT', 'ONA'}.contains(fmt)) continue;
-        if (fmt == 'ONA') {
-          final eps = node['episodes'];
-          if (eps is int && eps <= 1) continue;
-        }
+        if (!canWalk(node)) continue;
         final id = node['id'];
-        if (id is int) return id;
+        if (id is! int) continue;
+        scored.add((id: id, rank: walkRank(node)));
       }
-      return null;
+      scored.sort((a, b) => a.rank.compareTo(b.rank));
+      return scored.map((s) => s.id).toList();
     }
 
-    // 1. Walk to root via PREQUEL/PARENT.
-    final visited = <int>{anilistId};
-    int rootId = anilistId;
-    final root = await fetch(anilistId);
-    if (root == null) {
+    final seed = await fetch(anilistId);
+    if (seed == null) {
       try {
         return [await getDetails(anilistId)];
       } catch (_) {
         return const [];
       }
     }
-    var current = root;
-    while (true) {
-      final p = neighbor(current, const {'PREQUEL', 'PARENT'});
-      if (p == null || !visited.add(p)) break;
-      final m = await fetch(p);
-      if (m == null) break;
-      rootId = p;
-      current = m;
+
+    // BFS the continuity component (TV + movie bridges), not a single path —
+    // visiting bridges while walking back must not block walking forward.
+    final queue = <int>[anilistId];
+    final seen = <int>{anilistId};
+    while (queue.isNotEmpty) {
+      final id = queue.removeAt(0);
+      final media = await fetch(id);
+      if (media == null) continue;
+      for (final n in walkNeighbors(media)) {
+        if (!seen.add(n)) continue;
+        queue.add(n);
+      }
     }
 
-    // 2. Walk forward from root via SEQUEL.
-    final chain = <int>[rootId];
-    current = (await fetch(rootId))!;
-    while (true) {
-      final s = neighbor(current, const {'SEQUEL'});
-      if (s == null || !visited.add(s)) break;
-      final m = await fetch(s);
-      if (m == null) break;
-      chain.add(s);
-      current = m;
-    }
-
-    // 3. Always include the input anime even if it isn't on the spine
-    // (rare: it might only be reachable via PARENT branch).
-    if (!chain.contains(anilistId)) chain.add(anilistId);
-
-    return chain
+    final seasons = seen
         .map((id) => fetched[id])
         .whereType<Map<String, dynamic>>()
-        .map((m) => AnimeCard.fromJson(m))
-        .toList();
+        .where(isSeasonEntry)
+        .toList()
+      ..sort((a, b) {
+        final ka = startKey(a);
+        final kb = startKey(b);
+        if (ka != kb) return ka.compareTo(kb);
+        return ((a['id'] as int?) ?? 0).compareTo((b['id'] as int?) ?? 0);
+      });
+
+    if (seasons.isEmpty) {
+      return [AnimeCard.fromJson(seed)];
+    }
+    // Opening a film that bridges TV seasons: still show the TV rail.
+    return seasons.map(AnimeCard.fromJson).toList();
   }
 
   Future<List<AnimeCard>> browse({

@@ -58,8 +58,9 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                         if (!_s._showControls) {
                           setState(() => _s._showControls = true);
                         }
-                        _s._focusNextTrailerIfNeeded();
+                        _s._maybeStartAutoNext();
                       } else if (playing) {
+                        _s._cancelAutoNext();
                         _s._startHideTimer();
                       }
                     },
@@ -174,6 +175,49 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
             child: PlayerOverlayGradient(isTop: true),
           ),
         ),
+        Positioned.fill(
+          child: ExcludeFocus(
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PlayerCenterActionButton(
+                    icon: Icons.replay_10_rounded,
+                    onPressed: () {
+                      if (!_s._ready) return;
+                      unawaited(_s._skip(-10));
+                      _s._onPointerActivity();
+                    },
+                  ),
+                  const SizedBox(width: 28),
+                  PlayerCenterActionButton(
+                    icon: _s._showReplayControl
+                        ? Icons.replay_rounded
+                        : _s._playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                    size: 80,
+                    iconSize: 44,
+                    onPressed: () {
+                      if (!_s._ready) return;
+                      unawaited(_s._togglePlayPause());
+                      _s._onPointerActivity();
+                    },
+                  ),
+                  const SizedBox(width: 28),
+                  PlayerCenterActionButton(
+                    icon: Icons.forward_10_rounded,
+                    onPressed: () {
+                      if (!_s._ready) return;
+                      unawaited(_s._skip(10));
+                      _s._onPointerActivity();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         _buildBottomChrome(tvFocus: tvFocus),
       ],
     );
@@ -285,103 +329,19 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   }
 
   Widget _buildMoreVideosButton({required bool tvFocus}) {
-    final preview = _s._moreVideosPreview;
-    const thumbW = 168.0;
-    const thumbH = 94.0;
-
-    return Builder(
-      builder: (btnContext) {
-        final card = DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'More videos',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: thumbW,
-                    height: thumbH,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: preview.youtubeThumbnail,
-                          fit: BoxFit.cover,
-                          errorWidget: (_, _, _) => ColoredBox(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            child: const Icon(
-                              Icons.movie_outlined,
-                              color: Colors.white38,
-                            ),
-                          ),
-                        ),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.45),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const Center(
-                          child: Icon(
-                            Icons.play_circle_fill_rounded,
-                            color: Colors.white,
-                            size: 36,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-
-        void open() => unawaited(_s._showTrailersMenu(btnContext));
-
-        if (tvFocus) {
-          return FocusableControl(
-            focusNode: _s._nextTrailerFocus,
-            onTap: open,
-            borderRadius: 10,
-            scaleOnFocus: 1.0,
-            showFocusBorder: true,
-            child: card,
-          );
-        }
-
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            canRequestFocus: false,
-            onTap: open,
-            borderRadius: BorderRadius.circular(10),
-            child: card,
-          ),
-        );
-      },
+    return _TrailerMoreVideosCard(
+      trailer: _s._pickerTrailer,
+      index: _s._pickerIndex,
+      count: widget.trailers.length,
+      playing: _s._pickerIndex == _s._currentIndex && !_s._ended,
+      autoNextSecondsLeft: _s._autoNextSecondsLeft,
+      autoNextTotal: _TrailerPlayerScreenState._autoNextSeconds,
+      focusNode: _s._nextTrailerFocus,
+      tvFocus: tvFocus,
+      onPrev: () => _s._shiftPicker(-1),
+      onNext: () => _s._shiftPicker(1),
+      onPlay: () => _s._playTrailerAt(_s._pickerIndex),
+      onPointerActivity: _s._onPointerActivity,
     );
   }
 
@@ -635,6 +595,390 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _TrailerMoreVideosCard extends StatefulWidget {
+  const _TrailerMoreVideosCard({
+    required this.trailer,
+    required this.index,
+    required this.count,
+    required this.playing,
+    required this.autoNextSecondsLeft,
+    required this.autoNextTotal,
+    required this.focusNode,
+    required this.tvFocus,
+    required this.onPrev,
+    required this.onNext,
+    required this.onPlay,
+    required this.onPointerActivity,
+  });
+
+  final MediaTrailer trailer;
+  final int index;
+  final int count;
+  final bool playing;
+  final int? autoNextSecondsLeft;
+  final int autoNextTotal;
+  final FocusNode focusNode;
+  final bool tvFocus;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+  final VoidCallback onPlay;
+  final VoidCallback onPointerActivity;
+
+  bool get autoNext => autoNextSecondsLeft != null;
+
+  @override
+  State<_TrailerMoreVideosCard> createState() => _TrailerMoreVideosCardState();
+}
+
+class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
+  bool _hovered = false;
+  bool _focused = false;
+  int _slideDir = 1;
+
+  static const double _w = 280;
+  static const double _h = 158;
+  static const double _radius = 12;
+
+  bool get _active => _hovered || _focused;
+
+  @override
+  void didUpdateWidget(covariant _TrailerMoreVideosCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.index == widget.index) return;
+    final wrappedForward =
+        oldWidget.index == widget.count - 1 && widget.index == 0;
+    final wrappedBack =
+        oldWidget.index == 0 && widget.index == widget.count - 1;
+    if (wrappedForward) {
+      _slideDir = 1;
+    } else if (wrappedBack) {
+      _slideDir = -1;
+    } else {
+      _slideDir = widget.index > oldWidget.index ? 1 : -1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = widget.trailer.type.trim();
+    final autoLeft = widget.autoNextSecondsLeft;
+    final meta = widget.autoNext
+        ? 'Next trailer · ${autoLeft}s'
+        : [
+            if (type.isNotEmpty) type,
+            '${widget.index + 1}/${widget.count}',
+            if (widget.playing) 'Playing',
+          ].join(' · ');
+
+    final face = AnimatedScale(
+      scale: _active || widget.autoNext ? 1.06 : 1.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.bottomRight,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        width: _w,
+        height: _h,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_radius),
+          border: Border.all(
+            color: (_active || widget.autoNext) ? Colors.white : Colors.white24,
+            width: (_active || widget.autoNext) ? 2.5 : 1,
+          ),
+          boxShadow: (_active || widget.autoNext)
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(_radius - 1),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, anim) {
+                  final offset = Tween<Offset>(
+                    begin: Offset(_slideDir.toDouble(), 0),
+                    end: Offset.zero,
+                  ).animate(anim);
+                  return ClipRect(
+                    child: SlideTransition(
+                      position: offset,
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(widget.trailer.key),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: widget.trailer.youtubeThumbnail,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, _, _) => ColoredBox(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          child: const Icon(
+                            Icons.movie_outlined,
+                            color: Colors.white38,
+                          ),
+                        ),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.15),
+                              Colors.black.withValues(alpha: 0.82),
+                            ],
+                            stops: const [0.35, 1],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (widget.autoNext && autoLeft != null)
+                        SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: CircularProgressIndicator(
+                            value: autoLeft / widget.autoNextTotal,
+                            strokeWidth: 2.5,
+                            backgroundColor: Colors.white24,
+                            color: Colors.white,
+                          ),
+                        ),
+                      DecoratedBox(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: SizedBox(
+                          width: widget.autoNext ? 30 : 34,
+                          height: widget.autoNext ? 30 : 34,
+                          child: widget.autoNext && autoLeft != null
+                              ? Center(
+                                  child: Text(
+                                    '$autoLeft',
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  widget.playing
+                                      ? Icons.replay_rounded
+                                      : Icons.play_arrow_rounded,
+                                  color: Colors.black,
+                                  size: 22,
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 12,
+                right: 44,
+                bottom: 10,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.autoNext ? 'Up next' : widget.trailer.name,
+                      maxLines: widget.autoNext ? 1 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.autoNext ? widget.trailer.name : meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (widget.autoNext) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    Widget withChevrons(Widget child) {
+      if (widget.count <= 1 || widget.autoNext) return child;
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          Positioned(
+            left: 4,
+            top: 0,
+            bottom: 0,
+            width: 36,
+            child: Center(
+              child: _ChevronButton(
+                icon: Icons.chevron_left_rounded,
+                visible: _active || widget.tvFocus,
+                onTap: () {
+                  widget.onPointerActivity();
+                  widget.onPrev();
+                },
+              ),
+            ),
+          ),
+          Positioned(
+            right: 4,
+            top: 0,
+            bottom: 0,
+            width: 36,
+            child: Center(
+              child: _ChevronButton(
+                icon: Icons.chevron_right_rounded,
+                visible: _active || widget.tvFocus,
+                onTap: () {
+                  widget.onPointerActivity();
+                  widget.onNext();
+                },
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    void play() {
+      widget.onPointerActivity();
+      widget.onPlay();
+    }
+
+    if (widget.tvFocus) {
+      return withChevrons(
+        FocusableControl(
+          focusNode: widget.focusNode,
+          onTap: play,
+          borderRadius: _radius,
+          scaleOnFocus: 1.0,
+          showFocusBorder: true,
+          showFocusFill: false,
+          onLeftEdge: widget.count > 1 && !widget.autoNext ? widget.onPrev : null,
+          onRightEdge:
+              widget.count > 1 && !widget.autoNext ? widget.onNext : null,
+          onFocusChange: (f) {
+            if (_focused == f) return;
+            setState(() => _focused = f);
+            if (f) widget.onPointerActivity();
+          },
+          child: face,
+        ),
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) {
+        widget.onPointerActivity();
+        if (!_hovered) setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (_hovered) setState(() => _hovered = false);
+      },
+      onHover: (_) => widget.onPointerActivity(),
+      child: withChevrons(
+        GestureDetector(
+          onTap: play,
+          behavior: HitTestBehavior.opaque,
+          child: face,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChevronButton extends StatelessWidget {
+  const _ChevronButton({
+    required this.icon,
+    required this.visible,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool visible;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 160),
+        child: Material(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

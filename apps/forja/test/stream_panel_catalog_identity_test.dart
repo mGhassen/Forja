@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:rust/rust.dart';
 
 void main() {
@@ -91,6 +92,48 @@ void main() {
           row,
           playUrl: 'http://127.0.0.1:8787/hls-proxy?url=https://a/b.m3u8',
           catalogUrl: 'https://cdn.example/ep.m3u8',
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('PlayerStreamMenu.isCurrentSource provider scope', () {
+    const catalog = 'https://cdn.example/ep.m3u8';
+    final row = StreamSource(
+      url: catalog,
+      title: 'HLS Stream',
+      type: 'hls',
+      catalogUrl: catalog,
+    );
+    final state = PlayerStreamMenuState(
+      currentProviderId: 'megaplay',
+      sources: [row],
+      currentUrl: catalog,
+      currentPlayingCatalogUrl: catalog,
+      current111477FileUrl: null,
+      is111477: false,
+      playbackConfirmed: true,
+      mediaPlaying: true,
+    );
+
+    test('same URL on current provider is playing', () {
+      expect(
+        PlayerStreamMenu.isCurrentSource(
+          row,
+          state,
+          providerId: 'megaplay',
+        ),
+        isTrue,
+      );
+    });
+
+    test('same URL on another provider is not playing', () {
+      expect(
+        PlayerStreamMenu.isCurrentSource(
+          row,
+          state,
+          providerId: 'vidnest_hianime',
         ),
         isFalse,
       );

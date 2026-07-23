@@ -142,8 +142,7 @@ class HubPosterCard extends StatelessWidget {
                       vertical: shellScaled(context, 2).clamp(1.0, 2.0),
                     ),
                     decoration: BoxDecoration(
-                      color: ForjaShellColors.progressFill
-                          .withValues(alpha: 0.85),
+                      color: ForjaShellColors.iconMuted,
                       borderRadius: BorderRadius.circular(
                         shellScaled(context, 4).clamp(2.0, 4.0),
                       ),
@@ -151,7 +150,7 @@ class HubPosterCard extends StatelessWidget {
                     child: Text(
                       badge!,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Colors.black,
                         fontSize: shellScaled(context, 9).clamp(7.0, 9.0),
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.4,

@@ -317,9 +317,29 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     );
   }
 
+  ({bool showDate, bool showOverview}) _episodeMetaFlags(List<dynamic> eps) {
+    var showDate = false;
+    var showOverview = false;
+    for (final raw in eps) {
+      if (raw is! Map) continue;
+      final ep = Map<String, dynamic>.from(raw);
+      if (!showDate && episodeAirDateInfo(ep).label != null) showDate = true;
+      if (!showOverview &&
+          (ep['overview'] ?? '').toString().trim().isNotEmpty) {
+        showOverview = true;
+      }
+      if (showDate && showOverview) break;
+    }
+    return (showDate: showDate, showOverview: showOverview);
+  }
+
   Widget _buildEpisodeRow(String? tabId) {
+    final meta = _episodeMetaFlags(_visibleEpisodes);
     return HorizontalScroller(
-      height: _EpisodeCard.rowScrollerHeight,
+      height: _EpisodeCard.rowScrollerHeight(
+        showDate: meta.showDate,
+        showOverview: meta.showOverview,
+      ),
       controller: _episodeScrollController,
       padding: const EdgeInsets.symmetric(vertical: _EpisodeCard.rowVerticalPadding),
       itemCount: _visibleEpisodes.length,
@@ -522,9 +542,15 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   Widget _buildEpisodeSkeletonRow() {
     const count = 4;
+    // Prefer season source over visible chunk — loading often has empty visible.
+    final meta = _episodeMetaFlags(_sortedEpisodes);
+    final compact = !meta.showDate && !meta.showOverview;
     return homeLoadingShimmer(
       SizedBox(
-        height: _EpisodeCard.rowScrollerHeight,
+        height: _EpisodeCard.rowScrollerHeight(
+          showDate: meta.showDate,
+          showOverview: meta.showOverview,
+        ),
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           physics: const NeverScrollableScrollPhysics(),
@@ -533,7 +559,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           ),
           itemCount: count,
           separatorBuilder: (_, _) => const SizedBox(width: 16),
-          itemBuilder: (_, _) => const _EpisodeCardSkeleton(),
+          itemBuilder: (_, _) => _EpisodeCardSkeleton(compact: compact),
         ),
       ),
     );
@@ -541,7 +567,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 }
 
 class _EpisodeCardSkeleton extends StatelessWidget {
-  const _EpisodeCardSkeleton();
+  const _EpisodeCardSkeleton({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -568,33 +596,35 @@ class _EpisodeCardSkeleton extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
           ),
-          const SizedBox(height: _EpisodeCard._metaGap),
-          Container(
-            height: 12,
-            width: _EpisodeCard.cardWidth * 0.38,
-            decoration: BoxDecoration(
-              color: AppTheme.bgCard,
-              borderRadius: BorderRadius.circular(4),
+          if (!compact) ...[
+            const SizedBox(height: _EpisodeCard._metaGap),
+            Container(
+              height: 12,
+              width: _EpisodeCard.cardWidth * 0.38,
+              decoration: BoxDecoration(
+                color: AppTheme.bgCard,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          const SizedBox(height: _EpisodeCard._metaGap),
-          Container(
-            height: 12,
-            width: _EpisodeCard.cardWidth,
-            decoration: BoxDecoration(
-              color: AppTheme.bgCard,
-              borderRadius: BorderRadius.circular(4),
+            const SizedBox(height: _EpisodeCard._metaGap),
+            Container(
+              height: 12,
+              width: _EpisodeCard.cardWidth,
+              decoration: BoxDecoration(
+                color: AppTheme.bgCard,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            height: 12,
-            width: _EpisodeCard.cardWidth * 0.85,
-            decoration: BoxDecoration(
-              color: AppTheme.bgCard,
-              borderRadius: BorderRadius.circular(4),
+            const SizedBox(height: 4),
+            Container(
+              height: 12,
+              width: _EpisodeCard.cardWidth * 0.85,
+              decoration: BoxDecoration(
+                color: AppTheme.bgCard,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -819,16 +849,24 @@ class _EpisodeCard extends StatefulWidget {
 
   static double get thumbHeight => cardWidth * 9 / 16;
 
-  /// Height when title, air date, and two-line overview are all visible.
-  static double get maxContentHeight =>
-      thumbHeight +
-      _bodyTopGap +
-      _titleLineHeight +
-      _dateBlockHeight +
-      _overviewBlockHeight;
+  /// Height for title + optional air date / two-line overview.
+  static double contentHeight({
+    bool showDate = true,
+    bool showOverview = true,
+  }) {
+    var h = thumbHeight + _bodyTopGap + _titleLineHeight;
+    if (showDate) h += _dateBlockHeight;
+    if (showOverview) h += _overviewBlockHeight;
+    return h;
+  }
 
-  static double get rowScrollerHeight =>
-      maxContentHeight.ceilToDouble() + rowVerticalPadding * 2;
+  static double rowScrollerHeight({
+    bool showDate = true,
+    bool showOverview = true,
+  }) =>
+      contentHeight(showDate: showDate, showOverview: showOverview)
+          .ceilToDouble() +
+      rowVerticalPadding * 2;
 
   @override
   State<_EpisodeCard> createState() => _EpisodeCardState();

@@ -203,7 +203,11 @@ class PlayerStreamMenu {
         for (final entry in ordered)
           Builder(
             builder: (_) {
-              final matched = _isCurrentSource(entry.value, state);
+              final matched = _isCurrentSource(
+                entry.value,
+                state,
+                providerId: providerId,
+              );
               // Single-stream current server: that row is the playing one even
               // if proxy/catalog identity briefly diverges.
               final isCurrent = matched ||
@@ -689,10 +693,21 @@ class PlayerStreamMenu {
   ) =>
       sources.asMap().entries.toList();
 
-  static bool _isCurrentSource(
+  /// Playing / selected identity for a stream row.
+  ///
+  /// Same CDN URL on another server must not paint as playing — that steals
+  /// the trailing control (pause instead of play) and blocks the switch.
+  @visibleForTesting
+  static bool isCurrentSource(
     StreamSource source,
-    PlayerStreamMenuState state,
-  ) {
+    PlayerStreamMenuState state, {
+    String? providerId,
+  }) {
+    if (providerId != null &&
+        state.currentProviderId != null &&
+        providerId != state.currentProviderId) {
+      return false;
+    }
     if (state.is111477) {
       return source.url == state.current111477FileUrl;
     }
@@ -702,6 +717,13 @@ class PlayerStreamMenu {
       catalogUrl: state.currentPlayingCatalogUrl,
     );
   }
+
+  static bool _isCurrentSource(
+    StreamSource source,
+    PlayerStreamMenuState state, {
+    String? providerId,
+  }) =>
+      isCurrentSource(source, state, providerId: providerId);
 
   static PlayerSourceStatus _resolveProviderStatus(
     String providerId, {
