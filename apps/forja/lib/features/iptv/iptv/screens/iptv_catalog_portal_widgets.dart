@@ -342,6 +342,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       builder: (context, _) {
         final isFav = ctrl.isFavoritePortal(v.key);
         final isNew = ctrl.isNewPortal(v.key);
+        final showStar = _reveal || isFav;
         final showNewChrome = isNew && !_reveal && !_showShareCode;
         final health = ctrl.portalHealthFor(v.key);
         final checking = ctrl.isPortalHealthChecking(v.key);
@@ -512,30 +513,38 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             ),
                             Align(
                               alignment: Alignment.center,
-                              child: iptvTap(
-                                context: context,
-                                onTap: () => ctrl.toggleFavoritePortal(v.key),
-                                borderRadius: 16,
-                                focusNode: _favoriteFocus,
-                                tvRowId: _actionsRowId,
-                                tvItemIndex: 0,
-                                onLeftEdge: _focusCatalogFromPanel,
-                                onRightEdge: _reveal
-                                    ? () => (_confirmingDelete
-                                            ? _confirmYesFocus
-                                            : _copyFocus)
-                                        .requestFocus()
-                                    : null,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.star_rounded
-                                        : Icons.star_outline_rounded,
-                                    size: 16,
-                                    color: isFav
-                                        ? const Color(0xFFFBBF24)
-                                        : Colors.white30,
+                              child: AnimatedOpacity(
+                                opacity: showStar ? 1 : 0,
+                                duration: const Duration(milliseconds: 120),
+                                child: IgnorePointer(
+                                  ignoring: !showStar,
+                                  child: iptvTap(
+                                    context: context,
+                                    onTap: () =>
+                                        ctrl.toggleFavoritePortal(v.key),
+                                    borderRadius: 16,
+                                    focusNode: _favoriteFocus,
+                                    tvRowId: _actionsRowId,
+                                    tvItemIndex: 0,
+                                    onLeftEdge: _focusCatalogFromPanel,
+                                    onRightEdge: _reveal
+                                        ? () => (_confirmingDelete
+                                                ? _confirmYesFocus
+                                                : _copyFocus)
+                                            .requestFocus()
+                                        : null,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        isFav
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        size: 16,
+                                        color: isFav
+                                            ? const Color(0xFFFBBF24)
+                                            : Colors.white30,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
