@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'watch_history_resume.dart';
+
 typedef EpisodeWatchedSyncHandler = void Function(
   int tmdbId,
   int season,
@@ -112,6 +114,28 @@ class EpisodeWatchedService {
     await _save();
     if (catalog == null || catalog.isEmpty) {
       _syncEpisodeState(mediaId, season, episode, watched);
+    }
+  }
+
+  /// Auto-mark when playback hits [watchFinishedThreshold]. No-op if already
+  /// watched. Manual unwatch sticks until the next ≥threshold save.
+  Future<void> markWatchedIfFinished({
+    required int mediaId,
+    required int season,
+    required int episode,
+    required int positionMs,
+    required int durationMs,
+    String? catalog,
+  }) async {
+    if (!isWatchFinished(positionMs, durationMs)) return;
+    final map = await _load();
+    final id = _id(mediaId, season, episode, catalog: catalog);
+    if (map[id] == true) return;
+    map[id] = true;
+    await _save();
+    debugPrint('[EpisodeWatched] Auto-marked $id (≥${(watchFinishedThreshold * 100).round()}%)');
+    if (catalog == null || catalog.isEmpty) {
+      _syncEpisodeState(mediaId, season, episode, true);
     }
   }
 

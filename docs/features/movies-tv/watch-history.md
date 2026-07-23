@@ -17,7 +17,8 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 - See progress on the details hero (Resume + bar) and on continue watching cards — updates when you leave the player without leaving details
 - Hover a continue watching card (desktop) to scale it and show a brand-green play button that floats upward while its play icon pulses slowly — click to resume from the last torrent or web source
 - Dismiss entries from continue watching
-- Mark episodes watched from details screens (clears or updates progress)
+- Episodes auto-mark **watched** when you reach **85%** (right-click still toggles); TV / anime / Asian Drama details show series progress (`N of T · %` or **Completed**)
+- Movies show **Watched** with a check on details when finished (≥85%)
 - Clear all continue watching (and watched marks) from **Settings → [Data & backup](../settings/cache-data.md)**
 
 ## Tips
@@ -25,7 +26,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 - Watch history is per-device local data (not included in [Backup & restore](../settings/backup-restore.md) export today)
 - [Trakt](../accounts/trakt.md) sync can complement local history when logged in
 - Clearing continue watching from Settings only affects this device — Trakt / Simkl cloud history stays
-- Progress at **90%+** counts as finished: Continue Watching / Play starts from the beginning (not the credits). On details, use the trash control next to Play to clear a false “Watched” bar
+- Progress at **85%+** counts as finished: Continue Watching / Play starts from the beginning (not the credits). On details, use the trash control next to Play to clear a false “Watched” bar
 
 ## Related
 

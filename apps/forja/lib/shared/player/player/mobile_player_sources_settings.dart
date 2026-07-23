@@ -4,12 +4,28 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<void> _applyAutoSubtitle() async {
-    if (_s._disposed || _s._subtitlePinned) return;
+    if (_s._disposed) return;
+    final settings = SettingsService();
+    final preferred = await settings.getPreferredSubtitleLanguage();
     final embedded = _s._player.state.tracks.subtitle
         .where(
           (t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
         )
         .toList();
+
+    if (preferred != 'None' && preferred.isNotEmpty) {
+      final track = pickEmbeddedSubtitleWithFallback(
+        preferredLang: preferred,
+        tracks: embedded,
+      );
+      if (track == null) return;
+      await _s._player.setSubtitleTrack(track);
+      _s._updateSubVisibility(track);
+      if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+      return;
+    }
+
+    if (_s._subtitlePinned) return;
     if (embedded.isEmpty) return;
     final track = embedded.first;
     await _s._player.setSubtitleTrack(track);

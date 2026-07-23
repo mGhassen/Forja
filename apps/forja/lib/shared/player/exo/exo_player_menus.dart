@@ -33,7 +33,7 @@ abstract final class ExoPlayerMenus {
   static Future<void> showSubtitles({
     required BuildContext context,
     required ExoTracksSnapshot tracks,
-    required Future<void> Function(String? trackId) onSelect,
+    required Future<void> Function(ExoTrackInfo? track) onSelect,
     BuildContext? anchorContext,
   }) {
     return PlayerPopupPanel.show(
@@ -77,7 +77,7 @@ abstract final class ExoPlayerMenus {
                   expanded: true,
                   onTap: () async {
                     PlayerPopupPanel.dismiss();
-                    await onSelect(t.id);
+                    await onSelect(t);
                   },
                 ),
               ],

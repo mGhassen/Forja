@@ -17,14 +17,17 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - Change appearance (size, color, font, opacity)
 - Adjust sync delay if dialogue is early/late
 - Use advanced ASS/SSA rendering for styled subs
+- **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. Default in **Settings → Playback → Preferred Subtitle Language** is English; **None** / **Off** turns auto-select off
 
 ## Tips
 
 - Subtitle search works best when the title and year match TMDB metadata
 - Stremio subtitle addons require IMDB id and installed addons with a subtitles resource
+- You can also set the default under **Settings → Playback → Preferred Subtitle Language**
 
 ## Related
 
 - [Subtitle scrapers](../scrapers/subtitle-scrapers.md)
 - [Player](player.md)
+- [Playback settings](../settings/playback-settings.md)
 - [Stremio addons](../sources/stremio-addons.md)

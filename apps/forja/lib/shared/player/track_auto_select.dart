@@ -130,6 +130,29 @@ String _normalize(String? s) {
   return x;
 }
 
+/// Maps a track/subtitle label to a [kTrackLanguageDisplayNames] entry
+/// (e.g. `"fr"` / `"Français"` → `"French"`). Returns null if unknown.
+String? resolvePreferredLanguageDisplayName({
+  String? language,
+  String? title,
+}) {
+  for (final name in kTrackLanguageDisplayNames) {
+    if (name == 'None') continue;
+    if (matchesPreferredLanguage(name, language: language, title: title)) {
+      return name;
+    }
+  }
+  return null;
+}
+
+/// Preferred first, then English when the preferred category is missing.
+/// Empty when [preferred] is `'None'` (subtitles stay off).
+List<String> subtitleLanguageCandidates(String preferred) {
+  if (preferred == 'None' || preferred.isEmpty) return const [];
+  if (preferred == 'English') return const ['English'];
+  return [preferred, 'English'];
+}
+
 /// Picks the "best" external subtitle entry for [preferredLang] from a list
 /// of subtitle maps (each must contain at least `url`, `language`,
 /// `display`). Returns null if no match. Prefers entries whose language
@@ -159,6 +182,37 @@ Map<String, dynamic>? pickExternalSubtitleForLanguage(
     }
   }
   return best;
+}
+
+/// Preferred language, then English fallback when that category is absent.
+Map<String, dynamic>? pickExternalSubtitleWithFallback(
+  String preferredLang,
+  List<Map<String, dynamic>> subs,
+) {
+  for (final lang in subtitleLanguageCandidates(preferredLang)) {
+    final pick = pickExternalSubtitleForLanguage(lang, subs);
+    if (pick != null) return pick;
+  }
+  return null;
+}
+
+/// Embedded track match: preferred, then English.
+SubtitleTrack? pickEmbeddedSubtitleWithFallback({
+  required String preferredLang,
+  required List<SubtitleTrack> tracks,
+}) {
+  final real = tracks
+      .where((t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'))
+      .toList();
+  for (final lang in subtitleLanguageCandidates(preferredLang)) {
+    for (final t in real) {
+      if (matchesPreferredLanguage(lang,
+          language: t.language, title: t.title)) {
+        return t;
+      }
+    }
+  }
+  return null;
 }
 
 /// Codec/title hints we want to *avoid* because the bundled mpv build on

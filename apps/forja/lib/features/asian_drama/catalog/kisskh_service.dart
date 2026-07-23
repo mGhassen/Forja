@@ -446,15 +446,12 @@ class KissKhService {
     return out;
   }
 
-  /// Same seek math as details → Resume.
+  /// Same seek math as details → Resume (2–85% only; finished restarts at 0).
   static Duration? startPositionFromHistory(Map<String, dynamic> entry) {
     final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
     final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
-    if (posMs <= 5000) return null;
-    final clamped = (durMs > 0 && posMs > durMs - 30000)
-        ? (durMs - 30000)
-        : posMs;
-    return Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+    if (posMs <= 5000 || !isInProgressResume(posMs, durMs)) return null;
+    return Duration(milliseconds: (posMs - 3000).clamp(0, 1 << 31));
   }
 
   /// Match watch-history entry to a live episode row (number first — stable

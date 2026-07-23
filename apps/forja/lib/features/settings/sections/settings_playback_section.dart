@@ -34,6 +34,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   bool _simpleStreamingResolve = true;
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _preferredAudioLang = 'None';
+  String _preferredSubtitleLang = 'English';
   bool _avoidUnsupportedAudio = true;
   bool _autoNextEpisode = true;
   bool _autoSkipIntro = false;
@@ -72,6 +73,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
     final streamOrder = await _settings.getStreamProviderOrder();
     final animeOrder = await _settings.getAnimeProviderOrder();
     final preferredAudio = await _settings.getPreferredAudioLanguage();
+    final preferredSubtitle = await _settings.getPreferredSubtitleLanguage();
     final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
     final autoNextEpisode = await _settings.getAutoNextEpisode();
     final autoSkipIntro = await _settings.getAutoSkipIntro();
@@ -92,6 +94,10 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
       _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
           ? preferredAudio
           : 'None';
+      _preferredSubtitleLang =
+          kTrackLanguageDisplayNames.contains(preferredSubtitle)
+              ? preferredSubtitle
+              : 'English';
       _avoidUnsupportedAudio = avoidUnsupported;
       _autoNextEpisode = autoNextEpisode;
       _autoSkipIntro = autoSkipIntro;
@@ -218,6 +224,20 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
                 if (val != null) {
                   await _settings.setPreferredAudioLanguage(val);
                   setState(() => _preferredAudioLang = val);
+                  schedulePreferencesSyncPush();
+                }
+              },
+            ),
+            settingsFocusableDropdown(
+              context,
+              'Preferred Subtitle Language',
+              'Auto-select this language when available; otherwise English. Pick "None" to leave subtitles off. Also remembered from the player subtitle menu.',
+              _preferredSubtitleLang,
+              kTrackLanguageDisplayNames,
+              (val) async {
+                if (val != null) {
+                  await _settings.setPreferredSubtitleLanguage(val);
+                  setState(() => _preferredSubtitleLang = val);
                   schedulePreferencesSyncPush();
                 }
               },

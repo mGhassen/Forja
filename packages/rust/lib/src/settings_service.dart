@@ -69,6 +69,7 @@ class SettingsService {
   static const String _showTorrentStatsOverlayKey =
       'show_torrent_stats_overlay';
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
+  static const String _preferredSubtitleLangKey = 'preferred_subtitle_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
   static const String _playerAutoServerKey = 'player_auto_server';
   static const String _playerAutoSourceKey = 'player_auto_source';
@@ -131,6 +132,13 @@ class SettingsService {
 
   Future<void> setPreferredAudioLanguage(String v) async =>
       kvSetString(_preferredAudioLangKey, v);
+
+  /// Display name from [kTrackLanguageDisplayNames]. Default English.
+  Future<String> getPreferredSubtitleLanguage() async =>
+      await kvGetString(_preferredSubtitleLangKey) ?? 'English';
+
+  Future<void> setPreferredSubtitleLanguage(String v) async =>
+      kvSetString(_preferredSubtitleLangKey, v);
 
   Future<bool> getAvoidUnsupportedAudio() async =>
       kvGetBool(_avoidUnsupportedAudioKey, fallback: true);

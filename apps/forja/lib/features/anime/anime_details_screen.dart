@@ -14,6 +14,7 @@ import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
+import 'package:forja/shared/widgets/watch_series_progress.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'anime_player_screen.dart';
@@ -59,12 +60,14 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   void initState() {
     super.initState();
     SettingsService.animeTitleLanguageNotifier.addListener(_onTitleLanguage);
+    AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
     _load();
     _loadWatchedEpisodes();
   }
 
   @override
   void dispose() {
+    AnimeService.watchHistoryRevision.removeListener(_onHistoryChanged);
     SettingsService.animeTitleLanguageNotifier.removeListener(_onTitleLanguage);
     _heroPlayFocus.dispose();
     _backFocus.dispose();
@@ -74,6 +77,24 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   void _onTitleLanguage() {
     if (mounted) setState(() {});
+  }
+
+  void _onHistoryChanged() => _refreshProgress();
+
+  Future<void> _refreshProgress() async {
+    try {
+      final p = await _service.getProgress(widget.anime.id);
+      if (!mounted) return;
+      setState(() {
+        _progress = p;
+        final ep = (p?['episodeNumber'] as num?)?.toInt();
+        if (ep != null &&
+            ep > 0 &&
+            (_episodesLoading || _episodes.any((e) => e.number == ep))) {
+          _selectedEpisode = ep;
+        }
+      });
+    } catch (_) {}
   }
 
   void _scrollDetailsHeroIntoView() {
@@ -185,7 +206,10 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       category: _category,
       allEpisodes: _episodes,
       startPosition: startPosition,
-    );
+    ).then((_) {
+      _refreshProgress();
+      _loadWatchedEpisodes();
+    });
   }
 
   void _playSelected() {
@@ -197,7 +221,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     if (p != null && resumeEp == _selectedEpisode) {
       final posMs = (p['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (p['durationMs'] as num?)?.toInt() ?? 0;
-      // Same as movies: ≥90% (or <2%) restarts at 0 — avoid credits seek.
+      // Same as movies: ≥85% (or <2%) restarts at 0 — avoid credits seek.
       if (posMs > 0 && isInProgressResume(posMs, durMs)) {
         start = Duration(milliseconds: posMs);
       }
@@ -226,6 +250,15 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       catalog: EpisodeWatchedService.catalogAnilist,
     );
     await _loadWatchedEpisodes();
+  }
+
+  Widget? _seriesProgressWidget() {
+    final total = _episodes.isNotEmpty
+        ? _episodes.length
+        : (_data.episodes ?? 0);
+    final watched = _watchedEpisodes.length;
+    if (total <= 0 || watched <= 0) return null;
+    return WatchSeriesProgress(watched: watched, total: total);
   }
 
   List<String> _metaParts(AnimeCard a) {
@@ -428,6 +461,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             pageBottomChild: episodePicker,
             positionMs: posMs,
             durationMs: durMs,
+            seriesProgress: _seriesProgressWidget(),
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
               itemCount: (_progress != null ? 2 : 1) + 2,

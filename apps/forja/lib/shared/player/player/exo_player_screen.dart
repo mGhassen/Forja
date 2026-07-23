@@ -21,6 +21,7 @@ import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shell/app_router.dart';
@@ -124,6 +125,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   double _rate = 1.0;
   String _resizeMode = 'fit';
   ExoTracksSnapshot _tracks = ExoTracksSnapshot.empty;
+  bool _preferredSubtitleApplied = false;
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -201,6 +203,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   Future<void> _openCurrentSource() async {
     if (_opening || _disposed) return;
     _opening = true;
+    _preferredSubtitleApplied = false;
     setState(() {
       _hasError = false;
       _errorMessage = '';
@@ -332,6 +335,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           _tracks = ExoTracksSnapshot.fromMap(event);
           _rate = _tracks.rate;
         });
+        unawaited(_maybeApplyPreferredSubtitle());
         break;
     }
   }
@@ -647,13 +651,79 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       context: context,
       tracks: tracks,
       anchorContext: anchorContext,
-      onSelect: (id) => ExoPlayerBridge.selectTrack(
-        _viewId,
-        type: 'text',
-        trackId: id,
-      ),
+      onSelect: (track) async {
+        final settings = SettingsService();
+        if (track == null) {
+          await settings.setPreferredSubtitleLanguage('None');
+          await ExoPlayerBridge.selectTrack(
+            _viewId,
+            type: 'text',
+            trackId: null,
+          );
+          return;
+        }
+        final resolved = resolvePreferredLanguageDisplayName(
+          language: track.language,
+          title: track.label,
+        );
+        if (resolved != null) {
+          await settings.setPreferredSubtitleLanguage(resolved);
+        }
+        await ExoPlayerBridge.selectTrack(
+          _viewId,
+          type: 'text',
+          trackId: track.id,
+        );
+      },
     );
     if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _maybeApplyPreferredSubtitle() async {
+    if (_disposed || _tracks.text.isEmpty) return;
+    final preferred = await SettingsService().getPreferredSubtitleLanguage();
+    if (preferred == 'None' || preferred.isEmpty) return;
+
+    ExoTrackInfo? preferredMatch;
+    ExoTrackInfo? englishMatch;
+    for (final t in _tracks.text) {
+      if (matchesPreferredLanguage(
+        preferred,
+        language: t.language,
+        title: t.label,
+      )) {
+        preferredMatch ??= t;
+      } else if (preferred != 'English' &&
+          matchesPreferredLanguage(
+            'English',
+            language: t.language,
+            title: t.label,
+          )) {
+        englishMatch ??= t;
+      }
+    }
+    final match = preferredMatch ?? englishMatch;
+    if (match == null) return;
+
+    final onPreferred = preferredMatch != null &&
+        preferredMatch.selected &&
+        !_tracks.textOff;
+    if (onPreferred) {
+      _preferredSubtitleApplied = true;
+      return;
+    }
+    // Already applied English fallback and preferred still missing — stop.
+    if (preferredMatch == null && _preferredSubtitleApplied) return;
+
+    await ExoPlayerBridge.selectTrack(
+      _viewId,
+      type: 'text',
+      trackId: match.id,
+    );
+    _preferredSubtitleApplied = true;
+    debugPrint(
+      '[ExoPlayer] auto subtitle → ${match.label.isNotEmpty ? match.label : match.language}',
+    );
   }
 
   Future<void> _showQualityMenu(BuildContext anchorContext) async {

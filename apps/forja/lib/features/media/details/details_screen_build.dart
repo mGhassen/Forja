@@ -31,8 +31,17 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       networks: _s._networks,
       creators: _s._creators,
       watchProviders: _s._watchProviders,
+      seriesProgress: _seriesProgressWidget(),
       actionRow: _s._isCollection ? null : _buildHeroActionRow(),
     );
+  }
+
+  Widget? _seriesProgressWidget() {
+    if (_s._movie.mediaType != 'tv') return null;
+    final total = _s._movie.numberOfEpisodes;
+    final watched = _s._watchedEpisodes.length;
+    if (total <= 0 || watched <= 0) return null;
+    return WatchSeriesProgress(watched: watched, total: total);
   }
 
   double? get _heroImdbRating {

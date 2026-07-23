@@ -1,10 +1,10 @@
 # Playback settings
 
-> Play sources, external player, audio, webstreaming provider order, and anime provider order.
+> Play sources, external player, audio, subtitles, webstreaming provider order, and anime provider order.
 
 ## What it is
 
-Core playback preferences: which backends **Play** tries on the media details screen, external player, preferred audio language, unsupported codec avoidance, webstreaming extractor priority, and anime stream source priority.
+Core playback preferences: which backends **Play** tries on the media details screen, external player, preferred audio and subtitle languages, unsupported codec avoidance, webstreaming extractor priority, and anime stream source priority.
 
 ## How to open it
 
@@ -17,6 +17,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - When **Webstreaming** is on and the signed-in account is an **admin**: toggle **Simple resolve (experimental)** (on by default) — tries one provider at a time, filters/probes streams, then opens the player once (old multi-provider race stays when this is off). Non-admin accounts do not see this row
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
+- Set **Preferred subtitle language** (default **English**) — auto-select that category when available, otherwise English; **None** leaves subtitles off. Also remembered when you pick a language in the player
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as the **Auto next** switch in the player Episodes panel top bar
 - Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip; also available in the in-player **Settings** menu
@@ -46,3 +47,4 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 - [Anime](../hubs/anime.md)
 - [External players](../playback/external-players.md)
 - [Audio tracks](../playback/audio-tracks.md)
+- [Subtitles](../playback/subtitles.md)

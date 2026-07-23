@@ -11,6 +11,7 @@ import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
+import 'package:forja/shared/widgets/watch_series_progress.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart';
@@ -171,7 +172,10 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
       episode: ep,
       allEpisodes: det.episodes,
       startPosition: startPosition,
-    ).then((_) => _refreshProgress());
+    ).then((_) {
+      _refreshProgress();
+      _loadWatchedEpisodes();
+    });
   }
 
   void _playSelected() {
@@ -209,6 +213,14 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
       catalog: EpisodeWatchedService.catalogKisskh,
     );
     await _loadWatchedEpisodes();
+  }
+
+  Widget? _seriesProgressWidget(KdramaDetails det) {
+    final total =
+        det.episodes.isNotEmpty ? det.episodes.length : det.episodesCount;
+    final watched = _watchedEpisodes.length;
+    if (total <= 0 || watched <= 0) return null;
+    return WatchSeriesProgress(watched: watched, total: total);
   }
 
   List<String> _metaParts(KdramaDetails det) {
@@ -312,15 +324,14 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   Widget _buildScrollLayout() {
     final det = _details!;
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
-    final canResumeSelected =
-        _progress != null && resumeEp == _selectedEpisode;
+    final rawPosMs = (_progress?['positionMs'] as num?)?.toInt();
+    final rawDurMs = (_progress?['durationMs'] as num?)?.toInt();
+    final canResumeSelected = _progress != null &&
+        resumeEp == _selectedEpisode &&
+        isInProgressResume(rawPosMs ?? 0, rawDurMs ?? 0);
     final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
-    final posMs = canResumeSelected
-        ? (_progress?['positionMs'] as num?)?.toInt()
-        : null;
-    final durMs = canResumeSelected
-        ? (_progress?['durationMs'] as num?)?.toInt()
-        : null;
+    final posMs = canResumeSelected ? rawPosMs : null;
+    final durMs = canResumeSelected ? rawDurMs : null;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 
@@ -395,6 +406,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             pageBottomChild: episodePicker,
             positionMs: posMs,
             durationMs: durMs,
+            seriesProgress: _seriesProgressWidget(det),
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
               itemCount: _progress != null ? 2 : 1,

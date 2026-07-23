@@ -46,6 +46,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.watchProviders = const [],
     this.bodyOverlap,
     this.pageBottomChild,
+    this.seriesProgress,
   });
 
   final Movie movie;
@@ -75,6 +76,8 @@ class MediaDetailsHero extends StatefulWidget {
   final double? bodyOverlap;
   /// Rendered on the page backdrop below hero chrome (e.g. TV season rail).
   final Widget? pageBottomChild;
+  /// Series / season aggregate watched label (details only).
+  final Widget? seriesProgress;
 
   @override
   State<MediaDetailsHero> createState() => _MediaDetailsHeroState();
@@ -825,6 +828,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                               actionRow: widget.actionRow,
                               positionMs: _positionMs,
                               durationMs: _durationMs,
+                              seriesProgress: widget.seriesProgress,
                               availableWidth: constraints.maxWidth,
                               maxHeight: constraints.maxHeight,
                             ),
@@ -1027,6 +1031,7 @@ class _HeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.seriesProgress,
     this.availableWidth,
     this.maxHeight,
   });
@@ -1050,6 +1055,7 @@ class _HeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final Widget? seriesProgress;
   final double? availableWidth;
   final double? maxHeight;
 
@@ -1069,6 +1075,7 @@ class _HeroLayout extends StatelessWidget {
       actionRow: actionRow,
       positionMs: positionMs,
       durationMs: durationMs,
+      seriesProgress: seriesProgress,
       maxContentWidth: compact ? (availableWidth ?? width) : leftColumnWidth,
       maxHeight: maxHeight,
     );
@@ -1148,6 +1155,7 @@ class _HeroMainColumn extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.seriesProgress,
     this.maxHeight,
   });
 
@@ -1166,6 +1174,7 @@ class _HeroMainColumn extends StatelessWidget {
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
+  static const _seriesProgressBlockHeight = 20.0;
 
   final Movie movie;
   final String? logoUrl;
@@ -1177,6 +1186,7 @@ class _HeroMainColumn extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final Widget? seriesProgress;
   final double? maxHeight;
 
   static double get _overviewSlotHeight =>
@@ -1191,10 +1201,16 @@ class _HeroMainColumn extends StatelessWidget {
   double _metaHeight() =>
       _metaWraps ? _metaBlockHeightWrapped : _metaBlockHeight;
 
-  double _footerReserve({required bool showProgress}) {
+  double _footerReserve({
+    required bool showProgress,
+    required bool showSeriesProgress,
+  }) {
     var reserved = 0.0;
     if (actionRow != null) reserved += _actionGap + ShellTokens.shellButtonHeight;
     if (showProgress) reserved += 14 + _progressBlockHeight;
+    if (showSeriesProgress) {
+      reserved += (showProgress ? 8 : 14) + _seriesProgressBlockHeight;
+    }
     return reserved;
   }
 
@@ -1229,6 +1245,7 @@ class _HeroMainColumn extends StatelessWidget {
         kShowHeroWatchProviders && watchProviders.isNotEmpty;
     var showOverview = movie.overview.isNotEmpty;
     var showProgress = hasProgress;
+    var showSeriesProgress = seriesProgress != null;
     var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
@@ -1236,7 +1253,11 @@ class _HeroMainColumn extends StatelessWidget {
     // More; drop secondary chrome before synopsis when the episode rail is tight.
     double? metaBudget;
     if (bounded) {
-      metaBudget = (maxHeight! - _footerReserve(showProgress: showProgress))
+      metaBudget = (maxHeight! -
+              _footerReserve(
+                showProgress: showProgress,
+                showSeriesProgress: showSeriesProgress,
+              ))
           .clamp(0.0, maxHeight!);
 
       bool overBudget() =>
@@ -1271,11 +1292,23 @@ class _HeroMainColumn extends StatelessWidget {
           showGenres = false;
           showProviders = false;
           showMetaLine = false;
+          if (showSeriesProgress) {
+            showSeriesProgress = false;
+            metaBudget = (maxHeight! -
+                    _footerReserve(
+                      showProgress: showProgress,
+                      showSeriesProgress: false,
+                    ))
+                .clamp(0.0, maxHeight!);
+          }
           if (showProgress) {
             showProgress = false;
-            metaBudget =
-                (maxHeight! - _footerReserve(showProgress: false))
-                    .clamp(0.0, maxHeight!);
+            metaBudget = (maxHeight! -
+                    _footerReserve(
+                      showProgress: false,
+                      showSeriesProgress: showSeriesProgress,
+                    ))
+                .clamp(0.0, maxHeight!);
           }
         }
       }
@@ -1381,6 +1414,10 @@ class _HeroMainColumn extends StatelessWidget {
                     durationMs: durationMs!,
                   ),
                 ),
+              ],
+              if (showSeriesProgress) ...[
+                SizedBox(height: showProgress ? 8 : 14),
+                seriesProgress!,
               ],
             ],
           ),

@@ -9,6 +9,7 @@ set -euo pipefail
 #   ./scripts/release_local.sh tag v1.2.404             # build + publish selected platforms
 #   ./scripts/release_local.sh backfill [--dry-run]     # tag untagged commits (push)
 #   ./scripts/release_local.sh build v1.2.404           # macOS DMG only
+#   ./scripts/release_local.sh build-android-tv v1.2.404  # Android TV APKs (arm64 + v7a)
 #   ./scripts/release_local.sh build-windows v1.2.404   # Windows via Parallels VM
 #   ./scripts/release_local.sh setup-windows            # print / run VM toolchain setup
 #   ./scripts/release_local.sh publish v1.2.404         # upload dist/ → gh + R2
@@ -384,6 +385,7 @@ build_android_tv() {
   local ver="$1"
   local keystore="" tmp_ks="" key_alias
   require_cmd flutter
+  require_cmd keytool
   [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing (set in .env)"
   [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing (set in .env)"
   [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing (set in .env)"
@@ -393,6 +395,10 @@ build_android_tv() {
 
   if [[ -n "${FORJA_KEYSTORE_PATH:-}" ]]; then
     keystore="$FORJA_KEYSTORE_PATH"
+    case "$keystore" in
+      /*) ;;
+      *) keystore="$ROOT/$keystore" ;;
+    esac
     [[ -f "$keystore" ]] || die "FORJA_KEYSTORE_PATH not found: $keystore"
   elif [[ -n "${FORJA_KEYSTORE_BASE64:-}" ]]; then
     tmp_ks="$(mktemp)"
@@ -401,11 +407,20 @@ build_android_tv() {
     echo "$FORJA_KEYSTORE_BASE64" | base64 -d >"$tmp_ks"
     keystore="$tmp_ks"
   else
-    die "Android TV needs FORJA_KEYSTORE_PATH or FORJA_KEYSTORE_BASE64 in .env"
+    die "Android TV needs FORJA_KEYSTORE_PATH or FORJA_KEYSTORE_BASE64 in .env (same as GitHub secrets)"
   fi
 
   key_alias="${FORJA_KEY_ALIAS:-forja}"
-  echo "==> Flutter Android TV APKs ($ver)"
+  if ! keytool -list \
+    -keystore "$keystore" \
+    -storepass "$FORJA_KEYSTORE_PASSWORD" \
+    -alias "$key_alias" >/dev/null 2>&1; then
+    warn "No key alias '$key_alias' in keystore. Available:"
+    keytool -list -keystore "$keystore" -storepass "$FORJA_KEYSTORE_PASSWORD" || true
+    die "fix FORJA_KEY_ALIAS / keystore"
+  fi
+
+  info "Flutter Android TV APKs ($ver) — arm64 + armeabi-v7a"
   (
     cd "$APP_DIR"
     flutter pub get
@@ -519,7 +534,7 @@ cmd_build() {
   local tag ver
   tag="$(normalize_tag "$1")"
   ver="$(version_from_tag "$tag")"
-  echo "Build macOS DMG for $tag"
+  info "Build macOS DMG for $tag"
   build_macos "$ver"
 }
 
@@ -527,9 +542,19 @@ cmd_build_windows() {
   local tag ver
   tag="$(normalize_tag "$1")"
   ver="$(version_from_tag "$tag")"
-  echo "Build Windows installer for $tag via Parallels ($PRL_VM)"
+  info "Build Windows installer for $tag via Parallels ($PRL_VM)"
   confirm "Start Windows build in VM?" || die "aborted"
   build_windows_prl "$ver"
+}
+
+cmd_build_android_tv() {
+  local tag ver
+  tag="$(normalize_tag "$1")"
+  ver="$(version_from_tag "$tag")"
+  info "Build Android TV APKs for $tag (arm64 + armeabi-v7a)"
+  confirm "Start Android TV release build?" || die "aborted"
+  build_android_tv "$ver"
+  ok "APKs in dist/ for $ver"
 }
 
 cmd_setup_windows() {
@@ -639,13 +664,14 @@ interactive_menu() {
   echo "${C_BOLD}${C_CYAN}Forja local release${C_RESET}"
   hr
   echo "  ${C_DIM}latest tag${C_RESET}  ${latest:-none}"
-  echo "  ${C_DIM}platforms${C_RESET}   $(platforms)"
+  echo "  ${C_DIM}defaults${C_RESET}    $(platforms)"
+  echo "  ${C_DIM}toggles${C_RESET}     macOS · Windows · Linux · Android TV"
   echo "  ${C_DIM}windows VM${C_RESET}  $PRL_VM"
   hr
   echo
   echo "  ${C_BOLD}Release${C_RESET}"
-  echo "  ${C_DIM}1)${C_RESET} Existing tag          build + publish"
-  echo "  ${C_DIM}2)${C_RESET} New version           backfill? → bump → build + publish"
+  echo "  ${C_DIM}1)${C_RESET} Existing tag          pick platforms → build + publish"
+  echo "  ${C_DIM}2)${C_RESET} New version           backfill? → bump → platforms → build + publish"
   echo
   echo "  ${C_BOLD}Tags${C_RESET}"
   echo "  ${C_DIM}3)${C_RESET} Backfill untagged     create + push patch tags"
@@ -654,8 +680,9 @@ interactive_menu() {
   echo "  ${C_BOLD}Tools${C_RESET}"
   echo "  ${C_DIM}5)${C_RESET} Build macOS DMG only"
   echo "  ${C_DIM}6)${C_RESET} Build Windows (Parallels)"
-  echo "  ${C_DIM}7)${C_RESET} Publish dist/ only"
-  echo "  ${C_DIM}8)${C_RESET} Setup Windows VM"
+  echo "  ${C_DIM}7)${C_RESET} Build Android TV APKs"
+  echo "  ${C_DIM}8)${C_RESET} Publish dist/ only"
+  echo "  ${C_DIM}9)${C_RESET} Setup Windows VM"
   echo "  ${C_DIM}q)${C_RESET} Quit"
   echo
   read -r -p "${C_BOLD}Choice:${C_RESET} " choice
@@ -707,9 +734,13 @@ interactive_menu() {
       ;;
     7)
       tag="$(pick_tag_interactive)"
+      cmd_build_android_tv "$tag"
+      ;;
+    8)
+      tag="$(pick_tag_interactive)"
       cmd_publish "$tag"
       ;;
-    8) cmd_setup_windows ;;
+    9) cmd_setup_windows ;;
     q|Q) exit 0 ;;
     *) die "invalid choice" ;;
   esac
@@ -726,10 +757,11 @@ main() {
     backfill) cmd_backfill "${1:-}" ;;
     build) cmd_build "${1:?usage: release_local.sh build vX.Y.Z}" ;;
     build-windows) cmd_build_windows "${1:?usage: release_local.sh build-windows vX.Y.Z}" ;;
+    build-android-tv) cmd_build_android_tv "${1:?usage: release_local.sh build-android-tv vX.Y.Z}" ;;
     setup-windows) cmd_setup_windows ;;
     publish) cmd_publish "${1:?usage: release_local.sh publish vX.Y.Z}" ;;
     -h|--help)
-      sed -n '3,26p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//'
       ;;
     *)
       die "unknown command: $cmd (try --help)"

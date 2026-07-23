@@ -1280,6 +1280,14 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           position: pos,
           duration: dur,
         );
+        await EpisodeWatchedService().markWatchedIfFinished(
+          mediaId: widget.anime.id,
+          season: 1,
+          episode: widget.episodeNumber,
+          positionMs: pos.inMilliseconds,
+          durationMs: dur.inMilliseconds,
+          catalog: EpisodeWatchedService.catalogAnilist,
+        );
       },
       onSourcePinned: (url, title) async {
         final key = urlKeys[url] ?? titleKeys[title];

@@ -1,8 +1,17 @@
-/// Shared continue-watching / in-progress resume rules (2–90% watched).
+/// Fraction at which a title/episode counts as finished (auto-watched + restart).
+const double watchFinishedThreshold = 0.85;
+
+/// Shared continue-watching / in-progress resume rules (2–85% watched).
 bool isInProgressResume(int position, int duration) {
   if (duration <= 0) return false;
   final progress = position / duration;
-  return progress >= 0.02 && progress < 0.9;
+  return progress >= 0.02 && progress < watchFinishedThreshold;
+}
+
+/// True when playback reached [watchFinishedThreshold] (credits / done).
+bool isWatchFinished(int position, int duration) {
+  if (duration <= 0) return false;
+  return position / duration >= watchFinishedThreshold;
 }
 
 /// After this age, episode picks show the source panel instead of auto-launch.

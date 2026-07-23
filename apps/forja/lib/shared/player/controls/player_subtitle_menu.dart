@@ -7,6 +7,13 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
+/// Fired when the user picks Off, an embedded track, or an external file.
+typedef PlayerSubtitleSelectionCallback = void Function({
+  required bool off,
+  String? language,
+  String? title,
+});
+
 class PlayerSubtitleMenu {
   static Future<void> show(
     BuildContext context, {
@@ -19,7 +26,7 @@ class PlayerSubtitleMenu {
     required void Function(bool isNative) onNativeSubtitleChanged,
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
-    VoidCallback? onSubtitleSelected,
+    PlayerSubtitleSelectionCallback? onSubtitleSelected,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
@@ -51,7 +58,7 @@ class PlayerSubtitleMenu {
     required void Function(bool isNative) onNativeSubtitleChanged,
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
-    VoidCallback? onSubtitleSelected,
+    PlayerSubtitleSelectionCallback? onSubtitleSelected,
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
@@ -72,7 +79,7 @@ class PlayerSubtitleMenu {
     final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
 
     void turnOffSubtitles() {
-      onSubtitleSelected?.call();
+      onSubtitleSelected?.call(off: true);
       player.setSubtitleTrack(SubtitleTrack.no());
       updateSubVisibility(SubtitleTrack.no());
       onExternalUrlChanged(null);
@@ -138,7 +145,11 @@ class PlayerSubtitleMenu {
                   embedded[i].id == selectedSubtitleId,
               expanded: true,
               onTap: () {
-                onSubtitleSelected?.call();
+                onSubtitleSelected?.call(
+                  off: false,
+                  language: embedded[i].language,
+                  title: embedded[i].title,
+                );
                 player.setSubtitleTrack(embedded[i]);
                 updateSubVisibility(embedded[i]);
                 onExternalUrlChanged(null);
@@ -160,7 +171,8 @@ class PlayerSubtitleMenu {
                 allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
               );
               if (result == null || result.files.single.path == null) return;
-              onSubtitleSelected?.call();
+              // Local file — keep existing preferred language.
+              onSubtitleSelected?.call(off: false);
               final path = result.files.single.path!;
               final name = result.files.single.name;
               final subTrack = SubtitleTrack.uri(
@@ -240,7 +252,7 @@ class PlayerSubtitleMenu {
     required String? selectedExternalSubUrl,
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required void Function(String? url) onExternalUrlChanged,
-    VoidCallback? onSubtitleSelected,
+    PlayerSubtitleSelectionCallback? onSubtitleSelected,
     required Future<void> Function() onRoot,
     required EdgeInsets margin,
     BuildContext? anchorContext,
@@ -269,7 +281,11 @@ class PlayerSubtitleMenu {
             subtitle: source,
             selected: sel,
             onTap: () async {
-              onSubtitleSelected?.call();
+              onSubtitleSelected?.call(
+                off: false,
+                language: s['language']?.toString() ?? langKey,
+                title: s['display']?.toString(),
+              );
               await loadOnlineSubtitle(s);
               onExternalUrlChanged(s['url']?.toString());
               if (context.mounted) PlayerPopupPanel.dismiss();

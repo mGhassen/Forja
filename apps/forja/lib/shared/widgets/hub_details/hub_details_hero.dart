@@ -26,6 +26,7 @@ class HubDetailsHero extends StatelessWidget {
     this.durationMs,
     this.bodyOverlap,
     this.pageBottomChild,
+    this.seriesProgress,
   });
 
   final String backdropUrl;
@@ -42,6 +43,7 @@ class HubDetailsHero extends StatelessWidget {
   final int? durationMs;
   final double? bodyOverlap;
   final Widget? pageBottomChild;
+  final Widget? seriesProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +131,7 @@ class HubDetailsHero extends StatelessWidget {
                           actionRow: actionRow,
                           positionMs: positionMs,
                           durationMs: durationMs,
+                          seriesProgress: seriesProgress,
                           availableWidth: constraints.maxWidth,
                           maxHeight: constraints.maxHeight,
                         ),
@@ -180,6 +183,7 @@ class _HubHeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.seriesProgress,
     this.availableWidth,
     this.maxHeight,
   });
@@ -194,6 +198,7 @@ class _HubHeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final Widget? seriesProgress;
   final double? availableWidth;
   final double? maxHeight;
 
@@ -212,6 +217,7 @@ class _HubHeroLayout extends StatelessWidget {
       actionRow: actionRow,
       positionMs: positionMs,
       durationMs: durationMs,
+      seriesProgress: seriesProgress,
       maxContentWidth: compact ? (availableWidth ?? width) : leftColumnWidth,
       maxHeight: maxHeight,
     );
@@ -275,6 +281,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.seriesProgress,
     required this.maxContentWidth,
     this.maxHeight,
   });
@@ -292,6 +299,7 @@ class _HubHeroMainColumn extends StatelessWidget {
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
+  static const _seriesProgressBlockHeight = 20.0;
 
   final String title;
   final String? subtitle;
@@ -302,6 +310,7 @@ class _HubHeroMainColumn extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final Widget? seriesProgress;
   final double maxContentWidth;
   final double? maxHeight;
 
@@ -320,6 +329,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     required bool showGenres,
     required bool showOverview,
     required bool showProgress,
+    required bool showSeriesProgress,
     required bool singleLineMeta,
     required double titleHeight,
   }) {
@@ -331,6 +341,9 @@ class _HubHeroMainColumn extends StatelessWidget {
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
     if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
     if (showProgress) used += 14 + _progressBlockHeight;
+    if (showSeriesProgress) {
+      used += (showProgress ? 8 : 14) + _seriesProgressBlockHeight;
+    }
     return used;
   }
 
@@ -343,6 +356,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     var showOverview = overview.isNotEmpty;
     var showProgress =
         positionMs != null && durationMs != null && durationMs! > 0;
+    var showSeriesProgress = seriesProgress != null;
     var titleHeight = _titleBlockHeight;
 
     if (bounded) {
@@ -352,6 +366,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             showGenres: showGenres,
             showOverview: showOverview,
             showProgress: showProgress,
+            showSeriesProgress: showSeriesProgress,
             singleLineMeta: true,
             titleHeight: titleHeight,
           ) >
@@ -360,6 +375,7 @@ class _HubHeroMainColumn extends StatelessWidget {
       // Keep fixed 3-line synopsis + Read More; drop secondary chrome first.
       if (overBudget()) showGenres = false;
       if (overBudget()) showSubtitle = false;
+      if (overBudget()) showSeriesProgress = false;
       if (overBudget()) showProgress = false;
       if (overBudget()) {
         titleHeight = (maxHeight! -
@@ -368,6 +384,7 @@ class _HubHeroMainColumn extends StatelessWidget {
                   showGenres: showGenres,
                   showOverview: showOverview,
                   showProgress: showProgress,
+                  showSeriesProgress: showSeriesProgress,
                   singleLineMeta: true,
                   titleHeight: 0,
                 ))
@@ -457,6 +474,10 @@ class _HubHeroMainColumn extends StatelessWidget {
                     durationMs: durationMs!,
                   ),
                 ),
+              ],
+              if (showSeriesProgress) ...[
+                SizedBox(height: showProgress ? 8 : 14),
+                seriesProgress!,
               ],
             ],
           ),

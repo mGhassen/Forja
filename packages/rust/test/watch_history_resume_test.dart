@@ -59,13 +59,13 @@ void main() {
   });
 
   group('resumeStartPositionFromProgress', () {
-    test('uses in-progress position only inside 2–90% window', () {
+    test('uses in-progress position only inside 2–85% window', () {
       expect(
         resumeStartPositionFromProgress({'position': 10_000, 'duration': 100_000}),
         const Duration(milliseconds: 10_000),
       );
       expect(
-        resumeStartPositionFromProgress({'position': 95_000, 'duration': 100_000}),
+        resumeStartPositionFromProgress({'position': 85_000, 'duration': 100_000}),
         Duration.zero,
       );
       expect(
@@ -75,6 +75,14 @@ void main() {
         }),
         const Duration(milliseconds: 10_000),
       );
+    });
+  });
+
+  group('isWatchFinished', () {
+    test('marks finished at 85%', () {
+      expect(isWatchFinished(84_999, 100_000), isFalse);
+      expect(isWatchFinished(85_000, 100_000), isTrue);
+      expect(isWatchFinished(0, 0), isFalse);
     });
   });
 }

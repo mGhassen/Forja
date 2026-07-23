@@ -107,7 +107,7 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
   }
 
   Future<void> _fetchSubtitles() async {
-    // Pre-populate with Jellyfin subtitles if provided
+    // Pre-populate with Jellyfin / hub-provided subtitles if present.
     final jellyfinSubs = widget.externalSubtitles ?? [];
     if (jellyfinSubs.isNotEmpty) {
       if (mounted) {
@@ -119,7 +119,12 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
       }
     }
 
-    if (widget.movie == null || widget.movie!.id <= 0) return;
+    // Anime / Asian Drama use negative hub movie ids — still auto-pick from
+    // the episode's provider subs even when online search is skipped.
+    if (widget.movie == null || widget.movie!.id <= 0) {
+      await _maybeAutoPickExternalSubtitle();
+      return;
+    }
     if (mounted) setState(() => _s._isFetchingSubs = true);
 
     final stream = SubtitleApi.fetchSubtitlesStream(
@@ -149,12 +154,59 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
         _maybeAutoPickExternalSubtitle();
       },
     );
+
+    if (jellyfinSubs.isNotEmpty) {
+      await _maybeAutoPickExternalSubtitle();
+    }
   }
 
-  /// Subtitle auto-pick was removed (the user explicitly disabled the
-  /// preferred-subtitle setting). Kept as a no-op so existing call sites
-  /// don't have to be re-plumbed.
-  Future<void> _maybeAutoPickExternalSubtitle() async {}
+  /// Applies preferred subtitle language when external tracks arrive.
+  /// Preferred first; English if that category is missing.
+  Future<void> _maybeAutoPickExternalSubtitle() async {
+    if (_s._disposed || !mounted) return;
+
+    final preferred = await SettingsService().getPreferredSubtitleLanguage();
+    if (preferred == 'None' || preferred.isEmpty) return;
+
+    final preferredPick = pickExternalSubtitleForLanguage(
+      preferred,
+      _s._externalSubtitles,
+    );
+
+    if (_s._selectedExternalSubUrl != null) {
+      if (preferredPick == null) return;
+      if (_s._selectedExternalSubUrl == preferredPick['url']) return;
+      debugPrint(
+        '[MobilePlayer] auto subtitle → ${preferredPick['display'] ?? preferredPick['language']}',
+      );
+      await _loadOnlineSubtitle(preferredPick);
+      return;
+    }
+
+    final current = _s._player.state.track.subtitle;
+    if (current.id != 'no' &&
+        current.id != 'auto' &&
+        matchesPreferredLanguage(
+          preferred,
+          language: current.language,
+          title: current.title,
+        )) {
+      return;
+    }
+
+    final pick = preferredPick ??
+        (preferred == 'English'
+            ? null
+            : pickExternalSubtitleForLanguage(
+                'English',
+                _s._externalSubtitles,
+              ));
+    if (pick == null) return;
+    debugPrint(
+      '[MobilePlayer] auto subtitle → ${pick['display'] ?? pick['language']}',
+    );
+    await _loadOnlineSubtitle(pick);
+  }
 
   void _showSubtitlesMenu(BuildContext anchorContext) {
     PlayerSubtitleMenu.show(
@@ -170,15 +222,38 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
-      onSubtitleSelected: () async {
-        await SettingsService().setPlayerAutoSubtitle(false);
-        setState(() => _s._subtitlePinned = true);
+      onSubtitleSelected: ({required bool off, String? language, String? title}) {
+        unawaited(_rememberSubtitlePreference(
+          off: off,
+          language: language,
+          title: title,
+        ));
       },
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
+  }
+
+  Future<void> _rememberSubtitlePreference({
+    required bool off,
+    String? language,
+    String? title,
+  }) async {
+    final settings = SettingsService();
+    if (off) {
+      await settings.setPreferredSubtitleLanguage('None');
+      await settings.setPlayerAutoSubtitle(false);
+      if (mounted) setState(() => _s._subtitlePinned = true);
+      return;
+    }
+    final resolved = resolvePreferredLanguageDisplayName(
+      language: language,
+      title: title,
+    );
+    if (resolved == null) return;
+    await settings.setPreferredSubtitleLanguage(resolved);
   }
 
   void _showSubtitleSettings() {

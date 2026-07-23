@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:rust/rust.dart' show isInProgressResume, isWatchFinished;
 
 class WatchProgressBar extends StatelessWidget {
   const WatchProgressBar({
@@ -15,16 +16,11 @@ class WatchProgressBar extends StatelessWidget {
   final Color? accentColor;
   final bool compact;
 
-  static bool isResumable(int positionMs, int durationMs) {
-    if (durationMs <= 0) return false;
-    final p = positionMs / durationMs;
-    return p >= 0.02 && p < 0.9;
-  }
+  static bool isResumable(int positionMs, int durationMs) =>
+      isInProgressResume(positionMs, durationMs);
 
-  static bool isFinished(int positionMs, int durationMs) {
-    if (durationMs <= 0) return false;
-    return positionMs / durationMs >= 0.9;
-  }
+  static bool isFinished(int positionMs, int durationMs) =>
+      isWatchFinished(positionMs, durationMs);
 
   static String formatMinutes(int ms) {
     final totalMin = (ms / 60000).ceil();
@@ -43,10 +39,9 @@ class WatchProgressBar extends StatelessWidget {
     }
 
     final accent = accentColor ?? ForjaShellColors.progressFill;
+    final finished = isFinished(positionMs, durationMs);
     final remaining = durationMs - positionMs;
-    final label = isFinished(positionMs, durationMs)
-        ? 'Watched'
-        : '${formatMinutes(remaining)} left';
+    final label = finished ? 'Watched' : '${formatMinutes(remaining)} left';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,13 +57,26 @@ class WatchProgressBar extends StatelessWidget {
           ),
         ),
         SizedBox(height: compact ? 4 : 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.75),
-            fontSize: compact ? 11 : 12,
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (finished) ...[
+              Icon(
+                Icons.check_circle_rounded,
+                size: compact ? 13 : 14,
+                color: accent,
+              ),
+              SizedBox(width: compact ? 4 : 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: compact ? 11 : 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ],
     );

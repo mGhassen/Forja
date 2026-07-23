@@ -574,6 +574,19 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
         mediaType: widget.movie!.mediaType,
       );
+      final season = widget.selectedSeason;
+      final episode = widget.selectedEpisode;
+      if (season != null && episode != null) {
+        unawaited(
+          EpisodeWatchedService().markWatchedIfFinished(
+            mediaId: widget.movie!.id,
+            season: season,
+            episode: episode,
+            positionMs: pos,
+            durationMs: dur,
+          ),
+        );
+      }
       // Periodic / lifecycle pause keeps writing; only exit latches the flag.
       if (!isBgPause) _s._historySaved = true;
 

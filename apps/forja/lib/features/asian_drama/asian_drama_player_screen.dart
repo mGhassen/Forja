@@ -594,6 +594,16 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           position: pos,
           duration: dur,
         );
+        final index = episodes.indexWhere((e) => e.id == episode.id);
+        final epKey = index >= 0 ? index + 1 : episode.number.toInt();
+        await EpisodeWatchedService().markWatchedIfFinished(
+          mediaId: drama.id,
+          season: 1,
+          episode: epKey,
+          positionMs: pos.inMilliseconds,
+          durationMs: dur.inMilliseconds,
+          catalog: EpisodeWatchedService.catalogKisskh,
+        );
       },
       hasNextEpisode: hasNext,
       onNextEpisode: hasNext ? goNext : null,

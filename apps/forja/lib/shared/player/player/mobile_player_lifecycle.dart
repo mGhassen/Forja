@@ -678,6 +678,19 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
         mediaType: widget.movie!.mediaType,
       );
+      final season = widget.selectedSeason;
+      final episode = widget.selectedEpisode;
+      if (season != null && episode != null) {
+        unawaited(
+          EpisodeWatchedService().markWatchedIfFinished(
+            mediaId: widget.movie!.id,
+            season: season,
+            episode: episode,
+            positionMs: pos,
+            durationMs: dur,
+          ),
+        );
+      }
 
       // Trakt + Simkl scrobble — fire and forget
       final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
