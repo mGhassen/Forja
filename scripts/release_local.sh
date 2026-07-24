@@ -4,7 +4,7 @@ set -euo pipefail
 # Local release → GitHub Release + Cloudflare R2 (no Actions artifacts).
 #
 # Usage:
-#   ./scripts/release_local.sh                         # interactive menu
+#   ./scripts/release_local.sh                         # interactive step wizard
 #   ./scripts/release_local.sh bump [patch|minor|major]
 #   ./scripts/release_local.sh tag v1.2.404             # build + publish selected platforms
 #   ./scripts/release_local.sh backfill [--dry-run]     # tag untagged commits (push)
@@ -13,6 +13,8 @@ set -euo pipefail
 #   ./scripts/release_local.sh build-windows v1.2.404   # Windows via Parallels VM
 #   ./scripts/release_local.sh setup-windows            # print / run VM toolchain setup
 #   ./scripts/release_local.sh publish v1.2.404         # upload dist/ → gh + R2
+#
+# Interactive wizard (TTY): ↑↓ / j k navigate · Space toggle · Enter next · b back · q quit
 #
 # Env:
 #   FORJA_PRL_VM=Windows 11          Parallels VM name (enables Windows build)
@@ -41,9 +43,10 @@ if [[ -t 1 ]]; then
   C_GREEN=$'\033[32m'
   C_YELLOW=$'\033[33m'
   C_RED=$'\033[31m'
+  C_INV=$'\033[7m'
   C_RESET=$'\033[0m'
 else
-  C_BOLD="" C_DIM="" C_CYAN="" C_GREEN="" C_YELLOW="" C_RED="" C_RESET=""
+  C_BOLD="" C_DIM="" C_CYAN="" C_GREEN="" C_YELLOW="" C_RED="" C_INV="" C_RESET=""
 fi
 
 die() { echo "${C_RED}error:${C_RESET} $*" >&2; exit 1; }
@@ -53,6 +56,302 @@ ok() { echo "${C_GREEN}✓${C_RESET} $*"; }
 warn() { echo "${C_YELLOW}!${C_RESET} $*"; }
 
 hr() { echo "${C_DIM}────────────────────────────────────────${C_RESET}"; }
+
+require_clean_tree() {
+  local dirty
+  dirty="$(git status --porcelain 2>/dev/null || true)"
+  [[ -z "$dirty" ]] && return 0
+  echo "${C_RED}error:${C_RESET} working tree dirty — commit or stash before release" >&2
+  echo "${C_DIM}Uncommitted:${C_RESET}" >&2
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && printf '  %s\n' "$line" >&2
+  done <<<"$dirty"
+  exit 1
+}
+
+# ── Interactive TUI (step wizard) ─────────────────────────────────────────────
+# Keys: ↑↓ / j k navigate · Space toggle · Enter next · b / ← back · q quit
+# UI writes to stderr; selected values print to stdout (or set globals).
+
+_UI_RAW=0
+_UI_STTY=""
+
+ui_can() {
+  [[ -t 0 && -t 2 && "${NONINTERACTIVE:-}" != "1" ]]
+}
+
+ui_hide_cursor() { printf '\033[?25l' >&2; }
+ui_show_cursor() { printf '\033[?25h' >&2; }
+
+ui_raw_on() {
+  if ((_UI_RAW == 0)); then
+    _UI_STTY="$(stty -g 2>/dev/null || true)"
+    stty -echo -icanon min 1 time 0 2>/dev/null || true
+    _UI_RAW=1
+    ui_hide_cursor
+  fi
+}
+
+ui_raw_off() {
+  if ((_UI_RAW == 1)); then
+    [[ -n "${_UI_STTY:-}" ]] && stty "$_UI_STTY" 2>/dev/null || true
+    _UI_RAW=0
+    ui_show_cursor
+  fi
+}
+
+ui_cleanup() {
+  ui_raw_off
+}
+
+trap 'ui_cleanup' EXIT INT TERM
+
+# Sets REPLY to key name: up|down|left|right|enter|space|back|quit|<char>
+ui_read_key() {
+  local k="" rest=""
+  ui_raw_on
+  IFS= read -rsn1 k || { REPLY=quit; return 1; }
+  case "$k" in
+    $'\x1b')
+      IFS= read -rsn2 -t 0.1 rest || true
+      case "$rest" in
+        '[A') REPLY=up ;;
+        '[B') REPLY=down ;;
+        '[C') REPLY=right ;;
+        '[D') REPLY=left ;;
+        *) REPLY=esc ;;
+      esac
+      ;;
+    '') REPLY=enter ;;
+    ' ') REPLY=space ;;
+    $'\n'|$'\r') REPLY=enter ;;
+    q|Q) REPLY=quit ;;
+    b|B) REPLY=back ;;
+    j) REPLY=down ;;
+    k) REPLY=up ;;
+    *) REPLY="$k" ;;
+  esac
+}
+
+ui_clear() {
+  printf '\033[H\033[2J' >&2
+}
+
+ui_step_banner() {
+  local step="$1" total="$2" title="$3"
+  local latest
+  latest="$(default_release_tag 2>/dev/null || true)"
+  echo >&2
+  printf '  %sForja%s local release' "${C_BOLD}${C_CYAN}" "${C_RESET}" >&2
+  printf '  %s·%s  step %s/%s\n' "${C_DIM}" "${C_RESET}" "$step" "$total" >&2
+  printf '  %s%s%s\n' "${C_BOLD}" "$title" "${C_RESET}" >&2
+  if [[ -n "$latest" ]]; then
+    printf '  %slatest tag%s  %s\n' "${C_DIM}" "${C_RESET}" "$latest" >&2
+  fi
+  hr >&2
+  echo >&2
+}
+
+ui_hint() {
+  printf '  %s%s%s\n' "${C_DIM}" "$*" "${C_RESET}" >&2
+}
+
+# Single-select list. Args: step total title -- "id|label" ...
+# Prints selected id to stdout. Exit 0=ok 2=back 3=quit
+ui_choose() {
+  local step="$1" total="$2" title="$3"
+  shift 3
+  [[ "${1:-}" == "--" ]] && shift
+  local -a ids=() labels=()
+  local item id label
+  for item in "$@"; do
+    id="${item%%|*}"
+    label="${item#*|}"
+    ids+=("$id")
+    labels+=("$label")
+  done
+  ((${#ids[@]} > 0)) || die "ui_choose: empty list"
+
+  local cursor=0 n=${#ids[@]}
+  while true; do
+    ui_clear
+    ui_step_banner "$step" "$total" "$title"
+    local i
+    for ((i = 0; i < n; i++)); do
+      if ((i == cursor)); then
+        printf '  %s › %s %s\n' "${C_INV}${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
+      else
+        printf '    %s\n' "${labels[$i]}" >&2
+      fi
+    done
+    echo >&2
+    ui_hint "↑↓ navigate · Enter next · b back · q quit"
+    ui_read_key
+    case "$REPLY" in
+      up) cursor=$(( (cursor - 1 + n) % n )) ;;
+      down) cursor=$(( (cursor + 1) % n )) ;;
+      enter)
+        ui_raw_off
+        printf '%s\n' "${ids[$cursor]}"
+        return 0
+        ;;
+      back|left)
+        ui_raw_off
+        return 2
+        ;;
+      quit|esc)
+        ui_raw_off
+        return 3
+        ;;
+    esac
+  done
+}
+
+# Multi-select checkboxes. Args: step total title -- "id|label|0|1" ...
+# Prints selected ids (comma-separated) to stdout. Exit 0=ok 2=back 3=quit
+ui_checklist() {
+  local step="$1" total="$2" title="$3"
+  shift 3
+  [[ "${1:-}" == "--" ]] && shift
+  local -a ids=() labels=() checked=()
+  local item id label on rest
+  for item in "$@"; do
+    id="${item%%|*}"
+    rest="${item#*|}"
+    label="${rest%%|*}"
+    on="${rest##*|}"
+    ids+=("$id")
+    labels+=("$label")
+    if [[ "$on" == "1" || "$on" == "true" ]]; then
+      checked+=(1)
+    else
+      checked+=(0)
+    fi
+  done
+  ((${#ids[@]} > 0)) || die "ui_checklist: empty list"
+
+  local cursor=0 n=${#ids[@]} i box
+  while true; do
+    ui_clear
+    ui_step_banner "$step" "$total" "$title"
+    for ((i = 0; i < n; i++)); do
+      if ((checked[i])); then
+        box="${C_GREEN}☑${C_RESET}"
+      else
+        box="${C_DIM}☐${C_RESET}"
+      fi
+      if ((i == cursor)); then
+        printf '  %s›%s %s %s%s%s\n' "${C_CYAN}${C_BOLD}" "${C_RESET}" "$box" "${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
+      else
+        printf '    %s %s\n' "$box" "${labels[$i]}" >&2
+      fi
+    done
+    echo >&2
+    ui_hint "↑↓ navigate · Space toggle · Enter next · b back · q quit"
+    ui_read_key
+    case "$REPLY" in
+      up) cursor=$(( (cursor - 1 + n) % n )) ;;
+      down) cursor=$(( (cursor + 1) % n )) ;;
+      space)
+        if ((checked[cursor])); then
+          checked[cursor]=0
+        else
+          checked[cursor]=1
+        fi
+        ;;
+      enter)
+        local -a selected=()
+        for ((i = 0; i < n; i++)); do
+          ((checked[i])) && selected+=("${ids[$i]}")
+        done
+        if ((${#selected[@]} == 0)); then
+          printf '\a' >&2
+          continue
+        fi
+        ui_raw_off
+        local IFS=,
+        printf '%s\n' "${selected[*]}"
+        return 0
+        ;;
+      back|left)
+        ui_raw_off
+        return 2
+        ;;
+      quit|esc)
+        ui_raw_off
+        return 3
+        ;;
+    esac
+  done
+}
+
+# Yes/No. Default yes if $2 is 1. Exit 0=yes 1=no 2=back 3=quit
+ui_confirm_screen() {
+  local step="$1" total="$2" title="$3" detail="${4:-}" default_yes="${5:-1}"
+  local cursor=0
+  ((default_yes)) || cursor=1
+  local -a labels=("Yes — continue" "No — abort")
+  while true; do
+    ui_clear
+    ui_step_banner "$step" "$total" "$title"
+    if [[ -n "$detail" ]]; then
+      while IFS= read -r line; do
+        printf '  %s\n' "$line" >&2
+      done <<<"$detail"
+      echo >&2
+    fi
+    local i
+    for ((i = 0; i < 2; i++)); do
+      if ((i == cursor)); then
+        printf '  %s › %s %s\n' "${C_INV}${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
+      else
+        printf '    %s\n' "${labels[$i]}" >&2
+      fi
+    done
+    echo >&2
+    ui_hint "↑↓ navigate · Enter next · b back · q quit"
+    ui_read_key
+    case "$REPLY" in
+      up|down|left|right) cursor=$((1 - cursor)) ;;
+      enter)
+        ui_raw_off
+        ((cursor == 0)) && return 0
+        return 1
+        ;;
+      back)
+        ui_raw_off
+        return 2
+        ;;
+      quit|esc)
+        ui_raw_off
+        return 3
+        ;;
+    esac
+  done
+}
+
+ui_input() {
+  local step="$1" total="$2" title="$3" prompt="$4" default="${5:-}"
+  local ans
+  ui_raw_off
+  ui_clear
+  ui_step_banner "$step" "$total" "$title"
+  ui_hint "Enter confirm · leave empty for default · Ctrl-C quit"
+  echo >&2
+  if [[ -n "$default" ]]; then
+    read -r -p "  ${prompt} [${default}]: " ans || return 3
+    printf '%s\n' "${ans:-$default}"
+  else
+    read -r -p "  ${prompt}: " ans || return 3
+    printf '%s\n' "$ans"
+  fi
+}
+
+ui_abort() {
+  ui_raw_off
+  echo >&2
+  die "aborted"
+}
 
 gh_repo() {
   if [[ -n "$GH_REPO" ]]; then
@@ -143,6 +442,11 @@ confirm() {
   if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
     return 0
   fi
+  if ui_can; then
+    ui_confirm_screen 1 1 "$prompt" "" 0
+    return $?
+  fi
+  local ans
   read -r -p "${C_BOLD}${prompt}${C_RESET} [y/N]: " ans
   [[ "$ans" =~ ^[Yy]$ ]]
 }
@@ -153,6 +457,11 @@ confirm_yes() {
   if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
     return 0
   fi
+  if ui_can; then
+    ui_confirm_screen 1 1 "$prompt" "" 1
+    return $?
+  fi
+  local ans
   read -r -p "${C_BOLD}${prompt}${C_RESET} [Y/n]: " ans
   [[ -z "$ans" || "$ans" =~ ^[Yy]$ ]]
 }
@@ -202,14 +511,57 @@ list_tags() {
 pick_tag_interactive() {
   # UI → stderr so `tag="$(pick_tag_interactive)"` only captures the tag.
   fetch_tags
-  local filter picked tags tag default show_n=20 i
+  local filter tags tag default show_n=20 rc
   default="$(default_release_tag)"
   [[ -n "$default" ]] || die "no v* tags found"
 
-  echo >&2
-  echo "  ${C_BOLD}latest${C_RESET}  ${C_GREEN}${default}${C_RESET}  ${C_DIM}(Enter)${C_RESET}" >&2
-  read -r -p "Filter (empty = recent ${show_n}, e.g. 1.2): " filter
+  if ! ui_can; then
+    local picked i
+    echo >&2
+    echo "  ${C_BOLD}latest${C_RESET}  ${C_GREEN}${default}${C_RESET}  ${C_DIM}(Enter)${C_RESET}" >&2
+    read -r -p "Filter (empty = recent ${show_n}, e.g. 1.2): " filter
+    tags="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname)"
+    if [[ -n "$filter" ]]; then
+      tags="$(grep -i "$filter" <<<"$tags" || true)"
+    else
+      tags="$(
+        {
+          echo "$default"
+          arc="${default%.*}"
+          git tag -l "${arc}.*" --sort=-v:refname | grep -vxF "$default" || true
+          grep -vxF "$default" <<<"$tags" || true
+        } | awk 'NF && !seen[$0]++' | head -n "$show_n"
+      )"
+    fi
+    [[ -n "$tags" ]] || die "no tags match"
+    default="$(head -1 <<<"$tags")"
+    echo >&2
+    i=1
+    while IFS= read -r t; do
+      if ((i == 1)); then
+        printf "  ${C_GREEN}%2d)${C_RESET} ${C_BOLD}%s${C_RESET}  ${C_DIM}← Enter${C_RESET}\n" "$i" "$t" >&2
+      else
+        printf "  ${C_DIM}%2d)${C_RESET} %s\n" "$i" "$t" >&2
+      fi
+      i=$((i + 1))
+    done <<<"$tags"
+    echo >&2
+    read -r -p "Pick number or type tag [${default}]: " picked
+    if [[ -z "$picked" ]]; then
+      printf '%s\n' "$default"
+      return
+    fi
+    if [[ "$picked" =~ ^[0-9]+$ ]]; then
+      tag="$(sed -n "${picked}p" <<<"$tags")"
+      [[ -n "$tag" ]] || die "invalid number"
+    else
+      tag="$(normalize_tag "$picked")"
+    fi
+    printf '%s\n' "$tag"
+    return
+  fi
 
+  filter="$(ui_input 1 2 "Filter tags" "Filter (empty = recent ${show_n})" "")" || ui_abort
   tags="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname)"
   if [[ -n "$filter" ]]; then
     tags="$(grep -i "$filter" <<<"$tags" || true)"
@@ -217,7 +569,6 @@ pick_tag_interactive() {
     tags="$(
       {
         echo "$default"
-        # Prefer same major.minor arc as default, then fill with other recent tags.
         arc="${default%.*}"
         git tag -l "${arc}.*" --sort=-v:refname | grep -vxF "$default" || true
         grep -vxF "$default" <<<"$tags" || true
@@ -225,30 +576,18 @@ pick_tag_interactive() {
     )"
   fi
   [[ -n "$tags" ]] || die "no tags match"
-  default="$(head -1 <<<"$tags")"
 
-  echo >&2
-  i=1
+  local -a choices=()
   while IFS= read -r t; do
-    if (( i == 1 )); then
-      printf "  ${C_GREEN}%2d)${C_RESET} ${C_BOLD}%s${C_RESET}  ${C_DIM}← Enter${C_RESET}\n" "$i" "$t" >&2
-    else
-      printf "  ${C_DIM}%2d)${C_RESET} %s\n" "$i" "$t" >&2
-    fi
-    i=$((i + 1))
+    [[ -n "$t" ]] || continue
+    choices+=("${t}|${t}")
   done <<<"$tags"
-  echo >&2
-  read -r -p "Pick number or type tag [${default}]: " picked
-  if [[ -z "$picked" ]]; then
-    printf '%s\n' "$default"
-    return
-  fi
-  if [[ "$picked" =~ ^[0-9]+$ ]]; then
-    tag="$(sed -n "${picked}p" <<<"$tags")"
-    [[ -n "$tag" ]] || die "invalid number"
-  else
-    tag="$(normalize_tag "$picked")"
-  fi
+
+  tag="$(ui_choose 2 2 "Pick release tag" -- "${choices[@]}")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
   printf '%s\n' "$tag"
 }
 
@@ -257,18 +596,32 @@ pick_bump() {
     printf '%s\n' "${1:-patch}"
     return
   fi
-  echo >&2
-  echo "Bump type:" >&2
-  echo "  ${C_DIM}1)${C_RESET} patch   ${C_DIM}(default)${C_RESET}" >&2
-  echo "  ${C_DIM}2)${C_RESET} minor" >&2
-  echo "  ${C_DIM}3)${C_RESET} major" >&2
-  read -r -p "Choice [1]: " bump_choice
-  case "${bump_choice:-1}" in
-    1|patch) printf '%s\n' patch ;;
-    2|minor) printf '%s\n' minor ;;
-    3|major) printf '%s\n' major ;;
-    *) die "invalid bump" ;;
-  esac
+  if ! ui_can; then
+    local bump_choice
+    echo >&2
+    echo "Bump type:" >&2
+    echo "  ${C_DIM}1)${C_RESET} patch   ${C_DIM}(default)${C_RESET}" >&2
+    echo "  ${C_DIM}2)${C_RESET} minor" >&2
+    echo "  ${C_DIM}3)${C_RESET} major" >&2
+    read -r -p "Choice [1]: " bump_choice
+    case "${bump_choice:-1}" in
+      1|patch) printf '%s\n' patch ;;
+      2|minor) printf '%s\n' minor ;;
+      3|major) printf '%s\n' major ;;
+      *) die "invalid bump" ;;
+    esac
+    return
+  fi
+  local bump rc
+  bump="$(ui_choose 1 1 "Bump type" -- \
+    "patch|patch — 1.2.N → 1.2.N+1 (default)" \
+    "minor|minor — 1.2.x → 1.3.0" \
+    "major|major — 1.x → 2.0.0")" || {
+    rc=$?
+    ((rc == 2 || rc == 3)) && ui_abort
+    ui_abort
+  }
+  printf '%s\n' "$bump"
 }
 
 # Platforms for tag/bump: comma list macos,windows,linux,android_tv
@@ -289,44 +642,61 @@ want_platform() {
   [[ ",$(platforms)," == *",$p,"* ]]
 }
 
-# Interactive Y/n prompts → FORJA_PLATFORMS (same surface as release_ci.sh / Actions).
+# Interactive checklist → FORJA_PLATFORMS (same surface as release_ci.sh / Actions).
 pick_platforms() {
   if [[ -n "${FORJA_PLATFORMS:-}" || "${NONINTERACTIVE:-}" == "1" ]]; then
     return
   fi
 
-  local macos=true windows=false linux=false android_tv=false
+  local win_default=0 win_hint="Windows"
   if command -v prlctl >/dev/null 2>&1 && prlctl list -a 2>/dev/null | grep -q "$PRL_VM"; then
-    windows=true
-  fi
-
-  echo
-  echo "${C_BOLD}Platforms${C_RESET} ${C_DIM}(Enter = keep default)${C_RESET}"
-  read -r -p "  macOS [Y/n]: " ans
-  [[ "$ans" =~ ^[Nn]$ ]] && macos=false
-
-  if $windows; then
-    read -r -p "  Windows [Y/n]: " ans
-    [[ "$ans" =~ ^[Nn]$ ]] && windows=false
+    win_default=1
+    win_hint="Windows (Parallels: ${PRL_VM})"
   else
-    read -r -p "  Windows [y/N]: " ans
-    [[ "$ans" =~ ^[Yy]$ ]] && windows=true
+    win_hint="Windows (needs Parallels VM)"
   fi
 
-  read -r -p "  Linux [y/N]: " ans
-  [[ "$ans" =~ ^[Yy]$ ]] && linux=true
+  if ! ui_can; then
+    local macos=true windows=false linux=false android_tv=false ans
+    ((win_default)) && windows=true
+    echo
+    echo "${C_BOLD}Platforms${C_RESET} ${C_DIM}(Enter = keep default)${C_RESET}"
+    read -r -p "  macOS [Y/n]: " ans
+    [[ "$ans" =~ ^[Nn]$ ]] && macos=false
+    if $windows; then
+      read -r -p "  Windows [Y/n]: " ans
+      [[ "$ans" =~ ^[Nn]$ ]] && windows=false
+    else
+      read -r -p "  Windows [y/N]: " ans
+      [[ "$ans" =~ ^[Yy]$ ]] && windows=true
+    fi
+    read -r -p "  Linux [y/N]: " ans
+    [[ "$ans" =~ ^[Yy]$ ]] && linux=true
+    read -r -p "  Android TV [y/N]: " ans
+    [[ "$ans" =~ ^[Yy]$ ]] && android_tv=true
+    local -a selected=()
+    $macos && selected+=(macos)
+    $windows && selected+=(windows)
+    $linux && selected+=(linux)
+    $android_tv && selected+=(android_tv)
+    ((${#selected[@]} > 0)) || die "select at least one platform"
+    FORJA_PLATFORMS="$(IFS=,; echo "${selected[*]}")"
+    export FORJA_PLATFORMS
+    ok "platforms: $FORJA_PLATFORMS"
+    return
+  fi
 
-  read -r -p "  Android TV [y/N]: " ans
-  [[ "$ans" =~ ^[Yy]$ ]] && android_tv=true
-
-  local -a selected=()
-  $macos && selected+=(macos)
-  $windows && selected+=(windows)
-  $linux && selected+=(linux)
-  $android_tv && selected+=(android_tv)
-  ((${#selected[@]} > 0)) || die "select at least one platform"
-
-  FORJA_PLATFORMS="$(IFS=,; echo "${selected[*]}")"
+  local picked rc
+  picked="$(ui_checklist 1 1 "Platforms" -- \
+    "macos|macOS|1" \
+    "windows|${win_hint}|${win_default}" \
+    "linux|Linux (use release_ci.sh)|0" \
+    "android_tv|Android TV|0")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
+  FORJA_PLATFORMS="$picked"
   export FORJA_PLATFORMS
   ok "platforms: $FORJA_PLATFORMS"
 }
@@ -671,9 +1041,7 @@ cmd_bump() {
     require_build_env
   fi
 
-  if [[ -n "$(git status --porcelain)" ]]; then
-    die "working tree dirty — commit or stash first"
-  fi
+  require_clean_tree
 
   local ver
   ver="$(./scripts/bump_version.sh "$bump")"
@@ -696,95 +1064,272 @@ cmd_bump() {
   ok "Done: v${ver}"
 }
 
-interactive_menu() {
-  local latest choice tag bump
-  fetch_tags
-  latest="$(default_release_tag)"
+wizard_release_tag() {
+  local tag detail rc
+  while true; do
+    pick_platforms || {
+      rc=$?
+      ((rc == 2)) && return 2
+      ui_abort
+    }
+    tag="$(pick_tag_interactive)" || {
+      rc=$?
+      ((rc == 2)) && continue
+      ui_abort
+    }
+    detail="Tag:       ${tag}
+Platforms: $(platforms)
+Action:    build + publish → GitHub + R2"
+    if ui_confirm_screen 4 4 "Confirm release" "$detail" 1; then
+      ui_raw_off
+      ui_clear
+      NONINTERACTIVE=1 cmd_tag "$tag"
+      return 0
+    else
+      rc=$?
+      ((rc == 2)) && continue
+      ui_abort
+    fi
+  done
+}
 
-  echo
-  echo "${C_BOLD}${C_CYAN}Forja local release${C_RESET}"
-  hr
-  echo "  ${C_DIM}latest tag${C_RESET}  ${latest:-none}"
-  echo "  ${C_DIM}defaults${C_RESET}    $(platforms)"
-  echo "  ${C_DIM}toggles${C_RESET}     macOS · Windows · Linux · Android TV"
-  echo "  ${C_DIM}windows VM${C_RESET}  $PRL_VM"
-  hr
-  echo
-  echo "  ${C_BOLD}Release${C_RESET}"
-  echo "  ${C_DIM}1)${C_RESET} Existing tag          pick platforms → build + publish"
-  echo "  ${C_DIM}2)${C_RESET} New version           backfill? → bump → platforms → build + publish"
-  echo
-  echo "  ${C_BOLD}Tags${C_RESET}"
-  echo "  ${C_DIM}3)${C_RESET} Backfill untagged     create + push patch tags"
-  echo "  ${C_DIM}4)${C_RESET} List / filter tags"
-  echo
-  echo "  ${C_BOLD}Tools${C_RESET}"
-  echo "  ${C_DIM}5)${C_RESET} Build macOS DMG only"
-  echo "  ${C_DIM}6)${C_RESET} Build Windows (Parallels)"
-  echo "  ${C_DIM}7)${C_RESET} Build Android TV APKs"
-  echo "  ${C_DIM}8)${C_RESET} Publish dist/ only"
-  echo "  ${C_DIM}9)${C_RESET} Setup Windows VM"
-  echo "  ${C_DIM}q)${C_RESET} Quit"
-  echo
-  read -r -p "${C_BOLD}Choice:${C_RESET} " choice
+wizard_new_version() {
+  local bump do_backfill=0 detail rc
+  # Fail before backfill/push so a dirty tree cannot strand a half-finished release.
+  require_clean_tree
+  while true; do
+    pick_platforms || {
+      rc=$?
+      ((rc == 2)) && return 2
+      ui_abort
+    }
+    bump="$(ui_choose 2 5 "Bump type" -- \
+      "patch|patch — 1.2.N → 1.2.N+1" \
+      "minor|minor — 1.2.x → 1.3.0" \
+      "major|major — 1.x → 2.0.0")" || {
+      rc=$?
+      ((rc == 2)) && continue
+      ui_abort
+    }
 
-  case "$choice" in
-    1)
-      pick_platforms
-      tag="$(pick_tag_interactive)"
-      cmd_tag "$tag"
-      ;;
-    2)
-      pick_platforms
-      bump="$(pick_bump)"
-      echo
-      if confirm_yes "Backfill untagged commits before releasing?"; then
-        if confirm "Dry-run backfill first?"; then
-          cmd_backfill --dry-run
-          confirm_yes "Looks good — run real backfill (push tags)?" || die "aborted"
-        fi
-        cmd_backfill
-        fetch_tags
-        ok "backfill done — latest tag: $(latest_tag)"
-      else
-        warn "skipping backfill"
-      fi
-      cmd_bump "$bump"
-      ;;
-    3)
-      if confirm "Dry-run only (no push)?"; then
+    do_backfill=0
+    if ui_confirm_screen 3 5 "Backfill untagged commits first?" \
+      "Creates + pushes missing patch tags before the new release." 0; then
+      do_backfill=1
+    else
+      rc=$?
+      ((rc == 2)) && continue
+      ((rc == 3)) && ui_abort
+      do_backfill=0
+    fi
+
+    detail="Bump:      ${bump}
+Platforms: $(platforms)
+Backfill:  $([[ "$do_backfill" == 1 ]] && echo yes || echo no)
+Action:    freeze changelog → commit → tag → push → build + publish"
+    if ui_confirm_screen 4 5 "Confirm new version" "$detail" 1; then
+      :
+    else
+      rc=$?
+      ((rc == 2)) && continue
+      ui_abort
+    fi
+
+    ui_raw_off
+    ui_clear
+    if ((do_backfill)); then
+      if ui_confirm_screen 5 5 "Dry-run backfill first?" "" 1; then
         cmd_backfill --dry-run
+        ui_confirm_screen 5 5 "Looks good — run real backfill (push tags)?" "" 1 || ui_abort
       else
-        confirm_yes "Create and push backfill tags?" || die "aborted"
-        cmd_backfill
+        rc=$?
+        ((rc == 3)) && ui_abort
       fi
+      ui_raw_off
+      ui_clear
+      cmd_backfill
+      fetch_tags
+      ok "backfill done — arc tip: $(default_release_tag)"
+    fi
+    NONINTERACTIVE=1 cmd_bump "$bump"
+    return 0
+  done
+}
+
+wizard_backfill() {
+  local mode rc
+  mode="$(ui_choose 1 2 "Backfill untagged" -- \
+    "dry|Dry-run only (no push)" \
+    "real|Create and push tags")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
+  ui_raw_off
+  ui_clear
+  if [[ "$mode" == dry ]]; then
+    cmd_backfill --dry-run
+  else
+    ui_confirm_screen 2 2 "Create and push backfill tags?" "" 1 || ui_abort
+    ui_raw_off
+    ui_clear
+    cmd_backfill
+  fi
+}
+
+wizard_list_tags() {
+  local filter
+  filter="$(ui_input 1 1 "List tags" "Filter (empty = all)" "")" || ui_abort
+  ui_clear
+  echo
+  echo "${C_BOLD}Release tags${C_RESET} ${C_DIM}(newest first)${C_RESET}"
+  list_tags "$filter" || true
+}
+
+wizard_tools() {
+  local tool tag rc
+  tool="$(ui_choose 1 2 "Tools" -- \
+    "build_macos|Build macOS DMG only" \
+    "build_windows|Build Windows (Parallels)" \
+    "build_android_tv|Build Android TV APKs" \
+    "publish|Publish dist/ only" \
+    "setup_windows|Setup Windows VM")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
+  case "$tool" in
+    setup_windows)
+      ui_raw_off
+      ui_clear
+      cmd_setup_windows
       ;;
-    4)
-      read -r -p "Filter (empty = all): " filter
-      echo
-      echo "${C_BOLD}Release tags${C_RESET} ${C_DIM}(newest first)${C_RESET}"
-      list_tags "$filter" || true
+    *)
+      tag="$(pick_tag_interactive)" || ui_abort
+      ui_raw_off
+      ui_clear
+      case "$tool" in
+        build_macos) cmd_build "$tag" ;;
+        build_windows) cmd_build_windows "$tag" ;;
+        build_android_tv) cmd_build_android_tv "$tag" ;;
+        publish) cmd_publish "$tag" ;;
+      esac
       ;;
-    5)
-      tag="$(pick_tag_interactive)"
-      cmd_build "$tag"
-      ;;
-    6)
-      tag="$(pick_tag_interactive)"
-      cmd_build_windows "$tag"
-      ;;
-    7)
-      tag="$(pick_tag_interactive)"
-      cmd_build_android_tv "$tag"
-      ;;
-    8)
-      tag="$(pick_tag_interactive)"
-      cmd_publish "$tag"
-      ;;
-    9) cmd_setup_windows ;;
-    q|Q) exit 0 ;;
-    *) die "invalid choice" ;;
   esac
+}
+
+interactive_menu() {
+  fetch_tags
+
+  if ! ui_can; then
+    # Non-TTY fallback (piped / NONINTERACTIVE).
+    local latest choice tag bump filter
+    latest="$(default_release_tag)"
+    echo
+    echo "${C_BOLD}${C_CYAN}Forja local release${C_RESET}"
+    hr
+    echo "  ${C_DIM}latest tag${C_RESET}  ${latest:-none}"
+    echo "  ${C_DIM}defaults${C_RESET}    $(platforms)"
+    hr
+    echo "  1) Existing tag"
+    echo "  2) New version"
+    echo "  3) Backfill"
+    echo "  4) List tags"
+    echo "  5) Build macOS"
+    echo "  6) Build Windows"
+    echo "  7) Build Android TV"
+    echo "  8) Publish"
+    echo "  9) Setup Windows VM"
+    echo "  q) Quit"
+    read -r -p "Choice: " choice
+    case "$choice" in
+      1) pick_platforms; tag="$(pick_tag_interactive)"; cmd_tag "$tag" ;;
+      2)
+        pick_platforms
+        bump="$(pick_bump)"
+        if confirm_yes "Backfill untagged commits before releasing?"; then
+          if confirm "Dry-run backfill first?"; then
+            cmd_backfill --dry-run
+            confirm_yes "Looks good — run real backfill (push tags)?" || die "aborted"
+          fi
+          cmd_backfill
+          fetch_tags
+        fi
+        cmd_bump "$bump"
+        ;;
+      3)
+        if confirm "Dry-run only (no push)?"; then
+          cmd_backfill --dry-run
+        else
+          confirm_yes "Create and push backfill tags?" || die "aborted"
+          cmd_backfill
+        fi
+        ;;
+      4)
+        read -r -p "Filter (empty = all): " filter
+        list_tags "$filter" || true
+        ;;
+      5) tag="$(pick_tag_interactive)"; cmd_build "$tag" ;;
+      6) tag="$(pick_tag_interactive)"; cmd_build_windows "$tag" ;;
+      7) tag="$(pick_tag_interactive)"; cmd_build_android_tv "$tag" ;;
+      8) tag="$(pick_tag_interactive)"; cmd_publish "$tag" ;;
+      9) cmd_setup_windows ;;
+      q|Q) exit 0 ;;
+      *) die "invalid choice" ;;
+    esac
+    return
+  fi
+
+  local action rc
+  while true; do
+    action="$(ui_choose 1 1 "What do you want to do?" -- \
+      "release_tag|Release existing tag — platforms → build + publish" \
+      "new_version|New version — bump → platforms → build + publish" \
+      "backfill|Backfill untagged commits" \
+      "list_tags|List / filter tags" \
+      "tools|Build / publish tools…" \
+      "quit|Quit")" || {
+      rc=$?
+      ((rc == 2 || rc == 3)) && { ui_raw_off; exit 0; }
+      ui_abort
+    }
+    case "$action" in
+      release_tag)
+        wizard_release_tag || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
+      new_version)
+        wizard_new_version || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
+      backfill)
+        wizard_backfill || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
+      list_tags) wizard_list_tags; return ;;
+      tools)
+        wizard_tools || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
+      quit) ui_raw_off; exit 0 ;;
+    esac
+  done
 }
 
 main() {
@@ -802,7 +1347,7 @@ main() {
     setup-windows) cmd_setup_windows ;;
     publish) cmd_publish "${1:?usage: release_local.sh publish vX.Y.Z}" ;;
     -h|--help)
-      sed -n '3,27p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,30p' "$0" | sed 's/^# \{0,1\}//'
       ;;
     *)
       die "unknown command: $cmd (try --help)"
