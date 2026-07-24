@@ -4,13 +4,36 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/navigation/navigation_back_handler.dart';
+import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-/// Mouse back, Escape, and Android system / remote Back — pop routes or shell TV back chain.
-class BackNavigationScope extends StatelessWidget {
+/// Mouse back, Escape, macOS trackpad swipe-back, and Android system / remote
+/// Back — same level-aware pops as the in-app back control.
+class BackNavigationScope extends StatefulWidget {
   const BackNavigationScope({super.key, required this.child});
 
   final Widget child;
+
+  @override
+  State<BackNavigationScope> createState() => _BackNavigationScopeState();
+}
+
+class _BackNavigationScopeState extends State<BackNavigationScope> {
+  late final VoidCallback _boundBack = _onBack;
+
+  @override
+  void initState() {
+    super.initState();
+    NavigationBackHandler.bind(_boundBack);
+  }
+
+  @override
+  void dispose() {
+    NavigationBackHandler.unbind(_boundBack);
+    super.dispose();
+  }
 
   bool _popNavigatorOrOverlay(BuildContext context) {
     final rootNav = Navigator.maybeOf(context, rootNavigator: true);
@@ -25,12 +48,34 @@ class BackNavigationScope extends StatelessWidget {
     return false;
   }
 
-  void _onBack(BuildContext context) {
+  /// Desktop / phone: match UI back — player → detail → tab stack.
+  /// Does not steal focus to the nav rail or exit the app (TV-only).
+  bool _handleDesktopOrMobileBack() {
+    switch (ShellNavigationLevels.resolveBackTarget()) {
+      case ShellNavLevel.player:
+        if (dismissAnyPlayerChromeOverlay()) return true;
+        ShellNavigationLevels.popRootRoute();
+        return true;
+      case ShellNavLevel.detail:
+        maybePopShellOverlay();
+        return true;
+      case ShellNavLevel.tabStack:
+        return ShellNavigationLevels.popTabStack();
+      case ShellNavLevel.page:
+      case ShellNavLevel.menu:
+        return false;
+    }
+  }
+
+  void _onBack() {
+    if (!mounted) return;
+    final context = this.context;
+
     if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
       ShellTvFocusCoordinator.handleShellBackKey();
       return;
     }
-    if (ShellTvFocusCoordinator.handleShellBackKey()) {
+    if (_handleDesktopOrMobileBack()) {
       return;
     }
     if (_popNavigatorOrOverlay(context)) {
@@ -52,7 +97,7 @@ class BackNavigationScope extends StatelessWidget {
         actions: {
           _BackIntent: CallbackAction<_BackIntent>(
             onInvoke: (_) {
-              _onBack(context);
+              _onBack();
               return null;
             },
           ),
@@ -60,9 +105,9 @@ class BackNavigationScope extends StatelessWidget {
         child: Listener(
           behavior: HitTestBehavior.translucent,
           onPointerDown: (event) {
-            if (event.buttons == kBackMouseButton) _onBack(context);
+            if ((event.buttons & kBackMouseButton) != 0) _onBack();
           },
-          child: child,
+          child: widget.child,
         ),
       ),
     );
@@ -72,7 +117,7 @@ class BackNavigationScope extends StatelessWidget {
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
-          _onBack(context);
+          _onBack();
         },
         child: scope,
       );

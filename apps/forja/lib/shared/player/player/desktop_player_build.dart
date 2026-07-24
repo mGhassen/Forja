@@ -5,130 +5,142 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
 
   @override
   Widget build(BuildContext context) {
+    // Mouse back / trackpad swipe / system pop must match the chrome Back
+    // button ([_exitPlayer]) — never a bare Navigator.pop (issue 059).
+    final Widget body;
     if (!_s._playerReady) {
-      return const Scaffold(
+      body = const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
         ),
       );
-    }
-
-    return Theme(
-      data: ThemeData.dark(),
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: ListenableBuilder(
-          listenable: _s._statusController,
-          builder: (context, _) => MouseRegion(
-            onHover: (_) => _s._onMouseMove(),
-            // Immersive hide uses [SystemMouseCursors.none], but keep the
-            // pointer visible while CHECKING SOURCES (status roulette) is up —
-            // otherwise chrome can auto-hide mid-check and the cursor vanishes.
-            cursor: _s._keepPlayerCursorVisible
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.none,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-              // ── Video ────────────────────────────────────────────────
-              Video(
-                controller: _s._controller,
-                controls: NoVideoControls,
-                fit: _s._videoFit,
-                fill: Colors.black,
-                subtitleViewConfiguration: const SubtitleViewConfiguration(
-                  visible: false,
-                ),
-              ),
-
-              // Double-click empty video area → toggle fullscreen
-              // (controls chrome sits above and keeps its own hit targets).
-              if (!_s._isPipMode)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onDoubleTap: () => unawaited(_s._toggleFullscreen()),
-                    child: const SizedBox.expand(),
+    } else {
+      body = Theme(
+        data: ThemeData.dark(),
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: ListenableBuilder(
+            listenable: _s._statusController,
+            builder: (context, _) => MouseRegion(
+              onHover: (_) => _s._onMouseMove(),
+              // Immersive hide uses [SystemMouseCursors.none], but keep the
+              // pointer visible while CHECKING SOURCES (status roulette) is up —
+              // otherwise chrome can auto-hide mid-check and the cursor vanishes.
+              cursor: _s._keepPlayerCursorVisible
+                  ? SystemMouseCursors.basic
+                  : SystemMouseCursors.none,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                // ── Video ────────────────────────────────────────────────
+                Video(
+                  controller: _s._controller,
+                  controls: NoVideoControls,
+                  fit: _s._videoFit,
+                  fill: Colors.black,
+                  subtitleViewConfiguration: const SubtitleViewConfiguration(
+                    visible: false,
                   ),
                 ),
 
-              // ── Custom subtitle overlay ──────────────────────────────
-              // Auto-scales relative to the rendered window height so
-              // the text stays readable in normal mode, fullscreen, AND
-              // shrinks proportionally when in PiP (480x270).
-              // Custom subtitle overlay — hidden when mpv natively handles
-              // ASS/SSA or image-based subtitles (they render on the video frame instead).
-              if (!_s._isNativeSubtitle)
-                StreamBuilder<List<String>>(
-                  stream: _s._player.stream.subtitle,
-                  initialData: _s._player.state.subtitle,
-                  builder: (context, snap) {
-                    final lines = snap.data ?? [];
-                    final text = lines
-                        .where((l) => l.trim().isNotEmpty)
-                        .join('\n');
-                    if (text.isEmpty) return const SizedBox.shrink();
-                    const refHeight = 720.0;
-                    final winH = MediaQuery.of(context).size.height;
-                    final scale = (winH / refHeight).clamp(0.35, 1.0);
-                    final hSidePad = 24.0 * scale;
-                    return Positioned(
-                      left: hSidePad,
-                      right: hSidePad,
-                      bottom: _s._subtitleBottomPadding * scale,
-                      child: IgnorePointer(
-                        child: Text(
-                          text,
-                          style: _s._buildSubtitleTextStyle(scale: scale),
-                          textAlign: TextAlign.center,
+                // Double-click empty video area → toggle fullscreen
+                // (controls chrome sits above and keeps its own hit targets).
+                if (!_s._isPipMode)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onDoubleTap: () => unawaited(_s._toggleFullscreen()),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+
+                // ── Custom subtitle overlay ──────────────────────────────
+                // Auto-scales relative to the rendered window height so
+                // the text stays readable in normal mode, fullscreen, AND
+                // shrinks proportionally when in PiP (480x270).
+                // Custom subtitle overlay — hidden when mpv natively handles
+                // ASS/SSA or image-based subtitles (they render on the video frame instead).
+                if (!_s._isNativeSubtitle)
+                  StreamBuilder<List<String>>(
+                    stream: _s._player.stream.subtitle,
+                    initialData: _s._player.state.subtitle,
+                    builder: (context, snap) {
+                      final lines = snap.data ?? [];
+                      final text = lines
+                          .where((l) => l.trim().isNotEmpty)
+                          .join('\n');
+                      if (text.isEmpty) return const SizedBox.shrink();
+                      const refHeight = 720.0;
+                      final winH = MediaQuery.of(context).size.height;
+                      final scale = (winH / refHeight).clamp(0.35, 1.0);
+                      final hSidePad = 24.0 * scale;
+                      return Positioned(
+                        left: hSidePad,
+                        right: hSidePad,
+                        bottom: _s._subtitleBottomPadding * scale,
+                        child: IgnorePointer(
+                          child: Text(
+                            text,
+                            style: _s._buildSubtitleTextStyle(scale: scale),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-
-              // ── Controls Overlay ─────────────────────────────────────
-              // Hidden entirely while PiP is active — replaced by the
-              // floating revert button below.
-              if (!_s._isPipMode)
-                AnimatedOpacity(
-                  opacity: _s._showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 220),
-                  child: IgnorePointer(
-                    ignoring: !_s._showControls,
-                    child: _buildControlsOverlay(),
+                      );
+                    },
                   ),
-                ),
 
-              // ── PiP revert button (hover-only) ───────────────────────
-              if (_s._isPipMode) _buildPipRevertOverlay(),
-
-              if (_s._isLoadingNextEp)
-                Positioned(
-                  bottom: 100,
-                  right: 24,
-                  child: PlayerEpisodeLoadingCard(
-                    episodeLabel: _s._episodeLoadingLabel.isEmpty
-                        ? 'Loading episode'
-                        : _s._episodeLoadingLabel,
-                    status: _s._episodeLoadingStatus.isEmpty
-                        ? 'Please wait…'
-                        : _s._episodeLoadingStatus,
-                    failed: _s._episodeLoadingFailed,
+                // ── Controls Overlay ─────────────────────────────────────
+                // Hidden entirely while PiP is active — replaced by the
+                // floating revert button below.
+                if (!_s._isPipMode)
+                  AnimatedOpacity(
+                    opacity: _s._showControls ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    child: IgnorePointer(
+                      ignoring: !_s._showControls,
+                      child: _buildControlsOverlay(),
+                    ),
                   ),
-                ),
 
-              if (!_s._isLoadingNextEp && !_s._hasError)
-                PlayerStatusOverlay(
-                  controller: _s._statusController,
-                  bufferingListenable: _s._isBufferingNotifier,
-                ),
-            ],
-          ),
+                // ── PiP revert button (hover-only) ───────────────────────
+                if (_s._isPipMode) _buildPipRevertOverlay(),
+
+                if (_s._isLoadingNextEp)
+                  Positioned(
+                    bottom: 100,
+                    right: 24,
+                    child: PlayerEpisodeLoadingCard(
+                      episodeLabel: _s._episodeLoadingLabel.isEmpty
+                          ? 'Loading episode'
+                          : _s._episodeLoadingLabel,
+                      status: _s._episodeLoadingStatus.isEmpty
+                          ? 'Please wait…'
+                          : _s._episodeLoadingStatus,
+                      failed: _s._episodeLoadingFailed,
+                    ),
+                  ),
+
+                if (!_s._isLoadingNextEp && !_s._hasError)
+                  PlayerStatusOverlay(
+                    controller: _s._statusController,
+                    bufferingListenable: _s._isBufferingNotifier,
+                  ),
+              ],
+            ),
+            ),
           ),
         ),
-      ),
+      );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        unawaited(_s._exitPlayer());
+      },
+      child: body,
     );
   }
 

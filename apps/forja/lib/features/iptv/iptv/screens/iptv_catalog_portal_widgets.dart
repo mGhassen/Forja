@@ -157,36 +157,90 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   late final FocusNode _deleteFocus;
   late final FocusNode _confirmYesFocus;
   late final FocusNode _confirmNoFocus;
+  late final FocusNode _rowFocus;
 
-  bool get _reveal => _focused || _lineHover || _confirmingDelete;
+  /// Stay open while D-pad is on favorite / rail actions (TV has no hover).
+  bool get _actionChromeFocused =>
+      _favoriteFocus.hasFocus ||
+      _copyFocus.hasFocus ||
+      _editFocus.hasFocus ||
+      _deleteFocus.hasFocus ||
+      _confirmYesFocus.hasFocus ||
+      _confirmNoFocus.hasFocus;
+
+  bool get _reveal =>
+      _focused || _lineHover || _confirmingDelete || _actionChromeFocused;
 
   double get _rowHeight => _rowH;
 
   @override
   void initState() {
     super.initState();
+    _rowFocus = FocusNode(debugLabel: 'iptv-portal-row');
     _favoriteFocus = FocusNode(debugLabel: 'iptv-portal-favorite');
     _copyFocus = FocusNode(debugLabel: 'iptv-portal-copy');
     _editFocus = FocusNode(debugLabel: 'iptv-portal-edit');
     _deleteFocus = FocusNode(debugLabel: 'iptv-portal-delete');
     _confirmYesFocus = FocusNode(debugLabel: 'iptv-portal-delete-yes');
     _confirmNoFocus = FocusNode(debugLabel: 'iptv-portal-delete-no');
+    for (final node in [
+      _favoriteFocus,
+      _copyFocus,
+      _editFocus,
+      _deleteFocus,
+      _confirmYesFocus,
+      _confirmNoFocus,
+    ]) {
+      node.addListener(_onActionFocusChanged);
+    }
   }
 
   @override
   void dispose() {
-    _favoriteFocus.dispose();
-    _copyFocus.dispose();
-    _editFocus.dispose();
-    _deleteFocus.dispose();
-    _confirmYesFocus.dispose();
-    _confirmNoFocus.dispose();
+    for (final node in [
+      _favoriteFocus,
+      _copyFocus,
+      _editFocus,
+      _deleteFocus,
+      _confirmYesFocus,
+      _confirmNoFocus,
+    ]) {
+      node.removeListener(_onActionFocusChanged);
+      node.dispose();
+    }
+    _rowFocus.dispose();
     super.dispose();
   }
 
-  void _focusCatalogFromPanel() {
-    iptvFocusBrowserCategories(widget.ctrl);
+  void _onActionFocusChanged() {
+    if (mounted) setState(() {});
   }
+
+  /// Keep row chrome open for one frame so action focus can land on TV.
+  void _onRowFocusChange(bool focused) {
+    final ctrl = widget.ctrl;
+    final v = widget.portal;
+    if (focused) {
+      setState(() => _focused = true);
+      if (ctrl.isNewPortal(v.key)) {
+        ctrl.markPortalSeen(v.key);
+      }
+      ctrl.schedulePortalHealthCheck(v);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _focused = false);
+      ctrl.cancelPortalHealthCheck(v.key);
+    });
+  }
+
+  void _focusAction(FocusNode node) {
+    node.requestFocus();
+  }
+
+  /// Trap Left on the portal card — stay in the panel (Back exits to catalog).
+  void _trapLeftEdge() {}
 
   String get _actionsRowId => 'portal-${widget.listIndex}-actions';
 
@@ -237,6 +291,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
 
   void _cancelDelete() {
     setState(() => _confirmingDelete = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _deleteFocus.requestFocus();
+    });
   }
 
   Future<void> _confirmDelete() async {
@@ -352,7 +409,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           iptvSyncRow(
             rowId: _actionsRowId,
             sortOrder: 200 + widget.listIndex,
-            itemCount: 4,
+            itemCount: _confirmingDelete ? 3 : 4,
+          );
+        } else {
+          iptvSyncRow(
+            rowId: _actionsRowId,
+            sortOrder: 200 + widget.listIndex,
+            itemCount: 0,
           );
         }
 
@@ -399,27 +462,17 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                       listIndex: widget.listIndex,
                       tvRowId: 'portals',
                       tvItemIndex: widget.listIndex,
+                      focusNode: _rowFocus,
                       onUpEdge: widget.onUpEdge,
-                      onLeftEdge: _reveal
-                          ? () => _favoriteFocus.requestFocus()
-                          : _focusCatalogFromPanel,
+                      onLeftEdge: _trapLeftEdge,
                       onRightEdge: _reveal
-                          ? () => (_confirmingDelete
-                                  ? _confirmYesFocus
-                                  : _copyFocus)
-                              .requestFocus()
+                          ? () => _focusAction(
+                                _confirmingDelete
+                                    ? _confirmYesFocus
+                                    : _favoriteFocus,
+                              )
                           : null,
-                      onFocusChange: (focused) {
-                        setState(() => _focused = focused);
-                        if (focused) {
-                          if (ctrl.isNewPortal(v.key)) {
-                            ctrl.markPortalSeen(v.key);
-                          }
-                          ctrl.schedulePortalHealthCheck(v);
-                        } else {
-                          ctrl.cancelPortalHealthCheck(v.key);
-                        }
-                      },
+                      onFocusChange: _onRowFocusChange,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -526,12 +579,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                     focusNode: _favoriteFocus,
                                     tvRowId: _actionsRowId,
                                     tvItemIndex: 0,
-                                    onLeftEdge: _focusCatalogFromPanel,
+                                    onLeftEdge: () => _focusAction(_rowFocus),
                                     onRightEdge: _reveal
-                                        ? () => (_confirmingDelete
-                                                ? _confirmYesFocus
-                                                : _copyFocus)
-                                            .requestFocus()
+                                        ? () => _focusAction(
+                                              _confirmingDelete
+                                                  ? _confirmYesFocus
+                                                  : _copyFocus,
+                                            )
                                         : null,
                                     child: Padding(
                                       padding: const EdgeInsets.all(4),
@@ -580,9 +634,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvRowId: _actionsRowId,
                                       tvItemIndex: 1,
                                       onLeftEdge: () =>
-                                          _favoriteFocus.requestFocus(),
+                                          _focusAction(_favoriteFocus),
                                       onRightEdge: () =>
-                                          _confirmNoFocus.requestFocus(),
+                                          _focusAction(_confirmNoFocus),
                                     ),
                                     _IptvRailAction(
                                       tooltip: 'No',
@@ -593,7 +647,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvRowId: _actionsRowId,
                                       tvItemIndex: 2,
                                       onLeftEdge: () =>
-                                          _confirmYesFocus.requestFocus(),
+                                          _focusAction(_confirmYesFocus),
                                     ),
                                   ]
                                 : [
@@ -608,9 +662,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvRowId: _actionsRowId,
                                       tvItemIndex: 1,
                                       onLeftEdge: () =>
-                                          _favoriteFocus.requestFocus(),
+                                          _focusAction(_favoriteFocus),
                                       onRightEdge: () =>
-                                          _editFocus.requestFocus(),
+                                          _focusAction(_editFocus),
                                     ),
                                     _IptvRailAction(
                                       tooltip: 'Edit',
@@ -621,9 +675,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvRowId: _actionsRowId,
                                       tvItemIndex: 2,
                                       onLeftEdge: () =>
-                                          _copyFocus.requestFocus(),
+                                          _focusAction(_copyFocus),
                                       onRightEdge: () =>
-                                          _deleteFocus.requestFocus(),
+                                          _focusAction(_deleteFocus),
                                     ),
                                     _IptvRailAction(
                                       tooltip: 'Delete',
@@ -634,7 +688,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvRowId: _actionsRowId,
                                       tvItemIndex: 3,
                                       onLeftEdge: () =>
-                                          _editFocus.requestFocus(),
+                                          _focusAction(_editFocus),
                                     ),
                                   ],
                           ),

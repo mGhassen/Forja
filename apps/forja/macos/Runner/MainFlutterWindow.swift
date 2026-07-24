@@ -11,6 +11,7 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     registerExternalPlayerChannel(flutterViewController)
+    registerNavigationChannel(flutterViewController)
     if let appDelegate = NSApp.delegate as? AppDelegate {
       appDelegate.configureShellChannel(with: flutterViewController)
     }
@@ -40,6 +41,21 @@ class MainFlutterWindow: NSWindow {
     close.setFrameOrigin(NSPoint(x: left, y: y))
     mini.setFrameOrigin(NSPoint(x: left + spacing, y: y))
     zoom.setFrameOrigin(NSPoint(x: left + spacing * 2, y: y))
+  }
+}
+
+private func registerNavigationChannel(_ controller: FlutterViewController) {
+  let channel = FlutterMethodChannel(
+    name: "forja/navigation",
+    binaryMessenger: controller.engine.binaryMessenger
+  )
+  // System "Swipe between pages" (two-finger). Positive deltaX = swipe right =
+  // navigate back (Safari / App Store).
+  _ = NSEvent.addLocalMonitorForEvents(matching: .swipe) { event in
+    if event.deltaX > 0 {
+      channel.invokeMethod("trackpadBack", arguments: nil)
+    }
+    return event
   }
 }
 
