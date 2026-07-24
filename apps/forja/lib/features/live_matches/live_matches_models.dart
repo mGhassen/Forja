@@ -755,9 +755,14 @@ const _dblclickFullscreenJs = r'''
 /// embed.st stall behind parser-blocking ad scripts and leave a white WebView.
 ///
 /// Do **not** set HTML `sandbox` — embed hosts reject sandboxed parents with
-/// "SANDBOX IFRAME NOT ALLOWED". Main-frame hijacks are cancelled in
-/// `shouldOverrideUrlLoading`; ad `window.open` is accepted off-screen (hidden)
-/// so Streamed embeds that require a successful open keep playing.
+/// "Remove sandbox attributes on the iframe tag" / "SANDBOX IFRAME NOT ALLOWED".
+/// Main-frame hijacks are cancelled in `shouldOverrideUrlLoading` (never allow
+/// catalog origins — that replaced the wrapper with the full SPA). Ad
+/// `window.open` is accepted off-screen (hidden) so Streamed embeds that
+/// require a successful open keep playing.
+///
+/// Android System WebView: load the embed **top-level** instead (see embed
+/// player) — nested iframes commonly hit the sandbox rejection page there.
 String _buildLiveEmbedWrapperHtml(String embedUrl) {
   final safe = embedUrl
       .replaceAll('&', '&amp;')
@@ -818,11 +823,19 @@ List<ContentBlocker> _liveEmbedContentBlockers() {
   ];
 }
 
-bool _liveEmbedAllowsNavigation({
+/// Whether a **main-frame** navigation may proceed.
+///
+/// Wrapper mode (`allowEmbedHostAsMainFrame: false`): only `about` / `data` /
+/// `blob`. Catalog hosts (`streamed.pk` / `ppv.is`) must **not** be allowed —
+/// ads and embeds navigate `top` there, replace the loadData wrapper with the
+/// full SPA, and surface "Remove sandbox attributes on the iframe tag".
+///
+/// Android top-level embed mode: also allow the embed host itself (player CDNs
+/// stay as subframes and are always allowed by the caller).
+bool _liveEmbedAllowsMainFrameNavigation({
   required String url,
   required String embedUrl,
-  required String referer,
-  required String origin,
+  required bool allowEmbedHostAsMainFrame,
 }) {
   if (url.isEmpty ||
       url.startsWith('about:') ||
@@ -830,18 +843,55 @@ bool _liveEmbedAllowsNavigation({
       url.startsWith('blob:')) {
     return true;
   }
+  if (!allowEmbedHostAsMainFrame) return false;
   final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return true;
-  final allowed = <String>{
-    Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '',
-    Uri.tryParse(referer)?.host.toLowerCase() ?? '',
-    Uri.tryParse(origin)?.host.toLowerCase() ?? '',
-  }.where((h) => h.isNotEmpty);
-  for (final h in allowed) {
-    if (host == h || host.endsWith('.$h')) return true;
-  }
-  return false;
+  final embedHost = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
+  if (host.isEmpty || embedHost.isEmpty) return false;
+  return host == embedHost || host.endsWith('.$embedHost');
 }
+
+/// Strip `sandbox` from iframes under the wrapper document before they load.
+/// Embed hosts reject sandboxed parents; some injectors re-add the attribute.
+const _stripIframeSandboxJs = r'''
+(function () {
+  if (window.__forjaStripSandbox) return;
+  window.__forjaStripSandbox = true;
+  function strip(root) {
+    try {
+      (root || document).querySelectorAll('iframe[sandbox]').forEach(function (f) {
+        f.removeAttribute('sandbox');
+      });
+    } catch (_) {}
+  }
+  strip();
+  try {
+    new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        if (m.type === 'attributes' && m.attributeName === 'sandbox' && m.target && m.target.tagName === 'IFRAME') {
+          m.target.removeAttribute('sandbox');
+        }
+        if (m.addedNodes) {
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var n = m.addedNodes[j];
+            if (!n || n.nodeType !== 1) continue;
+            if (n.tagName === 'IFRAME' && n.hasAttribute('sandbox')) {
+              n.removeAttribute('sandbox');
+            } else {
+              strip(n);
+            }
+          }
+        }
+      }
+    }).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['sandbox'],
+    });
+  } catch (_) {}
+})();
+''';
 
 const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';

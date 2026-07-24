@@ -23,6 +23,15 @@ class BackNavigationScope extends StatefulWidget {
 class _BackNavigationScopeState extends State<BackNavigationScope> {
   late final VoidCallback _boundBack = _onBack;
 
+  /// Trackpad pan fallback when macOS delivers pan/zoom instead of swipe.
+  /// Only from the left edge so catalog row flicks do not navigate.
+  static const double _edgePx = 96;
+  static const double _panBackDx = 110;
+  double _panDx = 0;
+  double _panDy = 0;
+  bool _panFromEdge = false;
+  bool _panning = false;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +42,49 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
   void dispose() {
     NavigationBackHandler.unbind(_boundBack);
     super.dispose();
+  }
+
+  bool get _canNavigateBack {
+    switch (ShellNavigationLevels.resolveBackTarget()) {
+      case ShellNavLevel.player:
+      case ShellNavLevel.detail:
+      case ShellNavLevel.tabStack:
+        return true;
+      case ShellNavLevel.page:
+      case ShellNavLevel.menu:
+        return shellOverlayCanPop() || ShellNavigationLevels.rootRouteCanPop();
+    }
+  }
+
+  void _onPanZoomStart(PointerPanZoomStartEvent event) {
+    if (!Platform.isMacOS || !_canNavigateBack) return;
+    _panning = true;
+    _panDx = 0;
+    _panDy = 0;
+    _panFromEdge = event.position.dx <= _edgePx;
+  }
+
+  void _onPanZoomUpdate(PointerPanZoomUpdateEvent event) {
+    if (!_panning || !_panFromEdge) return;
+    _panDx += event.panDelta.dx;
+    _panDy += event.panDelta.dy;
+  }
+
+  void _onPanZoomEnd(PointerPanZoomEndEvent event) {
+    if (!_panning) return;
+    final fromEdge = _panFromEdge;
+    final dx = _panDx;
+    final dy = _panDy;
+    _panning = false;
+    _panFromEdge = false;
+    _panDx = 0;
+    _panDy = 0;
+    if (!fromEdge) return;
+    final horizontal = dx.abs() > dy.abs() * 1.5;
+    // Finger moves right → positive dx → back (same as iOS edge swipe).
+    if (horizontal && dx >= _panBackDx) {
+      _onBack();
+    }
   }
 
   bool _popNavigatorOrOverlay(BuildContext context) {
@@ -107,6 +159,9 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
           onPointerDown: (event) {
             if ((event.buttons & kBackMouseButton) != 0) _onBack();
           },
+          onPointerPanZoomStart: _onPanZoomStart,
+          onPointerPanZoomUpdate: _onPanZoomUpdate,
+          onPointerPanZoomEnd: _onPanZoomEnd,
           child: widget.child,
         ),
       ),

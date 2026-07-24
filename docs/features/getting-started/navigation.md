@@ -53,7 +53,7 @@ Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, M
 - Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
 - Startup follows your profile: Home / Search / My List pull movie catalogs; torrent / Stremio / Webstreaming engines only start when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them at splash. After sign-in, choosing a profile uses the logo boot splash; switching profiles mid-session uses the avatar profile splash; guest / restored-session cold start also uses the logo splash
 - Movie and series details open on top of the current tab; the player opens full-screen from there
-- On **desktop**, the mouse **Back** side button, **Escape**, and (on macOS) a two-finger trackpad swipe right between pages all act like the in-app **Back** control — player first, then details, then in-tab screens
+- On **desktop**, the mouse **Back** side button, **Escape**, and (on macOS) trackpad swipe-between-pages all act like the in-app **Back** control — player first, then details, then in-tab screens. On macOS, use a two-finger swipe from the **left edge** (or the system three-finger / swipe-between-pages gesture)
 
 ## Related
 

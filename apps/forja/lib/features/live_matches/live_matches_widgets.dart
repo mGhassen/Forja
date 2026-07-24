@@ -281,7 +281,7 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   }
 }
 
-class _LiveMatchesServerSheetOption extends StatelessWidget {
+class _LiveMatchesServerSheetOption extends StatefulWidget {
   const _LiveMatchesServerSheetOption({
     required this.server,
     required this.current,
@@ -299,39 +299,52 @@ class _LiveMatchesServerSheetOption extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
+  State<_LiveMatchesServerSheetOption> createState() =>
+      _LiveMatchesServerSheetOptionState();
+}
+
+class _LiveMatchesServerSheetOptionState
+    extends State<_LiveMatchesServerSheetOption> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
+    final selected = widget.server == widget.current;
     return shellFocusableTap(
       context: context,
-      onTap: () => onSelected(server),
+      onTap: () => widget.onSelected(widget.server),
       borderRadius: 12,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
       navLeftAlways: true,
-      focusNode: focusNode,
-      listIndex: tvItemIndex,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
       tvTabId: 'live_matches',
-      tvRowId: tvRowId,
-      tvItemIndex: tvItemIndex,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
       child: ListTile(
         leading: Icon(
-          server == _LiveMatchesServer.all
+          widget.server == _LiveMatchesServer.all
               ? Icons.grid_view_rounded
               : Icons.dns_rounded,
-          color: server == current
-              ? ForjaShellColors.sectionAccent
-              : Colors.white54,
+          color: selected ? ForjaShellColors.sectionAccent : Colors.white54,
         ),
         title: Text(
-          _liveMatchesServerLabel(server),
+          _liveMatchesServerLabel(widget.server),
           style: TextStyle(
             color: Colors.white,
-            fontWeight: server == current ? FontWeight.w700 : FontWeight.w600,
+            fontWeight: _focused || selected
+                ? FontWeight.bold
+                : FontWeight.w600,
           ),
         ),
         subtitle: Text(
-          _liveMatchesServerSubtitle(server),
+          _liveMatchesServerSubtitle(widget.server),
           style: const TextStyle(color: Colors.white38, fontSize: 11),
         ),
-        trailing: server == current
+        trailing: selected
             ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
             : const Icon(Icons.chevron_right, color: Colors.white38),
       ),
@@ -897,57 +910,94 @@ class _CdnChannelSheetState extends State<_CdnChannelSheet> {
               ),
               const SizedBox(height: 16),
               for (var i = 0; i < channels.length; i++)
-                shellFocusableTap(
-                  context: context,
+                _CdnChannelSheetRow(
+                  channel: channels[i],
                   onTap: () => widget.onChannelSelected(channels[i]),
-                  borderRadius: 12,
-                  navLeftAlways: true,
-                  focusNode: i == 0 ? _firstFocus : null,
-                  listIndex: i,
-                  tvTabId: 'live_matches',
-                  tvRowId: _rowId,
                   tvItemIndex: i,
-                  tvZone: ShellTvZone.row,
-                  child: ListTile(
-                    leading: channels[i].image.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: channels[i].image,
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.contain,
-                            errorWidget: (_, _, _) => Icon(
-                              Icons.tv_rounded,
-                              color: ForjaShellColors.sectionAccent,
-                            ),
-                          )
-                        : Icon(
-                            Icons.tv_rounded,
-                            color: ForjaShellColors.sectionAccent,
-                          ),
-                    title: Text(
-                      channels[i].name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: channels[i].viewers > 0
-                        ? Text(
-                            '${channels[i].viewers} viewers',
-                            style: const TextStyle(
-                              color: Colors.white38,
-                              fontSize: 11,
-                            ),
-                          )
-                        : null,
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.white38,
-                    ),
-                  ),
+                  tvRowId: _rowId,
+                  focusNode: i == 0 ? _firstFocus : null,
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CdnChannelSheetRow extends StatefulWidget {
+  const _CdnChannelSheetRow({
+    required this.channel,
+    required this.onTap,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
+  });
+
+  final _CdnChannel channel;
+  final VoidCallback onTap;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
+
+  @override
+  State<_CdnChannelSheetRow> createState() => _CdnChannelSheetRowState();
+}
+
+class _CdnChannelSheetRowState extends State<_CdnChannelSheetRow> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 12,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      navLeftAlways: true,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
+      tvTabId: 'live_matches',
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: ListTile(
+        leading: widget.channel.image.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: widget.channel.image,
+                width: 32,
+                height: 32,
+                fit: BoxFit.contain,
+                errorWidget: (_, _, _) => Icon(
+                  Icons.tv_rounded,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              )
+            : Icon(
+                Icons.tv_rounded,
+                color: ForjaShellColors.sectionAccent,
+              ),
+        title: Text(
+          widget.channel.name,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+        subtitle: widget.channel.viewers > 0
+            ? Text(
+                '${widget.channel.viewers} viewers',
+                style: const TextStyle(
+                  color: Colors.white38,
+                  fontSize: 11,
+                ),
+              )
+            : null,
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: Colors.white38,
         ),
       ),
     );
@@ -1000,7 +1050,11 @@ class _LiveMatchesEmbedPlayerScreenState
   /// embeds that require a successful open keep working; never shown in UI.
   int? _adWindowId;
 
-  late final InAppWebViewInitialData _initialData;
+  /// Desktop/iOS: iframe under catalog origin. Android: top-level embed URL
+  /// (System WebView rejects nested iframes with "Remove sandbox attributes…").
+  InAppWebViewInitialData? _initialData;
+  URLRequest? _initialUrlRequest;
+  late final bool _androidDirectEmbed;
   late final InAppWebViewSettings _initialSettings;
   late final UnmodifiableListView<UserScript> _initialUserScripts;
 
@@ -1079,7 +1133,18 @@ class _LiveMatchesEmbedPlayerScreenState
     super.initState();
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
+    // Android System WebView: nested iframe embeds show
+    // "Remove sandbox attributes on the iframe tag". Load top-level with
+    // catalog Referer instead (same idea as VidSrc forceDirect). Desktop /
+    // iOS keep the iframe wrapper for document.referrer (issues 046 / 049).
+    _androidDirectEmbed = !kIsWeb && Platform.isAndroid;
     _initialUserScripts = UnmodifiableListView([
+      if (!_androidDirectEmbed)
+        UserScript(
+          source: _stripIframeSandboxJs,
+          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+          forMainFrameOnly: true,
+        ),
       UserScript(
         source: _embedMediaControlUserScript,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
@@ -1097,19 +1162,28 @@ class _LiveMatchesEmbedPlayerScreenState
       ),
     ]);
 
-    // Same path on all platforms (incl. Windows): iframe under catalog origin
-    // for document.referrer + off-screen window.open (issues 046 / 049).
-    // WebView2 opacity still forced opaque via forjaWebViewSettings (issue 053).
-    final wrapperBase = widget.referer.endsWith('/')
-        ? widget.referer
-        : '${widget.referer}/';
-    _initialData = InAppWebViewInitialData(
-      data: _buildLiveEmbedWrapperHtml(embedUrl),
-      baseUrl: WebUri(wrapperBase),
-      historyUrl: WebUri(wrapperBase),
-      mimeType: 'text/html',
-      encoding: 'utf-8',
-    );
+    if (_androidDirectEmbed) {
+      _initialUrlRequest = URLRequest(
+        url: WebUri(embedUrl),
+        headers: {
+          'Referer': widget.referer,
+          'Origin': widget.origin,
+        },
+      );
+    } else {
+      // Windows WebView2 opacity still forced opaque via forjaWebViewSettings
+      // (issue 053).
+      final wrapperBase = widget.referer.endsWith('/')
+          ? widget.referer
+          : '${widget.referer}/';
+      _initialData = InAppWebViewInitialData(
+        data: _buildLiveEmbedWrapperHtml(embedUrl),
+        baseUrl: WebUri(wrapperBase),
+        historyUrl: WebUri(wrapperBase),
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+      );
+    }
     _initialSettings = InAppWebViewSettings(
       userAgent: _ua['User-Agent'],
       domStorageEnabled: true,
@@ -1127,6 +1201,9 @@ class _LiveMatchesEmbedPlayerScreenState
       // ad navigations that break Streamed HLS (manifestParsingError).
       supportMultipleWindows: true,
       javaScriptCanOpenWindowsAutomatically: true,
+      // Stream tokens / CDN often need third-party cookies from ad opens.
+      thirdPartyCookiesEnabled: true,
+      mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
       contentBlockers: _liveEmbedContentBlockers(),
     );
     // Clear the Flutter spinner early; iframe load / embedReady also clears it.
@@ -1461,10 +1538,11 @@ class _LiveMatchesEmbedPlayerScreenState
                 fit: StackFit.expand,
                 children: [
                   ForjaInAppWebView(
-                    // iframe under catalog origin for document.referrer + ad
-                    // isolation (issues 046 / 049). Windows keeps opaque WebView2
-                    // via forjaWebViewSettings (issue 053).
+                    // Desktop/iOS: iframe under catalog origin (046 / 049).
+                    // Android: top-level embed + Referer (sandbox iframe reject).
+                    // Windows opaque WebView2 via forjaWebViewSettings (053).
                     initialData: _initialData,
+                    initialUrlRequest: _initialUrlRequest,
                     initialUserScripts: _initialUserScripts,
                     initialSettings: _initialSettings,
                     onWebViewCreated: (controller) {
@@ -1528,11 +1606,10 @@ class _LiveMatchesEmbedPlayerScreenState
                         return NavigationActionPolicy.ALLOW;
                       }
                       final url = action.request.url?.toString() ?? '';
-                      if (_liveEmbedAllowsNavigation(
+                      if (_liveEmbedAllowsMainFrameNavigation(
                         url: url,
                         embedUrl: embedUrl,
-                        referer: widget.referer,
-                        origin: widget.origin,
+                        allowEmbedHostAsMainFrame: _androidDirectEmbed,
                       )) {
                         return NavigationActionPolicy.ALLOW;
                       }
@@ -1720,7 +1797,7 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
   }
 }
 
-class _MergedPpvStreamRow extends StatelessWidget {
+class _MergedPpvStreamRow extends StatefulWidget {
   const _MergedPpvStreamRow({
     required this.stream,
     required this.onTap,
@@ -1736,18 +1813,28 @@ class _MergedPpvStreamRow extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
+  State<_MergedPpvStreamRow> createState() => _MergedPpvStreamRowState();
+}
+
+class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
     return shellFocusableTap(
       context: context,
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: 10,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
       navLeftAlways: true,
-      focusNode: focusNode,
-      listIndex: tvItemIndex,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
       tvTabId: 'live_matches',
-      tvRowId: tvRowId,
-      tvItemIndex: tvItemIndex,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
@@ -1760,13 +1847,15 @@ class _MergedPpvStreamRow extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                stream.league.isNotEmpty ? stream.league : 'PPV stream',
+                widget.stream.league.isNotEmpty
+                    ? widget.stream.league
+                    : 'PPV stream',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: ForjaShellColors.textPrimary,
+                style: TextStyle(
+                  color: Colors.white,
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
                 ),
               ),
             ),
@@ -1904,7 +1993,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
   }
 }
 
-class _StreamedStreamRow extends StatelessWidget {
+class _StreamedStreamRow extends StatefulWidget {
   final _StreamedStream stream;
   final String sourceLabel;
   final String serverLabel;
@@ -1924,27 +2013,37 @@ class _StreamedStreamRow extends StatelessWidget {
   });
 
   @override
+  State<_StreamedStreamRow> createState() => _StreamedStreamRowState();
+}
+
+class _StreamedStreamRowState extends State<_StreamedStreamRow> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
     final subtitleParts = <String>[
-      if (sourceLabel.isNotEmpty) sourceLabel,
-      if (stream.language.isNotEmpty) stream.language,
+      if (widget.sourceLabel.isNotEmpty) widget.sourceLabel,
+      if (widget.stream.language.isNotEmpty) widget.stream.language,
     ];
     return shellFocusableTap(
       context: context,
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: 10,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
       navLeftAlways: true,
-      focusNode: focusNode,
-      listIndex: tvItemIndex,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
       tvTabId: 'live_matches',
-      tvRowId: tvRowId,
-      tvItemIndex: tvItemIndex,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
           children: [
-            if (stream.hd)
+            if (widget.stream.hd)
               _QualityChip(label: 'HD')
             else
               const Icon(
@@ -1959,11 +2058,11 @@ class _StreamedStreamRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Stream ${stream.streamNo > 0 ? stream.streamNo : 1}',
-                    style: const TextStyle(
-                      color: ForjaShellColors.textPrimary,
+                    'Stream ${widget.stream.streamNo > 0 ? widget.stream.streamNo : 1}',
+                    style: TextStyle(
+                      color: Colors.white,
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
                     ),
                   ),
                   if (subtitleParts.isNotEmpty) ...[
@@ -1979,7 +2078,7 @@ class _StreamedStreamRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (stream.viewers > 0) ...[
+            if (widget.stream.viewers > 0) ...[
               const Icon(
                 Icons.visibility_outlined,
                 size: 14,
@@ -1987,12 +2086,12 @@ class _StreamedStreamRow extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                '${stream.viewers}',
+                '${widget.stream.viewers}',
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
               const SizedBox(width: 10),
             ],
-            _LiveStreamProviderBadge(label: serverLabel),
+            _LiveStreamProviderBadge(label: widget.serverLabel),
             const SizedBox(width: 10),
             const Icon(Icons.chevron_right, size: 18, color: Colors.white38),
           ],

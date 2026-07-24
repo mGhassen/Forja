@@ -300,10 +300,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     required int itemCount,
     required bool scaleToFit,
     required bool tvFocus,
+    AlignmentGeometry alignment = Alignment.center,
   }) {
+    // TV: left-align with Servers / card grid. Desktop: center when chips fit.
     final row = Row(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         for (var i = 0; i < itemCount; i++) ...[
           if (i > 0) SizedBox(width: layout.horizontalGap),
@@ -325,10 +327,10 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         child: scaleToFit
             ? FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
+                alignment: alignment,
                 child: row,
               )
-            : Center(child: row),
+            : Align(alignment: alignment, child: row),
       ),
     );
   }
@@ -457,6 +459,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
               itemCount: itemCount,
               scaleToFit: true,
               tvFocus: tvFocus,
+              alignment: Alignment.centerLeft,
             );
           }
 
