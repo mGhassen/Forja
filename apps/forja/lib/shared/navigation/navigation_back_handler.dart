@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// macOS trackpad swipe-back → Dart.
 ///
-/// Native [NSEvent] `.swipe` is delivered on [MethodChannel] `forja/navigation`
-/// as `trackpadBack`. Bound from the app-wide [BackNavigationScope].
+/// Native embedder may call [MethodChannel] `forja/navigation` / `trackpadBack`.
+/// Bound from the app-wide [BackNavigationScope].
 class NavigationBackHandler {
   NavigationBackHandler._();
 
@@ -20,6 +21,7 @@ class NavigationBackHandler {
     _installed = true;
     _channel.setMethodCallHandler((call) async {
       if (call.method != 'trackpadBack') return;
+      debugPrint('[NavBack] native trackpadBack');
       final now = DateTime.now();
       final last = _lastInvokedAt;
       if (last != null && now.difference(last) < _debounce) return;

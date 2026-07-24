@@ -23,23 +23,26 @@ class BackNavigationScope extends StatefulWidget {
 class _BackNavigationScopeState extends State<BackNavigationScope> {
   late final VoidCallback _boundBack = _onBack;
 
-  /// Trackpad pan fallback when macOS delivers pan/zoom instead of swipe.
-  /// Only from the left edge so catalog row flicks do not navigate.
-  static const double _edgePx = 96;
-  static const double _panBackDx = 110;
+  /// Global route — scrollables would otherwise eat [PointerPanZoom] before an
+  /// ancestor [Listener] can treat a strong horizontal swipe as Back.
   double _panDx = 0;
   double _panDy = 0;
-  bool _panFromEdge = false;
   bool _panning = false;
 
   @override
   void initState() {
     super.initState();
     NavigationBackHandler.bind(_boundBack);
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
+    }
   }
 
   @override
   void dispose() {
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
+    }
     NavigationBackHandler.unbind(_boundBack);
     super.dispose();
   }
@@ -56,34 +59,40 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
     }
   }
 
-  void _onPanZoomStart(PointerPanZoomStartEvent event) {
-    if (!Platform.isMacOS || !_canNavigateBack) return;
-    _panning = true;
-    _panDx = 0;
-    _panDy = 0;
-    _panFromEdge = event.position.dx <= _edgePx;
-  }
+  void _onGlobalPointer(PointerEvent event) {
+    if (event is PointerPanZoomStartEvent) {
+      if (!_canNavigateBack) {
+        _panning = false;
+        return;
+      }
+      _panning = true;
+      _panDx = 0;
+      _panDy = 0;
+      return;
+    }
+    if (event is PointerPanZoomUpdateEvent) {
+      if (!_panning) return;
+      _panDx += event.panDelta.dx;
+      _panDy += event.panDelta.dy;
+      return;
+    }
+    if (event is PointerPanZoomEndEvent) {
+      if (!_panning) return;
+      final dx = _panDx;
+      final dy = _panDy;
+      _panning = false;
+      _panDx = 0;
+      _panDy = 0;
 
-  void _onPanZoomUpdate(PointerPanZoomUpdateEvent event) {
-    if (!_panning || !_panFromEdge) return;
-    _panDx += event.panDelta.dx;
-    _panDy += event.panDelta.dy;
-  }
-
-  void _onPanZoomEnd(PointerPanZoomEndEvent event) {
-    if (!_panning) return;
-    final fromEdge = _panFromEdge;
-    final dx = _panDx;
-    final dy = _panDy;
-    _panning = false;
-    _panFromEdge = false;
-    _panDx = 0;
-    _panDy = 0;
-    if (!fromEdge) return;
-    final horizontal = dx.abs() > dy.abs() * 1.5;
-    // Finger moves right → positive dx → back (same as iOS edge swipe).
-    if (horizontal && dx >= _panBackDx) {
-      _onBack();
+      final horizontal = dx.abs() > dy.abs() * 1.35;
+      final strong = dx.abs() >= 90;
+      if (horizontal && strong && _canNavigateBack) {
+        debugPrint(
+          '[NavBack] trackpad pan dx=${dx.toStringAsFixed(0)} '
+          'dy=${dy.toStringAsFixed(0)} → back',
+        );
+        _onBack();
+      }
     }
   }
 
@@ -159,9 +168,6 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
           onPointerDown: (event) {
             if ((event.buttons & kBackMouseButton) != 0) _onBack();
           },
-          onPointerPanZoomStart: _onPanZoomStart,
-          onPointerPanZoomUpdate: _onPanZoomUpdate,
-          onPointerPanZoomEnd: _onPanZoomEnd,
           child: widget.child,
         ),
       ),

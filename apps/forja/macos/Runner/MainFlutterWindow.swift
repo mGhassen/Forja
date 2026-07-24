@@ -44,26 +44,16 @@ class MainFlutterWindow: NSWindow {
   }
 }
 
-/// Trackpad "Swipe between pages" → Flutter `forja/navigation` / `trackpadBack`.
+/// Optional native backup for system swipe gestures.
 ///
-/// AppKit delivers swipe gestures to the **view under the pointer** via
-/// `swipe(with:)`, not a window-level event monitor. Two-finger "scroll left
-/// or right" page navigation is often plain `scrollWheel` (FlutterView eats
-/// those), so we also watch scroll events at the left edge.
+/// Primary path is Dart [PointerPanZoom] in BackNavigationScope — Flutter
+/// already converts two-finger trackpad pans. This catches AppKit
+/// `swipe(with:)` when System Settings uses swipe-with-fingers (not scroll).
 final class ForjaFlutterViewController: FlutterViewController {
   private var navigationChannel: FlutterMethodChannel?
-  private var scrollMonitor: Any?
   private var swipeMonitor: Any?
 
-  private var scrollNavDx: CGFloat = 0
-  private var scrollNavDy: CGFloat = 0
-  private var scrollNavFromLeftEdge = false
-  private var scrollNavActive = false
-
   deinit {
-    if let scrollMonitor {
-      NSEvent.removeMonitor(scrollMonitor)
-    }
     if let swipeMonitor {
       NSEvent.removeMonitor(swipeMonitor)
     }
@@ -74,70 +64,20 @@ final class ForjaFlutterViewController: FlutterViewController {
       name: "forja/navigation",
       binaryMessenger: engine.binaryMessenger
     )
-    installScrollNavigationMonitor()
-    installSwipeNavigationMonitor()
-  }
-
-  private func notifyTrackpadBack() {
-    navigationChannel?.invokeMethod("trackpadBack", arguments: nil)
-  }
-
-  /// Three-finger / "Swipe with two or three fingers" preference.
-  /// Apple: deltaX **-1** = swipe-right (back), **+1** = swipe-left (forward).
-  override func swipe(with event: NSEvent) {
-    if event.deltaX < 0 {
-      notifyTrackpadBack()
-      return
-    }
-  }
-
-  private func installSwipeNavigationMonitor() {
     swipeMonitor = NSEvent.addLocalMonitorForEvents(matching: .swipe) {
       [weak self] event in
-      if event.deltaX < 0 {
-        self?.notifyTrackpadBack()
+      // Apple: deltaX -1 = swipe-right (back), +1 = swipe-left (forward).
+      if event.deltaX != 0 {
+        self?.navigationChannel?.invokeMethod("trackpadBack", arguments: nil)
       }
       return event
     }
   }
 
-  /// Two-finger horizontal page swipe when Settings uses scroll-between-pages.
-  /// Only from the left edge so poster-row flicks do not navigate back.
-  private func installScrollNavigationMonitor() {
-    scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) {
-      [weak self] event in
-      self?.handleScrollNavigation(event)
-      return event
-    }
-  }
-
-  private func handleScrollNavigation(_ event: NSEvent) {
-    guard event.hasPreciseScrollingDeltas else { return }
-
-    let phase = event.phase
-    if phase.contains(.began) {
-      scrollNavActive = true
-      scrollNavDx = 0
-      scrollNavDy = 0
-      // Left strip of the window (nav rail / back chevron band).
-      scrollNavFromLeftEdge = event.locationInWindow.x < 96
-    }
-
-    guard scrollNavActive, scrollNavFromLeftEdge else { return }
-
-    // Natural scroll: fingers right → negative scrollingDeltaX (Safari back).
-    scrollNavDx += event.scrollingDeltaX
-    scrollNavDy += event.scrollingDeltaY
-
-    if phase.contains(.ended) || phase.contains(.cancelled) {
-      scrollNavActive = false
-      let horizontal = abs(scrollNavDx) > abs(scrollNavDy) * 1.5
-      if horizontal && scrollNavDx < -80 {
-        notifyTrackpadBack()
-      }
-      scrollNavDx = 0
-      scrollNavDy = 0
-      scrollNavFromLeftEdge = false
+  override func swipe(with event: NSEvent) {
+    if event.deltaX != 0 {
+      navigationChannel?.invokeMethod("trackpadBack", arguments: nil)
+      return
     }
   }
 }
