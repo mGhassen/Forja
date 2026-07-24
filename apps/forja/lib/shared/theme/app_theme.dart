@@ -166,6 +166,9 @@ class FocusableControl extends StatefulWidget {
   /// Flat focus (scale ≤ 1): when false, only the thin border — no gray fill.
   final bool showFocusFill;
 
+  /// Layout width used for focus-scale bleed. Defaults to poster card width.
+  final double? focusBleedWidth;
+
   const FocusableControl({
     super.key,
     required this.child,
@@ -175,6 +178,7 @@ class FocusableControl extends StatefulWidget {
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.showFocusBorder = false,
     this.showFocusFill = true,
+    this.focusBleedWidth,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -413,7 +417,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final flatMenuFocus =
         widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
     final bleed = widget.showFocusBorder && !flatMenuFocus
-        ? shellMovieCardFocusBleed(context, scaleOnFocus: widget.scaleOnFocus)
+        ? shellMovieCardFocusBleed(
+            context,
+            scaleOnFocus: widget.scaleOnFocus,
+            cardWidth: widget.focusBleedWidth,
+          )
         : 0.0;
 
     Widget body = AnimatedBuilder(

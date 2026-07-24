@@ -69,6 +69,12 @@ class _MediaDetailsTrailersSectionState
     final outdent = widget.outdentHorizontal;
     final useHomeInsets = outdent > 0;
     final homePad = ShellTokens.homeSectionHorizontalPadding;
+    // Catalog focus scale (desktop hover / TV focus) needs vertical room.
+    const thumbHeight = _kTrailerCardWidth * 9 / 16;
+    const textBlock = 8 + 12 * 1.25 * 2;
+    const baseRowHeight = thumbHeight + textBlock;
+    final trailerRowHeight =
+        baseRowHeight * ShellTokens.focusActiveScale + 4;
 
     final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,7 +95,7 @@ class _MediaDetailsTrailersSectionState
         ],
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: 156,
+            height: trailerRowHeight,
             padding: useHomeInsets ? EdgeInsets.only(left: homePad) : EdgeInsets.zero,
             itemCount: widget.trailers.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -155,13 +161,13 @@ class _TrailerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final thumbHeight = _kTrailerCardWidth * 9 / 16;
 
+    // Same catalog chrome as HubPosterCard / HomeMovieCard on every platform.
     return shellFocusableTap(
       context: context,
       onTap: () => _open(context),
       borderRadius: 10,
-      scaleOnFocus: 1.0,
       showFocusBorder: true,
-      showFocusFill: false,
+      focusBleedWidth: _kTrailerCardWidth,
       listIndex: index,
       tvTabId: tvTabId,
       tvRowId: tvRowId,

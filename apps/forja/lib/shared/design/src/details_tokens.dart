@@ -13,6 +13,15 @@ abstract final class DetailsTokens {
   /// Tall enough for season posters + episode cards so the rail does not
   /// overflow upward and cover the hero image.
   static const double episodeBackdropBleed = 500;
+
+  /// Episodes-only rail (no season posters) — title + episode cards + padding.
+  /// Keeps ~180px less empty gap under Play when there is a single season.
+  static const double episodeBackdropBleedEpisodesOnly = 320;
+
+  /// Bleed under hero chrome for the episode picker.
+  static double episodeRailBleed({required bool showSeasonRail}) =>
+      showSeasonRail ? episodeBackdropBleed : episodeBackdropBleedEpisodesOnly;
+
   /// Extra chrome above the rail so series/anime keep synopsis + Play.
   /// Makes the hero stack slightly taller than the viewport (rows sit lower).
   static const double episodeHeroChromeExtra = 100;
@@ -86,6 +95,7 @@ abstract final class DetailsTokens {
     BuildContext context, {
     double? viewportHeight,
     bool showEpisodeRail = false,
+    bool showSeasonRail = false,
   }) {
     final size = MediaQuery.sizeOf(context);
     final height = viewportHeight ?? size.height;
@@ -98,26 +108,29 @@ abstract final class DetailsTokens {
     final minFraction = (compact || shortViewport)
         ? heroWithEpisodesMinFractionCompact
         : heroWithEpisodesMinFraction;
+    final bleed = episodeRailBleed(showSeasonRail: showSeasonRail);
     // Chrome uses the viewport above the rail band so seasons/episodes sit
     // near the bottom of the first screen instead of mid-hero. A small chrome
     // boost keeps synopsis visible; the stack grows ~[episodeHeroChromeExtra].
-    return (resolved - episodeBackdropBleed + episodeHeroChromeExtra).clamp(
+    return (resolved - bleed + episodeHeroChromeExtra).clamp(
       resolved * minFraction,
       resolved * heroViewportFraction,
     );
   }
 
   /// Hero chrome height for media details — prefer [viewportHeight] from a [LayoutBuilder].
-  /// TV episode rails add [episodeBackdropBleed] below this in the hero stack.
+  /// TV episode rails add [episodeRailBleed] below this in the hero stack.
   static double heroHeight(
     BuildContext context, {
     double? viewportHeight,
     bool showEpisodeRail = false,
+    bool showSeasonRail = false,
   }) {
     return heroBackdropBand(
       context,
       viewportHeight: viewportHeight,
       showEpisodeRail: showEpisodeRail,
+      showSeasonRail: showSeasonRail,
     );
   }
 }

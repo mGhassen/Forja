@@ -267,6 +267,19 @@ class PlayerStreamMenu {
     );
   }
 
+  /// Public server list for Exo (and other) Sources UIs — same order as the
+  /// MediaKit accordion panel.
+  static List<MapEntry<String, dynamic>> serversForPanel(
+    Map<String, dynamic> providers, {
+    Map<String, ProviderOrderRow> scoreRows = const {},
+    List<StreamProviderProbe> probes = const [],
+  }) =>
+      orderedProviderEntriesForPanel(
+        providers,
+        scoreRows: scoreRows,
+        probes: probes,
+      );
+
   /// Stable panel order — settings provider priority only.
   /// Reliability scores drive resolve/probe order elsewhere, not this list.
   ///

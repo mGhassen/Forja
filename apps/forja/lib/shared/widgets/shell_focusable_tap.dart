@@ -134,6 +134,7 @@ Widget shellFocusableTap({
   ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
   bool showFocusBorder = false,
   bool showFocusFill = true,
+  double? focusBleedWidth,
   bool suppressInkHover = false,
 }) {
   final policy =
@@ -163,6 +164,7 @@ Widget shellFocusableTap({
       scaleOnFocus: scaleOnFocus,
       showFocusBorder: showFocusBorder,
       showFocusFill: showFocusFill,
+      focusBleedWidth: focusBleedWidth,
       autoFocus: autoFocus,
       onLeftEdge: resolvedLeftEdge,
       onUpEdge: onUpEdge,

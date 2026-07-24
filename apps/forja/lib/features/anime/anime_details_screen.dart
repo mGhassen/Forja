@@ -483,7 +483,12 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final canResumeSelected = _progress != null &&
         resumeEp == _selectedEpisode &&
         isInProgressResume(rawPosMs ?? 0, rawDurMs ?? 0);
-    final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
+    final showSeasonRail = _seasons.length > 1;
+    final heroHeight = DetailsTokens.heroHeight(
+      context,
+      showEpisodeRail: true,
+      showSeasonRail: showSeasonRail,
+    );
     final posMs = canResumeSelected ? rawPosMs : null;
     final durMs = canResumeSelected ? rawDurMs : null;
     final policy = ShellScope.inputPolicyOf(context);
@@ -594,6 +599,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             facts: _facts(a),
             height: heroHeight,
             pageBottomChild: episodePicker,
+            showSeasonRail: showSeasonRail,
             positionMs: posMs,
             durationMs: durMs,
             seriesProgress: _seriesProgressWidget(),

@@ -22,7 +22,7 @@
 | 1 | I103-T01 | Short/720p hero chrome floor + budget: keep title before dropping synopsis | ✅ |
 | 2 | I103-T02 | Episode cards show focus border (selected \|\| focused), no scale | ✅ |
 | 3 | I103-T03 | Anime details TV row sortOrder after seasons+episodes (no Related collision) | ✅ |
-| 4 | I103-T04 | Trailer cards: focus border, `scaleOnFocus: 1.0` (no lift) | ✅ |
+| 4 | I103-T04 | Trailer cards: same catalog focus as posters on desktop + TV (`showFocusBorder`, bleed for 200px thumb) | ✅ |
 
 ---
 
@@ -33,7 +33,7 @@
 | 1 | I103-A01 | Android TV anime details shows title (+ synopsis when space); Play stays visible | ⬜ |
 | 2 | I103-A02 | Focusing an episode shows a thumb border (same language as seasons) | ⬜ |
 | 3 | I103-A03 | Multi-season anime: D-pad ↓ from episodes lands on Related (no jump/skip) | ⬜ |
-| 4 | I103-A04 | Focusing a trailer card draws a border and does not scale | ⬜ |
+| 4 | I103-A04 | Android TV: focused trailer shows the same white focus ring as poster cards | ⬜ |
 
 ---
 

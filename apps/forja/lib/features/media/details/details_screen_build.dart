@@ -6,6 +6,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
   Widget _buildDetailsHero({
     required double heroHeight,
     bool showEpisodeRail = false,
+    bool showSeasonRail = false,
     Widget? pageBottomChild,
   }) {
     return MediaDetailsHero(
@@ -16,6 +17,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       progress: _s._lastProgress,
       height: heroHeight,
       pageBottomChild: pageBottomChild,
+      showSeasonRail: showSeasonRail,
       tagline: _s._tagline,
       certification: _s._certification,
       status: _s._status,
@@ -267,9 +269,11 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
 
   Widget _buildScrollLayout() {
     final showEpisodeRail = _s._movie.mediaType == 'tv' && !_s._isCollection;
+    final showSeasonRail = showEpisodeRail && _detailsPickerRowCount() > 1;
     final heroHeight = DetailsTokens.heroHeight(
       context,
       showEpisodeRail: showEpisodeRail,
+      showSeasonRail: showSeasonRail,
     );
     final showTvPicker = showEpisodeRail;
     final showCast = _s._castMembers.isNotEmpty;
@@ -339,6 +343,7 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
       hero: _buildDetailsHero(
         heroHeight: heroHeight,
         showEpisodeRail: showEpisodeRail,
+        showSeasonRail: showSeasonRail,
         pageBottomChild: showTvPicker
             ? MediaDetailsBody.padContent(
                 context,

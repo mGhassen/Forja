@@ -85,13 +85,17 @@ double shellMovieCardRowGap(BuildContext context) =>
         : 14.0;
 
 /// Horizontal inset so TV focus scale + border stay inside layout bounds.
+///
+/// Pass [cardWidth] for non-poster cards (e.g. trailer thumbs); defaults to
+/// [shellMovieCardWidth].
 double shellMovieCardFocusBleed(
   BuildContext context, {
   double scaleOnFocus = ShellTokens.focusActiveScale,
+  double? cardWidth,
 }) {
   const borderWidth = 1.5;
   if (scaleOnFocus <= 1.0) return borderWidth + 1;
-  final w = shellMovieCardWidth(context);
+  final w = cardWidth ?? shellMovieCardWidth(context);
   return w * (scaleOnFocus - 1) / 2 + borderWidth + 1;
 }
 

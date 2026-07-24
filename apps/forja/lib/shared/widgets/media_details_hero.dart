@@ -47,6 +47,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.bodyOverlap,
     this.pageBottomChild,
     this.seriesProgress,
+    this.showSeasonRail = false,
   });
 
   final Movie movie;
@@ -78,6 +79,8 @@ class MediaDetailsHero extends StatefulWidget {
   final Widget? pageBottomChild;
   /// Series / season aggregate watched label (details only).
   final Widget? seriesProgress;
+  /// When false, hero bleed matches episodes-only height (no season posters).
+  final bool showSeasonRail;
 
   @override
   State<MediaDetailsHero> createState() => _MediaDetailsHeroState();
@@ -647,8 +650,11 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
         DetailsTokens.heroHeight(
           context,
           showEpisodeRail: showEpisodeRail,
+          showSeasonRail: widget.showSeasonRail,
         );
-    final bleed = showEpisodeRail ? DetailsTokens.episodeBackdropBleed : 0.0;
+    final bleed = showEpisodeRail
+        ? DetailsTokens.episodeRailBleed(showSeasonRail: widget.showSeasonRail)
+        : 0.0;
     final totalH = h + bleed;
     final shellBg = _shellBg(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;

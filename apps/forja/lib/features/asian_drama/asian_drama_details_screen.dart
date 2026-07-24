@@ -329,7 +329,11 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     final canResumeSelected = _progress != null &&
         resumeEp == _selectedEpisode &&
         isInProgressResume(rawPosMs ?? 0, rawDurMs ?? 0);
-    final heroHeight = DetailsTokens.heroHeight(context, showEpisodeRail: true);
+    final heroHeight = DetailsTokens.heroHeight(
+      context,
+      showEpisodeRail: true,
+      showSeasonRail: false,
+    );
     final posMs = canResumeSelected ? rawPosMs : null;
     final durMs = canResumeSelected ? rawDurMs : null;
     final policy = ShellScope.inputPolicyOf(context);

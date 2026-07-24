@@ -27,6 +27,7 @@ class HubDetailsHero extends StatelessWidget {
     this.bodyOverlap,
     this.pageBottomChild,
     this.seriesProgress,
+    this.showSeasonRail = false,
   });
 
   final String backdropUrl;
@@ -44,6 +45,8 @@ class HubDetailsHero extends StatelessWidget {
   final double? bodyOverlap;
   final Widget? pageBottomChild;
   final Widget? seriesProgress;
+  /// When false, hero bleed matches episodes-only height (no season posters).
+  final bool showSeasonRail;
 
   @override
   Widget build(BuildContext context) {
@@ -52,9 +55,11 @@ class HubDetailsHero extends StatelessWidget {
         DetailsTokens.heroHeight(
           context,
           showEpisodeRail: showEpisodeRail,
+          showSeasonRail: showSeasonRail,
         );
-    final bleed =
-        showEpisodeRail ? DetailsTokens.episodeBackdropBleed : 0.0;
+    final bleed = showEpisodeRail
+        ? DetailsTokens.episodeRailBleed(showSeasonRail: showSeasonRail)
+        : 0.0;
     final totalH = h + bleed;
     final shellBg = AppTheme.bgDark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;

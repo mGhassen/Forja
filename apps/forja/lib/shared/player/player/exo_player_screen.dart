@@ -2,24 +2,28 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/playback/player_source_resolve.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/player_status_roulette.dart';
-import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
-import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
+import 'package:forja/shared/player/controls/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_provider_menu.dart';
+import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
+import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
+import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
-import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/player/controls/player_app_menu.dart';
-import 'package:forja/shared/player/controls/player_episode_panel.dart';
-import 'package:forja/shared/player/controls/player_popup_panel.dart';
-import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -28,6 +32,8 @@ import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+
+part 'exo_player_sources.dart';
 
 /// Android built-in player using native Media3 ExoPlayer.
 class ExoPlayerScreen extends StatefulWidget {
@@ -95,13 +101,16 @@ class ExoPlayerScreen extends StatefulWidget {
 }
 
 class _ExoPlayerScreenState extends State<ExoPlayerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, _ExoPlayerSources {
   static int _nextViewId = 1;
 
   late final int _viewId = _nextViewId++;
   late final PlayerStatusController _statusController = PlayerStatusController();
   late final ValueNotifier<bool> _isBufferingNotifier =
       ValueNotifier<bool>(false);
+  late final ValueNotifier<Map<String, List<StreamSource>>>
+      _providerSourcesCache =
+      ValueNotifier<Map<String, List<StreamSource>>>(const {});
 
   StreamSubscription<Map<dynamic, dynamic>>? _eventSub;
   Timer? _hideTimer;
@@ -135,6 +144,11 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   late List<_ExoSource> _sources;
   int _sourceIndex = 0;
+  String? _currentProvider;
+  String? _currentUrl;
+  List<StreamSource>? _currentSources;
+  final Map<String, int> _providerLoadGens = {};
+  int _fallbackGen = 0;
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'exo-player-back');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
@@ -192,10 +206,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimPlayFocus());
     }
     _sources = await _buildRankedSources();
+    _seedSourceSession(_sources);
+    if (mounted) setState(() {});
     _eventSub = ExoPlayerBridge.eventsFor(_viewId).listen(_onNativeEvent);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _disposed) return;
     await _openCurrentSource();
+
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       unawaited(_saveProgress());
     });
@@ -435,39 +452,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     } catch (_) {
       return _tracks;
     }
-  }
-
-  Future<void> _showSourceMenu(BuildContext anchorContext) async {
-    if (_sources.isEmpty) return;
-    await PlayerPopupPanel.show(
-      context: context,
-      title: 'Source',
-      leadingIcon: Icons.layers_outlined,
-      anchorContext: anchorContext,
-      child: ListView(
-        padding: const EdgeInsets.all(8),
-        shrinkWrap: true,
-        children: [
-          for (var i = 0; i < _sources.length; i++)
-            PlayerPopupListTile(
-              label: _sources[i].title,
-              selected: i == _sourceIndex,
-              status: i == _sourceIndex
-                  ? PlayerSourceStatus.active
-                  : PlayerSourceStatus.ready,
-              onTap: () async {
-                PlayerPopupPanel.dismiss();
-                if (i == _sourceIndex) return;
-                _sourceIndex = i;
-                await ExoPlayerBridge.stop(_viewId);
-                await _openCurrentSource();
-                if (_isTv) _claimPlayFocus();
-              },
-            ),
-        ],
-      ),
-    );
-    if (_isTv) _claimPlayFocus();
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
@@ -859,13 +843,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     return null;
   }
 
-  String _streamPickerLabel() {
-    if (_sources.isEmpty) return 'Source';
-    final title = _sources[_sourceIndex].title.trim();
-    return title.isEmpty ? 'Source' : title;
-  }
+  String _streamPickerLabel() => _activeServerLabel();
 
-  bool get _hasStreamPicker => _sources.length > 1;
+  bool get _hasStreamPicker => _hasStreamPickerSources;
 
   bool get _hasEpisodePicker {
     final isTv = widget.movie?.mediaType == 'tv';
@@ -876,11 +856,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   void dispose() {
     _disposed = true;
+    PlayerServerStreamDialog.dismiss();
     _playFocus.dispose();
     _backFocus.dispose();
     _tvKeyFocus.dispose();
     _statusController.dispose();
     _isBufferingNotifier.dispose();
+    _providerSourcesCache.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
@@ -952,7 +934,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                               unawaited(_openCurrentSource());
                             },
                             onStream: _hasStreamPicker
-                                ? () => unawaited(_showSourceMenu(context))
+                                ? () => unawaited(_showSourcesDialog(context))
                                 : null,
                           )
                         : null,
@@ -986,7 +968,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                             unawaited(_openCurrentSource());
                           },
                           onStream: _hasStreamPicker
-                              ? () => unawaited(_showSourceMenu(context))
+                              ? () => unawaited(_showSourcesDialog(context))
                               : null,
                         )
                       : null,
@@ -1166,7 +1148,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                                 iconSize: iconSz - 2,
                                 label: _streamPickerLabel(),
                                 onPressedWithContext: (ctx) =>
-                                    unawaited(_showSourceMenu(ctx)),
+                                    unawaited(_showSourcesDialog(ctx)),
                               ),
                             if (_hasEpisodePicker)
                               PlayerFlatIconButton(
@@ -1319,7 +1301,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                   size: btnSize,
                   iconSize: iconSz - 2,
                   label: _streamPickerLabel(),
-                  onPressedWithContext: (ctx) => unawaited(_showSourceMenu(ctx)),
+                  onPressedWithContext: (ctx) =>
+                      unawaited(_showSourcesDialog(ctx)),
                 ),
               ),
             if (_hasStreamPicker) const SizedBox(width: 2),

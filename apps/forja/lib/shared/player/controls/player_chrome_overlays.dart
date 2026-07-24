@@ -5,6 +5,7 @@ import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
@@ -180,6 +181,10 @@ bool dismissAnyPlayerChromeOverlay() {
     PlayerStreamMenu.dismiss();
     return true;
   }
+  if (PlayerServerStreamDialog.isShowing) {
+    PlayerServerStreamDialog.dismiss();
+    return true;
+  }
   if (PlayerPopupPanel.isShowing) {
     PlayerPopupPanel.dismiss();
     return true;
@@ -206,6 +211,7 @@ bool dismissAnyPlayerChromeOverlay() {
 /// True while a menu/panel overlay is mounted — seek bar must ignore taps.
 bool playerChromeOverlayBlocksSeek() {
   return PlayerStreamMenu.isShowing ||
+      PlayerServerStreamDialog.isShowing ||
       PlayerPopupPanel.isShowing ||
       PlayerEpisodePanel.isShowing ||
       PlayerHubEpisodePanel.isShowing ||
