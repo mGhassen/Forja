@@ -36,6 +36,7 @@ import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/catalog/tmdb_user_region.dart';
+import 'package:forja/shared/network/legacy_android_tls.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -119,6 +120,8 @@ Future<void> _runDesktopQuit() async {
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Before any CachedNetworkImage / TMDB poster fetch (Android ≤7.0 LE trust).
+  installLegacyAndroidTlsTrust();
   initTmdbUserRegion();
   EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
   MyListService().syncAddHandler = syncMyListAddToTrackers;

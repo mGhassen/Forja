@@ -128,6 +128,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [104-[open]-…](104-[open]-android-tv-live-matches-embed-dpad.md) | Android TV Live Matches embed Play/Back/player D-pad | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

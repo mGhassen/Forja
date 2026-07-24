@@ -65,6 +65,16 @@ class KissKhService {
 
   static String hostFromBaseUrl(String baseUrl) => normalizeMirrorId(baseUrl);
 
+  /// KissKH list thumbnails often use `media.themoviedb.org` (301 → image CDN).
+  /// Prefer `image.tmdb.org` so covers share Home's TMDB image TLS path.
+  static String normalizeCoverUrl(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return value;
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host != 'media.themoviedb.org') return value;
+    return uri.replace(host: 'image.tmdb.org').toString();
+  }
+
   /// Ask the Rust catalog engine to race API-compatible mirrors. The returned
   /// order keeps the first healthy mirror first and excludes unrelated sites
   /// that happen to use the KissKh name.
@@ -574,7 +584,7 @@ class KdramaCard {
     return KdramaCard(
       id: (json['id'] as num).toInt(),
       title: (json['title'] as String? ?? '').trim(),
-      cover: json['cover'] as String? ?? '',
+      cover: KissKhService.normalizeCoverUrl(json['cover'] as String? ?? ''),
       label: labelRaw == null || labelRaw.isEmpty ? null : labelRaw,
       episodesCount: (json['episodes_count'] as num?)?.toInt() ?? 0,
       year: json['year'] as String?,
@@ -750,7 +760,7 @@ class KdramaDetails {
       id: (json['id'] as num).toInt(),
       title: (json['title'] as String? ?? '').trim(),
       description: (json['description'] as String? ?? '').trim(),
-      cover: json['cover'] as String? ?? '',
+      cover: KissKhService.normalizeCoverUrl(json['cover'] as String? ?? ''),
       releaseDate: json['release_date'] as String? ?? '',
       country: json['country'] as String? ?? '',
       status: json['status'] as String? ?? '',

@@ -91,6 +91,23 @@ pub fn year_from_release(release_date: &str) -> Option<String> {
     None
 }
 
+/// KissKH thumbnails often point at `media.themoviedb.org`, which 301s to
+/// `image.tmdb.org` (same Let's Encrypt chain). Prefer the image CDN so covers
+/// share Home's TMDB image path (Android ≤7.0 trusts ISRG via app roots).
+pub fn normalize_cover_url(raw: &str) -> String {
+    let t = raw.trim();
+    if t.is_empty() {
+        return String::new();
+    }
+    if let Some(rest) = t.strip_prefix("https://media.themoviedb.org") {
+        return format!("https://image.tmdb.org{rest}");
+    }
+    if let Some(rest) = t.strip_prefix("http://media.themoviedb.org") {
+        return format!("https://image.tmdb.org{rest}");
+    }
+    t.to_string()
+}
+
 pub fn parse_card_list(body: &str) -> Vec<KdramaCard> {
     let raw: Value = match serde_json::from_str(body) {
         Ok(v) => v,
@@ -136,11 +153,11 @@ pub fn parse_card_list(body: &str) -> Vec<KdramaCard> {
         out.push(KdramaCard {
             id: id.unwrap(),
             title,
-            cover: obj
-                .get("thumbnail")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
+            cover: normalize_cover_url(
+                obj.get("thumbnail")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(""),
+            ),
             label,
             episodes_count: obj
                 .get("episodesCount")
@@ -370,11 +387,11 @@ pub fn get_details(id: i32) -> Result<KdramaDetails, String> {
             .unwrap_or("")
             .trim()
             .to_string(),
-        cover: obj
-            .get("thumbnail")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string(),
+        cover: normalize_cover_url(
+            obj.get("thumbnail")
+                .and_then(|v| v.as_str())
+                .unwrap_or(""),
+        ),
         release_date: obj
             .get("releaseDate")
             .and_then(|v| v.as_str())
@@ -553,6 +570,28 @@ mod tests {
     fn year_from_release_parses_prefix() {
         assert_eq!(year_from_release("2024-01-01"), Some("2024".into()));
         assert_eq!(year_from_release("abc"), None);
+    }
+
+    #[test]
+    fn normalize_cover_url_rewrites_media_tmdb_host() {
+        assert_eq!(
+            normalize_cover_url(
+                "https://media.themoviedb.org/t/p/w1000_and_h563_face/abc.jpg"
+            ),
+            "https://image.tmdb.org/t/p/w1000_and_h563_face/abc.jpg"
+        );
+        assert_eq!(
+            normalize_cover_url("https://serveproxy.com/?url=https://x/y.jpg"),
+            "https://serveproxy.com/?url=https://x/y.jpg"
+        );
+        assert_eq!(normalize_cover_url(""), "");
+    }
+
+    #[test]
+    fn parse_card_list_normalizes_media_tmdb_thumbnail() {
+        let raw = r#"[{"id":1,"title":"A","thumbnail":"https://media.themoviedb.org/t/p/w500/x.jpg","releaseDate":"2020"}]"#;
+        let cards = parse_card_list(raw);
+        assert_eq!(cards[0].cover, "https://image.tmdb.org/t/p/w500/x.jpg");
     }
 
     #[test]

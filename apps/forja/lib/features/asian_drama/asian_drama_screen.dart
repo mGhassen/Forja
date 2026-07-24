@@ -382,7 +382,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     return KdramaCard(
       id: (entry['id'] as num).toInt(),
       title: entry['title'] as String? ?? '',
-      cover: entry['cover'] as String? ?? '',
+      cover: KissKhService.normalizeCoverUrl(entry['cover'] as String? ?? ''),
     );
   }
 
