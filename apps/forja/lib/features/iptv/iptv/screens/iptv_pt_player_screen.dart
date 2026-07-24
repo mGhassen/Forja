@@ -13,6 +13,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
@@ -161,6 +162,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
+  final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
 
   bool _guideVisible = false;
   bool _searchVisible = false;
@@ -334,6 +336,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
     _playerTvKeyFocus.dispose();
+    _seekFocus.dispose();
     unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

@@ -110,6 +110,7 @@ class CustomSeekbar extends StatefulWidget {
   final FocusNode? focusNode;
   final FocusNode? tvFocusUpNode;
   final VoidCallback? onTvFocusUp;
+  final VoidCallback? onTvFocusDown;
   final Duration tvSeekStep;
 
   const CustomSeekbar({
@@ -124,6 +125,7 @@ class CustomSeekbar extends StatefulWidget {
     this.focusNode,
     this.tvFocusUpNode,
     this.onTvFocusUp,
+    this.onTvFocusDown,
     this.tvSeekStep = const Duration(seconds: 10),
   });
 
@@ -272,6 +274,10 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     }
     if (key == LogicalKeyboardKey.arrowDown) {
       if (_tvScrubArmed) return KeyEventResult.handled;
+      if (widget.onTvFocusDown != null) {
+        widget.onTvFocusDown!();
+        return KeyEventResult.handled;
+      }
       if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) {
         return KeyEventResult.handled;
       }

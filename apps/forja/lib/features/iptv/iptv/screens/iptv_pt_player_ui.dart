@@ -566,12 +566,22 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     final topCount = next;
     iptvSyncRow(rowId: topRowId, sortOrder: 0, itemCount: topCount);
 
-    void downToControls() => iptvFocusRowItem('iptv-player-controls', 0);
+    void downFromTop() {
+      if (_s._isVod && _s._seekFocus.canRequestFocus) {
+        _s._seekFocus.requestFocus();
+        return;
+      }
+      iptvFocusRowItem('iptv-player-controls', 0);
+    }
+
     int afterPlayerIdx() {
       if (statsIdx != null) return statsIdx;
       if (pipIdx != null) return pipIdx;
       return playerIdx;
     }
+
+    // First trailing control after back (source chip or Player).
+    final firstTrailingIdx = sourceIdx ?? playerIdx;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -592,9 +602,9 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               size: 22,
               tvRowId: topRowId,
               tvItemIndex: backIdx,
-              onDownEdge: downToControls,
+              onDownEdge: downFromTop,
               onRightEdge: topCount > 1
-                  ? () => iptvFocusRowItem(topRowId, 1)
+                  ? () => iptvFocusRowItem(topRowId, firstTrailingIdx)
                   : null,
             ),
             const SizedBox(width: 8),
@@ -634,7 +644,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                 onTap: _showSourcePicker,
                 tvRowId: topRowId,
                 tvItemIndex: sourceIdx!,
-                onDownEdge: downToControls,
+                onDownEdge: downFromTop,
                 onLeftEdge: () => iptvFocusRowItem(topRowId, backIdx),
                 onRightEdge: () => iptvFocusRowItem(topRowId, playerIdx),
               ),
@@ -645,7 +655,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               tooltip: 'Player',
               tvItemIndex: playerIdx,
               onPressedWithContext: (ctx) => unawaited(_showPlayerMenu(ctx)),
-              onDownEdge: downToControls,
+              onDownEdge: downFromTop,
               onLeftEdge: () => iptvFocusRowItem(
                 topRowId,
                 sourceIdx ?? backIdx,
@@ -660,7 +670,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                 tooltip: 'Stream stats',
                 tvItemIndex: statsIdx!,
                 onPressedWithContext: _showStatsMenu,
-                onDownEdge: downToControls,
+                onDownEdge: downFromTop,
                 onLeftEdge: () => iptvFocusRowItem(topRowId, playerIdx),
                 onRightEdge: pipIdx != null
                     ? () => iptvFocusRowItem(topRowId, pipIdx)
@@ -674,7 +684,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                 tooltip: 'Picture in Picture',
                 tvItemIndex: pipIdx!,
                 onPressed: () => unawaited(_togglePip()),
-                onDownEdge: downToControls,
+                onDownEdge: downFromTop,
                 onLeftEdge: () => iptvFocusRowItem(
                   topRowId,
                   statsIdx ?? playerIdx,
@@ -722,6 +732,86 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         ? _s._seekPreview
         : _s._position.inMilliseconds.toDouble().clamp(0.0, totalMs);
     final shownPos = Duration(milliseconds: currentMs.toInt());
+    final tv = iptvUseTvFocus(context);
+
+    Widget slider;
+    if (tv) {
+      slider = CustomSeekbar(
+        duration: _s._duration,
+        position: _s._isSeeking
+            ? Duration(milliseconds: _s._seekPreview.toInt())
+            : _s._position,
+        bufferedPosition: _s._buffered,
+        focusNode: _s._seekFocus,
+        tvFocusable: true,
+        onTvFocusUp: () => iptvFocusRowItem('iptv-player-top', 0),
+        onTvFocusDown: () => iptvFocusRowItem('iptv-player-controls', 0),
+        onDragStart: () {
+          setState(() {
+            _s._isSeeking = true;
+            _s._seekPreview = _s._position.inMilliseconds.toDouble();
+          });
+          _s._hideControlsTimer?.cancel();
+        },
+        onDragEnd: () {
+          if (!_s._isSeeking) return;
+          setState(() => _s._isSeeking = false);
+          _scheduleHideControls();
+        },
+        onSeek: (target) async {
+          setState(() {
+            _s._isSeeking = false;
+            _s._position = target;
+            _s._seekPreview = target.inMilliseconds.toDouble();
+          });
+          try {
+            await _s._engineSeek(target);
+          } catch (_) {}
+          _scheduleHideControls();
+        },
+      );
+    } else {
+      slider = SliderTheme(
+        data: IptvShellStyle.sliderTheme(context).copyWith(
+          activeTrackColor: ForjaShellColors.brandGreen,
+          thumbColor: ForjaShellColors.brandGreen,
+          overlayColor: ForjaShellColors.brandGreen.withValues(alpha: 0.2),
+          trackHeight: 3.5,
+          thumbShape: const RoundSliderThumbShape(
+            enabledThumbRadius: 7,
+            elevation: 3,
+          ),
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+          trackShape: const RoundedRectSliderTrackShape(),
+        ),
+        child: Slider(
+          value: currentMs.clamp(0.0, totalMs),
+          min: 0,
+          max: totalMs,
+          onChangeStart: (v) {
+            setState(() {
+              _s._isSeeking = true;
+              _s._seekPreview = v;
+            });
+            _s._hideControlsTimer?.cancel();
+          },
+          onChanged: (v) {
+            setState(() => _s._seekPreview = v);
+          },
+          onChangeEnd: (v) async {
+            final target = Duration(milliseconds: v.toInt());
+            setState(() {
+              _s._isSeeking = false;
+              _s._position = target;
+            });
+            try {
+              await _s._engineSeek(target);
+            } catch (_) {}
+            _scheduleHideControls();
+          },
+        ),
+      );
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -734,51 +824,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             _buildChannelLogo(compact),
             SizedBox(width: compact ? 10 : 16),
           ],
-          // Slider
-          Expanded(
-            child: SliderTheme(
-              data: IptvShellStyle.sliderTheme(context).copyWith(
-                activeTrackColor: ForjaShellColors.brandGreen,
-                thumbColor: ForjaShellColors.brandGreen,
-                overlayColor: ForjaShellColors.brandGreen.withValues(
-                  alpha: 0.2,
-                ),
-                trackHeight: 3.5,
-                thumbShape: const RoundSliderThumbShape(
-                  enabledThumbRadius: 7,
-                  elevation: 3,
-                ),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-                trackShape: const RoundedRectSliderTrackShape(),
-              ),
-              child: Slider(
-                value: currentMs.clamp(0.0, totalMs),
-                min: 0,
-                max: totalMs,
-                onChangeStart: (v) {
-                  setState(() {
-                    _s._isSeeking = true;
-                    _s._seekPreview = v;
-                  });
-                  _s._hideControlsTimer?.cancel();
-                },
-                onChanged: (v) {
-                  setState(() => _s._seekPreview = v);
-                },
-                onChangeEnd: (v) async {
-                  final target = Duration(milliseconds: v.toInt());
-                  setState(() {
-                    _s._isSeeking = false;
-                    _s._position = target;
-                  });
-                  try {
-                    await _s._engineSeek(target);
-                  } catch (_) {}
-                  _scheduleHideControls();
-                },
-              ),
-            ),
-          ),
+          Expanded(child: slider),
           // Current time
           SizedBox(
             width: compact ? 84 : 100,
@@ -808,7 +854,13 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         1; // fullscreen
     iptvSyncRow(rowId: rowId, sortOrder: 1, itemCount: expectedCount);
     var i = 0;
-    void upToTop() => iptvFocusRowItem('iptv-player-top', 0);
+    void upFromControls() {
+      if (_s._isVod && _s._seekFocus.canRequestFocus) {
+        _s._seekFocus.requestFocus();
+        return;
+      }
+      iptvFocusRowItem('iptv-player-top', 0);
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -822,7 +874,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             big: true,
             tvRowId: rowId,
             tvItemIndex: i++,
-            onUpEdge: upToTop,
+            onUpEdge: upFromControls,
             onTap: () async {
               if (_s._playing) {
                 _s._userPlayWhenReady = false;
@@ -841,6 +893,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             icon: Icons.replay_rounded,
             tvRowId: rowId,
             tvItemIndex: i++,
+            onUpEdge: upFromControls,
             onTap: () async {
               _s._retryAttempt = 0;
               await _s._openCurrent();
@@ -869,6 +922,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                             : Icons.volume_up_rounded),
                   tvRowId: rowId,
                   tvItemIndex: i++,
+                  onUpEdge: upFromControls,
                   onTap: _toggleMute,
                   onLongPress: () {
                     setState(
@@ -929,6 +983,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               icon: Icons.search_rounded,
               tvRowId: rowId,
               tvItemIndex: i++,
+              onUpEdge: upFromControls,
               onTap: _toggleSearch,
             ),
             const SizedBox(width: 14),
@@ -936,6 +991,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               icon: Icons.grid_view_rounded,
               tvRowId: rowId,
               tvItemIndex: i++,
+              onUpEdge: upFromControls,
               onTap: _toggleGuide,
             ),
             const SizedBox(width: 14),
@@ -945,6 +1001,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               icon: Icons.swap_horiz_rounded,
               tvRowId: rowId,
               tvItemIndex: i++,
+              onUpEdge: upFromControls,
               onTap: _showSourcePicker,
             ),
           if (_s._sources.length > 1) const SizedBox(width: 14),
@@ -954,6 +1011,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                 : Icons.fullscreen_rounded,
             tvRowId: rowId,
             tvItemIndex: i++,
+            onUpEdge: upFromControls,
             onTap: _s._toggleFullscreen,
           ),
         ],
