@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -138,6 +139,10 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
   Widget build(BuildContext context) {
     final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
     final physics = widget.physics ?? const BouncingScrollPhysics();
+    final tvFocus = ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
+        false;
+    final scrollCacheExtent =
+        tvFocus ? ScrollCacheExtent.pixels(2000) : null;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -162,6 +167,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
                         physics: physics,
                         padding: widget.padding,
                         itemCount: widget.itemCount,
+                        scrollCacheExtent: scrollCacheExtent,
                         separatorBuilder: widget.separatorBuilder!,
                         itemBuilder: widget.itemBuilder,
                       )
@@ -172,6 +178,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
                         physics: physics,
                         padding: widget.padding,
                         itemCount: widget.itemCount,
+                        scrollCacheExtent: scrollCacheExtent,
                         itemBuilder: widget.itemBuilder,
                       ),
               ),

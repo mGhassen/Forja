@@ -32,6 +32,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
   void _openServerPicker() {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -47,14 +48,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
   }
 
   Widget _serversTopBarButton() {
-    return ForjaShellChip(
-      label: 'Servers',
-      icon: Icons.dns_rounded,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      fontSize: 11.5,
-      listIndex: _LiveMatchesScreenState._topBarServersIndex,
-      tvTabId: _LiveMatchesScreenState._tabId,
-      tvRowId: _LiveMatchesScreenState._topBarRowId,
+    return _LiveMatchesServersTopBarButton(
       onTap: _openServerPicker,
       onLeftEdge: shellTvChipLeftEdge(
         context,
@@ -62,7 +56,8 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         rowId: _LiveMatchesScreenState._topBarRowId,
         index: _LiveMatchesScreenState._topBarServersIndex,
       ),
-      onRightEdge: () => _focusTopBarItem(_LiveMatchesScreenState._topBarRefreshIndex),
+      onRightEdge: () =>
+          _focusTopBarItem(_LiveMatchesScreenState._topBarRefreshIndex),
       onDownEdge: _topBarDownEdge,
     );
   }
@@ -79,9 +74,34 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     _restoreLiveMatchesTvFocus();
   }
 
+  /// First grid row ↑ → CDN mode chips (if present) → sport chips → Servers.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
-    return () => _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+    return _gridFocusUp;
+  }
+
+  void _gridFocusUp() {
+    final cdn = ShellTvFocusCoordinator.rowHandle(
+      _LiveMatchesScreenState._tabId,
+      _LiveMatchesScreenState._cdnModeRowId,
+    );
+    if (cdn != null && cdn.itemCount > 0) {
+      final idx = cdn.lastFocusedIndex.clamp(0, cdn.itemCount - 1);
+      ShellTvFocusCoordinator.focusRowItem(
+        _LiveMatchesScreenState._tabId,
+        _LiveMatchesScreenState._cdnModeRowId,
+        idx,
+      );
+      return;
+    }
+    if (_s._hasSportChips) {
+      ShellTvFocusCoordinator.focusFromResultsRowUp(
+        tabId: _LiveMatchesScreenState._tabId,
+        chipRowId: _LiveMatchesScreenState._chipRowId,
+      );
+      return;
+    }
+    _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
   }
 
   bool _focusGridItem(int index) {
@@ -136,12 +156,18 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       );
     }
     _s._timelineTvRowIds.clear();
+    if (_s._server != _LiveMatchesServer.cdnLive) {
+      shellTvUnregisterRow(
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: _LiveMatchesScreenState._cdnModeRowId,
+      );
+    }
     shellTvRegisterRow(
       tabId: _LiveMatchesScreenState._tabId,
       rowId: _LiveMatchesScreenState._gridRowId,
       sortOrder: _s._gridSortOrder,
       itemCount: itemCount,
-      onFocusUp: () => _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
+      onFocusUp: _gridFocusUp,
     );
   }
 

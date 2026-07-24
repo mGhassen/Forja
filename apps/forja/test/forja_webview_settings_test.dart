@@ -23,7 +23,31 @@ void main() {
       final patched = patchTvWebViewSettings(settings, isAndroidTv: true);
       expect(patched.hardwareAcceleration, isFalse);
       expect(patched.javaScriptEnabled, isTrue);
-      expect(identical(patched, settings), isFalse);
+      expect(identical(patched, settings), isTrue);
+    });
+
+    test('TV patch keeps contentBlockers (no copy/fromMap bang)', () {
+      final blockers = [
+        ContentBlocker(
+          trigger: ContentBlockerTrigger(
+            urlFilter: r'.*doubleclick\.net.*',
+          ),
+          action: ContentBlockerAction(
+            type: ContentBlockerActionType.BLOCK,
+          ),
+        ),
+      ];
+      final settings = InAppWebViewSettings(
+        javaScriptEnabled: true,
+        contentBlockers: blockers,
+        hardwareAcceleration: true,
+      );
+      final patched = patchTvWebViewSettings(settings, isAndroidTv: true);
+      expect(patched.hardwareAcceleration, isFalse);
+      expect(patched.contentBlockers, same(blockers));
+      // Must not throw — forjaWebViewSettings used to call settings.copy(),
+      // which deserializes blockers and bangs on Android.
+      expect(() => forjaWebViewSettings(patched), returnsNormally);
     });
   });
 

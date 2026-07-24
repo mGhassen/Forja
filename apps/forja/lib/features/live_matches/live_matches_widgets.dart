@@ -1,5 +1,178 @@
 part of 'live_matches_screen.dart';
 
+// ─── Top bar: Servers (green on TV focus) + Refresh (white on TV focus) ─────
+
+class _LiveMatchesServersTopBarButton extends StatefulWidget {
+  const _LiveMatchesServersTopBarButton({
+    required this.onTap,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onDownEdge,
+  });
+
+  final VoidCallback onTap;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_LiveMatchesServersTopBarButton> createState() =>
+      _LiveMatchesServersTopBarButtonState();
+}
+
+class _LiveMatchesServersTopBarButtonState
+    extends State<_LiveMatchesServersTopBarButton> {
+  static const _radius = 20.0;
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _tv =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  bool get _tvFocused => _tv && _focused;
+
+  bool get _active => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    final decoration = _tvFocused
+        ? iptvFocusButtonDecoration(
+            active: _active,
+            tvFocused: true,
+            borderRadius: _radius,
+          )
+        : shellChipDecoration(selected: false, radius: _radius);
+    final fg = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : cinematic.textSecondary;
+
+    final chip = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      decoration: decoration,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.dns_rounded, size: 14, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            'Servers',
+            style: TextStyle(
+              color: fg,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!_tv) {
+      return shellRoundedInkHost(
+        radius: _radius,
+        onTap: widget.onTap,
+        child: chip,
+      );
+    }
+
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: _radius,
+      scaleOnFocus: 1.0,
+      suppressInkHover: true,
+      listIndex: _LiveMatchesScreenState._topBarServersIndex,
+      tvTabId: _LiveMatchesScreenState._tabId,
+      tvRowId: _LiveMatchesScreenState._topBarRowId,
+      tvItemIndex: _LiveMatchesScreenState._topBarServersIndex,
+      tvZone: ShellTvZone.topBar,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: chip,
+    );
+  }
+}
+
+class _LiveMatchesRefreshTopBarButton extends StatefulWidget {
+  const _LiveMatchesRefreshTopBarButton({
+    required this.focusNode,
+    required this.onTap,
+    this.onLeftEdge,
+    this.onDownEdge,
+  });
+
+  final FocusNode focusNode;
+  final VoidCallback onTap;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_LiveMatchesRefreshTopBarButton> createState() =>
+      _LiveMatchesRefreshTopBarButtonState();
+}
+
+class _LiveMatchesRefreshTopBarButtonState
+    extends State<_LiveMatchesRefreshTopBarButton> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = _active ? Colors.white : Colors.white70;
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 24,
+      scaleOnFocus: 1.0,
+      suppressInkHover: true,
+      focusNode: widget.focusNode,
+      tvTabId: _LiveMatchesScreenState._tabId,
+      tvRowId: _LiveMatchesScreenState._topBarRowId,
+      tvItemIndex: _LiveMatchesScreenState._topBarRefreshIndex,
+      tvZone: ShellTvZone.topBar,
+      onDownEdge: widget.onDownEdge,
+      onLeftEdge: widget.onLeftEdge,
+      // TV has no view toggle — trap right at Refresh.
+      onRightEdge: () {},
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        if (focused) {
+          ShellTvFocusCoordinator.saveFocus(
+            _LiveMatchesScreenState._tabId,
+            ShellTvFocusMemory(
+              zone: ShellTvZone.topBar,
+              node: widget.focusNode,
+            ),
+          );
+        }
+      },
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: Tooltip(
+        message: 'Refresh',
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(Icons.refresh_rounded, color: fg),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Server picker sheet ────────────────────────────────────────────────────
 
 class _LiveMatchesServerSheet extends StatefulWidget {
@@ -46,6 +219,7 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   @override
   Widget build(BuildContext context) {
     final servers = _servers;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (tv) {
       shellTvRegisterRow(
@@ -58,45 +232,50 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 20),
+              const Text(
+                'Servers',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Choose a live match source:',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              for (var i = 0; i < servers.length; i++)
+                _LiveMatchesServerSheetOption(
+                  server: servers[i],
+                  current: widget.current,
+                  onSelected: widget.onSelected,
+                  tvItemIndex: i,
+                  tvRowId: _rowId,
+                  focusNode: i == 0 ? _firstFocus : null,
+                ),
+            ],
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'Servers',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Choose a live match source:',
-            style: TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < servers.length; i++)
-            _LiveMatchesServerSheetOption(
-              server: servers[i],
-              current: widget.current,
-              onSelected: widget.onSelected,
-              tvItemIndex: i,
-              tvRowId: _rowId,
-              focusNode: i == 0 ? _firstFocus : null,
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -279,12 +458,16 @@ class _CdnChannelCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   const _CdnChannelCard({
     required this.channel,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   @override
@@ -312,6 +495,8 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       onUpEdge: widget.onUpEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       tvTabId: 'live_matches',
       tvRowId: 'grid',
       tvZone: ShellTvZone.grid,
@@ -416,6 +601,8 @@ class _CdnSportCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
   final String tvRowId;
@@ -426,6 +613,8 @@ class _CdnSportCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
     this.forceActive = false,
     this.onHoverChanged,
     this.tvRowId = 'grid',
@@ -608,6 +797,8 @@ class _CdnSportCardState extends State<_CdnSportCard> {
           widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
       listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       tvTabId: 'live_matches',
       tvRowId: widget.tvRowId,
       tvZone: widget.tvZone,
@@ -660,6 +851,7 @@ class _CdnChannelSheetState extends State<_CdnChannelSheet> {
   @override
   Widget build(BuildContext context) {
     final channels = widget.event.channels;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (tv) {
       shellTvRegisterRow(
@@ -672,86 +864,91 @@ class _CdnChannelSheetState extends State<_CdnChannelSheet> {
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            '${widget.event.homeTeam} vs ${widget.event.awayTeam}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Choose a channel:',
-            style: TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < channels.length; i++)
-            shellFocusableTap(
-              context: context,
-              onTap: () => widget.onChannelSelected(channels[i]),
-              borderRadius: 12,
-              navLeftAlways: true,
-              focusNode: i == 0 ? _firstFocus : null,
-              listIndex: i,
-              tvTabId: 'live_matches',
-              tvRowId: _rowId,
-              tvItemIndex: i,
-              tvZone: ShellTvZone.row,
-              child: ListTile(
-                leading: channels[i].image.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: channels[i].image,
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.contain,
-                        errorWidget: (_, _, _) => Icon(
-                          Icons.tv_rounded,
-                          color: ForjaShellColors.sectionAccent,
-                        ),
-                      )
-                    : Icon(
-                        Icons.tv_rounded,
-                        color: ForjaShellColors.sectionAccent,
-                      ),
-                title: Text(
-                  channels[i].name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                subtitle: channels[i].viewers > 0
-                    ? Text(
-                        '${channels[i].viewers} viewers',
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11,
-                        ),
-                      )
-                    : null,
-                trailing: const Icon(
-                  Icons.chevron_right,
-                  color: Colors.white38,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '${widget.event.homeTeam} vs ${widget.event.awayTeam}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-        ],
+              const SizedBox(height: 6),
+              const Text(
+                'Choose a channel:',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              for (var i = 0; i < channels.length; i++)
+                shellFocusableTap(
+                  context: context,
+                  onTap: () => widget.onChannelSelected(channels[i]),
+                  borderRadius: 12,
+                  navLeftAlways: true,
+                  focusNode: i == 0 ? _firstFocus : null,
+                  listIndex: i,
+                  tvTabId: 'live_matches',
+                  tvRowId: _rowId,
+                  tvItemIndex: i,
+                  tvZone: ShellTvZone.row,
+                  child: ListTile(
+                    leading: channels[i].image.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: channels[i].image,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.contain,
+                            errorWidget: (_, _, _) => Icon(
+                              Icons.tv_rounded,
+                              color: ForjaShellColors.sectionAccent,
+                            ),
+                          )
+                        : Icon(
+                            Icons.tv_rounded,
+                            color: ForjaShellColors.sectionAccent,
+                          ),
+                    title: Text(
+                      channels[i].name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: channels[i].viewers > 0
+                        ? Text(
+                            '${channels[i].viewers} viewers',
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                            ),
+                          )
+                        : null,
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white38,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -783,11 +980,18 @@ class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
 
 class _LiveMatchesEmbedPlayerScreenState
     extends State<_LiveMatchesEmbedPlayerScreen> {
+  /// IPTV chrome helpers ([iptvTap] / [IptvRoundIcon]) register under this tab.
+  static const _tvTabId = 'iptv';
+  static const _topRowId = 'live-embed-top';
+  static const _controlsRowId = 'live-embed-controls';
+
   bool _loading = true;
   bool _isFullscreen = false;
   bool _ready = false;
   bool _mediaStopped = false;
   bool _exiting = false;
+  bool _playing = false;
+  bool _muted = false;
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
   InAppWebViewController? _webViewController;
@@ -801,15 +1005,58 @@ class _LiveMatchesEmbedPlayerScreenState
   late final UnmodifiableListView<UserScript> _initialUserScripts;
 
   final FocusNode _backFocusNode = FocusNode(debugLabel: 'live-embed-back');
+  final FocusNode _playFocusNode = FocusNode(debugLabel: 'live-embed-play');
 
   bool _tvFocus() =>
       ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
 
-  /// The embed is a native WebView platform view that grabs D-pad input on TV.
-  /// Pull focus back to the Flutter back button so it stays reachable.
-  void _focusBack() {
+  void _syncTvRows() {
+    if (!_tvFocus()) return;
+    iptvSyncRow(rowId: _topRowId, sortOrder: 0, itemCount: 1);
+    iptvSyncRow(rowId: _controlsRowId, sortOrder: 1, itemCount: 3);
+  }
+
+  bool _focusEmbedRow(String rowId, [int index = 0]) {
+    return iptvFocusRowItem(rowId, index);
+  }
+
+  /// WebView platform views steal D-pad on TV — keep focus on Flutter chrome.
+  /// Prefer Play so Select starts playback; fall back to Back.
+  void _focusTvChrome({bool preferPlay = true}) {
     if (!mounted || !_tvFocus() || _isFullscreen) return;
+    _syncTvRows();
+    if (preferPlay) {
+      if (_focusEmbedRow(_controlsRowId, 0)) return;
+      if (_playFocusNode.canRequestFocus) {
+        _playFocusNode.requestFocus();
+        return;
+      }
+    }
+    if (_focusEmbedRow(_topRowId, 0)) return;
     if (_backFocusNode.canRequestFocus) _backFocusNode.requestFocus();
+  }
+
+  Future<void> _runEmbedMediaCmd(String cmd) async {
+    final ctrl = _webViewController;
+    if (ctrl == null || _mediaStopped || _exiting) return;
+    try {
+      await ctrl.evaluateJavascript(source: _embedMediaCommandJs(cmd));
+    } catch (_) {}
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_playing) {
+      await _runEmbedMediaCmd('pause');
+      if (mounted) setState(() => _playing = false);
+    } else {
+      await _runEmbedMediaCmd('play');
+      if (mounted) setState(() => _playing = true);
+    }
+  }
+
+  Future<void> _toggleMute() async {
+    await _runEmbedMediaCmd('mute');
+    if (mounted) setState(() => _muted = !_muted);
   }
 
   void _clearLoading() {
@@ -833,6 +1080,11 @@ class _LiveMatchesEmbedPlayerScreenState
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
     _initialUserScripts = UnmodifiableListView([
+      UserScript(
+        source: _embedMediaControlUserScript,
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+        forMainFrameOnly: false,
+      ),
       UserScript(
         source: _autoplayJs,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
@@ -881,7 +1133,10 @@ class _LiveMatchesEmbedPlayerScreenState
     // A long center spinner sits on top of the embed play button.
     _loadingWatchdog = Timer(const Duration(seconds: 2), _clearLoading);
     HardwareKeyboard.instance.addHandler(_handleEmbedKeyEvent);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusBack());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncTvRows();
+      _focusTvChrome(preferPlay: true);
+    });
   }
 
   Future<void> _enterFullscreen() async {
@@ -913,7 +1168,12 @@ class _LiveMatchesEmbedPlayerScreenState
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await SystemChrome.setPreferredOrientations([]);
     }
-    if (mounted) setState(() => _isFullscreen = false);
+    if (mounted) {
+      setState(() => _isFullscreen = false);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _focusTvChrome(preferPlay: true),
+      );
+    }
   }
 
   Future<void> _toggleFullscreen() async {
@@ -986,7 +1246,10 @@ class _LiveMatchesEmbedPlayerScreenState
     ShellBus.leavePlayerSurface();
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
+    shellTvUnregisterRow(tabId: _tvTabId, rowId: _topRowId);
+    shellTvUnregisterRow(tabId: _tvTabId, rowId: _controlsRowId);
     _backFocusNode.dispose();
+    _playFocusNode.dispose();
     HardwareKeyboard.instance.removeHandler(_handleEmbedKeyEvent);
     // Route may dispose without going through [_exitPlayer] (e.g. pushReplacement).
     unawaited(_stopEmbedMedia());
@@ -1010,7 +1273,15 @@ class _LiveMatchesEmbedPlayerScreenState
 
   bool _handleEmbedKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
-    if (event.logicalKey != LogicalKeyboardKey.escape) return false;
+    if (event.logicalKey != LogicalKeyboardKey.escape &&
+        event.logicalKey != LogicalKeyboardKey.goBack &&
+        event.logicalKey != LogicalKeyboardKey.browserBack) {
+      return false;
+    }
+    if (_isFullscreen) {
+      unawaited(_exitFullscreen());
+      return true;
+    }
     unawaited(_exitPlayer());
     return true;
   }
@@ -1042,6 +1313,8 @@ class _LiveMatchesEmbedPlayerScreenState
   }
 
   Widget _buildTopBar() {
+    final tv = _tvFocus();
+    if (tv) _syncTvRows();
     final bar = Material(
       color: Colors.transparent,
       child: Padding(
@@ -1058,6 +1331,9 @@ class _LiveMatchesEmbedPlayerScreenState
                 color: Colors.white,
                 size: 26,
                 focusNode: _backFocusNode,
+                tvRowId: _topRowId,
+                tvItemIndex: 0,
+                onDownEdge: () => _focusEmbedRow(_controlsRowId, 0),
               ),
             ),
             const SizedBox(width: 8),
@@ -1089,10 +1365,57 @@ class _LiveMatchesEmbedPlayerScreenState
         ),
       ),
     );
-    if (!_tvFocus()) return bar;
+    if (!tv) return bar;
     return FocusScope(
       debugLabel: 'live-embed-chrome',
       child: FocusTraversalGroup(child: bar),
+    );
+  }
+
+  /// TV-only bottom chrome: Play/Pause · Mute · Fullscreen (WebView steals D-pad).
+  Widget _buildTvControls() {
+    _syncTvRows();
+    void upToBack() => _focusEmbedRow(_topRowId, 0);
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+        child: Row(
+          children: [
+            IptvRoundIcon(
+              icon: _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              big: true,
+              focusNode: _playFocusNode,
+              tvRowId: _controlsRowId,
+              tvItemIndex: 0,
+              onUpEdge: upToBack,
+              onRightEdge: () => _focusEmbedRow(_controlsRowId, 1),
+              onTap: () => unawaited(_togglePlayPause()),
+            ),
+            const SizedBox(width: 14),
+            IptvRoundIcon(
+              icon: _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              tvRowId: _controlsRowId,
+              tvItemIndex: 1,
+              onUpEdge: upToBack,
+              onLeftEdge: () => _focusEmbedRow(_controlsRowId, 0),
+              onRightEdge: () => _focusEmbedRow(_controlsRowId, 2),
+              onTap: () => unawaited(_toggleMute()),
+            ),
+            const SizedBox(width: 14),
+            IptvRoundIcon(
+              icon: _isFullscreen
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.fullscreen_rounded,
+              tvRowId: _controlsRowId,
+              tvItemIndex: 2,
+              onUpEdge: upToBack,
+              onLeftEdge: () => _focusEmbedRow(_controlsRowId, 1),
+              onTap: () => unawaited(_toggleFullscreen()),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1121,6 +1444,10 @@ class _LiveMatchesEmbedPlayerScreenState
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        if (_isFullscreen) {
+          await _exitFullscreen();
+          return;
+        }
         await _exitPlayer();
       },
       child: Scaffold(
@@ -1168,13 +1495,17 @@ class _LiveMatchesEmbedPlayerScreenState
                       _loadingWatchdog?.cancel();
                       _clearLoading();
                       try {
+                        await ctrl.evaluateJavascript(
+                          source: _embedMediaControlUserScript,
+                        );
                         await ctrl.evaluateJavascript(source: _autoplayJs);
                         await ctrl.evaluateJavascript(
                           source: _dblclickFullscreenJs,
                         );
+                        if (mounted) setState(() => _playing = true);
                       } catch (_) {}
                       WidgetsBinding.instance.addPostFrameCallback(
-                        (_) => _focusBack(),
+                        (_) => _focusTvChrome(preferPlay: true),
                       );
                     },
                     onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
@@ -1252,6 +1583,7 @@ class _LiveMatchesEmbedPlayerScreenState
                 ],
               ),
             ),
+            if (_tvFocus() && !_isFullscreen) _buildTvControls(),
           ],
         ),
       ),
@@ -1737,6 +2069,8 @@ class _StreamedMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
   final String tvRowId;
@@ -1748,6 +2082,8 @@ class _StreamedMatchCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
     this.forceActive = false,
     this.onHoverChanged,
     this.tvRowId = 'grid',
@@ -1927,6 +2263,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
       listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       tvTabId: 'live_matches',
       tvRowId: widget.tvRowId,
       tvZone: widget.tvZone,
@@ -1949,6 +2287,8 @@ class _DamiTvMatchCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final bool? playableOverride;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
@@ -1960,6 +2300,8 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.gridIndex,
     this.gridColumns,
     this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
     this.playableOverride,
     this.forceActive = false,
     this.onHoverChanged,
@@ -2187,6 +2529,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
           widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
       listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       tvTabId: 'live_matches',
       tvRowId: widget.tvRowId,
       tvZone: widget.tvZone,

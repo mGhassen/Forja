@@ -793,7 +793,9 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: bleed + 72 + bottomInset,
+              bottom: bleed +
+                  DetailsTokens.heroContentToRailGap(h) +
+                  bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Align(
@@ -1249,8 +1251,9 @@ class _HeroMainColumn extends StatelessWidget {
     var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
-    // Actions + progress under synopsis. Keep a fixed 3-line overview + Read
-    // More; drop secondary chrome before synopsis when the episode rail is tight.
+    // Actions + progress under synopsis. Keep title + Play first; drop
+    // secondary chrome, then synopsis, before shrinking the title. Never zero
+    // the title while synopsis is still showing (720p ATV / short phones).
     double? metaBudget;
     if (bounded) {
       metaBudget = (maxHeight! -
@@ -1271,11 +1274,28 @@ class _HeroMainColumn extends StatelessWidget {
           ) >
           metaBudget!;
 
+      void refreshBudget() {
+        metaBudget = (maxHeight! -
+                _footerReserve(
+                  showProgress: showProgress,
+                  showSeriesProgress: showSeriesProgress,
+                ))
+            .clamp(0.0, maxHeight!);
+      }
+
       if (overBudget()) showDirector = false;
       if (overBudget()) showProviders = false;
       if (overBudget()) showGenres = false;
       if (overBudget()) showMetaLine = false;
-      // Keep progress when possible — Resume CTA depends on the same data.
+      if (overBudget()) showOverview = false;
+      if (overBudget() && showSeriesProgress) {
+        showSeriesProgress = false;
+        refreshBudget();
+      }
+      if (overBudget() && showProgress) {
+        showProgress = false;
+        refreshBudget();
+      }
       if (overBudget()) {
         final rest = _metaUsedHeight(
           showDirector: showDirector,
@@ -1285,31 +1305,10 @@ class _HeroMainColumn extends StatelessWidget {
           showMetaLine: showMetaLine,
           titleHeight: 0,
         );
-        titleHeight = (metaBudget - rest).clamp(0.0, _titleBlockHeight);
+        titleHeight = (metaBudget! - rest).clamp(0.0, _titleBlockHeight);
         if (titleHeight < _titleMinHeight) {
-          titleHeight = 0;
-          showDirector = false;
-          showGenres = false;
-          showProviders = false;
-          showMetaLine = false;
-          if (showSeriesProgress) {
-            showSeriesProgress = false;
-            metaBudget = (maxHeight! -
-                    _footerReserve(
-                      showProgress: showProgress,
-                      showSeriesProgress: false,
-                    ))
-                .clamp(0.0, maxHeight!);
-          }
-          if (showProgress) {
-            showProgress = false;
-            metaBudget = (maxHeight! -
-                    _footerReserve(
-                      showProgress: false,
-                      showSeriesProgress: showSeriesProgress,
-                    ))
-                .clamp(0.0, maxHeight!);
-          }
+          titleHeight = metaBudget!.clamp(0.0, _titleBlockHeight);
+          if (titleHeight < _titleMinHeight) titleHeight = 0;
         }
       }
     }

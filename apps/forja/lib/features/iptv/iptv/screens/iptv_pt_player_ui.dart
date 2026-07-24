@@ -3,6 +3,15 @@ part of 'iptv_pt_player_screen.dart';
 mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   _IptvPtPlayerScreenState get _s => this as _IptvPtPlayerScreenState;
 
+  void _closeGuideAndFocusPlayer() {
+    setState(() {
+      _s._guideVisible = false;
+      _s._controlsVisible = true;
+    });
+    _scheduleHideControls();
+    _focusPlayerChrome();
+  }
+
   void _toggleGuide() {
     if (widget.channelGuide == null) return;
     setState(() {
@@ -13,6 +22,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         _s._hideControlsTimer?.cancel();
       } else {
         _scheduleHideControls();
+        _focusPlayerChrome();
       }
     });
   }
@@ -274,7 +284,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                       setState(() => _s._selectedGroupId = id);
                     },
                     onChannelSelected: _s._switchChannel,
-                    onClose: () => setState(() => _s._guideVisible = false),
+                    onClose: _closeGuideAndFocusPlayer,
                   ),
                 if (!_s._isPipMode && epgFuture != null)
                   Positioned(

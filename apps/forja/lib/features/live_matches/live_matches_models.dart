@@ -584,7 +584,7 @@ const _autoplayJs = r'''
         var nodes = document.querySelectorAll(sels[i]);
         for (var j = 0; j < nodes.length; j++) {
           var el = nodes[j];
-          if (el.tagName === 'VIDEO') {
+          if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
             el.setAttribute('autoplay', '');
             el.muted = false;
             var p = el.play();
@@ -605,6 +605,115 @@ const _autoplayJs = r'''
   setTimeout(clickPlay, 1500);
 })();
 ''';
+
+/// Installs play / pause / mute handlers in every frame (wrapper + embed iframe)
+/// and bridges Flutter chrome via `postMessage({__forjaMedia: 'play'|…})`.
+const _embedMediaControlUserScript = r'''
+(function () {
+  if (window.__forjaMediaCtrl) return;
+  window.__forjaMediaCtrl = true;
+
+  function clickPlay() {
+    var sels = [
+      'video',
+      'audio',
+      '.vjs-big-play-button',
+      '.jw-icon-display',
+      '.plyr__control--overlaid',
+      'button[aria-label*="Play"]',
+      'button[title*="Play"]',
+      '.play-button',
+      '#big_play_button'
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      try {
+        var nodes = document.querySelectorAll(sels[i]);
+        for (var j = 0; j < nodes.length; j++) {
+          var el = nodes[j];
+          if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+            el.setAttribute('autoplay', '');
+            el.muted = false;
+            var p = el.play();
+            if (p && p.catch) {
+              p.catch(function () {
+                el.muted = true;
+                el.play().catch(function () {});
+              });
+            }
+          } else if (typeof el.click === 'function') {
+            el.click();
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  function pauseAll() {
+    try {
+      document.querySelectorAll('video,audio').forEach(function (el) {
+        try { el.pause(); } catch (e) {}
+      });
+    } catch (_) {}
+  }
+
+  function toggleMute() {
+    try {
+      document.querySelectorAll('video,audio').forEach(function (el) {
+        try { el.muted = !el.muted; } catch (e) {}
+      });
+    } catch (_) {}
+  }
+
+  function dispatchToIframes(cmd) {
+    try {
+      document.querySelectorAll('iframe').forEach(function (frame) {
+        try {
+          frame.contentWindow.postMessage({ __forjaMedia: cmd }, '*');
+        } catch (e) {}
+      });
+    } catch (_) {}
+  }
+
+  function handle(cmd) {
+    if (cmd === 'play') clickPlay();
+    else if (cmd === 'pause') pauseAll();
+    else if (cmd === 'mute') toggleMute();
+    dispatchToIframes(cmd);
+  }
+
+  window.__forjaMedia = handle;
+  window.addEventListener('message', function (ev) {
+    try {
+      var d = ev && ev.data;
+      if (!d || typeof d !== 'object' || !d.__forjaMedia) return;
+      handle(d.__forjaMedia);
+    } catch (_) {}
+  });
+})();
+''';
+
+/// Main-frame entry: run media cmd in this document and fan out to iframes.
+String _embedMediaCommandJs(String cmd) {
+  final safe = cmd.replaceAll("'", '');
+  return '''
+(function () {
+  var cmd = '$safe';
+  try {
+    if (typeof window.__forjaMedia === 'function') {
+      window.__forjaMedia(cmd);
+      return;
+    }
+  } catch (_) {}
+  try {
+    document.querySelectorAll('iframe').forEach(function (frame) {
+      try {
+        frame.contentWindow.postMessage({ __forjaMedia: cmd }, '*');
+      } catch (e) {}
+    });
+  } catch (_) {}
+})();
+''';
+}
 
 /// Pause + tear down HTML media before the Flutter route pops. Parent-frame
 /// `video`/`audio` alone is not enough for the iframe wrapper — blank iframes too.

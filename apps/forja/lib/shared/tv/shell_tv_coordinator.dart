@@ -339,15 +339,19 @@ abstract final class ShellTvFocusCoordinator {
       }
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      attempt();
-      if (!_pageHasFocus()) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _releaseNavFocus();
-          attempt();
-        });
-      }
-    });
+    // Two post-frame passes — ExcludeFocus on the tab stack lifts in the same
+    // frame as overlay pop / rail RIGHT; hero Play may not be focusable yet.
+    void scheduleAttempt({required int remaining}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _releaseNavFocus();
+        attempt();
+        if (!_pageHasFocus() && remaining > 0) {
+          scheduleAttempt(remaining: remaining - 1);
+        }
+      });
+    }
+
+    scheduleAttempt(remaining: 2);
   }
 
   static void _releaseNavFocus() {
@@ -363,6 +367,11 @@ abstract final class ShellTvFocusCoordinator {
     }
     final primary = FocusManager.instance.primaryFocus;
     if (primary == null) return false;
+    // Empty FocusScope (shell overlay root / ModalScope) is not page focus —
+    // treating it as success left Anime/Home stuck after nav RIGHT.
+    if (primary is FocusScopeNode && primary.focusedChild == null) {
+      return false;
+    }
     final ctx = primary.context;
     return ctx != null && ctx.mounted;
   }
@@ -557,19 +566,24 @@ abstract final class ShellTvFocusCoordinator {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;
     final clamped = index.clamp(0, handle.itemCount - 1);
-    final node = handle.nodeAt(clamped);
-    if (node == null || !node.canRequestFocus) return false;
-    handle.lastFocusedIndex = clamped;
-    saveFocus(
-      tabId,
-      ShellTvFocusMemory(
-        zone: ShellTvZone.row,
-        rowId: rowId,
-        itemIndex: clamped,
-        node: node,
-      ),
-    );
-    return _request(node);
+    // Prefer requested index, then 0 — lazy ListViews often lack off-screen nodes.
+    for (final candidate in {clamped, 0}) {
+      if (candidate < 0 || candidate >= handle.itemCount) continue;
+      final node = handle.nodeAt(candidate);
+      if (node == null || !node.canRequestFocus) continue;
+      handle.lastFocusedIndex = candidate;
+      saveFocus(
+        tabId,
+        ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: rowId,
+          itemIndex: candidate,
+          node: node,
+        ),
+      );
+      if (_request(node)) return true;
+    }
+    return false;
   }
 
   /// Focus a row item, or the next registered row below when empty/unavailable.
@@ -696,25 +710,40 @@ abstract final class ShellTvFocusCoordinator {
       if (handle.isFirstRow) {
         return focusHero(revealFull: true, tabId: tabId);
       }
-      final prev = _prevRow(tabId, handle.sortOrder);
-      if (prev == null) return false;
-      if (prev.sortOrder < 0) {
-        // Catalog → hero action row (Play / icons), not the gallery plane.
-        final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+      // Walk upward past rows whose items are not built / not focusable yet.
+      var cursor = handle.sortOrder;
+      while (true) {
+        final prev = _prevRow(tabId, cursor);
+        if (prev == null) {
+          return focusHero(revealFull: true, tabId: tabId);
+        }
+        if (prev.sortOrder < 0) {
+          final target =
+              prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+          if (focusRowItem(tabId, prev.rowId, target)) return true;
+          return focusHero(revealFull: true, tabId: tabId);
+        }
+        final target =
+            prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
         if (focusRowItem(tabId, prev.rowId, target)) return true;
-        return focusHero(revealFull: true, tabId: tabId);
+        cursor = prev.sortOrder;
       }
-      final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
-      return focusRowItem(tabId, prev.rowId, target);
     }
 
-    if (handle.isLastRow) {
-      return true; // trap — handled, no move
+    if (handle.onFocusDown != null) {
+      handle.onFocusDown!();
+      return true;
     }
-    final next = _nextRow(tabId, handle.sortOrder);
-    if (next == null) return true;
-    final target = next.lastFocusedIndex.clamp(0, next.itemCount - 1);
-    return focusRowItem(tabId, next.rowId, target);
+
+    // Walk downward past unbuilt / empty rows instead of swallowing the key.
+    var cursor = handle.sortOrder;
+    while (true) {
+      final next = _nextRow(tabId, cursor);
+      if (next == null) return true; // trap at last reachable row
+      final target = next.lastFocusedIndex.clamp(0, next.itemCount - 1);
+      if (focusRowItem(tabId, next.rowId, target)) return true;
+      cursor = next.sortOrder;
+    }
   }
 
   static bool _request(FocusNode node) {
@@ -928,7 +957,10 @@ class ShellTvFocusMeta {
       final idx = itemIndex!;
       final cols = gridColumns!;
       return () {
+        // Last column of a full row, or last item of an incomplete last row.
         if (idx % cols >= cols - 1) return true;
+        final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+        if (handle != null && idx >= handle.itemCount - 1) return true;
         return ShellTvFocusCoordinator.moveInGrid(
           tabId: tid,
           rowId: rid,

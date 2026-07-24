@@ -8,9 +8,19 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
 
   bool get _hasSportChips => _s._tabController != null && _s._sports.isNotEmpty;
 
+  bool get _hasCdnModeChips => _s._server == _LiveMatchesServer.cdnLive;
+
   int get _chipSortOrder => 1;
 
-  int get _gridSortOrder => _hasSportChips ? 2 : 1;
+  /// CDN Channels/Sports sit between sport chips and the card grid on TV.
+  int get _cdnModeSortOrder => _hasSportChips ? 2 : 1;
+
+  int get _gridSortOrder {
+    var order = 1;
+    if (_hasSportChips) order++;
+    if (_hasCdnModeChips) order++;
+    return order;
+  }
 
   static const _matchCardWidthScale = 1.15;
   static const _matchCardHeightScale = 1.32;
@@ -38,15 +48,61 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     return EdgeInsets.fromLTRB(horizontal, 4, horizontal, 20);
   }
 
+  /// Column count must match the grid delegate and D-pad Left/Right math
+  /// (padding + gap), or the last card in a row wraps to the next row.
+  int _gridColumns(
+    BuildContext context,
+    BoxConstraints constraints,
+    double cardWidth,
+  ) {
+    final gap = _gridGap(context);
+    final inner = (constraints.maxWidth - _gridPadding(context).horizontal)
+        .clamp(0.0, double.infinity);
+    if (cardWidth <= 0) return 1;
+    return ((inner + gap) / (cardWidth + gap)).floor().clamp(1, 8);
+  }
+
+  /// Trap horizontal D-pad at the visual row ends — no wrap to the next/prev row.
+  ({VoidCallback? onLeftEdge, VoidCallback? onRightEdge}) _gridRowEdgeCallbacks({
+    required int index,
+    required int crossCount,
+    required int itemCount,
+  }) {
+    if (crossCount <= 0) {
+      return (onLeftEdge: null, onRightEdge: null);
+    }
+    final atLeft = index % crossCount == 0;
+    final atRight =
+        (index % crossCount) == crossCount - 1 || index >= itemCount - 1;
+    return (
+      onLeftEdge: atLeft ? ShellTvFocusCoordinator.focusActiveNavTab : null,
+      // Empty callback claims the key so focus does not wrap to the next row.
+      onRightEdge: atRight ? () {} : null,
+    );
+  }
+
+  VoidCallback _cdnModeUpEdge() {
+    if (_hasSportChips) {
+      return shellTvResultsUpToChips(
+        tabId: _LiveMatchesScreenState._tabId,
+        chipRowId: _LiveMatchesScreenState._chipRowId,
+      );
+    }
+    return () =>
+        _s._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+  }
+
   Widget _cdnModeChips(BuildContext context) {
     if (_tvFocus(context)) {
       shellTvRegisterRow(
         tabId: _LiveMatchesScreenState._tabId,
         rowId: _LiveMatchesScreenState._cdnModeRowId,
-        sortOrder: 1,
+        sortOrder: _cdnModeSortOrder,
         itemCount: 2,
+        onFocusUp: _cdnModeUpEdge(),
       );
     }
+    final up = _cdnModeUpEdge();
     return Row(
       children: [
         ForjaShellChip(
@@ -70,10 +126,12 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             index: 0,
             itemCount: 2,
           ),
-          onUpEdge: () => _s._focusTopBarItem(
-            _LiveMatchesScreenState._topBarServersIndex,
+          onUpEdge: up,
+          onDownEdge: shellTvChipDownToRow(
+            tabId: _LiveMatchesScreenState._tabId,
+            chipRowId: _LiveMatchesScreenState._cdnModeRowId,
+            resultsRowId: _LiveMatchesScreenState._gridRowId,
           ),
-          onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
         ),
         const SizedBox(width: 6),
         ForjaShellChip(
@@ -97,17 +155,16 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             index: 1,
             itemCount: 2,
           ),
-          onUpEdge: () => _s._focusTopBarItem(
-            _LiveMatchesScreenState._topBarServersIndex,
+          onUpEdge: up,
+          onDownEdge: shellTvChipDownToRow(
+            tabId: _LiveMatchesScreenState._tabId,
+            chipRowId: _LiveMatchesScreenState._cdnModeRowId,
+            resultsRowId: _LiveMatchesScreenState._gridRowId,
           ),
-          onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
         ),
       ],
     );
   }
-
-  int _gridColumns(BoxConstraints constraints, double cardWidth) =>
-      (constraints.maxWidth / cardWidth).floor().clamp(1, 8);
 
   ({IconData icon, Color accent}) _sportCircleMeta(String label) {
     final key = label.toLowerCase();
@@ -193,6 +250,9 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     final label = _sportLabelAt(index);
     final meta = _sportCircleMeta(label);
     final selected = _s._tabController!.index == index;
+    final resultsRowId = _hasCdnModeChips
+        ? _LiveMatchesScreenState._cdnModeRowId
+        : _LiveMatchesScreenState._gridRowId;
 
     return ShellMoodCircleItem(
       layout: layout,
@@ -210,7 +270,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
           ShellTvFocusCoordinator.focusFromChipStripDown(
             tabId: _LiveMatchesScreenState._tabId,
             chipRowId: _LiveMatchesScreenState._chipRowId,
-            resultsRowId: _LiveMatchesScreenState._gridRowId,
+            resultsRowId: resultsRowId,
           );
         }
       },
@@ -229,7 +289,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
       onDownEdge: shellTvChipDownToRow(
         tabId: _LiveMatchesScreenState._tabId,
         chipRowId: _LiveMatchesScreenState._chipRowId,
-        resultsRowId: _LiveMatchesScreenState._gridRowId,
+        resultsRowId: resultsRowId,
       ),
       onUpEdge: () => _s._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
     );
@@ -294,47 +354,25 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
 
   Widget _buildHeader() {
     final tvFocus = _tvFocus(context);
+    final topBarItemCount = tvFocus
+        ? _LiveMatchesScreenState._topBarRefreshIndex + 1
+        : _LiveMatchesScreenState._topBarViewIndex + 1;
     if (tvFocus) {
       shellTvRegisterRow(
         tabId: _LiveMatchesScreenState._tabId,
         rowId: _LiveMatchesScreenState._topBarRowId,
         sortOrder: 0,
-        itemCount: _LiveMatchesScreenState._topBarViewIndex + 1,
+        itemCount: topBarItemCount,
       );
     }
 
     final refresh = tvFocus
-        ? shellFocusableTap(
-            context: context,
-            onTap: _s._load,
-            borderRadius: 24,
-            scaleOnFocus: 1.0,
+        ? _LiveMatchesRefreshTopBarButton(
             focusNode: _s._refreshFocusNode,
-            tvTabId: _LiveMatchesScreenState._tabId,
-            tvRowId: _LiveMatchesScreenState._topBarRowId,
-            tvItemIndex: _LiveMatchesScreenState._topBarRefreshIndex,
-            tvZone: ShellTvZone.topBar,
+            onTap: _s._load,
             onDownEdge: _s._topBarDownEdge,
-            onLeftEdge: () => _s._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
-            onRightEdge: () => _s._focusTopBarItem(_LiveMatchesScreenState._topBarViewIndex),
-            onFocusChange: (focused) {
-              if (focused) {
-                ShellTvFocusCoordinator.saveFocus(
-                  _LiveMatchesScreenState._tabId,
-                  ShellTvFocusMemory(
-                    zone: ShellTvZone.topBar,
-                    node: _s._refreshFocusNode,
-                  ),
-                );
-              }
-            },
-            child: const Tooltip(
-              message: 'Refresh',
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: Icon(Icons.refresh_rounded, color: Colors.white70),
-              ),
-            ),
+            onLeftEdge: () => _s
+                ._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
           )
         : IconButton(
             tooltip: 'Refresh',
@@ -354,59 +392,29 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
           _s._serversTopBarButton(),
           const Spacer(),
           refresh,
-          const SizedBox(width: 4),
-          _buildViewToggle(tvFocus),
+          if (!tvFocus) ...[
+            const SizedBox(width: 4),
+            _buildViewToggle(tvFocus),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildViewToggle(bool tvFocus) {
+    // TV is cards-only — callers must not show this control.
+    if (tvFocus) return const SizedBox.shrink();
+
     final isTimeline = _s._view == _LiveMatchesView.timeline;
     final icon = isTimeline
         ? Icons.grid_view_rounded
         : Icons.view_timeline_rounded;
     final tip = isTimeline ? 'Card view' : 'Timeline view';
 
-    if (!tvFocus) {
-      return IconButton(
-        tooltip: tip,
-        icon: Icon(icon, color: Colors.white70),
-        onPressed: _s._toggleView,
-      );
-    }
-
-    return shellFocusableTap(
-      context: context,
-      onTap: _s._toggleView,
-      borderRadius: 24,
-      scaleOnFocus: 1.0,
-      focusNode: _s._viewFocusNode,
-      tvTabId: _LiveMatchesScreenState._tabId,
-      tvRowId: _LiveMatchesScreenState._topBarRowId,
-      tvItemIndex: _LiveMatchesScreenState._topBarViewIndex,
-      tvZone: ShellTvZone.topBar,
-      onDownEdge: _s._topBarDownEdge,
-      onLeftEdge: () =>
-          _s._focusTopBarItem(_LiveMatchesScreenState._topBarRefreshIndex),
-      onFocusChange: (focused) {
-        if (focused) {
-          ShellTvFocusCoordinator.saveFocus(
-            _LiveMatchesScreenState._tabId,
-            ShellTvFocusMemory(
-              zone: ShellTvZone.topBar,
-              node: _s._viewFocusNode,
-            ),
-          );
-        }
-      },
-      child: Tooltip(
-        message: tip,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: Colors.white70),
-        ),
-      ),
+    return IconButton(
+      tooltip: tip,
+      icon: Icon(icon, color: Colors.white70),
+      onPressed: _s._toggleView,
     );
   }
 
@@ -495,7 +503,10 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         buttonIcon: Icons.refresh,
       );
     }
-    if (_s._view == _LiveMatchesView.timeline) return _s._buildTimelineBody();
+    // TV is cards-only (timeline D-pad is not supported).
+    if (!_tvFocus(context) && _s._view == _LiveMatchesView.timeline) {
+      return _s._buildTimelineBody();
+    }
     if (_s._server == _LiveMatchesServer.all) return _buildAllBody();
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_s._server == _LiveMatchesServer.streamed) return _buildStreamedBody();
@@ -520,7 +531,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         final cardWidth = _matchCardWidth(context);
         final cardHeight = _matchCardHeight(context);
         final gap = _gridGap(context);
-        final crossCount = _gridColumns(constraints, cardWidth);
+        final crossCount = _gridColumns(context, constraints, cardWidth);
         final tvFocus = _tvFocus(context);
         if (tvFocus) {
           _s._registerGridRow(entries.length);
@@ -534,12 +545,21 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             mainAxisSpacing: gap,
           ),
           itemCount: entries.length,
-          itemBuilder: (context, i) => _gridEntryCard(
-            entries[i],
-            i,
-            crossCount,
-            _s._gridUpEdge(context, i, crossCount),
-          ),
+          itemBuilder: (context, i) {
+            final edges = _gridRowEdgeCallbacks(
+              index: i,
+              crossCount: crossCount,
+              itemCount: entries.length,
+            );
+            return _gridEntryCard(
+              entries[i],
+              i,
+              crossCount,
+              _s._gridUpEdge(context, i, crossCount),
+              onLeftEdge: edges.onLeftEdge,
+              onRightEdge: edges.onRightEdge,
+            );
+          },
         );
       },
     );
@@ -552,6 +572,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     int i,
     int crossCount,
     VoidCallback? upEdge, {
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
     bool forceActive = false,
     ValueChanged<bool>? onHoverChanged,
     String tvRowId = 'grid',
@@ -563,6 +585,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         forceActive: forceActive,
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
@@ -574,6 +598,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         forceActive: forceActive,
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
@@ -586,6 +612,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
           gridIndex: i,
           gridColumns: crossCount,
           onUpEdge: upEdge,
+          onLeftEdge: onLeftEdge,
+          onRightEdge: onRightEdge,
           forceActive: forceActive,
           onHoverChanged: onHoverChanged,
           tvRowId: tvRowId,
@@ -600,6 +628,8 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         forceActive: forceActive,
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
@@ -625,7 +655,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         final cardWidth = _matchCardWidth(context);
         final cardHeight = _matchCardHeight(context);
         final gap = _gridGap(context);
-        final crossCount = _gridColumns(constraints, cardWidth);
+        final crossCount = _gridColumns(context, constraints, cardWidth);
         final tvFocus = _tvFocus(context);
         if (tvFocus) {
           _s._registerGridRow(matches.length);
@@ -639,13 +669,22 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             mainAxisSpacing: gap,
           ),
           itemCount: matches.length,
-          itemBuilder: (context, i) => _StreamedMatchCard(
-            match: matches[i],
-            gridIndex: i,
-            gridColumns: crossCount,
-            onUpEdge: _s._gridUpEdge(context, i, crossCount),
-            onTap: () => _s._openStreamedMatch(matches[i]),
-          ),
+          itemBuilder: (context, i) {
+            final edges = _gridRowEdgeCallbacks(
+              index: i,
+              crossCount: crossCount,
+              itemCount: matches.length,
+            );
+            return _StreamedMatchCard(
+              match: matches[i],
+              gridIndex: i,
+              gridColumns: crossCount,
+              onUpEdge: _s._gridUpEdge(context, i, crossCount),
+              onLeftEdge: edges.onLeftEdge,
+              onRightEdge: edges.onRightEdge,
+              onTap: () => _s._openStreamedMatch(matches[i]),
+            );
+          },
         );
       },
     );
@@ -667,7 +706,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         final cardWidth = _matchCardWidth(context);
         final cardHeight = _matchCardHeight(context);
         final gap = _gridGap(context);
-        final crossCount = _gridColumns(constraints, cardWidth);
+        final crossCount = _gridColumns(context, constraints, cardWidth);
         final tvFocus = _tvFocus(context);
         if (tvFocus) {
           _s._registerGridRow(streams.length);
@@ -681,48 +720,73 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
             mainAxisSpacing: gap,
           ),
           itemCount: streams.length,
-          itemBuilder: (context, i) => _DamiTvMatchCard(
-            stream: streams[i],
-            gridIndex: i,
-            gridColumns: crossCount,
-            onUpEdge: _s._gridUpEdge(context, i, crossCount),
-            onTap: () => _s._openDamiTvStream(streams[i]),
-          ),
+          itemBuilder: (context, i) {
+            final edges = _gridRowEdgeCallbacks(
+              index: i,
+              crossCount: crossCount,
+              itemCount: streams.length,
+            );
+            return _DamiTvMatchCard(
+              stream: streams[i],
+              gridIndex: i,
+              gridColumns: crossCount,
+              onUpEdge: _s._gridUpEdge(context, i, crossCount),
+              onLeftEdge: edges.onLeftEdge,
+              onRightEdge: edges.onRightEdge,
+              onTap: () => _s._openDamiTvStream(streams[i]),
+            );
+          },
         );
       },
     );
   }
 
   Widget _buildCdnBody() {
+    final chips = Padding(
+      padding: EdgeInsets.fromLTRB(
+        shellHomeSectionHorizontalPadding(context),
+        4,
+        ShellTokens.bodyHorizontalPadding,
+        6,
+      ),
+      child: _cdnModeChips(context),
+    );
+
     if (_s._cdnShowChannels) {
-      final channels = _s._cdnChannels.where((c) => c.status == 'online').toList();
+      final channels =
+          _s._cdnChannels.where((c) => c.status == 'online').toList();
       if (channels.isEmpty) {
-        return ShellErrorRetryPanel(
-          message: 'No channels available',
-          onRetry: _s._load,
-          label: 'Refresh',
-          statusIcon: Icons.tv_rounded,
-          buttonIcon: Icons.refresh,
+        if (_tvFocus(context)) {
+          shellTvUnregisterRow(
+            tabId: _LiveMatchesScreenState._tabId,
+            rowId: _LiveMatchesScreenState._gridRowId,
+          );
+        }
+        return Column(
+          children: [
+            chips,
+            Expanded(
+              child: ShellErrorRetryPanel(
+                message: 'No channels available',
+                onRetry: _s._load,
+                label: 'Refresh',
+                statusIcon: Icons.tv_rounded,
+                buttonIcon: Icons.refresh,
+              ),
+            ),
+          ],
         );
       }
       return Column(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              shellHomeSectionHorizontalPadding(context),
-              4,
-              ShellTokens.bodyHorizontalPadding,
-              6,
-            ),
-            child: _cdnModeChips(context),
-          ),
+          chips,
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final cardWidth = _channelCardWidth(context);
                 final cardHeight = _channelCardHeight(context);
                 final gap = _gridGap(context);
-                final crossCount = _gridColumns(constraints, cardWidth);
+                final crossCount = _gridColumns(context, constraints, cardWidth);
                 if (_tvFocus(context)) {
                   _s._registerGridRow(channels.length);
                 }
@@ -735,67 +799,22 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
                     mainAxisSpacing: gap,
                   ),
                   itemCount: channels.length,
-                  itemBuilder: (context, i) => _CdnChannelCard(
-                    channel: channels[i],
-                    gridIndex: i,
-                    gridColumns: crossCount,
-                    onUpEdge: _s._gridUpEdge(context, i, crossCount),
-                    onTap: () => _s._openCdnChannel(channels[i]),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      );
-    } else {
-      final sports = _s._filteredCdnSports;
-      if (sports.isEmpty) {
-        return ShellErrorRetryPanel(
-          message: 'No sports events available',
-          onRetry: _s._load,
-          label: 'Refresh',
-          statusIcon: Icons.sports_rounded,
-          buttonIcon: Icons.refresh,
-        );
-      }
-      return Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              shellHomeSectionHorizontalPadding(context),
-              4,
-              ShellTokens.bodyHorizontalPadding,
-              6,
-            ),
-            child: _cdnModeChips(context),
-          ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final cardWidth = _matchCardWidth(context);
-                final cardHeight = _matchCardHeight(context);
-                final gap = _gridGap(context);
-                final crossCount = _gridColumns(constraints, cardWidth);
-                if (_tvFocus(context)) {
-                  _s._registerGridRow(sports.length);
-                }
-                return GridView.builder(
-                  padding: _gridPadding(context),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossCount,
-                    mainAxisExtent: cardHeight,
-                    crossAxisSpacing: gap,
-                    mainAxisSpacing: gap,
-                  ),
-                  itemCount: sports.length,
-                  itemBuilder: (context, i) => _CdnSportCard(
-                    event: sports[i],
-                    gridIndex: i,
-                    gridColumns: crossCount,
-                    onUpEdge: _s._gridUpEdge(context, i, crossCount),
-                    onTap: () => _s._openCdnSportEvent(sports[i]),
-                  ),
+                  itemBuilder: (context, i) {
+                    final edges = _gridRowEdgeCallbacks(
+                      index: i,
+                      crossCount: crossCount,
+                      itemCount: channels.length,
+                    );
+                    return _CdnChannelCard(
+                      channel: channels[i],
+                      gridIndex: i,
+                      gridColumns: crossCount,
+                      onUpEdge: _s._gridUpEdge(context, i, crossCount),
+                      onLeftEdge: edges.onLeftEdge,
+                      onRightEdge: edges.onRightEdge,
+                      onTap: () => _s._openCdnChannel(channels[i]),
+                    );
+                  },
                 );
               },
             ),
@@ -803,5 +822,73 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
         ],
       );
     }
+
+    final sports = _s._filteredCdnSports;
+    if (sports.isEmpty) {
+      if (_tvFocus(context)) {
+        shellTvUnregisterRow(
+          tabId: _LiveMatchesScreenState._tabId,
+          rowId: _LiveMatchesScreenState._gridRowId,
+        );
+      }
+      return Column(
+        children: [
+          chips,
+          Expanded(
+            child: ShellErrorRetryPanel(
+              message: 'No sports events available',
+              onRetry: _s._load,
+              label: 'Refresh',
+              statusIcon: Icons.sports_rounded,
+              buttonIcon: Icons.refresh,
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        chips,
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = _matchCardWidth(context);
+              final cardHeight = _matchCardHeight(context);
+              final gap = _gridGap(context);
+              final crossCount = _gridColumns(context, constraints, cardWidth);
+              if (_tvFocus(context)) {
+                _s._registerGridRow(sports.length);
+              }
+              return GridView.builder(
+                padding: _gridPadding(context),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossCount,
+                  mainAxisExtent: cardHeight,
+                  crossAxisSpacing: gap,
+                  mainAxisSpacing: gap,
+                ),
+                itemCount: sports.length,
+                itemBuilder: (context, i) {
+                  final edges = _gridRowEdgeCallbacks(
+                    index: i,
+                    crossCount: crossCount,
+                    itemCount: sports.length,
+                  );
+                  return _CdnSportCard(
+                    event: sports[i],
+                    gridIndex: i,
+                    gridColumns: crossCount,
+                    onUpEdge: _s._gridUpEdge(context, i, crossCount),
+                    onLeftEdge: edges.onLeftEdge,
+                    onRightEdge: edges.onRightEdge,
+                    onTap: () => _s._openCdnSportEvent(sports[i]),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }

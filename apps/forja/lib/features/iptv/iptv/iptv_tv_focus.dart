@@ -707,6 +707,7 @@ class IptvRoundIcon extends StatefulWidget {
   final bool big;
   final String? tvRowId;
   final int? tvItemIndex;
+  final FocusNode? focusNode;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
   final VoidCallback? onLeftEdge;
@@ -720,6 +721,7 @@ class IptvRoundIcon extends StatefulWidget {
     this.big = false,
     this.tvRowId,
     this.tvItemIndex,
+    this.focusNode,
     this.onUpEdge,
     this.onDownEdge,
     this.onLeftEdge,
@@ -760,6 +762,7 @@ class _IptvRoundIconState extends State<IptvRoundIcon> {
           context: context,
           onTap: widget.onTap,
           borderRadius: size / 2,
+          focusNode: widget.focusNode,
           tvRowId: widget.tvRowId,
           tvItemIndex: widget.tvItemIndex,
           onUpEdge: widget.onUpEdge,

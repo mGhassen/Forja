@@ -29,12 +29,14 @@ class DetailsHeroTvActionScope extends StatefulWidget {
     required this.tabId,
     required this.itemCount,
     this.onFocusUp,
+    this.onFocusDown,
     required this.child,
   });
 
   final String tabId;
   final int itemCount;
   final VoidCallback? onFocusUp;
+  final VoidCallback? onFocusDown;
   final Widget child;
 
   @override
@@ -58,6 +60,7 @@ class _DetailsHeroTvActionScopeState extends State<DetailsHeroTvActionScope> {
         sortOrder: MediaDetailsTv.heroRowSortOrder,
         itemCount: widget.itemCount,
         onFocusUp: widget.onFocusUp,
+        onFocusDown: widget.onFocusDown,
       );
     }
     return widget.child;

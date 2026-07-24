@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
@@ -19,8 +20,10 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -64,18 +67,83 @@ class _AnimeScreenState extends State<AnimeScreen>
   String _selectedMood = 'shonen';
   Future<List<AnimeCard>>? _moodFuture;
 
-  static const List<({String id, String label, IconData icon, String? genre})>
-      _moods = [
-    (id: 'shonen',    label: 'Shōnen',       icon: Icons.local_fire_department_rounded, genre: 'Action'),
-    (id: 'romance',   label: 'Romance',      icon: Icons.favorite_rounded,              genre: 'Romance'),
-    (id: 'comedy',    label: 'Comedy',       icon: Icons.sentiment_very_satisfied_rounded, genre: 'Comedy'),
-    (id: 'mystery',   label: 'Mystery',      icon: Icons.psychology_rounded,            genre: 'Mystery'),
-    (id: 'thriller',  label: 'Thriller',     icon: Icons.dark_mode_rounded,             genre: 'Thriller'),
-    (id: 'fantasy',   label: 'Fantasy',      icon: Icons.auto_awesome_rounded,          genre: 'Fantasy'),
-    (id: 'sliceLife', label: 'Slice of Life',icon: Icons.wb_sunny_rounded,              genre: 'Slice of Life'),
-    (id: 'scifi',     label: 'Sci-Fi',       icon: Icons.rocket_launch_rounded,         genre: 'Sci-Fi'),
-    (id: 'sports',    label: 'Sports',       icon: Icons.sports_baseball_rounded,       genre: 'Sports'),
-    (id: 'horror',    label: 'Horror',       icon: Icons.bedtime_rounded,               genre: 'Horror'),
+  static const List<({
+    String id,
+    String label,
+    IconData icon,
+    Color accent,
+    String? genre,
+  })> _moods = [
+    (
+      id: 'shonen',
+      label: 'Shōnen',
+      icon: Icons.local_fire_department_rounded,
+      accent: Color(0xFFF97316),
+      genre: 'Action',
+    ),
+    (
+      id: 'romance',
+      label: 'Romance',
+      icon: Icons.favorite_rounded,
+      accent: Color(0xFFEC4899),
+      genre: 'Romance',
+    ),
+    (
+      id: 'comedy',
+      label: 'Comedy',
+      icon: Icons.sentiment_very_satisfied_rounded,
+      accent: Color(0xFFFBBF24),
+      genre: 'Comedy',
+    ),
+    (
+      id: 'mystery',
+      label: 'Mystery',
+      icon: Icons.psychology_rounded,
+      accent: Color(0xFF8B5CF6),
+      genre: 'Mystery',
+    ),
+    (
+      id: 'thriller',
+      label: 'Thriller',
+      icon: Icons.dark_mode_rounded,
+      accent: Color(0xFF64748B),
+      genre: 'Thriller',
+    ),
+    (
+      id: 'fantasy',
+      label: 'Fantasy',
+      icon: Icons.auto_awesome_rounded,
+      accent: Color(0xFFA855F7),
+      genre: 'Fantasy',
+    ),
+    (
+      id: 'sliceLife',
+      label: 'Slice of Life',
+      icon: Icons.wb_sunny_rounded,
+      accent: Color(0xFF34D399),
+      genre: 'Slice of Life',
+    ),
+    (
+      id: 'scifi',
+      label: 'Sci-Fi',
+      icon: Icons.rocket_launch_rounded,
+      accent: Color(0xFF06B6D4),
+      genre: 'Sci-Fi',
+    ),
+    (
+      id: 'sports',
+      label: 'Sports',
+      icon: Icons.sports_baseball_rounded,
+      accent: Color(0xFF22C55E),
+      genre: 'Sports',
+    ),
+    (
+      id: 'horror',
+      label: 'Horror',
+      icon: Icons.bedtime_rounded,
+      accent: Color(0xFF7C3AED),
+      genre: 'Horror',
+    ),
   ];
 
   @override
@@ -94,6 +162,10 @@ class _AnimeScreenState extends State<AnimeScreen>
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
         );
+      },
+      enterFromNavFocus: () {
+        ShellTvFocusCoordinator.revealHeroForTab('anime');
+        ShellTvFocus.focusHomeHeroPlay();
       },
     );
     WidgetsBinding.instance.addObserver(this);

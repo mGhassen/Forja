@@ -389,11 +389,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   void _focusRight() {
     if (_wide) {
-      // Already on channels — trap Right so focus cannot leave to the video.
       if (_focusColumn == _FocusColumn.groups) {
         setState(() => _focusColumn = _FocusColumn.channels);
         _scrollToFocused();
+        return;
       }
+      // Channels column — Right returns focus to the player.
+      _close();
       return;
     }
     if (_step == _GuideStep.groups) {
@@ -401,8 +403,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+      return;
     }
-    // Channels step: trap Right (do not dismiss / leave panel).
+    // Channels step — Right returns focus to the player.
+    _close();
   }
 
   void _activateFocused() {

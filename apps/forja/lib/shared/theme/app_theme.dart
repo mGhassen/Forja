@@ -199,11 +199,17 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
 
+  String _tvDebugLabel(ShellTvFocusMeta? meta) {
+    if (meta == null || meta.rowId == null) return 'focusable-control';
+    final idx = meta.itemIndex;
+    return 'tv-${meta.tabId}-${meta.rowId}${idx != null ? '-$idx' : ''}';
+  }
+
   @override
   void initState() {
     super.initState();
     if (widget.focusNode == null) {
-      _ownedNode = FocusNode(debugLabel: 'focusable-control');
+      _ownedNode = FocusNode(debugLabel: _tvDebugLabel(widget.tvMeta));
     }
     _registerTvItemNode();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
@@ -221,7 +227,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         _unregisterTvItemNode(oldWidget.tvMeta, node: oldNode);
       }
       if (widget.focusNode == null) {
-        _ownedNode ??= FocusNode(debugLabel: 'focusable-control');
+        _ownedNode ??= FocusNode(debugLabel: _tvDebugLabel(widget.tvMeta));
       } else {
         _ownedNode?.dispose();
         _ownedNode = null;
@@ -230,6 +236,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
         oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
       _unregisterTvItemNode(oldWidget.tvMeta);
+      final owned = _ownedNode;
+      if (owned != null) {
+        owned.debugLabel = _tvDebugLabel(widget.tvMeta);
+      }
       _registerTvItemNode();
     }
   }

@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.view.LayoutInflater
 import android.view.View
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -495,7 +496,10 @@ class ExoPlayerPlatformView(
     private val hostId: Int,
     private val plugin: ForjaExoPlayerPlugin,
 ) : io.flutter.plugin.platform.PlatformView {
-    private val playerView = PlayerView(context)
+    // Inflate with surface_type=texture_view — default SurfaceView tiles / misplaces
+    // frames inside Flutter's AndroidView (TLHC / VirtualDisplay), especially on ATV.
+    private val playerView: PlayerView = LayoutInflater.from(context)
+        .inflate(R.layout.forja_exo_player_view, null) as PlayerView
 
     init {
         plugin.hostFor(hostId).attachView(playerView)

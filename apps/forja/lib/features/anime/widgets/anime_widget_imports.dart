@@ -2,6 +2,7 @@
 
 export 'package:cached_network_image/cached_network_image.dart';
 export 'package:flutter/material.dart';
+export 'package:flutter/rendering.dart';
 export 'package:forja/features/anime/catalog/anime_service.dart';
 export 'package:forja/shared/design/design.dart';
 export 'package:forja/shared/theme/app_theme.dart';

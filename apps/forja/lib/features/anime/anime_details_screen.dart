@@ -516,7 +516,13 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final hasMetaRows =
         showCharacters || showStaff || showTrailers || showRecs || showRelated;
 
-    var rowOrder = showEpisodeRail ? 1 : 0;
+    // Match TMDB details: seasons=0 + episodes=1 when multi-season, else
+    // episodes alone at 0. Meta rows must start after the picker so Related
+    // does not share sortOrder with episodes (D-pad jump).
+    final pickerRowCount = !showEpisodeRail
+        ? 0
+        : (_seasons.length > 1 ? 2 : 1);
+    var rowOrder = pickerRowCount;
     final relatedOrder = showRelated ? rowOrder++ : null;
     final charactersOrder = showCharacters ? rowOrder++ : null;
     final staffOrder = showStaff ? rowOrder++ : null;

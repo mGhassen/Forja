@@ -602,24 +602,20 @@ class _BrowserViewState extends State<_BrowserView> {
             iptvActiveSectionShelfIndex(widget.ctrl),
           ),
         );
+        // Fixed column count on TV so D-pad Left/Right match the visual row
+        // (MaxCrossAxisExtent can disagree with our focus math and wrap).
         final grid = GridView.builder(
           padding: EdgeInsets.fromLTRB(12, 4, 12, 12),
-          gridDelegate: tv
-              ? SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: cardW,
-                  mainAxisSpacing: gap,
-                  crossAxisSpacing: gap,
-                  childAspectRatio: cardW / cardH,
-                )
-              : SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cross,
-                  crossAxisSpacing: gap,
-                  mainAxisSpacing: gap,
-                  childAspectRatio: 0.9,
-                ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cross,
+            crossAxisSpacing: gap,
+            mainAxisSpacing: gap,
+            childAspectRatio: tv ? cardW / cardH : 0.9,
+          ),
           itemCount: list.length,
           itemBuilder: (_, i) {
             final stream = list[i];
+            final atRightEdge = (i % cross) == cross - 1;
             return _StreamCard(
               stream: stream,
               ctrl: widget.ctrl,
@@ -628,9 +624,10 @@ class _BrowserViewState extends State<_BrowserView> {
               onUpEdge: i < cross
                   ? iptvStreamUpEdge(widget.ctrl, index: i, columns: cross)
                   : null,
-              onRightEdge:
-                  widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
-                  ? () => iptvFocusRowItem('portals', 0)
+              onRightEdge: atRightEdge
+                  ? (widget.ctrl.portalPanelOpen
+                      ? () => iptvFocusRowItem('portals', 0)
+                      : () {})
                   : null,
               onLeftEdge: i % cross == 0
                   ? iptvStreamLeftEdge(widget.ctrl, stream)

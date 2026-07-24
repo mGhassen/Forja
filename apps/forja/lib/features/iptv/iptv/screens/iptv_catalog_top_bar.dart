@@ -1092,9 +1092,13 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   bool get _tv => iptvUseTvFocus(context);
 
-  bool get _active => _hover || (_focused && !_tv);
+  /// Section color on mouse hover and D-pad focus (TV included).
+  bool get _paintActive => _hover || _focused;
 
-  bool get _revealReload => _active && _reloadArmed;
+  /// Reload chip expand is mouse / desktop-keyboard only — not TV focus.
+  bool get _expandActive => _hover || (_focused && !_tv);
+
+  bool get _revealReload => _expandActive && _reloadArmed;
 
   void _setHover(bool value) {
     if (_hover == value) return;
@@ -1114,11 +1118,11 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   /// Color is applied immediately in [build]; expand arms after a short delay.
   void _syncReveal() {
-    if (_active) {
+    if (_expandActive) {
       if (_reloadArmed) return;
       _revealTimer?.cancel();
       _revealTimer = Timer(_colorThenExpandDelay, () {
-        if (mounted && _active) setState(() => _reloadArmed = true);
+        if (mounted && _expandActive) setState(() => _reloadArmed = true);
       });
     } else {
       _revealTimer?.cancel();
@@ -1149,7 +1153,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   Widget build(BuildContext context) {
     // Instant color — AnimatedContainer gradient lerp often lags layout
     // expand, which made the tab feel like it scaled before tinting.
-    final showColor = widget.selected || _active;
+    final showColor = widget.selected || _paintActive;
 
     return MouseRegion(
       onEnter: (_) => _setHover(true),

@@ -898,6 +898,10 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final scale = tvFocus
         ? 1.0
         : (enabled && (active || widget.selected) ? _hoverScale : 1.0);
+    final showThumbBorder = widget.selected || active;
+    final thumbBorderColor = widget.selected
+        ? Colors.white
+        : ForjaShellColors.chipSelectedBorder;
 
     return FocusableControl(
       onTap: widget.onTap,
@@ -937,8 +941,8 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                   decoration: BoxDecoration(
                     borderRadius:
                         BorderRadius.circular(_EpisodeCard.thumbRadius),
-                    border: widget.selected
-                        ? Border.all(color: Colors.white, width: 2)
+                    border: showThumbBorder
+                        ? Border.all(color: thumbBorderColor, width: 2)
                         : null,
                     boxShadow: [
                       BoxShadow(

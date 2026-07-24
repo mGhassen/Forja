@@ -68,24 +68,41 @@ abstract final class DetailsTokens {
   /// Floor for title/actions when the episode rail claims [episodeBackdropBleed].
   static const double heroWithEpisodesMinFraction = 0.42;
 
+  /// Compact phones / short landscape (incl. 720p Android TV) need a taller
+  /// chrome floor — 0.42 leaves ~60–100px for the title/Play column after top
+  /// inset + rail gap, which zeros the title and drops synopsis.
+  static const double heroWithEpisodesMinFractionCompact = 0.58;
+
+  /// Viewports shorter than this use the compact chrome floor even when wide
+  /// (720p ATV is landscape but still tight for title + synopsis + Play).
+  static const double heroWithEpisodesShortViewportHeight = 900;
+
+  /// Gap between hero meta/actions and the episode rail (inside the bleed).
+  static double heroContentToRailGap(double heroChromeHeight) =>
+      heroChromeHeight < 480 ? 24.0 : 72.0;
+
   /// Full on-screen backdrop band — title/actions + optional TV bleed.
   static double heroBackdropBand(
     BuildContext context, {
     double? viewportHeight,
     bool showEpisodeRail = false,
   }) {
-    final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
-    final resolved = height.isFinite && height > 0
-        ? height
-        : MediaQuery.sizeOf(context).height;
+    final size = MediaQuery.sizeOf(context);
+    final height = viewportHeight ?? size.height;
+    final resolved = height.isFinite && height > 0 ? height : size.height;
     if (!showEpisodeRail) {
       return resolved * heroViewportFraction;
     }
+    final compact = size.width < ShellTokens.shellNavCompactMaxWidth;
+    final shortViewport = resolved < heroWithEpisodesShortViewportHeight;
+    final minFraction = (compact || shortViewport)
+        ? heroWithEpisodesMinFractionCompact
+        : heroWithEpisodesMinFraction;
     // Chrome uses the viewport above the rail band so seasons/episodes sit
     // near the bottom of the first screen instead of mid-hero. A small chrome
     // boost keeps synopsis visible; the stack grows ~[episodeHeroChromeExtra].
     return (resolved - episodeBackdropBleed + episodeHeroChromeExtra).clamp(
-      resolved * heroWithEpisodesMinFraction,
+      resolved * minFraction,
       resolved * heroViewportFraction,
     );
   }

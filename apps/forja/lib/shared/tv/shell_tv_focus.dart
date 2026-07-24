@@ -222,6 +222,7 @@ KeyEventResult shellTvHandleRowArrows({
     }
     final up = tvMeta?.resolveUpEdge();
     if (up != null) {
+      // Still claim handled — geometry must not leak across catalog rows.
       up();
       return KeyEventResult.handled;
     }

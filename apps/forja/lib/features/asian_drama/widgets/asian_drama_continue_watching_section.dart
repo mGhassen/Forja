@@ -1,5 +1,6 @@
 // Asian Drama continue-watching row — extracted from asian_drama_screen.dart.
 
+import 'package:flutter/rendering.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_card.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_widget_imports.dart';
@@ -11,6 +12,9 @@ class AsianDramaContinueWatchingSection extends StatefulWidget {
   final void Function(Map<String, dynamic> entry) onRemove;
   final void Function(KdramaCard drama) onOpenDetails;
   final KdramaCard Function(Map<String, dynamic> entry) cardFromEntry;
+  final int tvRowOrder;
+  /// When null, ↑ uses the coordinator previous row (e.g. Latest under hero).
+  final VoidCallback? tvFocusUp;
 
   const AsianDramaContinueWatchingSection({
     super.key,
@@ -20,6 +24,8 @@ class AsianDramaContinueWatchingSection extends StatefulWidget {
     required this.onRemove,
     required this.onOpenDetails,
     required this.cardFromEntry,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   @override
@@ -67,12 +73,9 @@ class _AsianDramaContinueWatchingSectionState
               shellTvRegisterRow(
                 tabId: 'asian_drama',
                 rowId: _rowId,
-                sortOrder: 0,
+                sortOrder: widget.tvRowOrder,
                 itemCount: widget.entries.length,
-                onFocusUp: () {
-                  ShellTvFocusCoordinator.revealHeroForTab('asian_drama');
-                  ShellTvFocus.focusHomeHeroPlay();
-                },
+                onFocusUp: widget.tvFocusUp,
               );
               return FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
@@ -80,6 +83,7 @@ class _AsianDramaContinueWatchingSectionState
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   clipBehavior: Clip.none,
+                  scrollCacheExtent: ScrollCacheExtent.pixels(2000),
                   padding: EdgeInsets.symmetric(horizontal: hPad),
                   itemCount: widget.entries.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 14),
@@ -87,14 +91,17 @@ class _AsianDramaContinueWatchingSectionState
                     final entry = widget.entries[i];
                     final card = widget.cardFromEntry(entry);
                     final dramaId = (entry['id'] as num?)?.toInt();
-                    return AsianDramaContinueWatchingCard(
-                      listIndex: i,
-                      entry: entry,
-                      isLoading:
-                          dramaId != null && widget.resumingDramaId == dramaId,
-                      onTap: () => widget.onResume(entry),
-                      onRemove: () => widget.onRemove(entry),
-                      onInfo: () => widget.onOpenDetails(card),
+                    return FocusTraversalOrder(
+                      order: NumericFocusOrder(i.toDouble()),
+                      child: AsianDramaContinueWatchingCard(
+                        listIndex: i,
+                        entry: entry,
+                        isLoading: dramaId != null &&
+                            widget.resumingDramaId == dramaId,
+                        onTap: () => widget.onResume(entry),
+                        onRemove: () => widget.onRemove(entry),
+                        onInfo: () => widget.onOpenDetails(card),
+                      ),
                     );
                   },
                 ),

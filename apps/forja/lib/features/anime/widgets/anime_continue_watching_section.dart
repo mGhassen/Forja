@@ -121,6 +121,8 @@ class _AnimeContinueWatchingSectionState
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   clipBehavior: Clip.none,
+                  // Keep continue cards mounted for D-pad ↑/↓ into this row.
+                  scrollCacheExtent: ScrollCacheExtent.pixels(2000),
                   padding: EdgeInsets.symmetric(horizontal: hPad),
                   itemCount: widget.entries.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 14),
@@ -130,14 +132,17 @@ class _AnimeContinueWatchingSectionState
                       (entry['anime'] as Map).cast<String, dynamic>(),
                     );
                     final resumeId = entry['animeId'] as int?;
-                    return AnimeContinueWatchingCard(
-                      listIndex: i,
-                      entry: entry,
-                      isLoading: resumeId != null &&
-                          widget.resumingAnimeId == resumeId,
-                      onTap: () => widget.onResume(entry),
-                      onRemove: () => widget.onRemove(entry),
-                      onInfo: () => widget.onOpenDetails(anime),
+                    return FocusTraversalOrder(
+                      order: NumericFocusOrder(i.toDouble()),
+                      child: AnimeContinueWatchingCard(
+                        listIndex: i,
+                        entry: entry,
+                        isLoading: resumeId != null &&
+                            widget.resumingAnimeId == resumeId,
+                        onTap: () => widget.onResume(entry),
+                        onRemove: () => widget.onRemove(entry),
+                        onInfo: () => widget.onOpenDetails(anime),
+                      ),
                     );
                   },
                 ),

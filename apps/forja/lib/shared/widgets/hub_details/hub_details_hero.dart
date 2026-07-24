@@ -66,6 +66,7 @@ class HubDetailsHero extends StatelessWidget {
     final bodyOverlap =
         this.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final pageBleed = bleed > 0;
+    final railGap = DetailsTokens.heroContentToRailGap(h);
 
     return SizedBox(
       height: totalH,
@@ -108,7 +109,7 @@ class HubDetailsHero extends StatelessWidget {
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: bleed + 72 + bottomInset,
+              bottom: bleed + railGap + bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Align(
@@ -292,10 +293,10 @@ class _HubHeroMainColumn extends StatelessWidget {
     color: Color(0xB8FFFFFF),
   );
   static const _titleBlockHeight = 96.0;
+  static const _titleMinHeight = 32.0;
   static const _subtitleBlockHeight = 26.0;
   static const _genreBlockHeight = 30.0;
   static const _metaBlockHeight = 24.0;
-  static const _metaBlockHeightWrapped = 40.0;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
@@ -324,26 +325,32 @@ class _HubHeroMainColumn extends StatelessWidget {
   bool get _hasSubtitle =>
       subtitle != null && subtitle!.isNotEmpty && subtitle != title;
 
-  double _usedHeight({
+  double _footerReserve({
+    required bool showProgress,
+    required bool showSeriesProgress,
+  }) {
+    var reserved = 0.0;
+    if (actionRow != null) reserved += _actionGap + ShellTokens.shellButtonHeight;
+    if (showProgress) reserved += 14 + _progressBlockHeight;
+    if (showSeriesProgress) {
+      reserved += (showProgress ? 8 : 14) + _seriesProgressBlockHeight;
+    }
+    return reserved;
+  }
+
+  /// Meta stack only — actions + progress are reserved below in the column.
+  double _metaUsedHeight({
     required bool showSubtitle,
     required bool showGenres,
     required bool showOverview,
-    required bool showProgress,
-    required bool showSeriesProgress,
-    required bool singleLineMeta,
+    required bool showMetaLine,
     required double titleHeight,
   }) {
-    final metaHeight =
-        singleLineMeta ? _metaBlockHeight : _metaBlockHeightWrapped;
-    var used = titleHeight + 14 + metaHeight;
+    var used = titleHeight;
     if (showSubtitle) used += 6 + _subtitleBlockHeight;
     if (showGenres) used += 10 + _genreBlockHeight;
+    if (showMetaLine) used += 14 + _metaBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
-    if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
-    if (showProgress) used += 14 + _progressBlockHeight;
-    if (showSeriesProgress) {
-      used += (showProgress ? 8 : 14) + _seriesProgressBlockHeight;
-    }
     return used;
   }
 
@@ -354,52 +361,83 @@ class _HubHeroMainColumn extends StatelessWidget {
     var showSubtitle = _hasSubtitle;
     var showGenres = genres.isNotEmpty;
     var showOverview = overview.isNotEmpty;
+    var showMetaLine = metaParts.isNotEmpty || (rating != null && rating! > 0);
     var showProgress =
         positionMs != null && durationMs != null && durationMs! > 0;
     var showSeriesProgress = seriesProgress != null;
     var titleHeight = _titleBlockHeight;
 
+    // Actions + progress under synopsis. Keep title + Play first; drop
+    // secondary chrome, then synopsis, before shrinking the title. Never zero
+    // the title while synopsis is still showing (720p ATV / short phones).
+    double? metaBudget;
     if (bounded) {
+      metaBudget = (maxHeight! -
+              _footerReserve(
+                showProgress: showProgress,
+                showSeriesProgress: showSeriesProgress,
+              ))
+          .clamp(0.0, maxHeight!);
+
       bool overBudget() =>
-          _usedHeight(
+          _metaUsedHeight(
             showSubtitle: showSubtitle,
             showGenres: showGenres,
             showOverview: showOverview,
-            showProgress: showProgress,
-            showSeriesProgress: showSeriesProgress,
-            singleLineMeta: true,
+            showMetaLine: showMetaLine,
             titleHeight: titleHeight,
           ) >
-          maxHeight!;
+          metaBudget!;
 
-      // Keep fixed 3-line synopsis + Read More; drop secondary chrome first.
-      if (overBudget()) showGenres = false;
-      if (overBudget()) showSubtitle = false;
-      if (overBudget()) showSeriesProgress = false;
-      if (overBudget()) showProgress = false;
-      if (overBudget()) {
-        titleHeight = (maxHeight! -
-                _usedHeight(
-                  showSubtitle: showSubtitle,
-                  showGenres: showGenres,
-                  showOverview: showOverview,
+      void refreshBudget() {
+        metaBudget = (maxHeight! -
+                _footerReserve(
                   showProgress: showProgress,
                   showSeriesProgress: showSeriesProgress,
-                  singleLineMeta: true,
-                  titleHeight: 0,
                 ))
-            .clamp(48.0, _titleBlockHeight);
+            .clamp(0.0, maxHeight!);
+      }
+
+      if (overBudget()) showGenres = false;
+      if (overBudget()) showSubtitle = false;
+      if (overBudget()) showMetaLine = false;
+      // Synopsis yields before title — empty hero with only overview is worse.
+      if (overBudget()) showOverview = false;
+      if (overBudget() && showSeriesProgress) {
+        showSeriesProgress = false;
+        refreshBudget();
+      }
+      if (overBudget() && showProgress) {
+        showProgress = false;
+        refreshBudget();
+      }
+      if (overBudget()) {
+        final rest = _metaUsedHeight(
+          showSubtitle: showSubtitle,
+          showGenres: showGenres,
+          showOverview: showOverview,
+          showMetaLine: showMetaLine,
+          titleHeight: 0,
+        );
+        titleHeight = (metaBudget! - rest).clamp(0.0, _titleBlockHeight);
+        if (titleHeight < _titleMinHeight) {
+          titleHeight = metaBudget!.clamp(0.0, _titleBlockHeight);
+          if (titleHeight < _titleMinHeight) titleHeight = 0;
+        }
       }
     }
 
     final metaColumn = <Widget>[
-      SizedBox(
-        height: titleHeight,
-        child: Align(
-          alignment: Alignment.bottomLeft,
-          child: HubHeroTitle(title: title),
+      if (titleHeight > 0)
+        SizedBox(
+          height: titleHeight,
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: HubHeroTitle(title: title),
+            ),
+          ),
         ),
-      ),
       if (showSubtitle) ...[
         const SizedBox(height: 6),
         Text(
@@ -427,12 +465,14 @@ class _HubHeroMainColumn extends StatelessWidget {
           ),
         ),
       ],
-      const SizedBox(height: 14),
-      HubHeroMetaLine(
-        parts: metaParts,
-        rating: rating,
-        singleLine: bounded,
-      ),
+      if (showMetaLine) ...[
+        const SizedBox(height: 14),
+        HubHeroMetaLine(
+          parts: metaParts,
+          rating: rating,
+          singleLine: bounded,
+        ),
+      ],
       if (showOverview) ...[
         const SizedBox(height: _overviewGap),
         SizedBox(
@@ -450,6 +490,8 @@ class _HubHeroMainColumn extends StatelessWidget {
       ],
     ];
 
+    // Pack meta → actions → progress at the top. Footer height is reserved in
+    // the meta budget so tight series chrome (episode rail) never clips Play.
     return SizedBox(
       width: maxContentWidth,
       height: bounded ? maxHeight : null,

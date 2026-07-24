@@ -63,7 +63,9 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       final merged = [
         for (final c in list) byId[c.id] ?? c,
       ];
-      setState(() => _s._spotlightFuture = Future.value(merged));
+      setState(() {
+        _s._spotlightFuture = Future.value(merged);
+      });
     } catch (e) {
       debugPrint('[AnimeScreen] spotlight TMDB enrich failed: $e');
     }

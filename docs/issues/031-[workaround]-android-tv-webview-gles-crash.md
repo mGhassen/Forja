@@ -46,7 +46,7 @@ Thread name: `Chrome_InProcGp`. This is **not** `media_kit` / player UI — it i
 
 ## Workaround (shipped)
 
-**Dart (View layer — supplement):** [`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart) sets `hardwareAcceleration: false` on TV. Maps to `LAYER_TYPE_NONE` — does **not** stop `Chrome_InProcGp`.
+**Dart (View layer — supplement):** [`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart) sets `hardwareAcceleration: false` on TV (in place — do not `settings.copy()`; the plugin’s `fromMap` bangs on Android when `contentBlockers` are set, which red-screened Live Matches embeds). Maps to `LAYER_TYPE_NONE` — does **not** stop `Chrome_InProcGp`.
 
 **Native (boot):** [`ForjaApplication.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/ForjaApplication.kt) + [`WebViewTvWorkaround.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/WebViewTvWorkaround.kt) — software warm-up; boot skips `setWebContentsDebuggingEnabled` on TV.
 

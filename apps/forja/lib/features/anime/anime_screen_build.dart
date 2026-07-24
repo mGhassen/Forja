@@ -336,96 +336,174 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
     );
   }
 
-  // ─── Mood chips ────────────────────────────────────────────────
+  // ─── Mood chips (home-style circles) ───────────────────────────
+  Widget _moodCircleItem({
+    required BuildContext context,
+    required ShellMoodCircleLayout layout,
+    required int i,
+  }) {
+    final moods = _AnimeScreenState._moods;
+    final m = moods[i];
+    final selected = m.id == _s._selectedMood;
+    return ShellMoodCircleItem(
+      layout: layout,
+      label: m.label,
+      icon: m.icon,
+      accent: m.accent,
+      selected: selected,
+      listIndex: i,
+      tvTabId: 'anime',
+      tvRowId: 'mood-chips',
+      onTap: () {
+        if (m.id != _s._selectedMood) {
+          _s._selectMood(m.id);
+        } else if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          ShellTvFocusCoordinator.focusFromChipStripDown(
+            tabId: 'anime',
+            chipRowId: 'mood-chips',
+            resultsRowId: 'mood-results',
+          );
+        }
+      },
+      onLeftEdge: shellTvChipLeftEdge(
+        context,
+        tabId: 'anime',
+        rowId: 'mood-chips',
+        index: i,
+      ),
+      onRightEdge: shellTvChipRightEdge(
+        tabId: 'anime',
+        rowId: 'mood-chips',
+        index: i,
+        itemCount: moods.length,
+      ),
+      onDownEdge: shellTvChipDownToRow(
+        tabId: 'anime',
+        chipRowId: 'mood-chips',
+        resultsRowId: 'mood-results',
+      ),
+      onUpEdge: () {
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: 'anime',
+          rowId: 'mood-chips',
+          currentIndex: i,
+          down: false,
+        );
+      },
+    );
+  }
+
+  Widget _centeredMoodRow({
+    required BuildContext context,
+    required ShellMoodCircleLayout layout,
+    bool scaleToFit = false,
+  }) {
+    final moods = _AnimeScreenState._moods;
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < moods.length; i++) ...[
+          if (i > 0) SizedBox(width: layout.horizontalGap),
+          _moodCircleItem(context: context, layout: layout, i: i),
+        ],
+      ],
+    );
+
+    return SizedBox(
+      height: layout.rowHeight,
+      width: double.infinity,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: scaleToFit
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: row,
+              )
+            : Center(child: row),
+      ),
+    );
+  }
+
   Widget _buildMoodChips({
     required int chipsOrder,
     required int resultsOrder,
   }) {
+    final moods = _AnimeScreenState._moods;
+    final titleTop = shellHomeSectionTitleTop(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShellSectionTitle(
-          title: 'Pick your vibe',
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            ShellTokens.homeSectionTitleTop,
-            24,
-            16,
+        Padding(
+          padding: shellHomeSectionTitlePadding(
+            context,
+            top: titleTop,
+            bottom: shellScaled(context, 12).clamp(4.0, 12.0),
+          ),
+          child: const Text(
+            'Pick your vibe',
+            style: ShellSectionTitle.titleStyle,
           ),
         ),
-        SizedBox(
-          height: 40,
-          child: Builder(
-            builder: (context) {
+        Builder(
+          builder: (context) {
+            final tvNav =
+                ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+            if (tvNav) {
               shellTvRegisterRow(
                 tabId: 'anime',
                 rowId: 'mood-chips',
                 sortOrder: chipsOrder,
-                itemCount: _AnimeScreenState._moods.length,
+                itemCount: moods.length,
               );
-              return FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.symmetric(
-              horizontal: shellHomeSectionHorizontalPadding(context),
-            ),
-            itemCount: _AnimeScreenState._moods.length,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: shellScaled(context, 8).clamp(4.0, 8.0)),
-            itemBuilder: (_, i) {
-              final m = _AnimeScreenState._moods[i];
-              final selected = m.id == _s._selectedMood;
-              return ForjaShellChip(
-                label: m.label,
-                selected: selected,
-                icon: m.icon,
-                listIndex: i,
-                tvTabId: 'anime',
-                tvRowId: 'mood-chips',
-                onTap: () {
-                  if (m.id != _s._selectedMood) {
-                    _s._selectMood(m.id);
-                  } else {
-                    ShellTvFocusCoordinator.focusFromChipStripDown(
-                      tabId: 'anime',
-                      chipRowId: 'mood-chips',
-                      resultsRowId: 'mood-results',
-                    );
-                  }
-                },
-                onLeftEdge: shellTvChipLeftEdge(
+            }
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final layout = ShellMoodCircleLayout.resolve(
                   context,
-                  tabId: 'anime',
-                  rowId: 'mood-chips',
-                  index: i,
-                ),
-                onRightEdge: shellTvChipRightEdge(
-                  tabId: 'anime',
-                  rowId: 'mood-chips',
-                  index: i,
-                  itemCount: _AnimeScreenState._moods.length,
-                ),
-                onDownEdge: shellTvChipDownToRow(
-                  tabId: 'anime',
-                  chipRowId: 'mood-chips',
-                  resultsRowId: 'mood-results',
-                ),
-                onUpEdge: () {
-                  ShellTvFocusCoordinator.moveVerticalInTab(
-                    tabId: 'anime',
-                    rowId: 'mood-chips',
-                    currentIndex: i,
-                    down: false,
+                  itemCount: moods.length,
+                  maxWidth: constraints.maxWidth,
+                );
+
+                if (tvNav) {
+                  return _centeredMoodRow(
+                    context: context,
+                    layout: layout,
+                    scaleToFit: true,
                   );
-                },
-              );
-            },
-          ),
-              );
-            },
-          ),
+                }
+
+                final fitsCentered =
+                    layout.contentWidth(moods.length) <= constraints.maxWidth;
+                if (fitsCentered) {
+                  return _centeredMoodRow(
+                    context: context,
+                    layout: layout,
+                  );
+                }
+
+                return FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: HorizontalScroller(
+                    height: layout.rowHeight,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: shellHomeSectionHorizontalPadding(context),
+                    ),
+                    itemCount: moods.length,
+                    separatorBuilder: (_, _) =>
+                        SizedBox(width: layout.horizontalGap),
+                    itemBuilder: (context, i) => _moodCircleItem(
+                      context: context,
+                      layout: layout,
+                      i: i,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
         const SizedBox(height: 16),
         _buildMoodSection(resultsOrder: resultsOrder),
@@ -482,19 +560,23 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                   clipBehavior: Clip.none,
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
+                  scrollCacheExtent: ScrollCacheExtent.pixels(2000),
                   padding: EdgeInsets.symmetric(
                     horizontal: shellHomeSectionHorizontalPadding(context),
                   ),
                   itemCount: list.length,
                   separatorBuilder: (_, _) =>
                       SizedBox(width: shellMovieCardRowGap(context)),
-                  itemBuilder: (context, index) => _animePosterCard(
-                    list[index],
-                    listIndex: index,
-                    tvRowId: 'mood-results',
-                    onUpEdge: shellTvResultsUpToChips(
-                      tabId: 'anime',
-                      chipRowId: 'mood-chips',
+                  itemBuilder: (context, index) => FocusTraversalOrder(
+                    order: NumericFocusOrder(index.toDouble()),
+                    child: _animePosterCard(
+                      list[index],
+                      listIndex: index,
+                      tvRowId: 'mood-results',
+                      onUpEdge: shellTvResultsUpToChips(
+                        tabId: 'anime',
+                        chipRowId: 'mood-chips',
+                      ),
                     ),
                   ),
                 ),

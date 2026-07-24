@@ -203,6 +203,7 @@ void shellTvRegisterRow({
   required int sortOrder,
   required int itemCount,
   VoidCallback? onFocusUp,
+  VoidCallback? onFocusDown,
   ShellTvRowOrientation orientation = ShellTvRowOrientation.horizontal,
 }) {
   ShellTvFocusCoordinator.registerRow(
@@ -215,6 +216,7 @@ void shellTvRegisterRow({
       nodeAt: (index) =>
           ShellTvFocusCoordinator.itemNode(tabId, rowId, index),
       onFocusUp: onFocusUp,
+      onFocusDown: onFocusDown,
     ),
   );
 }

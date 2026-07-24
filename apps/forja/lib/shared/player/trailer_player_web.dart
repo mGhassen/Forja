@@ -94,15 +94,19 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
         var videoAspect = 16 / 9;
         var viewAspect = w / h;
         var iframeW, iframeH;
-        // Contain — full frame visible, letterbox if needed. Never cover/overscan
-        // (that zoomed the picture past the window).
+        // Cover the viewport at 16:9, then overscan to clip YouTube logo /
+        // "More videos" chrome. Skip overscan when captions are on so text
+        // isn't cropped (same idea as the details-hero trailer).
         if (viewAspect > videoAspect) {
-          iframeH = h;
-          iframeW = h * videoAspect;
-        } else {
           iframeW = w;
           iframeH = w / videoAspect;
+        } else {
+          iframeH = h;
+          iframeW = h * videoAspect;
         }
+        var overscan = captionsVisible ? 1.0 : 1.35;
+        iframeW *= overscan;
+        iframeH *= overscan;
         iframe.style.position = 'absolute';
         iframe.style.left = '50%';
         iframe.style.top = '50%';
