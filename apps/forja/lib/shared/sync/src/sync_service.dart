@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
+import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
@@ -23,6 +26,18 @@ class SyncProfile {
   final String avatarKey;
 }
 
+/// Profile list / active-profile fetch failed (timeout, network, PostgREST).
+/// Distinct from an empty list (no profiles yet).
+class SyncProfileFetchException implements Exception {
+  SyncProfileFetchException(this.message, {this.cause});
+
+  final String message;
+  final Object? cause;
+
+  @override
+  String toString() => 'SyncProfileFetchException: $message';
+}
+
 class SyncService {
   SyncService._();
   static final SyncService instance = SyncService._();
@@ -36,9 +51,15 @@ class SyncService {
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
   static const _refreshDebounce = Duration(seconds: 30);
   static const _featuresPullMinInterval = Duration(seconds: 2);
+  /// Desktop window left "resumed" never gets lifecycle resume — keep RT warm.
+  static const _desktopKeepAliveInterval = Duration(minutes: 12);
+  static const _profileFetchTimeout = Duration(seconds: 15);
+  /// Refresh access JWT when less than this remains before expiry.
+  static const _accessTokenRefreshSkew = Duration(minutes: 5);
   DateTime? _lastRefreshAttempt;
   DateTime? _lastFeaturesPullAt;
   Future<Map<String, dynamic>>? _featuresPullInFlight;
+  Timer? _desktopKeepAliveTimer;
 
   Stream<AuthState> get authChanges {
     final client = ForjaSupabase.clientOrNull;
@@ -90,6 +111,38 @@ class SyncService {
     }();
     _refreshInFlight = run;
     return run;
+  }
+
+  /// Starts a desktop timer that refreshes the session while the app stays open
+  /// without lifecycle `resumed` (common on macOS). Safe to call repeatedly.
+  void startDesktopSessionKeepAlive() {
+    _desktopKeepAliveTimer?.cancel();
+    _desktopKeepAliveTimer = Timer.periodic(_desktopKeepAliveInterval, (_) {
+      if (!isSignedIn) return;
+      unawaited(refreshSession());
+    });
+  }
+
+  void stopDesktopSessionKeepAlive() {
+    _desktopKeepAliveTimer?.cancel();
+    _desktopKeepAliveTimer = null;
+  }
+
+  /// Refresh when the access JWT is missing expiry or nearly expired.
+  Future<void> ensureFreshAccessToken() async {
+    if (!isSignedIn) return;
+    final expiresAt = session?.expiresAt;
+    if (expiresAt == null) {
+      await refreshSession(force: true);
+      return;
+    }
+    final expires = DateTime.fromMillisecondsSinceEpoch(
+      expiresAt * 1000,
+      isUtc: true,
+    );
+    if (expires.difference(DateTime.now().toUtc()) <= _accessTokenRefreshSkew) {
+      await refreshSession(force: true);
+    }
   }
 
   /// True when MFA is enrolled but this session is still AAL1.
@@ -325,6 +378,26 @@ class SyncService {
     if (response.session == null) {
       throw const AuthException('Web login did not return a usable session.');
     }
+    // Android TV: EncryptedSharedPreferences alone can drop the session;
+    // ForjaPlatformSecureStore dual-writes a prefs vault. Verify after apply.
+    try {
+      final host = Uri.tryParse(ForjaSupabase.url)?.host ?? 'forja';
+      final ls = ForjaSecureLocalStorage(
+        persistSessionKey: 'sb-$host-auth-token',
+      );
+      final persisted = await ls.hasAccessToken();
+      debugPrint(
+        '[Sync] browser tokens applied signedIn=true persisted=$persisted',
+      );
+      if (!persisted) {
+        debugPrint(
+          '[Sync] WARNING: session not durable after setSession — '
+          'cold start may return to sign-in',
+        );
+      }
+    } catch (e) {
+      debugPrint('[Sync] persist check failed: $e');
+    }
     _notifyIdentityChanged();
     return response;
   }
@@ -369,12 +442,14 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return const [];
+    await ensureFreshAccessToken();
     try {
       final rows = await client
           .from('profiles')
           .select('id, name, color, avatar_key, created_at')
           .eq('account_id', userId)
-          .order('created_at');
+          .order('created_at')
+          .timeout(_profileFetchTimeout);
       return [
         for (final raw in rows as List)
           SyncProfile(
@@ -384,27 +459,37 @@ class SyncService {
             avatarKey: raw['avatar_key'] as String? ?? 'forge',
           ),
       ];
+    } on TimeoutException catch (e) {
+      debugPrint('[Sync] listProfiles timeout: $e');
+      throw SyncProfileFetchException(
+        'Timed out loading profiles. Check your connection and retry.',
+        cause: e,
+      );
     } catch (e) {
+      if (e is SyncProfileFetchException) rethrow;
       debugPrint('[Sync] listProfiles error: $e');
-      return const [];
+      throw SyncProfileFetchException(
+        'Could not load profiles. Check your connection and retry.',
+        cause: e,
+      );
     }
   }
 
-  Future<SyncProfile?> activeProfile() async {
+  Future<SyncProfile?> activeProfile({List<SyncProfile>? profiles}) async {
     final userId = session?.user.id;
     if (userId == null) return null;
-    final profiles = await listProfiles();
-    if (profiles.isEmpty) return null;
+    final list = profiles ?? await listProfiles();
+    if (list.isEmpty) return null;
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('$_activeProfileKeyPrefix$userId');
     SyncProfile? selected;
-    for (final profile in profiles) {
+    for (final profile in list) {
       if (profile.id == saved) {
         selected = profile;
         break;
       }
     }
-    final active = selected ?? profiles.first;
+    final active = selected ?? list.first;
     if (saved != active.id) {
       await prefs.setString('$_activeProfileKeyPrefix$userId', active.id);
     }

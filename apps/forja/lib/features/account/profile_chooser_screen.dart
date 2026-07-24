@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
@@ -6,6 +8,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -67,8 +70,9 @@ class ProfileChooserScreen extends StatefulWidget {
   /// When re-opening Who's watching, tapping the current profile just closes.
   final bool closeIfAlreadyActive;
 
-  /// Cold sign-in pick: select + merge, then let the gate show the logo
-  /// [SplashScreen]. Mid-session switches keep [ProfileSwitchSplash].
+  /// When true: select + merge only, then [onProfileSelected] (caller shows
+  /// logo [SplashScreen]). Default false: show [ProfileSwitchSplash] first
+  /// (cold sign-in and mid-session switches).
   final bool useLogoIntroSplash;
 
   @override
@@ -109,20 +113,34 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       _loading = true;
       _error = null;
     });
-    final profiles = await SyncService.instance.listProfiles();
-    final active = await SyncService.instance.activeProfile();
-    if (!mounted) return;
-    setState(() {
-      _profiles = profiles;
-      _activeProfileId = active?.id;
-      _loading = false;
-      if (profiles.isEmpty && openCreateWhenEmpty) {
-        _screen = _Screen.create;
-        _editingId = null;
-        _nameCtrl.text = '';
-        _avatarKey = forjaProfileAvatarKeys.first;
-      }
-    });
+    try {
+      final profiles = await SyncService.instance.listProfiles();
+      final active = await SyncService.instance.activeProfile(
+        profiles: profiles,
+      );
+      if (!mounted) return;
+      setState(() {
+        _profiles = profiles;
+        _activeProfileId = active?.id;
+        _loading = false;
+        if (profiles.isEmpty && openCreateWhenEmpty) {
+          _screen = _Screen.create;
+          _editingId = null;
+          _nameCtrl.text = '';
+          _avatarKey = forjaProfileAvatarKeys.first;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is SyncProfileFetchException
+          ? e.message
+          : 'Could not load profiles. Check your connection and retry.';
+      setState(() {
+        _loading = false;
+        _error = message;
+        // Do not open create on a failed fetch — empty list is not trustworthy.
+      });
+    }
   }
 
   Future<void> _select(SyncProfile profile, {Rect? originRect}) async {
@@ -385,128 +403,240 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
 
   Widget _buildChooserBody() {
     final managing = _screen == _Screen.manage;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 920),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          child: Column(
-            children: [
-              const Spacer(),
-              Text(
-                managing ? 'Manage profiles' : 'Who’s watching?',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: ForjaShellColors.textPrimary,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w600,
+    final activeIndex = _profiles.indexWhere((p) => p.id == _activeProfileId);
+    final autofocusIndex = activeIndex >= 0 ? activeIndex : 0;
+    final showAdd = (managing || _profiles.isEmpty) &&
+        _profiles.length < SyncService.maxProfilesPerAccount;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ShellTvLinearFocusScope(
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: constraints.maxWidth,
+                  minHeight: math.max(0, constraints.maxHeight - 48),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _profiles.isEmpty
-                    ? 'Create a profile to sync settings on this device.'
-                    : managing
-                        ? 'Edit a profile or add a new one.'
-                        : 'Choose the profile whose settings you want on this device.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 36),
-              if (_loading)
-                const Padding(
-                  padding: EdgeInsets.all(48),
-                  child: CircularProgressIndicator(),
-                )
-              else
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 28,
-                      runSpacing: 28,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 920),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        for (final profile in _profiles)
-                          _ProfileChoice(
-                            profile: profile,
-                            active: profile.id == _activeProfileId,
-                            managing: managing,
-                            enabled: !_busy,
-                            onTap: (originRect) {
-                              if (managing) {
-                                _beginEdit(profile);
-                              } else {
-                                _select(profile, originRect: originRect);
-                              }
-                            },
+                        Text(
+                          managing ? 'Manage profiles' : 'Who’s watching?',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: ForjaShellColors.textPrimary,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w600,
                           ),
-                        if ((managing || _profiles.isEmpty) &&
-                            _profiles.length < SyncService.maxProfilesPerAccount)
-                          _AddProfileTile(
-                            enabled: !_busy,
-                            onTap: _beginCreate,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _loading
+                              ? 'Loading profiles…'
+                              : _error != null
+                                  ? 'Could not load who’s watching right now.'
+                                  : _profiles.isEmpty
+                                      ? 'Create a profile to sync settings on this device.'
+                                      : managing
+                                          ? 'Edit a profile or add a new one.'
+                                          : 'Choose the profile whose settings you want on this device.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: ForjaShellColors.textSecondary,
+                            fontSize: 14,
                           ),
+                        ),
+                        const SizedBox(height: 36),
+                        if (_loading)
+                          const Padding(
+                            padding: EdgeInsets.all(48),
+                            child: CircularProgressIndicator(),
+                          )
+                        else if (_error != null && _profiles.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Column(
+                              children: [
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _ChooserAction(
+                                  autofocus: true,
+                                  label: 'Retry',
+                                  primary: true,
+                                  onTap: _busy
+                                      ? null
+                                      : () => _load(openCreateWhenEmpty: false),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 28,
+                            runSpacing: 28,
+                            children: [
+                              for (var i = 0; i < _profiles.length; i++)
+                                _ProfileChoice(
+                                  profile: _profiles[i],
+                                  active: _profiles[i].id == _activeProfileId,
+                                  managing: managing,
+                                  enabled: !_busy,
+                                  autofocus: !_busy && i == autofocusIndex,
+                                  onTap: (originRect) {
+                                    final profile = _profiles[i];
+                                    if (managing) {
+                                      _beginEdit(profile);
+                                    } else {
+                                      _select(profile, originRect: originRect);
+                                    }
+                                  },
+                                ),
+                              if (showAdd)
+                                _AddProfileTile(
+                                  enabled: !_busy,
+                                  autofocus: !_busy && _profiles.isEmpty,
+                                  onTap: _beginCreate,
+                                ),
+                            ],
+                          ),
+                        if (_error != null && _profiles.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _ChooserAction(
+                            label: 'Retry',
+                            primary: true,
+                            onTap: _busy
+                                ? null
+                                : () => _load(openCreateWhenEmpty: false),
+                          ),
+                        ],
+                        const SizedBox(height: 36),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            if (_profiles.isNotEmpty)
+                              _ChooserAction(
+                                label: managing ? 'Done' : 'Manage profiles',
+                                outlined: true,
+                                onTap: _busy
+                                    ? null
+                                    : () => setState(() {
+                                          _screen = managing
+                                              ? _Screen.choose
+                                              : _Screen.manage;
+                                          _error = null;
+                                        }),
+                              ),
+                            if (widget.showBack && _profiles.isNotEmpty)
+                              _ChooserAction(
+                                label: 'Account settings',
+                                onTap: _busy
+                                    ? null
+                                    : () {
+                                        ShellBus.requestTab.value = 'settings';
+                                        Navigator.of(context).pop(false);
+                                      },
+                              ),
+                            if (widget.onSignOut != null)
+                              _ChooserAction(
+                                label: 'Use another account',
+                                onTap: _busy ? null : _signOut,
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ),
-              if (_error != null) ...[
-                const SizedBox(height: 20),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => _load(openCreateWhenEmpty: false),
-                  child: const Text('Retry'),
-                ),
-              ],
-              const Spacer(),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  if (_profiles.isNotEmpty)
-                    OutlinedButton(
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() {
-                                _screen = managing
-                                    ? _Screen.choose
-                                    : _Screen.manage;
-                                _error = null;
-                              }),
-                      child: Text(managing ? 'Done' : 'Manage profiles'),
-                    ),
-                  if (widget.showBack && _profiles.isNotEmpty)
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () {
-                              ShellBus.requestTab.value = 'settings';
-                              Navigator.of(context).pop(false);
-                            },
-                      child: const Text('Account settings'),
-                    ),
-                  if (widget.onSignOut != null)
-                    TextButton(
-                      onPressed: _busy ? null : _signOut,
-                      child: const Text('Use another account'),
-                    ),
-                ],
               ),
-            ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// TV/desktop action under Who’s watching — D-pad via [FocusableControl].
+class _ChooserAction extends StatelessWidget {
+  const _ChooserAction({
+    required this.label,
+    required this.onTap,
+    this.autofocus = false,
+    this.outlined = false,
+    this.primary = false,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final bool autofocus;
+  final bool outlined;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final fg = primary
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.textPrimary;
+    return ExcludeFocus(
+      excluding: !enabled,
+      child: FocusableControl(
+        autoFocus: autofocus && enabled,
+        onTap: onTap,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        showFocusFill: true,
+        child: AnimatedOpacity(
+          opacity: enabled ? 1 : 0.45,
+          duration: const Duration(milliseconds: 120),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: outlined ? 18 : 14,
+              vertical: outlined ? 12 : 10,
+            ),
+            decoration: outlined
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: ForjaShellColors.ghostBorder,
+                    ),
+                  )
+                : null,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ),
@@ -514,78 +644,60 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
   }
 }
 
-class _AddProfileTile extends StatefulWidget {
-  const _AddProfileTile({required this.enabled, required this.onTap});
+class _AddProfileTile extends StatelessWidget {
+  const _AddProfileTile({
+    required this.enabled,
+    required this.onTap,
+    this.autofocus = false,
+  });
 
   final bool enabled;
   final VoidCallback onTap;
-
-  @override
-  State<_AddProfileTile> createState() => _AddProfileTileState();
-}
-
-class _AddProfileTileState extends State<_AddProfileTile> {
-  bool _hovered = false;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
-    return FocusableActionDetector(
-      enabled: widget.enabled,
-      mouseCursor: widget.enabled
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
-      onShowHoverHighlight: (v) => setState(() => _hovered = v),
-      actions: {
-        ActivateIntent: CallbackAction<ActivateIntent>(
-          onInvoke: (_) {
-            widget.onTap();
-            return null;
-          },
-        ),
-      },
-      child: GestureDetector(
-        onTap: widget.enabled ? widget.onTap : null,
-        child: AnimatedScale(
-          scale: _hovered ? 1.06 : 1,
-          duration: ShellTokens.navSelectionAnimation,
-          curve: Curves.easeOutCubic,
-          child: SizedBox(
-            width: 132,
-            child: Column(
-              children: [
-                Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4.5),
-                    border: Border.all(
-                      color: _hovered
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.25),
-                      width: 3,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: 56,
-                    color: _hovered
-                        ? ForjaShellColors.textPrimary
-                        : ForjaShellColors.textSecondary,
+    return ExcludeFocus(
+      excluding: !enabled,
+      child: FocusableControl(
+        autoFocus: autofocus && enabled,
+        onTap: enabled ? onTap : null,
+        borderRadius: 8,
+        scaleOnFocus: 1.06,
+        showFocusBorder: true,
+        showFocusFill: false,
+        focusBleedWidth: 132,
+        child: SizedBox(
+          width: 132,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4.5),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    width: 3,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Add profile',
-                  style: TextStyle(
-                    color: _hovered
-                        ? ForjaShellColors.textPrimary
-                        : ForjaShellColors.textSecondary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  size: 56,
+                  color: ForjaShellColors.textSecondary,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Add profile',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -600,12 +712,14 @@ class _ProfileChoice extends StatefulWidget {
     required this.managing,
     required this.enabled,
     required this.onTap,
+    this.autofocus = false,
   });
 
   final SyncProfile profile;
   final bool active;
   final bool managing;
   final bool enabled;
+  final bool autofocus;
   final void Function(Rect? avatarOrigin) onTap;
 
   @override
@@ -614,8 +728,8 @@ class _ProfileChoice extends StatefulWidget {
 
 class _ProfileChoiceState extends State<_ProfileChoice> {
   final GlobalKey _avatarKey = GlobalKey();
-  bool _hovered = false;
   bool _focused = false;
+  bool _hovered = false;
 
   Rect? _avatarOriginRect() {
     final box = _avatarKey.currentContext?.findRenderObject() as RenderBox?;
@@ -631,61 +745,52 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _hovered || _focused;
-    return FocusableActionDetector(
-      enabled: widget.enabled,
-      mouseCursor: widget.enabled
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
-      onShowHoverHighlight: (value) => setState(() => _hovered = value),
-      onShowFocusHighlight: (value) => setState(() => _focused = value),
-      actions: {
-        ActivateIntent: CallbackAction<ActivateIntent>(
-          onInvoke: (_) {
-            _handleTap();
-            return null;
-          },
-        ),
-      },
-      child: GestureDetector(
+    final highlighted = _focused || _hovered;
+    final selected = highlighted || (!widget.managing && widget.active);
+    return ExcludeFocus(
+      excluding: !widget.enabled,
+      child: FocusableControl(
+        autoFocus: widget.autofocus && widget.enabled,
         onTap: widget.enabled ? _handleTap : null,
-        child: AnimatedScale(
-          scale: highlighted ? 1.06 : 1,
-          duration: ShellTokens.navSelectionAnimation,
-          curve: Curves.easeOutCubic,
-          child: SizedBox(
-            width: 132,
-            child: Column(
-              children: [
-                KeyedSubtree(
-                  key: _avatarKey,
-                  child: ForjaProfileAvatar(
-                    avatarKey: widget.profile.avatarKey,
-                    name: widget.profile.name,
-                    size: 112,
-                    selected: highlighted ||
-                        (!widget.managing && widget.active),
-                    editing: widget.managing,
-                  ),
+        borderRadius: 8,
+        scaleOnFocus: 1.06,
+        showFocusBorder: true,
+        showFocusFill: false,
+        focusBleedWidth: 132,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
+        child: SizedBox(
+          width: 132,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              KeyedSubtree(
+                key: _avatarKey,
+                child: ForjaProfileAvatar(
+                  avatarKey: widget.profile.avatarKey,
+                  name: widget.profile.name,
+                  size: 112,
+                  selected: selected,
+                  editing: widget.managing,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.profile.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: highlighted || (!widget.managing && widget.active)
-                        ? ForjaShellColors.textPrimary
-                        : ForjaShellColors.textSecondary,
-                    fontSize: 15,
-                    fontWeight: (!widget.managing && widget.active)
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                  ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.profile.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: (!widget.managing && widget.active)
+                      ? FontWeight.w700
+                      : FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

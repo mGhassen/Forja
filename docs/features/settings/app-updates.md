@@ -12,7 +12,10 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 
 ## What you can do
 
-- Tap **Check for updates** in Settings
+- Tap **Check for updates** in Settings — if a newer build exists, the update
+  dialog opens; if you are already on the latest, you get a success toast; if
+  the check fails (no network, bad manifest, missing CDN config), you get an
+  **error** toast (Forja does not claim you are up to date when the check failed)
 - Toggle **Crash reporting** under **Privacy** (off by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
 - Toggle **Product analytics** under **Privacy** (off by default) to send anonymous usage events via PostHog with masked session replay. Screen names follow real tabs (`home`, `anime`, …) and routes (`media_details`, `player`) — not Flutter’s `/` root.
 - Accept update prompt when a newer version exists

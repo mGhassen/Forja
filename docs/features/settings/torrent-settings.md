@@ -14,8 +14,8 @@ Controls how the torrent engine behaves: result sort order on details screens, R
 
 - Set **sort preference** (e.g. seeders high to low)
 - Choose **cache type**: RAM or disk
-- Adjust **RAM cache size** (MB) when using RAM cache
-- Set **connection limit** for the torrent engine
+- Adjust **RAM cache size** (MB) when using RAM cache — on **TV**, focus the slider and use **Left/Right**
+- Set **connection limit** for the torrent engine — same D-pad nudge on **TV**
 
 ## Tips
 

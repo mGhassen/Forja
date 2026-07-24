@@ -47,7 +47,7 @@ Link a Forja account to Android TV without typing email/password on the leanback
 |--:|----|-------------|--------|
 | 1 | R46-A05 | Cold start without session shows link screen (code + QR + instructions) | ⬜ |
 | 2 | R46-A06 | Continue as guest skips into the app without linking | ⬜ |
-| 3 | R46-A07 | After portal approve, TV poll receives tokens and signs in (profiles → splash) | ⬜ |
+| 3 | R46-A07 | After portal approve, TV poll receives tokens and signs in (profiles → avatar splash → app) | ⬜ |
 | 4 | R46-A08 | Sign-out on TV returns to the link screen (account-bound local state cleared) | ⬜ |
 
 ---

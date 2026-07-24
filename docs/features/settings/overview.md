@@ -4,12 +4,15 @@
 
 ## What it is
 
-Settings is organized as a **category hub** (not a long accordion). On desktop/wide screens, a left category rail stays open while the right pane shows the selected category. On phone and TV, you pick a category from a list, then open its detail page.
+Settings is organized as a **category hub** (not a long accordion). On desktop,
+wide screens, and **Android TV**, a left category rail stays open while the right
+pane shows the selected category. On phone / narrow layouts, you pick a category
+from a list, then open its detail page.
 
 ## How to open it
 
-Select the profile avatar / Guest item pinned at the bottom of the desktop rail.
-On other layouts, open the **Settings** tab (always available).
+Select the profile avatar / Guest item pinned at the bottom of the desktop or
+**Android TV** rail. On phone layouts, open the **Settings** tab (always available).
 
 ## Categories
 
@@ -32,7 +35,10 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
 - IPTV / Live Matches alone → movie Settings stay hidden until you turn a VOD tab back on in **Navigation**, then play sources under **Playback**
-- On **TV**, D-pad moves through the category list (entering Settings focuses the first category); **OK** opens a category in the shell overlay; **Back** / the focused back control returns to the hub. Toggles and dropdowns: **OK** flips a toggle or cycles the selected option; nested switches/menus do not steal focus
+- On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
+  D-pad moves through the category sidebar and into the right-pane rows; **Left**
+  on the first category returns to the nav rail. **OK** selects a category or
+  flips a toggle / cycles a dropdown; nested switches do not steal focus
 - Theme / appearance picker is not shipped yet — see [Appearance](appearance.md)
 
 ## Related

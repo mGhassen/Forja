@@ -54,13 +54,14 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
   final midnightToday = DateTime(today.year, today.month, today.day);
   final days = end.difference(midnightToday).inDays;
 
+  // Orange for soon/near — not amber/yellow (favorite star uses gold).
   final Color color;
   if (days < 0) {
     color = const Color(0xFFEF4444);
   } else if (days <= 7) {
-    color = const Color(0xFFF59E0B);
+    color = const Color(0xFFF97316);
   } else if (days <= 30) {
-    color = const Color(0xFFEAB308);
+    color = const Color(0xFFFB923C);
   } else {
     color = const Color(0xFF22C55E);
   }

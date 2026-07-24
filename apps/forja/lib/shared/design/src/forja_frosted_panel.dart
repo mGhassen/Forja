@@ -21,9 +21,11 @@ class ForjaFrostedPanel extends StatelessWidget {
     this.elevation = 0,
     this.enableBlur = true,
     this.frozenFrame,
+    this.blurSigma = defaultBlurSigma,
   });
 
-  static const double blurSigma = 48;
+  /// Default for Sources / Episodes panels.
+  static const double defaultBlurSigma = 48;
 
   /// Light glass — blur must read through; keep alpha low.
   static Color get tint =>
@@ -36,10 +38,14 @@ class ForjaFrostedPanel extends StatelessWidget {
   final bool enableBlur;
   final Uint8List? frozenFrame;
 
+  /// Backdrop / frozen-frame blur strength.
+  final double blurSigma;
+
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? BorderRadius.zero;
     final hasFrame = frozenFrame != null && frozenFrame!.isNotEmpty;
+    final sigma = blurSigma;
 
     // Player / Overlay path — blur the still locally (ImageFiltered).
     if (hasFrame) {
@@ -51,8 +57,8 @@ class ForjaFrostedPanel extends StatelessWidget {
             Positioned.fill(
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(
-                  sigmaX: blurSigma,
-                  sigmaY: blurSigma,
+                  sigmaX: sigma,
+                  sigmaY: sigma,
                   tileMode: TileMode.clamp,
                 ),
                 child: Image.memory(
@@ -107,7 +113,7 @@ class ForjaFrostedPanel extends StatelessWidget {
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
         child: Material(
           color: Colors.transparent,
           elevation: elevation,

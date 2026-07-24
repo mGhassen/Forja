@@ -59,9 +59,10 @@ enum _StartupStage { update, account, profiles, splash }
 ///
 /// Desktop and Android TV: Guest and unconfigured builds skip account but still
 /// run the update gate before splash. Restored sessions skip account and go
-/// update → splash. Fresh sign-in → Who's watching → logo intro [SplashScreen]
-/// → app. Mid-session profile switches use the avatar profile splash instead.
-/// Sign-out returns to account without re-running the update check.
+/// update → splash. Fresh sign-in → Who's watching → avatar
+/// [ProfileSwitchSplash] → app (no second logo intro). Guest / restored cold
+/// start still use the logo [SplashScreen]. Sign-out returns to account without
+/// re-running the update check.
 class DesktopStartupGate extends StatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
 
@@ -106,10 +107,14 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
 
   Future<void> _runUpdateGate() async {
     try {
-      final updateInfo = await AppUpdaterService().checkForUpdates();
+      final result = await AppUpdaterService().checkForUpdates();
       if (!mounted) return;
-      if (updateInfo != null) {
-        await UpdateDialog.show(context, updateInfo);
+      if (result.isAvailable && result.info != null) {
+        await UpdateDialog.show(context, result.info!);
+      } else if (result.isFailed) {
+        debugPrint(
+          '[DesktopStartupGate] Update check failed: ${result.failureMessage}',
+        );
       }
     } catch (e) {
       debugPrint('[DesktopStartupGate] Update check failed: $e');
@@ -119,17 +124,32 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   }
 
   Future<void> _enterPostUpdateDestination() async {
-    final hasSession = SyncService.instance.isSignedIn;
-    // Restored sessions skip profile chooser, which is otherwise the only
-    // place that pulls accounts.features — without this, iptvScrape stays off.
+    // Restored sessions must skip the link screen and Who's watching — land
+    // on splash with the last active profile (SharedPreferences).
+    var hasSession = SyncService.instance.isSignedIn;
+    if (!hasSession && ForjaSupabase.isConfigured) {
+      // Storage may finish hydrating after initialize on slow TV devices.
+      try {
+        await SyncService.instance.refreshSession();
+      } catch (e) {
+        debugPrint('[DesktopStartupGate] refreshSession: $e');
+      }
+      hasSession = SyncService.instance.isSignedIn;
+    }
     if (hasSession) {
       await SyncService.instance.pullAccountFeatures();
+      // Ensure active profile row is resolved before splash/shell paint.
+      await SyncService.instance.activeProfile();
     }
     if (!mounted) return;
     final destination = resolveAuthStartupDestination(
       needsAccountGate: _needsAccountGate,
       supabaseConfigured: ForjaSupabase.isConfigured,
       hasSession: hasSession,
+    );
+    debugPrint(
+      '[DesktopStartupGate] post-update hasSession=$hasSession '
+      '→ ${destination.name}',
     );
     setState(() {
       _stage = destination == DesktopStartupDestination.account
@@ -173,9 +193,10 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     setState(() => _stage = _StartupStage.account);
   }
 
-  void _enterIntroSplashAfterProfilePick() {
-    // Profile is selected + merged; logo splash warms engines / catalog.
-    ShellBus.splashDismissed.value = false;
+  /// After [ProfileSwitchSplash] (avatar fly + engine warm) — open the shell
+  /// without a second logo intro splash.
+  void _enterShellAfterProfileSplash() {
+    ShellBus.splashDismissed.value = true;
     setState(() => _stage = _StartupStage.splash);
   }
 
@@ -202,10 +223,12 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
               onContinueAsGuest: () =>
                   setState(() => _stage = _StartupStage.splash),
             ),
+      // Same as mid-session desktop: avatar profile splash warms the profile,
+      // then the shell opens (no second logo intro).
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
-        useLogoIntroSplash: true,
-        onProfileSelected: _enterIntroSplashAfterProfilePick,
+        useLogoIntroSplash: false,
+        onProfileSelected: _enterShellAfterProfileSplash,
         onSignOut: () => setState(() => _stage = _StartupStage.account),
       ),
       _StartupStage.splash => widget.splash,

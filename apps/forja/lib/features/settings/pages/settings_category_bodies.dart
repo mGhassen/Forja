@@ -28,6 +28,7 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
 
@@ -108,11 +109,16 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage> {
     final meta = settingsCategoryById(widget.categoryId, visibility);
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SettingsPageScaffold(
-        title: meta?.title ?? 'Settings',
-        showBack: true,
-        scrollable: !(meta?.fillViewport ?? false),
-        child: buildSettingsCategoryBody(widget.categoryId, visibility),
+      body: ShellTvLinearFocusScope(
+        child: FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: SettingsPageScaffold(
+            title: meta?.title ?? 'Settings',
+            showBack: true,
+            scrollable: !(meta?.fillViewport ?? false),
+            child: buildSettingsCategoryBody(widget.categoryId, visibility),
+          ),
+        ),
       ),
     );
   }

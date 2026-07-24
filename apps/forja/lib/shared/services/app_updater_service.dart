@@ -42,38 +42,55 @@ class AppUpdaterService {
     return '$base/changelog';
   }
 
-  Future<UpdateInfo?> checkForUpdates() async {
+  /// Discovery result — never treat a failed check as “up to date”.
+  Future<UpdateCheckResult> checkForUpdates() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
       return _checkR2(currentVersion);
     } catch (e) {
       debugPrint('Error checking for updates: $e');
-      return null;
+      return UpdateCheckResult.failed('Could not check for updates: $e');
     }
   }
 
-  Future<UpdateInfo?> _checkR2(String currentVersion) async {
+  Future<UpdateCheckResult> _checkR2(String currentVersion) async {
     // iOS updates go through the App Store — no sideload installer.
-    if (Platform.isIOS) return null;
+    if (Platform.isIOS) {
+      return UpdateCheckResult.upToDate();
+    }
 
     final manifestUrl = ReleaseStorageUrls.manifestUrl();
     if (manifestUrl == null) {
       debugPrint('AppUpdater: RELEASE_CDN_URL is not set');
-      return null;
+      return UpdateCheckResult.failed(
+        'Update server is not configured in this build.',
+      );
     }
 
-    final response = await http.get(
-      Uri.parse(manifestUrl),
-      headers: _jsonHeaders,
-    );
+    final http.Response response;
+    try {
+      response = await http.get(
+        Uri.parse(manifestUrl),
+        headers: _jsonHeaders,
+      );
+    } catch (e) {
+      debugPrint('AppUpdater: manifest request failed: $e');
+      return UpdateCheckResult.failed(
+        'Could not reach the update server. Check your connection.',
+      );
+    }
     if (response.statusCode != 200) {
       debugPrint('AppUpdater: manifest HTTP ${response.statusCode}');
-      return null;
+      return UpdateCheckResult.failed(
+        'Update server returned HTTP ${response.statusCode}.',
+      );
     }
 
     final decoded = json.decode(response.body);
-    if (decoded is! Map<String, dynamic>) return null;
+    if (decoded is! Map<String, dynamic>) {
+      return UpdateCheckResult.failed('Update manifest was invalid.');
+    }
 
     final key = AppUpdaterManifest.platformKey(
       isWindows: Platform.isWindows,
@@ -81,23 +98,33 @@ class AppUpdaterService {
       isLinux: Platform.isLinux,
       isAndroid: Platform.isAndroid,
     );
-    if (key == null) return null;
+    if (key == null) {
+      return UpdateCheckResult.upToDate();
+    }
 
     final target = AppUpdaterManifest.resolve(
       manifest: decoded,
       platformKey: key,
     );
-    if (target == null) return null;
+    if (target == null) {
+      return UpdateCheckResult.failed(
+        'No installer is published for this platform yet.',
+      );
+    }
 
     if (!AppUpdaterManifest.isUpdateAvailable(
       currentVersion: currentVersion,
       target: target,
     )) {
-      return null;
+      return UpdateCheckResult.upToDate();
     }
 
     final downloadUrl = _pickInstallerUrl(target.version, target.assets);
-    if (downloadUrl == null || downloadUrl.isEmpty) return null;
+    if (downloadUrl == null || downloadUrl.isEmpty) {
+      return UpdateCheckResult.failed(
+        'Found ${target.version} but no matching installer asset.',
+      );
+    }
 
     final publishedAt = target.publishedAt ?? DateTime.now();
 
@@ -106,15 +133,17 @@ class AppUpdaterService {
       latestVersion: target.version,
     );
 
-    return UpdateInfo(
-      currentVersion: currentVersion,
-      latestVersion: target.version,
-      downloadUrl: downloadUrl,
-      changelogs: changelogs,
-      fullChangelogUrl: fullChangelogUrl(),
-      publishedAt: publishedAt,
-      isMacOS: Platform.isMacOS,
-      isIOS: false,
+    return UpdateCheckResult.available(
+      UpdateInfo(
+        currentVersion: currentVersion,
+        latestVersion: target.version,
+        downloadUrl: downloadUrl,
+        changelogs: changelogs,
+        fullChangelogUrl: fullChangelogUrl(),
+        publishedAt: publishedAt,
+        isMacOS: Platform.isMacOS,
+        isIOS: false,
+      ),
     );
   }
 
@@ -357,6 +386,25 @@ class AppUpdaterService {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
+}
+
+class UpdateCheckResult {
+  const UpdateCheckResult._({this.info, this.failureMessage});
+
+  final UpdateInfo? info;
+  final String? failureMessage;
+
+  bool get isAvailable => info != null;
+  bool get isUpToDate => info == null && failureMessage == null;
+  bool get isFailed => failureMessage != null;
+
+  factory UpdateCheckResult.available(UpdateInfo info) =>
+      UpdateCheckResult._(info: info);
+
+  factory UpdateCheckResult.upToDate() => const UpdateCheckResult._();
+
+  factory UpdateCheckResult.failed(String message) =>
+      UpdateCheckResult._(failureMessage: message);
 }
 
 class UpdateInfo {

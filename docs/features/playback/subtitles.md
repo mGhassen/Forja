@@ -14,7 +14,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 - Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), load from file, then online languages with track counts; drill into a language for specific files. Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
-- Change appearance (size, color, font, opacity)
+- Change appearance (size, color, font, opacity) — on **TV**, focus a slider and use **Left/Right** to adjust (no OK first)
 - Adjust sync delay if dialogue is early/late
 - Use advanced ASS/SSA rendering for styled subs
 - **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference

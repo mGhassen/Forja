@@ -15,6 +15,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///   Keychain ACLs re-prompt on every ad-hoc re-sign; DP Keychain returns
 ///   `-34018` without sandbox. Prefs avoid both.
 ///
+/// **Android / Android TV:** always dual-write EncryptedSharedPreferences + a
+/// SharedPreferences vault. Encrypted prefs have been empty after TV emulator
+/// restarts; the vault keeps Supabase sessions across cold starts.
+///
 /// Never writes the legacy login Keychain (`useDataProtectionKeyChain: false`).
 /// Reads may one-shot migrate leftovers out of that store (one Allow dialog).
 abstract final class ForjaPlatformSecureStore {
@@ -33,6 +37,12 @@ abstract final class ForjaPlatformSecureStore {
 
   static bool get _isMacOS => !kIsWeb && Platform.isMacOS;
 
+  static bool get _isAndroid => !kIsWeb && Platform.isAndroid;
+
+  /// Prefer SharedPreferences vault as the durable store (macOS ad-hoc, Android).
+  static bool get _usePrefsVaultPrimary =>
+      _isAndroid || (_isMacOS && !usesDataProtectionKeychain);
+
   /// Sandboxed macOS sets this; ad-hoc Release does not.
   static bool get usesDataProtectionKeychain {
     if (!_isMacOS) return true;
@@ -48,9 +58,20 @@ abstract final class ForjaPlatformSecureStore {
       return _migrateFromLegacyLogin(key);
     }
 
+    if (_isAndroid) {
+      final vault = await _readPrefsVault(key);
+      if (vault != null && vault.isNotEmpty) return vault;
+    }
+
     try {
       final v = await _dp.read(key: key);
-      if (v != null && v.isNotEmpty) return v;
+      if (v != null && v.isNotEmpty) {
+        if (_isAndroid) {
+          // Backfill vault if EncryptedSharedPreferences still has the value.
+          await _writePrefsVault(key, v);
+        }
+        return v;
+      }
     } on MissingPluginException {
       return _readPrefsVault(key);
     } catch (e) {
@@ -64,11 +85,11 @@ abstract final class ForjaPlatformSecureStore {
   }
 
   static Future<void> write(String key, String value) async {
-    if (_isMacOS && !usesDataProtectionKeychain) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(prefsKey(key), value);
-      await prefs.remove(key);
-      return;
+    if (_usePrefsVaultPrimary) {
+      await _writePrefsVault(key, value);
+      if (_isMacOS && !usesDataProtectionKeychain) {
+        return;
+      }
     }
 
     try {
@@ -77,14 +98,22 @@ abstract final class ForjaPlatformSecureStore {
       debugPrint(
         '[ForjaPlatformSecureStore] write skipped — no secure plugin ($key)',
       );
+      if (_usePrefsVaultPrimary) return;
+      rethrow;
+    } catch (e) {
+      debugPrint('[ForjaPlatformSecureStore] DP write failed ($key): $e');
+      if (_usePrefsVaultPrimary) return;
       rethrow;
     }
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(prefsKey(key));
-      await prefs.remove(key);
-    } catch (_) {}
+    // Desktop sandboxed: drop prefs vault copies so Keychain is sole source.
+    if (!_isAndroid) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(prefsKey(key));
+        await prefs.remove(key);
+      } catch (_) {}
+    }
   }
 
   static Future<void> delete(String key) async {
@@ -103,7 +132,6 @@ abstract final class ForjaPlatformSecureStore {
       // ignore
     } catch (e) {
       debugPrint('[ForjaPlatformSecureStore] DP delete failed ($key): $e');
-      rethrow;
     }
 
     try {
@@ -111,6 +139,12 @@ abstract final class ForjaPlatformSecureStore {
       await prefs.remove(prefsKey(key));
       await prefs.remove(key);
     } catch (_) {}
+  }
+
+  static Future<void> _writePrefsVault(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefsKey(key), value);
+    await prefs.remove(key);
   }
 
   static Future<String?> _readPrefsVault(String key) async {

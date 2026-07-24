@@ -113,6 +113,8 @@ flutter_native_splash:
 
 flutter:
   uses-material-design: true
+  shaders:
+    - shaders/fractal_glass.frag
   assets:
     - assets/icon/
     - assets/sounds/
@@ -121,6 +123,7 @@ flutter:
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
+    - assets/textures/
 
 dependency_overrides:
   media_kit:

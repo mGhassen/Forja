@@ -22,3 +22,4 @@ export 'src/forja_buttons.dart';
 export 'src/forja_button.dart';
 export 'src/forja_switch.dart';
 export 'src/forja_toast.dart';
+export 'src/fractal_glass_gradient.dart';

@@ -26,7 +26,7 @@ Tap **Live Matches** in the navigation bar.
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region
-- Streamed / PPV embeds play inside a WebView. On **desktop / iOS**, Forja wraps the embed in an iframe under the catalog site (`streamed.pk` / `ppv.is`) so referrer matches the website; ad scripts that block the player page are filtered, and main-frame ad redirects are cancelled so they cannot take over the player. On **Android / Android TV**, the embed URL loads as the top-level page (with catalog Referer) — nested iframes in System WebView often fail with “Remove sandbox attributes on the iframe tag”
+- Streamed / PPV embeds play inside a WebView. On **desktop / iOS**, Forja wraps the embed in an iframe under the catalog site (`streamed.pk` / `ppv.is`) so referrer matches the website; ad scripts that block the player page are filtered. The catalog wrapper URL is allowed once so the player can paint, then main-frame ad redirects are cancelled so they cannot take over the player. On **Android / Android TV**, the embed URL loads as the top-level page (with catalog Referer) — nested iframes in System WebView often fail with “Remove sandbox attributes on the iframe tag”
 - Ad popups are accepted off-screen (required by some Streamed embeds) and never shown over the player; main-frame ad redirects are still cancelled
 - WebView playback may behave differently per platform; some embeds still require a tap if the site blocks unmuted autoplay
 - On Windows, Live Matches uses the same iframe wrapper + hidden ad `window.open` host as other desktop platforms, and forces an opaque WebView2 surface so the window does not go white/transparent

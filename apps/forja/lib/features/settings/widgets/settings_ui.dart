@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Category row in the Settings hub list / sidebar.
@@ -14,6 +16,7 @@ class SettingsCategoryTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.focusNode,
+    this.listIndex,
   });
 
   final IconData icon;
@@ -22,6 +25,9 @@ class SettingsCategoryTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final FocusNode? focusNode;
+
+  /// Hub list index — `0` sends Left D-pad to the nav rail.
+  final int? listIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +95,9 @@ class SettingsCategoryTile extends StatelessWidget {
       context: context,
       onTap: onTap,
       scaleOnFocus: 1.0,
-      navLeftAlways: true,
+      showFocusBorder: true,
+      showFocusFill: true,
+      listIndex: listIndex,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       focusNode: focusNode,
@@ -221,7 +229,8 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
                     borderRadius: 20,
                     scaleOnFocus: 1.0,
                     showFocusBorder: true,
-                    navLeftAlways: true,
+                    showFocusFill: true,
+                    listIndex: 0,
                     tvTabId: 'settings',
                     tvZone: ShellTvZone.settings,
                     child: const Padding(
@@ -363,7 +372,8 @@ class SettingsToggleRow extends StatelessWidget {
       context: context,
       onTap: () => onChanged(!value),
       scaleOnFocus: 1.0,
-      navLeftAlways: true,
+      showFocusBorder: true,
+      showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: content,
@@ -468,7 +478,8 @@ class SettingsSelectRow extends StatelessWidget {
         onChanged(next);
       },
       scaleOnFocus: 1.0,
-      navLeftAlways: true,
+      showFocusBorder: true,
+      showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: content,
@@ -560,10 +571,132 @@ class SettingsActionRow extends StatelessWidget {
       context: context,
       onTap: busy ? null : onTap,
       scaleOnFocus: 1.0,
-      navLeftAlways: true,
+      showFocusBorder: true,
+      showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: content,
+    );
+  }
+}
+
+/// Slider row — TV: focus then ←/→ nudge immediately (no OK arm).
+class SettingsSliderRow extends StatefulWidget {
+  const SettingsSliderRow({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.label,
+    required this.onChanged,
+    this.onChangeEnd,
+    this.divisions,
+  });
+
+  final String title;
+  final String? subtitle;
+  final double value;
+  final double min;
+  final double max;
+  final String label;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeEnd;
+  final int? divisions;
+
+  @override
+  State<SettingsSliderRow> createState() => _SettingsSliderRowState();
+}
+
+class _SettingsSliderRowState extends State<SettingsSliderRow> {
+  bool _focused = false;
+
+  void _nudge(double delta) {
+    final span = widget.max - widget.min;
+    final step = widget.divisions != null && widget.divisions! > 0
+        ? span / widget.divisions!
+        : span / 20;
+    final next =
+        (widget.value + delta * step).clamp(widget.min, widget.max).toDouble();
+    widget.onChanged(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.title,
+            style: const TextStyle(
+              color: ForjaShellColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (widget.subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              widget.subtitle!,
+              style: const TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+          ExcludeFocus(
+            child: Slider(
+              value: widget.value.clamp(widget.min, widget.max).toDouble(),
+              min: widget.min,
+              max: widget.max,
+              divisions: widget.divisions,
+              activeColor: ForjaShellColors.brandGreen,
+              inactiveColor: ForjaShellColors.borderSubtle,
+              label: widget.label,
+              onChanged: widget.onChanged,
+              onChangeEnd: widget.onChangeEnd,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!tv) return content;
+
+    return Focus(
+      onFocusChange: (f) {
+        setState(() => _focused = f);
+        if (!f) widget.onChangeEnd?.call(widget.value);
+      },
+      onKeyEvent: (node, event) {
+        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          _nudge(-1);
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          _nudge(1);
+          return KeyEventResult.handled;
+        }
+        return shellTvLinearMenuArrows(context: context, event: event);
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: _focused ? ForjaShellColors.inkHover : Colors.transparent,
+          border: _focused
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.28),
+                  width: 1,
+                )
+              : null,
+        ),
+        child: content,
+      ),
     );
   }
 }

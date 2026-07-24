@@ -452,6 +452,7 @@ class ForjaActiveProfileAvatar extends StatefulWidget {
 
 class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
   SyncProfile? _profile;
+  int _reloadGen = 0;
 
   @override
   void initState() {
@@ -467,12 +468,20 @@ class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
   }
 
   Future<void> _reload() async {
-    // Clear first so a prior profile never paints while the next loads.
-    if (mounted) setState(() => _profile = null);
-    final profile = await SyncService.instance.activeProfile();
-    if (!mounted) return;
-    setState(() => _profile = profile);
-    widget.onProfile?.call(profile);
+    final gen = ++_reloadGen;
+    // Keep painting the last known profile while loading — clearing to null
+    // left the rail stuck on "Guest" when activeProfile hung or failed.
+    try {
+      final profile = await SyncService.instance.activeProfile();
+      if (!mounted || gen != _reloadGen) return;
+      setState(() => _profile = profile);
+      widget.onProfile?.call(profile);
+    } catch (e) {
+      debugPrint('[ForjaActiveProfileAvatar] reload failed: $e');
+      if (!mounted || gen != _reloadGen) return;
+      // Preserve prior chrome on failure; only push null when we never had one.
+      widget.onProfile?.call(_profile);
+    }
   }
 
   @override

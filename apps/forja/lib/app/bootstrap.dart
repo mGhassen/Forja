@@ -270,6 +270,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.addListener(this);
       windowManager.setPreventClose(true);
+      SyncService.instance.startDesktopSessionKeepAlive();
     }
     // ⌘Q / Quit menu never hits onWindowClose — AppKit calls prepareQuit.
     MacOsShellChannel.listenPrepareQuit(_runDesktopQuit);
@@ -279,6 +280,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   void dispose() {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
+      SyncService.instance.stopDesktopSessionKeepAlive();
     }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -293,6 +295,18 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     // AppKit terminate. See issue 062 (Windows freeze) and 081 (macOS demux
     // SIGSEGV on ⌘Q / close while mpv alive).
     await _runDesktopQuit();
+  }
+
+  @override
+  void onWindowFocus() {
+    if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+    unawaited(SyncService.instance.refreshSession());
+  }
+
+  @override
+  void onWindowRestore() {
+    if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+    unawaited(SyncService.instance.refreshSession());
   }
 
   @override
@@ -404,6 +418,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // ProfileSwitchSplash already warmed engines — open MainScreen immediately.
+    if (ShellBus.splashDismissed.value) {
+      _showOverlay = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_startPostSplashServices());
+      });
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _initEngine();
     });

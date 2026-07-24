@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:media_kit/media_kit.dart';
@@ -128,6 +127,7 @@ class PlayerSubtitleSettingsDialog {
                               max: 80,
                               trailing: '${values.size.toInt()}',
                               tvFocus: tv,
+                              autofocus: tv,
                               onChanged: (v) => apply(() => values =
                                   PlayerSubtitleSettingsValues(
                                     size: v,
@@ -397,22 +397,28 @@ class PlayerSubtitleSettingsDialog {
 
             if (!tv) return dialogBody;
 
-            return FocusTraversalGroup(
-              policy: ReadingOrderTraversalPolicy(),
-              child: Focus(
-                autofocus: true,
-                onKeyEvent: (node, event) {
-                  if (!shellTvIsNavigationKey(event)) {
-                    return KeyEventResult.ignored;
-                  }
-                  if (event.logicalKey == LogicalKeyboardKey.escape ||
-                      event.logicalKey == LogicalKeyboardKey.goBack) {
-                    close();
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: dialogBody,
+            return ShellTvLinearFocusScope(
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: Focus(
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  onKeyEvent: (node, event) {
+                    if (!shellTvIsNavigationKey(event)) {
+                      return KeyEventResult.ignored;
+                    }
+                    if (event.logicalKey == LogicalKeyboardKey.escape ||
+                        event.logicalKey == LogicalKeyboardKey.goBack) {
+                      close();
+                      return KeyEventResult.handled;
+                    }
+                    return shellTvLinearMenuArrows(
+                      context: context,
+                      event: event,
+                    );
+                  },
+                  child: dialogBody,
+                ),
               ),
             );
           },
@@ -463,6 +469,7 @@ class _SubSlider extends StatefulWidget {
     required this.trailing,
     required this.onChanged,
     required this.tvFocus,
+    this.autofocus = false,
   });
 
   final String label;
@@ -472,6 +479,7 @@ class _SubSlider extends StatefulWidget {
   final String trailing;
   final ValueChanged<double> onChanged;
   final bool tvFocus;
+  final bool autofocus;
 
   @override
   State<_SubSlider> createState() => _SubSliderState();
@@ -479,11 +487,6 @@ class _SubSlider extends StatefulWidget {
 
 class _SubSliderState extends State<_SubSlider> {
   bool _focused = false;
-  /// TV: OK arms the thumb; ←/→ nudge; OK commits; Back restores.
-  bool _armed = false;
-  double? _valueBeforeArm;
-
-  bool get _tvActive => widget.tvFocus && (_focused || _armed);
 
   void _nudge(double delta) {
     final step = (widget.max - widget.min) / 20;
@@ -491,29 +494,6 @@ class _SubSliderState extends State<_SubSlider> {
         .clamp(widget.min, widget.max)
         .toDouble();
     widget.onChanged(next);
-  }
-
-  void _arm() {
-    _valueBeforeArm = widget.value;
-    setState(() => _armed = true);
-  }
-
-  void _commit() {
-    setState(() {
-      _armed = false;
-      _valueBeforeArm = null;
-    });
-  }
-
-  void _cancelArm() {
-    final restore = _valueBeforeArm;
-    setState(() {
-      _armed = false;
-      _valueBeforeArm = null;
-    });
-    if (restore != null && restore != widget.value) {
-      widget.onChanged(restore);
-    }
   }
 
   @override
@@ -532,7 +512,7 @@ class _SubSliderState extends State<_SubSlider> {
             Text(
               widget.trailing,
               style: TextStyle(
-                color: _tvActive
+                color: _focused
                     ? ForjaShellColors.brandGreen
                     : Colors.white,
                 fontSize: 12,
@@ -540,27 +520,29 @@ class _SubSliderState extends State<_SubSlider> {
             ),
           ],
         ),
-        SliderTheme(
-          data: SliderThemeData(
-            trackHeight: _armed ? 5 : (_tvActive ? 4 : 3),
-            thumbShape: RoundSliderThumbShape(
-              enabledThumbRadius: _armed ? 9 : (_tvActive ? 8 : 7),
+        ExcludeFocus(
+          child: SliderTheme(
+            data: SliderThemeData(
+              trackHeight: _focused ? 4 : 3,
+              thumbShape: RoundSliderThumbShape(
+                enabledThumbRadius: _focused ? 8 : 7,
+              ),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              activeTrackColor: _focused
+                  ? ForjaShellColors.brandGreen
+                  : const Color(0xFF7C3AED),
+              inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
+              thumbColor: _focused
+                  ? ForjaShellColors.brandGreen
+                  : const Color(0xFF7C3AED),
             ),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-            activeTrackColor: _tvActive
-                ? ForjaShellColors.brandGreen
-                : const Color(0xFF7C3AED),
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
-            thumbColor: _tvActive
-                ? ForjaShellColors.brandGreen
-                : const Color(0xFF7C3AED),
-          ),
-          child: Slider(
-            // Prefs / platform defaults can sit outside the slider range.
-            value: widget.value.clamp(widget.min, widget.max).toDouble(),
-            min: widget.min,
-            max: widget.max,
-            onChanged: widget.onChanged,
+            child: Slider(
+              // Prefs / platform defaults can sit outside the slider range.
+              value: widget.value.clamp(widget.min, widget.max).toDouble(),
+              min: widget.min,
+              max: widget.max,
+              onChanged: widget.onChanged,
+            ),
           ),
         ),
       ],
@@ -569,34 +551,10 @@ class _SubSliderState extends State<_SubSlider> {
     if (!widget.tvFocus) return slider;
 
     return Focus(
-      onFocusChange: (f) {
-        setState(() {
-          _focused = f;
-          if (!f && _armed) {
-            _armed = false;
-            _valueBeforeArm = null;
-          }
-        });
-      },
+      autofocus: widget.autofocus,
+      onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (node, event) {
         if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-        if (shellTvIsActivateKey(event)) {
-          if (_armed) {
-            _commit();
-          } else {
-            _arm();
-          }
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.escape ||
-            event.logicalKey == LogicalKeyboardKey.goBack) {
-          if (_armed) {
-            _cancelArm();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        }
-        if (!_armed) return KeyEventResult.ignored;
         if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
           _nudge(-1);
           return KeyEventResult.handled;
@@ -605,24 +563,14 @@ class _SubSliderState extends State<_SubSlider> {
           _nudge(1);
           return KeyEventResult.handled;
         }
-        // Trap ↑/↓ while armed so focus doesn't leave mid-adjust.
-        if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-            event.logicalKey == LogicalKeyboardKey.arrowDown) {
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
+        // ↑/↓ leave the slider and walk other controls.
+        return shellTvLinearMenuArrows(context: context, event: event);
       },
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: _armed
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.10)
-              : null,
-          border: _focused || _armed
-              ? Border.all(
-                  color: ForjaShellColors.brandGreen,
-                  width: _armed ? 2 : 1.5,
-                )
+          border: _focused
+              ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
               : null,
         ),
         child: Padding(

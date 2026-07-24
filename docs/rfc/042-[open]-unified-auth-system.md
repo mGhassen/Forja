@@ -11,8 +11,8 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 16** acceptance |
-| **Current slice** | Desktop session Keychain persist (release) shipped — remaining web/Flutter smoke ⬜ |
+| **Progress** | **5 / 5** components · **13 / 19** acceptance |
+| **Current slice** | Desktop keep-alive + profile fetch timeouts shipped — MFA / remaining web smoke ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -51,12 +51,15 @@ Patterns adapted from Guepard console auth (hook facades, MFA AAL2, OAuth callba
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R42-A07 | Session persisted via secure storage on desktop | ✅ |
-| 2 | R42-A08 | Single in-flight `refreshSession` (boot/resume/focus) | ⬜ |
+| 2 | R42-A08 | Single in-flight `refreshSession` (boot/resume/focus) | ✅ |
 | 3 | R42-A09 | Password sign-in shows TOTP challenge when MFA enrolled | ⬜ |
 | 4 | R42-A10 | Web login / OAuth completes MFA on portal then hands desktop its own session | ⬜ |
 | 5 | R42-A11 | Browser token apply prefers access+refresh (no RT race) | ✅ |
 | 6 | R42-A12 | Feature + changelog docs match shipped UX | ✅ |
 | 7 | R42-A13 | After Web login, portal and desktop remain signed in on separate refresh tokens | ✅ |
+| 8 | R42-A17 | Desktop periodic session keep-alive while the window stays open | ✅ |
+| 9 | R42-A18 | Profile list fetch timeout + error/Retry on Who’s watching and Settings | ✅ |
+| 10 | R42-A19 | Rail profile chrome keeps last profile on fetch failure (no stuck Guest while signed in) | ✅ |
 
 ---
 
@@ -80,4 +83,5 @@ Unify Forja auth around one Supabase project with Guepard-grade structure: thin 
 ### Related
 
 - [Issue 085](../issues/085-[open]-desktop-involuntary-signout-dumps-login.md) — session loss → login + wipe (no Guest portal leak)
+- [Issue 106](../issues/106-[open]-desktop-session-profile-chrome-desync.md) — long-idle Guest / Who’s watching hang / false “latest” update toast
 - Guepard: `packages/supabase` hooks + MFA + desktop rehydrate `inFlight`

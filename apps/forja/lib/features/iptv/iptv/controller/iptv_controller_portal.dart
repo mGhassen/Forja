@@ -558,9 +558,15 @@ mixin _IptvControllerPortal on ChangeNotifier {
     if (AccountFeatures.instance.iptvCredits < 1) {
       return (assigned: 0, error: 'No credits left.');
     }
-    final profile = await SyncService.instance.activeProfile();
-    if (profile == null) {
-      return (assigned: 0, error: 'No active profile.');
+    final SyncProfile profile;
+    try {
+      final active = await SyncService.instance.activeProfile();
+      if (active == null) {
+        return (assigned: 0, error: 'No active profile.');
+      }
+      profile = active;
+    } on SyncProfileFetchException catch (e) {
+      return (assigned: 0, error: e.message);
     }
     _c.statusText = 'Dealing $count portals ($region)…';
     notifyListeners();

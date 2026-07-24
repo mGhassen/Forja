@@ -756,10 +756,11 @@ const _dblclickFullscreenJs = r'''
 ///
 /// Do **not** set HTML `sandbox` — embed hosts reject sandboxed parents with
 /// "Remove sandbox attributes on the iframe tag" / "SANDBOX IFRAME NOT ALLOWED".
-/// Main-frame hijacks are cancelled in `shouldOverrideUrlLoading` (never allow
-/// catalog origins — that replaced the wrapper with the full SPA). Ad
-/// `window.open` is accepted off-screen (hidden) so Streamed embeds that
-/// require a successful open keep playing.
+/// Main-frame hijacks are cancelled in `shouldOverrideUrlLoading` except the
+/// catalog **origin root** required by `loadData(baseUrl)` (see
+/// [liveEmbedAllowsMainFrameNavigation] / issue 046 T05). Cancelling that root
+/// whitescreens and can kill WKWebView. Ad `window.open` is accepted off-screen
+/// (hidden) so Streamed embeds that require a successful open keep playing.
 ///
 /// Android System WebView: load the embed **top-level** instead (see embed
 /// player) — nested iframes commonly hit the sandbox rejection page there.
@@ -821,33 +822,6 @@ List<ContentBlocker> _liveEmbedContentBlockers() {
         action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
       ),
   ];
-}
-
-/// Whether a **main-frame** navigation may proceed.
-///
-/// Wrapper mode (`allowEmbedHostAsMainFrame: false`): only `about` / `data` /
-/// `blob`. Catalog hosts (`streamed.pk` / `ppv.is`) must **not** be allowed —
-/// ads and embeds navigate `top` there, replace the loadData wrapper with the
-/// full SPA, and surface "Remove sandbox attributes on the iframe tag".
-///
-/// Android top-level embed mode: also allow the embed host itself (player CDNs
-/// stay as subframes and are always allowed by the caller).
-bool _liveEmbedAllowsMainFrameNavigation({
-  required String url,
-  required String embedUrl,
-  required bool allowEmbedHostAsMainFrame,
-}) {
-  if (url.isEmpty ||
-      url.startsWith('about:') ||
-      url.startsWith('data:') ||
-      url.startsWith('blob:')) {
-    return true;
-  }
-  if (!allowEmbedHostAsMainFrame) return false;
-  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-  final embedHost = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
-  if (host.isEmpty || embedHost.isEmpty) return false;
-  return host == embedHost || host.endsWith('.$embedHost');
 }
 
 /// Strip `sandbox` from iframes under the wrapper document before they load.

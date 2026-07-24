@@ -800,7 +800,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     final activeN = int.tryParse(used);
     final maxN = int.tryParse(cap);
     final full = activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
-    // Blue = free capacity · gray = full (avoid expiry green/amber).
+    // Blue = free capacity · gray = full (avoid expiry green/orange).
     final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
     return Row(
       children: [

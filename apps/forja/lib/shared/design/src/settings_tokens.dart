@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/shell_scope.dart';
-import 'package:forja/shared/design/src/shell_profile.dart';
 
 /// Layout constants for the Settings category hub (RFC-033).
 abstract final class SettingsTokens {
-  /// Below this width (or always on TV), use list → push instead of sidebar.
+  /// Below this width, use list → push instead of sidebar.
   static const double splitMinWidth = 900;
 
   static const double sidebarWidth = 260;
@@ -19,9 +17,8 @@ abstract final class SettingsTokens {
   static const double pageTitleSize = 22;
 
   /// True when Settings should show the split sidebar layout.
+  /// Desktop / wide and Android TV (1080p+) use the same hub chrome.
   static bool useSplitLayout(BuildContext context) {
-    final scope = ShellScope.maybeOf(context);
-    if (scope != null && scope.profile == ShellProfile.tv) return false;
     return MediaQuery.sizeOf(context).width >= splitMinWidth;
   }
 }

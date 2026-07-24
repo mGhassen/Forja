@@ -21,11 +21,11 @@ profile is known — another profile’s settings are never shown first.
   same window caption (min / max / close) as the main app. New accounts are
   created only on the web (**Create an account on the web**). Linux and phones
   keep password and/or web login only.
-- **Android TV startup:** after the update check, link with a **code or QR**
-  (approve on the portal at `/connect`) or choose **Continue as guest**. See
-  [Link Android TV](../accounts/tv-connect.md). From **Settings → Profile &
-  account** you can open the same link flow when signed out.
-- **App:** select the profile avatar at the bottom of the desktop rail (opens
+- **Android TV startup:** after the update check, choose **Sign in** (then code or
+  QR) or **Continue as guest**. After a successful link, pick a profile on
+  **Who’s watching?** See [Link Android TV](../accounts/tv-connect.md). The TV
+  rail uses the same **profile avatar** entry for Settings as desktop.
+- **App:** select the profile avatar at the bottom of the desktop or TV rail (opens
   **Settings → Profile & account**), or open that page from Settings —
   the page shows the active profile (**Watching now** — tap to switch), cloud
   sync status, passkeys (macOS / Windows), and **Sign out**. From Who’s watching,
@@ -105,23 +105,26 @@ Not synced — device-specific or sensitive:
   ad-hoc macOS Release so updates do not re-ask for the login Keychain password).
   A new interactive sign-in opens **Who’s watching?** so you can
   choose the device profile first. If the account has no profiles yet, you
-  create one before continuing. Tapping a profile there selects it and
-  continues into the logo boot splash (engines + catalog). Mid-session
-  switches from Profile & account still use the avatar profile splash.
+  create one before continuing. Tapping a profile there uses the same
+  avatar profile splash as mid-session switches (engines + catalog), then
+  opens the app — not a second logo boot splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Account-bound local data on this
   device is cleared (IPTV portals and passwords, synced playback/nav prefs reset
   to platform defaults); cloud sync stops until you sign in again
 - Cloud sessions expire after **30 days without a refresh** (Auth inactivity
-  timeout). Opening the app or the web portal refreshes the session so normal
-  daily use stays signed in. If the session is lost while you are already using
-  the app (for example after a failed token refresh), Forja returns to the
-  desktop sign-in screen and clears the same account-bound local data — it does
-  **not** stay open as Guest with your prior portals still loaded. Sign in again
-  (or continue as guest with a clean local slate) to keep using the app. Web
-  portal and desktop can stay signed in together — each has its own Auth session
-  after Web login.
+  timeout). Opening the app, focusing the desktop window, or leaving the app
+  open refreshes the session on a timer so normal daily use stays signed in. If
+  profiles fail to load (timeout / network), **Who’s watching** and
+  **Settings → Profile & account** show an error with **Retry** — they do not
+  pretend you have no profiles or keep a stale “Synced” hero. If the session is
+  lost while you are already using the app (for example after a failed token
+  refresh), Forja returns to the desktop sign-in screen and clears the same
+  account-bound local data — it does **not** stay open as Guest with your prior
+  portals still loaded. Sign in again (or continue as guest with a clean local
+  slate) to keep using the app. Web portal and desktop can stay signed in
+  together — each has its own Auth session after Web login.
 - Open **Account** after sign-in on the web: create a profile if needed, pick one
   on **Who’s watching?**, then land in **Remote settings**. Use the **Account**
   sidebar item for passkeys, log out, or permanent account delete (confirm by

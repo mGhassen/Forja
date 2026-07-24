@@ -34,3 +34,28 @@ Widget settingsFocusableDropdown(
     onChanged: onChanged,
   );
 }
+
+/// TV-aware slider — ←/→ nudge while focused (no OK arm).
+Widget settingsFocusableSlider({
+  required String title,
+  String? subtitle,
+  required double value,
+  required double min,
+  required double max,
+  required String label,
+  required ValueChanged<double> onChanged,
+  ValueChanged<double>? onChangeEnd,
+  int? divisions,
+}) {
+  return SettingsSliderRow(
+    title: title,
+    subtitle: subtitle,
+    value: value,
+    min: min,
+    max: max,
+    label: label,
+    onChanged: onChanged,
+    onChangeEnd: onChangeEnd,
+    divisions: divisions,
+  );
+}

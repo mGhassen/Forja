@@ -44,6 +44,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   bool _passkeysLoading = false;
   /// False until the active profile row is loaded — never paint a stale profile.
   bool _profileReady = false;
+  /// Set when a signed-in profile fetch fails (timeout / network).
+  String? _profileLoadError;
   int _refreshGen = 0;
 
   @override
@@ -69,6 +71,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     _activeProfileId = null;
     _passkeys = const [];
     _profileReady = false;
+    _profileLoadError = null;
   }
 
   void _onIdentity() {
@@ -86,25 +89,43 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       setState(_clearProfileUi);
       return;
     }
-    final profiles = await SyncService.instance.listProfiles();
-    final activeProfile = await SyncService.instance.activeProfile();
-    final remote = await SyncService.instance.pullProfileSettings();
-    List<Passkey> passkeys = const [];
-    if (ForjaPasskeys.supported) {
-      try {
-        passkeys = await SyncService.instance.listPasskeys();
-      } catch (_) {
-        passkeys = const [];
+    try {
+      final profiles = await SyncService.instance.listProfiles();
+      final activeProfile = await SyncService.instance.activeProfile(
+        profiles: profiles,
+      );
+      final remote = await SyncService.instance.pullProfileSettings();
+      List<Passkey> passkeys = const [];
+      if (ForjaPasskeys.supported) {
+        try {
+          passkeys = await SyncService.instance.listPasskeys();
+        } catch (_) {
+          passkeys = const [];
+        }
       }
+      if (!mounted || gen != _refreshGen) return;
+      setState(() {
+        _profiles = profiles;
+        _activeProfileId = activeProfile?.id;
+        _domains = remote == null ? 0 : remote.keys.length;
+        _passkeys = passkeys;
+        _profileReady = activeProfile != null;
+        _profileLoadError = null;
+      });
+    } catch (e) {
+      if (!mounted || gen != _refreshGen) return;
+      final message = e is SyncProfileFetchException
+          ? e.message
+          : 'Could not load profile. Check your connection and retry.';
+      setState(() {
+        // Do not keep a stale Synced hero after a failed refresh.
+        _profileReady = false;
+        _profiles = const [];
+        _activeProfileId = null;
+        _domains = 0;
+        _profileLoadError = message;
+      });
     }
-    if (!mounted || gen != _refreshGen) return;
-    setState(() {
-      _profiles = profiles;
-      _activeProfileId = activeProfile?.id;
-      _domains = remote == null ? 0 : remote.keys.length;
-      _passkeys = passkeys;
-      _profileReady = activeProfile != null;
-    });
   }
 
   Future<void> _openChooser({
@@ -367,6 +388,28 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
 
     if (signedIn) {
+      if (_profileLoadError != null && !_profileReady) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(2, 24, 2, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _profileLoadError!,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: _busy ? null : _refreshRemote,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      }
       if (!_profileReady || activeProfile == null) {
         return const Padding(
           padding: EdgeInsets.fromLTRB(2, 24, 2, 24),

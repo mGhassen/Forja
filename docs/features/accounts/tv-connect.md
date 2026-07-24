@@ -4,20 +4,23 @@
 
 ## What it is
 
-Android TV cannot use desktop Web login (no loopback browser). Instead, the TV shows a one-time code and QR. On a phone or computer you open the Forja portal, sign in, enter the code on `/connect`, and the TV receives its own signed-in session. Guest mode remains available.
+Android TV cannot use desktop Web login (no loopback browser). Cold start is a centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen the same way (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile — same flow as desktop.
 
 ## How to open it
 
-- **Cold start (Android TV):** after the update check, if you are not signed in, the link screen appears with the code and QR.
-- **Settings:** **Profile & account** → **Link with code or QR** (when signed out on Android TV).
-- **Web:** open `/connect` (or scan the QR from the TV). You must be signed in; otherwise you are sent to login and returned to `/connect` with the code.
+- **Cold start (Android TV):** after the update check, choose **Sign in** or **Continue as guest**.
+- **Sign in:** TV shows the link code and QR; approve on the portal.
+- **Settings:** open the profile avatar at the bottom of the TV rail → **Profile & account** → **Link with code or QR** when signed out.
+- **Web:** open `/connect` (or scan the QR). You must be signed in; otherwise you are sent to login and returned to `/connect` with the code.
 
 ## What you can do
 
-- Show a large TV code and QR that opens `/connect?code=…`
-- Approve the code while signed in on the portal
+- Switch between code and QR on the same screen while the TV waits for approval
+- Approve on the portal while signed in
 - Continue as guest without linking
-- Sign out on TV to return to the link screen
+- After link: pick a profile on **Who’s watching?** (avatar profile splash, same as desktop)
+- Next cold start (same install): skip link + Who’s watching — open on the last active profile via the logo boot splash
+- Sign out on TV to return to the link welcome screen
 - Revoke the TV session later from Account → Connections (“Forja Android TV”)
 
 ## Setup (if needed)
@@ -29,11 +32,12 @@ Android TV cannot use desktop Web login (no loopback browser). Instead, the TV s
 
 ## Tips
 
-- Codes expire after about 10 minutes — generate a new one on the TV if needed
+- Codes expire after about 10 minutes — start again on the TV if needed
 - The portal stays signed in; the TV gets a separate session (like desktop Web login)
-- Prefer scanning the QR so the code is prefilled on `/connect`
+- Prefer QR so `/connect` opens with the code prefilled
 
 ## Related
 
 - [Cloud sync](../settings/cloud-sync.md)
+- [Settings overview](../settings/overview.md)
 - [Platforms](../getting-started/platforms.md)

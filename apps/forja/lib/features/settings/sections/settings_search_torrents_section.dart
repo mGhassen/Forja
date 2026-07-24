@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
 
 /// Torrent engine and sort order settings.
 class SettingsSearchTorrentsSection extends StatefulWidget {
@@ -93,73 +92,35 @@ class _SettingsSearchTorrentsSectionState
                 },
               ),
               if (_torrentCacheType == 'ram')
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'RAM Cache Size: $_torrentRamCacheMb MB',
-                        style: const TextStyle(
-                          color: ForjaShellColors.textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Slider(
-                        value: _torrentRamCacheMb.toDouble(),
-                        min: 50,
-                        max: 2048,
-                        divisions: 39,
-                        activeColor: ForjaShellColors.brandGreen,
-                        inactiveColor: ForjaShellColors.borderSubtle,
-                        label: '$_torrentRamCacheMb MB',
-                        onChanged: (val) => setState(
-                          () => _torrentRamCacheMb = val.round(),
-                        ),
-                        onChangeEnd: (val) async =>
-                            await _settings.setTorrentRamCacheMb(val.round()),
-                      ),
-                    ],
+                settingsFocusableSlider(
+                  title: 'RAM Cache Size: $_torrentRamCacheMb MB',
+                  value: _torrentRamCacheMb.toDouble(),
+                  min: 50,
+                  max: 2048,
+                  divisions: 39,
+                  label: '$_torrentRamCacheMb MB',
+                  onChanged: (val) => setState(
+                    () => _torrentRamCacheMb = val.round(),
                   ),
+                  onChangeEnd: (val) async =>
+                      await _settings.setTorrentRamCacheMb(val.round()),
                 ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Connections per torrent: $_torrentConnectionsLimit',
-                      style: const TextStyle(
-                        color: ForjaShellColors.textPrimary,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Lower (5–25) often streams better on high-seed swarms.',
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                    Slider(
-                      value: _torrentConnectionsLimit.toDouble().clamp(5, 200),
-                      min: 5,
-                      max: 200,
-                      divisions: 39,
-                      activeColor: ForjaShellColors.brandGreen,
-                      inactiveColor: ForjaShellColors.borderSubtle,
-                      label: '$_torrentConnectionsLimit',
-                      onChanged: (val) => setState(
-                        () => _torrentConnectionsLimit = val.round(),
-                      ),
-                      onChangeEnd: (val) async {
-                        await TorrentStreamService()
-                            .applyConnectionsLimit(val.round());
-                      },
-                    ),
-                  ],
+              settingsFocusableSlider(
+                title: 'Connections per torrent: $_torrentConnectionsLimit',
+                subtitle:
+                    'Lower (5–25) often streams better on high-seed swarms.',
+                value: _torrentConnectionsLimit.toDouble().clamp(5, 200),
+                min: 5,
+                max: 200,
+                divisions: 39,
+                label: '$_torrentConnectionsLimit',
+                onChanged: (val) => setState(
+                  () => _torrentConnectionsLimit = val.round(),
                 ),
+                onChangeEnd: (val) async {
+                  await TorrentStreamService()
+                      .applyConnectionsLimit(val.round());
+                },
               ),
             ],
           ),

@@ -189,7 +189,9 @@ class _ShellNavRailState extends State<ShellNavRail> {
     _scheduleColdStartNavFocus(context);
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
-    final showDesktopProfile = ShellScope.inputPolicyOf(context).scaleOnHover;
+    final showDesktopProfile =
+        ShellScope.inputPolicyOf(context).scaleOnHover ||
+        ShellScope.profileOf(context) == ShellProfile.tv;
     final profileAvatarSize = shellNavRailIconSize(context) * 1.65;
 
     Widget buildNavColumn(double itemSpacing) {

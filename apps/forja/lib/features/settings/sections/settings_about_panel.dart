@@ -51,13 +51,17 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
     setState(() => _isChecking = true);
 
     try {
-      final updateInfo = await _updater.checkForUpdates();
+      final result = await _updater.checkForUpdates();
 
       if (mounted) {
         setState(() => _isChecking = false);
 
-        if (updateInfo != null) {
-          unawaited(UpdateDialog.show(context, updateInfo));
+        if (result.isAvailable && result.info != null) {
+          unawaited(UpdateDialog.show(context, result.info!));
+        } else if (result.isFailed) {
+          ForjaToast.error(
+            result.failureMessage ?? 'Could not check for updates.',
+          );
         } else {
           ForjaToast.success("You're running the latest version!");
         }

@@ -1606,10 +1606,11 @@ class _LiveMatchesEmbedPlayerScreenState
                         return NavigationActionPolicy.ALLOW;
                       }
                       final url = action.request.url?.toString() ?? '';
-                      if (_liveEmbedAllowsMainFrameNavigation(
+                      if (liveEmbedAllowsMainFrameNavigation(
                         url: url,
                         embedUrl: embedUrl,
                         allowEmbedHostAsMainFrame: _androidDirectEmbed,
+                        wrapperReferer: widget.referer,
                       )) {
                         return NavigationActionPolicy.ALLOW;
                       }

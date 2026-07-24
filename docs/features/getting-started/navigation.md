@@ -27,8 +27,10 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## Android TV
 
-- **Nav rail order:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, then Settings (Settings is always last and cannot be hidden)
+- **Nav rail order:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, then the **profile avatar** (same Settings hub as desktop — always last and cannot be hidden)
 - The app **opens on your chosen default tab** (Home unless you change it in Settings); **first focus** lands on that tab’s **nav rail** item (Home by default), not the hero Play button
+- **Settings hub:** wide TV uses the desktop-style left category rail + right detail pane
+- **Account:** cold start offers Sign in (code or QR via `/connect`) or Continue as guest; after link you pick a profile on Who’s watching?
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
 - **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present
 - **Leanback density:** **115px** poster cards, 6px row gaps, tight section chrome — hero + first row peek like desktop, multiple rows visible when scrolling
@@ -51,7 +53,7 @@ Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, M
 ## Tips
 
 - Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
-- Startup follows your profile: Home / Search / My List pull movie catalogs; torrent / Stremio / Webstreaming engines only start when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them at splash. After sign-in, choosing a profile uses the logo boot splash; switching profiles mid-session uses the avatar profile splash; guest / restored-session cold start also uses the logo splash
+- Startup follows your profile: Home / Search / My List pull movie catalogs; torrent / Stremio / Webstreaming engines only start when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them at splash. After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches); guest / restored-session cold start uses the logo boot splash
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 - On **desktop**, the mouse **Back** side button, **Escape**, and a strong two-finger horizontal trackpad swipe (while details or the player is open) all act like the in-app **Back** control — player first, then details, then in-tab screens
 
