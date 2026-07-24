@@ -224,7 +224,7 @@ export function AccountSettingsConnectionsPage() {
     <AccountSettingsShell
       section="account"
       title="Connections"
-      description="Active sign-ins for this account. Revoke anything you do not recognize."
+      description="Active sign-ins for this account — browsers, desktop Web login, and Android TV device link. Revoke anything you do not recognize."
     >
       <SettingsSection
         label="Active sessions"

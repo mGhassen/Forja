@@ -45,6 +45,9 @@ export function describeSessionPlace(userAgent: string | null | undefined): {
   if (/forja\s*desktop/i.test(ua)) {
     return { label: 'Forja desktop app', detail: 'Web login handoff' }
   }
+  if (/forja\s*android\s*tv/i.test(ua)) {
+    return { label: 'Forja Android TV', detail: 'Device link' }
+  }
   if (/forja/i.test(ua)) {
     return { label: 'Forja app', detail: null }
   }

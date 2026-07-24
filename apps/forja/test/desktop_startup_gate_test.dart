@@ -49,6 +49,30 @@ void main() {
     });
   });
 
+  group('resolveAuthStartupDestination', () {
+    test('Android TV / desktop gate shows account when signed out', () {
+      expect(
+        resolveAuthStartupDestination(
+          needsAccountGate: true,
+          supabaseConfigured: true,
+          hasSession: false,
+        ),
+        DesktopStartupDestination.account,
+      );
+    });
+
+    test('phone without gate stays splash-first', () {
+      expect(
+        resolveAuthStartupDestination(
+          needsAccountGate: false,
+          supabaseConfigured: true,
+          hasSession: false,
+        ),
+        DesktopStartupDestination.splash,
+      );
+    });
+  });
+
   group('shouldReturnToAccountOnSignOut', () {
     test('user-initiated always returns to account', () {
       expect(

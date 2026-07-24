@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
+import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -246,6 +248,27 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
   }
 
+  Future<void> _tvDeviceLink() async {
+    setState(() => _error = null);
+    final linked = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => TvAccountLinkScreen(
+          onAuthenticated: () => Navigator.of(context).pop(true),
+          onContinueAsGuest: () => Navigator.of(context).pop(false),
+        ),
+      ),
+    );
+    if (!mounted || linked != true) return;
+    await presentProfileChooser(
+      context,
+      prepareCurrentOnSwitch: false,
+    );
+    if (!mounted) return;
+    await _refreshRemote();
+    setState(() {});
+  }
+
   Future<void> _webLogin() async {
     final cancel = Completer<void>();
     _webCancel = cancel;
@@ -378,6 +401,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       canSubmitPassword: _canSubmitPassword,
       canSubmitPasskey: _canSubmitPasskey,
       showPasskey: ForjaPasskeys.supported,
+      androidTv: PlatformInfo.isAndroidTv,
       busy: _busy,
       passkeyBusy: _passkeyBusy,
       webBusy: _webBusy,
@@ -391,6 +415,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       onPasskeyLogin: _passkeyLogin,
       onWebLogin: _webLogin,
       onCancelWebLogin: _cancelWebLogin,
+      onTvDeviceLink: _tvDeviceLink,
       onOpenSignup: _openSignup,
     );
   }
@@ -672,6 +697,7 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.canSubmitPassword,
     required this.canSubmitPasskey,
     required this.showPasskey,
+    required this.androidTv,
     required this.busy,
     required this.passkeyBusy,
     required this.webBusy,
@@ -682,6 +708,7 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.onPasskeyLogin,
     required this.onWebLogin,
     required this.onCancelWebLogin,
+    required this.onTvDeviceLink,
     required this.onOpenSignup,
   });
 
@@ -692,6 +719,7 @@ class _SignedOutAccountBody extends StatelessWidget {
   final bool canSubmitPassword;
   final bool canSubmitPasskey;
   final bool showPasskey;
+  final bool androidTv;
   final bool busy;
   final bool passkeyBusy;
   final bool webBusy;
@@ -702,10 +730,75 @@ class _SignedOutAccountBody extends StatelessWidget {
   final VoidCallback onPasskeyLogin;
   final VoidCallback onWebLogin;
   final VoidCallback onCancelWebLogin;
+  final VoidCallback onTvDeviceLink;
   final VoidCallback onOpenSignup;
 
   @override
   Widget build(BuildContext context) {
+    if (androidTv) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
+            child: Text(
+              'Link your Forja account with a code or QR on the portal. '
+              'You can keep using Forja without an account.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+          ),
+          SettingsGroup(
+            label: 'Sign in',
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (error != null) ...[
+                      Text(
+                        error!,
+                        style: const TextStyle(
+                          color: Color(0xFFF87171),
+                          fontSize: 12.5,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    ForjaButton.primary(
+                      label: 'Link with code or QR',
+                      icon: Icons.tv_rounded,
+                      onPressed: formLocked ? null : onTvDeviceLink,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SettingsGroup(
+            label: 'New here?',
+            children: [
+              SettingsActionRow(
+                title: 'Create an account on the web',
+                subtitle: 'Use a phone or computer — then link this TV',
+                leading: const Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  size: 22,
+                ),
+                onTap: formLocked ? null : onOpenSignup,
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

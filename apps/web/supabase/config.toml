@@ -126,3 +126,13 @@ verify_jwt = true
 # Desktop Web login — mint a second session; portal keeps its own.
 [functions.mint-desktop-session]
 verify_jwt = true
+
+# Android TV device link — create / poll without a user JWT; approve requires JWT.
+[functions.create-device-link]
+verify_jwt = false
+
+[functions.poll-device-link]
+verify_jwt = false
+
+[functions.approve-device-link]
+verify_jwt = true

@@ -17,6 +17,10 @@ import {
   isSafeDesktopCallback,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
+import {
+  clearPostLoginNext,
+  readPostLoginNext,
+} from '@/lib/device-link'
 
 export function MfaVerifyPage() {
   const navigate = useNavigate()
@@ -26,6 +30,12 @@ export function MfaVerifyPage() {
     const desktop = resolveDesktopAuthParams()
     if (isSafeDesktopCallback(desktop.callback)) {
       void navigate({ to: '/login', replace: true })
+      return
+    }
+    const next = readPostLoginNext()
+    clearPostLoginNext()
+    if (next) {
+      void navigate({ to: next.to, search: next.search, replace: true })
       return
     }
     void navigate({ to: '/account/profiles', replace: true })

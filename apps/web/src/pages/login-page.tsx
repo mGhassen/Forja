@@ -33,7 +33,20 @@ import {
   rememberDesktopAuthParams,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
+import { rememberPostLoginNextFromSearch, clearPostLoginNext, readPostLoginNext } from '@/lib/device-link'
 import { supabase } from '@/lib/supabase'
+
+function navigateAfterLogin(
+  navigate: ReturnType<typeof useNavigate>,
+): void {
+  const next = readPostLoginNext()
+  clearPostLoginNext()
+  if (next) {
+    void navigate({ to: next.to, search: next.search, replace: true })
+    return
+  }
+  void navigate({ to: '/account/profiles' })
+}
 
 function LoginForm() {
   const navigate = useNavigate()
@@ -73,6 +86,7 @@ function LoginForm() {
       return
     }
     rememberDesktopAuthParams()
+    rememberPostLoginNextFromSearch()
     const params = resolveDesktopAuthParams()
     setDesktopParams(params)
     if (isSafeDesktopCallback(params.callback)) {
@@ -158,7 +172,7 @@ function LoginForm() {
       return
     }
     if (!desktopNow) {
-      void navigate({ to: '/account/profiles' })
+      navigateAfterLogin(navigate)
     }
   }, [
     desktopReady,
@@ -215,7 +229,7 @@ function LoginForm() {
     }
 
     setSubmitting(false)
-    void navigate({ to: '/account/profiles' })
+    navigateAfterLogin(navigate)
   }
 
   async function onPasskeySignIn() {
@@ -258,7 +272,7 @@ function LoginForm() {
     }
 
     setPasskeySubmitting(false)
-    void navigate({ to: '/account/profiles' })
+    navigateAfterLogin(navigate)
   }
 
   async function onReturnToForja() {

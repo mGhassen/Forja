@@ -196,6 +196,9 @@ supabase db push
 supabase functions deploy sync-github-releases
 supabase functions deploy delete-account
 supabase functions deploy mint-desktop-session
+supabase functions deploy create-device-link
+supabase functions deploy approve-device-link
+supabase functions deploy poll-device-link
 ```
 
 Secrets for the Edge Function (optional):
@@ -203,12 +206,15 @@ Secrets for the Edge Function (optional):
 ```bash
 supabase secrets set GITHUB_TOKEN=ghp_...
 # GITHUB_REPO defaults to mGhassen/Forja
+# FORJA_WEB_URL — portal origin for device-link verification_uri (create-device-link)
 ```
 
-`delete-account` and `mint-desktop-session` use the project’s built-in
-`SUPABASE_SERVICE_ROLE_KEY` (set automatically for Edge Functions). Call them
-only with a signed-in user JWT (`delete-account` from Account settings;
-`mint-desktop-session` from desktop Web login handoff).
+`delete-account`, `mint-desktop-session`, and `approve-device-link` use the
+project’s built-in `SUPABASE_SERVICE_ROLE_KEY` (set automatically for Edge
+Functions). Call JWT-gated functions only with a signed-in user JWT
+(`delete-account` from Account settings; `mint-desktop-session` from desktop
+Web login handoff; `approve-device-link` from `/connect`).
+`create-device-link` and `poll-device-link` are anon (TV device-code flow).
 Invoke after a release:
 
 ```bash

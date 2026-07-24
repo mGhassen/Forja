@@ -19,8 +19,12 @@ profile is known — another profile’s settings are never shown first.
   Windows), use **Web login** (browser handoff), or choose **Continue without an
   account**. On Windows / Linux the sign-in and Who’s watching screens keep the
   same window caption (min / max / close) as the main app. New accounts are
-  created only on the web (**Create an account on the web**). Linux, phones, and
-  TV keep password and/or web login only.
+  created only on the web (**Create an account on the web**). Linux and phones
+  keep password and/or web login only.
+- **Android TV startup:** after the update check, link with a **code or QR**
+  (approve on the portal at `/connect`) or choose **Continue as guest**. See
+  [Link Android TV](../accounts/tv-connect.md). From **Settings → Profile &
+  account** you can open the same link flow when signed out.
 - **App:** select the profile avatar at the bottom of the desktop rail (opens
   **Settings → Profile & account**), or open that page from Settings —
   the page shows the active profile (**Watching now** — tap to switch), cloud
@@ -32,7 +36,8 @@ profile is known — another profile’s settings are never shown first.
   email and open the **Confirm email** link to finish signup. Use
   **Forgot password?** on `/login` (or open `/forgot-password`) to email a reset
   link; open the link to choose a new password on `/reset-password`, then sign in.
-  Under **Account**, enroll and remove passkeys. New accounts have no profiles yet —
+  Link an Android TV at `/connect` (code from the TV or QR). Under **Account**,
+  enroll and remove passkeys. New accounts have no profiles yet —
   create your
   first one (name + avatar); default synced settings are attached then. After
   that, choose a profile on **Who's watching?**, then open **Remote settings**.

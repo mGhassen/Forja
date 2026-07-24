@@ -17,6 +17,9 @@ function emphasisForPath(pathname: string): string | undefined {
   if (pathname.startsWith('/reset-password')) {
     return 'Almost there — set a new password and you’re back in.'
   }
+  if (pathname.startsWith('/connect')) {
+    return 'Enter the code from your TV to sync your Forja account.'
+  }
   if (pathname.startsWith('/login')) {
     return isSafeDesktopCallback(resolveDesktopAuthParams().callback)
       ? 'Sign in here to unlock sync on your desktop Forja app.'

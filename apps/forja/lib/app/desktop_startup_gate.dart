@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
+import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -26,8 +28,20 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
+/// Cold-start account gate for desktop (email/Web login) and Android TV (device link).
+DesktopStartupDestination resolveAuthStartupDestination({
+  required bool needsAccountGate,
+  required bool supabaseConfigured,
+  required bool hasSession,
+}) {
+  if (!needsAccountGate || !supabaseConfigured || hasSession) {
+    return DesktopStartupDestination.splash;
+  }
+  return DesktopStartupDestination.account;
+}
+
 /// Whether a [AuthChangeEvent.signedOut] should replace the running app with
-/// [AccountEntryScreen].
+/// [AccountEntryScreen] / [TvAccountLinkScreen].
 ///
 /// Always yes — including involuntary [SignOutReason.sessionExpired] /
 /// [SignOutReason.sessionMissing]. Keeping the shell left Guest chrome with
@@ -43,10 +57,10 @@ enum _StartupStage { update, account, profiles, splash }
 
 /// Cold-start gate: update check first, then optional account entry, then splash.
 ///
-/// Guest and unconfigured builds skip account but still run the update gate
-/// before splash. Restored sessions skip account and go update → splash.
-/// Fresh sign-in → Who's watching → logo intro [SplashScreen] → app.
-/// Mid-session profile switches use the avatar profile splash instead.
+/// Desktop and Android TV: Guest and unconfigured builds skip account but still
+/// run the update gate before splash. Restored sessions skip account and go
+/// update → splash. Fresh sign-in → Who's watching → logo intro [SplashScreen]
+/// → app. Mid-session profile switches use the avatar profile splash instead.
 /// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends StatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
@@ -60,6 +74,13 @@ class DesktopStartupGate extends StatefulWidget {
 class _DesktopStartupGateState extends State<DesktopStartupGate> {
   _StartupStage _stage = _StartupStage.update;
   StreamSubscription<AuthState>? _authSub;
+
+  bool get _isDesktopOs =>
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
+  bool get _needsAccountGate => _isDesktopOs || PlatformInfo.isAndroidTv;
+
+  bool get _isAndroidTv => PlatformInfo.isAndroidTv;
 
   @override
   void initState() {
@@ -98,8 +119,6 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   }
 
   Future<void> _enterPostUpdateDestination() async {
-    final isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
     final hasSession = SyncService.instance.isSignedIn;
     // Restored sessions skip profile chooser, which is otherwise the only
     // place that pulls accounts.features — without this, iptvScrape stays off.
@@ -107,8 +126,8 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
       await SyncService.instance.pullAccountFeatures();
     }
     if (!mounted) return;
-    final destination = resolveDesktopStartupDestination(
-      isDesktop: isDesktop,
+    final destination = resolveAuthStartupDestination(
+      needsAccountGate: _needsAccountGate,
       supabaseConfigured: ForjaSupabase.isConfigured,
       hasSession: hasSession,
     );
@@ -137,9 +156,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   }
 
   Future<void> _returnToAccountAfterSignOut() async {
-    final isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    if (!isDesktop || !ForjaSupabase.isConfigured) return;
+    if (!_needsAccountGate || !ForjaSupabase.isConfigured) return;
     if (_stage == _StartupStage.account) return;
 
     // Wipe account-bound local state before showing login (portals, prefs).
@@ -172,10 +189,19 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
         color: AppTheme.appBackground,
         child: SizedBox.expand(),
       ),
-      _StartupStage.account => AccountEntryScreen(
-        onAuthenticated: () => setState(() => _stage = _StartupStage.profiles),
-        onContinueAsGuest: () => setState(() => _stage = _StartupStage.splash),
-      ),
+      _StartupStage.account => _isAndroidTv
+          ? TvAccountLinkScreen(
+              onAuthenticated: () =>
+                  setState(() => _stage = _StartupStage.profiles),
+              onContinueAsGuest: () =>
+                  setState(() => _stage = _StartupStage.splash),
+            )
+          : AccountEntryScreen(
+              onAuthenticated: () =>
+                  setState(() => _stage = _StartupStage.profiles),
+              onContinueAsGuest: () =>
+                  setState(() => _stage = _StartupStage.splash),
+            ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
         useLogoIntroSplash: true,
@@ -185,6 +211,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
       _StartupStage.splash => widget.splash,
     };
     if (_stage == _StartupStage.splash) return child;
+    if (_isAndroidTv) return child;
     return DesktopWindowChrome.wrapShell(child: child);
   }
 }

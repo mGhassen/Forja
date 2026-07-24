@@ -12,3 +12,8 @@ Optional: `TURNSTILE_SITE_KEY` for in-app Turnstile when Auth captcha is enabled
 Browser handoff: `DesktopBrowserAuth` opens `{FORJA_WEB_URL}/login?desktop_callback=…`;
 the portal `fetch()`es the loopback callback (CORS + Private Network Access) and
 `SyncService.signInWithBrowser` applies the tokens — one browser tab only.
+
+Android TV device link: `TvDeviceLinkAuth` creates a code via Edge
+`create-device-link`, shows `{FORJA_WEB_URL}/connect` (+ QR), polls
+`poll-device-link`, and applies tokens with `signInWithBrowserTokens`. Portal
+approves with `approve-device-link` (signed-in JWT). See [RFC-046](../../../docs/rfc/046-[open]-android-tv-device-link.md).
