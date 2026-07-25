@@ -32,6 +32,7 @@ import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shell/shell_bus.dart';
 
@@ -275,6 +276,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     SettingsService.iptvEpgEnabledNotifier.addListener(_onIptvEpgPrefChanged);
     unawaited(_loadIptvEpgPref());
     WidgetsBinding.instance.addObserver(this);
+    HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
     if (!_exoBackend && !kIsWeb && Platform.isAndroid) {
       _androidMediaKitSafeMode = true;
     }
@@ -308,6 +310,19 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     unawaited(_bootWithCachedVolume());
   }
 
+  /// D-pad / remote keys while chrome is up count as activity. Row focus
+  /// handlers often return [KeyEventResult.handled], so [PlayerTvKeyScope]
+  /// alone never sees them — without this, controls hide mid-navigation.
+  bool _onRemoteControlsActivity(KeyEvent event) {
+    if (!shellTvIsNavigationKey(event)) return false;
+    if (_disposed || !mounted) return false;
+    if (!_controlsVisible || _guideVisible || _searchVisible || _isPipMode) {
+      return false;
+    }
+    _scheduleHideControls();
+    return false;
+  }
+
   Future<void> _bootWithCachedVolume() async {
     final v = await IptvStore.loadPlayerVolume();
     if (_disposed || !mounted) return;
@@ -339,6 +354,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       _onIptvEpgPrefChanged,
     );
     WidgetsBinding.instance.removeObserver(this);
+    HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
     _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();

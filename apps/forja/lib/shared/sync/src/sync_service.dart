@@ -205,10 +205,18 @@ class SyncService {
     _desktopKeepAliveTimer = null;
   }
 
-  /// Refresh when the access JWT is missing expiry or nearly expired.
+  /// Refresh when the access JWT is missing expiry, already expired, or nearly
+  /// expired. Does **not** refresh a seemingly-valid AT (use [refreshSession]
+  /// with `force: true` on cold start, or retry after [isJwtExpiredError]).
   Future<void> ensureFreshAccessToken() async {
     if (!isSignedIn) return;
-    final expiresAt = session?.expiresAt;
+    final current = session;
+    if (current == null) return;
+    if (current.isExpired) {
+      await refreshSession(force: true);
+      return;
+    }
+    final expiresAt = current.expiresAt;
     if (expiresAt == null) {
       await refreshSession(force: true);
       return;
@@ -519,8 +527,13 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return const [];
-    await ensureFreshAccessToken();
-    try {
+
+    Future<List<SyncProfile>> fetchOnce({required bool forceRefresh}) async {
+      if (forceRefresh) {
+        await refreshSession(force: true);
+      } else {
+        await ensureFreshAccessToken();
+      }
       final rows = await client
           .from('profiles')
           .select('id, name, color, avatar_key, created_at')
@@ -536,6 +549,10 @@ class SyncService {
             avatarKey: raw['avatar_key'] as String? ?? 'forge',
           ),
       ];
+    }
+
+    try {
+      return await fetchOnce(forceRefresh: false);
     } on TimeoutException catch (e) {
       debugPrint('[Sync] listProfiles timeout: $e');
       throw SyncProfileFetchException(
@@ -544,6 +561,26 @@ class SyncService {
       );
     } catch (e) {
       if (e is SyncProfileFetchException) rethrow;
+      if (isJwtExpiredError(e)) {
+        debugPrint(
+          '[Sync] listProfiles JWT expired — force refresh and retry',
+        );
+        try {
+          return await fetchOnce(forceRefresh: true);
+        } on TimeoutException catch (e2) {
+          debugPrint('[Sync] listProfiles timeout after JWT retry: $e2');
+          throw SyncProfileFetchException(
+            'Timed out loading profiles. Check your connection and retry.',
+            cause: e2,
+          );
+        } catch (e2) {
+          debugPrint('[Sync] listProfiles error after JWT retry: $e2');
+          throw SyncProfileFetchException(
+            'Could not load profiles. Check your connection and retry.',
+            cause: e2,
+          );
+        }
+      }
       debugPrint('[Sync] listProfiles error: $e');
       throw SyncProfileFetchException(
         'Could not load profiles. Check your connection and retry.',
@@ -815,8 +852,13 @@ class SyncService {
       AccountFeatures.instance.clear();
       return const {};
     }
-    await ensureFreshAccessToken();
-    try {
+
+    Future<Map<String, dynamic>> pullOnce({required bool forceRefresh}) async {
+      if (forceRefresh) {
+        await refreshSession(force: true);
+      } else {
+        await ensureFreshAccessToken();
+      }
       var isAdmin = false;
       try {
         final rpc = await client.rpc('is_admin');
@@ -868,7 +910,23 @@ class SyncService {
       );
       _lastFeaturesPullAt = DateTime.now();
       return map;
+    }
+
+    try {
+      return await pullOnce(forceRefresh: false);
     } catch (e) {
+      if (isJwtExpiredError(e)) {
+        debugPrint(
+          '[Sync] pullAccountFeatures JWT expired — force refresh and retry',
+        );
+        try {
+          return await pullOnce(forceRefresh: true);
+        } catch (e2) {
+          debugPrint('[Sync] pullAccountFeatures error after JWT retry: $e2');
+          AccountFeatures.instance.clear();
+          return const {};
+        }
+      }
       debugPrint('[Sync] pullAccountFeatures error: $e');
       AccountFeatures.instance.clear();
       return const {};

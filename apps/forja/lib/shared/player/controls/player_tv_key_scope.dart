@@ -21,6 +21,7 @@ class PlayerTvKeyScope extends StatefulWidget {
     required this.onVolumeUp,
     required this.onVolumeDown,
     required this.onToggleControls,
+    this.onControlsActivity,
     required this.child,
   });
 
@@ -35,6 +36,9 @@ class PlayerTvKeyScope extends StatefulWidget {
   final VoidCallback onVolumeUp;
   final VoidCallback onVolumeDown;
   final VoidCallback onToggleControls;
+  /// Fired on D-pad / remote keys while chrome is visible so auto-hide can
+  /// restart from idle (focus traversal alone does not touch the timer).
+  final VoidCallback? onControlsActivity;
   final Widget child;
 
   @override
@@ -79,6 +83,11 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (!widget.enabled) return KeyEventResult.ignored;
+    // Any remote key while chrome is up counts as activity (incl. D-pad
+    // traversal over focused buttons, which otherwise never resets hide).
+    if (widget.showControls && shellTvIsNavigationKey(event)) {
+      widget.onControlsActivity?.call();
+    }
     // Volume keys must win even while a chrome control holds focus.
     if (shellTvIsNavigationKey(event)) {
       final key = event.logicalKey;

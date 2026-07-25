@@ -129,9 +129,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaSupabase.ensureInitialized();
-  // Await so boot sync (features / profiles) does not race gotrue's lazy
-  // recoverSession and hit PostgREST with a discarded-refresh expired JWT.
-  await SyncService.instance.ensureFreshAccessToken();
+  // Always rotate the access JWT on cold start when a session exists. Skew /
+  // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
+  await SyncService.instance.refreshSession(force: true);
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   unawaited(SettingsService().getAnimeTitleLanguage());
   if (Platform.isAndroid) {

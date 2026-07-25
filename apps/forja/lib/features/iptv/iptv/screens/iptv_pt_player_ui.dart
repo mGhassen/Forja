@@ -203,6 +203,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           setState(() => _s._setCachedVolume((_s._volume - 5).clamp(0, 100)));
         },
         onToggleControls: _toggleControls,
+        onControlsActivity: _scheduleHideControls,
         child: MouseRegion(
           onHover: (_) => _onPlayerMouseMove(),
           cursor: (_s._controlsVisible || _s._guideVisible || _s._searchVisible)
@@ -519,28 +520,16 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     assert(onPressed != null || onPressedWithContext != null);
     const topRowId = 'iptv-player-top';
     if (iptvUseTvFocus(context)) {
-      return Builder(
-        builder: (btnCtx) => iptvTap(
-          context: context,
-          onTap: () {
-            if (onPressedWithContext != null) {
-              onPressedWithContext(btnCtx);
-            } else {
-              onPressed!();
-            }
-          },
-          borderRadius: 22,
-          tvRowId: topRowId,
-          tvItemIndex: tvItemIndex,
-          onLeftEdge: onLeftEdge,
-          onRightEdge: onRightEdge,
-          onDownEdge: onDownEdge,
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: Icon(icon, color: Colors.white70, size: 22),
-          ),
-        ),
+      return _IptvPlayerTopBarIcon(
+        icon: icon,
+        tooltip: tooltip,
+        tvRowId: topRowId,
+        tvItemIndex: tvItemIndex,
+        onPressed: onPressed,
+        onPressedWithContext: onPressedWithContext,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onDownEdge: onDownEdge,
       );
     }
     return PlayerFlatIconButton(
@@ -554,7 +543,9 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   Widget _buildTopBar(bool compact) {
     const topRowId = 'iptv-player-top';
-    final showPip = PipService.instance.isSupported;
+    // PiP is phone/desktop chrome — hide on Android TV (matches VOD player).
+    final showPip =
+        PipService.instance.isSupported && !iptvUseTvFocus(context);
     final showStats = !_s._exoBackend;
     final hasSources = _s._sources.length > 1;
     var next = 0;

@@ -128,14 +128,10 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     // on splash with the last active profile (SharedPreferences).
     var hasSession = SyncService.instance.isSignedIn;
     if (ForjaSupabase.isConfigured) {
-      // Always renew when signed in (expired AT + gotrue discard race). When
-      // unsigned, one refresh can still hydrate after slow TV secure-store read.
+      // Always force-refresh when signed in (expired AT, clock skew, gotrue
+      // discard). When unsigned, one refresh is a no-op until storage hydrates.
       try {
-        if (hasSession) {
-          await SyncService.instance.ensureFreshAccessToken();
-        } else {
-          await SyncService.instance.refreshSession(force: true);
-        }
+        await SyncService.instance.refreshSession(force: true);
       } catch (e) {
         debugPrint('[DesktopStartupGate] refreshSession: $e');
       }

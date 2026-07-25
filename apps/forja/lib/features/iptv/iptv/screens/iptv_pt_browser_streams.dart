@@ -894,12 +894,9 @@ Widget _streamIconThumb({
         p == null ? child : const _StreamPlaceholder(),
   );
   if (!contain) return SizedBox.expand(child: image);
-  return ColoredBox(
-    color: Colors.white.withValues(alpha: 0.03),
-    child: Padding(
-      padding: EdgeInsets.all(padding),
-      child: SizedBox.expand(child: image),
-    ),
+  return Padding(
+    padding: EdgeInsets.all(padding),
+    child: SizedBox.expand(child: image),
   );
 }
 
@@ -907,11 +904,8 @@ class _StreamPlaceholder extends StatelessWidget {
   const _StreamPlaceholder();
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white.withValues(alpha: 0.03),
-      child: const Center(
-        child: Icon(Icons.tv_rounded, color: Colors.white24, size: 36),
-      ),
+    return const Center(
+      child: Icon(Icons.tv_rounded, color: Colors.white24, size: 36),
     );
   }
 }

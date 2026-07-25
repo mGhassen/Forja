@@ -1,11 +1,10 @@
 part of 'iptv_pt_player_screen.dart';
 
-class _SourceChip extends StatelessWidget {
+class _SourceChip extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
   final String? tvRowId;
   final int? tvItemIndex;
-  final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -15,46 +14,72 @@ class _SourceChip extends StatelessWidget {
     required this.onTap,
     this.tvRowId,
     this.tvItemIndex,
-    this.onUpEdge,
     this.onDownEdge,
     this.onLeftEdge,
     this.onRightEdge,
   });
 
   @override
+  State<_SourceChip> createState() => _SourceChipState();
+}
+
+class _SourceChipState extends State<_SourceChip> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _tvFocused => iptvTvFocused(context, focused: _focused);
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
   Widget build(BuildContext context) {
+    final tv = iptvUseTvFocus(context);
+    final borderColor = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : IptvShellStyle.accent.withValues(alpha: _active ? 0.8 : 0.5);
+    final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+    final iconColor = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : IptvShellStyle.accent;
     return iptvTap(
       context: context,
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: 20,
       scaleOnFocus: 1.0,
-      tvRowId: tvRowId,
-      tvItemIndex: tvItemIndex,
-      onUpEdge: onUpEdge,
-      onDownEdge: onDownEdge,
-      onLeftEdge: onLeftEdge,
-      onRightEdge: onRightEdge,
-      child: Container(
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      onDownEdge: widget.onDownEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onFocusChange: tv ? (f) => setState(() => _focused = f) : null,
+      onHoverChange: tv ? (h) => setState(() => _hovered = h) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
+          color: _tvFocused
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: IptvShellStyle.accent.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: borderColor,
+            width: _tvFocused ? 1.5 : 1,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.swap_horiz_rounded,
-                color: IptvShellStyle.accent, size: 16),
+            Icon(Icons.swap_horiz_rounded, color: iconColor, size: 16),
             const SizedBox(width: 6),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 120),
               child: Text(
-                label,
+                widget.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
+                  color: fg,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -63,6 +88,108 @@ class _SourceChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// IPTV top-bar flat icon with movie-player green D-pad chrome + row edges.
+class _IptvPlayerTopBarIcon extends StatefulWidget {
+  const _IptvPlayerTopBarIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.tvRowId,
+    required this.tvItemIndex,
+    this.onPressed,
+    this.onPressedWithContext,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onDownEdge,
+  }) : assert(onPressed != null || onPressedWithContext != null);
+
+  final IconData icon;
+  final String tooltip;
+  final String tvRowId;
+  final int tvItemIndex;
+  final VoidCallback? onPressed;
+  final ValueChanged<BuildContext>? onPressedWithContext;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_IptvPlayerTopBarIcon> createState() => _IptvPlayerTopBarIconState();
+}
+
+class _IptvPlayerTopBarIconState extends State<_IptvPlayerTopBarIcon> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  static const double _size = 44;
+  static const double _iconSize = 22;
+
+  bool get _tvFocused =>
+      playerChromeTvFocused(tvFocusable: true, focused: _focused);
+
+  bool get _highlight => playerChromeFocusActive(
+        context,
+        tvFocusable: true,
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = playerChromeButtonShape(
+      isCircle: true,
+      tvFocused: _tvFocused,
+    );
+    final iconColor = playerChromeIconColor(
+      enabled: true,
+      active: false,
+      highlight: _highlight,
+      tvFocused: _tvFocused,
+    );
+    final bg = playerChromeBackgroundColor(
+      active: false,
+      highlight: _highlight,
+      tvFocused: _tvFocused,
+    );
+
+    return Builder(
+      builder: (btnCtx) {
+        final child = Material(
+          color: bg,
+          shape: shape,
+          child: SizedBox(
+            width: _size,
+            height: _size,
+            child: Icon(widget.icon, color: iconColor, size: _iconSize),
+          ),
+        );
+        return Tooltip(
+          message: widget.tooltip,
+          child: iptvTap(
+            context: context,
+            onTap: () {
+              if (widget.onPressedWithContext != null) {
+                widget.onPressedWithContext!(btnCtx);
+              } else {
+                widget.onPressed!();
+              }
+            },
+            borderRadius: _size / 2,
+            scaleOnFocus: 1.0,
+            tvRowId: widget.tvRowId,
+            tvItemIndex: widget.tvItemIndex,
+            onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
+            onDownEdge: widget.onDownEdge,
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            onHoverChange: (hovered) => setState(() => _hovered = hovered),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
